@@ -319,6 +319,11 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -341,7 +346,12 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
 
-<span class="doccomment">/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
+<span class="doccomment">/// Downtime simulation start timestamp
+</span><span class="kw">pub const </span>DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">0</span>); <span class="comment">// TODO: set the downtime end timestamp
+</span><span class="doccomment">/// Downtime simulation end timestamp
+</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">0</span>); <span class="comment">// TODO: set the downtime end timestamp
+
+</span><span class="doccomment">/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 </span><span class="kw">pub const </span>SIGNATURE_DESER_SIZE: usize = <span class="number">64 </span>+ <span class="number">1</span>;
 
 <span class="doccomment">/// Limit on the number of peers we advertise to others.

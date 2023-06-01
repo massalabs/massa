@@ -2219,6 +2219,8 @@
 <a href="#2219" id="2219">2219</a>
 <a href="#2220" id="2220">2220</a>
 <a href="#2221" id="2221">2221</a>
+<a href="#2222" id="2222">2222</a>
+<a href="#2223" id="2223">2223</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -3455,6 +3457,7 @@
     <span class="kw">use </span>std::assert_matches::assert_matches;
     <span class="kw">use </span>std::str::FromStr;
 
+    <span class="kw">use </span>chrono::{Days, NaiveDate, NaiveDateTime};
     <span class="kw">use </span>massa_db::MassaDBConfig;
     <span class="kw">use </span>more_asserts::assert_le;
     <span class="kw">use </span>tempfile::tempdir;
@@ -3486,28 +3489,29 @@
         }
     }
 
-    <span class="kw">fn </span>get_a_version_info() -&gt; (MassaTime, MassaTime, MipInfo) {
+    <span class="kw">fn </span>get_a_version_info() -&gt; (NaiveDateTime, NaiveDateTime, MipInfo) {
         <span class="comment">// A helper function to provide a default MipInfo
-
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
 
-        </span><span class="kw">let </span>now = MassaTime::now().unwrap();
-        <span class="kw">let </span>start = now
-            .checked_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">60 </span>* <span class="number">60</span>))
-            .unwrap(); <span class="comment">// In 1 hour
-        </span><span class="kw">let </span>timeout = now
-            .checked_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>))
-            .unwrap(); <span class="comment">// In 2 hours
+        </span><span class="kw">let </span>start: NaiveDateTime = NaiveDate::from_ymd_opt(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">01</span>)
+            .unwrap()
+            .and_hms_opt(<span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>)
+            .unwrap();
 
-        </span><span class="kw">return </span>(
+        <span class="kw">let </span>timeout: NaiveDateTime = NaiveDate::from_ymd_opt(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">11</span>)
+            .unwrap()
+            .and_hms_opt(<span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>)
+            .unwrap();
+
+        <span class="kw">return </span>(
             start,
             timeout,
             MipInfo {
                 name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
                 version: <span class="number">2</span>,
                 components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-                start,
-                timeout,
+                start: MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64),
+                timeout: MassaTime::from_millis(timeout.timestamp() <span class="kw">as </span>u64),
                 activation_delay: MassaTime::from_millis(<span class="number">20</span>),
             },
         );
@@ -3585,7 +3589,7 @@
     </span><span class="kw">fn </span>test_state_advance_from_active() {
         <span class="comment">// Test Versioning state transition (from state: Active)
         </span><span class="kw">let </span>(start, <span class="kw">_</span>, mi) = get_a_version_info();
-        <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::active(start);
+        <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::active(MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64));
         <span class="kw">let </span>now = mi.start;
         <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
@@ -3625,7 +3629,7 @@
         <span class="comment">// Test MipStateHistory::state_at() function
 
         </span><span class="kw">let </span>(start, <span class="kw">_</span>, mi) = get_a_version_info();
-        <span class="kw">let </span>now_0 = start;
+        <span class="kw">let </span>now_0 = MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64);
         <span class="kw">let </span><span class="kw-2">mut </span>state = MipState::new(now_0);
 
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
@@ -3708,16 +3712,16 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>mi_2 = mi.clone();
         mi_2.version += <span class="number">1</span>;
-        mi_2.start = timeout
-            .checked_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">24 </span>* <span class="number">2</span>))
-            .unwrap(); <span class="comment">// Add 2 days
-        </span>mi_2.timeout = timeout
-            .checked_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">24 </span>* <span class="number">5</span>))
-            .unwrap(); <span class="comment">// Add 5 days
+        mi_2.start = MassaTime::from_millis(
+            timeout.checked_add_days(Days::new(<span class="number">2</span>)).unwrap().timestamp() <span class="kw">as </span>u64,
+        );
+        mi_2.timeout = MassaTime::from_millis(
+            timeout.checked_add_days(Days::new(<span class="number">5</span>)).unwrap().timestamp() <span class="kw">as </span>u64,
+        );
 
-        // Can only build such object in test - history is empty :-/
+        <span class="comment">// Can only build such object in test - history is empty :-/
         </span><span class="kw">let </span>vs_1 = MipState {
-            state: ComponentState::active(start),
+            state: ComponentState::active(MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64)),
             history: Default::default(),
         };
         <span class="kw">let </span>vs_2 = MipState {
