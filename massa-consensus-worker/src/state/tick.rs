@@ -66,7 +66,7 @@ impl ConsensusState {
                 days, hours, mins, secs,
             );
         }
-        
+
         Ok(())
     }
 }
