@@ -20,6 +20,11 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// Downtime simulation start timestamp
+pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(0); // TODO: set the downtime end timestamp
+/// Downtime simulation end timestamp
+pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(0); // TODO: set the downtime end timestamp
+
 /// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 
