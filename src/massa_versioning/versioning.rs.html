@@ -2151,76 +2151,6 @@
 <a href="#2151" id="2151">2151</a>
 <a href="#2152" id="2152">2152</a>
 <a href="#2153" id="2153">2153</a>
-<a href="#2154" id="2154">2154</a>
-<a href="#2155" id="2155">2155</a>
-<a href="#2156" id="2156">2156</a>
-<a href="#2157" id="2157">2157</a>
-<a href="#2158" id="2158">2158</a>
-<a href="#2159" id="2159">2159</a>
-<a href="#2160" id="2160">2160</a>
-<a href="#2161" id="2161">2161</a>
-<a href="#2162" id="2162">2162</a>
-<a href="#2163" id="2163">2163</a>
-<a href="#2164" id="2164">2164</a>
-<a href="#2165" id="2165">2165</a>
-<a href="#2166" id="2166">2166</a>
-<a href="#2167" id="2167">2167</a>
-<a href="#2168" id="2168">2168</a>
-<a href="#2169" id="2169">2169</a>
-<a href="#2170" id="2170">2170</a>
-<a href="#2171" id="2171">2171</a>
-<a href="#2172" id="2172">2172</a>
-<a href="#2173" id="2173">2173</a>
-<a href="#2174" id="2174">2174</a>
-<a href="#2175" id="2175">2175</a>
-<a href="#2176" id="2176">2176</a>
-<a href="#2177" id="2177">2177</a>
-<a href="#2178" id="2178">2178</a>
-<a href="#2179" id="2179">2179</a>
-<a href="#2180" id="2180">2180</a>
-<a href="#2181" id="2181">2181</a>
-<a href="#2182" id="2182">2182</a>
-<a href="#2183" id="2183">2183</a>
-<a href="#2184" id="2184">2184</a>
-<a href="#2185" id="2185">2185</a>
-<a href="#2186" id="2186">2186</a>
-<a href="#2187" id="2187">2187</a>
-<a href="#2188" id="2188">2188</a>
-<a href="#2189" id="2189">2189</a>
-<a href="#2190" id="2190">2190</a>
-<a href="#2191" id="2191">2191</a>
-<a href="#2192" id="2192">2192</a>
-<a href="#2193" id="2193">2193</a>
-<a href="#2194" id="2194">2194</a>
-<a href="#2195" id="2195">2195</a>
-<a href="#2196" id="2196">2196</a>
-<a href="#2197" id="2197">2197</a>
-<a href="#2198" id="2198">2198</a>
-<a href="#2199" id="2199">2199</a>
-<a href="#2200" id="2200">2200</a>
-<a href="#2201" id="2201">2201</a>
-<a href="#2202" id="2202">2202</a>
-<a href="#2203" id="2203">2203</a>
-<a href="#2204" id="2204">2204</a>
-<a href="#2205" id="2205">2205</a>
-<a href="#2206" id="2206">2206</a>
-<a href="#2207" id="2207">2207</a>
-<a href="#2208" id="2208">2208</a>
-<a href="#2209" id="2209">2209</a>
-<a href="#2210" id="2210">2210</a>
-<a href="#2211" id="2211">2211</a>
-<a href="#2212" id="2212">2212</a>
-<a href="#2213" id="2213">2213</a>
-<a href="#2214" id="2214">2214</a>
-<a href="#2215" id="2215">2215</a>
-<a href="#2216" id="2216">2216</a>
-<a href="#2217" id="2217">2217</a>
-<a href="#2218" id="2218">2218</a>
-<a href="#2219" id="2219">2219</a>
-<a href="#2220" id="2220">2220</a>
-<a href="#2221" id="2221">2221</a>
-<a href="#2222" id="2222">2222</a>
-<a href="#2223" id="2223">2223</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -2866,12 +2796,9 @@
 <span class="doccomment">/// In order for a MIP to be accepted, we compute statistics about other node &#39;network&#39; version announcement
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MipStoreStats {
-    <span class="comment">// config for max counters + block to consider when computing the vote ratio
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) config: MipStatsConfig,
-    <span class="comment">// used to clean up the counters (pop the oldest then subtract matching counter)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) latest_announcements: VecDeque&lt;u32&gt;,
-    <span class="comment">// counter per network version
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) network_version_counters: BTreeMap&lt;u32, u64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) config: MipStatsConfig,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) latest_announcements: VecDeque&lt;u32&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) network_version_counters: BTreeMap&lt;u32, u64&gt;,
 }
 
 <span class="kw">impl </span>MipStoreStats {
@@ -3071,23 +2998,21 @@
                 .push_back(announced_network_version);
 
             <span class="comment">// We update the count of the received version
-            </span><span class="kw">let </span>entry_value = <span class="self">self
+            </span><span class="kw-2">*</span><span class="self">self
                 </span>.stats
                 .network_version_counters
                 .entry(announced_network_version)
-                .or_default();
-            <span class="kw-2">*</span>entry_value = entry_value.saturating_add(<span class="number">1</span>);
+                .or_default() += <span class="number">1</span>;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(removed_version) = removed_version_ {
-                <span class="kw">let </span>entry_value = <span class="self">self
+                <span class="kw-2">*</span><span class="self">self
                     </span>.stats
                     .network_version_counters
                     .entry(removed_version)
-                    .or_insert(<span class="number">1</span>);
-                <span class="kw-2">*</span>entry_value = entry_value.saturating_sub(<span class="number">1</span>);
+                    .or_insert(<span class="number">1</span>) -= <span class="number">1</span>;
             }
 
-            <span class="comment">// Cleanup the counters
+            <span class="comment">// Cleanup for the counters
             </span><span class="kw">if </span><span class="self">self</span>.stats.network_version_counters.len() &gt; <span class="self">self</span>.stats.config.counters_max {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((version, count)) = <span class="self">self</span>.stats.network_version_counters.pop_first() {
                     <span class="comment">// TODO: return version / count for unit tests?
@@ -3116,7 +3041,7 @@
 
             <span class="kw">let </span>vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() <span class="kw">as </span>u64, <span class="number">0</span>);
 
-            <span class="macro">debug!</span>(<span class="string">&quot;(VERSIONING LOG) vote_ratio = {} (from version counter = {} and blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
+            <span class="macro">debug!</span>(<span class="string">&quot;(VERSIONING LOG) vote_ration = {} (from version counter = {} and blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
 
             <span class="kw">let </span>advance_msg = Advance {
                 start_timestamp: mi.start,
@@ -3453,8 +3378,8 @@
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
     <span class="kw">use </span>std::assert_matches::assert_matches;
+
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span>chrono::{Days, NaiveDate, NaiveDateTime};
@@ -3476,8 +3401,7 @@
         }
     }
 
-    <span class="comment">// helper
-    </span><span class="kw">impl </span>From&lt;(<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Amount, <span class="kw-2">&amp;</span>MassaTime)&gt; <span class="kw">for </span>Advance {
+    <span class="kw">impl </span>From&lt;(<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Amount, <span class="kw-2">&amp;</span>MassaTime)&gt; <span class="kw">for </span>Advance {
         <span class="kw">fn </span>from((mip_info, threshold, now): (<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Amount, <span class="kw-2">&amp;</span>MassaTime)) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
                 start_timestamp: mip_info.start,
@@ -3490,7 +3414,7 @@
     }
 
     <span class="kw">fn </span>get_a_version_info() -&gt; (NaiveDateTime, NaiveDateTime, MipInfo) {
-        <span class="comment">// A helper function to provide a default MipInfo
+        <span class="comment">// A helper function to provide a  default VersioningInfo
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
 
         </span><span class="kw">let </span>start: NaiveDateTime = NaiveDate::from_ymd_opt(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">01</span>)
@@ -3756,9 +3680,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_is_coherent_with() {
-        <span class="comment">// Test MipStateHistory::is_coherent_with (coherence of MIP state against its MIP info)
+        <span class="comment">// Test MipStateHistory::is_coherent_with
 
-        // Given the following MIP info, we expect state
+        // Given the following versioning info, we expect state
         // Defined @ time &lt;= 2
         // Started @ time &gt; 2 &amp;&amp; &lt;= 5
         // LockedIn @ time &gt; time(Started) &amp;&amp; &lt;= 5
@@ -3832,10 +3756,8 @@
     </span>}
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_update_with() {
-        <span class="comment">// Test MipStoreRaw.update_with method (e.g. update a store from another, used in bootstrap)
-
-        </span><span class="kw">let </span>vi_1 = MipInfo {
+    </span><span class="kw">fn </span>test_merge_with() {
+        <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
@@ -3890,10 +3812,10 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_update_with_invalid() {
-        <span class="comment">// Test updating a MIP store with another invalid one:
-        // case 1: overlapping time range
-        // case 2: overlapping versioning component
+    </span><span class="kw">fn </span>test_merge_with_invalid() {
+        <span class="comment">// Test updating a versioning store with another invalid:
+        // 1- overlapping time range
+        // 2- overlapping versioning component
 
         // part 0 - defines data for the test
         </span><span class="kw">let </span>vi_1 = MipInfo {
@@ -3924,7 +3846,7 @@
             counters_max: <span class="number">5</span>,
         };
 
-        <span class="comment">// case 1
+        <span class="comment">// part 1
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw::try_from((
                 [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -3964,7 +3886,7 @@
             }
         }
 
-        <span class="comment">// case 2
+        <span class="comment">// part 2
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>vs_raw_1 = MipStoreRaw::try_from((
                 [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -4006,7 +3928,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_update_with_unknown() {
-        <span class="comment">// Test update_with with unknown MipComponent (can happen if a node software is outdated)
+        <span class="comment">// Test update_with with unknown MipComponent
 
         // data
         </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
@@ -4047,7 +3969,7 @@
         <span class="kw">let </span>shutdown_start = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span>shutdown_end = Slot::new(<span class="number">8</span>, <span class="number">0</span>);
 
-        <span class="comment">// helper functions so the test code is easy to read
+        <span class="comment">// helper to make the easy to read
         </span><span class="kw">let </span>get_slot_ts =
             |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
         <span class="kw">let </span>is_coherent = |store: <span class="kw-2">&amp;</span>MipStoreRaw, shutdown_start, shutdown_end| {
@@ -4380,68 +4302,6 @@
         <span class="comment">// println!(&quot;st1_raw: {:?}&quot;, st1_raw);
         // println!(&quot;st2_raw: {:?}&quot;, st2_raw);
         </span><span class="macro">assert_eq!</span>(st1_raw, st2_raw);
-    }
-
-    <span class="kw">fn </span>test_mip_store_stats() {
-        <span class="comment">// Test MipStoreRaw stats
-
-        // helper functions so the test code is easy to read
-        </span><span class="kw">let </span>genesis_timestamp = MassaTime::from_millis(<span class="number">0</span>);
-        <span class="kw">let </span>get_slot_ts =
-            |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
-
-        <span class="kw">let </span>mip_stats_config = MipStatsConfig {
-            block_count_considered: <span class="number">2</span>,
-            counters_max: <span class="number">1</span>,
-        };
-        <span class="kw">let </span>activation_delay = MassaTime::from_millis(<span class="number">100</span>);
-        <span class="kw">let </span>timeout = MassaTime::now()
-            .unwrap()
-            .saturating_add(MassaTime::from_millis(<span class="number">50_000</span>)); <span class="comment">// + 50 seconds
-        </span><span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
-            version: <span class="number">1</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from_millis(<span class="number">2</span>),
-            timeout,
-            activation_delay,
-        };
-        <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::started(Amount::zero()), <span class="kw-2">&amp;</span>mi_1);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
-            MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
-
-        <span class="comment">//
-        // mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 0)));
-        // TODO: should not add a counter for version 0 ?
-        // assert_eq!(mip_store.stats.network_version_counters.len(), 0);
-
-        // Current network version is 0, next one is 1
-        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">1</span>)));
-        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
-
-        mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">1</span>)));
-        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>));
-
-        <span class="comment">// Check that MipInfo is now
-        </span><span class="kw">let </span>(mi_, ms_) = mip_store.store.last_key_value().unwrap();
-        <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>mi_, mi_1);
-        <span class="macro">assert_matches!</span>(ms_.state, ComponentState::LockedIn(..));
-
-        <span class="kw">let </span><span class="kw-2">mut </span>at = MassaTime::now().unwrap();
-        at = at.saturating_add(activation_delay);
-        <span class="macro">assert_eq!</span>(
-            ms_.state_at(at, mi_1.start, mi_1.timeout),
-            <span class="prelude-val">Ok</span>(ComponentStateTypeId::Active)
-        );
-
-        <span class="comment">// Now network version is 1, next one is 2
-        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">2</span>)));
-        <span class="comment">// Config is set to allow only 1 counter
-        </span><span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">2</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
     }
 }
 </code></pre></div>

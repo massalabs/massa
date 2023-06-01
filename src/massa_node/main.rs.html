@@ -1219,6 +1219,20 @@
 <a href="#1219" id="1219">1219</a>
 <a href="#1220" id="1220">1220</a>
 <a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1300,14 +1314,12 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::{
-    mips::MIP_LIST,
-    versioning::{MipStatsConfig, MipStore},
-};
+<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipInfo, MipState, MipStatsConfig, MipStore};
+
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
@@ -1458,8 +1470,24 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    <span class="kw">let </span>mip_store =
-        MipStore::try_from((MIP_LIST, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+    <span class="kw">let </span>mip_store = MipStore::try_from((
+        [(
+            MipInfo {
+                name: <span class="string">&quot;MIP-0000&quot;</span>.to_string(),
+                version: <span class="number">0</span>,
+                components: BTreeMap::from([
+                    (MipComponent::Address, <span class="number">0</span>),
+                    (MipComponent::KeyPair, <span class="number">0</span>),
+                ]),
+                start: MassaTime::from_millis(<span class="number">0</span>),
+                timeout: MassaTime::from_millis(<span class="number">0</span>),
+                activation_delay: MassaTime::from_millis(<span class="number">0</span>),
+            },
+            MipState::new(MassaTime::from_millis(<span class="number">0</span>)),
+        )],
+        mip_stats_config,
+    ))
+    .expect(<span class="string">&quot;mip store creation failed&quot;</span>);
 
     <span class="comment">// Create final state, either from a snapshot, or from scratch
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(

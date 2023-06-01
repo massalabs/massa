@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["MIP_LIST"]};

@@ -34,7 +34,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
 "massa_storage":["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]],\
 "massa_time":["",[],["error.rs","lib.rs"]],\
-"massa_versioning":["",[],["address_factory.rs","grpc_mapping.rs","keypair_factory.rs","lib.rs","mips.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
+"massa_versioning":["",[],["address_factory.rs","grpc_mapping.rs","keypair_factory.rs","lib.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]],\
 "massa_wallet":["",[],["error.rs","lib.rs"]],\
 "massa_xtask":["",[],["main.rs","update_package_versions.rs"]]\
 }');
