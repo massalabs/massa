@@ -5,10 +5,9 @@
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
 use massa_db_exports::{
-    DBBatch, MassaDBController, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR,
-    EXECUTED_OPS_ID_SER_ERROR, EXECUTED_OPS_PREFIX, STATE_CF,
+    DBBatch, MassaDBController, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
+    EXECUTED_OPS_PREFIX, STATE_CF,
 };
-use massa_db_worker::MassaDB;
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
     prehash::PreHashSet,
@@ -45,7 +44,7 @@ pub struct ExecutedOps {
     /// Executed operations configuration
     _config: ExecutedOpsConfig,
     /// RocksDB Instance
-    pub db: Arc<RwLock<MassaDB>>,
+    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// execution status of operations (true: success, false: fail)
@@ -60,7 +59,7 @@ pub struct ExecutedOps {
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<Box<dyn MassaDBController>>>) -> Self {
         let slot_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
@@ -85,12 +84,9 @@ impl ExecutedOps {
         self.op_exec_status.clear();
 
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        for (serialized_op_id, serialized_value) in db
-            .db
-            .prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
-            .flatten()
+        for (serialized_op_id, serialized_value) in
+            db.prefix_iterator_cf(STATE_CF, EXECUTED_OPS_PREFIX.as_bytes())
         {
             if !serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
                 break;
@@ -166,15 +162,13 @@ impl ExecutedOps {
     /// Check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.db
-            .get_cf(handle, op_id_key!(serialized_op_id))
+        db.get_cf(STATE_CF, op_id_key!(serialized_op_id))
             .expect(CRUD_ERROR)
             .is_some()
     }

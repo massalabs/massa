@@ -226,7 +226,7 @@ pub fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedOpsConfig,
-    db: Arc<RwLock<MassaDB>>,
+    db: Arc<RwLock<Box<dyn MassaDBController>>>,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
     let mut batch = DBBatch::new();
@@ -256,7 +256,7 @@ pub fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedDenunciationsConfig,
-    db: Arc<RwLock<MassaDB>>,
+    db: Arc<RwLock<Box<dyn MassaDBController>>>,
 ) -> ExecutedDenunciations {
     let mut executed_de = ExecutedDenunciations::new(config, db);
     let mut batch = DBBatch::new();
@@ -293,7 +293,7 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
     config: FinalStateConfig,
-    db: Arc<RwLock<MassaDB>>,
+    db: Arc<RwLock<Box<dyn MassaDBController>>>,
 ) -> FinalState {
     let r_limit: u64 = 50;
 

@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use massa_async_pool::AsyncPool;
-use massa_db_exports::{METADATA_CF, STATE_CF, STATE_HASH_KEY};
+use massa_db_exports::{MassaDBController, METADATA_CF, STATE_CF, STATE_HASH_KEY};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::LedgerController;
@@ -24,7 +24,7 @@ pub fn create_final_state(
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
     mip_store: MipStore,
-    db: Arc<RwLock<MassaDB>>,
+    db: Arc<RwLock<Box<dyn MassaDBController>>>,
 ) -> FinalState {
     FinalState {
         config,
@@ -63,22 +63,22 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     let handle_state_db2 = db2.db.cf_handle(STATE_CF).unwrap();
     let iter_state_db1 = db1
         .db
-        .iterator_cf(handle_state_db1, rocksdb::IteratorMode::Start)
+        .iterator_cf(handle_state_db1, rocksdb::MassaIteratorMode::Start)
         .flatten();
     let iter_state_db2 = db2
         .db
-        .iterator_cf(handle_state_db2, rocksdb::IteratorMode::Start)
+        .iterator_cf(handle_state_db2, rocksdb::MassaIteratorMode::Start)
         .flatten();
 
     let handle_metadata_db1 = db1.db.cf_handle(METADATA_CF).unwrap();
     let handle_metadata_db2 = db2.db.cf_handle(METADATA_CF).unwrap();
     let iter_metadata_db1 = db1
         .db
-        .iterator_cf(handle_metadata_db1, rocksdb::IteratorMode::Start)
+        .iterator_cf(handle_metadata_db1, rocksdb::MassaIteratorMode::Start)
         .flatten();
     let iter_metadata_db2 = db2
         .db
-        .iterator_cf(handle_metadata_db2, rocksdb::IteratorMode::Start)
+        .iterator_cf(handle_metadata_db2, rocksdb::MassaIteratorMode::Start)
         .flatten();
 
     let count_1 = iter_state_db1.count();
@@ -88,11 +88,11 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
 
     let iter_state_db1 = db1
         .db
-        .iterator_cf(handle_state_db1, rocksdb::IteratorMode::Start)
+        .iterator_cf(handle_state_db1, rocksdb::MassaIteratorMode::Start)
         .flatten();
     let iter_state_db2 = db2
         .db
-        .iterator_cf(handle_state_db2, rocksdb::IteratorMode::Start)
+        .iterator_cf(handle_state_db2, rocksdb::MassaIteratorMode::Start)
         .flatten();
 
     let mut count = 0;

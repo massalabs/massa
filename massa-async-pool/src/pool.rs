@@ -10,10 +10,9 @@ use crate::{
     AsyncMessageSerializer,
 };
 use massa_db_exports::{
-    DBBatch, MassaDBController, ASYNC_POOL_PREFIX, CF_ERROR, MESSAGE_ID_DESER_ERROR,
-    MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
+    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, ASYNC_POOL_PREFIX,
+    MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-use massa_db_worker::MassaDB;
 use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
 use massa_models::address::Address;
 use massa_serialization::{
@@ -27,7 +26,6 @@ use nom::{
     IResult, Parser,
 };
 use parking_lot::RwLock;
-use rocksdb::{Direction, IteratorMode};
 use std::ops::Bound::Included;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -194,7 +192,7 @@ macro_rules! message_id_prefix {
 pub struct AsyncPool {
     /// Asynchronous pool configuration
     pub config: AsyncPoolConfig,
-    pub db: Arc<RwLock<MassaDB>>,
+    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
     pub message_info_cache: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
@@ -204,7 +202,7 @@ pub struct AsyncPool {
 
 impl AsyncPool {
     /// Creates an empty `AsyncPool`
-    pub fn new(config: AsyncPoolConfig, db: Arc<RwLock<MassaDB>>) -> AsyncPool {
+    pub fn new(config: AsyncPoolConfig, db: Arc<RwLock<Box<dyn MassaDBController>>>) -> AsyncPool {
         AsyncPool {
             config: config.clone(),
             db,
@@ -226,25 +224,19 @@ impl AsyncPool {
         self.message_info_cache.clear();
 
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         // Iterates over the whole database
         let mut last_id: Option<Vec<u8>> = None;
 
-        while let Some(Ok((serialized_message_id, _))) = match last_id {
+        while let Some((serialized_message_id, _)) = match last_id {
             Some(id) => db
-                .db
                 .iterator_cf(
-                    handle,
-                    IteratorMode::From(&can_be_executed_key!(id), Direction::Forward),
+                    STATE_CF,
+                    MassaIteratorMode::From(&can_be_executed_key!(id), MassaDirection::Forward),
                 )
                 .nth(1),
             None => db
-                .db
-                .iterator_cf(
-                    handle,
-                    IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
-                )
+                .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
                 .next(),
         } {
             if !serialized_message_id.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
@@ -315,7 +307,6 @@ impl AsyncPool {
     /// Otherwise, we should use the `message_info_cache`.
     pub fn fetch_message(&self, message_id: &AsyncMessageId) -> Option<AsyncMessage> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_message_id = Vec::new();
         self.message_id_serializer
@@ -323,10 +314,8 @@ impl AsyncPool {
             .expect(MESSAGE_ID_SER_ERROR);
 
         let mut serialized_message: Vec<u8> = Vec::new();
-        for (serialized_key, serialized_value) in db
-            .db
-            .prefix_iterator_cf(handle, &message_id_prefix!(serialized_message_id))
-            .flatten()
+        for (serialized_key, serialized_value) in
+            db.prefix_iterator_cf(STATE_CF, &message_id_prefix!(serialized_message_id))
         {
             if !serialized_key.starts_with(&message_id_prefix!(serialized_message_id)) {
                 break;

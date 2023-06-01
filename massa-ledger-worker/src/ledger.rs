@@ -3,8 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use massa_db_exports::DBBatch;
-use massa_db_worker::MassaDB;
+use massa_db_exports::{DBBatch, MassaDBController};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
@@ -35,7 +34,7 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+    pub fn new(config: LedgerConfig, db: Arc<RwLock<Box<dyn MassaDBController>>>) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             db,
