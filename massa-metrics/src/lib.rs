@@ -51,9 +51,10 @@ impl<T> ChannelMetrics<T> {
     }
 
     fn recv(&self) -> Result<T, RecvError> {
+        let res = self.channel.1.recv();
         self.actual_len.dec();
         self.received.inc();
-        self.channel.1.recv()
+        res
     }
 }
 
