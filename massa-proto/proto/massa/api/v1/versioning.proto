@@ -47,7 +47,7 @@ enum ComponentStateId {
   COMPONENT_STATE_ID_FAILED = 6;
 }
 
-// Same as MipComponent enum in versioning package
+// Versioning component enum
 enum MipComponent {
   MIP_COMPONENT_UNSPECIFIED = 0;
   MIP_COMPONENT_ADDRESS = 1;

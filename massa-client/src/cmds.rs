@@ -811,7 +811,8 @@ impl Command {
                             }
                         })
                         .unwrap_or(0);
-                    let key = KeyPair::generate(keypair_version as u64).unwrap();
+                    let key = KeyPair::generate(keypair_version as u64)
+                        .expect("Unable to generate key pair");
 
                     let ad = wallet.add_keypairs(vec![key])?[0];
                     if json {
