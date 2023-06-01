@@ -2159,6 +2159,7 @@ mod test {
         assert_eq!(st1_raw, st2_raw);
     }
 
+    #[test]
     fn test_mip_store_stats() {
         // Test MipStoreRaw stats
 
