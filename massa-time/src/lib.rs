@@ -409,10 +409,11 @@ impl MassaTime {
         let naive = OffsetDateTime::from_unix_timestamp((self.to_millis() / 1000) as i64).unwrap();
         naive.format(&Rfc3339).unwrap()
     }
+
     /// ```
     /// # use massa_time::*;
     /// let massa_time : MassaTime = MassaTime::from_millis(1000*( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
-    /// assert_eq!(massa_time.format_duration(), String::from("8 days, 1 hours, 3 minutes, 6 seconds"))
+    /// assert_eq!(massa_time.format_duration().unwrap(), String::from("8 days, 1 hours, 3 minutes, 6 seconds"))
     /// ```
     pub fn format_duration(&self) -> Result<String, TimeError> {
         let (days, hours, mins, secs) = self.days_hours_mins_secs()?;
