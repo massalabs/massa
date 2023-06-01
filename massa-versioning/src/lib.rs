@@ -9,6 +9,7 @@
 //! MIPState -> Deployment state of a MIPInfo
 //! MIPStore -> A map of MIPInfo -> MipState
 //!
+//!
 //! # Notes on MipInfo versions
 //!
 //! There is 2 different 'versions':
@@ -17,11 +18,11 @@
 //!
 //! # Notes on MipInfo timings and stats
 //!
-//! So in the execution module and after a block become final, we update the MipStore stats (in a blocking way) then continue one.
+//! So in the execution module and after a block become final, we update the MipStore stats (in a blocking way).
 //! By updating the stats, we mean sending: (Slot timestamp, Option<(current: u32, advertising: Option)>).
 //! Using the slot timestamp, ensure that the trigger (and the trigger timeout) is a consensus by all nodes
 //! (This means that the trigger and the trigger timeout are not timer based).
-//! In order to have all nodes in sync (because of node various delays), the state is se to active
+//! In order to have all nodes in sync (because of node various delays), the state is set to active
 //! after an activation delay (duration is required to be > 1 cycle).
 //!
 //! # Notes on MipState
@@ -53,6 +54,7 @@
 pub mod address_factory;
 pub mod grpc_mapping;
 pub mod keypair_factory;
+pub mod mips;
 pub mod versioning;
 pub mod versioning_factory;
 pub mod versioning_ser_der;
