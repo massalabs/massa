@@ -2221,6 +2221,7 @@
 <a href="#2221" id="2221">2221</a>
 <a href="#2222" id="2222">2222</a>
 <a href="#2223" id="2223">2223</a>
+<a href="#2224" id="2224">2224</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -4382,7 +4383,8 @@
         </span><span class="macro">assert_eq!</span>(st1_raw, st2_raw);
     }
 
-    <span class="kw">fn </span>test_mip_store_stats() {
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_mip_store_stats() {
         <span class="comment">// Test MipStoreRaw stats
 
         // helper functions so the test code is easy to read
