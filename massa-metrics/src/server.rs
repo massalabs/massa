@@ -16,7 +16,10 @@ pub(crate) fn bind_metrics(addr: SocketAddr) {
                 Ok::<_, hyper::Error>(service_fn(serve_req))
             }));
             println!("Listening on http://{}", addr);
-            server.await.unwrap();
+
+            if let Err(e) = server.await {
+                println!("server error: {}", e);
+            }
         });
     });
 }

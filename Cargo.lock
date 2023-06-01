@@ -2855,6 +2855,7 @@ version = "0.23.0"
 dependencies = [
  "crossbeam",
  "hyper",
+ "lazy_static",
  "prometheus",
  "tokio",
 ]
@@ -3089,6 +3090,7 @@ name = "massa_storage"
 version = "0.23.0"
 dependencies = [
  "massa_factory_exports",
+ "massa_metrics",
  "massa_models",
  "massa_signature",
  "parking_lot",
