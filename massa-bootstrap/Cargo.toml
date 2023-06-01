@@ -34,7 +34,7 @@ massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_time = { path = "../massa-time" }
 massa_db_exports = { path = "../massa-db-exports" }
-massa_db_worker = { path = "../massa-db-worker" }
+
 massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]

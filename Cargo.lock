@@ -2481,7 +2481,6 @@ name = "massa_async_pool"
 version = "0.23.0"
 dependencies = [
  "massa_db_exports",
- "massa_db_worker",
  "massa_hash",
  "massa_ledger_exports",
  "massa_ledger_worker",
@@ -2494,7 +2493,6 @@ dependencies = [
  "num",
  "parking_lot",
  "rand 0.8.5",
- "rocksdb",
  "serde",
  "tempfile",
 ]
@@ -2511,7 +2509,6 @@ dependencies = [
  "massa_async_pool",
  "massa_consensus_exports",
  "massa_db_exports",
- "massa_db_worker",
  "massa_executed_ops",
  "massa_final_state",
  "massa_hash",
@@ -2625,14 +2622,12 @@ name = "massa_executed_ops"
 version = "0.23.0"
 dependencies = [
  "massa_db_exports",
- "massa_db_worker",
  "massa_hash",
  "massa_ledger_worker",
  "massa_models",
  "massa_serialization",
  "nom",
  "parking_lot",
- "rocksdb",
  "tempfile",
 ]
 
@@ -2742,7 +2737,6 @@ dependencies = [
  "displaydoc",
  "massa_async_pool",
  "massa_db_exports",
- "massa_db_worker",
  "massa_executed_ops",
  "massa_ledger_exports",
  "massa_ledger_worker",
@@ -2755,7 +2749,6 @@ dependencies = [
  "massa_versioning",
  "nom",
  "parking_lot",
- "rocksdb",
  "serde",
  "tempfile",
  "thiserror",
@@ -2826,7 +2819,6 @@ dependencies = [
  "massa_serialization",
  "nom",
  "num_enum",
- "rocksdb",
  "serde",
  "serde_json",
  "tempfile",
@@ -2838,14 +2830,12 @@ name = "massa_ledger_worker"
 version = "0.23.0"
 dependencies = [
  "massa_db_exports",
- "massa_db_worker",
  "massa_hash",
  "massa_ledger_exports",
  "massa_models",
  "massa_serialization",
  "massa_signature",
  "parking_lot",
- "rocksdb",
  "serde_json",
  "tempfile",
 ]
@@ -2946,7 +2936,6 @@ dependencies = [
  "crossbeam-channel",
  "displaydoc",
  "massa_db_exports",
- "massa_db_worker",
  "massa_hash",
  "massa_models",
  "massa_serialization",
@@ -2955,7 +2944,6 @@ dependencies = [
  "nom",
  "num",
  "parking_lot",
- "rocksdb",
  "serde",
  "serde_json",
  "tempfile",
@@ -3112,7 +3100,6 @@ version = "0.23.0"
 dependencies = [
  "machine",
  "massa_db_exports",
- "massa_db_worker",
  "massa_hash",
  "massa_models",
  "massa_proto",

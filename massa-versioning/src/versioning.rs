@@ -12,7 +12,6 @@ use tracing::{debug, warn};
 use massa_db_exports::{
     DBBatch, MassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
 };
-use massa_db_worker::MassaDB;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
@@ -608,13 +607,13 @@ impl MipStore {
 
     pub fn extend_from_db(
         &mut self,
-        db: Arc<RwLock<MassaDB>>,
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mut guard = self.0.write();
         guard.extend_from_db(db)
     }
 
-    pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>) {
+    pub fn reset_db(&self, db: Arc<RwLock<Box<dyn MassaDBController>>>) {
         {
             let mut guard = db.write();
             guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None);
@@ -1088,7 +1087,7 @@ impl MipStoreRaw {
     /// Extend MIP store with what is written on the disk
     fn extend_from_db(
         &mut self,
-        db: Arc<RwLock<MassaDB>>,
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mip_info_deser = MipInfoDeserializer::new();
         let mip_state_deser = MipStateDeserializer::new();

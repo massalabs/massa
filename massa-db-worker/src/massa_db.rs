@@ -744,6 +744,21 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
     }
 
+    /// Exposes RocksDB's "multi_get_cf" function
+    fn multi_get_cf(&self, query: Vec<(&str, Key)>) -> Vec<Result<Option<Value>, MassaDBError>> {
+        let db = &self.db;
+
+        let rocks_db_query = query
+            .into_iter()
+            .map(|(handle_cf, key)| (db.cf_handle(handle_cf).expect(CF_ERROR), key))
+            .collect::<Vec<_>>();
+
+        db.multi_get_cf(rocks_db_query)
+            .into_iter()
+            .map(|res| res.map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e))))
+            .collect()
+    }
+
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
         &self,
@@ -775,7 +790,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     fn prefix_iterator_cf(
         &self,
         handle_cf: &str,
-        prefix: &str,
+        prefix: &[u8],
     ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
         let db = &self.db;
         let handle = db.cf_handle(handle_cf).expect(CF_ERROR);

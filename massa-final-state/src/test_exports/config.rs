@@ -27,7 +27,7 @@ impl FinalState {
     pub fn create_final_state(
         pos_state: PoSFinalState,
         config: FinalStateConfig,
-        db: Arc<RwLock<MassaDB>>,
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
     ) -> Self {
         FinalState {
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),

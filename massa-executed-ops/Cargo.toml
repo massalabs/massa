@@ -6,12 +6,11 @@ edition = "2021"
 
 [dependencies]
 nom = "=7.1"
-rocksdb = "0.20"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 massa_models = { path = "../massa-models" }
 massa_hash = { path = "../massa-hash" }
 massa_serialization = { path = "../massa-serialization" }
-massa_db_worker = { path = "../massa-db-worker" }
+
 massa_db_exports = { path = "../massa-db-exports" }
 
 [dev-dependencies]

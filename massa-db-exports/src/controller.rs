@@ -24,6 +24,9 @@ pub trait MassaDBController: Send + Sync + Debug {
     /// Exposes RocksDB's "get_cf" function
     fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError>;
 
+    /// Exposes RocksDB's "multi_get_cf" function
+    fn multi_get_cf(&self, query: Vec<(&str, Key)>) -> Vec<Result<Option<Value>, MassaDBError>>;
+
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
         &self,
@@ -35,7 +38,7 @@ pub trait MassaDBController: Send + Sync + Debug {
     fn prefix_iterator_cf(
         &self,
         handle_cf: &str,
-        prefix: &str,
+        prefix: &[u8],
     ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
 }
 

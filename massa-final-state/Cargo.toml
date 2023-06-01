@@ -12,7 +12,6 @@ bs58 = { version = "0.4", features = ["check"] }
 thiserror = "1.0"
 tracing = "0.1"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-rocksdb = { version = "0.20" }
 
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
@@ -23,7 +22,7 @@ massa_async_pool = { path = "../massa-async-pool" }
 massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_db_exports = { path = "../massa-db-exports" }
-massa_db_worker = { path = "../massa-db-worker" }
+
 massa_proto = { path = "../massa-proto" }
 massa_versioning = { path = "../massa-versioning" }
 massa_time = { path = "../massa-time" }

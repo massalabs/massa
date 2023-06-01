@@ -24,7 +24,6 @@ use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
 
 use parking_lot::RwLock;
-use rocksdb::IteratorMode;
 use tracing::{debug, info, warn};
 
 use std::sync::Arc;
@@ -56,7 +55,7 @@ pub struct FinalState {
     /// * If from bootstrap: set during bootstrap
     pub last_slot_before_downtime: Option<Slot>,
     /// the rocksdb instance used to write every final_state struct on disk
-    pub db: Arc<RwLock<MassaDB>>,
+    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
 }
 
 impl FinalState {
@@ -68,7 +67,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `reset_final_state`: if true, we only keep the ledger, and we reset the other fields of the final state
     pub fn new(
-        db: Arc<RwLock<MassaDB>>,
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -152,7 +151,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     pub fn new_derived_from_snapshot(
-        db: Arc<RwLock<MassaDB>>,
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -623,8 +622,10 @@ impl FinalState {
         let db = self.db.read();
         let handle = db.db.cf_handle(STATE_CF).unwrap();
 
-        for (serialized_key, serialized_value) in
-            db.db.iterator_cf(handle, IteratorMode::Start).flatten()
+        for (serialized_key, serialized_value) in db
+            .db
+            .iterator_cf(handle, MassaIteratorMode::Start)
+            .flatten()
         {
             if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
                 && !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())
