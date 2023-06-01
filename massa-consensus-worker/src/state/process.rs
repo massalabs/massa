@@ -76,7 +76,7 @@ impl ConsensusState {
     ///
     /// # Returns:
     /// A list of items to re-ack and process or an error if the process of an item failed
-    pub fn process(
+    fn process(
         &mut self,
         block_id: BlockId,
         current_slot: Option<Slot>,
