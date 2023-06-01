@@ -192,7 +192,7 @@
     }
 
     <span class="doccomment">/// Remove old stats from consensus storage
-    </span><span class="kw">fn </span>prune_stats(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
+    </span><span class="kw">pub fn </span>prune_stats(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">let </span>start_time = MassaTime::now()<span class="question-mark">?</span>.saturating_sub(<span class="self">self</span>.stats_history_timespan);
         <span class="kw">while let </span><span class="prelude-val">Some</span>((t, <span class="kw">_</span>, <span class="kw">_</span>)) = <span class="self">self</span>.final_block_stats.front() {
             <span class="kw">if </span>t &lt; <span class="kw-2">&amp;</span>start_time {

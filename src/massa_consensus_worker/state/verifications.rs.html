@@ -685,7 +685,7 @@
     <span class="comment">// Verify that we haven&#39;t already received 2 blocks for this slot
     // If the block isn&#39;t already present two times we save it and return false
     // If the block is already present two times we return true
-    </span><span class="kw">fn </span>detect_multistake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, header: <span class="kw-2">&amp;</span>SecuredHeader) -&gt; bool {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>detect_multistake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, header: <span class="kw-2">&amp;</span>SecuredHeader) -&gt; bool {
         <span class="kw">let </span>entry = <span class="self">self
             </span>.nonfinal_active_blocks_per_slot
             .entry(header.content.slot)
@@ -936,7 +936,7 @@
     /// - Check grandpa incompatibility test.
     /// - Check if the block is incompatible with a parent.
     /// - Check if the block is incompatible with a final block.
-    </span><span class="kw">fn </span>check_header(
+    </span><span class="kw">pub fn </span>check_header(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         block_id: <span class="kw-2">&amp;</span>BlockId,
         header: <span class="kw-2">&amp;</span>SecuredHeader,

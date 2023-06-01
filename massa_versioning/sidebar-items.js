@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["address_factory","grpc_mapping","keypair_factory","versioning","versioning_factory","versioning_ser_der"]};
+window.SIDEBAR_ITEMS = {"mod":["address_factory","grpc_mapping","keypair_factory","mips","versioning","versioning_factory","versioning_ser_der"]};
