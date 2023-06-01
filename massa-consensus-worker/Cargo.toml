@@ -25,3 +25,4 @@ itertools = "0.10"
 
 [features]
 sandbox = []
+bootstrap_server = []

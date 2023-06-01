@@ -144,6 +144,36 @@ async fn launch(
         }
     }
 
+    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
+
+    // Simulate downtime
+    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+    #[cfg(not(feature = "bootstrap_server"))]
+    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+            .saturating_sub(now)
+            .days_hours_mins_secs()
+            .unwrap();
+
+        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            THREAD_COUNT,
+            T0,
+            *GENESIS_TIMESTAMP,
+            DOWNTIME_END_TIMESTAMP,
+        ) {
+            panic!(
+                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
+                days, hours, mins, secs, end_period.period
+            );
+        }
+
+        panic!(
+            "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
+            days, hours, mins, secs,
+        );
+    }
+
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
