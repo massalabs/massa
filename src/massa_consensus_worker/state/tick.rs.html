@@ -50,6 +50,26 @@
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>massa_consensus_exports::{block_status::BlockStatus, error::ConsensusError};
@@ -98,6 +118,26 @@
 
         <span class="comment">// take care of block db changes
         </span><span class="self">self</span>.block_db_changed()<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>now = massa_time::MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
+
+        <span class="kw">use </span>massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+        <span class="kw">use </span>massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
+
+        <span class="comment">// Simulate downtime
+        // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;bootstrap_server&quot;</span>))]
+        </span><span class="kw">if </span>now &gt;= DOWNTIME_START_TIMESTAMP &amp;&amp; now &lt;= DOWNTIME_END_TIMESTAMP {
+            <span class="kw">let </span>(days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime&quot;</span>,
+                days, hours, mins, secs,
+            );
+        }
 
         <span class="prelude-val">Ok</span>(())
     }
