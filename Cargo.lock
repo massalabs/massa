@@ -2313,7 +2313,7 @@ dependencies = [
 
 [[package]]
 name = "massa-client"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -2342,7 +2342,7 @@ dependencies = [
 
 [[package]]
 name = "massa-node"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -2400,7 +2400,7 @@ dependencies = [
  "function_name",
  "glob",
  "loupe",
- "massa_hash 0.1.0 (git+https://github.com/massalabs/massa.git)",
+ "massa_hash 0.1.0",
  "more-asserts 0.3.1",
  "num_enum",
  "parking_lot",
@@ -2423,7 +2423,7 @@ dependencies = [
 
 [[package]]
 name = "massa_api"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -2433,12 +2433,12 @@ dependencies = [
  "massa_api_exports",
  "massa_consensus_exports",
  "massa_execution_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2456,14 +2456,14 @@ dependencies = [
 
 [[package]]
 name = "massa_api_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "displaydoc",
  "jsonrpsee",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_final_state",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_protocol_exports",
  "massa_signature",
@@ -2479,15 +2479,15 @@ dependencies = [
 
 [[package]]
 name = "massa_async_pool"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "massa_db",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
  "massa_proto",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2501,7 +2501,7 @@ dependencies = [
 
 [[package]]
 name = "massa_bootstrap"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "bitvec",
  "chrono",
@@ -2514,7 +2514,7 @@ dependencies = [
  "massa_db",
  "massa_executed_ops",
  "massa_final_state",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_logging",
@@ -2522,7 +2522,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_protocol_exports",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_time",
  "massa_versioning",
@@ -2543,11 +2543,11 @@ dependencies = [
 
 [[package]]
 name = "massa_cipher"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "aes-gcm",
  "displaydoc",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "pbkdf2",
  "rand 0.8.5",
  "thiserror",
@@ -2555,18 +2555,18 @@ dependencies = [
 
 [[package]]
 name = "massa_consensus_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "crossbeam-channel",
  "displaydoc",
  "jsonrpsee",
  "massa_execution_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2580,11 +2580,11 @@ dependencies = [
 
 [[package]]
 name = "massa_consensus_worker"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "itertools",
  "massa_consensus_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_logging",
  "massa_models",
  "massa_signature",
@@ -2612,13 +2612,13 @@ dependencies = [
 
 [[package]]
 name = "massa_executed_ops"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "massa_db",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_ledger_worker",
  "massa_models",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "nom",
  "parking_lot",
  "rocksdb",
@@ -2627,12 +2627,12 @@ dependencies = [
 
 [[package]]
 name = "massa_execution_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "displaydoc",
  "massa-sc-runtime",
  "massa_final_state",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_ledger_exports",
  "massa_models",
  "massa_module_cache",
@@ -2650,7 +2650,7 @@ dependencies = [
 
 [[package]]
 name = "massa_execution_worker"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -2661,7 +2661,7 @@ dependencies = [
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_models",
@@ -2686,11 +2686,11 @@ dependencies = [
 
 [[package]]
 name = "massa_factory_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "displaydoc",
  "massa_consensus_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
@@ -2703,12 +2703,12 @@ dependencies = [
 
 [[package]]
 name = "massa_factory_worker"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "crossbeam-channel",
  "massa_consensus_exports",
  "massa_factory_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
@@ -2724,7 +2724,7 @@ dependencies = [
 
 [[package]]
 name = "massa_final_state"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "bs58",
  "displaydoc",
@@ -2737,8 +2737,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_proto",
- "massa_serialization 0.1.0",
- "massa_time",
+ "massa_serialization 0.23.0",
  "massa_versioning",
  "nom",
  "parking_lot",
@@ -2751,7 +2750,7 @@ dependencies = [
 
 [[package]]
 name = "massa_grpc"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "crossbeam",
  "displaydoc",
@@ -2761,13 +2760,13 @@ dependencies = [
  "itertools",
  "massa_consensus_exports",
  "massa_execution_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_proto",
  "massa_protocol_exports",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_storage",
  "massa_time",
  "massa_versioning",
@@ -2787,6 +2786,7 @@ dependencies = [
 [[package]]
 name = "massa_hash"
 version = "0.1.0"
+source = "git+https://github.com/massalabs/massa.git#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
 dependencies = [
  "blake3",
  "bs58",
@@ -2796,35 +2796,34 @@ dependencies = [
  "massa_serialization 0.1.0",
  "nom",
  "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "massa_hash"
+version = "0.23.0"
+dependencies = [
+ "blake3",
+ "bs58",
+ "displaydoc",
+ "massa_serialization 0.23.0",
+ "nom",
+ "serde",
  "serde_json",
  "serial_test 1.0.0",
  "thiserror",
 ]
 
 [[package]]
-name = "massa_hash"
-version = "0.1.0"
-source = "git+https://github.com/massalabs/massa.git#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
-dependencies = [
- "blake3",
- "bs58",
- "displaydoc",
- "massa_serialization 0.1.0 (git+https://github.com/massalabs/massa.git)",
- "nom",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "massa_ledger_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "displaydoc",
  "massa_db",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_proto",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "nom",
  "num_enum",
  "rocksdb",
@@ -2836,13 +2835,13 @@ dependencies = [
 
 [[package]]
 name = "massa_ledger_worker"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "massa_db",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_ledger_exports",
  "massa_models",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "parking_lot",
  "rocksdb",
@@ -2852,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "massa_logging"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "serde_json",
  "tracing",
@@ -2860,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "massa_models"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "bitvec",
  "bs58",
@@ -2868,9 +2867,9 @@ dependencies = [
  "directories",
  "displaydoc",
  "lazy_static",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_proto",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_time",
  "nom",
@@ -2886,14 +2885,14 @@ dependencies = [
 
 [[package]]
 name = "massa_module_cache"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "displaydoc",
  "massa-sc-runtime",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "nom",
  "num_enum",
  "rand 0.8.5",
@@ -2907,7 +2906,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pool_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "crossbeam-channel",
  "massa_models",
@@ -2920,11 +2919,11 @@ dependencies = [
 
 [[package]]
 name = "massa_pool_worker"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "crossbeam-channel",
  "massa_execution_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
@@ -2940,15 +2939,15 @@ dependencies = [
 
 [[package]]
 name = "massa_pos_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "bitvec",
  "crossbeam-channel",
  "displaydoc",
  "massa_db",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "mockall",
  "nom",
@@ -2964,9 +2963,9 @@ dependencies = [
 
 [[package]]
 name = "massa_pos_worker"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_pos_exports",
  "parking_lot",
@@ -2978,7 +2977,7 @@ dependencies = [
 
 [[package]]
 name = "massa_proto"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "glob",
  "prost",
@@ -2990,12 +2989,12 @@ dependencies = [
 
 [[package]]
 name = "massa_protocol_exports"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "displaydoc",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -3011,16 +3010,16 @@ dependencies = [
 
 [[package]]
 name = "massa_protocol_worker"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "crossbeam",
  "massa_consensus_exports",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_logging",
  "massa_models",
  "massa_pool_exports",
  "massa_protocol_exports",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -3040,7 +3039,7 @@ dependencies = [
 
 [[package]]
 name = "massa_sdk"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "http",
  "jsonrpsee",
@@ -3058,16 +3057,6 @@ dependencies = [
 [[package]]
 name = "massa_serialization"
 version = "0.1.0"
-dependencies = [
- "displaydoc",
- "nom",
- "thiserror",
- "unsigned-varint",
-]
-
-[[package]]
-name = "massa_serialization"
-version = "0.1.0"
 source = "git+https://github.com/massalabs/massa.git#e0d4af3e906960c9c92bd7789e1b4611c8176e06"
 dependencies = [
  "displaydoc",
@@ -3077,14 +3066,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_serialization"
+version = "0.23.0"
+dependencies = [
+ "displaydoc",
+ "nom",
+ "thiserror",
+ "unsigned-varint",
+]
+
+[[package]]
 name = "massa_signature"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "bs58",
  "displaydoc",
  "ed25519-dalek",
- "massa_hash 0.1.0",
- "massa_serialization 0.1.0",
+ "massa_hash 0.23.0",
+ "massa_serialization 0.23.0",
  "nom",
  "rand 0.7.3",
  "serde",
@@ -3096,7 +3095,7 @@ dependencies = [
 
 [[package]]
 name = "massa_storage"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "massa_factory_exports",
  "massa_models",
@@ -3106,10 +3105,10 @@ dependencies = [
 
 [[package]]
 name = "massa_time"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "displaydoc",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "nom",
  "serde",
  "thiserror",
@@ -3118,15 +3117,15 @@ dependencies = [
 
 [[package]]
 name = "massa_versioning"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "chrono",
  "machine",
  "massa_db",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_proto",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "massa_signature",
  "massa_time",
  "more-asserts 0.3.1",
@@ -3140,11 +3139,11 @@ dependencies = [
 
 [[package]]
 name = "massa_wallet"
-version = "0.1.0"
+version = "0.23.0"
 dependencies = [
  "displaydoc",
  "massa_cipher",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
  "massa_signature",
  "serde",
@@ -3152,6 +3151,15 @@ dependencies = [
  "serde_qs",
  "tempfile",
  "thiserror",
+]
+
+[[package]]
+name = "massa_xtask"
+version = "0.23.0"
+dependencies = [
+ "massa_models",
+ "toml_edit",
+ "walkdir",
 ]
 
 [[package]]
