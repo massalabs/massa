@@ -643,8 +643,11 @@ pub struct MipStatsConfig {
 /// In order for a MIP to be accepted, we compute statistics about other node 'network' version announcement
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct MipStoreStats {
+    // config for max counters + block to consider when computing the vote ratio
     pub(crate) config: MipStatsConfig,
+    // used to clean up the counters (pop the oldest then subtract matching counter)
     pub(crate) latest_announcements: VecDeque<u32>,
+    // counter per network version
     pub(crate) network_version_counters: BTreeMap<u32, u64>,
 }
 
@@ -845,21 +848,23 @@ impl MipStoreRaw {
                 .push_back(announced_network_version);
 
             // We update the count of the received version
-            *self
+            let entry_value = self
                 .stats
                 .network_version_counters
                 .entry(announced_network_version)
-                .or_default() += 1;
+                .or_default();
+            *entry_value = entry_value.saturating_add(1);
 
             if let Some(removed_version) = removed_version_ {
-                *self
+                let entry_value = self
                     .stats
                     .network_version_counters
                     .entry(removed_version)
-                    .or_insert(1) -= 1;
+                    .or_insert(1);
+                *entry_value = entry_value.saturating_sub(1);
             }
 
-            // Cleanup for the counters
+            // Cleanup the counters
             if self.stats.network_version_counters.len() > self.stats.config.counters_max {
                 if let Some((version, count)) = self.stats.network_version_counters.pop_first() {
                     // TODO: return version / count for unit tests?
@@ -888,7 +893,7 @@ impl MipStoreRaw {
 
             let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
 
-            debug!("(VERSIONING LOG) vote_ration = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            debug!("(VERSIONING LOG) vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,
@@ -1225,8 +1230,8 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::assert_matches::assert_matches;
 
+    use std::assert_matches::assert_matches;
     use std::str::FromStr;
 
     use massa_db::MassaDBConfig;
@@ -1247,6 +1252,7 @@ mod test {
         }
     }
 
+    // helper
     impl From<(&MipInfo, &Amount, &MassaTime)> for Advance {
         fn from((mip_info, threshold, now): (&MipInfo, &Amount, &MassaTime)) -> Self {
             Self {
@@ -1260,7 +1266,8 @@ mod test {
     }
 
     fn get_a_version_info() -> (MassaTime, MassaTime, MipInfo) {
-        // A helper function to provide a  default VersioningInfo
+        // A helper function to provide a default MipInfo
+
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
 
         let now = MassaTime::now().unwrap();
@@ -1524,9 +1531,9 @@ mod test {
 
     #[test]
     fn test_is_coherent_with() {
-        // Test MipStateHistory::is_coherent_with
+        // Test MipStateHistory::is_coherent_with (coherence of MIP state against its MIP info)
 
-        // Given the following versioning info, we expect state
+        // Given the following MIP info, we expect state
         // Defined @ time <= 2
         // Started @ time > 2 && <= 5
         // LockedIn @ time > time(Started) && <= 5
@@ -1600,7 +1607,9 @@ mod test {
     }
 
     #[test]
-    fn test_merge_with() {
+    fn test_update_with() {
+        // Test MipStoreRaw.update_with method (e.g. update a store from another, used in bootstrap)
+
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
@@ -1656,10 +1665,10 @@ mod test {
     }
 
     #[test]
-    fn test_merge_with_invalid() {
-        // Test updating a versioning store with another invalid:
-        // 1- overlapping time range
-        // 2- overlapping versioning component
+    fn test_update_with_invalid() {
+        // Test updating a MIP store with another invalid one:
+        // case 1: overlapping time range
+        // case 2: overlapping versioning component
 
         // part 0 - defines data for the test
         let vi_1 = MipInfo {
@@ -1690,7 +1699,7 @@ mod test {
             counters_max: 5,
         };
 
-        // part 1
+        // case 1
         {
             let mut vs_raw_1 = MipStoreRaw::try_from((
                 [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -1730,7 +1739,7 @@ mod test {
             }
         }
 
-        // part 2
+        // case 2
         {
             let mut vs_raw_1 = MipStoreRaw::try_from((
                 [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -1772,7 +1781,7 @@ mod test {
 
     #[test]
     fn test_update_with_unknown() {
-        // Test update_with with unknown MipComponent
+        // Test update_with with unknown MipComponent (can happen if a node software is outdated)
 
         // data
         let mip_stats_config = MipStatsConfig {
@@ -1813,7 +1822,7 @@ mod test {
         let shutdown_start = Slot::new(2, 0);
         let shutdown_end = Slot::new(8, 0);
 
-        // helper to make the easy to read
+        // helper functions so the test code is easy to read
         let get_slot_ts =
             |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
         let is_coherent = |store: &MipStoreRaw, shutdown_start, shutdown_end| {
@@ -2146,5 +2155,67 @@ mod test {
         // println!("st1_raw: {:?}", st1_raw);
         // println!("st2_raw: {:?}", st2_raw);
         assert_eq!(st1_raw, st2_raw);
+    }
+
+    fn test_mip_store_stats() {
+        // Test MipStoreRaw stats
+
+        // helper functions so the test code is easy to read
+        let genesis_timestamp = MassaTime::from_millis(0);
+        let get_slot_ts =
+            |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: 2,
+            counters_max: 1,
+        };
+        let activation_delay = MassaTime::from_millis(100);
+        let timeout = MassaTime::now()
+            .unwrap()
+            .saturating_add(MassaTime::from_millis(50_000)); // + 50 seconds
+        let mi_1 = MipInfo {
+            name: "MIP-0001".to_string(),
+            version: 1,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(2),
+            timeout,
+            activation_delay,
+        };
+        let ms_1 = advance_state_until(ComponentState::started(Amount::zero()), &mi_1);
+
+        let mut mip_store =
+            MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
+
+        //
+        // mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 0)));
+        // TODO: should not add a counter for version 0 ?
+        // assert_eq!(mip_store.stats.network_version_counters.len(), 0);
+
+        // Current network version is 0, next one is 1
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
+        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
+        assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&1));
+
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
+        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
+        assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&2));
+
+        // Check that MipInfo is now
+        let (mi_, ms_) = mip_store.store.last_key_value().unwrap();
+        assert_eq!(*mi_, mi_1);
+        assert_matches!(ms_.state, ComponentState::LockedIn(..));
+
+        let mut at = MassaTime::now().unwrap();
+        at = at.saturating_add(activation_delay);
+        assert_eq!(
+            ms_.state_at(at, mi_1.start, mi_1.timeout),
+            Ok(ComponentStateTypeId::Active)
+        );
+
+        // Now network version is 1, next one is 2
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((1, 2)));
+        // Config is set to allow only 1 counter
+        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
+        assert_eq!(mip_store.stats.network_version_counters.get(&2), Some(&1));
     }
 }

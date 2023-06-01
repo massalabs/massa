@@ -79,12 +79,14 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{MipComponent, MipInfo, MipState, MipStatsConfig, MipStore};
-
+use massa_versioning::{
+    mips::MIP_LIST,
+    versioning::{MipStatsConfig, MipStore},
+};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
@@ -235,24 +237,8 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mip_store = MipStore::try_from((
-        [(
-            MipInfo {
-                name: "MIP-0000".to_string(),
-                version: 0,
-                components: BTreeMap::from([
-                    (MipComponent::Address, 0),
-                    (MipComponent::KeyPair, 0),
-                ]),
-                start: MassaTime::from_millis(0),
-                timeout: MassaTime::from_millis(0),
-                activation_delay: MassaTime::from_millis(0),
-            },
-            MipState::new(MassaTime::from_millis(0)),
-        )],
-        mip_stats_config,
-    ))
-    .expect("mip store creation failed");
+    let mip_store =
+        MipStore::try_from((MIP_LIST, mip_stats_config)).expect("mip store creation failed");
 
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
