@@ -1217,6 +1217,14 @@
 <a href="#1217" id="1217">1217</a>
 <a href="#1218" id="1218">1218</a>
 <a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -2144,6 +2152,7 @@ impl Default for MipStoreRawDeserializer {
     <span class="kw">use </span>std::mem::{size_of, size_of_val};
     <span class="kw">use </span>std::str::FromStr;
 
+    <span class="kw">use </span>chrono::{NaiveDate, NaiveDateTime};
     <span class="kw">use </span>more_asserts::assert_lt;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
@@ -2231,19 +2240,26 @@ impl Default for MipStoreRawDeserializer {
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_advance_ser_der() {
-        <span class="kw">let </span>now = MassaTime::now().unwrap();
-        <span class="kw">let </span>start_timestamp = now
-            .checked_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">60 </span>* <span class="number">60</span>))
-            .unwrap(); <span class="comment">// In 1 hour
-        </span><span class="kw">let </span>timeout = now
-            .checked_add(MassaTime::from_millis(<span class="number">1000 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>))
-            .unwrap(); <span class="comment">// In 2 hours
+        <span class="kw">let </span>start: NaiveDateTime = NaiveDate::from_ymd_opt(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">01</span>)
+            .unwrap()
+            .and_hms_opt(<span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>)
+            .unwrap();
 
-        </span><span class="kw">let </span>adv = Advance {
-            start_timestamp,
-            timeout,
+        <span class="kw">let </span>timeout: NaiveDateTime = NaiveDate::from_ymd_opt(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">11</span>)
+            .unwrap()
+            .and_hms_opt(<span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>)
+            .unwrap();
+
+        <span class="kw">let </span>now: NaiveDateTime = NaiveDate::from_ymd_opt(<span class="number">2017</span>, <span class="number">05</span>, <span class="number">11</span>)
+            .unwrap()
+            .and_hms_opt(<span class="number">11</span>, <span class="number">33</span>, <span class="number">44</span>)
+            .unwrap();
+
+        <span class="kw">let </span>adv = Advance {
+            start_timestamp: MassaTime::from_millis(start.timestamp() <span class="kw">as </span>u64),
+            timeout: MassaTime::from_millis(timeout.timestamp() <span class="kw">as </span>u64),
             threshold: Default::default(),
-            now,
+            now: MassaTime::from_millis(now.timestamp() <span class="kw">as </span>u64),
             activation_delay: MassaTime::from_millis(<span class="number">20</span>),
         };
 
