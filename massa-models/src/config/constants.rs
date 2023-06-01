@@ -21,9 +21,9 @@ use massa_time::MassaTime;
 use num::rational::Ratio;
 
 /// Downtime simulation start timestamp
-pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(0); // TODO: set the downtime end timestamp
+pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1686312000000); // Friday 9 June 2023 12:00:00 UTC
 /// Downtime simulation end timestamp
-pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(0); // TODO: set the downtime end timestamp
+pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1686319200000); // Friday 9 June 2023 14:00:00 UTC
 
 /// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
