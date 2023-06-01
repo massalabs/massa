@@ -1474,6 +1474,16 @@
 <a href="#1474" id="1474">1474</a>
 <a href="#1475" id="1475">1475</a>
 <a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -2258,27 +2268,37 @@
                             resp.entry
                         }
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="comment">// FIXME: Should we default to the last known version - default to 0?
-                            </span><span class="macro">grpc_error!</span>(e)
+                            <span class="macro">grpc_error!</span>(e)
                         }
                     };
 
-                    <span class="comment">// Note: unused for now as AddressFactory is not yet merged
-                    </span><span class="kw">let </span>_address_version = versioning_status
+                    <span class="comment">// Note: this is a bit duplicated with KeyPairFactory code but it avoids
+                    //       sending the whole mip store through the API
+                    </span><span class="kw">let </span>keypair_version = versioning_status
                         .into_iter()
                         .rev()
                         .find_map(|entry| {
+                            <span class="kw">let </span>is_about_keypair = <span class="kw">match </span>entry.mip_info {
+                                <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
+                                <span class="prelude-val">Some</span>(mip_info) =&gt; mip_info.components.iter().any(|st_entry| {
+                                    grpc::MipComponent::from_i32(st_entry.kind)
+                                        .unwrap_or(grpc::MipComponent::Unspecified)
+                                        == grpc::MipComponent::Keypair
+                                }),
+                            };
+
                             <span class="kw">let </span>state = grpc::ComponentStateId::from_i32(entry.state_id)
                                 .unwrap_or(grpc::ComponentStateId::Error);
-                            <span class="kw">match </span>state {
-                                grpc::ComponentStateId::Active =&gt; <span class="prelude-val">Some</span>(entry.state_id),
-                                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-                            }
+
+                            <span class="kw">if </span>is_about_keypair &amp;&amp; state == grpc::ComponentStateId::Active {
+                                <span class="prelude-val">Some</span>(entry.state_id)
+                            } <span class="kw">else </span>{
+                                <span class="prelude-val">None
+                            </span>}
                         })
                         .unwrap_or(<span class="number">0</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;Should create address with version: {}&quot;</span>, _address_version);
+                    <span class="kw">let </span>key = KeyPair::generate(keypair_version <span class="kw">as </span>u64).unwrap();
 
-                    <span class="kw">let </span>key = KeyPair::generate(<span class="number">0</span>).unwrap();
                     <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
                     <span class="kw">if </span>json {
                         <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
