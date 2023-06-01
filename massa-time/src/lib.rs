@@ -18,7 +18,7 @@ use std::{
     str::FromStr,
 };
 use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use time::{Date, OffsetDateTime};
 
 /// Time structure used everywhere.
 /// milliseconds since 01/01/1970.
@@ -403,11 +403,54 @@ impl MassaTime {
     /// ```
     /// # use massa_time::*;
     /// let massa_time : MassaTime = MassaTime::from_millis(1_640_995_200_000);
-    /// assert_eq!(massa_time.to_utc_string(), "2022-01-01T00:00:00Z")
+    /// assert_eq!(massa_time.format_instant(), String::from("2022-01-01T00:00:00Z"))
     /// ```
-    pub fn to_utc_string(self) -> String {
+    pub fn format_instant(&self) -> String {
         let naive = OffsetDateTime::from_unix_timestamp((self.to_millis() / 1000) as i64).unwrap();
         naive.format(&Rfc3339).unwrap()
+    }
+    /// ```
+    /// # use massa_time::*;
+    /// let massa_time : MassaTime = MassaTime::from_millis(1000*( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
+    /// assert_eq!(massa_time.format_duration(), String::from("8 days, 1 hours, 3 minutes, 6 seconds"))
+    /// ```
+    pub fn format_duration(&self) -> Result<String, TimeError> {
+        let (days, hours, mins, secs) = self.days_hours_mins_secs()?;
+        Ok(format!(
+            "{} days, {} hours, {} minutes, {} seconds",
+            days, hours, mins, secs
+        ))
+    }
+
+    /// ```
+    /// # use massa_time::*;
+    /// let massa_time : MassaTime = MassaTime::from_utc_ymd_hms(2022, 2, 5, 22, 50, 40).unwrap();
+    /// assert_eq!(massa_time.format_instant(), String::from("2022-02-05T22:50:40Z"))
+    /// ```
+    pub fn from_utc_ymd_hms(
+        year: i32,
+        month: u8,
+        day: u8,
+        hour: u8,
+        minute: u8,
+        second: u8,
+    ) -> Result<MassaTime, TimeError> {
+        let month = month.try_into().map_err(|_| TimeError::ConversionError)?;
+
+        let date =
+            Date::from_calendar_date(year, month, day).map_err(|_| TimeError::ConversionError)?;
+
+        let date_time = date
+            .with_hms(hour, minute, second)
+            .map_err(|_| TimeError::ConversionError)?
+            .assume_utc();
+
+        Ok(MassaTime::from_millis(
+            date_time
+                .unix_timestamp_nanos()
+                .checked_div(1_000_000)
+                .ok_or(TimeError::ConversionError)? as u64,
+        ))
     }
 
     /// ```

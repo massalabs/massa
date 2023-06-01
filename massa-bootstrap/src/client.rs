@@ -19,7 +19,6 @@ use std::{
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
-use time::{format_description::well_known::Rfc2822, OffsetDateTime};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -578,15 +577,10 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                         // Safe to unwrap here (only panic if not LockedIn)
                         let activation_at = mip_state.activation_at(mip_info).unwrap();
 
-                        let activation_datetime = OffsetDateTime::from_unix_timestamp(
-                            activation_at.to_duration().as_secs() as i64,
-                        )
-                        .unwrap();
-                        if let Ok(datetime) = activation_datetime.format(&Rfc2822) {
-                            warn!("Please update your Massa node before: {}", datetime);
-                        } else {
-                            warn!("Please update your Massa node as soon as possible");
-                        }
+                        warn!(
+                            "Please update your Massa node before: {}",
+                            activation_at.format_instant()
+                        );
                     } else if st_id == ComponentStateTypeId::Active {
                         // A new MipInfo @ state active - we are not compatible anymore
                         warn!(
@@ -606,22 +600,7 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                         );
                         debug!("MIP state: {:?}", mip_state);
 
-                        let start_datetime = OffsetDateTime::from_unix_timestamp(
-                            mip_info.start.to_duration().as_secs() as i64,
-                        )
-                        .unwrap();
-                        let timeout_datetime = OffsetDateTime::from_unix_timestamp(
-                            mip_info.timeout.to_duration().as_secs() as i64,
-                        )
-                        .unwrap();
-                        if let (Ok(start_datetime), Ok(timeout_datetime)) = (
-                            start_datetime.format(&Rfc2822),
-                            timeout_datetime.format(&Rfc2822),
-                        ) {
-                            warn!("Please update your node between: {} and {} if you want to support this update", start_datetime, timeout_datetime);
-                        } else {
-                            warn!("Please update your Massa node as soon as possible if you want to support this update");
-                        }
+                        warn!("Please update your node between: {} and {} if you want to support this update", mip_info.start.format_instant(), mip_info.timeout.format_instant());
                     } else {
                         // a new MipInfo @ state defined or started (or failed / error)
                         // warn the user to update its node
@@ -640,22 +619,7 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                     );
                     debug!("MIP state: {:?}", mip_state);
 
-                    let start_datetime = OffsetDateTime::from_unix_timestamp(
-                        mip_info.start.to_duration().as_secs() as i64,
-                    )
-                    .unwrap();
-                    let timeout_datetime = OffsetDateTime::from_unix_timestamp(
-                        mip_info.timeout.to_duration().as_secs() as i64,
-                    )
-                    .unwrap();
-                    if let (Ok(start_datetime), Ok(timeout_datetime)) = (
-                        start_datetime.format(&Rfc2822),
-                        timeout_datetime.format(&Rfc2822),
-                    ) {
-                        warn!("Please update your node between: {} and {} if you want to support this update", start_datetime, timeout_datetime);
-                    } else {
-                        warn!("Please update your Massa node as soon as possible if you want to support this update");
-                    }
+                    warn!("Please update your node between: {} and {} if you want to support this update", mip_info.start.format_instant(), mip_info.timeout.format_instant());
                 }
                 Err(e) => {
                     // Should never happen

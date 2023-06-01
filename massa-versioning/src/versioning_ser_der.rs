@@ -926,7 +926,6 @@ mod test {
     use std::str::FromStr;
 
     use more_asserts::assert_lt;
-    use time::{Date, Month};
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
@@ -1013,42 +1012,15 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        let start_datetime = Date::from_calendar_date(2017, Month::November, 01)
-            .unwrap()
-            .with_hms(7, 33, 44)
-            .unwrap()
-            .assume_utc();
-        let timeout_datetime = Date::from_calendar_date(2017, Month::November, 11)
-            .unwrap()
-            .with_hms(7, 33, 44)
-            .unwrap()
-            .assume_utc();
-        let now_datetime = Date::from_calendar_date(2017, Month::May, 11)
-            .unwrap()
-            .with_hms(11, 33, 44)
-            .unwrap()
-            .assume_utc();
+        let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
+        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
+        let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
 
         let adv = Advance {
-            start_timestamp: MassaTime::from_millis(
-                start_datetime
-                    .unix_timestamp_nanos()
-                    .checked_div(1000)
-                    .unwrap() as u64,
-            ),
-            timeout: MassaTime::from_millis(
-                timeout_datetime
-                    .unix_timestamp_nanos()
-                    .checked_div(1000)
-                    .unwrap() as u64,
-            ),
+            start_timestamp: start,
+            timeout,
             threshold: Default::default(),
-            now: MassaTime::from_millis(
-                now_datetime
-                    .unix_timestamp_nanos()
-                    .checked_div(1000)
-                    .unwrap() as u64,
-            ),
+            now,
             activation_delay: MassaTime::from_millis(20),
         };
 

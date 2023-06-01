@@ -57,7 +57,7 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f, "Config:\n{}", self.config)?;
         writeln!(f)?;
 
-        writeln!(f, "Current time: {}", self.current_time.to_utc_string())?;
+        writeln!(f, "Current time: {}", self.current_time.format_instant())?;
         writeln!(f, "Current cycle: {}", self.current_cycle)?;
         if self.last_slot.is_some() {
             writeln!(f, "Last slot: {}", self.last_slot.unwrap())?;

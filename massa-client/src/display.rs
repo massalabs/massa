@@ -231,7 +231,7 @@ impl Output for NodeStatus {
         self.config.pretty_print();
         println!();
 
-        println!("Current time: {}", self.current_time.to_utc_string());
+        println!("Current time: {}", self.current_time.format_instant());
         println!(
             "Current cycle: {}",
             Style::Protocol.style(self.current_cycle)
@@ -280,11 +280,11 @@ impl Output for ExecutionStats {
         println!("Execution stats:");
         println!(
             "\tStart stats timespan time: {}",
-            Style::Time.style(self.time_window_start.to_utc_string())
+            Style::Time.style(self.time_window_start.format_instant())
         );
         println!(
             "\tEnd stats timespan time: {}",
-            Style::Time.style(self.time_window_end.to_utc_string())
+            Style::Time.style(self.time_window_end.format_instant())
         );
         println!(
             "\tFinal executed block count: {}",
@@ -332,10 +332,10 @@ impl Output for CompactConfig {
         println!("Config:");
         println!(
             "\tGenesis time: {}",
-            Style::Time.style(self.genesis_timestamp.to_utc_string())
+            Style::Time.style(self.genesis_timestamp.format_instant())
         );
         if let Some(end) = self.end_timestamp {
-            println!("\tEnd time: {}", Style::Time.style(end.to_utc_string()));
+            println!("\tEnd time: {}", Style::Time.style(end.format_instant()));
         }
         println!(
             "\tThread count: {}",
@@ -365,11 +365,11 @@ impl Output for ConsensusStats {
         println!("Consensus stats:");
         println!(
             "\tStart stats timespan time: {}",
-            Style::Time.style(self.start_timespan.to_utc_string())
+            Style::Time.style(self.start_timespan.format_instant())
         );
         println!(
             "\tEnd stats timespan time: {}",
-            Style::Time.style(self.end_timespan.to_utc_string())
+            Style::Time.style(self.end_timespan.format_instant())
         );
         println!(
             "\tFinal block count: {}",
