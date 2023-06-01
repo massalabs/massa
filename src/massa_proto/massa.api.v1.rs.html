@@ -4049,6 +4049,36 @@
 <a href="#4049" id="4049">4049</a>
 <a href="#4050" id="4050">4050</a>
 <a href="#4051" id="4051">4051</a>
+<a href="#4052" id="4052">4052</a>
+<a href="#4053" id="4053">4053</a>
+<a href="#4054" id="4054">4054</a>
+<a href="#4055" id="4055">4055</a>
+<a href="#4056" id="4056">4056</a>
+<a href="#4057" id="4057">4057</a>
+<a href="#4058" id="4058">4058</a>
+<a href="#4059" id="4059">4059</a>
+<a href="#4060" id="4060">4060</a>
+<a href="#4061" id="4061">4061</a>
+<a href="#4062" id="4062">4062</a>
+<a href="#4063" id="4063">4063</a>
+<a href="#4064" id="4064">4064</a>
+<a href="#4065" id="4065">4065</a>
+<a href="#4066" id="4066">4066</a>
+<a href="#4067" id="4067">4067</a>
+<a href="#4068" id="4068">4068</a>
+<a href="#4069" id="4069">4069</a>
+<a href="#4070" id="4070">4070</a>
+<a href="#4071" id="4071">4071</a>
+<a href="#4072" id="4072">4072</a>
+<a href="#4073" id="4073">4073</a>
+<a href="#4074" id="4074">4074</a>
+<a href="#4075" id="4075">4075</a>
+<a href="#4076" id="4076">4076</a>
+<a href="#4077" id="4077">4077</a>
+<a href="#4078" id="4078">4078</a>
+<a href="#4079" id="4079">4079</a>
+<a href="#4080" id="4080">4080</a>
+<a href="#4081" id="4081">4081</a>
 </pre><pre class="rust"><code><span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index
 </span><span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -5210,8 +5240,8 @@
 <span class="attr">#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 </span><span class="kw">pub struct </span>MipComponentEntry {
-    <span class="attr">#[prost(fixed32, tag = <span class="string">&quot;1&quot;</span>)]
-    </span><span class="kw">pub </span>kind: u32,
+    <span class="attr">#[prost(enumeration = <span class="string">&quot;MipComponent&quot;</span>, tag = <span class="string">&quot;1&quot;</span>)]
+    </span><span class="kw">pub </span>kind: i32,
     <span class="attr">#[prost(fixed32, tag = <span class="string">&quot;2&quot;</span>)]
     </span><span class="kw">pub </span>version: u32,
 }
@@ -5253,6 +5283,36 @@
             <span class="string">&quot;COMPONENT_STATE_ID_LOCKEDIN&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Lockedin),
             <span class="string">&quot;COMPONENT_STATE_ID_ACTIVE&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Active),
             <span class="string">&quot;COMPONENT_STATE_ID_FAILED&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Failed),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+    }
+}
+<span class="doccomment">/// Same as MipComponent enum in versioning package
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+</span><span class="kw">pub enum </span>MipComponent {
+    Unspecified = <span class="number">0</span>,
+    Address = <span class="number">1</span>,
+    Keypair = <span class="number">2</span>,
+}
+<span class="kw">impl </span>MipComponent {
+    <span class="doccomment">/// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    </span><span class="kw">pub fn </span>as_str_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="kw">match </span><span class="self">self </span>{
+            MipComponent::Unspecified =&gt; <span class="string">&quot;MIP_COMPONENT_UNSPECIFIED&quot;</span>,
+            MipComponent::Address =&gt; <span class="string">&quot;MIP_COMPONENT_ADDRESS&quot;</span>,
+            MipComponent::Keypair =&gt; <span class="string">&quot;MIP_COMPONENT_KEYPAIR&quot;</span>,
+        }
+    }
+    <span class="doccomment">/// Creates an enum from field names used in the ProtoBuf definition.
+    </span><span class="kw">pub fn </span>from_str_name(value: <span class="kw-2">&amp;</span>str) -&gt; ::core::option::Option&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">match </span>value {
+            <span class="string">&quot;MIP_COMPONENT_UNSPECIFIED&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Unspecified),
+            <span class="string">&quot;MIP_COMPONENT_ADDRESS&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Address),
+            <span class="string">&quot;MIP_COMPONENT_KEYPAIR&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Keypair),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
