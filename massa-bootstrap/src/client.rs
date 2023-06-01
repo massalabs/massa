@@ -1,14 +1,5 @@
 use humantime::format_duration;
 use massa_db::DBBatch;
-use std::collections::BTreeMap;
-use std::{
-    collections::HashSet,
-    io,
-    net::{SocketAddr, TcpStream},
-    sync::{Arc, Condvar, Mutex},
-    time::Duration,
-};
-
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -20,6 +11,15 @@ use rand::{
     prelude::{SliceRandom, StdRng},
     SeedableRng,
 };
+use std::collections::BTreeMap;
+use std::{
+    collections::HashSet,
+    io,
+    net::{SocketAddr, TcpStream},
+    sync::{Arc, Condvar, Mutex},
+    time::Duration,
+};
+use time::{format_description::well_known::Rfc2822, OffsetDateTime};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -578,14 +578,12 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                         // Safe to unwrap here (only panic if not LockedIn)
                         let activation_at = mip_state.activation_at(mip_info).unwrap();
 
-                        if let Ok(time_before_activation) = activation_at.checked_sub(now) {
-                            if let Ok((days, hours, mins, secs)) =
-                                time_before_activation.days_hours_mins_secs()
-                            {
-                                warn!("Please update your Massa node. {} days, {} hours, {} minutes, {} seconds remaining until the MIP's activation", days, hours, mins, secs);
-                            } else {
-                                warn!("Please update your Massa node as soon as possible");
-                            }
+                        let activation_datetime = OffsetDateTime::from_unix_timestamp(
+                            activation_at.to_duration().as_secs() as i64,
+                        )
+                        .unwrap();
+                        if let Ok(datetime) = activation_datetime.format(&Rfc2822) {
+                            warn!("Please update your Massa node before: {}", datetime);
                         } else {
                             warn!("Please update your Massa node as soon as possible");
                         }
@@ -608,38 +606,21 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                         );
                         debug!("MIP state: {:?}", mip_state);
 
-                        match (
-                            mip_info.start.checked_sub(now),
-                            mip_info.timeout.checked_sub(now),
+                        let start_datetime = OffsetDateTime::from_unix_timestamp(
+                            mip_info.start.to_duration().as_secs() as i64,
+                        )
+                        .unwrap();
+                        let timeout_datetime = OffsetDateTime::from_unix_timestamp(
+                            mip_info.timeout.to_duration().as_secs() as i64,
+                        )
+                        .unwrap();
+                        if let (Ok(start_datetime), Ok(timeout_datetime)) = (
+                            start_datetime.format(&Rfc2822),
+                            timeout_datetime.format(&Rfc2822),
                         ) {
-                            (Ok(time_before_start), Ok(time_before_timeout)) => {
-                                match (
-                                    time_before_start.days_hours_mins_secs(),
-                                    time_before_timeout.days_hours_mins_secs(),
-                                ) {
-                                    (
-                                        Ok((start_days, start_hours, start_mins, start_secs)),
-                                        Ok((
-                                            timeout_days,
-                                            timeout_hours,
-                                            timeout_mins,
-                                            timeout_secs,
-                                        )),
-                                    ) => {
-                                        warn!("Please update your Massa node as soon as possible if you want to support this update.
-                                        {} days, {} hours, {} minutes, {} seconds remaining to the MIP's start.
-                                        {} days, {} hours, {} minutes, {} seconds remaining to the MIP's timeout",
-                                        start_days, start_hours, start_mins, start_secs, timeout_days, timeout_hours, timeout_mins, timeout_secs
-                                        );
-                                    }
-                                    _ => {
-                                        warn!("Please update your Massa node as soon as possible if you want to support this update");
-                                    }
-                                }
-                            }
-                            _ => {
-                                warn!("Please update your Massa node as soon as possible if you want to support this update");
-                            }
+                            warn!("Please update your node between: {} and {} if you want to support this update", start_datetime, timeout_datetime);
+                        } else {
+                            warn!("Please update your Massa node as soon as possible if you want to support this update");
                         }
                     } else {
                         // a new MipInfo @ state defined or started (or failed / error)
@@ -659,33 +640,21 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                     );
                     debug!("MIP state: {:?}", mip_state);
 
-                    match (
-                        mip_info.start.checked_sub(now),
-                        mip_info.timeout.checked_sub(now),
+                    let start_datetime = OffsetDateTime::from_unix_timestamp(
+                        mip_info.start.to_duration().as_secs() as i64,
+                    )
+                    .unwrap();
+                    let timeout_datetime = OffsetDateTime::from_unix_timestamp(
+                        mip_info.timeout.to_duration().as_secs() as i64,
+                    )
+                    .unwrap();
+                    if let (Ok(start_datetime), Ok(timeout_datetime)) = (
+                        start_datetime.format(&Rfc2822),
+                        timeout_datetime.format(&Rfc2822),
                     ) {
-                        (Ok(time_before_start), Ok(time_before_timeout)) => {
-                            match (
-                                time_before_start.days_hours_mins_secs(),
-                                time_before_timeout.days_hours_mins_secs(),
-                            ) {
-                                (
-                                    Ok((start_days, start_hours, start_mins, start_secs)),
-                                    Ok((timeout_days, timeout_hours, timeout_mins, timeout_secs)),
-                                ) => {
-                                    warn!("Please update your Massa node as soon as possible if you want to support this update.
-                                    {} days, {} hours, {} minutes, {} seconds remaining to the MIP's start.
-                                    {} days, {} hours, {} minutes, {} seconds remaining to the MIP's timeout",
-                                    start_days, start_hours, start_mins, start_secs, timeout_days, timeout_hours, timeout_mins, timeout_secs
-                                    );
-                                }
-                                _ => {
-                                    warn!("Please update your Massa node as soon as possible if you want to support this update");
-                                }
-                            }
-                        }
-                        _ => {
-                            warn!("Please update your Massa node as soon as possible if you want to support this update");
-                        }
+                        warn!("Please update your node between: {} and {} if you want to support this update", start_datetime, timeout_datetime);
+                    } else {
+                        warn!("Please update your Massa node as soon as possible if you want to support this update");
                     }
                 }
                 Err(e) => {
