@@ -519,12 +519,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e3c5919066adf22df73762e50cffcde3a758f2a848b113b586d1f86728b673b"
 dependencies = [
  "iana-time-zone",
- "js-sys",
  "num-integer",
  "num-traits",
  "serde",
- "time 0.1.45",
- "wasm-bindgen",
  "winapi",
 ]
 
@@ -2504,7 +2501,6 @@ name = "massa_bootstrap"
 version = "0.23.0"
 dependencies = [
  "bitvec",
- "chrono",
  "crossbeam",
  "displaydoc",
  "humantime",
@@ -2602,9 +2598,9 @@ version = "0.1.0"
 dependencies = [
  "displaydoc",
  "lsmtree",
- "massa_hash 0.1.0",
+ "massa_hash 0.23.0",
  "massa_models",
- "massa_serialization 0.1.0",
+ "massa_serialization 0.23.0",
  "parking_lot",
  "rocksdb",
  "thiserror",
@@ -2738,6 +2734,7 @@ dependencies = [
  "massa_pos_worker",
  "massa_proto",
  "massa_serialization 0.23.0",
+ "massa_time",
  "massa_versioning",
  "nom",
  "parking_lot",
@@ -2791,8 +2788,6 @@ dependencies = [
  "blake3",
  "bs58",
  "displaydoc",
- "generic-array",
- "lsmtree",
  "massa_serialization 0.1.0",
  "nom",
  "serde",
@@ -2806,6 +2801,8 @@ dependencies = [
  "blake3",
  "bs58",
  "displaydoc",
+ "generic-array",
+ "lsmtree",
  "massa_serialization 0.23.0",
  "nom",
  "serde",
@@ -3112,14 +3109,13 @@ dependencies = [
  "nom",
  "serde",
  "thiserror",
- "time 0.3.21",
+ "time",
 ]
 
 [[package]]
 name = "massa_versioning"
 version = "0.23.0"
 dependencies = [
- "chrono",
  "machine",
  "massa_db",
  "massa_hash 0.23.0",
@@ -4559,7 +4555,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros",
- "time 0.3.21",
+ "time",
 ]
 
 [[package]]
@@ -4978,17 +4974,6 @@ checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
 dependencies = [
  "cfg-if",
  "once_cell",
-]
-
-[[package]]
-name = "time"
-version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi",
 ]
 
 [[package]]
@@ -5520,12 +5505,6 @@ name = "wasi"
 version = "0.9.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
-
-[[package]]
-name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasi"
