@@ -61,14 +61,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1683498600000) // Sunday, May 7, 2023 10:30:00 PM UTC
+        MassaTime::from_millis(1685955600000) // Monday, June 5, 2023 9:00:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(MassaTime::from_millis(1685556000000))  // Sunday, May 30, 2023 06:00:00 PM UTC
+        Some(MassaTime::from_millis(1688140800000))  // Friday, June 30, 2023 04:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
