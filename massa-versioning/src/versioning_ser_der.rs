@@ -925,7 +925,6 @@ mod test {
     use std::mem::{size_of, size_of_val};
     use std::str::FromStr;
 
-    use chrono::{NaiveDate, NaiveDateTime};
     use more_asserts::assert_lt;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
@@ -1013,26 +1012,15 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        let start: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 01)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 11)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let now: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 05, 11)
-            .unwrap()
-            .and_hms_opt(11, 33, 44)
-            .unwrap();
+        let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
+        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
+        let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
 
         let adv = Advance {
-            start_timestamp: MassaTime::from_millis(start.timestamp() as u64),
-            timeout: MassaTime::from_millis(timeout.timestamp() as u64),
+            start_timestamp: start,
+            timeout,
             threshold: Default::default(),
-            now: MassaTime::from_millis(now.timestamp() as u64),
+            now,
             activation_delay: MassaTime::from_millis(20),
         };
 

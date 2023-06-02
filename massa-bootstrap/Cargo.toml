@@ -21,7 +21,6 @@ substruct = { git = "https://github.com/sydhds/substruct" }
 socket2 = "0.4.7"
 crossbeam = "0.8.2"
 mio =  { version = "0.8", features = ["net", "os-poll"] }
-chrono = "0.4"
 
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }

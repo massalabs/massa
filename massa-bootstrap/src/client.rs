@@ -1,15 +1,5 @@
-use chrono::{TimeZone, Utc};
 use humantime::format_duration;
 use massa_db::DBBatch;
-use std::collections::BTreeMap;
-use std::{
-    collections::HashSet,
-    io,
-    net::{SocketAddr, TcpStream},
-    sync::{Arc, Condvar, Mutex},
-    time::Duration,
-};
-
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -20,6 +10,14 @@ use parking_lot::RwLock;
 use rand::{
     prelude::{SliceRandom, StdRng},
     SeedableRng,
+};
+use std::collections::BTreeMap;
+use std::{
+    collections::HashSet,
+    io,
+    net::{SocketAddr, TcpStream},
+    sync::{Arc, Condvar, Mutex},
+    time::Duration,
 };
 use tracing::{debug, info, warn};
 
@@ -578,10 +576,11 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                         );
                         // Safe to unwrap here (only panic if not LockedIn)
                         let activation_at = mip_state.activation_at(mip_info).unwrap();
-                        let dt = Utc
-                            .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
-                            .unwrap();
-                        warn!("Please update your Massa node before: {}", dt.to_rfc2822());
+
+                        warn!(
+                            "Please update your Massa node before: {}",
+                            activation_at.format_instant()
+                        );
                     } else if st_id == ComponentStateTypeId::Active {
                         // A new MipInfo @ state active - we are not compatible anymore
                         warn!(
@@ -600,16 +599,8 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                             mip_info.name, mip_info.version
                         );
                         debug!("MIP state: {:?}", mip_state);
-                        let dt_start = Utc
-                            .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
-                            .unwrap();
-                        let dt_timeout = Utc
-                            .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
-                            .unwrap();
-                        warn!("Please update your node between: {} and {} if you want to support this update",
-                                dt_start.to_rfc2822(),
-                                dt_timeout.to_rfc2822()
-                            );
+
+                        warn!("Please update your node between: {} and {} if you want to support this update", mip_info.start.format_instant(), mip_info.timeout.format_instant());
                     } else {
                         // a new MipInfo @ state defined or started (or failed / error)
                         // warn the user to update its node
@@ -627,16 +618,8 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
                         mip_info.name, mip_info.version
                     );
                     debug!("MIP state: {:?}", mip_state);
-                    let dt_start = Utc
-                        .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
-                        .unwrap();
-                    let dt_timeout = Utc
-                        .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
-                        .unwrap();
-                    warn!("Please update your node between: {} and {} if you want to support this update",
-                            dt_start.to_rfc2822(),
-                            dt_timeout.to_rfc2822()
-                        );
+
+                    warn!("Please update your node between: {} and {} if you want to support this update", mip_info.start.format_instant(), mip_info.timeout.format_instant());
                 }
                 Err(e) => {
                     // Should never happen

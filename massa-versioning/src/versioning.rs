@@ -1234,7 +1234,6 @@ mod test {
     use std::assert_matches::assert_matches;
     use std::str::FromStr;
 
-    use chrono::{Days, NaiveDate, NaiveDateTime};
     use massa_db::MassaDBConfig;
     use more_asserts::assert_le;
     use tempfile::tempdir;
@@ -1266,19 +1265,13 @@ mod test {
         }
     }
 
-    fn get_a_version_info() -> (NaiveDateTime, NaiveDateTime, MipInfo) {
+    fn get_a_version_info() -> (MassaTime, MassaTime, MipInfo) {
         // A helper function to provide a default MipInfo
+
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
 
-        let start: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 01)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 11)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
+        let start = MassaTime::from_utc_ymd_hms(2017, 11, 1, 7, 33, 44).unwrap();
+        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
 
         return (
             start,
@@ -1287,8 +1280,8 @@ mod test {
                 name: "MIP-0002".to_string(),
                 version: 2,
                 components: BTreeMap::from([(MipComponent::Address, 1)]),
-                start: MassaTime::from_millis(start.timestamp() as u64),
-                timeout: MassaTime::from_millis(timeout.timestamp() as u64),
+                start,
+                timeout,
                 activation_delay: MassaTime::from_millis(20),
             },
         );
@@ -1366,7 +1359,7 @@ mod test {
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
         let (start, _, mi) = get_a_version_info();
-        let mut state = ComponentState::active(MassaTime::from_millis(start.timestamp() as u64));
+        let mut state = ComponentState::active(start);
         let now = mi.start;
         let advance = Advance::from((&mi, &Amount::zero(), &now));
 
@@ -1406,7 +1399,7 @@ mod test {
         // Test MipStateHistory::state_at() function
 
         let (start, _, mi) = get_a_version_info();
-        let now_0 = MassaTime::from_millis(start.timestamp() as u64);
+        let now_0 = start;
         let mut state = MipState::new(now_0);
 
         assert_eq!(state, ComponentState::defined());
@@ -1489,16 +1482,16 @@ mod test {
 
         let mut mi_2 = mi.clone();
         mi_2.version += 1;
-        mi_2.start = MassaTime::from_millis(
-            timeout.checked_add_days(Days::new(2)).unwrap().timestamp() as u64,
-        );
-        mi_2.timeout = MassaTime::from_millis(
-            timeout.checked_add_days(Days::new(5)).unwrap().timestamp() as u64,
-        );
+        mi_2.start = timeout
+            .checked_add(MassaTime::from_millis(1000 * 60 * 60 * 24 * 2))
+            .unwrap(); // Add 2 days
+        mi_2.timeout = timeout
+            .checked_add(MassaTime::from_millis(1000 * 60 * 60 * 24 * 5))
+            .unwrap(); // Add 5 days
 
         // Can only build such object in test - history is empty :-/
         let vs_1 = MipState {
-            state: ComponentState::active(MassaTime::from_millis(start.timestamp() as u64)),
+            state: ComponentState::active(start),
             history: Default::default(),
         };
         let vs_2 = MipState {
