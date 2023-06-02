@@ -476,7 +476,7 @@ impl MipStateSerializer {
         Self {
             state_serializer: Default::default(),
             advance_serializer: Default::default(),
-            u32_serializer: U32VarIntSerializer::default(),
+            u32_serializer: U32VarIntSerializer,
         }
     }
 }

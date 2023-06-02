@@ -305,7 +305,7 @@ impl KeyPair {
     /// let serialized: String = signature.to_bs58_check();
     /// ```
     pub fn generate() -> Self {
-        let mut rng = OsRng::default();
+        let mut rng = OsRng;
         KeyPair(ed25519_dalek::Keypair::generate(&mut rng))
     }
 
