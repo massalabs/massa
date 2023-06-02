@@ -455,14 +455,6 @@ impl ExecutionContext {
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
     pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
-        // TODO: collision problem:
-        //  prefix addresses to know if they are SCs or normal,
-        //  otherwise people can already create new accounts by sending coins to the right hash
-        //  they won't have ownership over it but this can still be unexpected
-        //  to have initial extra coins when an address is created
-        //  It may also induce that for read-only calls.
-        //  https://github.com/massalabs/massa/issues/2331
-
         // deterministically generate a new unique smart contract address
         let slot_timestamp = get_block_slot_timestamp(
             self.config.thread_count,
@@ -475,7 +467,7 @@ impl ExecutionContext {
         // create a seed from the current slot
         let mut data: Vec<u8> = self.slot.to_bytes_key().to_vec();
         // add the index of the created address within this context to the seed
-        data.append(&mut self.created_addr_index.to_be_bytes().to_vec());
+        data.extend(self.created_addr_index.to_be_bytes());
         // add a flag on whether we are in read-only mode or not to the seed
         // this prevents read-only contexts from shadowing existing addresses
         if self.read_only {
@@ -483,12 +475,40 @@ impl ExecutionContext {
         } else {
             data.push(1u8);
         }
-        // hash the seed to get a unique address
-        let hash = Hash::compute_from(&data);
-        let address = self.address_factory.create(
-            &AddressArgs::SC { hash },
-            FactoryStrategy::At(slot_timestamp),
-        )?;
+        // hash the seed to get an address
+        let mut hash = Hash::compute_from(&data);
+        let mut nonce = 0u64;
+        let mut address;
+
+        // Loop over nonces until we find an address that doesn't exist in the speculative ledger.
+        // Note that this loop is here for robustness, and should not be looping because
+        // even through the SC addresses are predictable, nobody can create them beforehand because:
+        // - their category is "SC" and not "USER" so they can't be derived from a public key
+        // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
+        loop {
+            address = self.address_factory.create(
+                &AddressArgs::SC { hash },
+                FactoryStrategy::At(slot_timestamp),
+            )?;
+            // check if this address already exists in the speculative ledger
+            if !self.speculative_ledger.entry_exists(&address) {
+                // if not, we can use it
+                break;
+            }
+            // otherwise, increment the nonce to get a new hash and try again
+            nonce = nonce.checked_add(1).ok_or_else(|| {
+                ExecutionError::RuntimeError("nonce overflow when creating SC address".into())
+            })?;
+            let mut hash_content = hash.to_bytes().to_vec();
+            hash_content.extend(nonce.to_be_bytes());
+            hash = Hash::compute_from(&hash_content);
+        }
+        if nonce > 0 {
+            warn!(
+                "smart contract address generation required {} nonces",
+                nonce
+            );
+        }
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(
@@ -664,13 +684,25 @@ impl ExecutionContext {
     ) -> Result<(), ExecutionError> {
         if let Some(from_addr) = &from_addr {
             // check access rights
-            if check_rights && !self.has_write_rights_on(from_addr) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "spending from address {} is not allowed in this context",
-                    from_addr
-                )));
-            }
+            if check_rights {
+                // ensure we can't spend from an address on which we have no write access
+                if !self.has_write_rights_on(from_addr) {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "spending from address {} is not allowed in this context",
+                        from_addr
+                    )));
+                }
 
+                // ensure we can't transfer towards SC addresses on which we have no write access
+                if let Some(to_addr) = &to_addr {
+                    if matches!(to_addr, Address::SC(..)) && !self.has_write_rights_on(to_addr) {
+                        return Err(ExecutionError::RuntimeError(format!(
+                            "crediting SC address {} is not allowed without write access to it",
+                            to_addr
+                        )));
+                    }
+                }
+            }
             // control vesting min_balance for sender address
             self.vesting_manager
                 .check_vesting_transfer_coins(self, from_addr, amount)?;
