@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"static":["CALLSITE","META"],"struct":["LRUCache"],"type":["PreHashLruMap"]};
+window.SIDEBAR_ITEMS = {"struct":["LRUCache"],"type":["PreHashLruMap"]};

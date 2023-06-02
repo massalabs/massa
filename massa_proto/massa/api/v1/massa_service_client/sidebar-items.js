@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"opaque":[""],"struct":["MassaServiceClient"]};
+window.SIDEBAR_ITEMS = {"struct":["MassaServiceClient"]};

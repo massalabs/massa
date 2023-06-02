@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Base58CheckVisitor","PeerId","PeerIdDeserializer","PeerIdSerializer"]};
+window.SIDEBAR_ITEMS = {"struct":["PeerId","PeerIdDeserializer","PeerIdSerializer"]};

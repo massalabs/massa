@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["__stability","__static_ref_initialize"],"static":["LAZY"],"struct":["ClientSettings","DefaultNode","HttpSettings","SETTINGS","Settings"]};
+window.SIDEBAR_ITEMS = {"struct":["ClientSettings","DefaultNode","HttpSettings","SETTINGS","Settings"]};

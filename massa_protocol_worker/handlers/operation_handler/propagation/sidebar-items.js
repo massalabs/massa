@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_propagation_thread"],"static":["CALLSITE","META"],"struct":["PropagationThread"]};
+window.SIDEBAR_ITEMS = {"fn":["start_propagation_thread"],"struct":["PropagationThread"]};

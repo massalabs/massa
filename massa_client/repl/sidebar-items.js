@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["group_parameters","run"],"opaque":[""],"struct":["MassaCompleter","MyHelper"]};
+window.SIDEBAR_ITEMS = {"fn":["group_parameters","run"],"struct":["MassaCompleter","MyHelper"]};

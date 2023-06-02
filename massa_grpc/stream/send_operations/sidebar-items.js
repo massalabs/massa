@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["report_error","send_operations"],"opaque":[""],"type":["SendOperationsStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["report_error","send_operations"],"type":["SendOperationsStreamType"]};

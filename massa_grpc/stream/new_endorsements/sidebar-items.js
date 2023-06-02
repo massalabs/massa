@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"fn":["new_endorsements"],"opaque":[""],"type":["NewEndorsementsStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["new_endorsements"],"type":["NewEndorsementsStreamType"]};

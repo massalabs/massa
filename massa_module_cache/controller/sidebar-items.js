@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"static":["CALLSITE","META"],"struct":["ModuleCache"],"type":["PreHashLruMap"]};
+window.SIDEBAR_ITEMS = {"struct":["ModuleCache"],"type":["PreHashLruMap"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["BRANCHES"],"fn":["new_filled_blocks"],"opaque":[""],"type":["NewFilledBlocksStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["new_filled_blocks"],"type":["NewFilledBlocksStreamType"]};

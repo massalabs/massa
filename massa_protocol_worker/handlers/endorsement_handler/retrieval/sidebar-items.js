@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_LEN"],"fn":["start_retrieval_thread","unbind"],"static":["CALLSITE","META"],"struct":["RetrievalThread"]};
+window.SIDEBAR_ITEMS = {"fn":["start_retrieval_thread"],"struct":["RetrievalThread"]};

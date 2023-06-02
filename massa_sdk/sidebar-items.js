@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ClientError"],"fn":["get_headers","get_id_kind","http_client_from_url","to_error_obj","ws_client_from_url"],"mod":["config"],"opaque":[""],"static":["CALLSITE","META"],"struct":["Client","ClientConfig","ClientV2","HttpConfig","RpcClient","RpcClientV2","WsConfig"]};
+window.SIDEBAR_ITEMS = {"enum":["ClientError"],"fn":["get_headers","get_id_kind","http_client_from_url","to_error_obj","ws_client_from_url"],"mod":["config"],"struct":["Client","ClientConfig","ClientV2","HttpConfig","RpcClient","RpcClientV2","WsConfig"]};

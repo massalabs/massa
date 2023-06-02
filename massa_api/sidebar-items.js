@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["serve","wrong_api"],"mod":["api","api_trait","private","public"],"opaque":[""],"static":["CALLSITE","META"],"struct":["API","ApiV2","ParamsObject","Private","Public","StopHandle"],"trait":["ApiServer","MassaRpcServer","RpcServer"]};
+window.SIDEBAR_ITEMS = {"fn":["serve","wrong_api"],"mod":["api","api_trait","private","public"],"struct":["API","ApiV2","Private","Public","StopHandle"],"trait":["ApiServer","MassaRpcServer","RpcServer"]};

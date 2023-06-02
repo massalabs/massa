@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["STRUCT_NAME"],"fn":["ScalarWrapper"],"mod":["http_rule"],"struct":["CustomHttpPattern","Http","HttpRule","HttpRuleComment"]};
+window.SIDEBAR_ITEMS = {"mod":["http_rule"],"struct":["CustomHttpPattern","Http","HttpRule","HttpRuleComment"]};

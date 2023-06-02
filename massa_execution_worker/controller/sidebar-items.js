@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"static":["CALLSITE","META"],"struct":["ExecutionControllerImpl","ExecutionInputData","ExecutionManagerImpl"]};
+window.SIDEBAR_ITEMS = {"struct":["ExecutionControllerImpl","ExecutionInputData","ExecutionManagerImpl"]};

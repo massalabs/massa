@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_MassaSignatureError"],"enum":["MassaSignatureError"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_MassaSignatureError"],"enum":["MassaSignatureError"]};

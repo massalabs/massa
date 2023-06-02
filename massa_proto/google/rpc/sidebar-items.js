@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["STRUCT_NAME"],"fn":["ScalarWrapper"],"struct":["Status"]};
+window.SIDEBAR_ITEMS = {"struct":["Status"]};

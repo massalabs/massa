@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_CipherError"],"enum":["CipherError"],"trait":["DisplayToDisplayDoc","PathToDisplayDoc"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_CipherError"],"enum":["CipherError"]};
