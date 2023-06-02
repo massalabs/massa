@@ -2858,6 +2858,7 @@ dependencies = [
  "lazy_static",
  "prometheus",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

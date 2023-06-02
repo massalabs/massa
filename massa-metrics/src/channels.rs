@@ -1,11 +1,15 @@
 use crossbeam::channel::{bounded, unbounded, Receiver, RecvError, SendError, Sender};
 use prometheus::{Counter, Gauge};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Clone)]
 pub struct ChannelMetrics<T> {
-    pub channel: (Sender<T>, Receiver<T>),
+    channel: (Sender<T>, Receiver<T>),
+    /// Channel name
     name: String,
+    /// gauge for actual length of channel
     actual_len: Gauge,
+    /// counter for total received messages
     received: Counter,
 }
 
@@ -17,16 +21,23 @@ impl<T> ChannelMetrics<T> {
         } else {
             unbounded::<T>()
         };
+
+        // Create gauge for actual length of channel
+        // this can be inc() when sending msg or dec() when receive
         let actual_len = Gauge::new(
             format!("{}_actual_size", name.clone()),
             "Actual length of channel",
         )
         .expect("Failed to create gauge");
+
+        // Create counter for total received messages
         let received = Counter::new(
             format!("{}_total_receive", name.clone()),
             "Total received messages",
         )
         .expect("Failed to create counter");
+
+        // Register metrics in prometheus
         // TODO unwrap
         prometheus::register(Box::new(actual_len.clone())).unwrap();
         prometheus::register(Box::new(received.clone())).unwrap();
@@ -38,14 +49,11 @@ impl<T> ChannelMetrics<T> {
         }
     }
 
+    /// Send a message to the channel
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
         let res = self.channel.0.send(msg);
         self.actual_len.inc();
         res
-    }
-
-    fn len(&self) -> usize {
-        self.channel.0.len()
     }
 
     pub fn recv(&self) -> Result<T, RecvError> {
@@ -53,5 +61,19 @@ impl<T> ChannelMetrics<T> {
         self.actual_len.dec();
         self.received.inc();
         res
+    }
+}
+
+impl<T> Deref for ChannelMetrics<T> {
+    type Target = (Sender<T>, Receiver<T>);
+
+    fn deref(&self) -> &Self::Target {
+        &self.channel
+    }
+}
+
+impl<T> DerefMut for ChannelMetrics<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.channel
     }
 }

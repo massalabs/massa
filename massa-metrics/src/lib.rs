@@ -34,20 +34,20 @@ mod test {
 
         start_metrics_server(addr);
         std::thread::sleep(std::time::Duration::from_millis(500));
-        let channel = ChannelMetrics::new("operations".to_string(), None);
+        let channel_metrics = ChannelMetrics::new("operations".to_string(), None);
         let channel2 = ChannelMetrics::new("second_channel".to_string(), None);
 
         std::thread::sleep(std::time::Duration::from_secs(3));
         for i in 0..100 {
-            channel.send(i).unwrap();
+            channel_metrics.send(i).unwrap();
         }
         std::thread::spawn(move || loop {
             std::thread::sleep(std::time::Duration::from_secs(1));
-            channel.recv().unwrap();
+            channel_metrics.recv().unwrap();
         });
 
         channel2.send("Hello world".to_string()).unwrap();
-        std::thread::sleep(std::time::Duration::from_secs(1000));
+        std::thread::sleep(std::time::Duration::from_secs(100));
     }
 
     // #[test]

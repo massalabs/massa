@@ -7,6 +7,7 @@ use hyper::{
 };
 use prometheus::{Encoder, TextEncoder};
 use tokio::runtime::Runtime;
+use tracing::{error, info};
 
 pub(crate) fn bind_metrics(addr: SocketAddr) {
     std::thread::spawn(move || {
@@ -15,10 +16,10 @@ pub(crate) fn bind_metrics(addr: SocketAddr) {
             let server = hyper::Server::bind(&addr).serve(make_service_fn(|_| async {
                 Ok::<_, hyper::Error>(service_fn(serve_req))
             }));
-            println!("Listening on http://{}", addr);
+            info!("metrics-server listening on http://{}", addr);
 
             if let Err(e) = server.await {
-                println!("server error: {}", e);
+                error!("server error: {}", e);
             }
         });
     });
