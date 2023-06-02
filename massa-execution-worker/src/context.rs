@@ -36,7 +36,7 @@ use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::MipStore;
-use massa_versioning::versioning_factory::VersioningFactory;
+use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -477,9 +477,10 @@ impl ExecutionContext {
         }
         // hash the seed to get a unique address
         let hash = Hash::compute_from(&data);
+        // Already fixed in PR #4027 - wait for rebase
         let address = self
             .address_factory
-            .create(&AddressArgs::SC { hash }, None)?;
+            .create(&AddressArgs::SC { hash }, FactoryStrategy::Exact(0))?;
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(

@@ -9,8 +9,11 @@ use massa_protocol_exports::{
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use massa_versioning::{
-    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+    keypair_factory::KeyPairFactory,
+    versioning::MipStore,
+    versioning_factory::{FactoryStrategy, VersioningFactory},
 };
 use parking_lot::RwLock;
 use peernet::{
@@ -185,7 +188,10 @@ pub fn start_protocol_controller(
         let keypair_factory = KeyPairFactory {
             mip_store: mip_store.clone(),
         };
-        let keypair = keypair_factory.create(&(), None)?;
+        let now = MassaTime::now().map_err(|e| {
+            ProtocolError::GeneralProtocolError(format!("Unable to get current time: {}", e))
+        })?;
+        let keypair = keypair_factory.create(&(), FactoryStrategy::At(now))?;
         if let Err(e) = std::fs::write(&config.keypair_file, serde_json::to_string(&keypair)?) {
             warn!("could not generate node key file: {}", e);
         }
