@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{settings::PeerCategoryInfo, ProtocolConfig};
-use massa_models::config::ENDORSEMENT_COUNT;
+use massa_models::config::{ENDORSEMENT_COUNT, MAX_MESSAGE_SIZE};
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
 
@@ -12,7 +12,7 @@ impl Default for ProtocolConfig {
                 .expect("cannot create temp file")
                 .path()
                 .to_path_buf(),
-            ask_block_timeout: 500.into(),
+            ask_block_timeout: MassaTime::from_millis(500),
             max_known_blocks_saved_size: 300,
             max_known_blocks_size: 100,
             max_node_known_blocks_size: 100,
@@ -26,10 +26,10 @@ impl Default for ProtocolConfig {
             operation_batch_buffer_capacity: 1000,
             operation_announcement_buffer_capacity: 1000,
             max_operation_storage_time: MassaTime::from_millis(60000),
-            operation_batch_proc_period: 200.into(),
+            operation_batch_proc_period: MassaTime::from_millis(200),
             asked_operations_buffer_capacity: 10000,
-            asked_operations_pruning_period: 500.into(),
-            operation_announcement_interval: 150.into(),
+            asked_operations_pruning_period: MassaTime::from_millis(500),
+            operation_announcement_interval: MassaTime::from_millis(150),
             max_operations_per_message: 1024,
             max_operations_per_block: 5000,
             thread_count: 32,
@@ -59,6 +59,7 @@ impl Default for ProtocolConfig {
             max_size_channel_network_to_peer_handler: 1000,
             max_size_channel_commands_peer_testers: 10000,
             max_size_channel_commands_peers: 300,
+            max_message_size: MAX_MESSAGE_SIZE as usize,
             endorsement_count: ENDORSEMENT_COUNT,
             max_size_block_infos: 200,
             max_size_value_datastore: 1_000_000,

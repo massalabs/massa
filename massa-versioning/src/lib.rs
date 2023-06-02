@@ -1,4 +1,5 @@
 #![feature(variant_count)]
+#![feature(assert_matches)]
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! # General description
@@ -8,13 +9,23 @@
 //! MIPState -> Deployment state of a MIPInfo
 //! MIPStore -> A map of MIPInfo -> MipState
 //!
-//! # Note on MipInfo versions
 //!
-//! There is 2 different versions:
+//! # Notes on MipInfo versions
+//!
+//! There is 2 different 'versions':
 //! * version == Network version -> This is the network version to announce and thus to store in block header
-//! * component_version -> This is the version for the associated component and is used in VersioningFactory
+//! * component_version -> This is the version for the associated component and is used in VersioningFactory (e.g KeyPair, Address, VM)
 //!
-//! # Note on MipState
+//! # Notes on MipInfo timings and stats
+//!
+//! So in the execution module and after a block become final, we update the MipStore stats (in a blocking way).
+//! By updating the stats, we mean sending: (Slot timestamp, Option<(current: u32, advertising: Option)>).
+//! Using the slot timestamp, ensure that the trigger (and the trigger timeout) is a consensus by all nodes
+//! (This means that the trigger and the trigger timeout are not timer based).
+//! In order to have all nodes in sync (because of node various delays), the state is set to active
+//! after an activation delay (duration is required to be > 1 cycle).
+//!
+//! # Notes on MipState
 //!
 //! MipState has:
 //! * A state machine (stores the current state of deployment for a MipInfo)
@@ -31,12 +42,7 @@
 //!   * + When we init MipStore (at startup), this ensures that we have a time ranges & versions coherent list of MipInfo
 //!     * For instance, this can avoid to have 2 MipInfo with the same name
 //!
-//! # Advancing MipState
-//!
-//! The Versioning middleware is designed to process all finalized blocks and update the corresponding state
-//! **It is not yet implemented**
-//!
-//! # VersioningFactory
+//! # Versioning Factory
 //!
 //! A Factory trait is there to ease the development of factory for Versioned component (e.g. address, block)
 //!
@@ -45,6 +51,10 @@
 //!
 //! Unit tests in versioning_factory.rs shows a basic but realistic implementation of a AddressFactory (impl the Factory trait)
 
+pub mod address_factory;
+pub mod grpc_mapping;
+pub mod keypair_factory;
+pub mod mips;
 pub mod versioning;
 pub mod versioning_factory;
 pub mod versioning_ser_der;

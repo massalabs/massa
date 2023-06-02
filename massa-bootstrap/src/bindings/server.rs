@@ -151,7 +151,10 @@ impl BootstrapServerBinder {
                         "bootstrap server timed out sending error '{}' to addr {}",
                         msg, addr
                     ),
-                    Err(e) => error!("{}", e),
+                    Err(e) => error!(
+                        "bootstrap server encountered error '{}' sending error '{}' to addr '{}'",
+                        e, msg, addr
+                    ),
                     Ok(_) => {}
                 }
                 close_fn();

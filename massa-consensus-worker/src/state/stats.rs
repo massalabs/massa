@@ -82,7 +82,7 @@ impl ConsensusState {
     }
 
     /// Remove old stats from consensus storage
-    pub fn prune_stats(&mut self) -> Result<(), ConsensusError> {
+    fn prune_stats(&mut self) -> Result<(), ConsensusError> {
         let start_time = MassaTime::now()?.saturating_sub(self.stats_history_timespan);
         while let Some((t, _, _)) = self.final_block_stats.front() {
             if t < &start_time {

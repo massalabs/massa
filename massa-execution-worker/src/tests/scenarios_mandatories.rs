@@ -1,21 +1,30 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #[cfg(test)]
 mod tests {
+    use crate::active_history::ActiveHistory;
+    use crate::speculative_async_pool::SpeculativeAsyncPool;
     use crate::start_execution_worker;
     use crate::tests::mock::{
         create_block, get_initials_vesting, get_random_address_full, get_sample_state,
     };
+    use massa_async_pool::AsyncMessage;
+    use massa_db::DBBatch;
     use massa_execution_exports::{
         ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
+    use massa_hash::Hash;
     use massa_models::config::{
-        LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
+        LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
     use massa_models::test_exports::gen_endorsements_for_denunciation;
-    use massa_models::{address::Address, amount::Amount, slot::Slot};
+    use massa_models::{
+        address::{Address, UserAddress, UserAddressV0},
+        amount::Amount,
+        slot::Slot,
+    };
     use massa_models::{
         block_id::BlockId,
         datastore::Datastore,
@@ -27,13 +36,19 @@ mod tests {
     use massa_signature::KeyPair;
     use massa_storage::Storage;
     use massa_time::MassaTime;
-    use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+    use massa_versioning::versioning::{MipStatsConfig, MipStore};
     use num::rational::Ratio;
+    use parking_lot::RwLock;
     use serial_test::serial;
+    use std::sync::Arc;
     use std::{
         cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
     };
     use tokio::sync::broadcast;
+
+    const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
+    const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
+    const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
 
     #[test]
     #[serial]
@@ -110,8 +125,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -154,6 +169,7 @@ mod tests {
                 is_final: true,
             })
             .expect("readonly execution failed");
+
         assert_eq!(res.out.slot, Slot::new(1, 0));
         assert!(res.gas_cost > 0);
         assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
@@ -168,6 +184,7 @@ mod tests {
                 is_final: false,
             })
             .expect("readonly execution failed");
+
         assert!(res.out.slot.period > 8);
 
         manager.stop();
@@ -179,7 +196,7 @@ mod tests {
         storage: &Storage,
         execution_controller: Box<dyn ExecutionController>,
     ) {
-        let genesis_keypair = KeyPair::generate();
+        let genesis_keypair = KeyPair::generate(0).unwrap();
         let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
         let mut block_storage: PreHashMap<BlockId, Storage> = PreHashMap::default();
         for thread in 0..config.thread_count {
@@ -211,8 +228,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -245,8 +262,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // get random keypair
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/nested_call.wasm");
@@ -258,7 +274,7 @@ mod tests {
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -328,7 +344,7 @@ mod tests {
         let mut storage = Storage::create_root();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(2, 0),
@@ -372,8 +388,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -406,8 +422,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // get random keypair
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/get_call_coins_main.wasm");
@@ -419,7 +434,7 @@ mod tests {
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -467,7 +482,7 @@ mod tests {
         let mut storage = Storage::create_root();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(2, 0),
@@ -524,9 +539,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -559,8 +574,8 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message.wasm");
@@ -572,7 +587,7 @@ mod tests {
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -634,9 +649,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -670,8 +685,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message.wasm");
@@ -684,7 +698,7 @@ mod tests {
         let tested_op_id = operation.id.clone();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -746,8 +760,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -781,8 +795,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm files in massa-unit-tests-src
         let exec_bytecode = include_bytes!("./wasm/local_execution.wasm");
@@ -798,7 +811,7 @@ mod tests {
             create_execute_sc_operation(&keypair, call_bytecode, datastore).unwrap();
         storage.store_operations(vec![local_exec_op.clone(), local_call_op.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![local_exec_op.clone(), local_call_op.clone()],
             vec![],
             Slot::new(1, 0),
@@ -834,7 +847,7 @@ mod tests {
         assert_eq!(events[1].context.call_stack.len(), 1);
         assert_eq!(
             events[1].context.call_stack.back().unwrap(),
-            &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+            &Address::from_public_key(&keypair.get_public_key())
         );
         assert_eq!(events[2].data, "one local execution completed");
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
@@ -846,7 +859,7 @@ mod tests {
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
             events[1].context.call_stack.back().unwrap(),
-            &Address::from_str("AU12eS5qggxuvqviD5eQ72oM2QhGwnmNbT1BaxVXU4hqQ8rAYXFe").unwrap()
+            &Address::from_public_key(&keypair.get_public_key())
         );
         assert_eq!(events[6].data, "one local call completed");
 
@@ -870,8 +883,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and cursor delay
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -905,8 +918,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm files in massa-unit-tests-src
         let op_bytecode = include_bytes!("./wasm/deploy_sc.wasm");
@@ -917,7 +929,13 @@ mod tests {
         // create the block contaning the operation
         let op = create_execute_sc_operation(&keypair, op_bytecode, datastore.clone()).unwrap();
         storage.store_operations(vec![op.clone()]);
-        let block = create_block(KeyPair::generate(), vec![op], vec![], Slot::new(1, 0)).unwrap();
+        let block = create_block(
+            KeyPair::generate(0).unwrap(),
+            vec![op],
+            vec![],
+            Slot::new(1, 0),
+        )
+        .unwrap();
         // store the block in storage
         storage.store_block(block.clone());
 
@@ -976,9 +994,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 1_000_000_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1013,8 +1031,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message_deploy_condition.wasm");
@@ -1057,12 +1074,11 @@ mod tests {
         });
 
         // match the events
-        assert_eq!(events.len(), 2, "Two events were expected");
+        assert_eq!(events.len(), 2, "2 events were expected");
         assert_eq!(events[0].data, "Triggered");
 
         // keypair associated to thread 1
-        let keypair =
-            KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message_wrong_trigger.wasm");
@@ -1090,12 +1106,10 @@ mod tests {
         });
 
         // match the events
-        assert!(events.len() == 3, "Three event was expected");
-        assert_eq!(events[0].data, "Triggered");
+        assert!(events.len() == 3, "3 events were expected");
 
         // keypair associated to thread 2
-        let keypair =
-            KeyPair::from_str("S12APSAzMPsJjVGWzUJ61ZwwGFTNapA4YtArMKDyW4edLu6jHvCr").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_3).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         // This line execute the smart contract that will modify the data entry and then trigger the SC.
@@ -1119,14 +1133,11 @@ mod tests {
 
         // retrieve events emitted by smart contracts
         let events = controller.get_filtered_sc_output_event(EventFilter {
-            start: Some(Slot::new(1, 3)),
             ..Default::default()
         });
 
         // match the events
-        assert_eq!(events.len(), 1, "One event was expected");
-        assert_eq!(events[0].data, "Triggered");
-        assert_eq!(events[0].data, "Triggered");
+        assert!(events.len() == 4, "4 events were expected");
 
         manager.stop();
     }
@@ -1137,8 +1148,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1172,9 +1183,10 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the sender_keypair and recipient_address
-        let sender_keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+
+        let sender_keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let (recipient_address, _keypair) = get_random_address_full();
+
         // create the operation
         let operation = Operation::new_verifiable(
             Operation {
@@ -1192,7 +1204,7 @@ mod tests {
         // create the block containing the transaction operation
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -1222,12 +1234,7 @@ mod tests {
             Amount::from_str("100")
                 .unwrap()
                 // Storage cost base
-                .saturating_sub(
-                    exec_cfg
-                        .storage_costs_constants
-                        .ledger_cost_per_byte
-                        .saturating_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
-                )
+                .saturating_sub(LEDGER_ENTRY_BASE_COST)
         );
         // stop the execution controller
         manager.stop();
@@ -1239,8 +1246,8 @@ mod tests {
         let vesting = get_initials_vesting(true);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1274,8 +1281,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the sender_keypair and recipient_address
-        let sender_keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let sender_keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let sender_addr = Address::from_public_key(&sender_keypair.get_public_key());
         let (recipient_address, _keypair) = get_random_address_full();
         // create the operation
@@ -1295,7 +1301,7 @@ mod tests {
         // create the block containing the transaction operation
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -1316,7 +1322,11 @@ mod tests {
         std::thread::sleep(Duration::from_millis(100));
 
         // retrieve the event emitted by the execution error
-        let events = controller.get_filtered_sc_output_event(EventFilter::default());
+        let events = controller.get_filtered_sc_output_event(EventFilter {
+            is_error: Some(true),
+            ..Default::default()
+        });
+        dbg!(&events);
         assert!(events[0].data.contains("massa_execution_error"));
         assert!(events[0]
             .data
@@ -1348,8 +1358,8 @@ mod tests {
         // setup the period duration
         let vesting = get_initials_vesting(true);
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1384,8 +1394,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the keypair and its corresponding address
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
         // create the operation
         // try to buy 60 rolls so (100+60) and the max rolls specified for this address in vesting is 150
@@ -1402,7 +1411,7 @@ mod tests {
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -1446,8 +1455,8 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -1481,8 +1490,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the keypair and its corresponding address
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
         // create the operation
         let operation = Operation::new_verifiable(
@@ -1498,7 +1506,7 @@ mod tests {
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -1537,10 +1545,10 @@ mod tests {
 
         // setup the period duration
         let mut exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             periods_per_cycle: 2,
             thread_count: 2,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             last_start_period: 2,
             ..Default::default()
@@ -1580,8 +1588,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // generate the keypair and its corresponding address
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
@@ -1593,12 +1600,22 @@ mod tests {
         let roll_sell_2 = 1;
 
         let initial_deferred_credits = Amount::from_str("100").unwrap();
+
+        let mut batch = DBBatch::new();
+
         // set initial_deferred_credits that will be reimbursed at first block
-        sample_state.write().pos_state.deferred_credits.insert(
-            Slot::new(1, 0),
-            address,
-            initial_deferred_credits,
+        sample_state.write().pos_state.put_deferred_credits_entry(
+            &Slot::new(1, 0),
+            &address,
+            &initial_deferred_credits,
+            &mut batch,
         );
+
+        sample_state
+            .write()
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(
@@ -1628,7 +1645,7 @@ mod tests {
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation1.clone(), operation2.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation1, operation2],
             vec![],
             Slot::new(3, 0),
@@ -1730,10 +1747,10 @@ mod tests {
 
         // setup the period duration
         let mut exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             periods_per_cycle: 2,
             thread_count: 2,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             last_start_period: 2,
             roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
@@ -1776,8 +1793,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // generate the keypair and its corresponding address
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
@@ -1819,7 +1835,7 @@ mod tests {
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation1.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation1],
             vec![denunciation.clone(), denunciation, denunciation_2],
             Slot::new(3, 0),
@@ -1892,10 +1908,10 @@ mod tests {
 
         // setup the period duration
         let mut exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             periods_per_cycle: 2,
             thread_count: 2,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             last_start_period: 2,
             roll_count_to_slash_on_denunciation: 4, // Set to 4 to check if config is taken into account
@@ -1938,8 +1954,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // generate the keypair and its corresponding address
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         let address = Address::from_public_key(&keypair.get_public_key());
 
         // get initial balance
@@ -1994,7 +2009,7 @@ mod tests {
         // create the block containing the roll buy operation
         storage.store_operations(vec![operation1.clone(), operation2.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation1, operation2],
             vec![denunciation.clone(), denunciation],
             Slot::new(3, 0),
@@ -2070,9 +2085,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2106,8 +2121,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/execution_error.wasm");
@@ -2116,7 +2130,7 @@ mod tests {
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -2134,7 +2148,7 @@ mod tests {
             Default::default(),
             block_storage.clone(),
         );
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_millis(100));
 
         // retrieve the event emitted by the execution error
         let events = controller.get_filtered_sc_output_event(EventFilter {
@@ -2159,9 +2173,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2195,8 +2209,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/datastore.wasm");
@@ -2206,7 +2219,7 @@ mod tests {
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -2245,9 +2258,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2281,8 +2294,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
@@ -2294,7 +2306,7 @@ mod tests {
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -2331,9 +2343,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2368,8 +2380,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // let address = Address::from_public_key(&keypair.get_public_key());
 
         // load bytecode
@@ -2380,7 +2391,7 @@ mod tests {
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -2480,8 +2491,8 @@ mod tests {
         // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
         // as data. Then we check if we get an event as expected.
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
-            cursor_delay: 0.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2516,8 +2527,7 @@ mod tests {
         // create blockclique block at slot (1,1)
         {
             let blockclique_block_slot = Slot::new(1, 1);
-            let keypair =
-                KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
+            let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
             let event_test_data = include_bytes!("./wasm/event_test.wasm");
             let operation =
                 create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default())
@@ -2549,8 +2559,7 @@ mod tests {
         // create blockclique block at slot (1,0)
         {
             let blockclique_block_slot = Slot::new(1, 0);
-            let keypair =
-                KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+            let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
             let event_test_data = include_bytes!("./wasm/event_test.wasm");
             let operation =
                 create_execute_sc_operation(&keypair, event_test_data, BTreeMap::default())
@@ -2589,7 +2598,7 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // config
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2623,8 +2632,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
 
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
@@ -2647,7 +2655,7 @@ mod tests {
         .unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -2734,9 +2742,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2769,8 +2777,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // load bytecode
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/use_builtins.wasm");
@@ -2779,7 +2786,7 @@ mod tests {
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -2829,9 +2836,9 @@ mod tests {
         let vesting = get_initials_vesting(false);
         // setup the period duration and the maximum gas for asynchronous messages execution
         let exec_cfg = ExecutionConfig {
-            t0: 100.into(),
+            t0: MassaTime::from_millis(100),
+            cursor_delay: MassaTime::from_millis(0),
             max_async_gas: 100_000,
-            cursor_delay: 0.into(),
             initial_vesting_path: vesting.path().to_path_buf(),
             ..ExecutionConfig::default()
         };
@@ -2865,8 +2872,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
         // keypair associated to thread 0
-        let keypair =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
         // let address = Address::from_public_key(&keypair.get_public_key());
 
         // load bytecode
@@ -2878,7 +2884,7 @@ mod tests {
             create_execute_sc_operation(&keypair, bytecode, BTreeMap::default()).unwrap();
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
-            KeyPair::generate(),
+            KeyPair::generate(0).unwrap(),
             vec![operation],
             vec![],
             Slot::new(1, 0),
@@ -2928,5 +2934,39 @@ mod tests {
 
         // stop the execution controller
         manager.stop();
+    }
+
+    #[test]
+    fn test_take_batch() {
+        let final_state = get_sample_state(0).unwrap().0;
+        let active_history = Arc::new(RwLock::new(ActiveHistory::default()));
+
+        let mut speculative_pool = SpeculativeAsyncPool::new(final_state, active_history);
+
+        let address = Address::User(UserAddress::UserAddressV0(UserAddressV0(
+            Hash::compute_from(b"abc"),
+        )));
+
+        for i in 1..10 {
+            let message = AsyncMessage::new_with_hash(
+                Slot::new(0, 0),
+                0,
+                address,
+                address,
+                "function".to_string(),
+                i,
+                Amount::from_str("0.1").unwrap(),
+                Amount::from_str("0.3").unwrap(),
+                Slot::new(1, 0),
+                Slot::new(3, 0),
+                Vec::new(),
+                None,
+                None,
+            );
+            speculative_pool.push_new_message(message)
+        }
+        assert_eq!(speculative_pool.get_message_infos().len(), 9);
+        speculative_pool.take_batch_to_execute(Slot::new(2, 0), 19);
+        assert_eq!(speculative_pool.get_message_infos().len(), 4);
     }
 }

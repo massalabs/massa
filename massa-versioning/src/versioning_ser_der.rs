@@ -11,8 +11,8 @@ use nom::{
 };
 
 use crate::versioning::{
-    Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo, MipState,
-    MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
+    Active, Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
+    MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
@@ -21,7 +21,7 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_time::{MassaTimeDeserializer, MassaTimeSerializer};
+use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
 /// Ser / Der
 
@@ -129,8 +129,8 @@ impl MipInfoDeserializer {
                 Excluded(MIP_INFO_NAME_MAX_LEN),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(0.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -251,21 +251,19 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         value: &ComponentState,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
+        let state_id = u32::from(ComponentStateTypeId::from(value));
+        self.u32_serializer.serialize(&state_id, buffer)?;
         match value {
             ComponentState::Started(Started { threshold }) => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
                 self.amount_serializer.serialize(threshold, buffer)?;
             }
             ComponentState::LockedIn(LockedIn { at }) => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
                 self.time_serializer.serialize(at, buffer)?;
             }
-            _ => {
-                let state_id = u32::from(ComponentStateTypeId::from(value));
-                self.u32_serializer.serialize(&state_id, buffer)?;
+            ComponentState::Active(Active { at }) => {
+                self.time_serializer.serialize(at, buffer)?;
             }
+            _ => {}
         }
         Ok(())
     }
@@ -291,8 +289,8 @@ impl ComponentStateDeserializer {
                 Included(Amount::MAX),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(0.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -336,7 +334,13 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
                 .parse(rem)?;
                 (rem2, ComponentState::locked_in(at))
             }
-            ComponentStateTypeId::Active => (rem, ComponentState::active()),
+            ComponentStateTypeId::Active => {
+                let (rem2, at) = context("Failed at value der", |input| {
+                    self.time_deserializer.deserialize(input)
+                })
+                .parse(rem)?;
+                (rem2, ComponentState::active(at))
+            }
             ComponentStateTypeId::Failed => (rem, ComponentState::failed()),
             _ => (rem, ComponentState::Error),
         };
@@ -404,8 +408,8 @@ impl AdvanceDeserializer {
                 Included(Amount::MAX),
             ),
             time_deserializer: MassaTimeDeserializer::new((
-                Included(0.into()),
-                Included(u64::MAX.into()),
+                Included(MassaTime::from_millis(0)),
+                Included(MassaTime::from_millis(u64::MAX)),
             )),
         }
     }
@@ -472,7 +476,7 @@ impl MipStateSerializer {
         Self {
             state_serializer: Default::default(),
             advance_serializer: Default::default(),
-            u32_serializer: U32VarIntSerializer::default(),
+            u32_serializer: U32VarIntSerializer,
         }
     }
 }
@@ -556,6 +560,7 @@ impl Deserializer<MipState> for MipStateDeserializer {
                             self.advance_deserializer.deserialize(input)
                         }),
                         context("Failed state id deserialization", |input| {
+                            // TEST NOTE: deser fails here for last two tests
                             let (res, state_id_) = self.state_id_deserializer.deserialize(input)?;
 
                             let state_id =
@@ -640,8 +645,8 @@ impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
 
             if entry_count > entry_count_max {
                 return Err(SerializeError::GeneralError(format!(
-                    "Too many entries in MipStoreStats latest announcements, max: {}",
-                    MIP_STORE_STATS_BLOCK_CONSIDERED
+                    "Too many entries in MipStoreStats latest announcements, max: {}, received: {}",
+                    entry_count_max, entry_count
                 )));
             }
             self.u32_serializer.serialize(&entry_count, buffer)?;
@@ -661,8 +666,8 @@ impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
 
             if entry_count_2 > entry_count_2_max {
                 return Err(SerializeError::GeneralError(format!(
-                    "Too many entries in MipStoreStats version counters, max: {}",
-                    MIP_STORE_STATS_COUNTERS_MAX
+                    "Too many entries in MipStoreStats version counters, max: {}, received: {}",
+                    entry_count_2_max, entry_count_2
                 )));
             }
             self.u32_serializer.serialize(&entry_count_2, buffer)?;
@@ -830,8 +835,8 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
         })?;
         if entry_count > MIP_STORE_MAX_ENTRIES {
             return Err(SerializeError::GeneralError(format!(
-                "Too many entries in VersioningStoreRaw, max: {}",
-                MIP_STORE_MAX_ENTRIES
+                "Too many entries in VersioningStoreRaw, max: {}, received: {}",
+                MIP_STORE_MAX_ENTRIES, entry_count
             )));
         }
         self.u32_serializer.serialize(&entry_count, buffer)?;
@@ -916,11 +921,10 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 mod test {
     use super::*;
 
-    use std::collections::HashMap;
+    use std::assert_matches::assert_matches;
     use std::mem::{size_of, size_of_val};
     use std::str::FromStr;
 
-    use chrono::{NaiveDate, NaiveDateTime};
     use more_asserts::assert_lt;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
@@ -929,14 +933,43 @@ mod test {
     use massa_time::MassaTime;
 
     #[test]
+    fn test_mip_component_non_exhaustive() {
+        let last_variant__ = std::mem::variant_count::<MipComponent>() - 2; // -1 for Nonexhaustive, -1 for index start at 0
+        let last_variant_ = u32::try_from(last_variant__).unwrap();
+        let last_variant = MipComponent::from(last_variant_);
+
+        match last_variant {
+            MipComponent::__Nonexhaustive => {
+                panic!("Should be a known enum value")
+            }
+            _ => {
+                // all good
+                println!("last variant of MipComponent is: {:?}", last_variant);
+            }
+        }
+
+        {
+            let variant__ = std::mem::variant_count::<MipComponent>() - 1;
+            let variant_ = u32::try_from(variant__).unwrap();
+            assert_matches!(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
+        }
+
+        {
+            let variant__ = std::mem::variant_count::<MipComponent>();
+            let variant_ = u32::try_from(variant__).unwrap();
+            assert_matches!(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
+        }
+    }
+
+    #[test]
     fn test_mip_info_ser_der() {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         let mut buf = Vec::new();
@@ -979,27 +1012,16 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        let start: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 01)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 11)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let now: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 05, 11)
-            .unwrap()
-            .and_hms_opt(11, 33, 44)
-            .unwrap();
+        let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
+        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
+        let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
 
         let adv = Advance {
-            start_timestamp: MassaTime::from(start.timestamp() as u64),
-            timeout: MassaTime::from(timeout.timestamp() as u64),
+            start_timestamp: start,
+            timeout,
             threshold: Default::default(),
-            now: MassaTime::from(now.timestamp() as u64),
-            activation_delay: MassaTime::from(20),
+            now,
+            activation_delay: MassaTime::from_millis(20),
         };
 
         let mut buf = Vec::new();
@@ -1016,7 +1038,7 @@ mod test {
 
     #[test]
     fn test_mip_state_ser_der() {
-        let state_1 = MipState::new(MassaTime::from(100));
+        let state_1 = MipState::new(MassaTime::from_millis(100));
 
         let mut buf = Vec::new();
         let state_ser = MipStateSerializer::new();
@@ -1033,13 +1055,14 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
 
-        let state_2 = advance_state_until(ComponentState::locked_in(MassaTime::from(3)), &mi_1);
+        let state_2 =
+            advance_state_until(ComponentState::locked_in(MassaTime::from_millis(3)), &mi_1);
         state_ser.serialize(&state_2, &mut buf).unwrap();
         let (rem2, state_der_res) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
 
@@ -1086,22 +1109,23 @@ mod test {
         let mi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(2),
-            timeout: MassaTime::from(5),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         let mi_3 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Block, 1)]),
-            start: MassaTime::from(12),
-            timeout: MassaTime::from(17),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Block, 1)]),
+            start: MassaTime::from_millis(12),
+            timeout: MassaTime::from_millis(17),
+            activation_delay: MassaTime::from_millis(2),
         };
 
-        let state_2 = advance_state_until(ComponentState::active(), &mi_2);
+        let _time = MassaTime::now().unwrap();
+        let state_2 = advance_state_until(ComponentState::active(_time), &mi_2);
         let state_3 = advance_state_until(
             ComponentState::started(Amount::from_str("42.4242").unwrap()),
             &mi_3,
@@ -1126,10 +1150,10 @@ mod test {
         let mut mi_base = MipInfo {
             name: "A".repeat(254),
             version: 0,
-            components: HashMap::from([(MipComponent::Address, 0)]),
-            start: MassaTime::from(0),
-            timeout: MassaTime::from(2),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 0)]),
+            start: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(2),
+            activation_delay: MassaTime::from_millis(2),
         };
 
         // Note: we did not add the name ptr and hashmap ptr, only the data inside
@@ -1141,6 +1165,7 @@ mod test {
 
         let mut all_state_size = 0;
 
+        let _time = MassaTime::now().unwrap();
         let store_raw_: Vec<(MipInfo, MipState)> = (0..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += 1;
@@ -1148,10 +1173,10 @@ mod test {
                     .components
                     .entry(MipComponent::Address)
                     .and_modify(|e| *e += 1);
-                mi_base.start = mi_base.timeout.saturating_add(MassaTime::from(1));
-                mi_base.timeout = mi_base.start.saturating_add(MassaTime::from(2));
+                mi_base.start = mi_base.timeout.saturating_add(MassaTime::from_millis(1));
+                mi_base.timeout = mi_base.start.saturating_add(MassaTime::from_millis(2));
 
-                let state = advance_state_until(ComponentState::active(), &mi_base);
+                let state = advance_state_until(ComponentState::active(_time), &mi_base);
 
                 all_state_size += size_of_val(&state.state);
                 all_state_size += state.history.len() * (size_of::<Advance>() + size_of::<u32>());

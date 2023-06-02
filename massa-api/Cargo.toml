@@ -1,6 +1,6 @@
 [package]
 name = "massa_api"
-version = "0.1.0"
+version = "0.23.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -28,8 +28,9 @@ massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_storage = { path = "../massa-storage" }
-massa_serialization = { path = "../massa-serialization"}
+massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_versioning = { path = "../massa-versioning" }
 massa_hash = { path = "../massa-hash" }
 massa_wallet = { path = "../massa-wallet" }

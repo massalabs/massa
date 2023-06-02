@@ -1,12 +1,11 @@
-use std::{collections::VecDeque, num::NonZeroUsize, thread::JoinHandle, time::Instant};
+use std::{collections::VecDeque, thread::JoinHandle};
 
 use crossbeam::channel::{Receiver, Sender};
-use lru::LruCache;
 use massa_logging::massa_trace;
 use massa_models::{block_id::BlockId, prehash::PreHashSet};
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
-use peernet::peer_id::PeerId;
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -64,41 +63,18 @@ impl PropagationThread {
                                     continue;
                                 }
                             };
-
-                            // Clean shared cache if peers do not exist anymore
-                            {
-                                let mut cache_write = self.cache.write();
-                                let peers: Vec<PeerId> = cache_write
-                                    .blocks_known_by_peer
-                                    .iter()
-                                    .map(|(id, _)| id.clone())
-                                    .collect();
-                                let peers_connected =
-                                    self.active_connections.get_peer_ids_connected();
-                                for peer_id in peers {
-                                    if !peers_connected.contains(&peer_id) {
-                                        cache_write.blocks_known_by_peer.pop(&peer_id);
-                                    }
-                                }
-                                for peer_id in peers_connected {
-                                    if !cache_write.blocks_known_by_peer.contains(&peer_id) {
-                                        //TODO: Change to detect the connection before
-                                        cache_write.blocks_known_by_peer.put(
-                                            peer_id,
-                                            (
-                                                LruCache::new(
-                                                    NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                                                        .expect("max_node_known_blocks_size in config must be > 0"),
-                                                ),
-                                                Instant::now(),
-                                            ),
-                                        );
-                                    }
-                                }
-                            }
+                            let peers_connected = self.active_connections.get_peer_ids_connected();
+                            self.cache.write().update_cache(
+                                peers_connected,
+                                self.config
+                                    .max_node_known_blocks_size
+                                    .try_into()
+                                    .expect("max_node_known_blocks_size is too big"),
+                            );
                             {
                                 let cache_read = self.cache.read();
-                                for (peer_id, (blocks_known, _)) in &cache_read.blocks_known_by_peer
+                                for (peer_id, (blocks_known, _)) in
+                                    cache_read.blocks_known_by_peer.iter()
                                 {
                                     // peer that isn't asking for that block
                                     let cond = blocks_known.peek(&block_id);
@@ -161,7 +137,7 @@ impl PropagationThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }

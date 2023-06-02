@@ -131,14 +131,19 @@ message AsyncPoolChangeValue {
   // The type of the change
   AsyncPoolChangeType type = 1;
   // AsyncPool message
-  AsyncMessage async_message = 2;
+  oneof message {
+    // Created ledger entry
+    AsyncMessage created_message = 2;
+    // Update ledger entry 
+    AsyncMessageUpdate updated_message = 3;
+  }
 }
 
 // AsyncPoolChangeType type enum
 enum AsyncPoolChangeType {
   ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED = 0; // Default enum value
-  ASYNC_POOL_CHANGE_TYPE_ADD = 1; // Add type
-  ASYNC_POOL_CHANGE_TYPE_ACTIVATE = 2; // Activate only type
+  ASYNC_POOL_CHANGE_TYPE_SET = 1; // Add type
+  ASYNC_POOL_CHANGE_TYPE_UPDATE = 2; // Activate only type
   ASYNC_POOL_CHANGE_TYPE_DELETE = 3; // Delete only type
 }
 
@@ -177,6 +182,91 @@ message AsyncMessage {
   bool can_be_executed = 13;
   // Hash of the message
   string hash = 14;
+}
+
+// Asynchronous smart contract message
+message AsyncMessageUpdate {
+  // Change the slot at which the message was emitted
+  SetOrKeepSlot emission_slot = 1;
+  // Change the index of the emitted message within the `emission_slot`.
+  // This is used for disambiguate the emission of multiple messages at the same slot.
+  SetOrKeepFixed64 emission_index = 2;
+  // Change the address that sent the message
+  SetOrKeepString sender = 3;
+  // Change the address towards which the message is being sent
+  SetOrKeepString destination = 4;
+  // Change the handler function name within the destination address' bytecode
+  SetOrKeepString handler = 5;
+  // Change the maximum gas to use when processing the message
+  SetOrKeepFixed64 max_gas = 6;
+  // Change the fee paid by the sender when the message is processed.
+  SetOrKeepFixed64 fee = 7;
+  // Change the coins sent from the sender to the target address of the message.
+  // Those coins are spent by the sender address when the message is sent,
+  // and credited to the destination address when receiving the message.
+  // In case of failure or discard, those coins are reimbursed to the sender.
+  SetOrKeepFixed64 coins = 8;
+  // Change the slot at which the message starts being valid (bound included in the validity range)
+  SetOrKeepSlot validity_start = 9;
+  // Change the slot at which the message stops being valid (bound not included in the validity range)
+  SetOrKeepSlot validity_end = 10;
+  // Change the raw payload data of the message
+  SetOrKeepBytes data = 11;
+  // Change the trigger that define whenever a message can be executed
+  SetOrKeepAsyncMessageTrigger trigger = 12;
+  // Change the boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+  // For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+  SetOrKeepBool can_be_executed = 13;
+  // Change the hash of the message
+  SetOrKeepString hash = 14;
+}
+
+// Set or Keep Slot
+message SetOrKeepSlot {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional Slot value = 2;
+}
+
+// Set or Keep Fixed64
+message SetOrKeepFixed64 {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional fixed64 value = 2;
+}
+
+// Set or Keep String
+message SetOrKeepString {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional string value = 2;
+}
+
+// Set or Keep Bytes
+message SetOrKeepBytes {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional bytes value = 2;
+}
+
+// Set or Keep Bool
+message SetOrKeepBool {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional bool value = 2;
+}
+
+// Set or Keep AsyncMessageTrigger
+message SetOrKeepAsyncMessageTrigger {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional AsyncMessageTrigger value = 2;
 }
 
 // Structure defining a trigger for an asynchronous message

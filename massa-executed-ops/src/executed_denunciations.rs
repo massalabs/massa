@@ -4,7 +4,8 @@
 //! Used to detect denunciation reuse.
 
 use std::collections::{BTreeMap, HashSet};
-use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::ops::Bound::{Excluded, Included};
+use std::sync::Arc;
 
 use nom::{
     error::{context, ContextError, ParseError},
@@ -12,103 +13,149 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use parking_lot::RwLock;
 
 use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
-
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_db::{
+    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
+    EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
+};
 use massa_models::denunciation::Denunciation;
-use massa_models::streaming_step::StreamingStep;
 use massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 
-const EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+/// Denunciation index key formatting macro
+#[macro_export]
+macro_rules! denunciation_index_key {
+    ($id:expr) => {
+        [&EXECUTED_DENUNCIATIONS_PREFIX.as_bytes(), &$id[..]].concat()
+    };
+}
 
 /// A structure to list and prune previously executed denunciations
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ExecutedDenunciations {
     /// Executed denunciations configuration
     config: ExecutedDenunciationsConfig,
+    /// Access to the RocksDB database
+    pub db: Arc<RwLock<MassaDB>>,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
-    /// for better insertion complexity
-    pub denunciations: HashSet<DenunciationIndex>,
-    /// Accumulated hash of the executed denunciations
-    pub hash: Hash,
+    /// for rocksdb serialization
+    denunciation_index_serializer: DenunciationIndexSerializer,
+    /// for rocksdb deserialization
+    denunciation_index_deserializer: DenunciationIndexDeserializer,
 }
 
 impl ExecutedDenunciations {
     /// Create a new `ExecutedDenunciations`
-    pub fn new(config: ExecutedDenunciationsConfig) -> Self {
+    pub fn new(config: ExecutedDenunciationsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+        let denunciation_index_deserializer =
+            DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
         Self {
             config,
+            db,
             sorted_denunciations: Default::default(),
-            denunciations: Default::default(),
-            hash: Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES),
+            denunciation_index_serializer: DenunciationIndexSerializer::new(),
+            denunciation_index_deserializer,
         }
     }
 
-    /// Reset the executed operations
+    /// Recomputes the local caches after bootstrap or loading the state from disk
+    pub fn recompute_sorted_denunciations(&mut self) {
+        self.sorted_denunciations.clear();
+
+        let db = self.db.read();
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
+
+        for (serialized_de_idx, _) in db
+            .db
+            .prefix_iterator_cf(handle, EXECUTED_DENUNCIATIONS_PREFIX)
+            .flatten()
+        {
+            if !serialized_de_idx.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+                break;
+            }
+            let (_, de_idx) = self
+                .denunciation_index_deserializer
+                .deserialize::<DeserializeError>(
+                    &serialized_de_idx[EXECUTED_DENUNCIATIONS_PREFIX.len()..],
+                )
+                .expect(EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR);
+
+            self.sorted_denunciations
+                .entry(*de_idx.get_slot())
+                .and_modify(|ids| {
+                    ids.insert(de_idx);
+                })
+                .or_insert_with(|| {
+                    let mut new = HashSet::default();
+                    new.insert(de_idx);
+                    new
+                });
+        }
+    }
+
+    /// Reset the executed denunciations
     ///
     /// USED FOR BOOTSTRAP ONLY
     pub fn reset(&mut self) {
-        self.sorted_denunciations.clear();
-        self.denunciations.clear();
-        self.hash = Hash::from_bytes(EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES);
-    }
+        {
+            let mut db = self.db.write();
+            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF, None);
+        }
 
-    /// Returns the number of executed operations
-    pub fn len(&self) -> usize {
-        self.denunciations.len()
-    }
-
-    /// Check executed ops emptiness
-    pub fn is_empty(&self) -> bool {
-        self.denunciations.is_empty()
+        self.recompute_sorted_denunciations();
     }
 
     /// Check if a denunciation (e.g. a denunciation index) was executed
     pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
-        self.denunciations.contains(de_idx)
-    }
+        let db = self.db.read();
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-    /// Internal function used to insert the values of an operation id iter and update the object hash
-    fn extend_and_compute_hash<'a, I>(&mut self, values: I)
-    where
-        I: Iterator<Item = &'a DenunciationIndex>,
-    {
-        for de_idx in values {
-            if self.denunciations.insert((*de_idx).clone()) {
-                self.hash ^= de_idx.get_hash();
-            }
-        }
+        let mut serialized_de_idx = Vec::new();
+        self.denunciation_index_serializer
+            .serialize(de_idx, &mut serialized_de_idx)
+            .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
+
+        db.db
+            .get_cf(handle, denunciation_index_key!(serialized_de_idx))
+            .expect(CRUD_ERROR)
+            .is_some()
     }
 
     /// Apply speculative operations changes to the final executed denunciations state
-    pub fn apply_changes(&mut self, changes: ExecutedDenunciationsChanges, slot: Slot) {
-        self.extend_and_compute_hash(changes.iter());
+    pub fn apply_changes_to_batch(
+        &mut self,
+        changes: ExecutedDenunciationsChanges,
+        slot: Slot,
+        batch: &mut DBBatch,
+    ) {
         for de_idx in changes {
+            self.put_entry(&de_idx, batch);
             self.sorted_denunciations
                 .entry(*de_idx.get_slot())
                 .and_modify(|ids| {
-                    ids.insert(de_idx.clone());
+                    ids.insert(de_idx);
                 })
                 .or_insert_with(|| {
                     let mut new = HashSet::default();
-                    new.insert(de_idx.clone());
+                    new.insert(de_idx);
                     new
                 });
         }
 
-        self.prune(slot);
+        self.prune_to_batch(slot, batch);
     }
 
     /// Prune all denunciations that have expired, assuming the given slot is final
-    fn prune(&mut self, slot: Slot) {
+    fn prune_to_batch(&mut self, slot: Slot, batch: &mut DBBatch) {
         let drained: Vec<(Slot, HashSet<DenunciationIndex>)> = self
             .sorted_denunciations
             .drain_filter(|de_idx_slot, _| {
@@ -122,67 +169,61 @@ impl ExecutedDenunciations {
 
         for (_slot, de_indexes) in drained {
             for de_idx in de_indexes {
-                self.denunciations.remove(&de_idx);
-                self.hash ^= de_idx.get_hash();
+                self.delete_entry(&de_idx, batch)
             }
         }
     }
 
-    /// Get a part of the executed denunciations.
-    /// Used exclusively by the bootstrap server.
+    /// Add a denunciation_index to the DB
     ///
-    /// # Returns
-    /// A tuple containing the data and the next executed de streaming step
-    pub fn get_executed_de_part(
-        &self,
-        cursor: StreamingStep<Slot>,
-    ) -> (
-        BTreeMap<Slot, HashSet<DenunciationIndex>>,
-        StreamingStep<Slot>,
-    ) {
-        let mut de_part = BTreeMap::new();
-        let left_bound = match cursor {
-            StreamingStep::Started => Unbounded,
-            StreamingStep::Ongoing(slot) => Excluded(slot),
-            StreamingStep::Finished(_) => return (de_part, cursor),
+    /// # Arguments
+    /// * `de_idx`
+    /// * `batch`: the given operation batch to update
+    fn put_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
+        let db = self.db.read();
+
+        let mut serialized_de_idx = Vec::new();
+        self.denunciation_index_serializer
+            .serialize(de_idx, &mut serialized_de_idx)
+            .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
+
+        db.put_or_update_entry_value(batch, denunciation_index_key!(serialized_de_idx), b"");
+    }
+
+    /// Remove a denunciation_index from the DB
+    ///
+    /// # Arguments
+    /// * `de_idx`: the denunciation index to remove
+    /// * batch: the given operation batch to update
+    fn delete_entry(&self, de_idx: &DenunciationIndex, batch: &mut DBBatch) {
+        let db = self.db.read();
+
+        let mut serialized_de_idx = Vec::new();
+        self.denunciation_index_serializer
+            .serialize(de_idx, &mut serialized_de_idx)
+            .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
+
+        db.delete_key(batch, denunciation_index_key!(serialized_de_idx));
+    }
+
+    /// Deserializes the key and value, useful after bootstrap
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+            return false;
+        }
+
+        let Ok((rest, _idx)) = self.denunciation_index_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..]) else {
+            return false;
         };
-        let mut de_part_last_slot: Option<Slot> = None;
-        for (slot, ids) in self.sorted_denunciations.range((left_bound, Unbounded)) {
-            if de_part.len() < self.config.bootstrap_part_size as usize {
-                de_part.insert(*slot, ids.clone());
-                de_part_last_slot = Some(*slot);
-            } else {
-                break;
-            }
+        if !rest.is_empty() {
+            return false;
         }
-        if let Some(last_slot) = de_part_last_slot {
-            (de_part, StreamingStep::Ongoing(last_slot))
-        } else {
-            (de_part, StreamingStep::Finished(None))
-        }
-    }
 
-    /// Set a part of the executed denunciations.
-    /// Used exclusively by the bootstrap client.
-    /// Takes the data returned from `get_executed_de_part` as input.
-    ///
-    /// # Returns
-    /// The next executed de streaming step
-    pub fn set_executed_de_part(
-        &mut self,
-        part: BTreeMap<Slot, HashSet<DenunciationIndex>>,
-    ) -> StreamingStep<Slot> {
-        self.sorted_denunciations.extend(part.clone());
-        self.extend_and_compute_hash(part.iter().flat_map(|(_, ids)| ids));
-        if let Some(slot) = self
-            .sorted_denunciations
-            .last_key_value()
-            .map(|(slot, _)| slot)
-        {
-            StreamingStep::Ongoing(*slot)
-        } else {
-            StreamingStep::Finished(None)
+        if !serialized_value.is_empty() {
+            return false;
         }
+
+        true
     }
 }
 

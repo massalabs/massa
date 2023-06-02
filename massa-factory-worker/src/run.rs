@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::sync::{mpsc, Arc};
 
@@ -23,6 +24,7 @@ pub fn start_factory(
     cfg: FactoryConfig,
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
+    mip_store: MipStore,
 ) -> Box<dyn FactoryManager> {
     // create block factory channel
     let (block_worker_tx, block_worker_rx) = mpsc::channel::<()>();
@@ -36,6 +38,7 @@ pub fn start_factory(
         wallet.clone(),
         channels.clone(),
         block_worker_rx,
+        mip_store,
     );
 
     // start endorsement factory worker

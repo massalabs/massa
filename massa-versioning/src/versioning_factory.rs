@@ -7,7 +7,7 @@ use crate::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipS
 
 /// Factory error
 #[allow(missing_docs)]
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum FactoryError {
     #[error("Unknown version, cannot build obj with version: {0}")]
     UnknownVersion(u32),
@@ -23,7 +23,7 @@ pub enum FactoryError {
 /// Strategy to use when creating a new object from a factory
 pub enum FactoryStrategy {
     /// use get_latest_version (see Factory trait)
-    Latest,
+    // Latest,
     /// Require to create an object with this specific version
     Exact(u32),
     /// Create an object given a timestamp (e.g slot)
@@ -54,19 +54,19 @@ pub trait VersioningFactory {
     /// Access to the MipStore
     fn get_versioning_store(&self) -> MipStore;
 
+    /*
     /// Get latest component version (aka last active for the factory component)
     fn get_latest_component_version(&self) -> u32 {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = ComponentState::active();
 
         vi_store
             .store
             .iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                if vsh.state == state_active {
+                if matches!(vsh.state, ComponentState::Active(_)) {
                     vi.components.get(&component).copied()
                 } else {
                     None
@@ -74,13 +74,13 @@ pub trait VersioningFactory {
             })
             .unwrap_or(0)
     }
+    */
 
     /// Get latest version at given timestamp (e.g. slot)
     fn get_latest_component_version_at(&self, ts: MassaTime) -> Result<u32, FactoryError> {
         let component = Self::get_component();
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
-        let state_active = ComponentState::active();
 
         // Iter backward, filter component + state active,
         let version = vi_store
@@ -88,7 +88,8 @@ pub trait VersioningFactory {
             .iter()
             .rev()
             .filter(|(vi, vsh)| {
-                vi.components.get(&component).is_some() && vsh.state == state_active
+                vi.components.get(&component).is_some()
+                    && matches!(vsh.state, ComponentState::Active(_))
             })
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
@@ -108,9 +109,8 @@ pub trait VersioningFactory {
         let vi_store_ = self.get_versioning_store();
         let vi_store = vi_store_.0.read();
 
-        let state_active = ComponentState::active();
         let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
-            if vsh.state == state_active {
+            if matches!(vsh.state, ComponentState::Active(_)) {
                 vi.components.get(&component).copied()
             } else {
                 None
@@ -139,11 +139,29 @@ pub trait VersioningFactory {
             .collect()
     }
 
+    /// Get the version the current component with the given startegy
+    fn get_component_version_with_strategy(
+        &self,
+        strategy: FactoryStrategy,
+    ) -> Result<u32, FactoryError> {
+        match strategy {
+            FactoryStrategy::Exact(v) => match self.get_all_component_versions().get(&v) {
+                Some(s) if *s == ComponentStateTypeId::Active => Ok(v),
+                Some(s) if *s != ComponentStateTypeId::Active => {
+                    Err(FactoryError::OnStateNotReady(v))
+                }
+                _ => Err(FactoryError::UnknownVersion(v)),
+            },
+            FactoryStrategy::At(ts) => self.get_latest_component_version_at(ts),
+            // None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
+        }
+    }
+
     /// Create an object of type Self::Output
     fn create(
         &self,
         args: &Self::Arguments,
-        strategy: Option<FactoryStrategy>,
+        strategy: FactoryStrategy,
     ) -> Result<Self::Output, Self::Error>;
 }
 
@@ -151,7 +169,7 @@ pub trait VersioningFactory {
 mod test {
     use super::*;
 
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
     use crate::versioning::{MipInfo, MipState, MipStatsConfig};
@@ -161,12 +179,12 @@ mod test {
     // Define a struct Address with 2 versions AddressV0 & AddressV1
     #[allow(dead_code)]
     #[derive(Debug)]
-    struct AddressV0 {
+    struct TestAddressV0 {
         hash: String,
     }
 
     #[allow(dead_code)]
-    impl AddressV0 {
+    impl TestAddressV0 {
         fn new(hash: String) -> Self {
             Self { hash }
         }
@@ -174,14 +192,14 @@ mod test {
 
     #[allow(dead_code)]
     #[derive(Debug)]
-    struct AddressV1 {
+    struct TestAddressV1 {
         slot: String,
         creator: String,
         index: u32,
     }
 
     #[allow(dead_code)]
-    impl AddressV1 {
+    impl TestAddressV1 {
         fn new(slot: String, creator: String, index: u32) -> Self {
             Self {
                 slot,
@@ -192,13 +210,12 @@ mod test {
     }
 
     #[derive(Debug)]
-    enum Address {
-        V0(AddressV0),
-        V1(AddressV1),
+    enum TestAddress {
+        V0(TestAddressV0),
+        V1(TestAddressV1),
     }
 
-    //
-    struct AddressArgs {
+    struct TestAddressArgs {
         // V0
         hash: Option<String>,
         // V1
@@ -210,14 +227,14 @@ mod test {
     // Now we define an Address factory
 
     #[derive(Debug)]
-    struct AddressFactory {
+    struct TestAddressFactory {
         versioning_store: MipStore,
     }
 
-    impl VersioningFactory for AddressFactory {
-        type Output = Address;
+    impl VersioningFactory for TestAddressFactory {
+        type Output = TestAddress;
         type Error = FactoryError;
-        type Arguments = AddressArgs;
+        type Arguments = TestAddressArgs;
 
         fn get_component() -> MipComponent {
             MipComponent::Address
@@ -230,31 +247,18 @@ mod test {
         fn create(
             &self,
             args: &Self::Arguments,
-            strategy: Option<FactoryStrategy>,
+            strategy: FactoryStrategy,
         ) -> Result<Self::Output, Self::Error> {
-            let version = match strategy {
-                Some(FactoryStrategy::Exact(v)) => {
-                    // This is not optimal - can use get_versions and return a less descriptive error
-                    match self.get_all_component_versions().get(&v) {
-                        Some(s) if *s == ComponentStateTypeId::Active => Ok(v),
-                        Some(s) if *s != ComponentStateTypeId::Active => {
-                            Err(FactoryError::OnStateNotReady(v))
-                        }
-                        _ => Err(FactoryError::UnknownVersion(v)),
-                    }
-                }
-                Some(FactoryStrategy::At(ts)) => self.get_latest_component_version_at(ts),
-                None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
-            };
+            let version = self.get_component_version_with_strategy(strategy);
 
             match version {
-                Ok(0) => Ok(Address::V0(AddressV0 {
+                Ok(0) => Ok(TestAddress::V0(TestAddressV0 {
                     hash: args.hash.clone().ok_or(FactoryError::OnCreate(
                         stringify!(Self::Output).to_string(),
                         "Please provide hash in args".to_string(),
                     ))?,
                 })),
-                Ok(1) => Ok(Address::V1(AddressV1 {
+                Ok(1) => Ok(TestAddress::V1(TestAddressV1 {
                     slot: args.slot.clone().ok_or(FactoryError::OnCreate(
                         stringify!(Self::Output).to_string(),
                         "Please provide 'slot' in args".to_string(),
@@ -273,22 +277,22 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(12),
-            timeout: MassaTime::from(15),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(12),
+            timeout: MassaTime::from_millis(15),
+            activation_delay: MassaTime::from_millis(2),
         };
-        let vs_1 = MipState::new(MassaTime::from(10));
+        let vs_1 = MipState::new(MassaTime::from_millis(10));
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 2)]),
-            start: MassaTime::from(25),
-            timeout: MassaTime::from(28),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
+            start: MassaTime::from_millis(25),
+            timeout: MassaTime::from_millis(28),
+            activation_delay: MassaTime::from_millis(2),
         };
-        let vs_2 = MipState::new(MassaTime::from(18));
+        let vs_2 = MipState::new(MassaTime::from_millis(18));
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
@@ -300,17 +304,17 @@ mod test {
             mip_stats_cfg,
         ))
         .unwrap();
-        let fa = AddressFactory {
+        let fa = TestAddressFactory {
             versioning_store: vs.clone(),
         };
 
-        let args = AddressArgs {
+        let args = TestAddressArgs {
             hash: Some("sdofjsklfhskfjl".into()),
             slot: Some("slot_4_2".to_string()),
             creator: Some("me_pubk".to_string()),
             index: Some(3),
         };
-        let args_no_v1 = AddressArgs {
+        let args_no_v1 = TestAddressArgs {
             hash: Some("sdofjsklfhskfjl".into()),
             slot: None,
             creator: Some("me_pubk".to_string()),
@@ -318,17 +322,17 @@ mod test {
         };
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0]);
-        assert_eq!(fa.get_latest_component_version(), 0);
 
-        let addr_a = fa.create(&args, None);
-        assert!(matches!(addr_a, Ok(Address::V0(_))));
+        let addr_a = fa.create(&args, 0.into());
+        assert!(matches!(addr_a, Ok(TestAddress::V0(_))));
         //
         // Version 2 is unknown
-        let addr_ = fa.create(&args, Some(2.into()));
+        let addr_ = fa.create(&args, 2.into());
         assert!(matches!(addr_, Err(FactoryError::OnStateNotReady(2))));
 
         // Advance state 1 to Active
-        let vs_1_new = advance_state_until(ComponentState::active(), &vi_1);
+        let _time = MassaTime::now().unwrap();
+        let vs_1_new = advance_state_until(ComponentState::active(_time), &vi_1);
         // Create a new factory
         let info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
         // Update versioning store
@@ -342,43 +346,44 @@ mod test {
                 .collect::<Vec<u32>>(),
             vec![0, 1, 2]
         );
-        assert_eq!(fa.get_latest_component_version(), 1);
-        let addr_b = fa.create(&args, None);
-        assert!(matches!(addr_b, Ok(Address::V1(_))));
+        // assert_eq!(fa.get_latest_component_version(), 1);
+        let addr_b = fa.create(&args, FactoryStrategy::At(MassaTime::now().unwrap()));
+        assert!(matches!(addr_b, Ok(TestAddress::V1(_))));
 
         // Error if not enough args
-        let addr_ = fa.create(&args_no_v1, Some(1.into()));
+        let addr_ = fa.create(&args_no_v1, 1.into());
         assert!(matches!(addr_, Err(FactoryError::OnCreate(_, _))));
 
         // Can still create AddressV0
-        let addr_c = fa.create(&args, Some(0.into()));
+        let addr_c = fa.create(&args, 0.into());
         println!("addr_c: {:?}", addr_c);
-        assert!(matches!(addr_c, Ok(Address::V0(_))));
+        assert!(matches!(addr_c, Ok(TestAddress::V0(_))));
     }
 
     #[test]
     fn test_factory_strategy_at() {
         // Test factory & FactoryStrategy::At(...)
 
+        let _time = MassaTime::now().unwrap();
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            components: HashMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from(12),
-            timeout: MassaTime::from(15),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(12),
+            timeout: MassaTime::from_millis(15),
+            activation_delay: MassaTime::from_millis(2),
         };
-        let vs_1 = advance_state_until(ComponentState::active(), &vi_1);
+        let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
 
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 2)]),
-            start: MassaTime::from(25),
-            timeout: MassaTime::from(28),
-            activation_delay: MassaTime::from(2),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
+            start: MassaTime::from_millis(25),
+            timeout: MassaTime::from_millis(28),
+            activation_delay: MassaTime::from_millis(2),
         };
-        let vs_2 = MipState::new(MassaTime::from(18));
+        let vs_2 = MipState::new(MassaTime::from_millis(18));
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
@@ -391,11 +396,11 @@ mod test {
         ))
         .unwrap();
 
-        let fa = AddressFactory {
+        let fa = TestAddressFactory {
             versioning_store: vs.clone(),
         };
 
-        let args = AddressArgs {
+        let args = TestAddressArgs {
             hash: Some("sdofjsklfhskfjl".into()),
             slot: Some("slot_4_2".to_string()),
             creator: Some("me_pubk".to_string()),
@@ -403,33 +408,33 @@ mod test {
         };
 
         //
-        let st_1 = FactoryStrategy::At(MassaTime::from(8)); // vi_1 not yet defined
-        let ts_1_2 = MassaTime::from(13);
+        let st_1 = FactoryStrategy::At(MassaTime::from_millis(8)); // vi_1 not yet defined
+        let ts_1_2 = MassaTime::from_millis(13);
         let st_1_2 = FactoryStrategy::At(ts_1_2); // vi_1 is started (after vi_1.start)
-        let st_2 = FactoryStrategy::At(MassaTime::from(18)); // vi_1 is active (after start + activation delay)
-        let st_3 = FactoryStrategy::At(MassaTime::from(27)); // vi_2 is started or locked_in
-        let st_4 = FactoryStrategy::At(MassaTime::from(30)); // vi_2 is active (after vi_2.timeout)
+        let st_2 = FactoryStrategy::At(MassaTime::from_millis(18)); // vi_1 is active (after start + activation delay)
+        let st_3 = FactoryStrategy::At(MassaTime::from_millis(27)); // vi_2 is started or locked_in
+        let st_4 = FactoryStrategy::At(MassaTime::from_millis(30)); // vi_2 is active (after vi_2.timeout)
 
-        let addr_st_1 = fa.create(&args, Some(st_1));
-        let addr_st_1_2 = fa.create(&args, Some(st_1_2.clone()));
-        let addr_st_2 = fa.create(&args, Some(st_2));
-        let addr_st_3 = fa.create(&args, Some(st_3));
-        let addr_st_4 = fa.create(&args, Some(st_4.clone()));
+        let addr_st_1 = fa.create(&args, st_1);
+        let addr_st_1_2 = fa.create(&args, st_1_2.clone());
+        let addr_st_2 = fa.create(&args, st_2);
+        let addr_st_3 = fa.create(&args, st_3);
+        let addr_st_4 = fa.create(&args, st_4.clone());
 
-        assert!(matches!(addr_st_1, Ok(Address::V0(_))));
-        assert!(matches!(addr_st_1_2, Ok(Address::V0(_))));
-        assert!(matches!(addr_st_2, Ok(Address::V1(_))));
-        assert!(matches!(addr_st_3, Ok(Address::V1(_))));
-        assert!(matches!(addr_st_4, Ok(Address::V1(_)))); // for now, vs_2 is not active yet
+        assert!(matches!(addr_st_1, Ok(TestAddress::V0(_))));
+        assert!(matches!(addr_st_1_2, Ok(TestAddress::V0(_))));
+        assert!(matches!(addr_st_2, Ok(TestAddress::V1(_))));
+        assert!(matches!(addr_st_3, Ok(TestAddress::V1(_))));
+        assert!(matches!(addr_st_4, Ok(TestAddress::V1(_)))); // for now, vs_2 is not active yet
 
         // Advance state 2 to Active
-        let vs_2_new = advance_state_until(ComponentState::active(), &vi_2);
+        let vs_2_new = advance_state_until(ComponentState::active(_time), &vi_2);
         let info = BTreeMap::from([(vi_1.clone(), vs_1), (vi_2.clone(), vs_2_new)]);
         // Update versioning store
         vs.0.write().store = info;
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0, 1, 2]);
-        let addr_st_4 = fa.create(&args, Some(st_4));
+        let addr_st_4 = fa.create(&args, st_4);
         // Version 2 is selected but this is not implemented in factory yet
         assert!(matches!(
             addr_st_4,

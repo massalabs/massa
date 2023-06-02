@@ -330,7 +330,7 @@ pub fn secure_share_to_vec(value: grpc::SecureShare) -> Result<Vec<u8>, ModelsEr
         Vec::with_capacity(value.signature.len() + pub_key_b.len() + value.serialized_data.len());
     serialized_content
         .extend_from_slice(&Signature::from_str(&value.signature).map(|value| value.to_bytes())?);
-    serialized_content.extend_from_slice(pub_key_b);
+    serialized_content.extend_from_slice(&pub_key_b);
     serialized_content.extend_from_slice(&value.serialized_data);
 
     Ok(serialized_content)

@@ -3,15 +3,15 @@ use std::{
     net::SocketAddr,
 };
 
-use massa_protocol_exports::ProtocolError;
+use massa_protocol_exports::{PeerId, ProtocolError};
 use peernet::{
     network_manager::{PeerNetManager, SharedActiveConnections},
     peer::PeerConnectionType,
-    peer_id::PeerId,
-    transports::{OutConnectionConfig, TransportType},
+    transports::TransportType,
 };
 
 use crate::{
+    context::Context,
     handlers::peer_handler::MassaHandshake,
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
@@ -40,7 +40,7 @@ impl Clone for Box<dyn ActiveConnectionsTrait> {
     }
 }
 
-impl ActiveConnectionsTrait for SharedActiveConnections {
+impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
     fn send_to_peer(
         &self,
         peer_id: &PeerId,
@@ -51,7 +51,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections {
         if let Some(connection) = self.read().connections.get(peer_id) {
             connection
                 .send_channels
-                .send(message_serializer, message, high_priority)
+                .try_send(message_serializer, message, high_priority)
                 .map_err(|err| ProtocolError::SendError(err.to_string()))
         } else {
             Err(ProtocolError::SendError(
@@ -118,16 +118,17 @@ pub trait NetworkController: Send + Sync {
         &mut self,
         addr: SocketAddr,
         timeout: std::time::Duration,
-        out_connection_config: &OutConnectionConfig,
     ) -> Result<(), ProtocolError>;
 }
 
 pub struct NetworkControllerImpl {
-    peernet_manager: PeerNetManager<MassaHandshake, MessagesHandler>,
+    peernet_manager: PeerNetManager<PeerId, Context, MassaHandshake, MessagesHandler>,
 }
 
 impl NetworkControllerImpl {
-    pub fn new(peernet_manager: PeerNetManager<MassaHandshake, MessagesHandler>) -> Self {
+    pub fn new(
+        peernet_manager: PeerNetManager<PeerId, Context, MassaHandshake, MessagesHandler>,
+    ) -> Self {
         Self { peernet_manager }
     }
 }
@@ -161,10 +162,10 @@ impl NetworkController for NetworkControllerImpl {
         &mut self,
         addr: SocketAddr,
         timeout: std::time::Duration,
-        out_connection_config: &OutConnectionConfig,
     ) -> Result<(), ProtocolError> {
+        //TODO: Change when we support multiple transports
         self.peernet_manager
-            .try_connect(addr, timeout, out_connection_config)
+            .try_connect(TransportType::Tcp, addr, timeout)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         Ok(())
     }

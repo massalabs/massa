@@ -141,22 +141,18 @@ pub struct Settings {
 pub struct ConsensusSettings {
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
-    /// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
-    pub future_block_processing_max_periods: u64,
     /// Maximum number of blocks allowed in `FutureIncomingBlocks`.
     pub max_future_processing_blocks: usize,
     /// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
     pub max_dependency_blocks: usize,
     /// stats time span
     pub stats_timespan: MassaTime,
-    /// max event send wait
-    pub max_send_wait: MassaTime,
     /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
+    /// force keep at least this number of final periods without operations in RAM for each thread
+    pub force_keep_final_periods_without_ops: u64,
     /// old blocks are pruned every `block_db_prune_interval`
     pub block_db_prune_interval: MassaTime,
-    /// max number of items returned while querying
-    pub max_item_return_count: usize,
     /// blocks headers channel capacity
     pub broadcast_blocks_headers_channel_capacity: usize,
     /// blocks channel capacity

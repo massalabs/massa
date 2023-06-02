@@ -2,22 +2,18 @@
 
 use crate::error::ModelsError;
 use crate::prehash::PreHashed;
-use massa_hash::{Hash, HashDeserializer};
+use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
 use massa_serialization::{
-    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
-use massa_signature::PublicKey;
-use nom::branch::alt;
-use nom::combinator::verify;
-use nom::error::{context, ContextError, ParseError};
-use nom::sequence::preceded;
+use massa_signature::{PublicKey, PublicKeyV0, PublicKeyV1};
+use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
-use std::ops::Bound::Included;
+use std::ops::Bound::{Excluded, Included};
 use std::str::FromStr;
-
-/// Size of a serialized address, in bytes
-pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES + 1;
+use transition::Versioned;
 
 /// Top level address representation that can differentiate between User and SC address
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -28,50 +24,81 @@ pub enum Address {
     SC(SCAddress),
 }
 
-/// In the near future, this will encapsulate slot, idx, and is_write
+#[allow(missing_docs)]
+/// Derived from a public key.
+#[transition::versioned(versions("0", "1"))]
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SCAddress(pub Hash);
 
+#[allow(missing_docs)]
 /// Derived from a public key.
+#[transition::versioned(versions("0", "1"))]
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserAddress(pub Hash);
-
-/// TODO: This conversion will need re-writing/removal when SCAddress is optimised
-impl From<SCAddress> for UserAddress {
-    fn from(value: SCAddress) -> Self {
-        Self(value.0)
-    }
-}
-/// TODO: This conversion will need re-writing/removal when SCAddress is optimised
-impl From<UserAddress> for SCAddress {
-    fn from(value: UserAddress) -> Self {
-        Self(value.0)
-    }
-}
 
 const ADDRESS_PREFIX: char = 'A';
 // serialized with varint
 const USER_PREFIX: u64 = 0;
 const SC_PREFIX: u64 = 1;
-const ADDRESS_VERSION: u64 = 0;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Address::User(address) => address.fmt(f),
+            Address::SC(address) => address.fmt(f),
+        }
+    }
+}
+
+impl std::fmt::Display for UserAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            UserAddress::UserAddressV0(address) => address.fmt(f),
+            UserAddress::UserAddressV1(address) => address.fmt(f),
+        }
+    }
+}
+
+impl std::fmt::Display for SCAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SCAddress::SCAddressV0(address) => address.fmt(f),
+            SCAddress::SCAddressV1(address) => address.fmt(f),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"))]
+impl std::fmt::Display for UserAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let u64_serializer = U64VarIntSerializer::new();
-        // might want to allocate the vector with capacity in order to avoid re-allocation
         let mut bytes: Vec<u8> = Vec::new();
         u64_serializer
-            .serialize(&ADDRESS_VERSION, &mut bytes)
+            .serialize(&Self::VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
-        bytes.extend(self.hash_bytes());
+        bytes.extend(self.0.to_bytes());
         write!(
             f,
-            "{}{}{}",
+            "{}U{}",
             ADDRESS_PREFIX,
-            match self {
-                Address::User(_) => 'U',
-                Address::SC(_) => 'S',
-            },
+            bs58::encode(bytes).with_check().into_string()
+        )
+    }
+}
+
+#[transition::impl_version(versions("0", "1"))]
+impl std::fmt::Display for SCAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let u64_serializer = U64VarIntSerializer::new();
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.to_bytes());
+        write!(
+            f,
+            "{}S{}",
+            ADDRESS_PREFIX,
             bs58::encode(bytes).with_check().into_string()
         )
     }
@@ -87,10 +114,49 @@ impl std::fmt::Debug for Address {
 
 impl ::serde::Serialize for Address {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Address::User(address) => address.serialize(s),
+            Address::SC(address) => address.serialize(s),
+        }
+    }
+}
+
+impl ::serde::Serialize for UserAddress {
+    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            UserAddress::UserAddressV0(address) => address.serialize(s),
+            UserAddress::UserAddressV1(address) => address.serialize(s),
+        }
+    }
+}
+
+impl ::serde::Serialize for SCAddress {
+    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            SCAddress::SCAddressV0(address) => address.serialize(s),
+            SCAddress::SCAddressV1(address) => address.serialize(s),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"))]
+impl ::serde::Serialize for UserAddress {
+    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
             s.collect_str(&self.to_string())
         } else {
-            s.serialize_bytes(&self.prefixed_bytes())
+            s.serialize_bytes(&self.to_prefixed_bytes())
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"))]
+impl ::serde::Serialize for SCAddress {
+    fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        if s.is_human_readable() {
+            s.collect_str(&self.to_string())
+        } else {
+            s.serialize_bytes(&self.to_prefixed_bytes())
         }
     }
 }
@@ -154,19 +220,6 @@ impl<'de> ::serde::Deserialize<'de> for Address {
 
 impl FromStr for Address {
     type Err = ModelsError;
-    /// ## Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use massa_hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// # use std::str::FromStr;
-    /// # use massa_models::address::Address;
-    /// # let keypair = KeyPair::generate();
-    /// # let address = Address::from_public_key(&keypair.get_public_key());
-    /// let ser = address.to_string();
-    /// let res_addr = Address::from_str(&ser).unwrap();
-    /// assert_eq!(address, res_addr);
-    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let err = Err(ModelsError::AddressParseError(s.to_string()));
 
@@ -179,120 +232,320 @@ impl FromStr for Address {
             return err;
         };
 
-        // Turn the version + hash encoded string into a byte-vec
-        let data = chars.collect::<String>();
-        let decoded_bs58_check = bs58::decode(data)
-            .with_check(None)
-            .into_vec()
-            .map_err(|_| ModelsError::AddressParseError(s.to_string()))?;
-
-        // extract the version
-        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-        let (rest, _version) = u64_deserializer
-            .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-            .map_err(|_| ModelsError::AddressParseError(s.to_string()))?;
-
-        // ...and package it up
-        let res = UserAddress(Hash::from_bytes(
-            rest.try_into()
-                .map_err(|_| ModelsError::AddressParseError(s.to_string()))?,
-        ));
-
         let res = match pref {
-            'U' => Address::User(res),
-            'S' => Address::SC(res.into()),
+            'U' => Address::User(UserAddress::from_str_without_prefixed_type(&s[2..])?),
+            'S' => Address::SC(SCAddress::from_str_without_prefixed_type(&s[2..])?),
             _ => return err,
         };
         Ok(res)
     }
 }
 
-impl PreHashed for Address {}
-
 impl Address {
     /// Gets the associated thread. Depends on the `thread_count`
+    /// Returns None for SC addresses, even though we may want to get_thread on them in the future
     pub fn get_thread(&self, thread_count: u8) -> u8 {
-        (self.hash_bytes()[0])
+        match self {
+            Address::User(addr) => addr.get_thread(thread_count),
+            // TODO: tmp behaviour, discuss how we would want this to work
+            Address::SC(_addr) => 0,
+        }
+    }
+
+    /// Computes the address associated with the given public key.
+    /// Depends on the Public Key version
+    pub fn from_public_key(public_key: &PublicKey) -> Self {
+        Address::User(UserAddress::from_public_key(public_key))
+    }
+
+    /// Serialize the address as bytes. Includes the type and version prefixes
+    pub fn to_prefixed_bytes(self) -> Vec<u8> {
+        match self {
+            Address::User(addr) => addr.to_prefixed_bytes(),
+            Address::SC(addr) => addr.to_prefixed_bytes(),
+        }
+    }
+}
+
+impl UserAddress {
+    /// Gets the associated thread. Depends on the `thread_count`
+    fn get_thread(&self, thread_count: u8) -> u8 {
+        match self {
+            UserAddress::UserAddressV0(addr) => addr.get_thread(thread_count),
+            UserAddress::UserAddressV1(addr) => addr.get_thread(thread_count),
+        }
+    }
+
+    /// Computes the address associated with the given public key
+    fn from_public_key(public_key: &PublicKey) -> Self {
+        match public_key {
+            PublicKey::PublicKeyV0(pk) => {
+                UserAddressVariant!["0"](<UserAddress!["0"]>::from_public_key(pk))
+            }
+            PublicKey::PublicKeyV1(pk) => {
+                UserAddressVariant!["1"](<UserAddress!["1"]>::from_public_key(pk))
+            }
+        }
+    }
+
+    fn from_str_without_prefixed_type(s: &str) -> Result<Self, ModelsError> {
+        let decoded_bs58_check = bs58::decode(s).with_check(None).into_vec().map_err(|err| {
+            ModelsError::AddressParseError(format!(
+                "in UserAddress from_str_without_prefixed_type: {}",
+                err
+            ))
+        })?;
+        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+        let (rest, version) = u64_deserializer
+            .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+            .map_err(|err| {
+                ModelsError::AddressParseError(format!(
+                    "in UserAddress from_str_without_prefixed_type: {}",
+                    err
+                ))
+            })?;
+
+        match version {
+            <UserAddress!["0"]>::VERSION => Ok(UserAddressVariant!["0"](
+                <UserAddress!["0"]>::from_bytes_without_version(rest)?,
+            )),
+            <UserAddress!["1"]>::VERSION => Ok(UserAddressVariant!["1"](
+                <UserAddress!["1"]>::from_bytes_without_version(rest)?,
+            )),
+            unhandled_version => Err(ModelsError::AddressParseError(format!(
+                "version {} is not handled for UserAddress",
+                unhandled_version
+            ))),
+        }
+    }
+
+    /// Serialize the address as bytes. Includes the type and version prefixes
+    pub fn to_prefixed_bytes(self) -> Vec<u8> {
+        match self {
+            UserAddress::UserAddressV0(addr) => addr.to_prefixed_bytes(),
+            UserAddress::UserAddressV1(addr) => addr.to_prefixed_bytes(),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"))]
+impl UserAddress {
+    /// Fetches the version of the UserAddress
+    pub fn get_version(&self) -> u64 {
+        Self::VERSION
+    }
+
+    /// Serialize the address as bytes. Includes the type and version prefixes
+    fn to_prefixed_bytes(self) -> Vec<u8> {
+        let mut buff = vec![];
+        let addr_type_ser = U64VarIntSerializer::new();
+        let addr_vers_ser = U64VarIntSerializer::new();
+        addr_type_ser
+            .serialize(&USER_PREFIX, &mut buff)
+            .expect("impl always returns Ok(())");
+        addr_vers_ser
+            .serialize(&Self::VERSION, &mut buff)
+            .expect("impl always returns Ok(())");
+        buff.extend_from_slice(&self.0.to_bytes()[..]);
+        buff
+    }
+
+    /// Gets the associated thread. Depends on the `thread_count`
+    fn get_thread(&self, thread_count: u8) -> u8 {
+        (self.0.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
             .unwrap_or(0)
     }
 
-    fn hash_bytes(&self) -> &[u8; 32] {
-        match self {
-            Address::User(addr) => addr.0.to_bytes(),
-            Address::SC(addr) => addr.0.to_bytes(),
-        }
-    }
-
-    /// Computes address associated with given public key
-    pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Address::User(UserAddress(Hash::compute_from(public_key.to_bytes())))
-    }
-
-    /// Inner implementation for serializer. Mostly made available for the benefit of macros.
-    pub fn prefixed_bytes(&self) -> Vec<u8> {
-        let mut buff = vec![];
-        let pref_ser = U64VarIntSerializer::new();
-        let val = match self {
-            Address::User(_) => USER_PREFIX,
-            Address::SC(_) => SC_PREFIX,
-        };
-        pref_ser
-            .serialize(&val, &mut buff)
-            .expect("impl always returns Ok(())");
-        buff.extend_from_slice(&self.hash_bytes()[..]);
-        buff
-    }
-
-    #[cfg(any(test, feature = "testing"))]
-    /// Convenience wrapper around the address serializer. Useful for hard-coding an address when testing
-    pub fn from_prefixed_bytes(data: &[u8]) -> Result<Address, ModelsError> {
-        let deser = AddressDeserializer::new();
-        let (_, res) = deser.deserialize::<DeserializeError>(data).map_err(|_| {
-            match std::str::from_utf8(data) {
-                Ok(res) => ModelsError::AddressParseError(res.to_string()),
-                Err(e) => {
-                    ModelsError::AddressParseError(format!("Error on retrieve address : {}", e))
-                }
-            }
-        })?;
-        Ok(res)
+    /// Deserialize the address without considering the version byte
+    fn from_bytes_without_version(data: &[u8]) -> Result<UserAddress, ModelsError> {
+        Ok(UserAddress(Hash::from_bytes(&data.try_into().map_err(
+            |_| {
+                ModelsError::BufferError(format!(
+                    "expected a buffer of size {}, but found a size of {}",
+                    HASH_SIZE_BYTES,
+                    &data.len()
+                ))
+            },
+        )?)))
     }
 }
 
+#[transition::impl_version(versions("0", "1"), structures("UserAddress", "PublicKey"))]
+impl UserAddress {
+    /// Computes address associated with given public key
+    pub fn from_public_key(public_key: &PublicKey) -> Self {
+        UserAddress(Hash::compute_from(&public_key.to_bytes()))
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl UserAddress {}
+
+#[transition::impl_version(versions("1"))]
+impl UserAddress {}
+
+impl SCAddress {
+    fn from_str_without_prefixed_type(s: &str) -> Result<Self, ModelsError> {
+        let decoded_bs58_check = bs58::decode(s).with_check(None).into_vec().map_err(|err| {
+            ModelsError::AddressParseError(format!(
+                "in SCAddress from_str_without_prefixed_type: {}",
+                err
+            ))
+        })?;
+        let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
+        let (rest, version) = u64_deserializer
+            .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+            .map_err(|err| {
+                ModelsError::AddressParseError(format!(
+                    "in SCAddress from_str_without_prefixed_type: {}",
+                    err
+                ))
+            })?;
+
+        match version {
+            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
+                <SCAddress!["0"]>::from_bytes_without_version(rest)?,
+            )),
+            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
+                <SCAddress!["1"]>::from_bytes_without_version(rest)?,
+            )),
+            unhandled_version => Err(ModelsError::AddressParseError(format!(
+                "version {} is not handled for SCAddress",
+                unhandled_version
+            ))),
+        }
+    }
+
+    /// Serialize the address as bytes. Includes the type and version prefixes
+    pub fn to_prefixed_bytes(self) -> Vec<u8> {
+        match self {
+            SCAddress::SCAddressV0(addr) => addr.to_prefixed_bytes(),
+            SCAddress::SCAddressV1(addr) => addr.to_prefixed_bytes(),
+        }
+    }
+
+    /// Deserialize the address without considering the version byte
+    pub fn from_bytes_without_version(version: u64, data: &[u8]) -> Result<SCAddress, ModelsError> {
+        match version {
+            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
+                <SCAddress!["0"]>::from_bytes_without_version(data)?,
+            )),
+            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
+                <SCAddress!["1"]>::from_bytes_without_version(data)?,
+            )),
+            unhandled_version => Err(ModelsError::AddressParseError(format!(
+                "version {} is not handled for SCAddress",
+                unhandled_version
+            ))),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"))]
+impl SCAddress {
+    /// Fetches the version of the SC Address
+    pub fn get_version(&self) -> u64 {
+        Self::VERSION
+    }
+}
+
+#[transition::impl_version(versions("0", "1"))]
+impl SCAddress {
+    /// Serialize the address as bytes. Includes the type and version prefixes
+    pub fn to_prefixed_bytes(self) -> Vec<u8> {
+        let mut buff = vec![];
+        let addr_type_ser = U64VarIntSerializer::new();
+        let addr_vers_ser = U64VarIntSerializer::new();
+        addr_type_ser
+            .serialize(&SC_PREFIX, &mut buff)
+            .expect("impl always returns Ok(())");
+        addr_vers_ser
+            .serialize(&Self::VERSION, &mut buff)
+            .expect("impl always returns Ok(())");
+        buff.extend_from_slice(&self.0.to_bytes()[..]);
+        buff
+    }
+
+    /// Deserialize the address without considering the version byte
+    fn from_bytes_without_version(data: &[u8]) -> Result<SCAddress, ModelsError> {
+        Ok(SCAddress(Hash::from_bytes(&data.try_into().map_err(
+            |_| {
+                ModelsError::BufferError(format!(
+                    "expected a buffer of size {}, but found a size of {}",
+                    HASH_SIZE_BYTES,
+                    &data.len()
+                ))
+            },
+        )?)))
+    }
+}
+
+/* /!\ SCAddressV1 not prehashed! */
+impl PreHashed for Address {}
+
 /// Serializer for `Address`
 #[derive(Default, Clone)]
-pub struct AddressSerializer;
+pub struct AddressSerializer {
+    type_serializer: U64VarIntSerializer,
+    version_serializer: U64VarIntSerializer,
+}
 
 impl AddressSerializer {
     /// Serializes an `Address` into a `Vec<u8>`
     pub fn new() -> Self {
-        Self
+        Self {
+            type_serializer: U64VarIntSerializer::new(),
+            version_serializer: U64VarIntSerializer::new(),
+        }
     }
 }
 
 impl Serializer<Address> for AddressSerializer {
-    /// # Example
-    /// ```rust
-    /// # use massa_signature::{PublicKey, KeyPair, Signature};
-    /// # use serde::{Deserialize, Serialize};
-    /// # use massa_models::address::{UserAddress, Address, AddressSerializer};
-    /// # use massa_serialization::{Serializer, SerializeError};
-    /// use massa_hash::Hash;
-    /// let bytes = &[0; 32];
-    /// // Make a hard-coded 0-byte container
-    /// let ref_addr = Address::User(UserAddress(Hash::from_bytes(bytes)));
-    /// let mut vec = vec![];
-    /// AddressSerializer::new().serialize(&ref_addr, &mut vec).unwrap();
-    /// // the deser adds the prefix value '0' in a single byte
-    /// assert_eq!(vec, [[0].as_slice(), bytes.as_slice()].concat());
-    /// ```
-    fn serialize(
-        &self,
-        value: &Address,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), massa_serialization::SerializeError> {
-        buffer.extend_from_slice(&value.prefixed_bytes());
+    fn serialize(&self, value: &Address, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        match value {
+            Address::User(addr) => self.serialize(addr, buffer),
+            Address::SC(addr) => self.serialize(addr, buffer),
+        }
+    }
+}
+
+impl Serializer<UserAddress> for AddressSerializer {
+    fn serialize(&self, value: &UserAddress, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.type_serializer.serialize(&USER_PREFIX, buffer)?;
+        match value {
+            UserAddress::UserAddressV0(addr) => self.serialize(addr, buffer),
+            UserAddress::UserAddressV1(addr) => self.serialize(addr, buffer),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"), structures("UserAddress"))]
+impl Serializer<UserAddress> for AddressSerializer {
+    fn serialize(&self, value: &UserAddress, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.version_serializer
+            .serialize(&value.get_version(), buffer)?;
+        buffer.extend_from_slice(&value.0.into_bytes());
+        Ok(())
+    }
+}
+
+impl Serializer<SCAddress> for AddressSerializer {
+    fn serialize(&self, value: &SCAddress, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.type_serializer.serialize(&SC_PREFIX, buffer)?;
+        match value {
+            SCAddress::SCAddressV0(addr) => self.serialize(addr, buffer),
+            SCAddress::SCAddressV1(addr) => self.serialize(addr, buffer),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"), structures("SCAddress"))]
+impl Serializer<SCAddress> for AddressSerializer {
+    fn serialize(&self, value: &SCAddress, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.version_serializer
+            .serialize(&value.get_version(), buffer)?;
+        buffer.extend_from_slice(&value.0.into_bytes());
         Ok(())
     }
 }
@@ -300,86 +553,140 @@ impl Serializer<Address> for AddressSerializer {
 /// Deserializer for `Address`
 #[derive(Clone)]
 pub struct AddressDeserializer {
+    type_deserializer: U64VarIntDeserializer,
+    version_deserializer: U64VarIntDeserializer,
     hash_deserializer: HashDeserializer,
-    int_deserializer: U64VarIntDeserializer,
 }
+
+impl Default for AddressDeserializer {
+    fn default() -> Self {
+        AddressDeserializer::new()
+    }
+}
+
 impl AddressDeserializer {
     /// Creates a new deserializer for `Address`
     pub const fn new() -> Self {
         Self {
+            type_deserializer: U64VarIntDeserializer::new(Included(0), Included(1)),
+            version_deserializer: U64VarIntDeserializer::new(Included(0), Excluded(u64::MAX)),
             hash_deserializer: HashDeserializer::new(),
-            int_deserializer: U64VarIntDeserializer::new(Included(0), Included(1)),
         }
     }
 }
 
 impl Deserializer<Address> for AddressDeserializer {
-    /// # Example
-    /// ```rust
-    /// use massa_models::address::{UserAddress, Address, AddressDeserializer};
-    /// use massa_serialization::{Deserializer, DeserializeError};
-    /// use massa_hash::Hash;
-    /// // Make a hard-coded 0-byte container
-    /// let bytes = [[0].as_slice(), [0; 32].as_slice()].concat();
-    /// let ref_addr = Address::User(UserAddress(Hash::from_bytes(bytes[1..33].try_into().unwrap())));
-    /// let res_addr = AddressDeserializer::new().deserialize::<DeserializeError>(&bytes).unwrap();
-    /// // the deser adds the prefix value '0' in a single byte
-    /// assert_eq!(ref_addr, res_addr.1);
-    /// assert_eq!(0, res_addr.0.len());
-    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
-        context("Address Variant", |input| {
-            alt((
-                |input| user_parser(&self.int_deserializer, &self.hash_deserializer, input),
-                |input| sc_parser(&self.int_deserializer, &self.hash_deserializer, input),
-            ))
-            .parse(input)
+        if buffer.len() < 2 {
+            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
+        }
+        let (rest, addr_type) =
+            self.type_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
+        match addr_type {
+            USER_PREFIX => {
+                let (rest, addr) = self.deserialize(rest)?;
+                Ok((rest, Address::User(addr)))
+            }
+            SC_PREFIX => {
+                let (rest, addr) = self.deserialize(rest)?;
+                Ok((rest, Address::SC(addr)))
+            }
+            _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
+        }
+    }
+}
+
+impl Deserializer<UserAddress> for AddressDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], UserAddress, E> {
+        if buffer.len() < 2 {
+            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
+        }
+        let (rest, addr_vers) =
+            self.version_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
+        match addr_vers {
+            <UserAddress!["0"]>::VERSION => {
+                let (rest, addr) = self.deserialize(rest)?;
+                Ok((rest, UserAddressVariant!["0"](addr)))
+            }
+            <UserAddress!["1"]>::VERSION => {
+                let (rest, addr) = self.deserialize(rest)?;
+                Ok((rest, UserAddressVariant!["1"](addr)))
+            }
+            _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0", "1"), structures("UserAddress"))]
+impl Deserializer<UserAddress> for AddressDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], UserAddress, E> {
+        context("Failed UserAddress deserialization", |input| {
+            self.hash_deserializer.deserialize(input)
         })
+        .map(UserAddress)
         .parse(buffer)
     }
 }
 
-// used to make the `alt(...)` more readable
-fn user_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-    pref_deser: &U64VarIntDeserializer,
-    deser: &HashDeserializer,
-    input: &'a [u8],
-) -> IResult<&'a [u8], Address, E> {
-    context(
-        "Failed attempt to deserialise User Address",
-        preceded(
-            verify(
-                |input| pref_deser.deserialize(input),
-                |val| *val == USER_PREFIX,
-            ),
-            |input| deser.deserialize(input),
-        ),
-    )
-    .map(|hash| Address::User(UserAddress(hash)))
-    .parse(input)
+impl Deserializer<SCAddress> for AddressDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], SCAddress, E> {
+        if buffer.len() < 2 {
+            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
+        }
+        let (rest, addr_vers) =
+            self.version_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
+        match addr_vers {
+            <SCAddress!["0"]>::VERSION => {
+                let (rest, addr) = self.deserialize(rest)?;
+                Ok((rest, SCAddressVariant!["0"](addr)))
+            }
+            <SCAddress!["1"]>::VERSION => {
+                let (rest, addr) = self.deserialize(&buffer[1..])?;
+                Ok((rest, SCAddressVariant!["1"](addr)))
+            }
+            _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
+        }
+    }
 }
-// used to make the `alt(...)` more readable. Will be usefull when the SCAddress will be deserialised differently
-fn sc_parser<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-    pref_deser: &U64VarIntDeserializer,
-    deser: &HashDeserializer,
-    input: &'a [u8],
-) -> IResult<&'a [u8], Address, E> {
-    context(
-        "Failed attempt to deserialise SC Address",
-        preceded(
-            verify(
-                |input| pref_deser.deserialize(input),
-                |val| *val == SC_PREFIX,
-            ),
-            |input| deser.deserialize(input),
-        ),
-    )
-    .map(|hash| Address::SC(SCAddress(hash)))
-    .parse(input)
+
+#[transition::impl_version(versions("0", "1"), structures("SCAddress"))]
+impl Deserializer<SCAddress> for AddressDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], SCAddress, E> {
+        context("Failed SCAddress deserialization", |input| {
+            self.hash_deserializer.deserialize(input)
+        })
+        .map(SCAddress)
+        .parse(buffer)
+    }
 }
+
 /// Info for a given address on a given cycle
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExecutionAddressCycleInfo {
@@ -400,13 +707,29 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_address_str_format() {
-        use massa_signature::KeyPair;
+    fn test_address() {
+        let hash = massa_hash::Hash::compute_from(&"ADDR".as_bytes());
 
-        let keypair = KeyPair::generate();
-        let address = Address::from_public_key(&keypair.get_public_key());
-        let a = address.to_string();
-        let b = Address::from_str(&a).unwrap();
-        assert_eq!(address, b);
+        let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        let user_addr_1 = Address::User(UserAddress::UserAddressV1(UserAddressV1(hash)));
+        let sc_addr_0 = Address::SC(SCAddress::SCAddressV0(SCAddressV0(hash)));
+        let sc_addr_1 = Address::SC(SCAddress::SCAddressV1(SCAddressV1(hash)));
+
+        println!("user_addr_0: {}", user_addr_0);
+        println!("user_addr_1: {}", user_addr_1);
+        println!("sc_addr_0: {}", sc_addr_0);
+        println!("sc_addr_1: {}", sc_addr_1);
+
+        // let v1 = "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF";
+        let v2 = "AU4cJWyjpBetGwaRqFDXyrHiQuGB3QKrwjzGiGSzQPGeAARB9AY4";
+        let addr = Address::from_str(v2).unwrap();
+
+        let mut buffer: Vec<u8> = vec![];
+        let _ = AddressSerializer::new().serialize(&addr, &mut buffer);
+        let (_rest, addr2): (&[u8], Address) = AddressDeserializer::new()
+            .deserialize::<massa_serialization::DeserializeError>(&buffer)
+            .unwrap();
+
+        assert_eq!(addr, addr2);
     }
 }

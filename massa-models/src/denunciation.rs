@@ -745,7 +745,7 @@ impl Deserializer<Denunciation> for DenunciationDeserializer {
 
 // Denunciation Index
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 /// Index for Denunciations in collections (e.g. like a HashMap...)
 pub enum DenunciationIndex {
     /// Variant for Block header denunciation index
@@ -869,6 +869,7 @@ impl From<&DenunciationIndex> for DenunciationIndexTypeId {
     }
 }
 
+#[derive(Clone)]
 /// Serializer for `DenunciationIndex`
 pub struct DenunciationIndexSerializer {
     u32_serializer: U32VarIntSerializer,
@@ -916,6 +917,7 @@ impl Serializer<DenunciationIndex> for DenunciationIndexSerializer {
     }
 }
 
+#[derive(Clone)]
 /// Deserializer for `DenunciationIndex`
 pub struct DenunciationIndexDeserializer {
     id_deserializer: U32VarIntDeserializer,
@@ -1295,7 +1297,7 @@ mod tests {
 
     #[test]
     fn test_forge_invalid_denunciation() {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(0).unwrap();
         let slot_1 = Slot::new(4, 2);
         let slot_2 = Slot::new(3, 7);
 
