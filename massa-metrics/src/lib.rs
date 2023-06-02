@@ -10,6 +10,7 @@ lazy_static! {
 
         static ref OPERATIONS_COUNTER: IntCounter =
         register_int_counter!("operations_counter", "operations counter").unwrap();
+
     // static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
 }
 
@@ -26,7 +27,7 @@ pub fn inc_operations_counter() {
 }
 
 mod test {
-    use crate::{channels::ChannelMetrics, start_metrics_server};
+    use crate::{channels::MassaChannel, start_metrics_server};
 
     #[tokio::test]
     async fn test_channel_metrics() {
@@ -34,20 +35,27 @@ mod test {
 
         start_metrics_server(addr);
         std::thread::sleep(std::time::Duration::from_millis(500));
-        let channel_metrics = ChannelMetrics::new("operations".to_string(), None);
-        let channel2 = ChannelMetrics::new("second_channel".to_string(), None);
+        let (sender, receiver) = MassaChannel::new("operations".to_string(), None);
 
-        std::thread::sleep(std::time::Duration::from_secs(3));
+        let (sender2, receiver2) = MassaChannel::new("second_channel".to_string(), None);
+
+        sender2.send("hello_world".to_string()).unwrap();
+
         for i in 0..100 {
-            channel_metrics.send(i).unwrap();
+            sender.send(i).unwrap();
         }
-        std::thread::spawn(move || loop {
-            std::thread::sleep(std::time::Duration::from_secs(1));
-            channel_metrics.recv().unwrap();
-        });
 
-        channel2.send("Hello world".to_string()).unwrap();
-        std::thread::sleep(std::time::Duration::from_secs(100));
+        for _i in 0..20 {
+            receiver.recv().unwrap();
+        }
+
+        assert_eq!(receiver.len(), 80);
+
+        let data = receiver2.recv().unwrap();
+        assert_eq!(data, "hello_world".to_string());
+
+        // channel2.send("Hello world".to_string()).unwrap();
+        // std::thread::sleep(std::time::Duration::from_secs(100));
     }
 
     // #[test]
