@@ -155,12 +155,12 @@
         <span class="macro">writeln!</span>(
             f,
             <span class="string">&quot;\tStart stats timespan time: {}&quot;</span>,
-            <span class="self">self</span>.time_window_start.format_instant()
+            <span class="self">self</span>.time_window_start.to_utc_string()
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
             <span class="string">&quot;\tEnd stats timespan time: {}&quot;</span>,
-            <span class="self">self</span>.time_window_end.format_instant()
+            <span class="self">self</span>.time_window_end.to_utc_string()
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
@@ -225,12 +225,12 @@
         <span class="macro">writeln!</span>(
             f,
             <span class="string">&quot;\tStart stats timespan time: {}&quot;</span>,
-            <span class="self">self</span>.start_timespan.format_instant()
+            <span class="self">self</span>.start_timespan.to_utc_string()
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
             <span class="string">&quot;\tEnd stats timespan time: {}&quot;</span>,
-            <span class="self">self</span>.end_timespan.format_instant()
+            <span class="self">self</span>.end_timespan.to_utc_string()
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f, <span class="string">&quot;\tFinal block count: {}&quot;</span>, <span class="self">self</span>.final_block_count)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f, <span class="string">&quot;\tStale block count: {}&quot;</span>, <span class="self">self</span>.stale_block_count)<span class="question-mark">?</span>;

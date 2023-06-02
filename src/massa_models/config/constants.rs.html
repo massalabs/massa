@@ -324,6 +324,8 @@
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -350,6 +352,8 @@
 </span><span class="kw">pub const </span>DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1686312000000</span>); <span class="comment">// Friday 9 June 2023 12:00:00 UTC
 </span><span class="doccomment">/// Downtime simulation end timestamp
 </span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1686319200000</span>); <span class="comment">// Friday 9 June 2023 14:00:00 UTC
+</span><span class="doccomment">/// Downtime simulation end timestamp for bootstrap servers
+</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP_BOOTSTRAP: MassaTime = MassaTime::from_millis(<span class="number">1686312060000</span>); <span class="comment">// Friday 9 June 2023 12:01:00 UTC
 
 </span><span class="doccomment">/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 </span><span class="kw">pub const </span>SIGNATURE_DESER_SIZE: usize = <span class="number">64 </span>+ <span class="number">1</span>;

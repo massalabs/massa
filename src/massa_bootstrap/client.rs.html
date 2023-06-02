@@ -634,8 +634,35 @@
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
 <a href="#636" id="636">636</a>
-</pre><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+</pre><pre class="rust"><code><span class="kw">use </span>chrono::{TimeZone, Utc};
+<span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_db::DBBatch;
+<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::{
+    collections::HashSet,
+    io,
+    net::{SocketAddr, TcpStream},
+    sync::{Arc, Condvar, Mutex},
+    time::Duration,
+};
+
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -646,14 +673,6 @@
 <span class="kw">use </span>rand::{
     prelude::{SliceRandom, StdRng},
     SeedableRng,
-};
-<span class="kw">use </span>std::collections::BTreeMap;
-<span class="kw">use </span>std::{
-    collections::HashSet,
-    io,
-    net::{SocketAddr, TcpStream},
-    sync::{Arc, Condvar, Mutex},
-    time::Duration,
 };
 <span class="kw">use </span>tracing::{debug, info, warn};
 
@@ -1212,11 +1231,10 @@
                         );
                         <span class="comment">// Safe to unwrap here (only panic if not LockedIn)
                         </span><span class="kw">let </span>activation_at = mip_state.activation_at(mip_info).unwrap();
-
-                        <span class="macro">warn!</span>(
-                            <span class="string">&quot;Please update your Massa node before: {}&quot;</span>,
-                            activation_at.format_instant()
-                        );
+                        <span class="kw">let </span>dt = Utc
+                            .timestamp_opt(activation_at.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                            .unwrap();
+                        <span class="macro">warn!</span>(<span class="string">&quot;Please update your Massa node before: {}&quot;</span>, dt.to_rfc2822());
                     } <span class="kw">else if </span>st_id == ComponentStateTypeId::Active {
                         <span class="comment">// A new MipInfo @ state active - we are not compatible anymore
                         </span><span class="macro">warn!</span>(
@@ -1235,8 +1253,16 @@
                             mip_info.name, mip_info.version
                         );
                         <span class="macro">debug!</span>(<span class="string">&quot;MIP state: {:?}&quot;</span>, mip_state);
-
-                        <span class="macro">warn!</span>(<span class="string">&quot;Please update your node between: {} and {} if you want to support this update&quot;</span>, mip_info.start.format_instant(), mip_info.timeout.format_instant());
+                        <span class="kw">let </span>dt_start = Utc
+                            .timestamp_opt(mip_info.start.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                            .unwrap();
+                        <span class="kw">let </span>dt_timeout = Utc
+                            .timestamp_opt(mip_info.timeout.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                            .unwrap();
+                        <span class="macro">warn!</span>(<span class="string">&quot;Please update your node between: {} and {} if you want to support this update&quot;</span>,
+                                dt_start.to_rfc2822(),
+                                dt_timeout.to_rfc2822()
+                            );
                     } <span class="kw">else </span>{
                         <span class="comment">// a new MipInfo @ state defined or started (or failed / error)
                         // warn the user to update its node
@@ -1254,8 +1280,16 @@
                         mip_info.name, mip_info.version
                     );
                     <span class="macro">debug!</span>(<span class="string">&quot;MIP state: {:?}&quot;</span>, mip_state);
-
-                    <span class="macro">warn!</span>(<span class="string">&quot;Please update your node between: {} and {} if you want to support this update&quot;</span>, mip_info.start.format_instant(), mip_info.timeout.format_instant());
+                    <span class="kw">let </span>dt_start = Utc
+                        .timestamp_opt(mip_info.start.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                        .unwrap();
+                    <span class="kw">let </span>dt_timeout = Utc
+                        .timestamp_opt(mip_info.timeout.to_duration().as_secs() <span class="kw">as </span>i64, <span class="number">0</span>)
+                        .unwrap();
+                    <span class="macro">warn!</span>(<span class="string">&quot;Please update your node between: {} and {} if you want to support this update&quot;</span>,
+                            dt_start.to_rfc2822(),
+                            dt_timeout.to_rfc2822()
+                        );
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; {
                     <span class="comment">// Should never happen

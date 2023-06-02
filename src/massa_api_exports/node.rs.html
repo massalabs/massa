@@ -148,7 +148,7 @@
         <span class="macro">writeln!</span>(f, <span class="string">&quot;Config:\n{}&quot;</span>, <span class="self">self</span>.config)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f)<span class="question-mark">?</span>;
 
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;Current time: {}&quot;</span>, <span class="self">self</span>.current_time.format_instant())<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Current time: {}&quot;</span>, <span class="self">self</span>.current_time.to_utc_string())<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f, <span class="string">&quot;Current cycle: {}&quot;</span>, <span class="self">self</span>.current_cycle)<span class="question-mark">?</span>;
         <span class="kw">if </span><span class="self">self</span>.last_slot.is_some() {
             <span class="macro">writeln!</span>(f, <span class="string">&quot;Last slot: {}&quot;</span>, <span class="self">self</span>.last_slot.unwrap())<span class="question-mark">?</span>;
