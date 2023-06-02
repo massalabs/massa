@@ -24,6 +24,7 @@ use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::DenunciationIndex;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -36,7 +37,7 @@ use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::MipStore;
-use massa_versioning::versioning_factory::VersioningFactory;
+use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -463,6 +464,13 @@ impl ExecutionContext {
         //  https://github.com/massalabs/massa/issues/2331
 
         // deterministically generate a new unique smart contract address
+        let slot_timestamp = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            self.slot,
+        )
+        .expect("could not compute current slot timestamp");
 
         // create a seed from the current slot
         let mut data: Vec<u8> = self.slot.to_bytes_key().to_vec();
@@ -477,9 +485,10 @@ impl ExecutionContext {
         }
         // hash the seed to get a unique address
         let hash = Hash::compute_from(&data);
-        let address = self
-            .address_factory
-            .create(&AddressArgs::SC { hash }, None)?;
+        let address = self.address_factory.create(
+            &AddressArgs::SC { hash },
+            FactoryStrategy::At(slot_timestamp),
+        )?;
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(
