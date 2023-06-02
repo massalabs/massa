@@ -1033,6 +1033,7 @@
 <a href="#1033" id="1033">1033</a>
 <a href="#1034" id="1034">1034</a>
 <a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1071,7 +1072,7 @@
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
 <span class="kw">use </span>massa_versioning::address_factory::{AddressArgs, AddressFactory};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
-<span class="kw">use </span>massa_versioning::versioning_factory::VersioningFactory;
+<span class="kw">use </span>massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::SeedableRng;
 <span class="kw">use </span>rand_xoshiro::Xoshiro256PlusPlus;
@@ -1512,9 +1513,10 @@
         }
         <span class="comment">// hash the seed to get a unique address
         </span><span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>data);
-        <span class="kw">let </span>address = <span class="self">self
+        <span class="comment">// Already fixed in PR #4027 - wait for rebase
+        </span><span class="kw">let </span>address = <span class="self">self
             </span>.address_factory
-            .create(<span class="kw-2">&amp;</span>AddressArgs::SC { hash }, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+            .create(<span class="kw-2">&amp;</span>AddressArgs::SC { hash }, FactoryStrategy::Exact(<span class="number">0</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// add this address with its bytecode to the speculative ledger
         </span><span class="self">self</span>.speculative_ledger.create_new_sc_address(

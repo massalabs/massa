@@ -441,6 +441,7 @@
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::iter;
@@ -466,8 +467,8 @@
 </span><span class="doccomment">/// Strategy to use when creating a new object from a factory
 </span><span class="kw">pub enum </span>FactoryStrategy {
     <span class="doccomment">/// use get_latest_version (see Factory trait)
-    </span>Latest,
-    <span class="doccomment">/// Require to create an object with this specific version
+    </span><span class="comment">// Latest,
+    </span><span class="doccomment">/// Require to create an object with this specific version
     </span>Exact(u32),
     <span class="doccomment">/// Create an object given a timestamp (e.g slot)
     </span>At(MassaTime),
@@ -497,27 +498,29 @@
     <span class="doccomment">/// Access to the MipStore
     </span><span class="kw">fn </span>get_versioning_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MipStore;
 
-    <span class="doccomment">/// Get latest component version (aka last active for the factory component)
-    </span><span class="kw">fn </span>get_latest_component_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
-        <span class="kw">let </span>component = <span class="self">Self</span>::get_component();
-        <span class="kw">let </span>vi_store_ = <span class="self">self</span>.get_versioning_store();
-        <span class="kw">let </span>vi_store = vi_store_.<span class="number">0</span>.read();
+    <span class="comment">/*
+    /// Get latest component version (aka last active for the factory component)
+    fn get_latest_component_version(&amp;self) -&gt; u32 {
+        let component = Self::get_component();
+        let vi_store_ = self.get_versioning_store();
+        let vi_store = vi_store_.0.read();
 
         vi_store
             .store
             .iter()
             .rev()
             .find_map(|(vi, vsh)| {
-                <span class="kw">if </span><span class="macro">matches!</span>(vsh.state, ComponentState::Active(<span class="kw">_</span>)) {
-                    vi.components.get(<span class="kw-2">&amp;</span>component).copied()
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
+                if matches!(vsh.state, ComponentState::Active(_)) {
+                    vi.components.get(&amp;component).copied()
+                } else {
+                    None
+                }
             })
-            .unwrap_or(<span class="number">0</span>)
+            .unwrap_or(0)
     }
+    */
 
-    <span class="doccomment">/// Get latest version at given timestamp (e.g. slot)
+    </span><span class="doccomment">/// Get latest version at given timestamp (e.g. slot)
     </span><span class="kw">fn </span>get_latest_component_version_at(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;u32, FactoryError&gt; {
         <span class="kw">let </span>component = <span class="self">Self</span>::get_component();
         <span class="kw">let </span>vi_store_ = <span class="self">self</span>.get_versioning_store();
@@ -583,26 +586,26 @@
     <span class="doccomment">/// Get the version the current component with the given startegy
     </span><span class="kw">fn </span>get_component_version_with_strategy(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        strategy: <span class="prelude-ty">Option</span>&lt;FactoryStrategy&gt;,
+        strategy: FactoryStrategy,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;u32, FactoryError&gt; {
         <span class="kw">match </span>strategy {
-            <span class="prelude-val">Some</span>(FactoryStrategy::Exact(v)) =&gt; <span class="kw">match </span><span class="self">self</span>.get_all_component_versions().get(<span class="kw-2">&amp;</span>v) {
+            FactoryStrategy::Exact(v) =&gt; <span class="kw">match </span><span class="self">self</span>.get_all_component_versions().get(<span class="kw-2">&amp;</span>v) {
                 <span class="prelude-val">Some</span>(s) <span class="kw">if </span><span class="kw-2">*</span>s == ComponentStateTypeId::Active =&gt; <span class="prelude-val">Ok</span>(v),
                 <span class="prelude-val">Some</span>(s) <span class="kw">if </span><span class="kw-2">*</span>s != ComponentStateTypeId::Active =&gt; {
                     <span class="prelude-val">Err</span>(FactoryError::OnStateNotReady(v))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(FactoryError::UnknownVersion(v)),
             },
-            <span class="prelude-val">Some</span>(FactoryStrategy::At(ts)) =&gt; <span class="self">self</span>.get_latest_component_version_at(ts),
-            <span class="prelude-val">None </span>| <span class="prelude-val">Some</span>(FactoryStrategy::Latest) =&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>.get_latest_component_version()),
-        }
+            FactoryStrategy::At(ts) =&gt; <span class="self">self</span>.get_latest_component_version_at(ts),
+            <span class="comment">// None | Some(FactoryStrategy::Latest) =&gt; Ok(self.get_latest_component_version()),
+        </span>}
     }
 
     <span class="doccomment">/// Create an object of type Self::Output
     </span><span class="kw">fn </span>create(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         args: <span class="kw-2">&amp;</span><span class="self">Self</span>::Arguments,
-        strategy: <span class="prelude-ty">Option</span>&lt;FactoryStrategy&gt;,
+        strategy: FactoryStrategy,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Output, <span class="self">Self</span>::Error&gt;;
 }
 
@@ -688,7 +691,7 @@
         <span class="kw">fn </span>create(
             <span class="kw-2">&amp;</span><span class="self">self</span>,
             args: <span class="kw-2">&amp;</span><span class="self">Self</span>::Arguments,
-            strategy: <span class="prelude-ty">Option</span>&lt;FactoryStrategy&gt;,
+            strategy: FactoryStrategy,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Output, <span class="self">Self</span>::Error&gt; {
             <span class="kw">let </span>version = <span class="self">self</span>.get_component_version_with_strategy(strategy);
 
@@ -763,13 +766,12 @@
         };
 
         <span class="macro">assert_eq!</span>(fa.get_all_active_component_versions(), <span class="macro">vec!</span>[<span class="number">0</span>]);
-        <span class="macro">assert_eq!</span>(fa.get_latest_component_version(), <span class="number">0</span>);
 
-        <span class="kw">let </span>addr_a = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>addr_a = fa.create(<span class="kw-2">&amp;</span>args, <span class="number">0</span>.into());
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_a, <span class="prelude-val">Ok</span>(TestAddress::V0(<span class="kw">_</span>))));
         <span class="comment">//
         // Version 2 is unknown
-        </span><span class="kw">let </span>addr_ = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(<span class="number">2</span>.into()));
+        </span><span class="kw">let </span>addr_ = fa.create(<span class="kw-2">&amp;</span>args, <span class="number">2</span>.into());
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_, <span class="prelude-val">Err</span>(FactoryError::OnStateNotReady(<span class="number">2</span>))));
 
         <span class="comment">// Advance state 1 to Active
@@ -788,16 +790,16 @@
                 .collect::&lt;Vec&lt;u32&gt;&gt;(),
             <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>]
         );
-        <span class="macro">assert_eq!</span>(fa.get_latest_component_version(), <span class="number">1</span>);
-        <span class="kw">let </span>addr_b = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">None</span>);
+        <span class="comment">// assert_eq!(fa.get_latest_component_version(), 1);
+        </span><span class="kw">let </span>addr_b = fa.create(<span class="kw-2">&amp;</span>args, FactoryStrategy::At(MassaTime::now().unwrap()));
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_b, <span class="prelude-val">Ok</span>(TestAddress::V1(<span class="kw">_</span>))));
 
         <span class="comment">// Error if not enough args
-        </span><span class="kw">let </span>addr_ = fa.create(<span class="kw-2">&amp;</span>args_no_v1, <span class="prelude-val">Some</span>(<span class="number">1</span>.into()));
+        </span><span class="kw">let </span>addr_ = fa.create(<span class="kw-2">&amp;</span>args_no_v1, <span class="number">1</span>.into());
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_, <span class="prelude-val">Err</span>(FactoryError::OnCreate(<span class="kw">_</span>, <span class="kw">_</span>))));
 
         <span class="comment">// Can still create AddressV0
-        </span><span class="kw">let </span>addr_c = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(<span class="number">0</span>.into()));
+        </span><span class="kw">let </span>addr_c = fa.create(<span class="kw-2">&amp;</span>args, <span class="number">0</span>.into());
         <span class="macro">println!</span>(<span class="string">&quot;addr_c: {:?}&quot;</span>, addr_c);
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_c, <span class="prelude-val">Ok</span>(TestAddress::V0(<span class="kw">_</span>))));
     }
@@ -857,11 +859,11 @@
         </span><span class="kw">let </span>st_3 = FactoryStrategy::At(MassaTime::from_millis(<span class="number">27</span>)); <span class="comment">// vi_2 is started or locked_in
         </span><span class="kw">let </span>st_4 = FactoryStrategy::At(MassaTime::from_millis(<span class="number">30</span>)); <span class="comment">// vi_2 is active (after vi_2.timeout)
 
-        </span><span class="kw">let </span>addr_st_1 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_1));
-        <span class="kw">let </span>addr_st_1_2 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_1_2.clone()));
-        <span class="kw">let </span>addr_st_2 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_2));
-        <span class="kw">let </span>addr_st_3 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_3));
-        <span class="kw">let </span>addr_st_4 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_4.clone()));
+        </span><span class="kw">let </span>addr_st_1 = fa.create(<span class="kw-2">&amp;</span>args, st_1);
+        <span class="kw">let </span>addr_st_1_2 = fa.create(<span class="kw-2">&amp;</span>args, st_1_2.clone());
+        <span class="kw">let </span>addr_st_2 = fa.create(<span class="kw-2">&amp;</span>args, st_2);
+        <span class="kw">let </span>addr_st_3 = fa.create(<span class="kw-2">&amp;</span>args, st_3);
+        <span class="kw">let </span>addr_st_4 = fa.create(<span class="kw-2">&amp;</span>args, st_4.clone());
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_st_1, <span class="prelude-val">Ok</span>(TestAddress::V0(<span class="kw">_</span>))));
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_st_1_2, <span class="prelude-val">Ok</span>(TestAddress::V0(<span class="kw">_</span>))));
@@ -876,7 +878,7 @@
         </span>vs.<span class="number">0</span>.write().store = info;
 
         <span class="macro">assert_eq!</span>(fa.get_all_active_component_versions(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>]);
-        <span class="kw">let </span>addr_st_4 = fa.create(<span class="kw-2">&amp;</span>args, <span class="prelude-val">Some</span>(st_4));
+        <span class="kw">let </span>addr_st_4 = fa.create(<span class="kw-2">&amp;</span>args, st_4);
         <span class="comment">// Version 2 is selected but this is not implemented in factory yet
         </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(
             addr_st_4,

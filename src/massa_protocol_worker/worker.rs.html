@@ -329,6 +329,12 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::{bounded, Receiver, Sender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::node::NodeId;
@@ -340,8 +346,11 @@
 <span class="kw">use </span>massa_serialization::U64VarIntDeserializer;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::{
-    keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
+    keypair_factory::KeyPairFactory,
+    versioning::MipStore,
+    versioning_factory::{FactoryStrategy, VersioningFactory},
 };
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::{
@@ -516,7 +525,10 @@
         </span><span class="kw">let </span>keypair_factory = KeyPairFactory {
             mip_store: mip_store.clone(),
         };
-        <span class="kw">let </span>keypair = keypair_factory.create(<span class="kw-2">&amp;</span>(), <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>now = MassaTime::now().map_err(|e| {
+            ProtocolError::GeneralProtocolError(<span class="macro">format!</span>(<span class="string">&quot;Unable to get current time: {}&quot;</span>, e))
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>keypair = keypair_factory.create(<span class="kw-2">&amp;</span>(), FactoryStrategy::At(now))<span class="question-mark">?</span>;
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = std::fs::write(<span class="kw-2">&amp;</span>config.keypair_file, serde_json::to_string(<span class="kw-2">&amp;</span>keypair)<span class="question-mark">?</span>) {
             <span class="macro">warn!</span>(<span class="string">&quot;could not generate node key file: {}&quot;</span>, e);
         }

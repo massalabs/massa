@@ -1693,7 +1693,7 @@
     /// let serialized: String = signature.to_bs58_check();
     /// ```
     </span><span class="kw">pub fn </span>generate() -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = OsRng;
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = OsRng::default();
         KeyPair(ed25519_dalek::Keypair::generate(<span class="kw-2">&amp;mut </span>rng))
     }
 
