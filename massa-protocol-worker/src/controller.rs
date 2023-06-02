@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
 
-use crossbeam::channel::Sender;
+use massa_metrics::channels::{MassaChannel, MassaSender};
 use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -31,22 +31,22 @@ pub struct ProtocolControllerImpl {
     // This is needed as to be able to stop the controller, the Sender has to be dropped,
     // if not, the handler will deadlock on `recv`
     // As this is never None, we allow ourselves to use `unwrap` to acceed to the senders
-    pub sender_block_retrieval_handler: Option<Sender<BlockHandlerRetrievalCommand>>,
-    pub sender_block_handler: Option<Sender<BlockHandlerPropagationCommand>>,
-    pub sender_operation_handler: Option<Sender<OperationHandlerPropagationCommand>>,
-    pub sender_endorsement_handler: Option<Sender<EndorsementHandlerPropagationCommand>>,
-    pub sender_connectivity_thread: Option<Sender<ConnectivityCommand>>,
-    pub sender_peer_management_thread: Option<Sender<PeerManagementCmd>>,
+    pub sender_block_retrieval_handler: Option<MassaSender<BlockHandlerRetrievalCommand>>,
+    pub sender_block_handler: Option<MassaSender<BlockHandlerPropagationCommand>>,
+    pub sender_operation_handler: Option<MassaSender<OperationHandlerPropagationCommand>>,
+    pub sender_endorsement_handler: Option<MassaSender<EndorsementHandlerPropagationCommand>>,
+    pub sender_connectivity_thread: Option<MassaSender<ConnectivityCommand>>,
+    pub sender_peer_management_thread: Option<MassaSender<PeerManagementCmd>>,
 }
 
 impl ProtocolControllerImpl {
     pub fn new(
-        sender_block_retrieval_handler: Sender<BlockHandlerRetrievalCommand>,
-        sender_block_handler: Sender<BlockHandlerPropagationCommand>,
-        sender_operation_handler: Sender<OperationHandlerPropagationCommand>,
-        sender_endorsement_handler: Sender<EndorsementHandlerPropagationCommand>,
-        sender_connectivity_thread: Sender<ConnectivityCommand>,
-        sender_peer_management_thread: Sender<PeerManagementCmd>,
+        sender_block_retrieval_handler: MassaSender<BlockHandlerRetrievalCommand>,
+        sender_block_handler: MassaSender<BlockHandlerPropagationCommand>,
+        sender_operation_handler: MassaSender<OperationHandlerPropagationCommand>,
+        sender_endorsement_handler: MassaSender<EndorsementHandlerPropagationCommand>,
+        sender_connectivity_thread: MassaSender<ConnectivityCommand>,
+        sender_peer_management_thread: MassaSender<PeerManagementCmd>,
     ) -> Self {
         ProtocolControllerImpl {
             sender_block_retrieval_handler: Some(sender_block_retrieval_handler),
@@ -147,7 +147,7 @@ impl ProtocolController for ProtocolControllerImpl {
         ),
         ProtocolError,
     > {
-        let (sender, receiver) = crossbeam::channel::bounded(1);
+        let (sender, receiver) = MassaChannel::new("get_stats".to_string(), Some(1));
         self.sender_connectivity_thread
             .as_ref()
             .unwrap()
@@ -175,7 +175,7 @@ impl ProtocolController for ProtocolControllerImpl {
     }
 
     fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, ProtocolError> {
-        let (sender, receiver) = crossbeam::channel::bounded(1);
+        let (sender, receiver) = MassaChannel::new("get_bootstrap_peers".to_string(), Some(1));
         self.sender_peer_management_thread
             .as_ref()
             .unwrap()

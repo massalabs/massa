@@ -16,13 +16,11 @@ use crate::{
     sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
 };
-use crossbeam::{
-    channel::{at, Receiver, Sender},
-    select,
-};
+use crossbeam::{channel::at, select};
 use massa_consensus_exports::ConsensusController;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
+use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
@@ -85,14 +83,14 @@ pub struct RetrievalThread {
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    receiver_network: Receiver<PeerMessageTuple>,
-    _internal_sender: Sender<BlockHandlerPropagationCommand>,
-    receiver: Receiver<BlockHandlerRetrievalCommand>,
+    receiver_network: MassaReceiver<PeerMessageTuple>,
+    _internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+    receiver: MassaReceiver<BlockHandlerRetrievalCommand>,
     block_message_serializer: MessagesSerializer,
     block_wishlist: PreHashMap<BlockId, BlockInfo>,
     asked_blocks: HashMap<PeerId, PreHashMap<BlockId, Instant>>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
-    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    sender_propagation_ops: MassaSender<OperationHandlerPropagationCommand>,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     next_timer_ask_block: Instant,
@@ -1300,11 +1298,11 @@ pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    receiver_network: Receiver<PeerMessageTuple>,
-    receiver: Receiver<BlockHandlerRetrievalCommand>,
-    _internal_sender: Sender<BlockHandlerPropagationCommand>,
-    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    receiver_network: MassaReceiver<PeerMessageTuple>,
+    receiver: MassaReceiver<BlockHandlerRetrievalCommand>,
+    _internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+    sender_propagation_ops: MassaSender<OperationHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,

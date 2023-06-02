@@ -3020,6 +3020,7 @@ dependencies = [
  "massa_consensus_exports",
  "massa_hash",
  "massa_logging",
+ "massa_metrics",
  "massa_models",
  "massa_pool_exports",
  "massa_protocol_exports",

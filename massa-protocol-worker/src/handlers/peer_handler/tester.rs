@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::messages::MessagesHandler;
-use crossbeam::channel::{Receiver, Sender};
+use massa_metrics::channels::{MassaChannel, MassaReceiver, MassaSender};
 use massa_models::version::{Version, VersionDeserializer};
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
@@ -41,16 +41,18 @@ impl Tester {
         default_target_out_connections: usize,
     ) -> (
         (
-            Sender<(PeerId, HashMap<SocketAddr, TransportType>)>,
-            Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
+            MassaSender<(PeerId, HashMap<SocketAddr, TransportType>)>,
+            MassaReceiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
         ),
         Vec<Tester>,
     ) {
         let mut testers = Vec::new();
 
         // create shared channel between thread for launching test
-        let (test_sender, test_receiver) =
-            crossbeam::channel::bounded(config.max_size_channel_commands_peer_testers);
+        let (test_sender, test_receiver) = MassaChannel::new(
+            "test_sender".to_string(),
+            Some(config.max_size_channel_commands_peer_testers),
+        );
 
         for _ in 0..config.thread_tester_count {
             testers.push(Tester::new(
@@ -237,7 +239,7 @@ impl Tester {
         peer_db: SharedPeerDB,
         active_connections: Box<dyn ActiveConnectionsTrait>,
         protocol_config: ProtocolConfig,
-        receiver: crossbeam::channel::Receiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
+        receiver: MassaReceiver<(PeerId, HashMap<SocketAddr, TransportType>)>,
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,

@@ -1,5 +1,5 @@
-use crossbeam::channel::{bounded, Receiver, Sender};
 use massa_consensus_exports::ConsensusController;
+use massa_metrics::channels::{MassaChannel, MassaReceiver, MassaSender};
 use massa_models::node::NodeId;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
@@ -52,31 +52,37 @@ use crate::{
 
 pub struct ProtocolChannels {
     pub operation_handler_retrieval: (
-        Sender<OperationHandlerRetrievalCommand>,
-        Receiver<OperationHandlerRetrievalCommand>,
+        MassaSender<OperationHandlerRetrievalCommand>,
+        MassaReceiver<OperationHandlerRetrievalCommand>,
     ),
     pub operation_handler_propagation: (
-        Sender<OperationHandlerPropagationCommand>,
-        Receiver<OperationHandlerPropagationCommand>,
+        MassaSender<OperationHandlerPropagationCommand>,
+        MassaReceiver<OperationHandlerPropagationCommand>,
     ),
     pub endorsement_handler_retrieval: (
-        Sender<EndorsementHandlerRetrievalCommand>,
-        Receiver<EndorsementHandlerRetrievalCommand>,
+        MassaSender<EndorsementHandlerRetrievalCommand>,
+        MassaReceiver<EndorsementHandlerRetrievalCommand>,
     ),
     pub endorsement_handler_propagation: (
-        Sender<EndorsementHandlerPropagationCommand>,
-        Receiver<EndorsementHandlerPropagationCommand>,
+        MassaSender<EndorsementHandlerPropagationCommand>,
+        MassaReceiver<EndorsementHandlerPropagationCommand>,
     ),
     pub block_handler_retrieval: (
-        Sender<BlockHandlerRetrievalCommand>,
-        Receiver<BlockHandlerRetrievalCommand>,
+        MassaSender<BlockHandlerRetrievalCommand>,
+        MassaReceiver<BlockHandlerRetrievalCommand>,
     ),
     pub block_handler_propagation: (
-        Sender<BlockHandlerPropagationCommand>,
-        Receiver<BlockHandlerPropagationCommand>,
+        MassaSender<BlockHandlerPropagationCommand>,
+        MassaReceiver<BlockHandlerPropagationCommand>,
     ),
-    pub connectivity_thread: (Sender<ConnectivityCommand>, Receiver<ConnectivityCommand>),
-    pub peer_management_handler: (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
+    pub connectivity_thread: (
+        MassaSender<ConnectivityCommand>,
+        MassaReceiver<ConnectivityCommand>,
+    ),
+    pub peer_management_handler: (
+        MassaSender<PeerManagementCmd>,
+        MassaReceiver<PeerManagementCmd>,
+    ),
 }
 
 /// This function exists because consensus need the protocol controller and we need consensus controller.
@@ -84,24 +90,44 @@ pub struct ProtocolChannels {
 pub fn create_protocol_controller(
     config: ProtocolConfig,
 ) -> (Box<dyn ProtocolController>, ProtocolChannels) {
-    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) =
-        bounded(config.max_size_channel_commands_retrieval_operations);
+    let (sender_operations_retrieval_ext, receiver_operations_retrieval_ext) = MassaChannel::new(
+        "operations_retrievial_ext".to_string(),
+        Some(config.max_size_channel_commands_retrieval_operations),
+    );
     let (sender_operations_propagation_ext, receiver_operations_propagation_ext) =
-        bounded(config.max_size_channel_commands_propagation_operations);
+        MassaChannel::new(
+            "operations_propagation_ext".to_string(),
+            Some(config.max_size_channel_commands_propagation_operations),
+        );
     let (sender_endorsements_retrieval_ext, receiver_endorsements_retrieval_ext) =
-        bounded(config.max_size_channel_commands_retrieval_endorsements);
+        MassaChannel::new(
+            "endorsements_retrieval_ext".to_string(),
+            Some(config.max_size_channel_commands_retrieval_endorsements),
+        );
     let (sender_endorsements_propagation_ext, receiver_endorsements_propagation_ext) =
-        bounded(config.max_size_channel_commands_propagation_endorsements);
-    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) =
-        bounded(config.max_size_channel_commands_retrieval_blocks);
-    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) =
-        bounded(config.max_size_channel_commands_propagation_blocks);
-    let (sender_connectivity_ext, receiver_connectivity_ext) =
-        bounded(config.max_size_channel_commands_connectivity);
+        MassaChannel::new(
+            "endorsements_propagation_ext".to_string(),
+            Some(config.max_size_channel_commands_propagation_endorsements),
+        );
+    let (sender_blocks_propagation_ext, receiver_blocks_propagation_ext) = MassaChannel::new(
+        "blocks_propagation_ext".to_string(),
+        Some(config.max_size_channel_commands_retrieval_blocks),
+    );
+    let (sender_blocks_retrieval_ext, receiver_blocks_retrieval_ext) = MassaChannel::new(
+        "blocks_retrieval_ext".to_string(),
+        Some(config.max_size_channel_commands_propagation_blocks),
+    );
+    let (sender_connectivity_ext, receiver_connectivity_ext) = MassaChannel::new(
+        "connectivity_ext".to_string(),
+        Some(config.max_size_channel_commands_connectivity),
+    );
     let (sender_peer_management_ext, receiver_peer_management_ext): (
-        Sender<PeerManagementCmd>,
-        Receiver<PeerManagementCmd>,
-    ) = crossbeam::channel::bounded(config.max_size_channel_commands_peers);
+        MassaSender<PeerManagementCmd>,
+        MassaReceiver<PeerManagementCmd>,
+    ) = MassaChannel::new(
+        "peer_management_ext".to_string(),
+        Some(config.max_size_channel_commands_peers),
+    );
     (
         Box::new(ProtocolControllerImpl::new(
             sender_blocks_retrieval_ext.clone(),
@@ -158,13 +184,22 @@ pub fn start_protocol_controller(
     debug!("starting protocol controller");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
-    let (sender_operations, receiver_operations) =
-        bounded(config.max_size_channel_network_to_operation_handler);
-    let (sender_endorsements, receiver_endorsements) =
-        bounded(config.max_size_channel_network_to_endorsement_handler);
-    let (sender_blocks, receiver_blocks) =
-        bounded(config.max_size_channel_network_to_block_handler);
-    let (sender_peers, receiver_peers) = bounded(config.max_size_channel_network_to_peer_handler);
+    let (sender_operations, receiver_operations) = MassaChannel::new(
+        "sender_operations".to_string(),
+        Some(config.max_size_channel_network_to_operation_handler),
+    );
+    let (sender_endorsements, receiver_endorsements) = MassaChannel::new(
+        "sender_endorsements".to_string(),
+        Some(config.max_size_channel_network_to_endorsement_handler),
+    );
+    let (sender_blocks, receiver_blocks) = MassaChannel::new(
+        "sender_blocks".to_string(),
+        Some(config.max_size_channel_network_to_block_handler),
+    );
+    let (sender_peers, receiver_peers) = MassaChannel::new(
+        "sender_peers".to_string(),
+        Some(config.max_size_channel_network_to_peer_handler),
+    );
 
     // Register channels for handlers
     let message_handlers: MessagesHandler = MessagesHandler {

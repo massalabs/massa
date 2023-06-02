@@ -1,7 +1,8 @@
 use std::{mem, thread::JoinHandle};
 
-use crossbeam::channel::{Receiver, RecvTimeoutError};
+use crossbeam::channel::RecvTimeoutError;
 use massa_logging::massa_trace;
+use massa_metrics::channels::MassaReceiver;
 use massa_models::operation::OperationId;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
@@ -18,7 +19,7 @@ use super::{
 };
 
 struct PropagationThread {
-    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
+    internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     operations_to_announce: Vec<OperationId>,
     config: ProtocolConfig,
@@ -141,7 +142,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
+    internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     config: ProtocolConfig,
     cache: SharedOperationCache,

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crossbeam::channel::Receiver;
+use massa_metrics::channels::MassaReceiver;
 use massa_models::{
     block::SecureShareBlock, block_id::BlockId, operation::SecureShareOperation,
     prehash::PreHashSet,
@@ -14,7 +14,7 @@ use crate::{
 
 use super::mock_network::MockNetworkController;
 
-pub fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
+pub fn assert_hash_asked_to_node(node: &MassaReceiver<Message>, block_id: &BlockId) {
     let msg = node
         .recv_timeout(Duration::from_millis(1500))
         .expect("Node didn't receive the ask for block message");
@@ -31,7 +31,7 @@ pub fn assert_hash_asked_to_node(node: &Receiver<Message>, block_id: &BlockId) {
     }
 }
 
-pub fn assert_block_info_sent_to_node(node: &Receiver<Message>, block_id: &BlockId) {
+pub fn assert_block_info_sent_to_node(node: &MassaReceiver<Message>, block_id: &BlockId) {
     let msg = node
         .recv_timeout(Duration::from_millis(1500))
         .expect("Node didn't receive the infos block message");

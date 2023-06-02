@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use crossbeam::channel::{Receiver, Sender};
+use massa_metrics::channels::{MassaChannel, MassaReceiver, MassaSender};
 use massa_protocol_exports::{PeerId, ProtocolError};
 use parking_lot::RwLock;
 use peernet::{
@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub struct MockActiveConnections {
-    pub connections: HashMap<PeerId, Sender<Message>>,
+    pub connections: HashMap<PeerId, MassaSender<Message>>,
 }
 
 impl MockActiveConnections {
@@ -131,8 +131,8 @@ impl MockNetworkController {
 }
 
 impl MockNetworkController {
-    pub fn create_fake_connection(&mut self, peer_id: PeerId) -> (PeerId, Receiver<Message>) {
-        let (sender, receiver) = crossbeam::channel::unbounded();
+    pub fn create_fake_connection(&mut self, peer_id: PeerId) -> (PeerId, MassaReceiver<Message>) {
+        let (sender, receiver) = MassaChannel::new("create_fake_connection".to_string(), None);
         self.connections
             .write()
             .connections

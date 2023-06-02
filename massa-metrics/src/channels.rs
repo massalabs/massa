@@ -59,6 +59,7 @@ impl MassaChannel {
 
         // Register metrics in prometheus
         // TODO unwrap
+        // panic here if metrics already registered (ex : ProtocolController>::get_stats )
         prometheus::register(Box::new(actual_len.clone())).unwrap();
         prometheus::register(Box::new(received.clone())).unwrap();
 

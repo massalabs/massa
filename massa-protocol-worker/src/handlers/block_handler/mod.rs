@@ -1,7 +1,7 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::{Receiver, Sender};
 use massa_consensus_exports::ConsensusController;
+use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
@@ -38,8 +38,9 @@ use super::{
 };
 
 pub struct BlockHandler {
-    pub block_retrieval_thread: Option<(Sender<BlockHandlerRetrievalCommand>, JoinHandle<()>)>,
-    pub block_propagation_thread: Option<(Sender<BlockHandlerPropagationCommand>, JoinHandle<()>)>,
+    pub block_retrieval_thread: Option<(MassaSender<BlockHandlerRetrievalCommand>, JoinHandle<()>)>,
+    pub block_propagation_thread:
+        Option<(MassaSender<BlockHandlerPropagationCommand>, JoinHandle<()>)>,
 }
 
 impl BlockHandler {
@@ -48,13 +49,13 @@ impl BlockHandler {
         active_connections: Box<dyn ActiveConnectionsTrait>,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
-        receiver_network: Receiver<PeerMessageTuple>,
-        sender_ext: Sender<BlockHandlerRetrievalCommand>,
-        receiver_ext: Receiver<BlockHandlerRetrievalCommand>,
-        internal_receiver: Receiver<BlockHandlerPropagationCommand>,
-        internal_sender: Sender<BlockHandlerPropagationCommand>,
-        sender_propagations_ops: Sender<OperationHandlerPropagationCommand>,
-        peer_cmd_sender: Sender<PeerManagementCmd>,
+        receiver_network: MassaReceiver<PeerMessageTuple>,
+        sender_ext: MassaSender<BlockHandlerRetrievalCommand>,
+        receiver_ext: MassaReceiver<BlockHandlerRetrievalCommand>,
+        internal_receiver: MassaReceiver<BlockHandlerPropagationCommand>,
+        internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+        sender_propagations_ops: MassaSender<OperationHandlerPropagationCommand>,
+        peer_cmd_sender: MassaSender<PeerManagementCmd>,
         config: ProtocolConfig,
         endorsement_cache: SharedEndorsementCache,
         operation_cache: SharedOperationCache,

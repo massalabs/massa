@@ -1,8 +1,6 @@
-use crossbeam::{
-    channel::{Receiver, Sender},
-    select,
-};
+use crossbeam::select;
 use massa_consensus_exports::ConsensusController;
+use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
@@ -31,11 +29,12 @@ use crate::{
     wrap_network::NetworkController,
 };
 
+#[derive(Clone)]
 pub enum ConnectivityCommand {
     Stop,
     GetStats {
         #[allow(clippy::type_complexity)]
-        responder: Sender<(
+        responder: MassaSender<(
             NetworkStats,
             HashMap<PeerId, (SocketAddr, PeerConnectionType)>,
         )>,
@@ -48,10 +47,22 @@ pub(crate) fn start_connectivity_thread(
     mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    channel_blocks: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    channel_endorsements: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    channel_operations: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    channel_peers: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+    channel_blocks: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
+    channel_endorsements: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
+    channel_operations: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
+    channel_peers: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
     initial_peers: InitialPeers,
     peer_db: SharedPeerDB,
     storage: Storage,
@@ -61,7 +72,7 @@ pub(crate) fn start_connectivity_thread(
     _default_category: PeerCategoryInfo,
     config: ProtocolConfig,
     mip_store: MipStore,
-) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
+) -> Result<(MassaSender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
     .spawn({
@@ -133,8 +144,8 @@ pub(crate) fn start_connectivity_thread(
                 config.clone(),
                 network_controller.get_active_connections(),
                 channel_endorsements.1,
-                protocol_channels.endorsement_handler_retrieval.0.clone(),
-                protocol_channels.endorsement_handler_retrieval.1.clone(),
+                protocol_channels.endorsement_handler_retrieval.0,
+                protocol_channels.endorsement_handler_retrieval.1,
                 sender_endorsements_propagation_ext,
                 protocol_channels.endorsement_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),

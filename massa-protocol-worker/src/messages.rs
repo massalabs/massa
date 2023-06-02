@@ -1,4 +1,4 @@
-use crossbeam::channel::Sender;
+use massa_metrics::channels::MassaSender;
 use massa_protocol_exports::PeerId;
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -219,10 +219,10 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
 #[derive(Clone)]
 pub struct MessagesHandler {
     pub id_deserializer: U64VarIntDeserializer,
-    pub sender_blocks: Sender<PeerMessageTuple>,
-    pub sender_endorsements: Sender<PeerMessageTuple>,
-    pub sender_operations: Sender<PeerMessageTuple>,
-    pub sender_peers: Sender<PeerMessageTuple>,
+    pub sender_blocks: MassaSender<PeerMessageTuple>,
+    pub sender_endorsements: MassaSender<PeerMessageTuple>,
+    pub sender_operations: MassaSender<PeerMessageTuple>,
+    pub sender_peers: MassaSender<PeerMessageTuple>,
 }
 
 impl PeerNetMessagesHandler<PeerId> for MessagesHandler {

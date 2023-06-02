@@ -1,6 +1,6 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::Receiver;
+use massa_metrics::channels::MassaReceiver;
 use massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
@@ -17,7 +17,7 @@ use super::{
 };
 
 struct PropagationThread {
-    receiver: Receiver<EndorsementHandlerPropagationCommand>,
+    receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedEndorsementCache,
     active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -145,7 +145,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    receiver: Receiver<EndorsementHandlerPropagationCommand>,
+    receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
     active_connections: Box<dyn ActiveConnectionsTrait>,

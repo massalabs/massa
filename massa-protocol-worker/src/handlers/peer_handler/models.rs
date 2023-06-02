@@ -1,4 +1,4 @@
-use crossbeam::channel::Sender;
+use massa_metrics::channels::MassaSender;
 use massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 use massa_time::MassaTime;
 use parking_lot::RwLock;
@@ -44,16 +44,19 @@ pub enum PeerState {
     Trusted,
 }
 
+#[derive(Clone)]
 pub enum PeerManagementCmd {
     Ban(Vec<PeerId>),
     Unban(Vec<PeerId>),
-    GetBootstrapPeers { responder: Sender<BootstrapPeers> },
+    GetBootstrapPeers {
+        responder: MassaSender<BootstrapPeers>,
+    },
     Stop,
 }
 
 pub struct PeerManagementChannel {
-    pub msg_sender: Sender<PeerMessageTuple>,
-    pub command_sender: Sender<PeerManagementCmd>,
+    pub msg_sender: MassaSender<PeerMessageTuple>,
+    pub command_sender: MassaSender<PeerManagementCmd>,
 }
 
 impl PeerDB {

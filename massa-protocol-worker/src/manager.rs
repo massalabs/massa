@@ -1,6 +1,6 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::Sender;
+use massa_metrics::channels::MassaSender;
 use massa_protocol_exports::ProtocolManager;
 use tracing::info;
 
@@ -8,11 +8,11 @@ use crate::connectivity::ConnectivityCommand;
 
 /// protocol manager used to stop the protocol
 pub struct ProtocolManagerImpl {
-    connectivity_thread: Option<(Sender<ConnectivityCommand>, JoinHandle<()>)>,
+    connectivity_thread: Option<(MassaSender<ConnectivityCommand>, JoinHandle<()>)>,
 }
 
 impl ProtocolManagerImpl {
-    pub fn new(connectivity_thread: (Sender<ConnectivityCommand>, JoinHandle<()>)) -> Self {
+    pub fn new(connectivity_thread: (MassaSender<ConnectivityCommand>, JoinHandle<()>)) -> Self {
         Self {
             connectivity_thread: Some(connectivity_thread),
         }
