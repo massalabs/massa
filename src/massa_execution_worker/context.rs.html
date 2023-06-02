@@ -1034,6 +1034,14 @@
 <a href="#1034" id="1034">1034</a>
 <a href="#1035" id="1035">1035</a>
 <a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1060,6 +1068,7 @@
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
+<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
@@ -1499,8 +1508,15 @@
         //  https://github.com/massalabs/massa/issues/2331
 
         // deterministically generate a new unique smart contract address
+        </span><span class="kw">let </span>slot_timestamp = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            <span class="self">self</span>.slot,
+        )
+        .expect(<span class="string">&quot;could not compute current slot timestamp&quot;</span>);
 
-        // create a seed from the current slot
+        <span class="comment">// create a seed from the current slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>data: Vec&lt;u8&gt; = <span class="self">self</span>.slot.to_bytes_key().to_vec();
         <span class="comment">// add the index of the created address within this context to the seed
         </span>data.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.created_addr_index.to_be_bytes().to_vec());
@@ -1513,10 +1529,10 @@
         }
         <span class="comment">// hash the seed to get a unique address
         </span><span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>data);
-        <span class="comment">// Already fixed in PR #4027 - wait for rebase
-        </span><span class="kw">let </span>address = <span class="self">self
-            </span>.address_factory
-            .create(<span class="kw-2">&amp;</span>AddressArgs::SC { hash }, FactoryStrategy::Exact(<span class="number">0</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>address = <span class="self">self</span>.address_factory.create(
+            <span class="kw-2">&amp;</span>AddressArgs::SC { hash },
+            FactoryStrategy::At(slot_timestamp),
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// add this address with its bytecode to the speculative ledger
         </span><span class="self">self</span>.speculative_ledger.create_new_sc_address(
