@@ -824,7 +824,7 @@
         <span class="self">self</span>.config.pretty_print();
         <span class="macro">println!</span>();
 
-        <span class="macro">println!</span>(<span class="string">&quot;Current time: {}&quot;</span>, <span class="self">self</span>.current_time.to_utc_string());
+        <span class="macro">println!</span>(<span class="string">&quot;Current time: {}&quot;</span>, <span class="self">self</span>.current_time.format_instant());
         <span class="macro">println!</span>(
             <span class="string">&quot;Current cycle: {}&quot;</span>,
             Style::Protocol.style(<span class="self">self</span>.current_cycle)
@@ -873,11 +873,11 @@
         <span class="macro">println!</span>(<span class="string">&quot;Execution stats:&quot;</span>);
         <span class="macro">println!</span>(
             <span class="string">&quot;\tStart stats timespan time: {}&quot;</span>,
-            Style::Time.style(<span class="self">self</span>.time_window_start.to_utc_string())
+            Style::Time.style(<span class="self">self</span>.time_window_start.format_instant())
         );
         <span class="macro">println!</span>(
             <span class="string">&quot;\tEnd stats timespan time: {}&quot;</span>,
-            Style::Time.style(<span class="self">self</span>.time_window_end.to_utc_string())
+            Style::Time.style(<span class="self">self</span>.time_window_end.format_instant())
         );
         <span class="macro">println!</span>(
             <span class="string">&quot;\tFinal executed block count: {}&quot;</span>,
@@ -925,10 +925,10 @@
         <span class="macro">println!</span>(<span class="string">&quot;Config:&quot;</span>);
         <span class="macro">println!</span>(
             <span class="string">&quot;\tGenesis time: {}&quot;</span>,
-            Style::Time.style(<span class="self">self</span>.genesis_timestamp.to_utc_string())
+            Style::Time.style(<span class="self">self</span>.genesis_timestamp.format_instant())
         );
         <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.end_timestamp {
-            <span class="macro">println!</span>(<span class="string">&quot;\tEnd time: {}&quot;</span>, Style::Time.style(end.to_utc_string()));
+            <span class="macro">println!</span>(<span class="string">&quot;\tEnd time: {}&quot;</span>, Style::Time.style(end.format_instant()));
         }
         <span class="macro">println!</span>(
             <span class="string">&quot;\tThread count: {}&quot;</span>,
@@ -958,11 +958,11 @@
         <span class="macro">println!</span>(<span class="string">&quot;Consensus stats:&quot;</span>);
         <span class="macro">println!</span>(
             <span class="string">&quot;\tStart stats timespan time: {}&quot;</span>,
-            Style::Time.style(<span class="self">self</span>.start_timespan.to_utc_string())
+            Style::Time.style(<span class="self">self</span>.start_timespan.format_instant())
         );
         <span class="macro">println!</span>(
             <span class="string">&quot;\tEnd stats timespan time: {}&quot;</span>,
-            Style::Time.style(<span class="self">self</span>.end_timespan.to_utc_string())
+            Style::Time.style(<span class="self">self</span>.end_timespan.format_instant())
         );
         <span class="macro">println!</span>(
             <span class="string">&quot;\tFinal block count: {}&quot;</span>,
