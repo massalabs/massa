@@ -283,8 +283,8 @@ fn test_executed_ops_hash_computing() {
         max_new_elements: 100,
         thread_count,
     };
-    let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
-    let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
+    let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config, false)));
+    let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config, false)));
     // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone(), db_a.clone());
     let mut c = ExecutedOps::new(config, db_c.clone());

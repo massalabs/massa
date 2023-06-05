@@ -20,7 +20,7 @@ impl Default for FinalLedger {
             max_new_elements: 100,
             thread_count: THREAD_COUNT,
         };
-        let db = MassaDB::new(db_config);
+        let db = MassaDB::new(db_config, false);
         let db = LedgerDB::new(
             Arc::new(RwLock::new(db)),
             THREAD_COUNT,

@@ -246,7 +246,11 @@ async fn launch(
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
         thread_count: THREAD_COUNT,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = if args.keep_ledger {
+        Arc::new(RwLock::new(MassaDB::new(db_config, true)))
+    } else {
+        Arc::new(RwLock::new(MassaDB::new(db_config, false)))
+    };
 
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone(), db.clone());

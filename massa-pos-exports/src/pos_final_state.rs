@@ -1492,7 +1492,7 @@ fn test_pos_final_state_hash_computation() {
         max_new_elements: 100,
         thread_count: 2,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config, false)));
     let (selector_controller, _) = MockSelectorController::new_with_receiver();
     let init_seed = Hash::compute_from(b"");
     let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];

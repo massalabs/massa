@@ -529,7 +529,7 @@ mod tests {
             thread_count: 32,
         };
 
-        let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+        let db = Arc::new(RwLock::new(MassaDB::new(db_config, false)));
 
         let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();

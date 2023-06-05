@@ -86,7 +86,7 @@ pub fn get_sample_state(
         max_new_elements: 100,
         thread_count: THREAD_COUNT,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config, false)));
 
     let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();

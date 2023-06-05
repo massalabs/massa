@@ -2040,7 +2040,7 @@ mod test {
             max_new_elements: 100,
             thread_count: THREAD_COUNT,
         };
-        let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+        let db = Arc::new(RwLock::new(MassaDB::new(db_config, false)));
 
         // MIP info / store init
 

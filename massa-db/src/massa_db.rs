@@ -1,7 +1,7 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
-    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
+    LEDGER_PREFIX, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR,
+    STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_hash::{Hash, SmtHasher};
@@ -610,25 +610,42 @@ where
 
 impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Returns a new `MassaDB` instance
-    pub fn new(config: MassaDBConfig) -> Self {
+    pub fn new(config: MassaDBConfig, convert_ledger_from_old_format: bool) -> Self {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
 
-        let db = DB::open_cf_descriptors(
-            &db_opts,
-            &config.path,
-            vec![
-                ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-                ColumnFamilyDescriptor::new(LSMTREE_NODES_CF, Options::default()),
-                ColumnFamilyDescriptor::new(LSMTREE_VALUES_CF, Options::default()),
-                ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
-            ],
-        )
-        .expect(OPEN_ERROR);
+        let db = if convert_ledger_from_old_format {
+            DB::open_cf_descriptors(
+                &db_opts,
+                &config.path,
+                vec![
+                    ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
+                    ColumnFamilyDescriptor::new("ledger", Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(LSMTREE_NODES_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(LSMTREE_VALUES_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        } else {
+            DB::open_cf_descriptors(
+                &db_opts,
+                &config.path,
+                vec![
+                    ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(LSMTREE_NODES_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(LSMTREE_VALUES_CF, Options::default()),
+                    ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
+                ],
+            )
+            .expect(OPEN_ERROR)
+        };
 
         let db = Arc::new(db);
+
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
         let current_hashmap = Arc::new(RwLock::new(HashMap::new()));
 
@@ -659,7 +676,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             _ => SparseMerkleTree::new_with_stores(nodes_store, values_store),
         };
 
-        let massa_db = Self {
+        let mut massa_db = Self {
             db,
             config,
             change_history: BTreeMap::new(),
@@ -676,6 +693,29 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 period: 0,
                 thread: 0,
             });
+        }
+
+        if convert_ledger_from_old_format {
+            let old_ledger_cf = massa_db.db.cf_handle("ledger").unwrap();
+
+            let mut state_batch = DBBatch::new();
+            let versioning_batch = DBBatch::new();
+            for (old_serialized_key, old_serialized_value) in massa_db
+                .db
+                .iterator_cf(old_ledger_cf, IteratorMode::Start)
+                .flatten()
+            {
+                let mut new_serialized_key = Vec::new();
+                new_serialized_key.extend_from_slice(LEDGER_PREFIX.as_bytes());
+                new_serialized_key.extend_from_slice(&old_serialized_key);
+
+                massa_db.put_or_update_entry_value(
+                    &mut state_batch,
+                    new_serialized_key,
+                    &old_serialized_value,
+                );
+            }
+            massa_db.write_batch(state_batch, versioning_batch, None)
         }
 
         massa_db
