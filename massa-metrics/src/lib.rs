@@ -52,17 +52,41 @@ mod test {
         }
 
         assert_eq!(receiver.len(), 80);
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        drop(sender2);
+        drop(receiver2);
         std::thread::sleep(std::time::Duration::from_secs(100));
-        // channel2.send("Hello world".to_string()).unwrap();
-        // std::thread::sleep(std::time::Duration::from_secs(100));
     }
 
-    // #[test]
-    // fn test_channel_size() {
-    //     let channel = ChannelMetrics::new("test_size".to_string(), None);
+    #[tokio::test]
+    async fn test_channel() {
+        let addr = ([192, 168, 1, 183], 9898).into();
 
-    //     channel.send(1).unwrap();
-    //     channel.send(2).unwrap();
-    //     assert_eq!(channel.len(), 2);
-    // }
+        start_metrics_server(addr);
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
+        let (sender, receiver) = MassaChannel::new("test2".to_string(), None);
+
+        let cloned = receiver.clone();
+
+        sender.send("msg".to_string()).unwrap();
+
+        std::thread::spawn(move || {
+            dbg!("spawned");
+
+            loop {
+                dbg!("loop");
+                dbg!(receiver.recv().unwrap());
+                std::thread::sleep(std::time::Duration::from_secs(1));
+            }
+        });
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+
+            drop(sender);
+        });
+
+        std::thread::sleep(std::time::Duration::from_secs(20));
+    }
 }
