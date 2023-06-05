@@ -40,6 +40,8 @@ mod test {
         let (sender2, receiver2) = MassaChannel::new("second_channel".to_string(), None);
 
         sender2.send("hello_world".to_string()).unwrap();
+        let data = receiver2.recv().unwrap();
+        assert_eq!(data, "hello_world".to_string());
 
         for i in 0..100 {
             sender.send(i).unwrap();
@@ -50,10 +52,7 @@ mod test {
         }
 
         assert_eq!(receiver.len(), 80);
-
-        let data = receiver2.recv().unwrap();
-        assert_eq!(data, "hello_world".to_string());
-
+        std::thread::sleep(std::time::Duration::from_secs(100));
         // channel2.send("Hello world".to_string()).unwrap();
         // std::thread::sleep(std::time::Duration::from_secs(100));
     }
