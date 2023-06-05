@@ -760,8 +760,8 @@
         max_new_elements: <span class="number">100</span>,
         thread_count,
     };
-    <span class="kw">let </span>db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
-    <span class="kw">let </span>db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
+    <span class="kw">let </span>db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config, <span class="bool-val">false</span>)));
+    <span class="kw">let </span>db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config, <span class="bool-val">false</span>)));
     <span class="comment">// initialize the executed ops and executed ops changes
     </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone(), db_a.clone());
     <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config, db_c.clone());

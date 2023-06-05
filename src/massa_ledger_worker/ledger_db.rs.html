@@ -1132,7 +1132,7 @@
             thread_count: <span class="number">32</span>,
         };
 
-        <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+        <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config, <span class="bool-val">false</span>)));
 
         <span class="kw">let </span>ledger_db = LedgerDB::new(db.clone(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
