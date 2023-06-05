@@ -1253,6 +1253,9 @@
 <a href="#1253" id="1253">1253</a>
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -2359,7 +2362,6 @@
         .build()
         .unwrap();
 
-
     <span class="comment">// spawn the console server in the background, returning a `Layer`:
     </span><span class="kw">use </span>tracing_subscriber::prelude::<span class="kw-2">*</span>;
     <span class="kw">let </span>tracing_layer = tracing_subscriber::fmt::layer()
@@ -2400,23 +2402,27 @@
             .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
         sig_int_toggled_clone.<span class="number">1</span>.notify_all();
     })
-        .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
+    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
     run(args, tokio_rt, sigint_cv_pair)
 }
 
 <span class="comment">// With the runtime context setup, we can begin to set up the data for the event loop
-</span><span class="kw">fn </span>run(args: Args, runtime: tokio::runtime::Runtime, sigint_cv_pair: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;) -&gt; anyhow::Result&lt;()&gt; {
+</span><span class="kw">fn </span>run(
+    args: Args,
+    runtime: tokio::runtime::Runtime,
+    sigint_cv_pair: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
+) -&gt; anyhow::Result&lt;()&gt; {
     <span class="comment">// load or create wallet, asking for password if necessary
-    </span><span class="kw">let </span>node_wallet = load_wallet(
-        args.password.clone(),
-        <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path,
-    )<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>node_wallet = load_wallet(args.password.clone(), <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path)<span class="question-mark">?</span>;
 
     runtime.block_on(launch_loop(args, node_wallet, sigint_cv_pair))
 }
 
-
-<span class="kw">async fn </span>launch_loop(args: Args, node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;, sigint_cv_pair: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;) -&gt; anyhow::Result&lt;()&gt; {
+<span class="kw">async fn </span>launch_loop(
+    args: Args,
+    node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
+    sigint_cv_pair: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
+) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>cur_args = args;
 
     <span class="kw">loop </span>{
