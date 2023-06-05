@@ -7,9 +7,9 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     stats::NetworkStats,
 };
-use massa_protocol_exports::{BootstrapPeers, ProtocolController, ProtocolError};
+use massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolController, ProtocolError};
 use massa_storage::Storage;
-use peernet::{peer::PeerConnectionType, peer_id::PeerId};
+use peernet::peer::PeerConnectionType;
 
 use crate::{
     connectivity::ConnectivityCommand,
@@ -76,7 +76,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage })
+            .try_send(BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage })
             .map_err(|_| ProtocolError::ChannelError("integrated_block command send error".into()))
     }
 
@@ -85,7 +85,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_block_handler
             .as_ref()
             .unwrap()
-            .send(BlockHandlerPropagationCommand::AttackBlockDetected(
+            .try_send(BlockHandlerPropagationCommand::AttackBlockDetected(
                 block_id,
             ))
             .map_err(|_| {
@@ -117,7 +117,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_operation_handler
             .as_ref()
             .unwrap()
-            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                 operations,
             ))
             .map_err(|_| {
@@ -130,7 +130,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_endorsement_handler
             .as_ref()
             .unwrap()
-            .send(EndorsementHandlerPropagationCommand::PropagateEndorsements(
+            .try_send(EndorsementHandlerPropagationCommand::PropagateEndorsements(
                 endorsements,
             ))
             .map_err(|_| {
@@ -151,7 +151,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_connectivity_thread
             .as_ref()
             .unwrap()
-            .send(ConnectivityCommand::GetStats { responder: sender })
+            .try_send(ConnectivityCommand::GetStats { responder: sender })
             .map_err(|_| ProtocolError::ChannelError("get_stats command send error".into()))?;
         receiver
             .recv_timeout(Duration::from_secs(10))
@@ -162,7 +162,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_peer_management_thread
             .as_ref()
             .unwrap()
-            .send(PeerManagementCmd::Ban(peer_ids))
+            .try_send(PeerManagementCmd::Ban(peer_ids))
             .map_err(|_| ProtocolError::ChannelError("ban_peers command send error".into()))
     }
 
@@ -170,7 +170,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_peer_management_thread
             .as_ref()
             .unwrap()
-            .send(PeerManagementCmd::Unban(peer_ids))
+            .try_send(PeerManagementCmd::Unban(peer_ids))
             .map_err(|_| ProtocolError::ChannelError("unban_peers command send error".into()))
     }
 
@@ -179,7 +179,7 @@ impl ProtocolController for ProtocolControllerImpl {
         self.sender_peer_management_thread
             .as_ref()
             .unwrap()
-            .send(PeerManagementCmd::GetBootstrapPeers { responder: sender })
+            .try_send(PeerManagementCmd::GetBootstrapPeers { responder: sender })
             .map_err(|_| {
                 ProtocolError::ChannelError("get_bootstrap_peers command send error".into())
             })?;

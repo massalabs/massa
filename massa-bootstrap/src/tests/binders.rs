@@ -2,20 +2,20 @@ use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::BootstrapConfig;
 use crate::{
-    client_binder::BootstrapClientBinder, server_binder::BootstrapServerBinder,
-    tests::tools::get_bootstrap_config, BootstrapPeers,
+    bindings::{BootstrapClientBinder, BootstrapServerBinder},
+    tests::tools::get_bootstrap_config,
+    BootstrapPeers,
 };
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
-    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_DATASTORE_ENTRY_COUNT,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_LEDGER_CHANGES_COUNT,
-    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
-    THREAD_COUNT,
+    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
+    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX, THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::version::Version;
@@ -28,7 +28,7 @@ use std::str::FromStr;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
-        let keypair = KeyPair::generate();
+        let keypair = KeyPair::generate(0).unwrap();
         (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
     };
 }
@@ -37,7 +37,6 @@ impl BootstrapClientBinder {
     pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
             max_bytes_read_write: f64::INFINITY,
-            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
             endorsement_count: ENDORSEMENT_COUNT,
             max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -46,7 +45,7 @@ impl BootstrapClientBinder {
             thread_count: THREAD_COUNT,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-            max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+            max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
             max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -83,7 +82,6 @@ fn test_binders() {
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
-            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -96,10 +94,10 @@ fn test_binders() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let peer_id1 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
-    let peer_id2 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
-    let peer_id3 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
-    let peer_id4 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
+    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id2 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id3 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id4 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
     let server_thread = std::thread::Builder::new()
         .name("test_binders::server_thread".to_string())
@@ -234,7 +232,6 @@ fn test_binders_double_send_server_works() {
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
-            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -247,10 +244,10 @@ fn test_binders_double_send_server_works() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let peer_id1 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
-    let peer_id2 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
-    let peer_id3 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
-    let peer_id4 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
+    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id2 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id3 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let peer_id4 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
     let server_thread = std::thread::Builder::new()
         .name("test_buinders_double_send_server_works::server_thread".to_string())
@@ -366,7 +363,6 @@ fn test_binders_try_double_send_client_works() {
         server_keypair.clone(),
         BootstrapSrvBindCfg {
             max_bytes_read_write: f64::INFINITY,
-            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -379,7 +375,7 @@ fn test_binders_try_double_send_client_works() {
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
 
-    let peer_id1 = PeerId::from_bytes(KeyPair::generate().get_public_key().to_bytes()).unwrap();
+    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
     let server_thread = std::thread::Builder::new()
         .name("test_buinders_double_send_client_works::server_thread".to_string())

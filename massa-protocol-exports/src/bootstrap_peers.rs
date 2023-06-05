@@ -1,23 +1,20 @@
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::ops::Bound::Included;
-
+use crate::{PeerId, PeerIdDeserializer, PeerIdSerializer};
 use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
     U32VarIntDeserializer, U32VarIntSerializer,
 };
-use massa_signature::PUBLIC_KEY_SIZE_BYTES;
 use nom::{
-    bytes::complete::take,
     error::{context, ContextError, ParseError},
     multi::length_count,
     sequence::tuple,
     IResult, Parser,
 };
-use peernet::peer_id::PeerId;
 use peernet::transports::TransportType;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::ops::Bound::Included;
 
 /// Peer info provided in bootstrap
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -35,6 +32,7 @@ pub struct BootstrapPeersSerializer {
     u32_serializer: U32VarIntSerializer,
     ip_addr_serializer: IpAddrSerializer,
     port_serializer: U16VarIntSerializer,
+    peer_id_serializer: PeerIdSerializer,
 }
 
 impl BootstrapPeersSerializer {
@@ -44,6 +42,7 @@ impl BootstrapPeersSerializer {
             u32_serializer: U32VarIntSerializer::new(),
             ip_addr_serializer: IpAddrSerializer::new(),
             port_serializer: U16VarIntSerializer::new(),
+            peer_id_serializer: PeerIdSerializer::new(),
         }
     }
 }
@@ -58,16 +57,16 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
     /// ```
     /// use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType, BootstrapPeersSerializer};
     /// use massa_serialization::Serializer;
-    /// use peernet::types::KeyPair;
+    /// use massa_signature::KeyPair;
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate();
+    /// let keypair1 = KeyPair::generate(0).unwrap();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert("127.0.0.1:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate();
+    /// let mut keypair2 = KeyPair::generate(0).unwrap();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert("[::1]:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -89,7 +88,7 @@ impl Serializer<BootstrapPeers> for BootstrapPeersSerializer {
         })?;
         self.u32_serializer.serialize(&peers_count, buffer)?;
         for (peer_id, listeners) in value.0.iter() {
-            buffer.extend_from_slice(&peer_id.to_bytes());
+            self.peer_id_serializer.serialize(peer_id, buffer)?;
             self.u32_serializer
                 .serialize(&(listeners.len() as u32), buffer)?;
             for (addr, transport_type) in listeners.iter() {
@@ -108,6 +107,7 @@ pub struct BootstrapPeersDeserializer {
     length_listeners_deserializer: U32VarIntDeserializer,
     ip_addr_deserializer: IpAddrDeserializer,
     port_deserializer: U16VarIntDeserializer,
+    peer_id_deserializer: PeerIdDeserializer,
 }
 
 impl BootstrapPeersDeserializer {
@@ -125,6 +125,7 @@ impl BootstrapPeersDeserializer {
             ),
             ip_addr_deserializer: IpAddrDeserializer::new(),
             port_deserializer: U16VarIntDeserializer::new(Included(0), Included(u16::MAX)),
+            peer_id_deserializer: PeerIdDeserializer::new(),
         }
     }
 }
@@ -133,16 +134,16 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
     /// ```
     /// use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType, BootstrapPeersSerializer, BootstrapPeersDeserializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use peernet::types::KeyPair;
+    /// use massa_signature::KeyPair;
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
     ///
-    /// let keypair1 = KeyPair::generate();
+    /// let keypair1 = KeyPair::generate(0).unwrap();
     /// let mut peers = vec![];
     /// let mut listeners1 = HashMap::default();
     /// listeners1.insert("127.0.0.1:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners1));
-    /// let mut keypair2 = KeyPair::generate();
+    /// let mut keypair2 = KeyPair::generate(0).unwrap();
     /// let mut listeners2 = HashMap::default();
     /// listeners2.insert("[::1]:8080".parse().unwrap(), TransportType::Tcp);
     /// peers.push((PeerId::from_public_key(keypair1.get_public_key()), listeners2));
@@ -166,24 +167,7 @@ impl Deserializer<BootstrapPeers> for BootstrapPeersDeserializer {
             context("Failed Peer deserialization", |input| {
                 tuple((
                     context("Failed PeerId deserialization", |input: &'a [u8]| {
-                        let (rest, peer_id) = take(32usize)(input)?;
-                        Ok((
-                            rest,
-                            PeerId::from_bytes(
-                                peer_id[..PUBLIC_KEY_SIZE_BYTES].try_into().map_err(|_| {
-                                    nom::Err::Error(ParseError::from_error_kind(
-                                        input,
-                                        nom::error::ErrorKind::Count,
-                                    ))
-                                })?,
-                            )
-                            .map_err(|_| {
-                                nom::Err::Error(ParseError::from_error_kind(
-                                    input,
-                                    nom::error::ErrorKind::Count,
-                                ))
-                            })?,
-                        ))
+                        self.peer_id_deserializer.deserialize(input)
                     }),
                     length_count(
                         context("Failed length deserialization", |input| {

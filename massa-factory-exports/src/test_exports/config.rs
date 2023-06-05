@@ -10,7 +10,7 @@ impl Default for FactoryConfig {
             thread_count: THREAD_COUNT,
             genesis_timestamp: MassaTime::now().expect("failed to get current time"),
             t0: T0,
-            initial_delay: MassaTime::from(0),
+            initial_delay: MassaTime::from_millis(0),
             max_block_size: MAX_BLOCK_SIZE as u64,
             max_block_gas: MAX_GAS_PER_BLOCK,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,

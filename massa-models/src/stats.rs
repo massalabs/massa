@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 
 /// execution statistics
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionStats {
     /// time window start
     pub time_window_start: MassaTime,
@@ -26,12 +26,12 @@ impl std::fmt::Display for ExecutionStats {
         writeln!(
             f,
             "\tStart stats timespan time: {}",
-            self.time_window_start.to_utc_string()
+            self.time_window_start.format_instant()
         )?;
         writeln!(
             f,
             "\tEnd stats timespan time: {}",
-            self.time_window_end.to_utc_string()
+            self.time_window_end.format_instant()
         )?;
         writeln!(
             f,
@@ -49,7 +49,7 @@ impl std::fmt::Display for ExecutionStats {
 }
 
 /// stats produced by network module
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkStats {
     /// in connections count
     pub in_connection_count: u64,
@@ -96,12 +96,12 @@ impl std::fmt::Display for ConsensusStats {
         writeln!(
             f,
             "\tStart stats timespan time: {}",
-            self.start_timespan.to_utc_string()
+            self.start_timespan.format_instant()
         )?;
         writeln!(
             f,
             "\tEnd stats timespan time: {}",
-            self.end_timespan.to_utc_string()
+            self.end_timespan.format_instant()
         )?;
         writeln!(f, "\tFinal block count: {}", self.final_block_count)?;
         writeln!(f, "\tStale block count: {}", self.stale_block_count)?;

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::slot::SlotAmount;
 
 /// All you ever dream to know about an address
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AddressInfo {
     /// the address
     pub address: Address,

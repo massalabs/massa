@@ -1,10 +1,11 @@
 [package]
 name = "massa-node"
-version = "0.1.0"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [dependencies]
 crossbeam-channel = "0.5.6"
@@ -12,17 +13,17 @@ anyhow = "1.0"
 lazy_static = "1.4"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 tokio = { version = "1.23", features = ["full"] }
 tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "1bb1f452bf63b78a89eb9542fb019b88d894c664" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "bf8adf5" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.10"
+ctrlc = "3.2.5"
 # custom modules
 massa_api_exports = { path = "../massa-api-exports" }
 massa_api = { path = "../massa-api" }
@@ -50,13 +51,12 @@ massa_wallet = { path = "../massa-wallet" }
 massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
 massa_grpc = { path = "../massa-grpc" }
-massa_versioning_worker = { path = "../massa-versioning-worker" }
-ctrlc = "3.2.5"
+massa_versioning = { path = "../massa-versioning" }
+massa_db = { path = "../massa-db" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 beta = []
 deadlock_detection = []
-bootstrap_server = []
+bootstrap_server = ["massa_consensus_worker/bootstrap_server"]
 sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
-create_snapshot = ["massa_final_state/create_snapshot"]

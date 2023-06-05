@@ -2,14 +2,15 @@
 
 use crate::settings::{BootstrapConfig, IpType};
 use bitvec::vec::BitVec;
-use massa_async_pool::test_exports::{create_async_pool, get_random_message};
-use massa_async_pool::{AsyncPoolChanges, Change};
+use massa_async_pool::AsyncPoolChanges;
+use massa_async_pool::{test_exports::get_random_message, AsyncPool};
 use massa_consensus_exports::{
     bootstrapable_graph::{
         BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
     },
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
+use massa_db::{DBBatch, MassaDB};
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,
@@ -24,16 +25,15 @@ use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
-    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_CONSENSUS_BLOCKS_IDS,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
-    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
-    MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
-    PERIODS_PER_CYCLE, THREAD_COUNT,
+    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
+    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+    MIP_STORE_STATS_COUNTERS_MAX, PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
@@ -52,14 +52,17 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_pos_exports::{CycleInfo, DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
+use massa_pos_exports::{DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use parking_lot::RwLock;
 use rand::Rng;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+use std::sync::Arc;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -114,7 +117,6 @@ pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
 /// generates random PoS cycles info
 fn get_random_pos_cycles_info(
     r_limit: u64,
-    opt_seed: bool,
 ) -> (
     BTreeMap<Address, u64>,
     PreHashMap<Address, ProductionStats>,
@@ -134,10 +136,6 @@ fn get_random_pos_cycles_info(
                 block_failure_count: i,
             },
         );
-    }
-    // note: extra seed is used in the changes test to compensate for the update loop skipping the first change
-    if opt_seed {
-        rng_seed.push(rng.gen_range(0..2) == 1);
     }
     rng_seed.push(rng.gen_range(0..2) == 1);
     (roll_counts, production_stats, rng_seed)
@@ -164,25 +162,39 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 }
 
 /// generates a random PoS final state
-fn get_random_pos_state(r_limit: u64, pos: PoSFinalState) -> PoSFinalState {
-    let mut cycle_history = VecDeque::new();
-    let (roll_counts, production_stats, rng_seed) = get_random_pos_cycles_info(r_limit, true);
-    let mut cycle = CycleInfo::new_with_hash(0, false, roll_counts, rng_seed, production_stats);
-    cycle.final_state_hash_snapshot = Some(Hash::from_bytes(&[0; 32]));
-    cycle_history.push_back(cycle);
+fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
+    let (roll_counts, production_stats, _rng_seed) = get_random_pos_cycles_info(r_limit);
     let mut deferred_credits = DeferredCredits::new_with_hash();
     deferred_credits.extend(get_random_deferred_credits(r_limit));
-    PoSFinalState {
-        cycle_history,
+
+    // Do not add seed_bits to changes, as we create the initial cycle just after
+    let changes = PoSChanges {
+        seed_bits: Default::default(),
+        roll_changes: roll_counts.into_iter().collect(),
+        production_stats,
         deferred_credits,
-        ..pos
-    }
+    };
+
+    let mut batch = DBBatch::new();
+
+    pos.create_initial_cycle(&mut batch);
+
+    pos.db.write().write_batch(batch, Default::default(), None);
+
+    let mut batch = DBBatch::new();
+
+    pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
+        .expect("Critical: Error while applying changes to pos_state");
+
+    pos.db.write().write_batch(batch, Default::default(), None);
+
+    pos
 }
 
 /// generates random PoS changes
 pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     let deferred_credits = get_random_deferred_credits(r_limit);
-    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit, false);
+    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
     PoSChanges {
         seed_bits,
         roll_changes: roll_counts.into_iter().collect(),
@@ -191,15 +203,20 @@ pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
     }
 }
 
-pub fn get_random_async_pool_changes(r_limit: u64) -> AsyncPoolChanges {
+pub fn get_random_async_pool_changes(r_limit: u64, thread_count: u8) -> AsyncPoolChanges {
     let mut changes = AsyncPoolChanges::default();
     for _ in 0..(r_limit / 2) {
-        let message = get_random_message(Some(Amount::from_str("10").unwrap()));
-        changes.0.push(Change::Add(message.compute_id(), message));
+        let message = get_random_message(Some(Amount::from_str("10").unwrap()), thread_count);
+        changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     }
     for _ in (r_limit / 2)..r_limit {
-        let message = get_random_message(Some(Amount::from_str("1_000_000").unwrap()));
-        changes.0.push(Change::Add(message.compute_id(), message));
+        let message =
+            get_random_message(Some(Amount::from_str("1_000_000").unwrap()), thread_count);
+        changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     }
     changes
 }
@@ -208,9 +225,12 @@ pub fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedOpsConfig,
+    db: Arc<RwLock<MassaDB>>,
 ) -> ExecutedOps {
-    let mut executed_ops = ExecutedOps::new(config.clone());
-    executed_ops.apply_changes(get_random_executed_ops_changes(10), slot);
+    let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
+    let mut batch = DBBatch::new();
+    executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
+    db.write().write_batch(batch, Default::default(), None);
     executed_ops
 }
 
@@ -235,9 +255,17 @@ pub fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedDenunciationsConfig,
+    db: Arc<RwLock<MassaDB>>,
 ) -> ExecutedDenunciations {
-    let mut executed_de = ExecutedDenunciations::new(config);
-    executed_de.apply_changes(get_random_executed_de_changes(10), slot);
+    let mut executed_de = ExecutedDenunciations::new(config, db);
+    let mut batch = DBBatch::new();
+    executed_de.apply_changes_to_batch(get_random_executed_de_changes(10), slot, &mut batch);
+
+    executed_de
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
+
     executed_de
 }
 
@@ -264,42 +292,68 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
     config: FinalStateConfig,
+    db: Arc<RwLock<MassaDB>>,
 ) -> FinalState {
     let r_limit: u64 = 50;
 
     let mut sorted_ledger = HashMap::new();
     let mut messages = AsyncPoolChanges::default();
     for _ in 0..r_limit {
-        let message = get_random_message(None);
-        messages.0.push(Change::Add(message.compute_id(), message));
+        let message = get_random_message(None, config.thread_count);
+        messages
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
     }
     for _ in 0..r_limit {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
-    // insert the last possible address to prevent the last cursor to move when testing the changes
-    // The magic number at idx 0 is to account for address variant leader. At time of writing,
-    // the highest value for encoding this variant in serialized form is `1`.
-    let mut bytes = [255; 33];
-    bytes[0] = 1;
-    sorted_ledger.insert(
-        Address::from_prefixed_bytes(&bytes).unwrap(),
-        get_random_ledger_entry(),
+    let slot = Slot::new(0, 0);
+    let final_ledger = create_final_ledger(db.clone(), config.ledger_config.clone(), sorted_ledger);
+
+    let mut async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
+    let mut batch = DBBatch::new();
+    let versioning_batch = DBBatch::new();
+
+    async_pool.apply_changes_to_batch(&messages, &mut batch);
+    async_pool
+        .db
+        .write()
+        .write_batch(batch, versioning_batch, None);
+
+    let executed_ops = get_random_executed_ops(
+        r_limit,
+        slot,
+        config.executed_ops_config.clone(),
+        db.clone(),
     );
 
-    let slot = Slot::new(0, 0);
-    let final_ledger = create_final_ledger(config.ledger_config.clone(), sorted_ledger);
-    let mut async_pool = create_async_pool(config.async_pool_config.clone(), BTreeMap::new());
-    async_pool.apply_changes_unchecked(&messages);
+    let executed_denunciations = get_random_executed_de(
+        r_limit,
+        slot,
+        config.executed_denunciations_config.clone(),
+        db.clone(),
+    );
+
+    let pos_state = get_random_pos_state(r_limit, pos);
+
+    let mip_store = MipStore::try_from((
+        [],
+        MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 10,
+        },
+    ))
+    .unwrap();
 
     create_final_state(
-        config.clone(),
-        slot,
+        config,
         Box::new(final_ledger),
         async_pool,
-        VecDeque::new(),
-        get_random_pos_state(r_limit, pos),
-        get_random_executed_ops(r_limit, slot, config.executed_ops_config),
-        get_random_executed_de(r_limit, slot, config.executed_denunciations_config),
+        pos_state,
+        executed_ops,
+        executed_denunciations,
+        mip_store,
+        db,
     )
 }
 
@@ -308,7 +362,7 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = KeyPair::generate();
+    let priv_key = KeyPair::generate(0).unwrap();
     Address::from_public_key(&priv_key.get_public_key())
 }
 
@@ -316,14 +370,14 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     BootstrapConfig {
         listen_addr: Some("0.0.0.0:31244".parse().unwrap()),
         bootstrap_protocol: IpType::Both,
-        bootstrap_timeout: 120000.into(),
-        connect_timeout: 200.into(),
-        retry_delay: 200.into(),
+        bootstrap_timeout: MassaTime::from_millis(120000),
+        connect_timeout: MassaTime::from_millis(200),
+        retry_delay: MassaTime::from_millis(200),
         max_ping: MassaTime::from_millis(500),
-        read_timeout: 1000.into(),
-        write_timeout: 1000.into(),
-        read_error_timeout: 200.into(),
-        write_error_timeout: 200.into(),
+        read_timeout: MassaTime::from_millis(1000),
+        write_timeout: MassaTime::from_millis(1000),
+        read_error_timeout: MassaTime::from_millis(200),
+        write_error_timeout: MassaTime::from_millis(200),
         max_listeners_per_peer: 100,
         bootstrap_list: vec![(
             SocketAddr::new(BASE_BOOTSTRAP_IP, 8069),
@@ -337,12 +391,11 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
             "../massa-node/base_config/bootstrap_blacklist.json",
         ),
         max_clock_delta: MassaTime::from_millis(1000),
-        cache_duration: 10000.into(),
+        cache_duration: MassaTime::from_millis(10000),
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,
-        per_ip_min_interval: 10000.into(),
+        per_ip_min_interval: MassaTime::from_millis(10000),
         max_bytes_read_write: std::f64::INFINITY,
-        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -351,7 +404,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
         max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
         max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
@@ -397,12 +450,14 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> BootstrapableGraph {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
 
     let block = Block::new_verifiable(
         Block {
             header: BlockHeader::new_verifiable(
                 BlockHeader {
+                    current_version: 0,
+                    announced_version: 0,
                     // associated slot
                     // all header endorsements are supposed to point towards this one
                     slot: Slot::new(1, 0),
@@ -486,11 +541,11 @@ pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
     listeners2.insert("82.220.123.78:8080".parse().unwrap(), TransportType::Tcp);
     BootstrapPeers(vec![
         (
-            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_public_key(keypair.get_public_key()),
             listeners1,
         ),
         (
-            PeerId::from_bytes(keypair.get_public_key().to_bytes()).unwrap(),
+            PeerId::from_public_key(keypair.get_public_key()),
             listeners2,
         ),
     ])

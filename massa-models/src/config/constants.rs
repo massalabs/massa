@@ -15,10 +15,20 @@
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
 
-use crate::{address::ADDRESS_SIZE_BYTES, amount::Amount, version::Version};
+use crate::{amount::Amount, serialization::u32_be_bytes_min_length, version::Version};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
+
+/// Downtime simulation start timestamp
+pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1686312000000); // Friday 9 June 2023 12:00:00 UTC
+/// Downtime simulation end timestamp
+pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1686319200000); // Friday 9 June 2023 14:00:00 UTC
+/// Downtime simulation end timestamp for bootstrap servers
+pub const DOWNTIME_END_TIMESTAMP_BOOTSTRAP: MassaTime = MassaTime::from_millis(1686312060000); // Friday 9 June 2023 12:01:00 UTC
+
+/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
+pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
@@ -41,7 +51,7 @@ lazy_static::lazy_static! {
     /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
     /// so that the network starts or restarts 10 seconds after launch
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
-        std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
+        std::env::var("GENESIS_TIMESTAMP").map(|timestamp| MassaTime::from_millis(timestamp.parse::<u64>().unwrap())).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
                 .saturating_sub(
@@ -51,14 +61,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        1683498600000.into()  // Sunday, May 7, 2023 10:30:00 PM UTC
+        MassaTime::from_millis(1685955600000) // Monday, June 5, 2023 9:00:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1685556000000.into())  // Sunday, May 30, 2023 06:00:00 PM UTC
+        Some(MassaTime::from_millis(1688140800000))  // Friday, June 30, 2023 04:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -68,9 +78,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.22.1"
+            "SAND.23.0"
         } else {
-            "TEST.22.2"
+            "TEST.23.0"
         }
         .parse()
         .unwrap()
@@ -98,8 +108,10 @@ pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
 pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
 /// Cost to store one byte in the ledger
 pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
-/// Cost for a base entry (address + balance (5 bytes constant))
-pub const LEDGER_ENTRY_BASE_SIZE: usize = ADDRESS_SIZE_BYTES + 8;
+/// Address size in bytes
+pub const ADDRESS_SIZE_BYTES: usize = 32;
+/// Cost for a base entry default 0.01 MASSA
+pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::from_mantissa_scale(1, 2);
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
 pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
@@ -124,6 +136,8 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
+/// cycle duration in periods
+pub const PERIODS_BETWEEN_BACKUPS: u64 = 128;
 /// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
@@ -135,14 +149,6 @@ pub const POS_SAVED_CYCLES: usize = 7;
 /// 5 to have a C-2 to C+2 range (6 cycles post-bootstrap give 5 cycle draws)
 /// 1 for margin
 pub const SELECTOR_DRAW_CACHE_SIZE: usize = 6;
-/// Maximum size batch of data in a part of the ledger
-pub const LEDGER_PART_SIZE_MESSAGE_BYTES: u64 = 1_000_000;
-/// Maximum async messages in a batch of the bootstrap of the async pool
-pub const ASYNC_POOL_BOOTSTRAP_PART_SIZE: u64 = 100;
-/// Maximum proof-of-stake deferred credits in a bootstrap batch
-pub const DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE: u64 = 100;
-/// Maximum executed ops per slot in a bootstrap batch
-pub const EXECUTED_OPS_BOOTSTRAP_PART_SIZE: u64 = 10;
 /// Maximum number of consensus blocks in a bootstrap batch
 pub const CONSENSUS_BOOTSTRAP_PART_SIZE: u64 = 50;
 /// Maximum number of consensus block ids when sending a bootstrap cursor from the client
@@ -190,6 +196,9 @@ pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COU
 
 /// Max message size for bootstrap
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
+/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+pub const MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
+    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
 /// Max number of blocks we provide/ take into account while bootstrapping
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
 /// max bootstrapped cliques
@@ -200,12 +209,12 @@ pub const MAX_BOOTSTRAP_DEPS: u32 = 1000;
 pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
 /// Max number of cycles in PoS bootstrap
 pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
-/// Max number of address and random entries for PoS bootstrap
-pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max async pool changes
 pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 /// Max bytes in final states parts
 pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 1_000_000_000;
+/// Max bytes in final states parts
+pub const MAX_BOOTSTRAPPED_NEW_ELEMENTS: u64 = 500;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
@@ -217,8 +226,12 @@ pub const MAX_BOOTSTRAP_ERROR_LENGTH: u64 = 10000;
 pub const PROTOCOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
 /// Protocol event channel size
 pub const PROTOCOL_EVENT_CHANNEL_SIZE: usize = 1024;
-/// Pool controller channel size
-pub const POOL_CONTROLLER_CHANNEL_SIZE: usize = 1024;
+/// Pool controller operations channel size
+pub const POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE: usize = 1024;
+/// Pool controller endorsements channel size
+pub const POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE: usize = 1024;
+/// Pool controller denunciations channel size
+pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 
 // ***********************
 // Constants used for execution module (injected from ConsensusConfig)

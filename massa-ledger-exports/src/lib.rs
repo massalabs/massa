@@ -10,6 +10,7 @@ mod error;
 mod key;
 mod ledger_changes;
 mod ledger_entry;
+mod mapping_grpc;
 mod types;
 
 pub use config::LedgerConfig;
@@ -25,7 +26,10 @@ pub use ledger_changes::{
     LedgerEntryUpdateDeserializer, LedgerEntryUpdateSerializer,
 };
 pub use ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
-pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
+pub use types::{
+    Applicable, SetOrDelete, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer,
+    SetUpdateOrDelete, SetUpdateOrDeleteDeserializer, SetUpdateOrDeleteSerializer,
+};
 
 #[cfg(feature = "testing")]
 pub mod test_exports;

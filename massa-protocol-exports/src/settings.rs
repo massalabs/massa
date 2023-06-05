@@ -84,6 +84,8 @@ pub struct ProtocolConfig {
     pub max_operations_propagation_time: MassaTime,
     /// max time we propagate endorsements
     pub max_endorsements_propagation_time: MassaTime,
+    /// Max message size
+    pub max_message_size: usize,
     /// number of thread tester
     pub thread_tester_count: u8,
     /// Max size of the channel for command to the connectivity thread

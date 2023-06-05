@@ -4,6 +4,7 @@ syntax = "proto3";
 
 package massa.api.v1;
 
+import "common.proto";
 import "slot.proto";
 
 option csharp_namespace = "Com.Massa.Api.V1";
@@ -37,6 +38,8 @@ message ExecutionOutput {
   optional string block_id = 2;
   // Events emitted by the execution step
   repeated ScExecutionEvent events = 3;
+  // State changes caused by the execution step
+  StateChanges state_changes = 4;
 }
 
 // ScExecutionEvent
@@ -67,7 +70,7 @@ message ScExecutionEventContext {
 
 // ScExecutionEventStatus type enum
 enum ScExecutionEventStatus {
-  SC_EXECUTION_EVENT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  SC_EXECUTION_EVENT_STATUS_UNSPECIFIED = 0; // Default enum value
   SC_EXECUTION_EVENT_STATUS_FINAL = 1; // Final status
   SC_EXECUTION_EVENT_STATUS_READ_ONLY = 2; // Read only status
   SC_EXECUTION_EVENT_STATUS_FAILURE = 3; // Failure status
@@ -75,8 +78,313 @@ enum ScExecutionEventStatus {
 
 // ExecutionOutputStatus type enum
 enum ExecutionOutputStatus {
-  EXECUTION_OUTPUT_STATUS_UNSPECIFIED = 0; // Defaut enum value
+  EXECUTION_OUTPUT_STATUS_UNSPECIFIED = 0; // Default enum value
   EXECUTION_OUTPUT_STATUS_CANDIDATE = 1; // Candidate status
   EXECUTION_OUTPUT_STATUS_FINAL = 2; // Final status
 }
- 
+
+// StateChanges
+message StateChanges {
+  // Ledger changes
+  repeated LedgerChangeEntry ledger_changes = 1;
+  // Asynchronous pool changes
+  repeated AsyncPoolChangeEntry async_pool_changes = 2;
+  // Executed operations changes
+  repeated ExecutedOpsChangeEntry executed_ops_changes = 4;
+  // Executed denunciations changes
+  repeated DenunciationIndex executed_denunciations_changes = 5;
+}
+
+// ExecutedOpsChangeEntry
+message ExecutedOpsChangeEntry {
+  // OperationId
+  string operation_id = 1;
+  // ExecutedOpsChangeValue
+  ExecutedOpsChangeValue value = 2;
+}
+
+// ExecutedOpsChangeValue
+message ExecutedOpsChangeValue {
+  // The status of the execution of the operation
+  repeated OperationExecutionStatus status = 1;
+  // Slot until which the operation remains valid (included)
+  Slot slot = 2;
+}
+
+// OperationExecutionStatus type enum
+enum OperationExecutionStatus {
+  OPERATION_EXECUTION_STATUS_UNSPECIFIED = 0; // Default enum value
+  OPERATION_EXECUTION_STATUS_SUCCESS = 1; // Success status
+  OPERATION_EXECUTION_STATUS_FAILED = 2; // Failed only status
+}
+
+// AsyncPoolChange Entry
+message AsyncPoolChangeEntry {
+  // Async message id
+  string async_message_id = 1;
+  // AsyncPool message
+  AsyncPoolChangeValue value = 2;
+}
+
+// AsyncPoolChangeValue
+message AsyncPoolChangeValue {
+  // The type of the change
+  AsyncPoolChangeType type = 1;
+  // AsyncPool message
+  oneof message {
+    // Created ledger entry
+    AsyncMessage created_message = 2;
+    // Update ledger entry 
+    AsyncMessageUpdate updated_message = 3;
+  }
+}
+
+// AsyncPoolChangeType type enum
+enum AsyncPoolChangeType {
+  ASYNC_POOL_CHANGE_TYPE_UNSPECIFIED = 0; // Default enum value
+  ASYNC_POOL_CHANGE_TYPE_SET = 1; // Add type
+  ASYNC_POOL_CHANGE_TYPE_UPDATE = 2; // Activate only type
+  ASYNC_POOL_CHANGE_TYPE_DELETE = 3; // Delete only type
+}
+
+// Asynchronous smart contract message
+message AsyncMessage {
+  // Slot at which the message was emitted
+  Slot emission_slot = 1;
+  // Index of the emitted message within the `emission_slot`.
+  // This is used for disambiguate the emission of multiple messages at the same slot.
+  fixed64 emission_index = 2;
+  // The address that sent the message
+  string sender = 3;
+  // The address towards which the message is being sent
+  string destination = 4;
+  // the handler function name within the destination address' bytecode
+  string handler = 5;
+  // Maximum gas to use when processing the message
+  fixed64 max_gas = 6;
+  // Fee paid by the sender when the message is processed.
+  fixed64 fee = 7;
+  // Coins sent from the sender to the target address of the message.
+  // Those coins are spent by the sender address when the message is sent,
+  // and credited to the destination address when receiving the message.
+  // In case of failure or discard, those coins are reimbursed to the sender.
+  fixed64 coins = 8;
+  // Slot at which the message starts being valid (bound included in the validity range)
+  Slot validity_start = 9;
+  // Slot at which the message stops being valid (bound not included in the validity range)
+  Slot validity_end = 10;
+  // Raw payload data of the message
+  bytes data = 11;
+  // Trigger that define whenever a message can be executed
+  AsyncMessageTrigger trigger = 12;
+  // Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+  // For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+  bool can_be_executed = 13;
+  // Hash of the message
+  string hash = 14;
+}
+
+// Asynchronous smart contract message
+message AsyncMessageUpdate {
+  // Change the slot at which the message was emitted
+  SetOrKeepSlot emission_slot = 1;
+  // Change the index of the emitted message within the `emission_slot`.
+  // This is used for disambiguate the emission of multiple messages at the same slot.
+  SetOrKeepFixed64 emission_index = 2;
+  // Change the address that sent the message
+  SetOrKeepString sender = 3;
+  // Change the address towards which the message is being sent
+  SetOrKeepString destination = 4;
+  // Change the handler function name within the destination address' bytecode
+  SetOrKeepString handler = 5;
+  // Change the maximum gas to use when processing the message
+  SetOrKeepFixed64 max_gas = 6;
+  // Change the fee paid by the sender when the message is processed.
+  SetOrKeepFixed64 fee = 7;
+  // Change the coins sent from the sender to the target address of the message.
+  // Those coins are spent by the sender address when the message is sent,
+  // and credited to the destination address when receiving the message.
+  // In case of failure or discard, those coins are reimbursed to the sender.
+  SetOrKeepFixed64 coins = 8;
+  // Change the slot at which the message starts being valid (bound included in the validity range)
+  SetOrKeepSlot validity_start = 9;
+  // Change the slot at which the message stops being valid (bound not included in the validity range)
+  SetOrKeepSlot validity_end = 10;
+  // Change the raw payload data of the message
+  SetOrKeepBytes data = 11;
+  // Change the trigger that define whenever a message can be executed
+  SetOrKeepAsyncMessageTrigger trigger = 12;
+  // Change the boolean that determine if the message can be executed. For messages without filter this boolean is always true.
+  // For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
+  SetOrKeepBool can_be_executed = 13;
+  // Change the hash of the message
+  SetOrKeepString hash = 14;
+}
+
+// Set or Keep Slot
+message SetOrKeepSlot {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional Slot value = 2;
+}
+
+// Set or Keep Fixed64
+message SetOrKeepFixed64 {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional fixed64 value = 2;
+}
+
+// Set or Keep String
+message SetOrKeepString {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional string value = 2;
+}
+
+// Set or Keep Bytes
+message SetOrKeepBytes {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional bytes value = 2;
+}
+
+// Set or Keep Bool
+message SetOrKeepBool {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional bool value = 2;
+}
+
+// Set or Keep AsyncMessageTrigger
+message SetOrKeepAsyncMessageTrigger {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The value of that entry (optional)
+  optional AsyncMessageTrigger value = 2;
+}
+
+// Structure defining a trigger for an asynchronous message
+message AsyncMessageTrigger {
+    // Filter on the address
+    string address = 1;
+    // Filter on the datastore key (optional)
+    optional bytes datastore_key = 2;
+}
+
+// LedgerChangeEntry
+message LedgerChangeEntry {
+  // Address
+  string address = 1;
+  // Ledger message
+  LedgerChangeValue value = 2;
+}
+
+// LedgerChangeValue
+message LedgerChangeValue {
+  // The type of the change
+  LedgerChangeType type = 1;
+  // LedgerEntry or LedgerEntryUpdate
+  oneof entry {
+    // Created ledger entry
+    LedgerEntry created_entry = 2;
+    // Update ledger entry 
+    LedgerEntryUpdate updated_entry = 3;
+  }
+}
+
+// LedgerChangeType type enum
+enum LedgerChangeType {
+  LEDGER_CHANGE_TYPE_UNSPECIFIED = 0; // Default enum value
+  LEDGER_CHANGE_TYPE_SET = 1; // Set type
+  LEDGER_CHANGE_TYPE_UPDATE = 2; // Update type
+  LEDGER_CHANGE_TYPE_DELETE = 3; // Delete type
+}
+
+// An entry associated to an address in the `FinalLedger`
+message LedgerEntry {
+    // The balance of that entry
+    fixed64 balance = 1;
+    // Executable bytecode
+    bytes bytecode = 2;
+    // A key-value store associating a hash to arbitrary bytes
+    repeated BytesMapFieldEntry entries = 3;
+}
+
+// Represents an update to one or more fields of a `LedgerEntry`
+message LedgerEntryUpdate {
+  // Change the balance
+  SetOrKeepBalance balance = 1;
+  // Change the executable bytecode
+  SetOrKeepBytecode bytecode = 2;
+  /// Change datastore entries
+  repeated SetOrDeleteDatastoreEntry datastore = 3;
+}
+
+// Set or Keep Balance
+message SetOrKeepBalance {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // The balance of that entry (optional)
+  optional fixed64 balance = 2;
+}
+
+// Set or Keep Bytecode
+message SetOrKeepBytecode {
+  // The type of the change
+  SetOrKeepType type = 1;
+  // Executable bytecode (optional)
+  optional bytes bytecode = 2;
+}
+
+// Set or Delete DatastoreEntry
+message SetOrDeleteDatastoreEntry {
+  // The type of the change
+  SetOrDeleteType type = 1;
+  // The balance of that entry (optioal)
+  optional BytesMapFieldEntry datastore_entry = 2;
+}
+
+// SetOrKeepType type enum
+enum SetOrKeepType {
+  SET_OR_KEEP_TYPE_UNSPECIFIED = 0; // Default enum value
+  SET_OR_KEEP_TYPE_SET = 1; // Sets a new absolute value
+  SET_OR_KEEP_TYPE_KEEP = 2; // Keeps the existing value
+}
+
+// SetOrDeleteType type enum
+enum SetOrDeleteType {
+  SET_OR_DELETE_TYPE_UNSPECIFIED = 0; // Default enum value
+  SET_OR_DELETE_TYPE_SET = 1; // Sets a new absolute value
+  SET_OR_DELETE_TYPE_DELETE = 2; // Deletes the existing value
+}
+
+// Index for Denunciations in collections (e.g. like a HashMap...)
+message DenunciationIndex {
+  // DenunciationBlockHeader or DenunciationEndorsement
+  oneof entry {
+    // Denunciation block header
+    DenunciationBlockHeader block_header = 1;
+    // Denunciation endorsement
+    DenunciationEndorsement endorsement = 2;
+  }
+}
+
+// Variant for Block header denunciation index
+message DenunciationBlockHeader {
+    // Denounciation slot
+    Slot slot = 1;
+}
+
+// Variant for Endorsement denunciation index
+message DenunciationEndorsement {
+    // Denounciation slot
+    Slot slot = 1;
+    // Denounciation index
+    fixed32 index = 2;
+}

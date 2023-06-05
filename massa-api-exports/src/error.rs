@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
-use jsonrpsee::core::Error as JsonRpseeError;
-use jsonrpsee::types::{error::CallError, ErrorObject};
+use jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
 
 use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
@@ -10,6 +9,7 @@ use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
 use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
+use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
 
 /// Errors of the api component.
@@ -48,9 +48,11 @@ pub enum ApiError {
     BadRequest(String),
     /// Internal server error: {0}
     InternalServerError(String),
+    /// Factory error: {0}
+    FactoryError(#[from] FactoryError),
 }
 
-impl From<ApiError> for JsonRpseeError {
+impl From<ApiError> for ErrorObjectOwned {
     fn from(err: ApiError) -> Self {
         // JSON-RPC Server errors codes must be between -32099 to -32000
         let code = match err {
@@ -70,8 +72,9 @@ impl From<ApiError> for JsonRpseeError {
             ApiError::MissingCommandSender(_) => -32017,
             ApiError::MissingConfig(_) => -32018,
             ApiError::WrongAPI => -32019,
+            ApiError::FactoryError(_) => -32020,
         };
 
-        CallError::Custom(ErrorObject::owned(code, err.to_string(), None::<()>)).into()
+        ErrorObject::owned(code, err.to_string(), None::<()>)
     }
 }

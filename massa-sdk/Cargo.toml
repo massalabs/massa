@@ -1,13 +1,17 @@
 [package]
 name = "massa_sdk"
-version = "0.1.0"
+version = "0.23.0"
 edition = "2021"
 
 [dependencies]
-jsonrpsee = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["client"] }
-jsonrpsee-http-client = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["webpki-tls"] }
-jsonrpsee-ws-client = { git = "https://github.com/paritytech/jsonrpsee.git", rev = "118acc3", features = ["webpki-tls"] }
+jsonrpsee = { version = "0.18.2", features = ["client"] }
+jsonrpsee-http-client = { version = "0.18.2", features = ["webpki-tls"] }
+jsonrpsee-ws-client = { version = "0.18.2", features = ["webpki-tls"] }
 http = "0.2.8"
+tonic = { version = "0.9.1", features = ["gzip"] }
+thiserror = "1.0"
+tracing = {version =  "0.1", features = ["log"]}
 massa_api_exports = { path = "../massa-api-exports" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
+massa_proto = { path = "../massa-proto" }

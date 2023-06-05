@@ -91,16 +91,16 @@
 
 mod changes;
 mod config;
+mod mapping_grpc;
 mod message;
 mod pool;
 
-pub use changes::{
-    AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer, Change,
-};
+pub use changes::{AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer};
 pub use config::AsyncPoolConfig;
 pub use message::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageSerializer, AsyncMessageTrigger,
+    AsyncMessageIdSerializer, AsyncMessageInfo, AsyncMessageSerializer, AsyncMessageTrigger,
+    AsyncMessageTriggerSerializer, AsyncMessageUpdate,
 };
 pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 

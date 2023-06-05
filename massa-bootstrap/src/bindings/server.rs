@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::bindings::BindingReadExact;
 use crate::error::BootstrapError;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapServerMessage,
@@ -8,11 +9,14 @@ use crate::messages::{
 use crate::settings::BootstrapSrvBindCfg;
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
+use massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionDeserializer, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use std::io;
+use std::time::Instant;
 use std::{
     convert::TryInto,
     io::{ErrorKind, Read, Write},
@@ -22,14 +26,19 @@ use std::{
 };
 use tracing::error;
 
+const KNOWN_PREFIX_LEN: usize = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
+/// The known-length component of a message to be received.
+struct ClientMessageLeader {
+    received_prev_hash: Option<Hash>,
+    msg_len: u32,
+}
+
 /// Bootstrap server binder
 pub struct BootstrapServerBinder {
-    max_bootstrap_message_size: u32,
     max_consensus_block_ids: u64,
     thread_count: u8,
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
-    size_field_len: usize,
     local_keypair: KeyPair,
     // TODO: Reintroduce bandwidth limits
     duplex: TcpStream,
@@ -51,18 +60,14 @@ impl BootstrapServerBinder {
         let BootstrapSrvBindCfg {
             // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
-            max_bootstrap_message_size,
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        let size_field_len = u32::be_bytes_min_length(max_bootstrap_message_size);
         BootstrapServerBinder {
-            max_bootstrap_message_size,
             max_consensus_block_ids: consensus_bootstrap_part_size,
-            size_field_len,
             local_keypair,
             duplex,
             prev_message: None,
@@ -146,7 +151,10 @@ impl BootstrapServerBinder {
                         "bootstrap server timed out sending error '{}' to addr {}",
                         msg, addr
                     ),
-                    Err(e) => error!("{}", e),
+                    Err(e) => error!(
+                        "bootstrap server encountered error '{}' sending error '{}' to addr '{}'",
+                        e, msg, addr
+                    ),
                     Ok(_) => {}
                 }
                 close_fn();
@@ -168,21 +176,20 @@ impl BootstrapServerBinder {
         })
     }
 
-    // TODO: use a proper (de)serializer: https://github.com/massalabs/massa/pull/3745#discussion_r1169733161
     /// Writes the next message.
     pub fn send_timeout(
         &mut self,
         msg: BootstrapServerMessage,
         duration: Option<Duration>,
     ) -> Result<(), BootstrapError> {
-        // serialize message
+        // serialize the message to bytes
         let mut msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(&msg, &mut msg_bytes)?;
         let msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
             BootstrapError::GeneralError(format!("bootstrap message too large to encode: {}", e))
         })?;
 
-        // compute signature
+        // compute signature, and extract the bytes
         let sig = {
             if let Some(prev_message) = self.prev_message {
                 // there was a previous message: sign(prev_msg_hash + msg)
@@ -197,20 +204,17 @@ impl BootstrapServerBinder {
             }
         };
 
-        // send signature
+        // construct msg length, and convert to bytes
+        let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)?;
+
+        // organize the bytes into a sendable array
+        let stream_data = [sig.to_bytes().as_slice(), &msg_len_bytes, &msg_bytes].concat();
+
+        // send the data
         self.duplex.set_write_timeout(duration)?;
-        self.duplex.write_all(&sig.to_bytes())?;
+        self.duplex.write_all(&stream_data)?;
 
-        // send message length
-        {
-            let msg_len_bytes = msg_len.to_be_bytes_min(self.max_bootstrap_message_size)?;
-            self.duplex.write_all(&msg_len_bytes)?;
-        }
-
-        // send message
-        self.duplex.write_all(&msg_bytes)?;
-
-        // save prev sig
+        // update prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
 
         Ok(())
@@ -222,39 +226,22 @@ impl BootstrapServerBinder {
         &mut self,
         duration: Option<Duration>,
     ) -> Result<BootstrapClientMessage, BootstrapError> {
-        self.duplex.set_read_timeout(duration)?;
+        let deadline = duration.map(|d| Instant::now() + d);
 
-        let peek_len = HASH_SIZE_BYTES + self.size_field_len;
-        let mut peek_buf = vec![0; peek_len];
-        while self.duplex.peek(&mut peek_buf)? < peek_len {
-            // TODO: backoff spin of some sort
-        }
-        // construct prev-hash from peek
-        let received_prev_hash = {
-            if self.prev_message.is_some() {
-                Some(Hash::from_bytes(
-                    peek_buf[..HASH_SIZE_BYTES]
-                        .try_into()
-                        .expect("bad slice logic"),
-                ))
-            } else {
-                None
-            }
-        };
+        let mut known_len_buf = vec![0; KNOWN_PREFIX_LEN];
+        // TODO: handle a partial read
+        self.read_exact_timeout(&mut known_len_buf, deadline)
+            .map_err(|(err, _consumed)| err)?;
 
-        // construct msg-len from peek
-        let msg_len = {
-            u32::from_be_bytes_min(
-                &peek_buf[HASH_SIZE_BYTES..],
-                self.max_bootstrap_message_size,
-            )?
-            .0
-        };
+        let ClientMessageLeader {
+            received_prev_hash,
+            msg_len,
+        } = self.decode_message_leader(&known_len_buf)?;
 
-        // read message, and discard the peek
-        let mut msg_bytes = vec![0u8; peek_len + (msg_len as usize)];
-        self.duplex.read_exact(&mut msg_bytes)?;
-        let msg_bytes = &msg_bytes[peek_len..];
+        // read the rest of the message
+        let mut msg_bytes = vec![0u8; msg_len as usize];
+        self.read_exact_timeout(&mut msg_bytes, deadline)
+            .map_err(|(err, _consumed)| err)?;
 
         // check previous hash
         if received_prev_hash != self.prev_message {
@@ -269,11 +256,11 @@ impl BootstrapServerBinder {
             let mut hashed_bytes =
                 Vec::with_capacity(HASH_SIZE_BYTES.saturating_add(msg_bytes.len()));
             hashed_bytes.extend(prev_hash.to_bytes());
-            hashed_bytes.extend(msg_bytes);
+            hashed_bytes.extend(&msg_bytes);
             self.prev_message = Some(Hash::compute_from(&hashed_bytes));
         } else {
             // no previous message: hash message only
-            self.prev_message = Some(Hash::compute_from(msg_bytes));
+            self.prev_message = Some(Hash::compute_from(&msg_bytes));
         }
 
         // deserialize message
@@ -282,9 +269,50 @@ impl BootstrapServerBinder {
             self.max_datastore_key_length,
             self.max_consensus_block_ids,
         )
-        .deserialize::<DeserializeError>(msg_bytes)
+        .deserialize::<DeserializeError>(&msg_bytes)
         .map_err(|err| BootstrapError::GeneralError(format!("{}", err)))?;
 
         Ok(msg)
+    }
+
+    /// We are using this instead of of our library deserializer as the process is relatively straight forward
+    /// and makes error-type management cleaner
+    fn decode_message_leader(
+        &self,
+        leader_buf: &[u8],
+    ) -> Result<ClientMessageLeader, BootstrapError> {
+        // construct prev-hash
+        let received_prev_hash = {
+            if self.prev_message.is_some() {
+                Some(Hash::from_bytes(
+                    leader_buf[..HASH_SIZE_BYTES]
+                        .try_into()
+                        .expect("bad slice logic"),
+                ))
+            } else {
+                None
+            }
+        };
+
+        // construct msg-len
+        let msg_len = {
+            u32::from_be_bytes_min(&leader_buf[HASH_SIZE_BYTES..], MAX_BOOTSTRAP_MESSAGE_SIZE)?.0
+        };
+        Ok(ClientMessageLeader {
+            received_prev_hash,
+            msg_len,
+        })
+    }
+}
+
+impl io::Read for BootstrapServerBinder {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.duplex.read(buf)
+    }
+}
+
+impl crate::bindings::BindingReadExact for BootstrapServerBinder {
+    fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
+        self.duplex.set_read_timeout(duration)
     }
 }

@@ -31,24 +31,24 @@ mod test {
     fn test_get_addr_vesting_at_time() {
         let manager = mock_manager(true);
 
-        let keypair_0 = massa_signature::KeyPair::from_str(
-            "S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ",
+        let keypair = massa_signature::KeyPair::from_str(
+            "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC",
         )
         .unwrap();
-        let addr = Address::from_public_key(&keypair_0.get_public_key());
+        let addr = Address::from_public_key(&keypair.get_public_key());
 
         {
             // addr not vested
             let addr2 =
                 Address::from_str("AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs").unwrap();
-            let timestamp = &MassaTime::from(1678193291000); // 07/03/2023 13h48
+            let timestamp = &MassaTime::from_millis(1678193291000); // 07/03/2023 13h48
             let vesting = manager.get_addr_vesting_at_time(&addr2, timestamp);
             assert!(vesting.min_balance.is_none());
             assert!(vesting.max_rolls.is_none());
         }
 
         {
-            let timestamp = &MassaTime::from(1677675988000); // 01/03/2023 14h06
+            let timestamp = &MassaTime::from_millis(1677675988000); // 01/03/2023 14h06
             let result = manager.get_addr_vesting_at_time(&addr, timestamp);
             assert_eq!(
                 result,
@@ -60,7 +60,7 @@ mod test {
         }
 
         {
-            let timestamp = &MassaTime::from(1678193291000); // 07/03/2023 13h48
+            let timestamp = &MassaTime::from_millis(1678193291000); // 07/03/2023 13h48
             let result = manager.get_addr_vesting_at_time(&addr, timestamp);
             assert_eq!(
                 result,
@@ -72,7 +72,7 @@ mod test {
         }
 
         {
-            let timestamp = &MassaTime::from(1734786585000); // 21/12/2024 14h09
+            let timestamp = &MassaTime::from_millis(1734786585000); // 21/12/2024 14h09
             let result = manager.get_addr_vesting_at_time(&addr, timestamp);
             assert_eq!(
                 result,

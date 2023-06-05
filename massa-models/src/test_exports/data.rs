@@ -21,7 +21,7 @@ pub fn gen_endorsements_for_denunciation(
     SecureShareEndorsement,
     SecureShareEndorsement,
 ) {
-    let keypair = with_keypair.unwrap_or(KeyPair::generate());
+    let keypair = with_keypair.unwrap_or(KeyPair::generate(0).unwrap());
     let slot = with_slot.unwrap_or(Slot::new(3, 7));
 
     let endorsement_1 = Endorsement {
@@ -64,7 +64,7 @@ pub fn gen_block_headers_for_denunciation(
     with_slot: Option<Slot>,
     with_keypair: Option<KeyPair>,
 ) -> (Slot, KeyPair, SecuredHeader, SecuredHeader, SecuredHeader) {
-    let keypair = with_keypair.unwrap_or(KeyPair::generate());
+    let keypair = with_keypair.unwrap_or(KeyPair::generate(0).unwrap());
     let slot = with_slot.unwrap_or(Slot::new(2, 1));
 
     let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
@@ -87,6 +87,8 @@ pub fn gen_block_headers_for_denunciation(
             .unwrap();
 
     let block_header_1 = BlockHeader {
+        current_version: 0,
+        announced_version: 0,
         slot,
         parents: parents_1,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -103,6 +105,8 @@ pub fn gen_block_headers_for_denunciation(
     .expect("error while producing block header");
 
     let block_header_2 = BlockHeader {
+        current_version: 0,
+        announced_version: 0,
         slot,
         parents: parents_2,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -119,6 +123,8 @@ pub fn gen_block_headers_for_denunciation(
     .expect("error while producing block header");
 
     let block_header_3 = BlockHeader {
+        current_version: 0,
+        announced_version: 0,
         slot,
         parents: parents_3,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),

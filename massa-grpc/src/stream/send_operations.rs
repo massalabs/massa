@@ -3,6 +3,7 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
+use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::operation::{OperationDeserializer, SecureShareOperation};
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto::massa::api::v1 as grpc;
@@ -77,17 +78,7 @@ pub(crate) async fn send_operations(
                             let verified_ops_res: Result<HashMap<String, SecureShareOperation>, GrpcError> = req_content.operations
                                 .into_iter()
                                 .map(|proto_operation| {
-                                    let pub_key_b = proto_operation.content_creator_pub_key.as_bytes();
-                                    // Concatenate signature, public key, and data into a single byte vector
-                                    let mut op_serialized = Vec::with_capacity(
-                                        proto_operation.signature.len()
-                                            + pub_key_b.len()
-                                            + proto_operation.serialized_data.len(),
-                                    );
-                                    op_serialized.extend_from_slice(proto_operation.signature.as_bytes());
-                                    op_serialized.extend_from_slice(pub_key_b);
-                                    op_serialized.extend_from_slice(&proto_operation.serialized_data);
-
+                                    let op_serialized = secure_share_to_vec(proto_operation)?;
                                     // Deserialize the operation and verify its signature
                                     let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&op_serialized) {
                                         Ok(tuple) => {

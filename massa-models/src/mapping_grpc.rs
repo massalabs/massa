@@ -5,12 +5,15 @@ use std::str::FromStr;
 use crate::address::Address;
 use crate::block::{Block, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
+use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
+use crate::error::ModelsError;
 use crate::execution::EventFilter;
 use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
 use crate::output_event::{EventExecutionContext, SCOutputEvent};
 use crate::slot::{IndexedSlot, Slot};
 use massa_proto::massa::api::v1 as grpc;
+use massa_signature::{PublicKey, Signature};
 
 impl From<Block> for grpc::Block {
     fn from(value: Block) -> Self {
@@ -280,11 +283,55 @@ impl From<EventExecutionContext> for grpc::ScExecutionEventContext {
                 .map(|a| a.to_string())
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
-            status: vec![
-                value.is_error.into(),
-                value.read_only.into(),
-                value.is_final.into(),
-            ],
+            status: {
+                let mut status = Vec::new();
+                if value.read_only {
+                    status.push(grpc::ScExecutionEventStatus::ReadOnly as i32);
+                }
+                if value.is_error {
+                    status.push(grpc::ScExecutionEventStatus::Failure as i32);
+                }
+                if value.is_final {
+                    status.push(grpc::ScExecutionEventStatus::Final as i32);
+                }
+
+                status
+            },
         }
     }
+}
+
+impl From<DenunciationIndex> for grpc::DenunciationIndex {
+    fn from(value: DenunciationIndex) -> Self {
+        grpc::DenunciationIndex {
+            entry: Some(match value {
+                DenunciationIndex::BlockHeader { slot } => {
+                    grpc::denunciation_index::Entry::BlockHeader(grpc::DenunciationBlockHeader {
+                        slot: Some(slot.into()),
+                    })
+                }
+                DenunciationIndex::Endorsement { slot, index } => {
+                    grpc::denunciation_index::Entry::Endorsement(grpc::DenunciationEndorsement {
+                        slot: Some(slot.into()),
+                        index,
+                    })
+                }
+            }),
+        }
+    }
+}
+
+/// Converts a gRPC `SecureShare` into a byte vector
+pub fn secure_share_to_vec(value: grpc::SecureShare) -> Result<Vec<u8>, ModelsError> {
+    let pub_key = PublicKey::from_str(&value.content_creator_pub_key)?;
+    let pub_key_b = pub_key.to_bytes();
+    // Concatenate signature, public key, and data into a single byte vector
+    let mut serialized_content =
+        Vec::with_capacity(value.signature.len() + pub_key_b.len() + value.serialized_data.len());
+    serialized_content
+        .extend_from_slice(&Signature::from_str(&value.signature).map(|value| value.to_bytes())?);
+    serialized_content.extend_from_slice(&pub_key_b);
+    serialized_content.extend_from_slice(&value.serialized_data);
+
+    Ok(serialized_content)
 }

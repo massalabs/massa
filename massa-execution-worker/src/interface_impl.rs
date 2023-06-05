@@ -69,7 +69,11 @@ impl InterfaceImpl {
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        use massa_models::config::{
+            MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
+        };
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
+        use massa_versioning::versioning::{MipStatsConfig, MipStore};
         use parking_lot::RwLock;
 
         let vesting_file = super::tests::get_initials_vesting(false);
@@ -95,12 +99,21 @@ impl InterfaceImpl {
             .unwrap(),
         );
 
+        // create an empty default store
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+
         let mut execution_context = ExecutionContext::new(
             config.clone(),
             final_state,
             Default::default(),
             module_cache,
             vesting_manager,
+            mip_store,
         );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,
@@ -761,6 +774,7 @@ impl Interface for InterfaceImpl {
                     })
                 })
                 .transpose()?,
+            None,
         ));
         execution_context.created_message_index += 1;
         Ok(())

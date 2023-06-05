@@ -17,6 +17,7 @@ use nom::{
 };
 use std::convert::TryInto;
 use std::marker::PhantomData;
+use std::mem::size_of;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ops::Bound;
 use Bound::Included;
@@ -49,31 +50,28 @@ impl SerializeMinBEInt for u64 {
 
 /// Deserialize min big endian
 pub trait DeserializeMinBEInt: Sized {
-    /// min big endian integer base size
-    const MIN_BE_INT_BASE_SIZE: usize;
-
-    /// Compute the minimal big endian deserialization size
-    fn be_bytes_min_length(max_value: Self) -> usize;
-
     /// Deserializes a minimally sized big endian integer to Self from the provided buffer and checks that its value is within given bounds.
     /// In case of success, return the deserialized data and the number of bytes read
     fn from_be_bytes_min(buffer: &[u8], max_value: Self) -> Result<(Self, usize), ModelsError>;
 }
 
+/// Compute the minimal big endian deserialization size
+pub const fn u32_be_bytes_min_length(max_value: u32) -> usize {
+    size_of::<u32>() - (max_value.leading_zeros() as usize) / 8
+}
+
+/// Compute the minimal big endian deserialization size
+pub const fn u64_be_bytes_min_length(max_value: u64) -> usize {
+    size_of::<u64>() - (max_value.leading_zeros() as usize) / 8
+}
 impl DeserializeMinBEInt for u32 {
-    const MIN_BE_INT_BASE_SIZE: usize = 4;
-
-    fn be_bytes_min_length(max_value: Self) -> usize {
-        Self::MIN_BE_INT_BASE_SIZE - (max_value.leading_zeros() as usize) / 8
-    }
-
     fn from_be_bytes_min(buffer: &[u8], max_value: Self) -> Result<(Self, usize), ModelsError> {
-        let read_bytes = Self::be_bytes_min_length(max_value);
-        let skip_bytes = Self::MIN_BE_INT_BASE_SIZE - read_bytes;
+        let read_bytes = u32_be_bytes_min_length(max_value);
+        let skip_bytes = size_of::<Self>() - read_bytes;
         if buffer.len() < read_bytes {
             return Err(ModelsError::SerializeError("unexpected buffer END".into()));
         }
-        let mut buf = [0u8; Self::MIN_BE_INT_BASE_SIZE];
+        let mut buf = [0u8; size_of::<Self>()];
         buf[skip_bytes..].clone_from_slice(&buffer[..read_bytes]);
         let res = u32::from_be_bytes(buf);
         if res > max_value {
@@ -86,19 +84,13 @@ impl DeserializeMinBEInt for u32 {
 }
 
 impl DeserializeMinBEInt for u64 {
-    const MIN_BE_INT_BASE_SIZE: usize = 8;
-
-    fn be_bytes_min_length(max_value: Self) -> usize {
-        Self::MIN_BE_INT_BASE_SIZE - (max_value.leading_zeros() as usize) / 8
-    }
-
     fn from_be_bytes_min(buffer: &[u8], max_value: Self) -> Result<(Self, usize), ModelsError> {
-        let read_bytes = Self::be_bytes_min_length(max_value);
-        let skip_bytes = Self::MIN_BE_INT_BASE_SIZE - read_bytes;
+        let read_bytes = u64_be_bytes_min_length(max_value);
+        let skip_bytes = size_of::<Self>() - read_bytes;
         if buffer.len() < read_bytes {
             return Err(ModelsError::SerializeError("unexpected buffer END".into()));
         }
-        let mut buf = [0u8; Self::MIN_BE_INT_BASE_SIZE];
+        let mut buf = [0u8; size_of::<Self>()];
         buf[skip_bytes..].clone_from_slice(&buffer[..read_bytes]);
         let res = u64::from_be_bytes(buf);
         if res > max_value {
@@ -585,6 +577,7 @@ where
     }
 }
 
+#[derive(Clone)]
 /// `BitVec<u8>` Serializer
 pub struct BitVecSerializer {
     u32_serializer: U32VarIntSerializer,
@@ -619,6 +612,7 @@ impl Serializer<BitVec<u8>> for BitVecSerializer {
     }
 }
 
+#[derive(Clone)]
 /// `BitVec<u8>` Deserializer
 pub struct BitVecDeserializer {
     u32_deserializer: U32VarIntDeserializer,

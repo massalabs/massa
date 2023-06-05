@@ -9,18 +9,20 @@ extern crate massa_logging;
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::{Receiver, TryRecvError};
+use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::BootstrapError;
 use massa_bootstrap::{
-    client::DefaultConnector, get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager,
-    BootstrapTcpListener,
+    get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+    DefaultConnector,
 };
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
+use massa_db::{MassaDB, MassaDBConfig};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -36,25 +38,23 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{
-    ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0,
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP,
-    EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_SIZE, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
-    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
+    DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
+    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BYTECODE_LENGTH,
-    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
-    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
-    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
-    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+    MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE, MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
+    MAX_SIZE_CHANNEL_COMMANDS_PEERS, MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
@@ -62,11 +62,15 @@ use massa_models::config::constants::{
     MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
     MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    POOL_CONTROLLER_CHANNEL_SIZE, POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES,
-    PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
-    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
-    VERSION,
+    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
+    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE,
+    SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
 };
+use massa_models::config::{
+    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+};
+use massa_models::slot::Slot;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -75,7 +79,10 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning_worker::versioning::{MipStatsConfig, MipStore};
+use massa_versioning::{
+    mips::MIP_LIST,
+    versioning::{MipStatsConfig, MipStore},
+};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
@@ -97,6 +104,7 @@ mod settings;
 async fn launch(
     args: &Args,
     node_wallet: Arc<RwLock<Wallet>>,
+    sig_int_toggled: Arc<(Mutex<bool>, Condvar)>,
 ) -> (
     Receiver<ConsensusEvent>,
     Option<BootstrapManager>,
@@ -136,6 +144,36 @@ async fn launch(
         }
     }
 
+    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
+
+    // Simulate downtime
+    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+    #[cfg(not(feature = "bootstrap_server"))]
+    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+            .saturating_sub(now)
+            .days_hours_mins_secs()
+            .unwrap();
+
+        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            THREAD_COUNT,
+            T0,
+            *GENESIS_TIMESTAMP,
+            DOWNTIME_END_TIMESTAMP,
+        ) {
+            panic!(
+                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
+                days, hours, mins, secs, end_period.period
+            );
+        }
+
+        panic!(
+            "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
+            days, hours, mins, secs,
+        );
+    }
+
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -145,28 +183,29 @@ async fn launch(
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
-        max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
     };
     let pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
         thread_count: THREAD_COUNT,
         cycle_history_length: POS_SAVED_CYCLES,
-        credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
+        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+        max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+        max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
     };
     let executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
     let executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
     };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -182,6 +221,8 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
@@ -199,11 +240,16 @@ async fn launch(
         }
     }
 
+    let db_config = MassaDBConfig {
+        path: SETTINGS.ledger.disk_ledger_path.clone(),
+        max_history_length: SETTINGS.ledger.final_history_length,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
+        thread_count: THREAD_COUNT,
+    };
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+
     // Create final ledger
-    let ledger = FinalLedger::new(
-        ledger_config.clone(),
-        args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
-    );
+    let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -216,38 +262,38 @@ async fn launch(
     })
     .expect("could not start selector worker");
 
+    // Creates an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store =
+        MipStore::try_from((MIP_LIST, mip_stats_config)).expect("mip store creation failed");
+
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
             Some(last_start_period) => FinalState::new_derived_from_snapshot(
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
                 last_start_period,
             )
             .expect("could not init final state"),
             None => FinalState::new(
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
+                true,
             )
             .expect("could not init final state"),
         },
     ));
 
-    // interrupt signal listener
-    let interupted = Arc::new((Mutex::new(false), Condvar::new()));
-    let handler_clone = Arc::clone(&interupted);
-
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
-    ctrlc::set_handler(move || {
-        *handler_clone
-            .0
-            .lock()
-            .expect("double-lock on interupt bool in ctrl-c handler") = true;
-        handler_clone.1.notify_all();
-    })
-    .expect("Error setting Ctrl-C handler");
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
@@ -270,7 +316,6 @@ async fn launch(
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
         max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
-        max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -279,7 +324,7 @@ async fn launch(
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
         max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
         max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
@@ -314,7 +359,7 @@ async fn launch(
         *GENESIS_TIMESTAMP,
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        interupted,
+        sig_int_toggled,
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {
@@ -324,9 +369,13 @@ async fn launch(
         Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
+    if !final_state.read().is_db_valid() {
+        // TODO: Bootstrap again instead of panicking
+        panic!("critical: db is not valid after bootstrap");
+    }
+
     if args.restart_from_snapshot_at_period.is_none() {
-        let last_start_period = final_state.read().last_start_period;
-        final_state.write().init_ledger_hash(last_start_period);
+        final_state.write().recompute_caches();
 
         // give the controller to final state in order for it to feed the cycles
         final_state
@@ -335,29 +384,41 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
+    let last_slot_before_downtime_ = final_state.read().last_slot_before_downtime;
+    if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
+        let last_shutdown_start = last_slot_before_downtime
+            .get_next_slot(THREAD_COUNT)
+            .unwrap();
+        let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
+            .get_prev_slot(THREAD_COUNT)
+            .unwrap();
+        if !final_state
+            .read()
+            .mip_store
+            .is_coherent_with_shutdown_period(
+                last_shutdown_start,
+                last_shutdown_end,
+                THREAD_COUNT,
+                T0,
+                *GENESIS_TIMESTAMP,
+            )
+            .unwrap_or(false)
+        {
+            panic!(
+                "MIP store is not coherent with last shutdown period ({} - {})",
+                last_shutdown_start, last_shutdown_end
+            );
+        }
+    }
+
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
-        ledger_entry_base_cost: LEDGER_COST_PER_BYTE
-            .checked_mul_u64(LEDGER_ENTRY_BASE_SIZE as u64)
-            .expect("Overflow when creating constant ledger_entry_base_cost"),
+        ledger_entry_base_cost: LEDGER_ENTRY_BASE_COST,
         ledger_entry_datastore_base_cost: LEDGER_COST_PER_BYTE
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
-
-    // Creates an empty default store
-    let mip_stats_config = MipStatsConfig {
-        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-    };
-    let mut mip_store =
-        MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
-    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
-        mip_store
-            .update_with(&bootstrap_mip_store)
-            .expect("Cannot update MIP store with bootstrap mip store");
-    }
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -426,7 +487,9 @@ async fn launch(
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        channels_size: POOL_CONTROLLER_CHANNEL_SIZE,
+        operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+        endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+        denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
         broadcast_enabled: SETTINGS.api.enable_broadcast,
         broadcast_endorsements_channel_capacity: SETTINGS
             .pool
@@ -486,6 +549,7 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         endorsement_count: ENDORSEMENT_COUNT,
+        max_message_size: MAX_MESSAGE_SIZE as usize,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().last_start_period,
@@ -551,18 +615,15 @@ async fn launch(
         t0: T0,
         genesis_key: GENESIS_KEY.clone(),
         max_discarded_blocks: SETTINGS.consensus.max_discarded_blocks,
-        future_block_processing_max_periods: SETTINGS.consensus.future_block_processing_max_periods,
         max_future_processing_blocks: SETTINGS.consensus.max_future_processing_blocks,
         max_dependency_blocks: SETTINGS.consensus.max_dependency_blocks,
         delta_f0: DELTA_F0,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
         stats_timespan: SETTINGS.consensus.stats_timespan,
-        max_send_wait: SETTINGS.consensus.max_send_wait,
         force_keep_final_periods: SETTINGS.consensus.force_keep_final_periods,
         endorsement_count: ENDORSEMENT_COUNT,
         block_db_prune_interval: SETTINGS.consensus.block_db_prune_interval,
-        max_item_return_count: SETTINGS.consensus.max_item_return_count,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         channel_size: CHANNEL_SIZE,
         bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -575,6 +636,9 @@ async fn launch(
             .consensus
             .broadcast_filled_blocks_channel_capacity,
         last_start_period: final_state.read().last_start_period,
+        force_keep_final_periods_without_ops: SETTINGS
+            .consensus
+            .force_keep_final_periods_without_ops,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -610,6 +674,7 @@ async fn launch(
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
+        mip_store.clone(),
     )
     .expect("could not start protocol controller");
 
@@ -633,7 +698,12 @@ async fn launch(
         protocol: protocol_controller.clone(),
         storage: shared_storage.clone(),
     };
-    let factory_manager = start_factory(factory_config, node_wallet.clone(), factory_channels);
+    let factory_manager = start_factory(
+        factory_config,
+        node_wallet.clone(),
+        factory_channels,
+        mip_store.clone(),
+    );
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
         let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
@@ -650,7 +720,6 @@ async fn launch(
             bootstrap_config,
             keypair.clone(),
             *VERSION,
-            mip_store.clone(),
         )
         .expect("Could not start bootstrap server");
         manager.set_listener_stopper(waker);
@@ -672,7 +741,7 @@ async fn launch(
         max_subscriptions_per_connection: SETTINGS.api.max_subscriptions_per_connection,
         max_log_length: SETTINGS.api.max_log_length,
         allow_hosts: SETTINGS.api.allow_hosts.clone(),
-        batch_requests_supported: SETTINGS.api.batch_requests_supported,
+        batch_request_limit: SETTINGS.api.batch_request_limit,
         ping_interval: SETTINGS.api.ping_interval,
         enable_http: SETTINGS.api.enable_http,
         enable_ws: SETTINGS.api.enable_ws,
@@ -783,6 +852,7 @@ async fn launch(
             storage: shared_storage.clone(),
             grpc_config: grpc_config.clone(),
             version: *VERSION,
+            mip_store: mip_store.clone(),
         };
 
         // HACK maybe should remove timeout later
@@ -835,6 +905,7 @@ async fn launch(
         *VERSION,
         node_id,
         shared_storage.clone(),
+        mip_store.clone(),
     );
     let api_public_handle = api_public
         .serve(&SETTINGS.api.bind_public, &api_config)
@@ -1068,6 +1139,21 @@ async fn run(args: Args) -> anyhow::Result<()> {
         &SETTINGS.factory.staking_wallet_path,
     )?;
 
+    // interrupt signal listener
+    let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
+
+    // TODO: re-enable and fix this (remove use ctrlc as _; when done)
+    // let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
+    // currently used by the bootstrap client to break out of the to preempt the retry wait
+    // ctrlc::set_handler(move || {
+    //     *sig_int_toggled_clone
+    //         .0
+    //         .lock()
+    //         .expect("double-lock on interupt bool in ctrl-c handler") = true;
+    //     sig_int_toggled_clone.1.notify_all();
+    // })
+    // .expect("Error setting Ctrl-C handler");
+
     loop {
         let (
             consensus_event_receiver,
@@ -1083,7 +1169,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
-        ) = launch(&cur_args, node_wallet.clone()).await;
+        ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
 
         // interrupt signal listener
         let (tx, rx) = crossbeam_channel::bounded(1);

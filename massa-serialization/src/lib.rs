@@ -252,6 +252,7 @@ u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, "`u32`";
 u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`"
 }
 
+#[derive(Clone)]
 pub struct OptionSerializer<T, ST>
 where
     ST: Serializer<T>,
@@ -287,6 +288,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct OptionDeserializer<T, DT>
 where
     T: Clone,
@@ -337,7 +339,7 @@ where
 }
 
 /// Serializer for bool
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct BoolSerializer {}
 
 impl BoolSerializer {
@@ -355,7 +357,7 @@ impl Serializer<bool> for BoolSerializer {
 }
 
 /// Deserializer for bool
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct BoolDeserializer {}
 
 impl BoolDeserializer {
