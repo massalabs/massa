@@ -79,6 +79,7 @@ pub fn start_consensus_worker(
         new_stale_blocks: Default::default(),
         incoming_index: Default::default(),
         active_index: Default::default(),
+        active_index_without_ops: Default::default(),
         save_final_periods: Default::default(),
         latest_final_blocks_periods: Default::default(),
         best_parents: Default::default(),

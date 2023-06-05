@@ -72,7 +72,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
+    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
     /// let message = AsyncMessage::new_with_hash(
@@ -88,8 +88,12 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     None,
+    ///     None,
     /// );
-    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut async_pool_changes = AsyncPoolChanges::default();
+    /// async_pool_changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str("1").unwrap();
@@ -191,7 +195,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// use std::str::FromStr;
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, Change, AsyncPoolChanges};
+    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
     /// let message = AsyncMessage::new_with_hash(
@@ -207,8 +211,12 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     None,
+    ///     None
     /// );
-    /// let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(vec![Change::Add(message.compute_id(), message)]);
+    /// let mut async_pool_changes = AsyncPoolChanges::default();
+    /// async_pool_changes
+    ///    .0
+    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
     /// state_changes.async_pool_changes = async_pool_changes;
     ///
     /// let amount = Amount::from_str("1").unwrap();
@@ -279,7 +287,7 @@ impl StateChanges {
     pub fn apply(&mut self, changes: StateChanges) {
         use massa_ledger_exports::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);
-        self.async_pool_changes.extend(changes.async_pool_changes);
+        self.async_pool_changes.apply(changes.async_pool_changes);
         self.pos_changes.extend(changes.pos_changes);
         self.executed_ops_changes
             .extend(changes.executed_ops_changes);

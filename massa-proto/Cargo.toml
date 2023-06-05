@@ -2,7 +2,7 @@
 
 [package]
 name = "massa_proto"
-version = "0.1.0"
+version = "0.23.0"
 edition = "2021"
 description = "Protobuf definitions for the Massa blockchain"
 repository = "https://github.com/massalabs/massa/"

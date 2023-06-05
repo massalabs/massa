@@ -14,6 +14,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
+use massa_db::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -108,7 +109,12 @@ impl ExecutionState {
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_state.read().slot;
+        let last_final_slot = final_state
+            .read()
+            .db
+            .read()
+            .get_change_id()
+            .expect("Critical error: Final state has no slot attached");
 
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
@@ -1261,7 +1267,10 @@ impl ExecutionState {
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
 
-                debug!("execute_final_slot: found in cache, applied cache");
+                // update versioning stats
+                self.update_versioning_stats(exec_target, slot);
+
+                debug!("execute_final_slot: found in cache, applied cache and updated versioning stats");
 
                 // Broadcast a final slot execution output to active channel subscribers.
                 if self.config.broadcast_enabled {
@@ -1557,15 +1566,8 @@ impl ExecutionState {
 
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
-                let lookback_cycle_index =
-                    match final_state.pos_state.get_cycle_index(lookback_cycle) {
-                        Some(v) => v,
-                        None => Default::default(),
-                    };
                 // get rolls
-                final_state.pos_state.cycle_history[lookback_cycle_index]
-                    .roll_counts
-                    .clone()
+                final_state.pos_state.get_all_roll_counts(lookback_cycle)
             }
             None => final_state.pos_state.initial_rolls.clone(),
         }
@@ -1712,6 +1714,37 @@ impl ExecutionState {
                     self.mip_store.update_network_version_stats(
                         slot_ts,
                         Some((current_version, announced_version)),
+                    );
+
+                    // Now write mip store changes to disk (if any)
+                    let mut db_batch = DBBatch::new();
+                    let mut db_versioning_batch = DBBatch::new();
+                    // Unwrap/Expect because if something fails we can only panic here
+                    let slot_prev_ts = get_block_slot_timestamp(
+                        self.config.thread_count,
+                        self.config.t0,
+                        self.config.genesis_timestamp,
+                        slot.get_prev_slot(self.config.thread_count).unwrap(),
+                    )
+                    .unwrap();
+
+                    self.mip_store
+                        .update_batches(
+                            &mut db_batch,
+                            &mut db_versioning_batch,
+                            (&slot_prev_ts, &slot_ts),
+                        )
+                        .unwrap_or_else(|e| {
+                            panic!(
+                                "Unable to get MIP store changes between {} and {}: {}",
+                                slot_prev_ts, slot_ts, e
+                            )
+                        });
+
+                    self.final_state.write().db.write().write_batch(
+                        db_batch,
+                        db_versioning_batch,
+                        None,
                     );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);

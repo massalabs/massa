@@ -86,7 +86,7 @@ impl Serializer<LedgerEntry> for LedgerEntrySerializer {
 
 /// Deserializer for `LedgerEntry`
 pub struct LedgerEntryDeserializer {
-    amount_deserializer: AmountDeserializer,
+    pub amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
     datastore_deserializer: DatastoreDeserializer,
 }

@@ -54,6 +54,7 @@ use massa_protocol_exports::{PeerConnectionType, ProtocolConfig, ProtocolControl
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning::versioning_factory::FactoryStrategy;
 use massa_versioning::{
     keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
 };
@@ -137,10 +138,13 @@ impl MassaRpcServer for API<Public> {
             let address = if let Some(addr) = address {
                 addr
             } else {
+                let now = MassaTime::now().map_err(|e| {
+                    ApiError::InconsistencyError(format!("Unable to get current time: {}", e))
+                })?;
                 let keypair = self
                     .0
                     .keypair_factory
-                    .create(&(), None)
+                    .create(&(), FactoryStrategy::At(now))
                     .map_err(ApiError::from)?;
                 Address::from_public_key(&keypair.get_public_key())
             };
@@ -231,10 +235,13 @@ impl MassaRpcServer for API<Public> {
             let caller_address = if let Some(addr) = caller_address {
                 addr
             } else {
+                let now = MassaTime::now().map_err(|e| {
+                    ApiError::InconsistencyError(format!("Unable to get current time: {}", e))
+                })?;
                 let keypair = self
                     .0
                     .keypair_factory
-                    .create(&(), None)
+                    .create(&(), FactoryStrategy::At(now))
                     .map_err(ApiError::from)?;
                 Address::from_public_key(&keypair.get_public_key())
             };

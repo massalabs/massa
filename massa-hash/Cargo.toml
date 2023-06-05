@@ -1,18 +1,20 @@
 [package]
 name = "massa_hash"
-version = "0.1.0"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-blake3 = "1.3"
-bs58 = { version = "0.4", features = ["check"] }
+blake3 = "=1.3"
+bs58 = { version = "=0.4", features = ["check"] }
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-nom = "7.1"
+nom = "=7.1"
+lsmtree = "=0.1.1"
+generic-array = "0.14.7"
 
 # custom modules
 massa_serialization = { path = "../massa-serialization" }

@@ -25,6 +25,7 @@ impl Default for ConsensusConfig {
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
             force_keep_final_periods: 20,
+            force_keep_final_periods_without_ops: 128,
             endorsement_count: ENDORSEMENT_COUNT,
             end_timestamp: None,
             stats_timespan: MassaTime::from_millis(60000),

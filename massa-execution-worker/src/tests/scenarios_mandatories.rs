@@ -1,21 +1,30 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #[cfg(test)]
 mod tests {
+    use crate::active_history::ActiveHistory;
+    use crate::speculative_async_pool::SpeculativeAsyncPool;
     use crate::start_execution_worker;
     use crate::tests::mock::{
         create_block, get_initials_vesting, get_random_address_full, get_sample_state,
     };
+    use massa_async_pool::AsyncMessage;
+    use massa_db::DBBatch;
     use massa_execution_exports::{
         ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
+    use massa_hash::Hash;
     use massa_models::config::{
         LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
         MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
     use massa_models::test_exports::gen_endorsements_for_denunciation;
-    use massa_models::{address::Address, amount::Amount, slot::Slot};
+    use massa_models::{
+        address::{Address, UserAddress, UserAddressV0},
+        amount::Amount,
+        slot::Slot,
+    };
     use massa_models::{
         block_id::BlockId,
         datastore::Datastore,
@@ -29,7 +38,9 @@ mod tests {
     use massa_time::MassaTime;
     use massa_versioning::versioning::{MipStatsConfig, MipStore};
     use num::rational::Ratio;
+    use parking_lot::RwLock;
     use serial_test::serial;
+    use std::sync::Arc;
     use std::{
         cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
     };
@@ -158,6 +169,7 @@ mod tests {
                 is_final: true,
             })
             .expect("readonly execution failed");
+
         assert_eq!(res.out.slot, Slot::new(1, 0));
         assert!(res.gas_cost > 0);
         assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
@@ -172,6 +184,7 @@ mod tests {
                 is_final: false,
             })
             .expect("readonly execution failed");
+
         assert!(res.out.slot.period > 8);
 
         manager.stop();
@@ -562,6 +575,7 @@ mod tests {
         init_execution_worker(&exec_cfg, &storage, controller.clone());
         // keypair associated to thread 0
         let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
         let bytecode = include_bytes!("./wasm/send_message.wasm");
@@ -1586,12 +1600,22 @@ mod tests {
         let roll_sell_2 = 1;
 
         let initial_deferred_credits = Amount::from_str("100").unwrap();
+
+        let mut batch = DBBatch::new();
+
         // set initial_deferred_credits that will be reimbursed at first block
-        sample_state.write().pos_state.deferred_credits.insert(
-            Slot::new(1, 0),
-            address,
-            initial_deferred_credits,
+        sample_state.write().pos_state.put_deferred_credits_entry(
+            &Slot::new(1, 0),
+            &address,
+            &initial_deferred_credits,
+            &mut batch,
         );
+
+        sample_state
+            .write()
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(
@@ -2910,5 +2934,39 @@ mod tests {
 
         // stop the execution controller
         manager.stop();
+    }
+
+    #[test]
+    fn test_take_batch() {
+        let final_state = get_sample_state(0).unwrap().0;
+        let active_history = Arc::new(RwLock::new(ActiveHistory::default()));
+
+        let mut speculative_pool = SpeculativeAsyncPool::new(final_state, active_history);
+
+        let address = Address::User(UserAddress::UserAddressV0(UserAddressV0(
+            Hash::compute_from(b"abc"),
+        )));
+
+        for i in 1..10 {
+            let message = AsyncMessage::new_with_hash(
+                Slot::new(0, 0),
+                0,
+                address,
+                address,
+                "function".to_string(),
+                i,
+                Amount::from_str("0.1").unwrap(),
+                Amount::from_str("0.3").unwrap(),
+                Slot::new(1, 0),
+                Slot::new(3, 0),
+                Vec::new(),
+                None,
+                None,
+            );
+            speculative_pool.push_new_message(message)
+        }
+        assert_eq!(speculative_pool.get_message_infos().len(), 9);
+        speculative_pool.take_batch_to_execute(Slot::new(2, 0), 19);
+        assert_eq!(speculative_pool.get_message_infos().len(), 4);
     }
 }

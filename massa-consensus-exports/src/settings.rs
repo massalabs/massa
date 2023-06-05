@@ -30,6 +30,8 @@ pub struct ConsensusConfig {
     pub periods_per_cycle: u64,
     /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
+    /// force keep at least this number of final blocks without ops in RAM for each thread
+    pub force_keep_final_periods_without_ops: u64,
     /// target number of endorsement per block
     pub endorsement_count: u32,
     /// TESTNET: time when the blockclique is ended.

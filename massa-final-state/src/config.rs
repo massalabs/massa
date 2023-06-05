@@ -6,6 +6,7 @@ use massa_async_pool::AsyncPoolConfig;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_pos_exports::PoSConfig;
+use massa_time::MassaTime;
 use std::path::PathBuf;
 
 /// Ledger configuration
@@ -38,4 +39,8 @@ pub struct FinalStateConfig {
     /// max number of denunciations that can be included in a block header
     /// or in executed denunciations struct
     pub max_denunciations_per_block_header: u32,
+    /// TODO
+    pub t0: MassaTime,
+    /// TODO
+    pub genesis_timestamp: MassaTime,
 }

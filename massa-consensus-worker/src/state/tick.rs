@@ -47,6 +47,33 @@ impl ConsensusState {
         // take care of block db changes
         self.block_db_changed()?;
 
+        // Simulate downtime
+        use massa_models::config::constants::{
+            DOWNTIME_END_TIMESTAMP, DOWNTIME_END_TIMESTAMP_BOOTSTRAP, DOWNTIME_START_TIMESTAMP,
+        };
+
+        let now = massa_time::MassaTime::now().expect("could not get now time");
+
+        // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+        let start_time = DOWNTIME_START_TIMESTAMP;
+        let end_time = if cfg!(feature = "bootstrap_server") {
+            DOWNTIME_END_TIMESTAMP_BOOTSTRAP
+        } else {
+            DOWNTIME_END_TIMESTAMP
+        };
+
+        if now >= start_time && now <= end_time {
+            let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+
+            panic!(
+                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
+                days, hours, mins, secs,
+            );
+        }
+
         Ok(())
     }
 }

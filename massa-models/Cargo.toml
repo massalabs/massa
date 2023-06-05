@@ -1,6 +1,6 @@
 [package]
 name = "massa_models"
-version = "0.1.0"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -15,9 +15,9 @@ thiserror = "1.0"
 num = { version = "0.4", features = ["serde"] }
 directories = "4.0"
 config = "0.13"
-bs58 = { version = "0.4", features = ["check"] }
-bitvec = { version = "1.0", features = ["serde"] }
-nom = "7.1"
+bs58 = { version = "=0.4", features = ["check"] }
+bitvec = { version = "=1.0", features = ["serde"] }
+nom = "=7.1"
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
@@ -25,7 +25,8 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_proto = { path = "../massa-proto" }
-transition = { git = "https://github.com/massalabs/transition.git" }
+# TODO tag transition crate with a version number
+transition = { git = "https://github.com/massalabs/transition.git", rev = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
 
 [dev-dependencies]
 serial_test = "1.0"

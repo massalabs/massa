@@ -1,6 +1,6 @@
 [package]
 name = "massa_serialization"
-version = "0.1.0"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
-nom = "7.1"
+nom = "=7.1"
 unsigned-varint = { version = "0.7.1", features = [
     "nom",
 ], git = "https://github.com/cyphar/unsigned-varint.git", branch = "nom6-errors" }

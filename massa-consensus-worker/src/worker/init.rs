@@ -135,7 +135,7 @@ impl ConsensusWorker {
 
         info!(
             "Started node at time {}, cycle {}, period {}, thread {}",
-            now.to_utc_string(),
+            now.format_instant(),
             next_slot.get_cycle(config.periods_per_cycle),
             next_slot.period,
             next_slot.thread,

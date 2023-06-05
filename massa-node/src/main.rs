@@ -8,7 +8,6 @@ extern crate massa_logging;
 
 use crate::settings::SETTINGS;
 
-use chrono::{TimeZone, Utc};
 use crossbeam_channel::{Receiver, TryRecvError};
 use ctrlc as _;
 use dialoguer::Password;
@@ -23,6 +22,7 @@ use massa_bootstrap::{
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
+use massa_db::{MassaDB, MassaDBConfig};
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -38,25 +38,23 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_models::address::Address;
 use massa_models::config::constants::{
-    ASYNC_POOL_BOOTSTRAP_PART_SIZE, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, DELTA_F0,
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP,
-    EXECUTED_OPS_BOOTSTRAP_PART_SIZE, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED,
-    LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
-    LEDGER_PART_SIZE_MESSAGE_BYTES, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
+    DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
+    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
+    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
     MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
     MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
-    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
-    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
-    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+    MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE, MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
+    MAX_SIZE_CHANNEL_COMMANDS_PEERS, MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
@@ -69,9 +67,10 @@ use massa_models::config::constants::{
     SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
 };
 use massa_models::config::{
-    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
+use massa_models::slot::Slot;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -80,8 +79,9 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{
-    ComponentStateTypeId, MipComponent, MipInfo, MipState, MipStatsConfig, MipStore,
+use massa_versioning::{
+    mips::MIP_LIST,
+    versioning::{MipStatsConfig, MipStore},
 };
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -96,7 +96,7 @@ use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
@@ -144,6 +144,36 @@ async fn launch(
         }
     }
 
+    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
+
+    // Simulate downtime
+    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+    #[cfg(not(feature = "bootstrap_server"))]
+    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+            .saturating_sub(now)
+            .days_hours_mins_secs()
+            .unwrap();
+
+        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
+            THREAD_COUNT,
+            T0,
+            *GENESIS_TIMESTAMP,
+            DOWNTIME_END_TIMESTAMP,
+        ) {
+            panic!(
+                "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
+                days, hours, mins, secs, end_period.period
+            );
+        }
+
+        panic!(
+            "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
+            days, hours, mins, secs,
+        );
+    }
+
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -153,28 +183,29 @@ async fn launch(
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
-        max_ledger_part_size: LEDGER_PART_SIZE_MESSAGE_BYTES,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: ASYNC_POOL_BOOTSTRAP_PART_SIZE,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
     };
     let pos_config = PoSConfig {
         periods_per_cycle: PERIODS_PER_CYCLE,
         thread_count: THREAD_COUNT,
         cycle_history_length: POS_SAVED_CYCLES,
-        credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
+        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+        max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+        max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
     };
     let executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
     };
     let executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-        bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+        thread_count: THREAD_COUNT,
+        endorsement_count: ENDORSEMENT_COUNT,
     };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -190,6 +221,8 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
@@ -207,11 +240,16 @@ async fn launch(
         }
     }
 
+    let db_config = MassaDBConfig {
+        path: SETTINGS.ledger.disk_ledger_path.clone(),
+        max_history_length: SETTINGS.ledger.final_history_length,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
+        thread_count: THREAD_COUNT,
+    };
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+
     // Create final ledger
-    let ledger = FinalLedger::new(
-        ledger_config.clone(),
-        args.restart_from_snapshot_at_period.is_some() || cfg!(feature = "create_snapshot"),
-    );
+    let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
     // launch selector worker
     let (selector_manager, selector_controller) = start_selector_worker(SelectorConfig {
@@ -224,20 +262,33 @@ async fn launch(
     })
     .expect("could not start selector worker");
 
+    // Creates an empty default store
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+    };
+    let mip_store =
+        MipStore::try_from((MIP_LIST, mip_stats_config)).expect("mip store creation failed");
+
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
             Some(last_start_period) => FinalState::new_derived_from_snapshot(
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
                 last_start_period,
             )
             .expect("could not init final state"),
             None => FinalState::new(
+                db.clone(),
                 final_state_config,
                 Box::new(ledger),
                 selector_controller.clone(),
+                mip_store.clone(),
+                true,
             )
             .expect("could not init final state"),
         },
@@ -273,7 +324,7 @@ async fn launch(
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_bootstrap_final_state_parts_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
         max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
         max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
@@ -318,15 +369,46 @@ async fn launch(
         Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
+    if !final_state.read().is_db_valid() {
+        // TODO: Bootstrap again instead of panicking
+        panic!("critical: db is not valid after bootstrap");
+    }
+
     if args.restart_from_snapshot_at_period.is_none() {
-        let last_start_period = final_state.read().last_start_period;
-        final_state.write().init_ledger_hash(last_start_period);
+        final_state.write().recompute_caches();
 
         // give the controller to final state in order for it to feed the cycles
         final_state
             .write()
             .compute_initial_draws()
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+    }
+
+    let last_slot_before_downtime_ = final_state.read().last_slot_before_downtime;
+    if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
+        let last_shutdown_start = last_slot_before_downtime
+            .get_next_slot(THREAD_COUNT)
+            .unwrap();
+        let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
+            .get_prev_slot(THREAD_COUNT)
+            .unwrap();
+        if !final_state
+            .read()
+            .mip_store
+            .is_coherent_with_shutdown_period(
+                last_shutdown_start,
+                last_shutdown_end,
+                THREAD_COUNT,
+                T0,
+                *GENESIS_TIMESTAMP,
+            )
+            .unwrap_or(false)
+        {
+            panic!(
+                "MIP store is not coherent with last shutdown period ({} - {})",
+                last_shutdown_start, last_shutdown_end
+            );
+        }
     }
 
     // Storage costs constants
@@ -337,99 +419,6 @@ async fn launch(
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
-
-    // Creates an empty default store
-    let mip_stats_config = MipStatsConfig {
-        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-    };
-    let mut mip_store = MipStore::try_from((
-        [(
-            MipInfo {
-                name: "MIP-0001".to_string(),
-                version: 1,
-                components: HashMap::from([(MipComponent::Address, 1), (MipComponent::KeyPair, 1)]),
-                start: MassaTime::from_millis(0),
-                timeout: MassaTime::from_millis(0),
-                activation_delay: MassaTime::from_millis(0),
-            },
-            MipState::new(MassaTime::from_millis(0)),
-        )],
-        mip_stats_config,
-    ))
-    .expect("mip store creation failed");
-    if let Some(bootstrap_mip_store) = bootstrap_state.mip_store {
-        // TODO: in some cases, should bootstrap again
-        let (updated, added) = mip_store
-            .update_with(&bootstrap_mip_store)
-            .expect("Cannot update MIP store with bootstrap mip store");
-
-        if !added.is_empty() {
-            for (mip_info, mip_state) in added.iter() {
-                let now = MassaTime::now().expect("Cannot get current time");
-                match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
-                    Ok(st_id) => {
-                        if st_id == ComponentStateTypeId::LockedIn {
-                            // A new MipInfo @ state locked_in - we need to urge the user to update
-                            warn!(
-                                "A new MIP has been received: {}, version: {}",
-                                mip_info.name, mip_info.version
-                            );
-                            // Safe to unwrap here (only panic if not LockedIn)
-                            let activation_at = mip_state.activation_at(mip_info).unwrap();
-                            let dt = Utc
-                                .timestamp_opt(activation_at.to_duration().as_secs() as i64, 0)
-                                .unwrap();
-                            warn!("Please update your Massa node before: {}", dt.to_rfc2822());
-                        } else if st_id == ComponentStateTypeId::Active {
-                            // A new MipInfo @ state active - we are not compatible anymore
-                            warn!(
-                                "A new MIP has been received {:?}, version: {:?}",
-                                mip_info.name, mip_info.version
-                            );
-                            panic!("Please update your Massa node to support it");
-                        } else if st_id == ComponentStateTypeId::Defined {
-                            // a new MipInfo @ state defined or started (or failed / error)
-                            // warn the user to update its node
-                            warn!(
-                                "A new MIP has been received: {}, version: {}",
-                                mip_info.name, mip_info.version
-                            );
-                            debug!("MIP state: {:?}", mip_state);
-                            let dt_start = Utc
-                                .timestamp_opt(mip_info.start.to_duration().as_secs() as i64, 0)
-                                .unwrap();
-                            let dt_timeout = Utc
-                                .timestamp_opt(mip_info.timeout.to_duration().as_secs() as i64, 0)
-                                .unwrap();
-                            warn!("Please update your node between: {} and {} if you want to support this update",
-                                dt_start.to_rfc2822(),
-                                dt_timeout.to_rfc2822()
-                            );
-                        } else {
-                            // a new MipInfo @ state defined or started (or failed / error)
-                            // warn the user to update its node
-                            warn!(
-                                "A new MIP has been received: {}, version: {}",
-                                mip_info.name, mip_info.version
-                            );
-                            debug!("MIP state: {:?}", mip_state);
-                            warn!("Please update your Massa node to support it");
-                        }
-                    }
-                    Err(e) => {
-                        // Should never happen
-                        panic!(
-                            "Unable to get state at {} of mip info: {:?}, error: {}",
-                            now, mip_info, e
-                        )
-                    }
-                }
-            }
-        }
-
-        debug!("MIP store got {} MIP updated from bootstrap", updated.len());
-    }
 
     // launch execution module
     let execution_config = ExecutionConfig {
@@ -647,6 +636,9 @@ async fn launch(
             .consensus
             .broadcast_filled_blocks_channel_capacity,
         last_start_period: final_state.read().last_start_period,
+        force_keep_final_periods_without_ops: SETTINGS
+            .consensus
+            .force_keep_final_periods_without_ops,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -728,7 +720,6 @@ async fn launch(
             bootstrap_config,
             keypair.clone(),
             *VERSION,
-            mip_store.clone(),
         )
         .expect("Could not start bootstrap server");
         manager.set_listener_stopper(waker);

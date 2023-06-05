@@ -2,45 +2,54 @@
 
 //! This file defines testing tools related to the configuration
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
+use massa_db::MassaDB;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };
-use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
 };
-use massa_models::{
-    config::{
-        DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE, EXECUTED_OPS_BOOTSTRAP_PART_SIZE, PERIODS_PER_CYCLE,
-        POS_SAVED_CYCLES, THREAD_COUNT,
-    },
-    slot::Slot,
-};
+use massa_models::config::{PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT};
 use massa_pos_exports::{PoSConfig, PoSFinalState};
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use parking_lot::RwLock;
 
 impl FinalState {
-    /// Create a final stat
-    pub fn create_final_state(pos_state: PoSFinalState, config: FinalStateConfig) -> Self {
+    /// Create a final state
+    pub fn create_final_state(
+        pos_state: PoSFinalState,
+        config: FinalStateConfig,
+        db: Arc<RwLock<MassaDB>>,
+    ) -> Self {
         FinalState {
-            slot: Slot::new(0, 0),
-            ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), false)),
-            async_pool: AsyncPool::new(config.async_pool_config.clone()),
+            ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),
+            async_pool: AsyncPool::new(config.async_pool_config.clone(), db.clone()),
             pos_state,
-            executed_ops: ExecutedOps::new(config.executed_ops_config.clone()),
+            executed_ops: ExecutedOps::new(config.executed_ops_config.clone(), db.clone()),
             executed_denunciations: ExecutedDenunciations::new(
                 config.executed_denunciations_config.clone(),
+                db.clone(),
             ),
-            changes_history: Default::default(),
+            mip_store: MipStore::try_from((
+                [],
+                MipStatsConfig {
+                    block_count_considered: 10,
+                    counters_max: 10,
+                },
+            ))
+            .unwrap(),
             config,
-            final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
             last_start_period: 0,
+            last_slot_before_downtime: None,
+            db,
         }
     }
 }
@@ -53,17 +62,19 @@ impl Default for FinalStateConfig {
             async_pool_config: AsyncPoolConfig::default(),
             executed_ops_config: ExecutedOpsConfig {
                 thread_count: THREAD_COUNT,
-                bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
             },
             executed_denunciations_config: ExecutedDenunciationsConfig {
                 denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-                bootstrap_part_size: EXECUTED_OPS_BOOTSTRAP_PART_SIZE,
+                thread_count: THREAD_COUNT,
+                endorsement_count: ENDORSEMENT_COUNT,
             },
             pos_config: PoSConfig {
                 periods_per_cycle: PERIODS_PER_CYCLE,
                 thread_count: THREAD_COUNT,
                 cycle_history_length: POS_SAVED_CYCLES,
-                credits_bootstrap_part_size: DEFERRED_CREDITS_BOOTSTRAP_PART_SIZE,
+                max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+                max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+                max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
             },
             final_history_length: 10,
             thread_count: 2,
@@ -73,6 +84,8 @@ impl Default for FinalStateConfig {
             max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
             initial_seed_string: "".to_string(),
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            t0: T0,
+            genesis_timestamp: *GENESIS_TIMESTAMP,
         }
     }
 }

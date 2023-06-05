@@ -476,7 +476,7 @@ impl MipStateSerializer {
         Self {
             state_serializer: Default::default(),
             advance_serializer: Default::default(),
-            u32_serializer: U32VarIntSerializer::default(),
+            u32_serializer: U32VarIntSerializer,
         }
     }
 }
@@ -645,8 +645,8 @@ impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
 
             if entry_count > entry_count_max {
                 return Err(SerializeError::GeneralError(format!(
-                    "Too many entries in MipStoreStats latest announcements, max: {}",
-                    MIP_STORE_STATS_BLOCK_CONSIDERED
+                    "Too many entries in MipStoreStats latest announcements, max: {}, received: {}",
+                    entry_count_max, entry_count
                 )));
             }
             self.u32_serializer.serialize(&entry_count, buffer)?;
@@ -666,8 +666,8 @@ impl Serializer<MipStoreStats> for MipStoreStatsSerializer {
 
             if entry_count_2 > entry_count_2_max {
                 return Err(SerializeError::GeneralError(format!(
-                    "Too many entries in MipStoreStats version counters, max: {}",
-                    MIP_STORE_STATS_COUNTERS_MAX
+                    "Too many entries in MipStoreStats version counters, max: {}, received: {}",
+                    entry_count_2_max, entry_count_2
                 )));
             }
             self.u32_serializer.serialize(&entry_count_2, buffer)?;
@@ -835,8 +835,8 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
         })?;
         if entry_count > MIP_STORE_MAX_ENTRIES {
             return Err(SerializeError::GeneralError(format!(
-                "Too many entries in VersioningStoreRaw, max: {}",
-                MIP_STORE_MAX_ENTRIES
+                "Too many entries in VersioningStoreRaw, max: {}, received: {}",
+                MIP_STORE_MAX_ENTRIES, entry_count
             )));
         }
         self.u32_serializer.serialize(&entry_count, buffer)?;
@@ -920,13 +920,11 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::assert_matches::assert_matches;
 
-    use std::collections::HashMap;
+    use std::assert_matches::assert_matches;
     use std::mem::{size_of, size_of_val};
     use std::str::FromStr;
 
-    use chrono::{NaiveDate, NaiveDateTime};
     use more_asserts::assert_lt;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
@@ -968,7 +966,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1014,26 +1012,15 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        let start: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 01)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 11)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let now: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 05, 11)
-            .unwrap()
-            .and_hms_opt(11, 33, 44)
-            .unwrap();
+        let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
+        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
+        let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
 
         let adv = Advance {
-            start_timestamp: MassaTime::from_millis(start.timestamp() as u64),
-            timeout: MassaTime::from_millis(timeout.timestamp() as u64),
+            start_timestamp: start,
+            timeout,
             threshold: Default::default(),
-            now: MassaTime::from_millis(now.timestamp() as u64),
+            now,
             activation_delay: MassaTime::from_millis(20),
         };
 
@@ -1068,7 +1055,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1122,7 +1109,7 @@ mod test {
         let mi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1131,7 +1118,7 @@ mod test {
         let mi_3 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Block, 1)]),
+            components: BTreeMap::from([(MipComponent::Block, 1)]),
             start: MassaTime::from_millis(12),
             timeout: MassaTime::from_millis(17),
             activation_delay: MassaTime::from_millis(2),
@@ -1163,7 +1150,7 @@ mod test {
         let mut mi_base = MipInfo {
             name: "A".repeat(254),
             version: 0,
-            components: HashMap::from([(MipComponent::Address, 0)]),
+            components: BTreeMap::from([(MipComponent::Address, 0)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(2),
             activation_delay: MassaTime::from_millis(2),

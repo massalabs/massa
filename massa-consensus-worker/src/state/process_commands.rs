@@ -165,7 +165,22 @@ impl ConsensusState {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
-
+        match self.block_statuses.get(block_id) {
+            Some(BlockStatus::WaitingForDependencies { .. }) => {
+                self.waiting_for_dependencies_index.remove(block_id);
+            }
+            Some(BlockStatus::WaitingForSlot(_)) => {
+                self.waiting_for_slot_index.remove(block_id);
+            }
+            Some(BlockStatus::Incoming(_)) => {
+                self.incoming_index.remove(block_id);
+            }
+            Some(BlockStatus::Active { .. }) => {
+                self.active_index.remove(block_id);
+            }
+            Some(BlockStatus::Discarded { .. }) => {}
+            None => {}
+        };
         // add to discard
         self.block_statuses.insert(
             *block_id,
