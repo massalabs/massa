@@ -3138,7 +3138,7 @@
         max_new_elements: <span class="number">100</span>,
         thread_count: <span class="number">2</span>,
     };
-    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config, <span class="bool-val">false</span>)));
+    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
     <span class="kw">let </span>(selector_controller, <span class="kw">_</span>) = MockSelectorController::new_with_receiver();
     <span class="kw">let </span>init_seed = Hash::compute_from(<span class="string">b&quot;&quot;</span>);
     <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];

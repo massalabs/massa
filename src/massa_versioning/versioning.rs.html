@@ -4257,7 +4257,7 @@
             max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
-        <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config, <span class="bool-val">false</span>)));
+        <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
         <span class="comment">// MIP info / store init
 
