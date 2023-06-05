@@ -90,11 +90,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
-use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
-use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
@@ -1087,8 +1085,15 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     )?)))
 }
 
+// We first need to setup the global runtime context:
+//
+// - async runtime
+// - logging
+// - panic hook/handler
+// - signal interupt handler and condition valriable
 #[paw::main]
 fn main(args: Args) -> anyhow::Result<()> {
+    // Setup the async runtime context
     let tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name_fn(|| {
             static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
@@ -1099,13 +1104,9 @@ fn main(args: Args) -> anyhow::Result<()> {
         .build()
         .unwrap();
 
-    tokio_rt.block_on(run(args))
-}
 
-async fn run(args: Args) -> anyhow::Result<()> {
-    let mut cur_args = args;
-    use tracing_subscriber::prelude::*;
     // spawn the console server in the background, returning a `Layer`:
+    use tracing_subscriber::prelude::*;
     let tracing_layer = tracing_subscriber::fmt::layer()
         .with_filter(match SETTINGS.logging.level {
             4 => LevelFilter::TRACE,
@@ -1133,26 +1134,35 @@ async fn run(args: Args) -> anyhow::Result<()> {
         std::process::exit(1);
     }));
 
+    // interrupt signal listener
+    let sigint_cv_pair = Arc::new((Mutex::new(false), Condvar::new()));
+
+    let sig_int_toggled_clone = Arc::clone(&sigint_cv_pair);
+    ctrlc::set_handler(move || {
+        *sig_int_toggled_clone
+            .0
+            .lock()
+            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+        sig_int_toggled_clone.1.notify_all();
+    })
+        .expect("Error setting Ctrl-C handler");
+    run(args, tokio_rt, sigint_cv_pair)
+}
+
+// With the runtime context setup, we can begin to set up the data for the event loop
+fn run(args: Args, runtime: tokio::runtime::Runtime, sigint_cv_pair: Arc<(Mutex<bool>, Condvar)>) -> anyhow::Result<()> {
     // load or create wallet, asking for password if necessary
     let node_wallet = load_wallet(
-        cur_args.password.clone(),
+        args.password.clone(),
         &SETTINGS.factory.staking_wallet_path,
     )?;
 
-    // interrupt signal listener
-    let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
+    runtime.block_on(launch_loop(args, node_wallet, sigint_cv_pair))
+}
 
-    // TODO: re-enable and fix this (remove use ctrlc as _; when done)
-    // let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
-    // ctrlc::set_handler(move || {
-    //     *sig_int_toggled_clone
-    //         .0
-    //         .lock()
-    //         .expect("double-lock on interupt bool in ctrl-c handler") = true;
-    //     sig_int_toggled_clone.1.notify_all();
-    // })
-    // .expect("Error setting Ctrl-C handler");
+
+async fn launch_loop(args: Args, node_wallet: Arc<RwLock<Wallet>>, sigint_cv_pair: Arc<(Mutex<bool>, Condvar)>) -> anyhow::Result<()> {
+    let mut cur_args = args;
 
     loop {
         let (
@@ -1169,14 +1179,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
-        ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
-
-        // interrupt signal listener
-        let (tx, rx) = crossbeam_channel::bounded(1);
-        let interrupt_signal_listener = tokio::spawn(async move {
-            signal::ctrl_c().await.unwrap();
-            tx.send(()).unwrap();
-        });
+        ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sigint_cv_pair)).await;
 
         // loop over messages
         let restart = loop {
@@ -1209,19 +1212,21 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 }
                 _ => {}
             }
-            match rx.try_recv() {
-                Ok(_) => {
-                    info!("interrupt signal received");
-                    break false;
-                }
-                Err(crossbeam_channel::TryRecvError::Disconnected) => {
-                    error!("interrupt_signal_listener disconnected");
-                    break false;
-                }
-                _ => {}
+
+            let int_sig = sigint_cv_pair
+                .0
+                .lock()
+                .expect("double-lock() on interupted signal mutex");
+            let wake = sigint_cv_pair
+                .1
+                .wait_timeout(int_sig, Duration::from_millis(100))
+                .expect("interupt signal mutex poisoned");
+            if *wake.0 {
+                info!("interrupt signal received");
+                break false;
             }
-            sleep(Duration::from_millis(100));
         };
+
         stop(
             consensus_event_receiver,
             Managers {
@@ -1245,7 +1250,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
         }
         // If we restart because of a desync, then we do not want to restart from a snapshot
         cur_args.restart_from_snapshot_at_period = None;
-        interrupt_signal_listener.abort();
     }
     Ok(())
 }
