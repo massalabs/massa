@@ -19,19 +19,14 @@ use massa_api_exports::{
 };
 use massa_execution_exports::ExecutionController;
 use massa_hash::Hash;
-use massa_models::clique::Clique;
-use massa_models::composite::PubkeySig;
-use massa_models::node::NodeId;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
-    execution::EventFilter, operation::OperationId, slot::Slot,
+    address::Address, block::Block, block_id::BlockId, clique::Clique, composite::PubkeySig,
+    endorsement::EndorsementId, execution::EventFilter, node::NodeId, operation::OperationId,
+    output_event::SCOutputEvent, prehash::PreHashSet, slot::Slot,
 };
 use massa_protocol_exports::{PeerId, ProtocolController};
-use massa_signature::{KeyPair, PUBLIC_KEY_SIZE_BYTES};
+use massa_signature::KeyPair;
 use massa_wallet::Wallet;
-
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
 use std::fs::{remove_file, OpenOptions};
@@ -164,14 +159,7 @@ impl MassaRpcServer for API<Private> {
         //TODO: Change when unify node id and peer id
         let peer_ids = ids
             .into_iter()
-            .map(|id| {
-                PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_SIZE_BYTES]
-                        .try_into()
-                        .unwrap(),
-                )
-                .unwrap()
-            })
+            .map(|id| PeerId::from_public_key(id.get_public_key()))
             .collect();
         protocol_controller
             .ban_peers(peer_ids)
@@ -183,14 +171,7 @@ impl MassaRpcServer for API<Private> {
         //TODO: Change when unify node id and peer id
         let peer_ids = ids
             .into_iter()
-            .map(|id| {
-                PeerId::from_bytes(
-                    id.get_public_key().to_bytes()[..PUBLIC_KEY_SIZE_BYTES]
-                        .try_into()
-                        .unwrap(),
-                )
-                .unwrap()
-            })
+            .map(|id| PeerId::from_public_key(id.get_public_key()))
             .collect();
         protocol_controller
             .unban_peers(peer_ids)

@@ -5,8 +5,7 @@ use massa_models::{
     block::SecureShareBlock, block_id::BlockId, operation::SecureShareOperation,
     prehash::PreHashSet,
 };
-use massa_protocol_exports::ProtocolController;
-use peernet::peer_id::PeerId;
+use massa_protocol_exports::{PeerId, ProtocolController};
 
 use crate::{
     handlers::block_handler::{BlockInfoReply, BlockMessage},
@@ -77,7 +76,7 @@ pub fn send_and_propagate_block(
 ) {
     network_controller
         .send_from_peer(
-            &node_id,
+            node_id,
             Message::Block(Box::new(BlockMessage::BlockHeader(
                 block.content.header.clone(),
             ))),
@@ -100,7 +99,7 @@ pub fn send_and_propagate_block(
     )];
     network_controller
         .send_from_peer(
-            &node_id,
+            node_id,
             Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
         )
         .unwrap();
@@ -109,7 +108,7 @@ pub fn send_and_propagate_block(
     let info = vec![(block.id, BlockInfoReply::Operations(operations))];
     network_controller
         .send_from_peer(
-            &node_id,
+            node_id,
             Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
         )
         .unwrap();

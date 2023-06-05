@@ -2,7 +2,7 @@
 
 [package]
 name = "massa_grpc"
-version = "0.1.0"
+version = "0.23.0"
 edition = "2021"
 description = "GRPC API for Massa Blockchain"
 repository = "https://github.com/massalabs/massa/"
@@ -38,7 +38,7 @@ massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_serialization = { path = "../massa-serialization" }
 massa_proto = { path = "../massa-proto" }
-massa_versioning_worker = { path = "../massa-versioning-worker" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 crossbeam = "0.8.2"

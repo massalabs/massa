@@ -26,13 +26,13 @@ mod client;
 mod error;
 pub use error::BootstrapError;
 mod listener;
-pub use listener::BootstrapTcpListener;
 mod messages;
 mod server;
 mod settings;
 mod tools;
+
 pub use client::{get_state, DefaultConnector};
-use massa_versioning_worker::versioning::MipStore;
+pub use listener::BootstrapTcpListener;
 pub use messages::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
@@ -54,9 +54,6 @@ pub struct GlobalBootstrapState {
 
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
-
-    /// versioning info state
-    pub mip_store: Option<MipStore>,
 }
 
 impl GlobalBootstrapState {
@@ -65,7 +62,6 @@ impl GlobalBootstrapState {
             final_state,
             graph: None,
             peers: None,
-            mip_store: None,
         }
     }
 }

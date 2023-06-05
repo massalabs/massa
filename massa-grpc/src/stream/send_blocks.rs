@@ -5,6 +5,7 @@ use crate::server::MassaGrpc;
 use futures_util::StreamExt;
 use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
 use massa_models::error::ModelsError;
+use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto::google::rpc::Status;
 use massa_proto::massa::api::v1 as grpc;
@@ -57,17 +58,16 @@ pub(crate) async fn send_blocks(
                         continue;
                     };
 
-                    let pub_key_b = proto_block.content_creator_pub_key.as_bytes();
-                    // Concatenate signature, public key, and data into a single byte vector
-                    let mut blk_serialized = Vec::with_capacity(
-                        proto_block.signature.len()
-                            + pub_key_b.len()
-                            + proto_block.serialized_data.len(),
-                    );
+                    let Ok(blk_serialized) = secure_share_to_vec(proto_block) else {
+                        report_error(
+                            req_content.id.clone(),
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            "failed to convert block secure share".to_owned(),
+                        ).await;
+                        continue;
+                    };
 
-                    blk_serialized.extend_from_slice(proto_block.signature.as_bytes());
-                    blk_serialized.extend_from_slice(pub_key_b);
-                    blk_serialized.extend_from_slice(&proto_block.serialized_data);
                     // Create a block deserializer arguments
                     let args = BlockDeserializerArgs {
                         thread_count: config.thread_count,

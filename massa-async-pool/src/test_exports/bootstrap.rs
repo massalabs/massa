@@ -1,33 +1,32 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::{collections::BTreeMap, str::FromStr};
-
-use crate::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolConfig};
-use massa_models::{address::Address, amount::Amount, config::THREAD_COUNT, slot::Slot};
+use crate::{
+    AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer, AsyncPool,
+};
+use massa_db::{ASYNC_POOL_PREFIX, STATE_CF};
+use massa_models::{
+    address::Address,
+    amount::Amount,
+    config::{MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
+    slot::Slot,
+};
+use massa_serialization::{DeserializeError, Deserializer};
 use massa_signature::KeyPair;
 use rand::Rng;
+use rocksdb::{Direction, IteratorMode};
+use std::str::FromStr;
 
 /// This file defines tools to test the asynchronous pool bootstrap
 
-/// Creates a `AsyncPool` from pre-set values
-pub fn create_async_pool(
-    config: AsyncPoolConfig,
-    messages: BTreeMap<AsyncMessageId, AsyncMessage>,
-) -> AsyncPool {
-    let mut async_pool = AsyncPool::new(config);
-    async_pool.messages = messages;
-    async_pool
-}
-
 fn get_random_address() -> Address {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     Address::from_public_key(&keypair.get_public_key())
 }
 
-pub fn get_random_message(fee: Option<Amount>) -> AsyncMessage {
+pub fn get_random_message(fee: Option<Amount>, thread_count: u8) -> AsyncMessage {
     let mut rng = rand::thread_rng();
     AsyncMessage::new_with_hash(
-        Slot::new(rng.gen_range(0..100_000), rng.gen_range(0..THREAD_COUNT)),
+        Slot::new(rng.gen_range(0..100_000), rng.gen_range(0..thread_count)),
         0,
         get_random_address(),
         get_random_address(),
@@ -38,6 +37,7 @@ pub fn get_random_message(fee: Option<Amount>) -> AsyncMessage {
         Slot::new(2, 0),
         Slot::new(4, 0),
         vec![1, 2, 3],
+        None,
         None,
     )
 }
@@ -65,12 +65,99 @@ pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
 
 /// asserts that two `AsyncPool` are equal
 pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
-    assert_eq!(
-        v1.messages.len(),
-        v2.messages.len(),
-        "message count mismatch"
+    let message_id_deserializer = AsyncMessageIdDeserializer::new(THREAD_COUNT);
+    let message_deserializer = AsyncMessageDeserializer::new(
+        THREAD_COUNT,
+        MAX_ASYNC_MESSAGE_DATA,
+        MAX_DATASTORE_KEY_LENGTH as u32,
+        false,
     );
-    for (val1, val2) in v1.messages.iter().zip(v2.messages.iter()) {
-        assert_eq_async_message(val1.1, val2.1);
+    let db1 = v1.db.read();
+    let db2 = v2.db.read();
+    let handle1 = db1.db.cf_handle(STATE_CF).unwrap();
+    let handle2 = db2.db.cf_handle(STATE_CF).unwrap();
+
+    let iter_1 = db1
+        .db
+        .iterator_cf(
+            handle1,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
+    let iter_2 = db2
+        .db
+        .iterator_cf(
+            handle2,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
+
+    assert_eq!(
+        iter_1.count(),
+        iter_2.count(),
+        "message values count mismatch"
+    );
+
+    // Iterates over the whole database
+    let mut current_id: Option<AsyncMessageId> = None;
+    let mut current_message_1: Vec<u8> = Vec::new();
+    let mut current_message_2: Vec<u8> = Vec::new();
+    let mut current_count = 0u8;
+    const TOTAL_FIELDS_COUNT: u8 = 13;
+
+    let iter_1 = db1
+        .db
+        .iterator_cf(
+            handle1,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
+    let iter_2 = db2
+        .db
+        .iterator_cf(
+            handle2,
+            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
+        )
+        .flatten()
+        .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
+
+    for (val1, val2) in iter_1.zip(iter_2) {
+        let (_, message_id_1) = message_id_deserializer
+            .deserialize::<DeserializeError>(&val1.0)
+            .unwrap();
+        let (_, message_id_2) = message_id_deserializer
+            .deserialize::<DeserializeError>(&val2.0)
+            .unwrap();
+
+        if Some(message_id_1) == current_id && message_id_1 == message_id_2 {
+            current_count += 1;
+            current_message_1.extend(val1.1.iter());
+            current_message_2.extend(val2.1.iter());
+            if current_count == TOTAL_FIELDS_COUNT {
+                let (_rest, message1) = message_deserializer
+                    .deserialize::<DeserializeError>(&current_message_1)
+                    .unwrap();
+                let (_rest, message2) = message_deserializer
+                    .deserialize::<DeserializeError>(&current_message_2)
+                    .unwrap();
+                assert_eq_async_message(&message1, &message2);
+
+                current_count = 0;
+                current_message_1.clear();
+                current_message_2.clear();
+                current_id = None;
+            }
+        } else {
+            // We reset the current values
+            current_id = Some(message_id_1);
+            current_count = 1;
+            current_message_1.clear();
+            current_message_1.extend(val1.1.iter());
+            current_message_2.clear();
+            current_message_2.extend(val2.1.iter());
+        }
     }
 }

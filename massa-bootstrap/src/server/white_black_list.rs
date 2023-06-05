@@ -9,8 +9,7 @@ use std::{
 use crate::error::BootstrapError;
 use massa_logging::massa_trace;
 use parking_lot::RwLock;
-use tracing::info;
-use tracing::log::warn;
+use tracing::{info, warn};
 
 use crate::tools::normalize_ip;
 

@@ -1,6 +1,6 @@
 [package]
 name = "massa_factory_worker"
-version = "0.1.0"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -20,6 +20,7 @@ massa_wallet = { path = "../massa-wallet" }
 massa_hash = { path = "../massa-hash" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_pool_exports = { path = "../massa-pool-exports" }
+massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
 massa_protocol_exports = { path = "../massa-protocol-exports", features=["testing"] }

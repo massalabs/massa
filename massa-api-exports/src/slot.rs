@@ -5,7 +5,7 @@ use massa_models::{amount::Amount, slot::Slot};
 use serde::{Deserialize, Serialize};
 
 /// slot / amount pair
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SlotAmount {
     /// slot
     pub slot: Slot,

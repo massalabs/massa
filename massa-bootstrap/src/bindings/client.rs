@@ -8,11 +8,13 @@ use crate::messages::{
 };
 use crate::settings::BootstrapClientConfig;
 use massa_hash::Hash;
-use massa_models::config::{MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES};
+use massa_models::config::{
+    MAX_BOOTSTRAP_MESSAGE_SIZE, MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES, SIGNATURE_DESER_SIZE,
+};
 use massa_models::serialization::{DeserializeMinBEInt, SerializeMinBEInt};
 use massa_models::version::{Version, VersionSerializer};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use massa_signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES};
+use massa_signature::{PublicKey, Signature};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::time::Instant;
 use std::{io::Write, net::TcpStream, time::Duration};
@@ -26,7 +28,7 @@ pub struct BootstrapClientBinder {
     cfg: BootstrapClientConfig,
 }
 
-const KNOWN_PREFIX_LEN: usize = SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
+const KNOWN_PREFIX_LEN: usize = SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
 /// The known-length component of a message to be received.
 struct ServerMessageLeader {
     sig: Signature,
@@ -186,16 +188,13 @@ impl BootstrapClientBinder {
     /// and makes error-type management cleaner
     fn decode_msg_leader(
         &self,
-        leader_buff: &[u8; SIGNATURE_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
+        leader_buff: &[u8; SIGNATURE_DESER_SIZE + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES],
     ) -> Result<ServerMessageLeader, BootstrapError> {
-        let sig_array = leader_buff[0..SIGNATURE_SIZE_BYTES]
-            .try_into()
-            .expect("logic error in array manipulations");
-        let sig = Signature::from_bytes(&sig_array)?;
+        let sig = Signature::from_bytes(leader_buff)?;
 
         // construct the message len from the leader-bufff
         let msg_len = u32::from_be_bytes_min(
-            &leader_buff[SIGNATURE_SIZE_BYTES..],
+            &leader_buff[SIGNATURE_DESER_SIZE..],
             MAX_BOOTSTRAP_MESSAGE_SIZE,
         )?
         .0;

@@ -23,6 +23,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::debug;
 
+mod clique_computation;
 mod graph;
 mod process;
 mod process_commands;
@@ -48,6 +49,8 @@ pub struct ConsensusState {
     pub max_cliques: Vec<Clique>,
     /// ids of active blocks
     pub active_index: PreHashSet<BlockId>,
+    /// ids of active blocks without ops
+    pub active_index_without_ops: PreHashSet<BlockId>,
     /// Save of latest periods
     pub save_final_periods: Vec<u64>,
     /// One (block id, period) per thread
@@ -107,7 +110,7 @@ impl ConsensusState {
     /// Get a full active block
     ///
     /// Returns an error if it was not found
-    pub fn try_get_full_active_block(
+    fn try_get_full_active_block(
         &self,
         block_id: &BlockId,
     ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {

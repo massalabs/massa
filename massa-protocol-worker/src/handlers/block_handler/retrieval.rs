@@ -1,6 +1,5 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
-    num::NonZeroUsize,
     thread::JoinHandle,
     time::Instant,
 };
@@ -21,7 +20,6 @@ use crossbeam::{
     channel::{at, Receiver, Sender},
     select,
 };
-use lru::LruCache;
 use massa_consensus_exports::ConsensusController;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
@@ -33,13 +31,16 @@ use massa_models::{
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::{Id, SecureShare},
+    timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
-use peernet::peer_id::PeerId;
+use massa_versioning::versioning::MipStore;
+use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use super::{
@@ -98,11 +99,12 @@ pub struct RetrievalThread {
     cache: SharedBlockCache,
     config: ProtocolConfig,
     storage: Storage,
+    mip_store: MipStore,
 }
 
 impl RetrievalThread {
     fn run(&mut self) {
-        let mut block_message_deserializer =
+        let block_message_deserializer =
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
                 endorsement_count: self.config.endorsement_count,
@@ -121,8 +123,7 @@ impl RetrievalThread {
             select! {
                 recv(self.receiver_network) -> msg => {
                     match msg {
-                        Ok((peer_id, message_id, message)) => {
-                            block_message_deserializer.set_message_id(message_id);
+                        Ok((peer_id, message)) => {
                             let (rest, message) = match block_message_deserializer
                                 .deserialize::<DeserializeError>(&message) {
                                 Ok((rest, message)) => (rest, message),
@@ -295,22 +296,6 @@ impl RetrievalThread {
             };
             all_blocks_info.push((*hash, block_info));
         }
-        // Clean shared cache if peers do not exist anymore
-        {
-            let mut cache_write = self.cache.write();
-            let peers: Vec<PeerId> = cache_write
-                .blocks_known_by_peer
-                .iter()
-                .map(|(id, _)| id.clone())
-                .collect();
-            let connected_peers = self.active_connections.get_peer_ids_connected();
-            for peer_id in peers {
-                if !connected_peers.contains(&peer_id) {
-                    cache_write.blocks_known_by_peer.pop(&peer_id);
-                    self.asked_blocks.remove(&peer_id);
-                }
-            }
-        }
         debug!(
             "Send reply for blocks of len {} to {}",
             all_blocks_info.len(),
@@ -429,6 +414,29 @@ impl RetrievalThread {
         Ok(())
     }
 
+    /// Check if the incoming header network version is compatible with the current node
+    fn check_network_version_compatibility(
+        &self,
+        header: &SecuredHeader,
+    ) -> Result<(), ProtocolError> {
+        let slot = header.content.slot;
+        let ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot,
+        )?;
+        let version = self.mip_store.get_network_version_active_at(ts);
+        if header.content.current_version != version {
+            Err(ProtocolError::IncompatibleNetworkVersion {
+                local: version,
+                received: header.content.current_version,
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     /// Perform checks on a header,
     /// and if valid update the node's view of the world.
     ///
@@ -451,11 +459,13 @@ impl RetrievalThread {
         header: &SecuredHeader,
         from_peer_id: &PeerId,
     ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
-        //TODO: Check if the error is used here ?
+        // TODO: Check if the error is used here ?
         // refuse genesis blocks
         if header.content.slot.period == 0 || header.content.parents.is_empty() {
             return Ok(None);
         }
+
+        self.check_network_version_compatibility(header)?;
 
         // compute ID
         let block_id = header.id;
@@ -471,18 +481,24 @@ impl RetrievalThread {
                     true,
                     Instant::now(),
                 );
-                {
+                'write_cache: {
                     let mut endorsement_cache_write = self.endorsement_cache.write();
-                    let endorsement_ids = endorsement_cache_write
+                    let Ok(endorsement_ids) =  endorsement_cache_write
                         .endorsements_known_by_peer
-                        .get_or_insert_mut(from_peer_id.clone(), || {
-                            LruCache::new(
-                                NonZeroUsize::new(self.config.max_node_known_blocks_size)
+                        .get_or_insert(from_peer_id.clone(), || {
+                            LruMap::new(ByLength::new(
+                                self.config
+                                    .max_node_known_blocks_size
+                                    .try_into()
                                     .expect("max_node_known_blocks_size in config must be > 0"),
-                            )
-                        });
+                            ))
+                        })
+                        .ok_or(()) else {
+                            warn!("endorsements known by peer limit reached");
+                            break 'write_cache;
+                        };
                     for endorsement_id in block_header.content.endorsements.iter().map(|e| e.id) {
-                        endorsement_ids.put(endorsement_id, ());
+                        endorsement_ids.insert(endorsement_id, ());
                     }
                 }
                 return Ok(Some((block_id, false)));
@@ -529,7 +545,7 @@ impl RetrievalThread {
         }
         {
             let mut cache_write = self.cache.write();
-            cache_write.checked_headers.put(block_id, header.clone());
+            cache_write.checked_headers.insert(block_id, header.clone());
             cache_write.insert_blocks_known(from_peer_id, &[block_id], true, Instant::now());
             cache_write.insert_blocks_known(
                 from_peer_id,
@@ -537,18 +553,24 @@ impl RetrievalThread {
                 true,
                 Instant::now(),
             );
-            {
+            'write_cache: {
                 let mut endorsement_cache_write = self.endorsement_cache.write();
-                let endorsement_ids = endorsement_cache_write
+                let Ok(endorsement_ids) = endorsement_cache_write
                     .endorsements_known_by_peer
-                    .get_or_insert_mut(from_peer_id.clone(), || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_blocks_size)
+                    .get_or_insert(from_peer_id.clone(), || {
+                        LruMap::new(ByLength::new(
+                            self.config
+                                .max_node_known_blocks_size
+                                .try_into()
                                 .expect("max_node_known_blocks_size in config must be > 0"),
-                        )
-                    });
+                        ))
+                    })
+                    .ok_or(()) else {
+                        warn!("endorsements_known_by_peer limit reached");
+                        break 'write_cache;
+                    };
                 for endorsement_id in header.content.endorsements.iter().map(|e| e.id) {
-                    endorsement_ids.put(endorsement_id, ());
+                    endorsement_ids.insert(endorsement_id, ());
                 }
             }
         }
@@ -560,7 +582,7 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 
@@ -598,7 +620,11 @@ impl RetrievalThread {
             // check endorsement signature if not already checked
             {
                 let read_cache = self.endorsement_cache.read();
-                if !read_cache.checked_endorsements.contains(&endorsement_id) {
+                if read_cache
+                    .checked_endorsements
+                    .peek(&endorsement_id)
+                    .is_none()
+                {
                     new_endorsements.insert(endorsement_id, endorsement);
                 }
             }
@@ -619,24 +645,29 @@ impl RetrievalThread {
                 .collect::<Vec<_>>(),
         )?;
 
-        {
+        'write_cache: {
             let mut cache_write = self.endorsement_cache.write();
             // add to verified signature cache
             for endorsement_id in endorsement_ids.iter() {
-                cache_write.checked_endorsements.put(*endorsement_id, ());
+                cache_write.checked_endorsements.insert(*endorsement_id, ());
             }
             // add to known endorsements for source node.
-            let endorsements = cache_write.endorsements_known_by_peer.get_or_insert_mut(
-                from_peer_id.clone(),
-                || {
-                    LruCache::new(
-                        NonZeroUsize::new(self.config.max_node_known_endorsements_size)
+            let Ok(endorsements) = cache_write
+                .endorsements_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_endorsements_size
+                            .try_into()
                             .expect("max_node_known_endorsements_size in config should be > 0"),
-                    )
-                },
-            );
+                    ))
+                })
+                .ok_or(()) else {
+                    warn!("endorsements_known_by_peer limit reached");
+                    break 'write_cache;
+                };
             for endorsement_id in endorsement_ids.iter() {
-                endorsements.put(*endorsement_id, ());
+                endorsements.insert(*endorsement_id, ());
             }
         }
 
@@ -676,19 +707,24 @@ impl RetrievalThread {
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
         // add to known ops
-        {
+        'write_cache: {
             let mut cache_write = self.operation_cache.write();
-            let known_ops =
-                cache_write
-                    .ops_known_by_peer
-                    .get_or_insert_mut(from_peer_id.clone(), || {
-                        LruCache::new(
-                            NonZeroUsize::new(self.config.max_node_known_ops_size)
-                                .expect("max_node_known_ops_size in config should be > 0"),
-                        )
-                    });
+            let Ok(known_ops) = cache_write
+                .ops_known_by_peer
+                .get_or_insert(from_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_ops_size
+                            .try_into()
+                            .expect("max_node_known_ops_size in config should be > 0"),
+                    ))
+                })
+                .ok_or(()) else {
+                    warn!("ops_known_by_peer limitation reached");
+                    break 'write_cache;
+                };
             for op_id in operation_ids_set.iter() {
-                known_ops.put(op_id.prefix(), ());
+                known_ops.insert(op_id.prefix(), ());
             }
         }
         let info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
@@ -986,11 +1022,12 @@ impl RetrievalThread {
             };
 
             // Check operation signature only if not already checked.
-            if !self
+            if self
                 .operation_cache
                 .read()
                 .checked_operations
-                .contains(&operation_id)
+                .peek(&operation_id)
+                .is_none()
             {
                 // check signature if the operation wasn't in `checked_operation`
                 new_operations.insert(operation_id, operation);
@@ -1011,7 +1048,7 @@ impl RetrievalThread {
             }
         }
         self.sender_propagation_ops
-            .send(OperationHandlerPropagationCommand::AnnounceOperations(
+            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                 new_operations.keys().copied().collect(),
             ))
             .map_err(|err| ProtocolError::ChannelError(err.to_string()))?;
@@ -1055,19 +1092,15 @@ impl RetrievalThread {
                     )
                 };
                 let mut needs_ask = true;
-                // Clean old peers that aren't active anymore
-                let peers_connected: HashSet<PeerId> =
-                    self.active_connections.get_peer_ids_connected();
-                let peers_in_cache: Vec<PeerId> = cache_write
-                    .blocks_known_by_peer
-                    .iter()
-                    .map(|(peer_id, _)| peer_id.clone())
-                    .collect();
-                for peer_id in peers_in_cache {
-                    if !peers_connected.contains(&peer_id) {
-                        cache_write.blocks_known_by_peer.pop(&peer_id);
-                    }
-                }
+
+                let peers_connected = self.active_connections.get_peer_ids_connected();
+                cache_write.update_cache(
+                    peers_connected.clone(),
+                    self.config
+                        .max_node_known_blocks_size
+                        .try_into()
+                        .expect("max_node_known_blocks_size is too big"),
+                );
                 let peers_in_asked_blocks: Vec<PeerId> =
                     self.asked_blocks.keys().cloned().collect();
                 for peer_id in peers_in_asked_blocks {
@@ -1075,30 +1108,22 @@ impl RetrievalThread {
                         self.asked_blocks.remove(&peer_id);
                     }
                 }
-                // Add new peers
                 for peer_id in peers_connected {
-                    if !cache_write.blocks_known_by_peer.contains(&peer_id) {
-                        //TODO: Change to detect the connection before
-                        cache_write.blocks_known_by_peer.put(
-                            peer_id.clone(),
-                            (
-                                LruCache::new(
-                                    NonZeroUsize::new(self.config.max_node_known_blocks_size)
-                                        .expect("max_node_known_blocks_size in config must be > 0"),
-                                ),
-                                Instant::now(),
-                            ),
-                        );
-                    } else {
-                        cache_write.blocks_known_by_peer.promote(&peer_id);
-                    }
-
                     if !self.asked_blocks.contains_key(&peer_id) {
                         self.asked_blocks
                             .insert(peer_id.clone(), PreHashMap::default());
                     }
                 }
-                for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter_mut() {
+                let all_keys: Vec<PeerId> = cache_write
+                    .blocks_known_by_peer
+                    .iter()
+                    .map(|(k, _)| k)
+                    .cloned()
+                    .collect();
+                for peer_id in all_keys.iter() {
+                    // for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter() {
+                    let (blocks_known, _) =
+                        cache_write.blocks_known_by_peer.peek_mut(peer_id).unwrap();
                     // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
                     let ask_time_opt = self
                         .asked_blocks
@@ -1139,10 +1164,10 @@ impl RetrievalThread {
                             continue; // not a candidate
                         }
                         // timed out, supposed to have it
-                        (true, Some(timeout_at), Some((true, info_time))) => {
-                            if info_time < &timeout_at {
+                        (true, Some(mut timeout_at), Some((true, info_time))) => {
+                            if info_time < &mut timeout_at {
                                 // info less recent than timeout: mark as not having it
-                                blocks_known.put(*hash, (false, timeout_at));
+                                blocks_known.insert(*hash, (false, timeout_at));
                                 (2u8, ask_time_opt)
                             } else {
                                 // told us it has it after a timeout: good candidate again
@@ -1150,16 +1175,16 @@ impl RetrievalThread {
                             }
                         }
                         // timed out, supposed to not have it
-                        (true, Some(timeout_at), Some((false, info_time))) => {
-                            if info_time < &timeout_at {
+                        (true, Some(mut timeout_at), Some((false, info_time))) => {
+                            if info_time < &mut timeout_at {
                                 // info less recent than timeout: update info time
-                                blocks_known.put(*hash, (false, timeout_at));
+                                blocks_known.insert(*hash, (false, timeout_at));
                             }
                             (2u8, ask_time_opt)
                         }
                         // timed out but don't know if has it: mark as not having it
                         (true, Some(timeout_at), None) => {
-                            blocks_known.put(*hash, (false, timeout_at));
+                            blocks_known.insert(*hash, (false, timeout_at));
                             (2u8, ask_time_opt)
                         }
                     };
@@ -1270,6 +1295,7 @@ impl RetrievalThread {
 }
 
 #[allow(clippy::too_many_arguments)]
+// bookmark
 pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
@@ -1284,6 +1310,7 @@ pub fn start_retrieval_thread(
     operation_cache: SharedOperationCache,
     cache: SharedBlockCache,
     storage: Storage,
+    mip_store: MipStore,
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -1308,6 +1335,7 @@ pub fn start_retrieval_thread(
                 operation_cache,
                 config,
                 storage,
+                mip_store,
             };
             retrieval_thread.run();
         })

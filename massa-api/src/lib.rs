@@ -7,7 +7,7 @@ use api_trait::MassaApiServer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
+use jsonrpsee::server::{AllowHosts, BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
 use massa_api_exports::{
     address::AddressInfo,
@@ -38,6 +38,7 @@ use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_storage::Storage;
+use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use serde_json::Value;
@@ -74,6 +75,8 @@ pub struct Public {
     pub version: Version,
     /// our node id
     pub node_id: NodeId,
+    /// keypair factory
+    pub keypair_factory: KeyPairFactory,
 }
 
 /// Private API content
@@ -152,7 +155,11 @@ async fn serve<T>(
         .max_response_body_size(api_config.max_response_body_size)
         .max_connections(api_config.max_connections)
         .set_host_filtering(allowed_hosts)
-        .batch_requests_supported(api_config.batch_requests_supported)
+        .set_batch_request_config(if api_config.batch_request_limit > 0 {
+            BatchRequestConfig::Limit(api_config.batch_request_limit)
+        } else {
+            BatchRequestConfig::Disabled
+        })
         .ping_interval(api_config.ping_interval.to_duration())
         .custom_tokio_runtime(tokio::runtime::Handle::current());
 

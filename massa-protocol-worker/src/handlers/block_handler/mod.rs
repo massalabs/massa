@@ -5,6 +5,7 @@ use massa_consensus_exports::ConsensusController;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
+use massa_versioning::versioning::MipStore;
 
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -59,6 +60,7 @@ impl BlockHandler {
         operation_cache: SharedOperationCache,
         cache: SharedBlockCache,
         storage: Storage,
+        mip_store: MipStore,
     ) -> Self {
         let block_retrieval_thread = start_retrieval_thread(
             active_connections.clone(),
@@ -74,6 +76,7 @@ impl BlockHandler {
             operation_cache,
             cache.clone(),
             storage.clone_without_refs(),
+            mip_store,
         );
         let block_propagation_thread = start_propagation_thread(
             active_connections,

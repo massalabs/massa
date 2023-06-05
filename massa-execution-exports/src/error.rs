@@ -5,6 +5,7 @@
 use displaydoc::Display;
 use massa_module_cache::error::CacheError;
 use massa_sc_runtime::VMError;
+use massa_versioning::versioning_factory::FactoryError;
 use thiserror::Error;
 
 /// Errors of the execution component.
@@ -69,4 +70,7 @@ pub enum ExecutionError {
 
     /// Cache error: {0}
     CacheError(#[from] CacheError),
+
+    /// Factory error: {0}
+    FactoryError(#[from] FactoryError),
 }

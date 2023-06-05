@@ -22,6 +22,8 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::log::{debug, info};
 
+use crate::state::clique_computation::compute_max_cliques;
+
 use super::ConsensusState;
 
 /// All informations necessary to add a block to the graph
@@ -74,7 +76,7 @@ impl ConsensusState {
     ///
     /// # Returns:
     /// A list of items to re-ack and process or an error if the process of an item failed
-    pub fn process(
+    fn process(
         &mut self,
         block_id: BlockId,
         current_slot: Option<Slot>,
@@ -398,8 +400,7 @@ impl ConsensusState {
                 { "hash": add_block_id }
             );
             let before = self.max_cliques.len();
-            self.max_cliques = self
-                .compute_max_cliques()
+            self.max_cliques = compute_max_cliques(&self.gi_head)
                 .into_iter()
                 .map(|c| Clique {
                     block_ids: c,

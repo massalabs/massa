@@ -577,6 +577,7 @@ where
     }
 }
 
+#[derive(Clone)]
 /// `BitVec<u8>` Serializer
 pub struct BitVecSerializer {
     u32_serializer: U32VarIntSerializer,
@@ -611,6 +612,7 @@ impl Serializer<BitVec<u8>> for BitVecSerializer {
     }
 }
 
+#[derive(Clone)]
 /// `BitVec<u8>` Deserializer
 pub struct BitVecDeserializer {
     u32_deserializer: U32VarIntDeserializer,

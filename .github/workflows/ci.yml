@@ -31,13 +31,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-27
+          toolchain: nightly-2023-06-01
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref_name == 'testnet_24' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -55,11 +55,11 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-27
+          toolchain: nightly-2023-06-01
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref_name == 'testnet_24' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -80,13 +80,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-27
+          toolchain: nightly-2023-06-01
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref_name == 'testnet_24' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -116,12 +116,12 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-27
+          toolchain: nightly-2023-06-01
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref_name == 'testnet_24' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -156,7 +156,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-27
+          toolchain: nightly-2023-06-01
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -191,13 +191,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-02-27
+          toolchain: nightly-2023-06-01
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
-          save-if: ${{ github.ref_name == 'testnet_23' }}
+          save-if: ${{ github.ref_name == 'testnet_24' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'

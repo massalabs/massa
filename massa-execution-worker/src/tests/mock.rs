@@ -1,9 +1,10 @@
+use massa_db::{DBBatch, MassaDB, MassaDBConfig};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
-use massa_models::config::ENDORSEMENT_COUNT;
+use massa_models::config::{ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, T0};
 use massa_models::denunciation::Denunciation;
 use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
@@ -21,6 +22,7 @@ use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 use std::str::FromStr;
 use std::{
@@ -36,57 +38,24 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
     let mut rolls: BTreeMap<Address, u64> = BTreeMap::new();
     let mut ledger: HashMap<Address, LedgerEntry> = HashMap::new();
 
-    // thread 0 / 31
-    let keypair_0 =
-        KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
-    let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
-    rolls.insert(addr_0, 100);
-    ledger.insert(
-        addr_0,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
+    let raw_keypairs = [
+        "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC", // thread 0
+        "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq", // thread 1
+        "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu", // thread 2
+    ];
 
-    // thread 1 / 31
-    let keypair_1 =
-        KeyPair::from_str("S1kEBGgxHFBdsNC4HtRHhsZsB5irAtYHEmuAKATkfiomYmj58tm").unwrap();
-    let addr_1 = Address::from_public_key(&keypair_1.get_public_key());
-    rolls.insert(addr_1, 100);
-    ledger.insert(
-        addr_1,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
-
-    // thread 2 / 31
-    let keypair_2 =
-        KeyPair::from_str("S12APSAzMPsJjVGWzUJ61ZwwGFTNapA4YtArMKDyW4edLu6jHvCr").unwrap();
-    let addr_2 = Address::from_public_key(&keypair_2.get_public_key());
-    rolls.insert(addr_2, 100);
-    ledger.insert(
-        addr_2,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
-
-    // thread 3 / 31
-    let keypair_3 =
-        KeyPair::from_str("S12onbtxzgHcDSrVMp9bzP1cUjno8V5hZd4yYiqaMmC3nq4z7fSv").unwrap();
-    let addr_3 = Address::from_public_key(&keypair_3.get_public_key());
-    rolls.insert(addr_3, 100);
-    ledger.insert(
-        addr_3,
-        LedgerEntry {
-            balance: Amount::from_str("300_000").unwrap(),
-            ..Default::default()
-        },
-    );
+    for s in raw_keypairs {
+        let keypair = KeyPair::from_str(s).unwrap();
+        let addr = Address::from_public_key(&keypair.get_public_key());
+        rolls.insert(addr, 100);
+        ledger.insert(
+            addr,
+            LedgerEntry {
+                balance: Amount::from_str("300_000").unwrap(),
+                ..Default::default()
+            },
+        );
+    }
 
     // write file
     serde_json::to_writer_pretty::<&File, BTreeMap<Address, u64>>(file.as_file(), &rolls)
@@ -102,7 +71,7 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 /// to the address.
 #[allow(dead_code)] // to avoid warnings on gas_calibration feature
 pub fn get_random_address_full() -> (Address, KeyPair) {
-    let keypair = KeyPair::generate();
+    let keypair = KeyPair::generate(0).unwrap();
     (Address::from_public_key(&keypair.get_public_key()), keypair)
 }
 
@@ -111,7 +80,15 @@ pub fn get_sample_state(
 ) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let mut ledger = FinalLedger::new(ledger_config.clone(), false);
+    let db_config = MassaDBConfig {
+        path: tempdir.path().to_path_buf(),
+        max_history_length: 10,
+        max_new_elements: 100,
+        thread_count: THREAD_COUNT,
+    };
+    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+
+    let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();
     let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {
@@ -127,24 +104,49 @@ pub fn get_sample_state(
         max_executed_denunciations_length: 1000,
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
-
         max_denunciations_per_block_header: 0,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
+    let mip_store = MipStore::try_from((
+        [],
+        MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 10,
+        },
+    ))
+    .unwrap();
+
     let mut final_state = if last_start_period > 0 {
         FinalState::new_derived_from_snapshot(
+            db.clone(),
             cfg,
             Box::new(ledger),
             selector_controller,
+            mip_store,
             last_start_period,
         )
         .unwrap()
     } else {
-        FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap()
+        FinalState::new(
+            db.clone(),
+            cfg,
+            Box::new(ledger),
+            selector_controller,
+            mip_store,
+            true,
+        )
+        .unwrap()
     };
+    let mut batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
+    final_state.pos_state.create_initial_cycle(&mut batch);
+    final_state
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
     final_state.compute_initial_draws().unwrap();
-    final_state.pos_state.create_initial_cycle();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 
@@ -167,6 +169,8 @@ pub fn create_block(
 
     let header = BlockHeader::new_verifiable(
         BlockHeader {
+            current_version: 0,
+            announced_version: 0,
             slot,
             parents: vec![],
             operation_merkle_root,
@@ -200,24 +204,24 @@ pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
 
         let vec = vec![
             TempFileVestingRange {
-                timestamp: MassaTime::from(SEC_TIMESTAMP),
+                timestamp: MassaTime::from_millis(SEC_TIMESTAMP),
                 min_balance: Some(Amount::from_str("100000").unwrap()),
                 max_rolls: Some(50),
             },
             TempFileVestingRange {
-                timestamp: MassaTime::from(FUTURE_TIMESTAMP),
+                timestamp: MassaTime::from_millis(FUTURE_TIMESTAMP),
                 min_balance: Some(Amount::from_str("80000").unwrap()),
                 max_rolls: None,
             },
             TempFileVestingRange {
-                timestamp: MassaTime::from(PAST_TIMESTAMP),
+                timestamp: MassaTime::from_millis(PAST_TIMESTAMP),
                 min_balance: Some(Amount::from_str("150000").unwrap()),
                 max_rolls: Some(30),
             },
         ];
 
         let keypair_0 =
-            KeyPair::from_str("S1JJeHiZv1C1zZN5GLFcbz6EXYiccmUPLkYuDFA3kayjxP39kFQ").unwrap();
+            KeyPair::from_str("S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC").unwrap();
         let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
 
         map.insert(addr_0, vec);

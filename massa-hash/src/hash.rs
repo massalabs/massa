@@ -74,30 +74,22 @@ impl std::fmt::Debug for Hash {
     }
 }
 
-/// The bitwise XOR is important to maintain the latest hash of the ~ 1TB ledger. Since the size is big,
-/// it is not feasible to hash the whole ledger every 0.5s (when the changes occur). Instead,
-/// all the rows of the ledger are hashed and XORed together to get a single hash. Whenever, any
-/// row has to be changed, the row's original hash is XORed with the single hash. This essentially nullifies
-/// its effect and then the new hash of the changed row is XORed with the single hash. Thus,
-/// giving the latest hash without going over the entire ~1TB ledger. This method is as secure as the traditional
-/// hash at the same time, it is much more efficient and convenient when the throughput needs are high and the requirement
-/// of integrity cannot be compromised.
-
+/// Previously, the final state hash was a XOR of various hashses.
+/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
+/// As a result, we use lsmtree's Sparse Merkle Tree instead, which is not vulnerable to this.
+/// We still use bitwise XOR for fingerprinting on some structures.
+/// TODO: Remove every usage if this?
 impl BitXorAssign for Hash {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = *self ^ rhs;
     }
 }
 
-/// The bitwise XOR is important to maintain the latest hash of the ~ 1TB ledger. Since the size is big,
-/// it is not feasible to hash the whole ledger every 0.5s (when the changes occur). Instead,
-/// all the rows of the ledger are hashed and XORed together to get a single hash. Whenever, any
-/// row has to be changed, the row's original hash is XORed with the single hash. This essentially nullifies
-/// its effect and then the new hash of the changed row is XORed with the single hash. Thus,
-/// giving the latest hash without going over the entire ~1TB ledger. This method is as secure as the traditional
-/// hash at the same time, it is much more efficient and convenient when the throughput needs are high and the requirement
-/// of integrity cannot be compromised.
-
+/// Previously, the final state hash was a XOR of various hashses.
+/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
+/// As a result, we use lsmtree's Sparse Merkle Tree instead, which is not vulnerable to this.
+/// We still use bitwise XOR for fingerprinting on some structures.
+/// TODO: Remove every usage if this?
 impl BitXor for Hash {
     type Output = Self;
 
@@ -108,7 +100,7 @@ impl BitXor for Hash {
             .zip(other.to_bytes())
             .map(|(x, y)| x ^ y)
             .collect();
-        // unwrap won't fail because of the intial byte arrays size
+        // unwrap won't fail because of the initial byte arrays size
         let input_bytes: [u8; HASH_SIZE_BYTES] = xored_bytes.try_into().unwrap();
         Hash::from_bytes(&input_bytes)
     }
@@ -209,7 +201,7 @@ impl Hash {
 }
 
 /// Serializer for `Hash`
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct HashSerializer;
 
 impl HashSerializer {
@@ -372,6 +364,66 @@ impl FromStr for Hash {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Hash::from_bs58_check(s)
+    }
+}
+
+/// Wrapper around a Blake3 hasher, used for the Sparse Merkle Tree computation
+pub struct SmtHasher(blake3::Hasher);
+impl lsmtree::digest::OutputSizeUser for SmtHasher {
+    type OutputSize = lsmtree::digest::typenum::U32;
+}
+
+impl lsmtree::digest::Digest for SmtHasher {
+    fn new() -> Self {
+        SmtHasher(blake3::Hasher::new())
+    }
+
+    fn new_with_prefix(_: impl AsRef<[u8]>) -> Self {
+        unreachable!()
+    }
+
+    fn update(&mut self, data: impl AsRef<[u8]>) {
+        self.0.update(data.as_ref());
+    }
+
+    fn chain_update(self, _: impl AsRef<[u8]>) -> Self {
+        unreachable!()
+    }
+
+    fn finalize(self) -> lsmtree::digest::Output<Self> {
+        let hash: [u8; HASH_SIZE_BYTES] = self.0.finalize().into();
+        generic_array::GenericArray::from(hash)
+    }
+
+    fn finalize_into(self, _: &mut lsmtree::digest::Output<Self>) {
+        unreachable!()
+    }
+
+    fn finalize_reset(&mut self) -> lsmtree::digest::Output<Self> {
+        unreachable!()
+    }
+
+    fn finalize_into_reset(&mut self, _: &mut lsmtree::digest::Output<Self>) {
+        unreachable!()
+    }
+
+    fn reset(&mut self) {
+        unreachable!()
+    }
+
+    fn output_size() -> usize {
+        debug_assert_eq!(
+            HASH_SIZE_BYTES,
+            <Self as lsmtree::digest::OutputSizeUser>::output_size(),
+            "lsm_tree hash size is not HASH_SIZE_BYTES"
+        );
+        HASH_SIZE_BYTES
+    }
+
+    fn digest(data: impl AsRef<[u8]>) -> lsmtree::digest::Output<Self> {
+        let mut h = Self::new();
+        h.update(data);
+        h.finalize()
     }
 }
 

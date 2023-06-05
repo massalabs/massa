@@ -1,27 +1,30 @@
 [package]
-name = "massa_versioning_worker"
-version = "0.1.0"
+name = "massa_versioning"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
 # This is from: https://github.com/rust-bakery/machine/pull/22
-machine = { git = "https://github.com/antifuchs/machine", branch="fix-workspace-build" }
+machine = { git = "https://github.com/antifuchs/machine", branch = "fix-workspace-build" }
 parking_lot = "0.12"
 thiserror = "1.0"
 num_enum = "0.5"
-nom = "7.1"
+nom = "=7.1"
 tracing = "0.1"
 
 # custom module
 massa_time = { path = "../massa-time" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
+massa_hash = { path = "../massa-hash" }
+massa_signature = { path = "../massa-signature" }
 massa_proto = { path = "../massa-proto" }
+massa_db = { path = "../massa-db" }
 
 [dev-dependencies]
-chrono = "0.4"
 more-asserts = "0.3"
+tempfile = "3.5"
 
 [features]
 testing = []
