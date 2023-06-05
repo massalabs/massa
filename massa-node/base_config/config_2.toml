@@ -1,0 +1,280 @@
+[logging]
+    # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
+    level = 2
+
+[api]
+    # max number of future periods considered during requests
+    draw_lookahead_period_count = 10
+    # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed. Bind to "[::1]:port" for IPv6
+    bind_private = "127.0.0.1:33044"
+    # port on which the node API listens for public requests. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
+    bind_public = "0.0.0.0:33045"
+    # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
+    bind_api = "0.0.0.0:33046"
+    # max number of arguments per RPC call
+    max_arguments = 128
+    # path to the openrpc specification file used in `rpc.discover` method
+    openrpc_spec_path = "base_config/openrpc.json"
+    # maximum size in bytes of a request
+    max_request_body_size = 52428800
+    # maximum size in bytes of a response
+    max_response_body_size = 52428800
+    # maximum number of incoming connections allowed
+    max_connections = 100
+    # maximum number of subscriptions per connection
+    max_subscriptions_per_connection = 1024
+    # max length for logging for requests and responses. Logs bigger than this limit will be truncated
+    max_log_length = 4096
+    # host filtering
+    allow_hosts = []
+    # batch request limit. 0 means disabled
+    batch_request_limit = 16
+    # the interval at which `Ping` frames are submitted in milliseconds
+    ping_interval = 60000
+    # whether to enable HTTP.
+    enable_http = true
+    # whether to enable WS.
+    enable_ws = false
+    # whether to broadcast for blocks, endorsements and operations
+    enable_broadcast = false
+
+[grpc]
+    # whether to enable gRPC
+    enabled = true
+    # whether to add HTTP 1 layer
+    accept_http1 = false
+    # whether to enable CORS. works only if `accept_http1` is true
+    enable_cors = false
+    # whether to enable gRPC health service
+    enable_health = true
+    # whether to enable gRPC reflection(introspection)
+    enable_reflection = true
+    # whether to enable mTLS
+    enable_mtls = false
+    # bind for the Massa gRPC API
+    bind = "127.0.0.1:33047"
+    # which compression encodings does the server accept for requests
+    accept_compressed = "Gzip"
+    # which compression encodings might the server use for responses
+    send_compressed = "Gzip"
+    # limits the maximum size of a decoded message. Defaults to 50MB
+    max_decoding_message_size = 52428800
+    # limits the maximum size of an encoded message. Defaults to 50MB
+    max_encoding_message_size = 52428800
+    # limits the maximum size of streaming channel
+    max_channel_size = 128
+    # set a timeout on for all request handlers in seconds. Defaults to 60s
+    timeout = 60
+    # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
+    max_frame_size = 16777215
+    # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+    concurrency_limit_per_connection = 32
+    # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
+    max_concurrent_streams = 1024
+    # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+    tcp_nodelay = true
+    # max number of future periods considered during requests
+    draw_lookahead_period_count = 10
+    # The maximum number of block IDs that can be included in a single request
+    max_block_ids_per_request = 50
+    # max number of operation ids that can be included in a single request
+    max_operation_ids_per_request = 250
+    # server certificate path
+    server_certificate_path = "config/tls/server.pem"
+    # server private key path
+    server_private_key_path = "config/tls/server.key"
+    # client certificate authority root path
+    client_certificate_authority_root_path = "config/tls/client_ca.pem"
+[execution]
+    # max number of generated events kept in RAM
+    max_final_events = 10000
+    # maximum length of the read-only execution requests queue
+    readonly_queue_length = 10
+    # by how many milliseconds shoud the execution lag behind real time
+    # higher values increase speculative execution lag but improve performance
+    cursor_delay = 2000
+    # duration of the statistics time window in milliseconds
+    stats_time_window_duration = 60000
+    # maximum allowed gas for read only executions
+    max_read_only_gas = 100_000_000
+    # gas cost for ABIs
+    abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
+    # gas cost for wasm operator
+    wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
+    # path to the initial vesting file
+    initial_vesting_path = "base_config/initial_vesting.json"
+    # path to the hard drive cache storage
+    hd_cache_path = "storage/cache/rocks_db2"
+    # maximum number of entries we want to keep in the LRU cache
+    # in the worst case scenario this is equivalent to 2Gb
+    lru_cache_size = 200
+    # maximum number of entries we want to keep in the HD cache
+    # in the worst case scenario this is equivalent to 20Gb
+    hd_cache_size = 2000
+    # amount of entries removed when `hd_cache_size` is reached
+    snip_amount = 10
+    # slot execution outputs channel capacity
+    broadcast_slot_execution_output_channel_capacity = 5000
+
+[ledger]
+    # path to the initial ledger
+    initial_ledger_path = "base_config/initial_ledger.json"
+    # path to the disk ledger db directory
+    disk_ledger_path = "storage/ledger/rocks_db2"
+    # length of the changes history. Higher values allow bootstrapping nodes with slower connections
+    final_history_length = 100
+
+[consensus]
+    # max number of previously discarded blocks kept in RAM
+    max_discarded_blocks = 100
+    # max number of blocks in the future kept in RAM
+    max_future_processing_blocks = 400
+    # max number of blocks waiting for dependencies
+    max_dependency_blocks = 2048
+    # number of final periods that must be kept at all times (increase to more resilience to short network disconnections, high values will increase RAM usage.)
+    force_keep_final_periods = 10
+
+    # useless blocks are pruned every block_db_prune_interval ms
+    block_db_prune_interval = 5000
+
+    # considered timespan for stats info
+    stats_timespan = 60000
+
+    # blocks headers channel capacity
+    broadcast_blocks_headers_channel_capacity = 128
+    # blocks channel capacity
+    broadcast_blocks_channel_capacity = 128
+    # filled blocks channel capacity
+    broadcast_filled_blocks_channel_capacity = 128
+
+[protocol]
+    # port on which to listen for protocol communication. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
+    bind = "[::]:31249"
+    # timeout for connection establishment
+    connect_timeout = 3000
+    # path to the node key (not the staking key)
+    keypair_file = "config/node_privkey2.key"
+    # path to the initial peers file
+    initial_peers_file = "base_config/initial_peers.json"
+    # Limit of read/write number of bytes per second with a peer (Should be a 10 multiple)
+    read_write_limit_bytes_per_second = 2_000_000_000
+    # timeout after which without answer a hanshake is ended
+    message_timeout = 5000
+    # timeout after whick we consider a node does not have the block we asked for
+    ask_block_timeout = 10000
+    # max cache size for which blocks our node knows about
+    max_known_blocks_size = 1024
+    # max cache size for which blocks a foreign node knows about
+    max_node_known_blocks_size = 1024
+    # max cache size for which blocks a foreign node asked for
+    max_node_wanted_blocks_size = 1024
+    # max number of blocks we can ask simultaneously per node
+    max_simultaneous_ask_blocks_per_node = 128
+    # max milliseconds to wait while sending an event before dropping it
+    max_send_wait = 0
+    # max cache size for which operations your node knows about
+    max_known_ops_size = 2000000
+    # max cache size for which operations a foreign node knows about
+    max_node_known_ops_size = 200000
+    # max cache size for which endorsements our node knows about
+    max_known_endorsements_size = 2048
+    # max cache size for which endorsements a foreign node knows about
+    max_node_known_endorsements_size = 2048
+    # maximum number of batches in the memory buffer.
+    # dismiss the new batches if overflow
+    operation_batch_buffer_capacity = 10024
+    # immediately announce ops if overflow
+    operation_announcement_buffer_capacity = 2000
+    # start processing batches in the buffer each `operation_batch_proc_period` in millisecond
+    operation_batch_proc_period = 500
+    # all operations asked are prune each `operation_asked_pruning_period` millisecond
+    asked_operations_pruning_period = 100000
+    # interval at which operations are announced in batches.
+    operation_announcement_interval = 300
+    # max number of operation per message, same as network param but can be smaller
+    max_operations_per_message = 1024
+    # Number of millis seconds between each try out connections
+    try_connection_timer = 5000
+    # Number of millis seconds that create a timeout for out connections
+    timeout_connection = 1000
+    # time threshold after which operation are not propagated
+    max_operations_propagation_time = 32000
+    # time threshold after which endorsement are not propagated
+    max_endorsements_propagation_time = 48000
+    # number of thread tester
+    thread_tester_count = 25
+    # Nb max in connections that we accept
+    max_in_connections = 100
+    # Peer default category limits
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections_pre_handshake = 70, max_in_connections_post_handshake = 15}
+    # Peer categories limits
+    [protocol.peers_categories]
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections_pre_handshake = 8, max_in_connections_post_handshake = 1}
+
+[network]
+
+[bootstrap]
+    # list of bootstrap (ip, node id)
+    bootstrap_list = [
+        ["127.0.0.1:31245", "N12VAwragNwzF8JTLgwRMMekEkMtKwZ3qvoUtfWTwTK94ruAft19"],
+    ]
+    # force the bootstrap protocol to use: "IPv4", "IPv6", or "Both". Defaults to using both protocols.
+    bootstrap_protocol = "Both"
+    # path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
+    bootstrap_whitelist_path = "base_config/bootstrap_whitelist.json"
+    # path to the bootstrap blacklist file. This whitelist define IPs that will not be able to bootstrap on your node. This list is optional.
+    bootstrap_blacklist_path = "base_config/bootstrap_blacklist.json"
+    # [optional] port on which to listen for incoming bootstrap requests. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
+    bind = "[::]:31255"
+    # timeout to establish a bootstrap connection
+    connect_timeout = 15000
+    # timeout for providing the bootstrap to a connection
+    bootstrap_timeout = 1200000
+    # delay in milliseconds to wait between consecutive bootstrap attempts
+    retry_delay = 60000
+    # if ping is too high bootstrap will be interrupted after max_ping milliseconds
+    max_ping = 10000
+    # timeout for incoming message readout
+    read_timeout = 100000
+    # timeout for message sending
+    write_timeout = 100000
+    # timeout for incoming error message readout
+    read_error_timeout = 200
+    # timeout for message error sending
+    write_error_timeout = 200
+    # max allowed difference between client and servers clocks in ms
+    max_clock_delta = 5000
+    # [server] data is cached for cache duration milliseconds
+    cache_duration = 15000
+    # max number of simulataneous bootstraps for server
+    max_simultaneous_bootstraps = 2
+    # max size of recently bootstrapped IP cache
+    ip_list_max_size = 10000
+    # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
+    per_ip_min_interval = 180000
+    # read-write limitation for a connection in bytes per seconds (about the bootstrap specifically)
+    max_bytes_read_write = 20_000_000.0
+
+[pool]
+    # max number of operations kept per thread
+    max_pool_size_per_thread = 25000
+    # if an operation is too much in the future it will be ignored
+    max_operation_future_validity_start_periods = 100
+    # max number of endorsements kept
+    max_endorsement_count = 10000
+    # max number of items returned per query
+    max_item_return_count = 100
+    # endorsements channel capacity
+    broadcast_endorsements_channel_capacity = 2000
+    # operations channel capacity
+    broadcast_operations_channel_capacity = 5000
+
+[selector]
+    # path to the initial roll distribution
+    initial_rolls_path = "base_config/initial_rolls.json"
+
+[factory]
+    # initial delay in milliseconds to wait before starting production to avoid double staking on node restart
+    initial_delay = 100
+    # path to your staking wallet
+    staking_wallet_path = "config/staking_wallet2.dat"

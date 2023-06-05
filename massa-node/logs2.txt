@@ -1,0 +1,160 @@
+[2m2023-05-30T14:09:54.504685Z[0m [32m INFO[0m [2mmassa_node[0m[2m:[0m Node version : SAND.23.0
+Genesis timestamp : 1685454262609
+[2m2023-05-30T14:09:54.507669Z[0m [32m INFO[0m [2mmassa_ledger_worker::ledger_db[0m[2m:[0m Init LedgerDB, with_final_state = false
+[2m2023-05-30T14:09:54.522074Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12D9Sh8gdqLGQ81PH12LWFcye6A3ktQP8i6FQrTMQ7bFESvus4o is missing
+[2m2023-05-30T14:09:54.961769Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12D9Sh8gdqLGQ81PH12LWFcye6A3ktQP8i6FQrTMQ7bFESvus4o is missing
+[2m2023-05-30T14:09:54.961917Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:10:54.967295Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:10:55.372929Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:10:55.389458Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:10:55.389558Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:11:55.395205Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12ekmwZR3Eb2cdP6UUUvcrfGZTsNAgfZYoWPD69Y81jnB9q3Ugi is missing
+[2m2023-05-30T14:11:55.845924Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12ekmwZR3Eb2cdP6UUUvcrfGZTsNAgfZYoWPD69Y81jnB9q3Ugi is missing
+[2m2023-05-30T14:11:55.846028Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:12:55.851279Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12TLV2jQCojyHxkMfjGn6Zi2LeTsdgNosaiSKFPVVdGeJA9zBUv is missing
+[2m2023-05-30T14:12:56.271659Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12TLV2jQCojyHxkMfjGn6Zi2LeTsdgNosaiSKFPVVdGeJA9zBUv is missing
+[2m2023-05-30T14:12:56.271680Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:13:56.276989Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:13:56.680775Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:13:56.687663Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:13:56.687717Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:14:56.692943Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12cZHsmpMgh2wa9oNgWRKVx7sPRAFHZvHbnz2mX1cKtbPEA3uJx is missing
+[2m2023-05-30T14:14:57.125218Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12cZHsmpMgh2wa9oNgWRKVx7sPRAFHZvHbnz2mX1cKtbPEA3uJx is missing
+[2m2023-05-30T14:14:57.125266Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:15:57.130526Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:15:57.535037Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:15:57.550181Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:15:57.550271Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:16:57.555577Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12Wz7ALGZ8veFvxvxgneEBY2FSFbrR6ZqiatCbEbXDrGGroAgaJ is missing
+[2m2023-05-30T14:16:57.996360Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12Wz7ALGZ8veFvxvxgneEBY2FSFbrR6ZqiatCbEbXDrGGroAgaJ is missing
+[2m2023-05-30T14:16:57.996414Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:17:58.001692Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:17:58.405090Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:17:58.416897Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:17:58.416958Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:18:58.422249Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12c4otFEnZENA4enAJztWyrtrrLTPT9siptGTYiDKXViQhhkeaQ is missing
+[2m2023-05-30T14:18:58.855305Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12c4otFEnZENA4enAJztWyrtrrLTPT9siptGTYiDKXViQhhkeaQ is missing
+[2m2023-05-30T14:18:58.855352Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:19:58.860713Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B1mnxoCeDuDxQweDFRbxLXfnn274LtDRJT4Cc6MFxFozs8bua3o is missing
+[2m2023-05-30T14:19:59.305404Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B1mnxoCeDuDxQweDFRbxLXfnn274LtDRJT4Cc6MFxFozs8bua3o is missing
+[2m2023-05-30T14:19:59.305620Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:20:59.308107Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:20:59.712838Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:20:59.727735Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:20:59.727820Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:21:59.733149Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12845PuEq2UFXoQMmdWMLCiB6UMkwgPXnfX9pqMagyCiJqfzV42 is missing
+[2m2023-05-30T14:22:00.165321Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12845PuEq2UFXoQMmdWMLCiB6UMkwgPXnfX9pqMagyCiJqfzV42 is missing
+[2m2023-05-30T14:22:00.165351Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:23:00.168833Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:23:00.574026Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:23:00.589990Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:23:00.590090Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:24:00.595387Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B15H6XaitmeFpyNmRnPfngRmiyYJDt88f8rm1eZRgrBuPTjP8bC is missing
+[2m2023-05-30T14:24:01.019754Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B15H6XaitmeFpyNmRnPfngRmiyYJDt88f8rm1eZRgrBuPTjP8bC is missing
+[2m2023-05-30T14:24:01.019786Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:25:01.025155Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12EcdqtBrXn7LvosuXQ4Pr6JL2YLHr6CR9rFBtBxDsmBfgnv3mo is missing
+[2m2023-05-30T14:25:01.462297Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12EcdqtBrXn7LvosuXQ4Pr6JL2YLHr6CR9rFBtBxDsmBfgnv3mo is missing
+[2m2023-05-30T14:25:01.462343Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:26:01.467713Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:26:01.873059Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:26:01.889033Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:26:01.889111Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:27:01.894113Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12w7wFJEe3rLTnN8MbBdLk51tpFTRJsDoLhAgQ4NS7y9K4J2X4T is missing
+[2m2023-05-30T14:27:02.318935Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12w7wFJEe3rLTnN8MbBdLk51tpFTRJsDoLhAgQ4NS7y9K4J2X4T is missing
+[2m2023-05-30T14:27:02.318961Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:28:02.324379Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12w7wFJEe3rLTnN8MbBdLk51tpFTRJsDoLhAgQ4NS7y9K4J2X4T is missing
+[2m2023-05-30T14:28:02.766166Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12w7wFJEe3rLTnN8MbBdLk51tpFTRJsDoLhAgQ4NS7y9K4J2X4T is missing
+[2m2023-05-30T14:28:02.766206Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:29:02.771536Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12w7wFJEe3rLTnN8MbBdLk51tpFTRJsDoLhAgQ4NS7y9K4J2X4T is missing
+[2m2023-05-30T14:29:03.193506Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12w7wFJEe3rLTnN8MbBdLk51tpFTRJsDoLhAgQ4NS7y9K4J2X4T is missing
+[2m2023-05-30T14:29:03.193536Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:30:03.205854Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:30:03.610133Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:30:03.626111Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:30:03.626191Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:31:03.633130Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B1X1VzU9R1VboDC1SFeR3GGiGumS3XUgUHR5ejwfypkyZ2N5KzT is missing
+[2m2023-05-30T14:31:04.090115Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B1X1VzU9R1VboDC1SFeR3GGiGumS3XUgUHR5ejwfypkyZ2N5KzT is missing
+[2m2023-05-30T14:31:04.090168Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:32:04.095170Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:32:04.498680Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:32:04.504281Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:32:04.504323Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:33:04.505000Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12nqMzkNmCP6THCU7snUrPzPa8YdSxfZ4mKCaQj5QpjYLXTzHBT is missing
+[2m2023-05-30T14:33:04.946253Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12nqMzkNmCP6THCU7snUrPzPa8YdSxfZ4mKCaQj5QpjYLXTzHBT is missing
+[2m2023-05-30T14:33:04.946297Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:34:04.947167Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12vzP8618sPTULs3hBhQccnpDM67ZXWqUMUWLfjFUNEAT1sXfnQ is missing
+[2m2023-05-30T14:34:05.370024Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12vzP8618sPTULs3hBhQccnpDM67ZXWqUMUWLfjFUNEAT1sXfnQ is missing
+[2m2023-05-30T14:34:05.370047Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:35:05.375576Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:35:05.780900Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:35:05.797661Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:35:05.797754Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:36:05.803207Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B155HKE7BaSwVGhHd81psMTAZL2wgraE1Fo9JnmtFo1LxSSxo9R is missing
+[2m2023-05-30T14:36:06.240380Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B155HKE7BaSwVGhHd81psMTAZL2wgraE1Fo9JnmtFo1LxSSxo9R is missing
+[2m2023-05-30T14:36:06.240431Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:37:06.245889Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:37:06.650623Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:37:06.663442Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:37:06.663500Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:38:06.665647Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12LaBPj3Gp96LrWB7wTc1MNWWEr6NvGWCvbwqgaF8hfN6bVbN3G is missing
+[2m2023-05-30T14:38:07.087451Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12LaBPj3Gp96LrWB7wTc1MNWWEr6NvGWCvbwqgaF8hfN6bVbN3G is missing
+[2m2023-05-30T14:38:07.087472Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:39:07.090578Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12LaBPj3Gp96LrWB7wTc1MNWWEr6NvGWCvbwqgaF8hfN6bVbN3G is missing
+[2m2023-05-30T14:39:07.526321Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12LaBPj3Gp96LrWB7wTc1MNWWEr6NvGWCvbwqgaF8hfN6bVbN3G is missing
+[2m2023-05-30T14:39:07.526348Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:40:07.531874Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:40:07.936598Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:40:07.951339Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:40:07.951423Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:41:07.956255Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Consensus part: []
+AURELIEN: Consensus part: []
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12dtZZD7aZoKQKoXCVF96BJRPASJPQa29gQXmpvmcyFti2kp6TT is missing
+[2m2023-05-30T14:41:08.400190Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12dtZZD7aZoKQKoXCVF96BJRPASJPQa29gQXmpvmcyFti2kp6TT is missing
+[2m2023-05-30T14:41:08.400233Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:42:08.404948Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+AURELIEN: Bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12dtZZD7aZoKQKoXCVF96BJRPASJPQa29gQXmpvmcyFti2kp6TT is missing
+[2m2023-05-30T14:42:08.847315Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: `massa_consensus` error: there was an inconsistency between containers block B12dtZZD7aZoKQKoXCVF96BJRPASJPQa29gQXmpvmcyFti2kp6TT is missing
+[2m2023-05-30T14:42:08.847366Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
+[2m2023-05-30T14:43:08.852873Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Start bootstrapping from 127.0.0.1:31245
+[2m2023-05-30T14:43:09.257348Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Slot is too old retry bootstrap from scratch
+[2m2023-05-30T14:43:09.271895Z[0m [33m WARN[0m [2mmassa_bootstrap::client[0m[2m:[0m Error while bootstrapping: general bootstrap error: Slot too old
+[2m2023-05-30T14:43:09.271987Z[0m [32m INFO[0m [2mmassa_bootstrap::client[0m[2m:[0m Bootstrap from server 127.0.0.1:31245 failed. Your node will try to bootstrap from another server in 1m.
