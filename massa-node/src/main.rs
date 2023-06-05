@@ -1104,7 +1104,6 @@ fn main(args: Args) -> anyhow::Result<()> {
         .build()
         .unwrap();
 
-
     // spawn the console server in the background, returning a `Layer`:
     use tracing_subscriber::prelude::*;
     let tracing_layer = tracing_subscriber::fmt::layer()
@@ -1145,23 +1144,27 @@ fn main(args: Args) -> anyhow::Result<()> {
             .expect("double-lock on interupt bool in ctrl-c handler") = true;
         sig_int_toggled_clone.1.notify_all();
     })
-        .expect("Error setting Ctrl-C handler");
+    .expect("Error setting Ctrl-C handler");
     run(args, tokio_rt, sigint_cv_pair)
 }
 
 // With the runtime context setup, we can begin to set up the data for the event loop
-fn run(args: Args, runtime: tokio::runtime::Runtime, sigint_cv_pair: Arc<(Mutex<bool>, Condvar)>) -> anyhow::Result<()> {
+fn run(
+    args: Args,
+    runtime: tokio::runtime::Runtime,
+    sigint_cv_pair: Arc<(Mutex<bool>, Condvar)>,
+) -> anyhow::Result<()> {
     // load or create wallet, asking for password if necessary
-    let node_wallet = load_wallet(
-        args.password.clone(),
-        &SETTINGS.factory.staking_wallet_path,
-    )?;
+    let node_wallet = load_wallet(args.password.clone(), &SETTINGS.factory.staking_wallet_path)?;
 
     runtime.block_on(launch_loop(args, node_wallet, sigint_cv_pair))
 }
 
-
-async fn launch_loop(args: Args, node_wallet: Arc<RwLock<Wallet>>, sigint_cv_pair: Arc<(Mutex<bool>, Condvar)>) -> anyhow::Result<()> {
+async fn launch_loop(
+    args: Args,
+    node_wallet: Arc<RwLock<Wallet>>,
+    sigint_cv_pair: Arc<(Mutex<bool>, Condvar)>,
+) -> anyhow::Result<()> {
     let mut cur_args = args;
 
     loop {
