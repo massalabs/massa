@@ -61,7 +61,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1685955600000) // Monday, June 5, 2023 9:00:00 AM UTC
+        MassaTime::from_millis(1685970900000) // Monday, June 5, 2023 01:15:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
