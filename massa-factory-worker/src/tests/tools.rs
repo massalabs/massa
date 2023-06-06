@@ -103,6 +103,8 @@ impl TestFactory {
             mip_store,
         );
 
+        drop(dir);
+
         TestFactory {
             consensus_event_receiver: Some(consensus_event_receiver),
             pool_receiver,
