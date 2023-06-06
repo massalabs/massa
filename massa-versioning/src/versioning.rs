@@ -1219,11 +1219,11 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 mod test {
     use super::*;
 
-    use std::assert_matches::assert_matches;
-    use std::str::FromStr;
     use massa_db_exports::MassaDBConfig;
     use massa_db_worker::MassaDB;
     use more_asserts::assert_le;
+    use std::assert_matches::assert_matches;
+    use std::str::FromStr;
     use tempfile::tempdir;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
