@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["launch","launch_loop","load_wallet","main","run","stop"],"mod":["settings"],"struct":["Args","Managers"]};
+window.SIDEBAR_ITEMS = {"fn":["launch","load_wallet","main","run","stop"],"mod":["settings"],"struct":["Args","Managers"]};

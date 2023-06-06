@@ -244,12 +244,12 @@
     <span class="doccomment">/// Optional command parameter (as a JSON string)
     </span><span class="attr">#[structopt(name = <span class="string">&quot;PARAMETERS&quot;</span>)]
     </span>parameters: Vec&lt;String&gt;,
-    <span class="doccomment">/// Path of wallet file
+    <span class="doccomment">/// Path of wallet folder
     </span><span class="attr">#[structopt(
         short = <span class="string">&quot;w&quot;</span>,
         long = <span class="string">&quot;wallet&quot;</span>,
         parse(from_os_str),
-        default_value = <span class="string">&quot;wallet.dat&quot;
+        default_value = <span class="string">&quot;wallets/&quot;
     </span>)]
     </span>wallet: PathBuf,
     <span class="doccomment">/// Enable a mode where input/output are serialized as JSON
