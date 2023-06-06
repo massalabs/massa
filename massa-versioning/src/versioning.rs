@@ -10,7 +10,8 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use massa_db_exports::{
-    DBBatch, MassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
+    DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
+    VERSIONING_CF,
 };
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::error::ModelsError;
@@ -607,13 +608,13 @@ impl MipStore {
 
     pub fn extend_from_db(
         &mut self,
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+        db: ShareableMassaDBController,
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mut guard = self.0.write();
         guard.extend_from_db(db)
     }
 
-    pub fn reset_db(&self, db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>) {
+    pub fn reset_db(&self, db: ShareableMassaDBController) {
         {
             let mut guard = db.write();
             guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None);
@@ -1087,7 +1088,7 @@ impl MipStoreRaw {
     /// Extend MIP store with what is written on the disk
     fn extend_from_db(
         &mut self,
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+        db: ShareableMassaDBController,
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mip_info_deser = MipInfoDeserializer::new();
         let mip_state_deser = MipStateDeserializer::new();
@@ -1219,11 +1220,13 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 mod test {
     use super::*;
 
-    use massa_db_exports::MassaDBConfig;
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
     use more_asserts::assert_le;
+    use parking_lot::RwLock;
     use std::assert_matches::assert_matches;
     use std::str::FromStr;
+    use std::sync::Arc;
     use tempfile::tempdir;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;

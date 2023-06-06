@@ -1,18 +1,14 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This file defines tools to test the final state bootstrap
-
-use std::sync::Arc;
-
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
-    MassaDBController, MassaIteratorMode, METADATA_CF, STATE_CF, STATE_HASH_KEY,
+    MassaIteratorMode, ShareableMassaDBController, METADATA_CF, STATE_CF, STATE_HASH_KEY,
 };
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::LedgerController;
 use massa_pos_exports::PoSFinalState;
 use massa_versioning::versioning::MipStore;
-use parking_lot::RwLock;
 
 use crate::{FinalState, FinalStateConfig};
 
@@ -25,7 +21,7 @@ pub fn create_final_state(
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
     mip_store: MipStore,
-    db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    db: ShareableMassaDBController,
 ) -> FinalState {
     FinalState {
         config,

@@ -2603,6 +2603,7 @@ dependencies = [
  "massa_hash",
  "massa_models",
  "massa_serialization",
+ "parking_lot",
  "thiserror",
 ]
 

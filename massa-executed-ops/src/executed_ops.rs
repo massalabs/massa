@@ -5,8 +5,8 @@
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
 use massa_db_exports::{
-    DBBatch, MassaDBController, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
-    EXECUTED_OPS_PREFIX, STATE_CF,
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR,
+    EXECUTED_OPS_ID_SER_ERROR, EXECUTED_OPS_PREFIX, STATE_CF,
 };
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
@@ -23,11 +23,9 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     ops::Bound::{Excluded, Included},
-    sync::Arc,
 };
 
 /// Op id key formatting macro
@@ -44,7 +42,7 @@ pub struct ExecutedOps {
     /// Executed operations configuration
     _config: ExecutedOpsConfig,
     /// RocksDB Instance
-    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    pub db: ShareableMassaDBController,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// execution status of operations (true: success, false: fail)
@@ -59,10 +57,7 @@ pub struct ExecutedOps {
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(
-        config: ExecutedOpsConfig,
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
-    ) -> Self {
+    pub fn new(config: ExecutedOpsConfig, db: ShareableMassaDBController) -> Self {
         let slot_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
@@ -258,11 +253,13 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_hash_computing() {
-    use massa_db_exports::{MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
     use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
+    use parking_lot::RwLock;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     // initialize the executed ops config

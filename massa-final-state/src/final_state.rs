@@ -9,11 +9,10 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
-    DBBatch, ASYNC_POOL_PREFIX, CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX,
-    DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX,
-    MIP_STORE_PREFIX, STATE_CF,
+    DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
+    CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
+    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
-use massa_db_exports::{MassaDBController, MassaIteratorMode};
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
@@ -21,11 +20,7 @@ use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
-
-use parking_lot::RwLock;
 use tracing::{debug, info, warn};
-
-use std::sync::Arc;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -54,7 +49,7 @@ pub struct FinalState {
     /// * If from bootstrap: set during bootstrap
     pub last_slot_before_downtime: Option<Slot>,
     /// the rocksdb instance used to write every final_state struct on disk
-    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    pub db: ShareableMassaDBController,
 }
 
 impl FinalState {
@@ -66,7 +61,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `reset_final_state`: if true, we only keep the ledger, and we reset the other fields of the final state
     pub fn new(
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -150,7 +145,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     pub fn new_derived_from_snapshot(
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,

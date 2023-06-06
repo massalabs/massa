@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 
 # Custom modules
 massa_hash = { path = "../massa-hash" }

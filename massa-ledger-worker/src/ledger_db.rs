@@ -3,8 +3,8 @@
 //! Module to interact with the disk ledger
 
 use massa_db_exports::{
-    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, CRUD_ERROR, KEY_SER_ERROR,
-    LEDGER_PREFIX, STATE_CF,
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, CRUD_ERROR,
+    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
 };
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
@@ -13,9 +13,8 @@ use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use parking_lot::RwLock;
 use std::collections::{BTreeSet, HashMap};
-use std::{fmt::Debug, sync::Arc};
+use std::fmt::Debug;
 
 use massa_models::amount::Amount;
 use std::ops::Bound;
@@ -44,7 +43,7 @@ impl LedgerSubEntry {
 ///
 /// Contains a `RocksDB` DB instance
 pub struct LedgerDB {
-    db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    db: ShareableMassaDBController,
     thread_count: u8,
     key_serializer_db: KeySerializer,
     key_deserializer_db: KeyDeserializer,
@@ -68,7 +67,7 @@ impl LedgerDB {
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
     pub fn new(
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+        db: ShareableMassaDBController,
         thread_count: u8,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -466,8 +465,7 @@ fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_db_exports::MassaDBConfig;
-    use massa_db_exports::STATE_HASH_INITIAL_BYTES;
+    use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
@@ -477,9 +475,11 @@ mod tests {
     };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
+    use parking_lot::RwLock;
     use std::collections::BTreeMap;
     use std::ops::Bound::Included;
     use std::str::FromStr;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {

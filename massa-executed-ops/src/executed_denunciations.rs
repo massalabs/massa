@@ -3,21 +3,9 @@
 //! This file defines a structure to list and prune previously executed denunciations.
 //! Used to detect denunciation reuse.
 
-use std::collections::{BTreeMap, HashSet};
-use std::ops::Bound::{Excluded, Included};
-use std::sync::Arc;
-
-use nom::{
-    error::{context, ContextError, ParseError},
-    multi::length_count,
-    sequence::tuple,
-    IResult, Parser,
-};
-use parking_lot::RwLock;
-
 use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
 use massa_db_exports::{
-    DBBatch, MassaDBController, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
     EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
 };
 use massa_models::denunciation::Denunciation;
@@ -29,6 +17,14 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
+use std::collections::{BTreeMap, HashSet};
+use std::ops::Bound::{Excluded, Included};
 
 /// Denunciation index key formatting macro
 #[macro_export]
@@ -44,7 +40,7 @@ pub struct ExecutedDenunciations {
     /// Executed denunciations configuration
     config: ExecutedDenunciationsConfig,
     /// Access to the RocksDB database
-    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    pub db: ShareableMassaDBController,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     /// for rocksdb serialization
@@ -55,10 +51,7 @@ pub struct ExecutedDenunciations {
 
 impl ExecutedDenunciations {
     /// Create a new `ExecutedDenunciations`
-    pub fn new(
-        config: ExecutedDenunciationsConfig,
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
-    ) -> Self {
+    pub fn new(config: ExecutedDenunciationsConfig, db: ShareableMassaDBController) -> Self {
         let denunciation_index_deserializer =
             DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
         Self {

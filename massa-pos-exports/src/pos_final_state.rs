@@ -6,20 +6,18 @@ use crate::{
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
 use massa_db_exports::{
-    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, CYCLE_HISTORY_DESER_ERROR,
-    CYCLE_HISTORY_PREFIX, CYCLE_HISTORY_SER_ERROR, DEFERRED_CREDITS_DESER_ERROR,
-    DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
+    CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX, CYCLE_HISTORY_SER_ERROR,
+    DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
 use massa_hash::Hash;
 use massa_models::amount::Amount;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use nom::AsBytes;
-use parking_lot::RwLock;
 use std::collections::VecDeque;
 use std::ops::Bound::{Excluded, Included};
 use std::ops::RangeBounds;
-use std::sync::Arc;
 use std::{collections::BTreeMap, path::PathBuf};
 use tracing::debug;
 
@@ -129,7 +127,7 @@ pub struct PoSFinalState {
     /// proof-of-stake configuration
     pub config: PoSConfig,
     /// Access to the RocksDB database
-    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    pub db: ShareableMassaDBController,
     /// contiguous cycle history, back = newest
     pub cycle_history_cache: VecDeque<(u64, bool)>,
     /// rng_seed cache to get rng_seed for the current cycle
@@ -157,7 +155,7 @@ impl PoSFinalState {
         initial_seed_string: &str,
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+        db: ShareableMassaDBController,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -1441,14 +1439,16 @@ fn test_pos_final_state_hash_computation() {
     use crate::DeferredCredits;
     use crate::PoSFinalState;
     use bitvec::prelude::*;
-    use massa_db_exports::MassaDBConfig;
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
     use massa_models::config::constants::{
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
     };
     use massa_signature::KeyPair;
+    use parking_lot::RwLock;
     use std::collections::HashMap;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     let pos_config = PoSConfig {

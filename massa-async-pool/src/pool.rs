@@ -10,7 +10,7 @@ use crate::{
     AsyncMessageSerializer,
 };
 use massa_db_exports::{
-    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, ASYNC_POOL_PREFIX,
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
@@ -25,9 +25,8 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::ops::Bound::Included;
-use std::{collections::BTreeMap, sync::Arc};
 
 const EMISSION_SLOT_IDENT: u8 = 0u8;
 const EMISSION_INDEX_IDENT: u8 = 1u8;
@@ -192,7 +191,7 @@ macro_rules! message_id_prefix {
 pub struct AsyncPool {
     /// Asynchronous pool configuration
     pub config: AsyncPoolConfig,
-    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    pub db: ShareableMassaDBController,
     pub message_info_cache: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
@@ -202,10 +201,7 @@ pub struct AsyncPool {
 
 impl AsyncPool {
     /// Creates an empty `AsyncPool`
-    pub fn new(
-        config: AsyncPoolConfig,
-        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
-    ) -> AsyncPool {
+    pub fn new(config: AsyncPoolConfig, db: ShareableMassaDBController) -> AsyncPool {
         AsyncPool {
             config: config.clone(),
             db,

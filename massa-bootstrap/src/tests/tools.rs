@@ -10,7 +10,7 @@ use massa_consensus_exports::{
     },
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
-use massa_db_exports::{DBBatch, MassaDBController};
+use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,
@@ -58,11 +58,9 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
-use parking_lot::RwLock;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -225,7 +223,7 @@ pub fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedOpsConfig,
-    db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    db: ShareableMassaDBController,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
     let mut batch = DBBatch::new();
@@ -255,7 +253,7 @@ pub fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedDenunciationsConfig,
-    db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    db: ShareableMassaDBController,
 ) -> ExecutedDenunciations {
     let mut executed_de = ExecutedDenunciations::new(config, db);
     let mut batch = DBBatch::new();
@@ -292,7 +290,7 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
     config: FinalStateConfig,
-    db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    db: ShareableMassaDBController,
 ) -> FinalState {
     let r_limit: u64 = 50;
 

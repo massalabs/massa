@@ -1,7 +1,10 @@
 use crate::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 use massa_hash::Hash;
 use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
-use std::fmt::Debug;
+use parking_lot::RwLock;
+use std::{fmt::Debug, sync::Arc};
+
+pub type ShareableMassaDBController = Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>;
 
 pub trait MassaDBController<'a>: Send + Sync + Debug {
     /// Creates a new hard copy of the DB, for the given slot
