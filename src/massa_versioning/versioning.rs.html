@@ -4241,9 +4241,9 @@
             max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
-        <span class="kw">let </span>db =
-            Arc::new(RwLock::new(Box::new(MassaDB::new(db_config))
-                <span class="kw">as </span>Box&lt;(<span class="kw">dyn for</span>&lt;<span class="lifetime">&#39;a</span>&gt; MassaDBController&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>)&gt;));
+        <span class="kw">let </span>db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
 
         <span class="comment">// MIP info / store init
 

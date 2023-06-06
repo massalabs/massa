@@ -91,15 +91,19 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{fmt::Debug, sync::Arc};
 
-<span class="kw">pub type </span>ShareableMassaDBController = Arc&lt;RwLock&lt;Box&lt;<span class="kw">dyn for</span>&lt;<span class="lifetime">&#39;a</span>&gt; MassaDBController&lt;<span class="lifetime">&#39;a</span>&gt;&gt;&gt;&gt;;
+<span class="kw">pub type </span>ShareableMassaDBController = Arc&lt;RwLock&lt;Box&lt;<span class="kw">dyn </span>MassaDBController&gt;&gt;&gt;;
 
-<span class="kw">pub trait </span>MassaDBController&lt;<span class="lifetime">&#39;a</span>&gt;: Send + Sync + Debug {
+<span class="doccomment">/// Controller trait for the MassaDB
+</span><span class="kw">pub trait </span>MassaDBController: Send + Sync + Debug {
     <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
     </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot);
 
@@ -132,17 +136,17 @@
 
     <span class="doccomment">/// Exposes RocksDB&#39;s &quot;iterator_cf&quot; function
     </span><span class="kw">fn </span>iterator_cf(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         handle_cf: <span class="kw-2">&amp;</span>str,
         mode: MassaIteratorMode,
-    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;a</span>&gt;;
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;_</span>&gt;;
 
     <span class="doccomment">/// Exposes RocksDB&#39;s &quot;prefix_iterator_cf&quot; function
     </span><span class="kw">fn </span>prefix_iterator_cf(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         handle_cf: <span class="kw-2">&amp;</span>str,
         prefix: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;a</span>&gt;;
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;_</span>&gt;;
 
     <span class="doccomment">/// Get the current state hash of the database
     </span><span class="kw">fn </span>get_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash;
@@ -174,13 +178,15 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
 }
 
-<span class="kw">pub enum </span>MassaIteratorMode&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="doccomment">/// Similar to RocksDB&#39;s IteratorMode
+</span><span class="kw">pub enum </span>MassaIteratorMode&lt;<span class="lifetime">&#39;a</span>&gt; {
     Start,
     End,
     From(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MassaDirection),
 }
 
-<span class="kw">pub enum </span>MassaDirection {
+<span class="doccomment">/// Similar to RocksDB&#39;s Direction
+</span><span class="kw">pub enum </span>MassaDirection {
     Forward,
     Reverse,
 }

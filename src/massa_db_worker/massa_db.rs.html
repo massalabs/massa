@@ -809,6 +809,13 @@
 <a href="#809" id="809">809</a>
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 <span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
@@ -1448,7 +1455,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; MassaDBController&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>RawMassaDB&lt;Slot, SlotSerializer, SlotDeserializer&gt; {
+<span class="kw">impl </span>MassaDBController <span class="kw">for </span>RawMassaDB&lt;Slot, SlotSerializer, SlotDeserializer&gt; {
     <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
     </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
@@ -1534,10 +1541,10 @@
 
     <span class="doccomment">/// Exposes RocksDB&#39;s &quot;iterator_cf&quot; function
     </span><span class="kw">fn </span>iterator_cf(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         handle_cf: <span class="kw-2">&amp;</span>str,
         mode: MassaIteratorMode,
-    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;a</span>&gt; {
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;_</span>&gt; {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
         <span class="kw">let </span>handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
@@ -1561,10 +1568,10 @@
 
     <span class="doccomment">/// Exposes RocksDB&#39;s &quot;prefix_iterator_cf&quot; function
     </span><span class="kw">fn </span>prefix_iterator_cf(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         handle_cf: <span class="kw-2">&amp;</span>str,
         prefix: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;a</span>&gt; {
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;_</span>&gt; {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
         <span class="kw">let </span>handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
@@ -1598,7 +1605,8 @@
             .map_err(|e| MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e)))
     }
 
-    <span class="kw">fn </span>write_batch_bootstrap_client(
+    <span class="doccomment">/// Write a stream_batch of database entries received from a bootstrap server
+    </span><span class="kw">fn </span>write_batch_bootstrap_client(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         stream_changes: StreamBatch&lt;Slot&gt;,
         stream_changes_versioning: StreamBatch&lt;Slot&gt;,
@@ -1606,14 +1614,20 @@
         <span class="self">self</span>.write_batch_bootstrap_client(stream_changes, stream_changes_versioning)
     }
 
-    <span class="kw">fn </span>get_batch_to_stream(
+    <span class="doccomment">/// Used for bootstrap servers (get a new batch to stream to the client)
+    ///
+    /// Returns a StreamBatch&lt;Slot&gt;
+    </span><span class="kw">fn </span>get_batch_to_stream(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         last_obtained: <span class="prelude-ty">Option</span>&lt;(Vec&lt;u8&gt;, Slot)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt; {
         <span class="self">self</span>.get_batch_to_stream(last_obtained)
     }
 
-    <span class="kw">fn </span>get_versioning_batch_to_stream(
+    <span class="doccomment">/// Used for bootstrap servers (get a new batch to stream to the client)
+    ///
+    /// Returns a StreamBatch&lt;Slot&gt;
+    </span><span class="kw">fn </span>get_versioning_batch_to_stream(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         last_obtained: <span class="prelude-ty">Option</span>&lt;(Vec&lt;u8&gt;, Slot)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt; {

@@ -3093,7 +3093,7 @@
         thread_count: <span class="number">2</span>,
     };
     <span class="kw">let </span>db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn for</span>&lt;<span class="lifetime">&#39;a</span>&gt; MassaDBController&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>)&gt;
+        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
     ));
     <span class="kw">let </span>(selector_controller, <span class="kw">_</span>) = MockSelectorController::new_with_receiver();
     <span class="kw">let </span>init_seed = Hash::compute_from(<span class="string">b&quot;&quot;</span>);
