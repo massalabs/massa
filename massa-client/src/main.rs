@@ -45,12 +45,12 @@ struct Args {
     /// Optional command parameter (as a JSON string)
     #[structopt(name = "PARAMETERS")]
     parameters: Vec<String>,
-    /// Path of wallet file
+    /// Path of wallet folder
     #[structopt(
         short = "w",
         long = "wallet",
         parse(from_os_str),
-        default_value = "wallet.yaml"
+        default_value = "wallets/"
     )]
     wallet: PathBuf,
     /// Enable a mode where input/output are serialized as JSON

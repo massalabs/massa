@@ -289,5 +289,5 @@
 [factory]
     # initial delay in milliseconds to wait before starting production to avoid double staking on node restart
     initial_delay = 100
-    # path to your staking wallet
-    staking_wallet_path = "config/staking_wallet.yaml"
+    # path to your staking wallets
+    staking_wallet_path = "config/staking_wallets"
