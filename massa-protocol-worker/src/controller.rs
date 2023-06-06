@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
 
-use massa_metrics::channels::{MassaChannel, MassaSender};
+use massa_channel::{sender::MassaSender, MassaChannel};
 use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,

@@ -4,9 +4,9 @@ use prometheus::{
     IntGauge,
 };
 
-pub mod channels;
 mod server;
 
+// TODO load only if feature metrics is enabled
 lazy_static! {
     static ref BLOCKS_COUNTER: IntCounter =
         register_int_counter!("blocks_counter", "blocks len").unwrap();
@@ -48,67 +48,69 @@ pub fn set_final_cursor(period: u64, thread: u8) {
     FINAL_CURSOR_PERIOD.set(period as i64);
 }
 
-mod test {
-    use crate::{channels::MassaChannel, start_metrics_server};
+// mod test {
+//     use massa_channel::MassaChannel;
 
-    #[tokio::test]
-    async fn test_channel_metrics() {
-        let addr = ([192, 168, 1, 183], 9898).into();
+//     use crate::start_metrics_server;
 
-        start_metrics_server(addr);
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        let (sender, receiver) = MassaChannel::new("operations".to_string(), None);
+//     #[tokio::test]
+//     async fn test_channel_metrics() {
+//         let addr = ([192, 168, 1, 183], 9898).into();
 
-        let (sender2, receiver2) = MassaChannel::new("second_channel".to_string(), None);
+//         start_metrics_server(addr);
+//         std::thread::sleep(std::time::Duration::from_millis(500));
+//         let (sender, receiver) = MassaChannel::new("operations".to_string(), None);
 
-        sender2.send("hello_world".to_string()).unwrap();
-        let data = receiver2.recv().unwrap();
-        assert_eq!(data, "hello_world".to_string());
+//         let (sender2, receiver2) = MassaChannel::new("second_channel".to_string(), None);
 
-        for i in 0..100 {
-            sender.send(i).unwrap();
-        }
+//         sender2.send("hello_world".to_string()).unwrap();
+//         let data = receiver2.recv().unwrap();
+//         assert_eq!(data, "hello_world".to_string());
 
-        for _i in 0..20 {
-            receiver.recv().unwrap();
-        }
+//         for i in 0..100 {
+//             sender.send(i).unwrap();
+//         }
 
-        assert_eq!(receiver.len(), 80);
-        std::thread::sleep(std::time::Duration::from_secs(5));
-        drop(sender2);
-        drop(receiver2);
-        std::thread::sleep(std::time::Duration::from_secs(100));
-    }
+//         for _i in 0..20 {
+//             receiver.recv().unwrap();
+//         }
 
-    #[tokio::test]
-    async fn test_channel() {
-        let addr = ([192, 168, 1, 183], 9898).into();
+//         assert_eq!(receiver.len(), 80);
+//         std::thread::sleep(std::time::Duration::from_secs(5));
+//         drop(sender2);
+//         drop(receiver2);
+//         std::thread::sleep(std::time::Duration::from_secs(100));
+//     }
 
-        start_metrics_server(addr);
-        std::thread::sleep(std::time::Duration::from_millis(500));
+//     #[tokio::test]
+//     async fn test_channel() {
+//         let addr = ([192, 168, 1, 183], 9898).into();
 
-        let (sender, receiver) = MassaChannel::new("test2".to_string(), None);
+//         start_metrics_server(addr);
+//         std::thread::sleep(std::time::Duration::from_millis(500));
 
-        let cloned = receiver.clone();
+//         let (sender, receiver) = MassaChannel::new("test2".to_string(), None);
 
-        sender.send("msg".to_string()).unwrap();
+//         let cloned = receiver.clone();
 
-        std::thread::spawn(move || {
-            dbg!("spawned");
+//         sender.send("msg".to_string()).unwrap();
 
-            loop {
-                dbg!("loop");
-                dbg!(receiver.recv().unwrap());
-                std::thread::sleep(std::time::Duration::from_secs(1));
-            }
-        });
-        std::thread::sleep(std::time::Duration::from_secs(2));
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(5));
+//         std::thread::spawn(move || {
+//             dbg!("spawned");
 
-            drop(sender);
-        });
+//             loop {
+//                 dbg!("loop");
+//                 dbg!(receiver.recv().unwrap());
+//                 std::thread::sleep(std::time::Duration::from_secs(1));
+//             }
+//         });
+//         std::thread::sleep(std::time::Duration::from_secs(2));
+//         std::thread::spawn(move || {
+//             std::thread::sleep(std::time::Duration::from_secs(5));
 
-        std::thread::sleep(std::time::Duration::from_secs(20));
-    }
-}
+//             drop(sender);
+//         });
+
+//         std::thread::sleep(std::time::Duration::from_secs(20));
+//     }
+// }

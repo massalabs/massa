@@ -1,4 +1,4 @@
-use massa_metrics::channels::MassaSender;
+use massa_channel::sender::MassaSender;
 use massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 use massa_time::MassaTime;
 use parking_lot::RwLock;

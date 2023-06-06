@@ -1,6 +1,6 @@
 use crossbeam::select;
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
-use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};

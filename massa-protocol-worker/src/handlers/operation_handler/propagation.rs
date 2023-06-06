@@ -1,8 +1,8 @@
 use std::{mem, thread::JoinHandle};
 
 use crossbeam::channel::RecvTimeoutError;
+use massa_channel::receiver::MassaReceiver;
 use massa_logging::massa_trace;
-use massa_metrics::channels::MassaReceiver;
 use massa_models::operation::OperationId;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;

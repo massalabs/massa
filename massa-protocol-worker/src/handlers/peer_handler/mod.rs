@@ -4,8 +4,8 @@ use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Durat
 
 use crossbeam::channel::tick;
 use crossbeam::select;
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_hash::Hash;
-use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::config::SIGNATURE_DESER_SIZE;
 use massa_models::version::{VersionDeserializer, VersionSerializer};
 use massa_protocol_exports::{

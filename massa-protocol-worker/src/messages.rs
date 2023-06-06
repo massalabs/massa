@@ -1,4 +1,4 @@
-use massa_metrics::channels::MassaSender;
+use massa_channel::sender::MassaSender;
 use massa_protocol_exports::PeerId;
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,

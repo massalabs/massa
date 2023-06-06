@@ -1,8 +1,8 @@
 use std::thread::JoinHandle;
 
 use crossbeam::select;
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
-use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::{
     endorsement::SecureShareEndorsement,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},

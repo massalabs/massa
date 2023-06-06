@@ -1,7 +1,7 @@
 use std::thread::JoinHandle;
 
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
-use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;

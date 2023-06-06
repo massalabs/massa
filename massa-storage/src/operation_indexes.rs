@@ -24,8 +24,10 @@ impl OperationIndexes {
     /// * `operation`: the operation to insert
     pub(crate) fn insert(&mut self, operation: SecureShareOperation) {
         if let Ok(o) = self.operations.try_insert(operation.id, operation) {
-            if cfg!(feature = "metrics") {
-                massa_metrics::inc_operations_counter();
+            #[cfg(feature = "metrics")]
+            {
+                use massa_metrics::inc_operations_counter;
+                inc_operations_counter();
             }
 
             // update creator index

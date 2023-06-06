@@ -17,10 +17,10 @@ use crate::{
     wrap_network::ActiveConnectionsTrait,
 };
 use crossbeam::{channel::at, select};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
-use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,

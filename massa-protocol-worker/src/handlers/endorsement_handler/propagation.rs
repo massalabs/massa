@@ -1,6 +1,6 @@
 use std::thread::JoinHandle;
 
-use massa_metrics::channels::MassaReceiver;
+use massa_channel::receiver::MassaReceiver;
 use massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},

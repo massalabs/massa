@@ -191,7 +191,9 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `exec_out`: execution output to apply
+    #[cfg(feature = "metrics")]
     pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
+        use massa_metrics::{set_active_cursor, set_final_cursor};
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
@@ -226,10 +228,51 @@ impl ExecutionState {
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
 
-        if cfg!(feature = "metrics") {
-            massa_metrics::set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
-            massa_metrics::set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
+        // update the prometheus metrics
+        set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
+        set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
+    }
+
+    /// Applies the output of an execution to the final execution state.
+    /// The newly applied final output should be from the slot just after the last executed final slot
+    ///
+    /// # Arguments
+    /// * `exec_out`: execution output to apply
+    #[cfg(not(feature = "metrics"))]
+    pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
+        if self.final_cursor >= exec_out.slot {
+            panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
+
+        // count stats
+        if exec_out.block_id.is_some() {
+            self.stats_counter.register_final_blocks(1);
+            self.stats_counter.register_final_executed_operations(
+                exec_out.state_changes.executed_ops_changes.len(),
+            );
+            self.stats_counter.register_final_executed_denunciations(
+                exec_out.state_changes.executed_denunciations_changes.len(),
+            );
+        }
+
+        // apply state changes to the final ledger
+        self.final_state
+            .write()
+            .finalize(exec_out.slot, exec_out.state_changes);
+
+        // update the final ledger's slot
+        self.final_cursor = exec_out.slot;
+
+        // update active cursor:
+        // if it was at the previous latest final block, set it to point to the new one
+        if self.active_cursor < self.final_cursor {
+            self.active_cursor = self.final_cursor;
+        }
+
+        // append generated events to the final event store
+        exec_out.events.finalize();
+        self.final_events.extend(exec_out.events);
+        self.final_events.prune(self.config.max_final_events);
     }
 
     /// Applies an execution output to the active (non-final) state

@@ -30,10 +30,13 @@ impl BlockIndexes {
     /// Insert a block and populate the indexes.
     /// Arguments:
     /// - block: the block to insert
+
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
         if let Ok(b) = self.blocks.try_insert(block.id, block) {
-            if cfg!(feature = "metrics") {
-                massa_metrics::inc_blocks_counter();
+            #[cfg(feature = "metrics")]
+            {
+                use massa_metrics::inc_blocks_counter;
+                inc_blocks_counter();
             }
 
             // update creator index

@@ -5,8 +5,8 @@ use std::{
 };
 
 use crossbeam::{channel::tick, select};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
-use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::{
     operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},

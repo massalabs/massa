@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::messages::MessagesHandler;
-use massa_metrics::channels::{MassaChannel, MassaReceiver, MassaSender};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 use massa_models::version::{Version, VersionDeserializer};
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};

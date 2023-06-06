@@ -1,6 +1,6 @@
 use std::thread::JoinHandle;
 
-use massa_metrics::channels::MassaSender;
+use massa_channel::sender::MassaSender;
 use massa_protocol_exports::ProtocolManager;
 use tracing::info;
 

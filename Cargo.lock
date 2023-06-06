@@ -2547,6 +2547,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_channel"
+version = "0.23.0"
+dependencies = [
+ "crossbeam",
+ "prometheus",
+ "tracing",
+]
+
+[[package]]
 name = "massa_cipher"
 version = "0.23.0"
 dependencies = [
@@ -2857,6 +2866,7 @@ dependencies = [
  "crossbeam",
  "hyper",
  "lazy_static",
+ "massa_channel",
  "prometheus",
  "tokio",
  "tracing",
@@ -3018,10 +3028,10 @@ name = "massa_protocol_worker"
 version = "0.23.0"
 dependencies = [
  "crossbeam",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_hash",
  "massa_logging",
- "massa_metrics",
  "massa_models",
  "massa_pool_exports",
  "massa_protocol_exports",

@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, thread::JoinHandle};
 
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
-use massa_metrics::channels::{MassaReceiver, MassaSender};
 use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
