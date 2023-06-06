@@ -154,8 +154,7 @@ impl Wallet {
         self.keys.keys().copied().collect()
     }
 
-    /// Save the wallet in json format in a file
-    /// Only the keypair is dumped
+    /// Save the wallets in a directory, each wallet in a yaml file.
     fn save(&self) -> Result<(), WalletError> {
         if !self.wallet_path.exists() {
             std::fs::create_dir_all(&self.wallet_path)?;
