@@ -9,8 +9,9 @@ use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-use massa_db::{
-    DBBatch, MassaDB, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
+use massa_db_exports::{
+    DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
+    VERSIONING_CF,
 };
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::error::ModelsError;
@@ -607,13 +608,13 @@ impl MipStore {
 
     pub fn extend_from_db(
         &mut self,
-        db: Arc<RwLock<MassaDB>>,
+        db: ShareableMassaDBController,
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mut guard = self.0.write();
         guard.extend_from_db(db)
     }
 
-    pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>) {
+    pub fn reset_db(&self, db: ShareableMassaDBController) {
         {
             let mut guard = db.write();
             guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None);
@@ -1087,7 +1088,7 @@ impl MipStoreRaw {
     /// Extend MIP store with what is written on the disk
     fn extend_from_db(
         &mut self,
-        db: Arc<RwLock<MassaDB>>,
+        db: ShareableMassaDBController,
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mip_info_deser = MipInfoDeserializer::new();
         let mip_state_deser = MipStateDeserializer::new();
@@ -1097,15 +1098,11 @@ impl MipStoreRaw {
         );
 
         let db = db.read();
-        let handle = db
-            .db
-            .cf_handle(STATE_CF)
-            .ok_or(ExtendFromDbError::UnknownDbColumn(STATE_CF.to_string()))?;
 
         // Get data from state cf handle
         let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
         for (ser_mip_info, ser_mip_state) in
-            db.db.prefix_iterator_cf(handle, MIP_STORE_PREFIX).flatten()
+            db.prefix_iterator_cf(STATE_CF, MIP_STORE_PREFIX.as_bytes())
         {
             if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
                 break;
@@ -1137,22 +1134,14 @@ impl MipStoreRaw {
         let (mut updated, mut added) = self.update_with(&store_raw_)?;
 
         let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
-        let versioning_handle =
-            db.db
-                .cf_handle(VERSIONING_CF)
-                .ok_or(ExtendFromDbError::UnknownDbColumn(
-                    VERSIONING_CF.to_string(),
-                ))?;
 
         // Get data from state cf handle
-        for (ser_mip_info, ser_mip_state) in db
-            .db
-            .prefix_iterator_cf(versioning_handle, MIP_STORE_PREFIX)
-            .flatten()
+        for (ser_mip_info, ser_mip_state) in
+            db.prefix_iterator_cf(VERSIONING_CF, MIP_STORE_PREFIX.as_bytes())
         {
             // deser
 
-            match ser_mip_info.as_ref() {
+            match &ser_mip_info {
                 key if key.starts_with(MIP_STORE_PREFIX.as_bytes()) => {
                     let (_, mip_info) = mip_info_deser
                         .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
@@ -1231,11 +1220,13 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 mod test {
     use super::*;
 
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_worker::MassaDB;
+    use more_asserts::assert_le;
+    use parking_lot::RwLock;
     use std::assert_matches::assert_matches;
     use std::str::FromStr;
-
-    use massa_db::MassaDBConfig;
-    use more_asserts::assert_le;
+    use std::sync::Arc;
     use tempfile::tempdir;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
@@ -2040,7 +2031,9 @@ mod test {
             max_new_elements: 100,
             thread_count: THREAD_COUNT,
         };
-        let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
 
         // MIP info / store init
 

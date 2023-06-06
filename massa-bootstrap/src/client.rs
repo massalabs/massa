@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use massa_db::DBBatch;
+use massa_db_exports::DBBatch;
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};

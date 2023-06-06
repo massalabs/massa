@@ -1,4 +1,4 @@
-use massa_db::LEDGER_PREFIX;
+use massa_db_exports::LEDGER_PREFIX;
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
