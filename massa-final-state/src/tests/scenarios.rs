@@ -5,7 +5,7 @@ use crate::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
-use massa_db_exports::{DBBatch, MassaDBConfig};
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::{
@@ -40,7 +40,9 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         max_new_elements: 100,
         thread_count,
     };
-    let db = Arc::new(RwLock::new(Box::new(MassaDB::new(db_config))));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn for<'a> MassaDBController<'a> + 'static)>
+    ));
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
 

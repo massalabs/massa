@@ -1,9 +1,10 @@
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
-    MassaIteratorMode, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR,
-    CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR,
-    STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
+    MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
+    CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF,
+    METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    VERSIONING_CF,
 };
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
@@ -29,25 +30,6 @@ use std::{
 /// In our instance, we use Slot as the ChangeID
 pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
 
-/// A Batch of elements from the database, used by a bootstrap server.
-#[derive(Debug, Clone)]
-pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
-    /// New elements to be streamed to the client.
-    pub new_elements: BTreeMap<Key, Value>,
-    /// The changes made to previously streamed keys. Note that a None value can delete a given key.
-    pub updates_on_previous_elements: BTreeMap<Key, Option<Value>>,
-    /// The ChangeID associated with this batch, useful for syncing the changes not streamed yet to the client.
-    pub change_id: ChangeID,
-}
-
-impl<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> StreamBatch<ChangeID> {
-    /// Helper function used to know if the main bootstrap state step is finished.
-    ///
-    /// Note: even after having an empty StreamBatch, we still need to send the updates on previous elements while bootstrap has not finished.
-    pub fn is_empty(&self) -> bool {
-        self.updates_on_previous_elements.is_empty() && self.new_elements.is_empty()
-    }
-}
 /// A generic wrapped RocksDB database.
 ///
 /// The added features are:
@@ -788,11 +770,42 @@ impl<'a> MassaDBController<'a> for RawMassaDB<Slot, SlotSerializer, SlotDeserial
             .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
     }
 
+    /// Get the current change_id attached to the database.
     fn get_change_id(&self) -> Result<Slot, ModelsError> {
         self.get_change_id()
     }
 
+    /// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
     fn set_initial_change_id(&self, change_id: Slot) {
         self.set_initial_change_id(change_id)
+    }
+
+    /// Flushes the underlying db.
+    fn flush(&self) -> Result<(), MassaDBError> {
+        self.db
+            .flush()
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    fn write_batch_bootstrap_client(
+        &mut self,
+        stream_changes: StreamBatch<Slot>,
+        stream_changes_versioning: StreamBatch<Slot>,
+    ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
+        self.write_batch_bootstrap_client(stream_changes, stream_changes_versioning)
+    }
+
+    fn get_batch_to_stream(
+        &self,
+        last_obtained: Option<(Vec<u8>, Slot)>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_batch_to_stream(last_obtained)
+    }
+
+    fn get_versioning_batch_to_stream(
+        &self,
+        last_obtained: Option<(Vec<u8>, Slot)>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_versioning_batch_to_stream(last_obtained)
     }
 }
