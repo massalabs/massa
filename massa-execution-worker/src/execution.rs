@@ -225,6 +225,10 @@ impl ExecutionState {
         exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
+
+        if cfg!(feature = "metrics") {
+            massa_metrics::set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
+        }
     }
 
     /// Applies an execution output to the active (non-final) state

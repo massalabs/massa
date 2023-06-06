@@ -2669,6 +2669,7 @@ dependencies = [
  "massa_hash",
  "massa_ledger_exports",
  "massa_ledger_worker",
+ "massa_metrics",
  "massa_models",
  "massa_module_cache",
  "massa_pos_exports",
