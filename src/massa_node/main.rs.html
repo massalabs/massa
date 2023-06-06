@@ -2480,7 +2480,7 @@
                 .expect(<span class="string">&quot;double-lock() on interupted signal mutex&quot;</span>);
             <span class="kw">let </span>wake = sigint_cv_pair
                 .<span class="number">1
-                </span>.wait_timeout_ms(int_sig, <span class="number">100</span>)
+                </span>.wait_timeout(int_sig, Duration::from_millis(<span class="number">100</span>))
                 .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
                 <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received&quot;</span>);
