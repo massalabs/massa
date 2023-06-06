@@ -248,7 +248,7 @@ async fn launch(
         thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn for<'a> MassaDBController<'a> + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
     ));
 
     // Create final ledger

@@ -4,9 +4,9 @@ use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep
 use parking_lot::RwLock;
 use std::{fmt::Debug, sync::Arc};
 
-pub type ShareableMassaDBController = Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>;
+pub type ShareableMassaDBController = Arc<RwLock<Box<dyn MassaDBController>>>;
 
-pub trait MassaDBController<'a>: Send + Sync + Debug {
+pub trait MassaDBController: Send + Sync + Debug {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot);
 
@@ -39,17 +39,17 @@ pub trait MassaDBController<'a>: Send + Sync + Debug {
 
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
-        &'a self,
+        &self,
         handle_cf: &str,
         mode: MassaIteratorMode,
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a>;
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
 
     /// Exposes RocksDB's "prefix_iterator_cf" function
     fn prefix_iterator_cf(
-        &'a self,
+        &self,
         handle_cf: &str,
         prefix: &[u8],
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a>;
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
 
     /// Get the current state hash of the database
     fn get_db_hash(&self) -> Hash;

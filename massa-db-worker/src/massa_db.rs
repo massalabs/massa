@@ -637,7 +637,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 }
 
-impl<'a> MassaDBController<'a> for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
+impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot) {
         let db = &self.db;
@@ -723,10 +723,10 @@ impl<'a> MassaDBController<'a> for RawMassaDB<Slot, SlotSerializer, SlotDeserial
 
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
-        &'a self,
+        &self,
         handle_cf: &str,
         mode: MassaIteratorMode,
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
         let db = &self.db;
         let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
@@ -750,10 +750,10 @@ impl<'a> MassaDBController<'a> for RawMassaDB<Slot, SlotSerializer, SlotDeserial
 
     /// Exposes RocksDB's "prefix_iterator_cf" function
     fn prefix_iterator_cf(
-        &'a self,
+        &self,
         handle_cf: &str,
         prefix: &[u8],
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
         let db = &self.db;
         let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 

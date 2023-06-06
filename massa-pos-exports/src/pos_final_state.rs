@@ -1469,7 +1469,7 @@ fn test_pos_final_state_hash_computation() {
         thread_count: 2,
     };
     let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn for<'a> MassaDBController<'a> + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
     ));
     let (selector_controller, _) = MockSelectorController::new_with_receiver();
     let init_seed = Hash::compute_from(b"");

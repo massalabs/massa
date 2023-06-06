@@ -96,7 +96,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         thread_count,
     };
     let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn for<'a> MassaDBController<'a> + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
     ));
     let final_state_local_config = FinalStateConfig {
         ledger_config: LedgerConfig {
@@ -202,8 +202,9 @@ fn test_bootstrap_server() {
         max_new_elements: 100,
         thread_count,
     };
-    let db_server = Arc::new(RwLock::new(Box::new(MassaDB::new(db_server_config))
-        as Box<(dyn for<'a> MassaDBController<'a> + 'static)>));
+    let db_server = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_server_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
     let temp_dir_client = TempDir::new().unwrap();
     let db_client_config = MassaDBConfig {
         path: temp_dir_client.path().to_path_buf(),
@@ -211,8 +212,9 @@ fn test_bootstrap_server() {
         max_new_elements: 100,
         thread_count,
     };
-    let db_client = Arc::new(RwLock::new(Box::new(MassaDB::new(db_client_config))
-        as Box<(dyn for<'a> MassaDBController<'a> + 'static)>));
+    let db_client = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_client_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
     let final_state_local_config = FinalStateConfig {
         ledger_config: LedgerConfig {
             thread_count,
