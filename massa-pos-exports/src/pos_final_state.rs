@@ -129,7 +129,7 @@ pub struct PoSFinalState {
     /// proof-of-stake configuration
     pub config: PoSConfig,
     /// Access to the RocksDB database
-    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
+    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     /// contiguous cycle history, back = newest
     pub cycle_history_cache: VecDeque<(u64, bool)>,
     /// rng_seed cache to get rng_seed for the current cycle
@@ -157,7 +157,7 @@ impl PoSFinalState {
         initial_seed_string: &str,
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
-        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -1441,7 +1441,8 @@ fn test_pos_final_state_hash_computation() {
     use crate::DeferredCredits;
     use crate::PoSFinalState;
     use bitvec::prelude::*;
-    use massa_db_worker::{MassaDB, MassaDBConfig};
+    use massa_db_exports::MassaDBConfig;
+    use massa_db_worker::MassaDB;
     use massa_models::config::constants::{
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,

@@ -34,7 +34,10 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, db: Arc<RwLock<Box<dyn MassaDBController>>>) -> Self {
+    pub fn new(
+        config: LedgerConfig,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    ) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             db,

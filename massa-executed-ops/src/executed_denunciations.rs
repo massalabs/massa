@@ -44,7 +44,7 @@ pub struct ExecutedDenunciations {
     /// Executed denunciations configuration
     config: ExecutedDenunciationsConfig,
     /// Access to the RocksDB database
-    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
+    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     /// for rocksdb serialization
@@ -57,7 +57,7 @@ impl ExecutedDenunciations {
     /// Create a new `ExecutedDenunciations`
     pub fn new(
         config: ExecutedDenunciationsConfig,
-        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     ) -> Self {
         let denunciation_index_deserializer =
             DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);

@@ -1,9 +1,9 @@
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_db_exports::{
-    DBBatch, Key, MassaDBController, MassaDBError, MassaDirection, MassaIteratorMode, Value,
-    CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR,
-    LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
-    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
+    DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
+    MassaIteratorMode, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR,
+    CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR,
+    STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
@@ -21,7 +21,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     format,
     ops::Bound::{self, Excluded, Included},
-    path::PathBuf,
     sync::Arc,
 };
 
@@ -29,19 +28,6 @@ use std::{
 ///
 /// In our instance, we use Slot as the ChangeID
 pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
-
-/// Config structure for a `MassaDBRaw`
-#[derive(Debug, Clone)]
-pub struct MassaDBConfig {
-    /// The path to the database, used in the wrapped RocksDB instance
-    pub path: PathBuf,
-    /// Change history to keep (indexed by ChangeID)
-    pub max_history_length: usize,
-    /// max_new_elements for bootstrap
-    pub max_new_elements: usize,
-    /// Thread count for slot serialization
-    pub thread_count: u8,
-}
 
 /// A Batch of elements from the database, used by a bootstrap server.
 #[derive(Debug, Clone)]
@@ -582,12 +568,6 @@ where
     }
 
     /// Get the current state hash of the database
-    pub fn get_db_hash(&self) -> Hash {
-        self.get_db_hash_opt()
-            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
-    }
-
-    /// Get the current state hash of the database
     fn get_db_hash_opt(&self) -> Option<Hash> {
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
@@ -675,7 +655,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 }
 
-impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
+impl<'a> MassaDBController<'a> for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot) {
         let db = &self.db;
@@ -761,10 +741,10 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
-        &self,
+        &'a self,
         handle_cf: &str,
         mode: MassaIteratorMode,
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a> {
         let db = &self.db;
         let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
@@ -788,10 +768,10 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
     /// Exposes RocksDB's "prefix_iterator_cf" function
     fn prefix_iterator_cf(
-        &self,
+        &'a self,
         handle_cf: &str,
         prefix: &[u8],
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a> {
         let db = &self.db;
         let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
@@ -800,5 +780,19 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 .flatten()
                 .map(|(k, v)| (k.to_vec(), v.to_vec())),
         )
+    }
+
+    /// Get the current state hash of the database
+    fn get_db_hash(&self) -> Hash {
+        self.get_db_hash_opt()
+            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    }
+
+    fn get_change_id(&self) -> Result<Slot, ModelsError> {
+        self.get_change_id()
+    }
+
+    fn set_initial_change_id(&self, change_id: Slot) {
+        self.set_initial_change_id(change_id)
     }
 }

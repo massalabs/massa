@@ -26,6 +26,7 @@ massa_db_exports = { path = "../massa-db-exports" }
 chrono = "=0.4"
 more-asserts = "0.3"
 tempfile = "3.5"
+massa_db_worker = { path = "../massa-db-worker" }
 
 [features]
 testing = []

@@ -3,8 +3,8 @@
 //! Module to interact with the disk ledger
 
 use massa_db_exports::{
-    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, CRUD_ERROR,
-    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, CRUD_ERROR, KEY_SER_ERROR,
+    LEDGER_PREFIX, STATE_CF,
 };
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
@@ -44,7 +44,7 @@ impl LedgerSubEntry {
 ///
 /// Contains a `RocksDB` DB instance
 pub struct LedgerDB {
-    db: Arc<RwLock<Box<dyn MassaDBController>>>,
+    db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     thread_count: u8,
     key_serializer_db: KeySerializer,
     key_deserializer_db: KeyDeserializer,
@@ -68,7 +68,7 @@ impl LedgerDB {
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
     pub fn new(
-        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
         thread_count: u8,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -392,9 +392,7 @@ impl LedgerDB {
 
         let ledger = db
             .prefix_iterator_cf(STATE_CF, LEDGER_PREFIX.as_bytes())
-            .take_while(|(key, _)| {
-                key.starts_with(LEDGER_PREFIX.as_bytes())
-            })
+            .take_while(|(key, _)| key.starts_with(LEDGER_PREFIX.as_bytes()))
             .collect::<Vec<_>>();
 
         let mut addresses = std::collections::BTreeMap::new();
@@ -468,7 +466,9 @@ fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use massa_db_exports::MassaDBConfig;
     use massa_db_exports::STATE_HASH_INITIAL_BYTES;
+    use massa_db_worker::MassaDB;
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
@@ -482,10 +482,8 @@ mod tests {
     use std::str::FromStr;
     use tempfile::TempDir;
 
-    #[cfg(test)]
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
-        use massa_db_worker::MassaDBConfig;
 
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
@@ -512,7 +510,7 @@ mod tests {
             thread_count: 32,
         };
 
-        let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+        let db = Arc::new(RwLock::new(Box::new(MassaDB::new(db_config))));
 
         let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();

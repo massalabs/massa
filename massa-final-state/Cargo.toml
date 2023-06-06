@@ -22,10 +22,10 @@ massa_async_pool = { path = "../massa-async-pool" }
 massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_db_exports = { path = "../massa-db-exports" }
-
 massa_proto = { path = "../massa-proto" }
 massa_versioning = { path = "../massa-versioning" }
 massa_time = { path = "../massa-time" }
+#massa_db_worker = { path = "../massa-db-worker", optional = true }
 
 [dev-dependencies]
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
@@ -42,5 +42,6 @@ testing = [
     "massa_ledger_worker/testing",
     "massa_async_pool/testing",
     "massa_pos_exports/testing",
+    
 ]
 sandbox = ["massa_async_pool/sandbox"]

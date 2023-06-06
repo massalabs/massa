@@ -13,14 +13,15 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
-
 massa_db_exports = { path = "../massa-db-exports" }
+massa_db_worker = { path = "../massa-db-worker", optional = true}
 
 [dev-dependencies]
 massa_signature = { path = "../massa-signature" }
 massa_hash = { path = "../massa-hash" }
+massa_db_worker = { path = "../massa-db-worker" }
 tempfile = "3.3"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-testing = ["tempfile", "massa_models/testing", "massa_ledger_exports/testing"]
+testing = ["tempfile", "massa_models/testing", "massa_ledger_exports/testing", "massa_db_worker"]

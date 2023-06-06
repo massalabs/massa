@@ -11,7 +11,7 @@ use crate::{ledger_db::LedgerDB, FinalLedger};
 /// This file defines tools to test the ledger bootstrap
 
 pub fn create_final_ledger(
-    db: Arc<RwLock<Box<dyn MassaDBController>>>,
+    db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     config: LedgerConfig,
     initial_ledger: HashMap<Address, LedgerEntry>,
 ) -> FinalLedger {

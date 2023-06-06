@@ -44,7 +44,7 @@ pub struct ExecutedOps {
     /// Executed operations configuration
     _config: ExecutedOpsConfig,
     /// RocksDB Instance
-    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
+    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// execution status of operations (true: success, false: fail)
@@ -59,7 +59,10 @@ pub struct ExecutedOps {
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<Box<dyn MassaDBController>>>) -> Self {
+    pub fn new(
+        config: ExecutedOpsConfig,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    ) -> Self {
         let slot_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
@@ -255,8 +258,8 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_hash_computing() {
-    use massa_db_exports::STATE_HASH_INITIAL_BYTES;
-    use massa_db_worker::{MassaDB, MassaDBConfig};
+    use massa_db_exports::{MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    use massa_db_worker::MassaDB;
     use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
@@ -279,8 +282,8 @@ fn test_executed_ops_hash_computing() {
         max_new_elements: 100,
         thread_count,
     };
-    let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
-    let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
+    let db_a = Arc::new(RwLock::new(Box::new(MassaDB::new(db_a_config))));
+    let db_c = Arc::new(RwLock::new(Box::new(MassaDB::new(db_c_config))));
     // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone(), db_a.clone());
     let mut c = ExecutedOps::new(config, db_c.clone());
