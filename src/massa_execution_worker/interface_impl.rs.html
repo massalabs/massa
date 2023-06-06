@@ -827,20 +827,6 @@
 <a href="#827" id="827">827</a>
 <a href="#828" id="828">828</a>
 <a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -1013,11 +999,6 @@
         <span class="comment">// get target address
         </span><span class="kw">let </span>to_address = Address::from_str(address)<span class="question-mark">?</span>;
 
-        <span class="comment">// check that the target address is an SC address
-        </span><span class="kw">if </span>!<span class="macro">matches!</span>(to_address, Address::SC(..)) {
-            <span class="macro">bail!</span>(<span class="string">&quot;called address {} is not an SC address&quot;</span>, to_address);
-        }
-
         <span class="comment">// write-lock context
         </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
@@ -1035,9 +1016,7 @@
 
         <span class="comment">// transfer coins from caller to target address
         </span><span class="kw">let </span>coins = Amount::from_raw(raw_coins);
-        <span class="comment">// note: rights are not checked here we checked that to_address is an SC address above
-        // and we know that the sender is at the top of the call stack
-        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), coins, <span class="bool-val">false</span>)
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), coins, <span class="bool-val">true</span>)
         {
             <span class="macro">bail!</span>(
                 <span class="string">&quot;error transferring {} coins from {} to {}: {}&quot;</span>,
@@ -1590,26 +1569,19 @@
         <span class="kw">if </span>validity_end.<span class="number">1 </span>&gt;= <span class="self">self</span>.config.thread_count {
             <span class="macro">bail!</span>(<span class="string">&quot;validity end thread exceeds the configuration thread count&quot;</span>)
         }
-        <span class="kw">let </span>target_addr = Address::from_str(target_address)<span class="question-mark">?</span>;
-
-        <span class="comment">// check that the target address is an SC address
-        </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
-            <span class="macro">bail!</span>(<span class="string">&quot;target address is not a smart contract address&quot;</span>)
-        }
-
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>emission_slot = execution_context.slot;
         <span class="kw">let </span>emission_index = execution_context.created_message_index;
         <span class="kw">let </span>sender = execution_context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">let </span>coins = Amount::from_raw(raw_coins);
-        execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, coins, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>fee = Amount::from_raw(raw_fee);
+        execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, coins, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
         execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, fee, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
         execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
             sender,
-            target_addr,
+            Address::from_str(target_address)<span class="question-mark">?</span>,
             target_handler.to_string(),
             max_gas,
             fee,
