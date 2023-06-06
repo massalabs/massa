@@ -33,6 +33,7 @@ pub struct Wallet {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
 /// Follow the standard: https://github.com/massalabs/massa-standards/blob/main/wallet/file-format.md
 struct WalletFileFormat {
     version: u64,
