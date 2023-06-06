@@ -10,7 +10,7 @@ use thiserror::Error;
 pub enum WalletError {
     /// IO error: {0}
     IOError(#[from] std::io::Error),
-    /// JSON error: {0}
+    /// YAML error: {0}
     YAMLError(#[from] serde_yaml::Error),
     /// Serde Sq error: {0}
     SerdeqsError(#[from] serde_qs::Error),
