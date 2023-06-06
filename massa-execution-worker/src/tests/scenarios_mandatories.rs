@@ -8,7 +8,7 @@ mod tests {
         create_block, get_initials_vesting, get_random_address_full, get_sample_state,
     };
     use massa_async_pool::AsyncMessage;
-    use massa_db::DBBatch;
+    use massa_db_exports::DBBatch;
     use massa_execution_exports::{
         ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,

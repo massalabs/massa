@@ -1,9 +1,11 @@
-use crate::{
-    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
-    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
-};
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
+use massa_db_exports::{
+    DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
+    MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
+    CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF,
+    METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    VERSIONING_CF,
+};
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
     error::ModelsError,
@@ -20,55 +22,14 @@ use std::{
     collections::{BTreeMap, HashMap},
     format,
     ops::Bound::{self, Excluded, Included},
-    path::PathBuf,
     sync::Arc,
 };
-
-type Key = Vec<u8>;
-type Value = Vec<u8>;
 
 /// Wrapped RocksDB database
 ///
 /// In our instance, we use Slot as the ChangeID
 pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
 
-/// We use batching to reduce the number of writes to the database
-///
-/// Here, a DBBatch is a map from Key to Some(Value) for a new or updated value, or None for a deletion
-pub type DBBatch = BTreeMap<Key, Option<Value>>;
-
-/// Config structure for a `MassaDBRaw`
-#[derive(Debug, Clone)]
-pub struct MassaDBConfig {
-    /// The path to the database, used in the wrapped RocksDB instance
-    pub path: PathBuf,
-    /// Change history to keep (indexed by ChangeID)
-    pub max_history_length: usize,
-    /// max_new_elements for bootstrap
-    pub max_new_elements: usize,
-    /// Thread count for slot serialization
-    pub thread_count: u8,
-}
-
-/// A Batch of elements from the database, used by a bootstrap server.
-#[derive(Debug, Clone)]
-pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
-    /// New elements to be streamed to the client.
-    pub new_elements: BTreeMap<Key, Value>,
-    /// The changes made to previously streamed keys. Note that a None value can delete a given key.
-    pub updates_on_previous_elements: BTreeMap<Key, Option<Value>>,
-    /// The ChangeID associated with this batch, useful for syncing the changes not streamed yet to the client.
-    pub change_id: ChangeID,
-}
-
-impl<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> StreamBatch<ChangeID> {
-    /// Helper function used to know if the main bootstrap state step is finished.
-    ///
-    /// Note: even after having an empty StreamBatch, we still need to send the updates on previous elements while bootstrap has not finished.
-    pub fn is_empty(&self) -> bool {
-        self.updates_on_previous_elements.is_empty() && self.new_elements.is_empty()
-    }
-}
 /// A generic wrapped RocksDB database.
 ///
 /// The added features are:
@@ -199,7 +160,7 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_batch_to_stream(
@@ -289,7 +250,7 @@ where
         })
     }
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_versioning_batch_to_stream(
@@ -589,12 +550,6 @@ where
     }
 
     /// Get the current state hash of the database
-    pub fn get_db_hash(&self) -> Hash {
-        self.get_db_hash_opt()
-            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
-    }
-
-    /// Get the current state hash of the database
     fn get_db_hash_opt(&self) -> Option<Hash> {
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
@@ -680,9 +635,11 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
         massa_db
     }
+}
 
+impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
-    pub fn backup_db(&self, slot: Slot) {
+    fn backup_db(&self, slot: Slot) {
         let db = &self.db;
 
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
@@ -694,28 +651,23 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Writes the batch to the DB
-    pub fn write_batch(
-        &mut self,
-        batch: DBBatch,
-        versioning_batch: DBBatch,
-        change_id: Option<Slot>,
-    ) {
+    fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>) {
         self.write_changes(batch, versioning_batch, change_id, false)
             .expect(CRUD_ERROR);
     }
 
     /// Utility function to put / update a key & value in the batch
-    pub fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
+    fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
         batch.insert(key, Some(value.to_vec()));
     }
 
     /// Utility function to delete a key & value in the batch
-    pub fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
+    fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
         batch.insert(key, None);
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
+    fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
         let db = &self.db;
 
         let handle = db.cf_handle(handle_str).expect(CF_ERROR);
@@ -740,9 +692,127 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Reset the database, and attach it to the given slot.
-    pub fn reset(&mut self, slot: Slot) {
+    fn reset(&mut self, slot: Slot) {
         self.set_initial_change_id(slot);
         self.change_history.clear();
         self.current_hashmap.write().clear();
+    }
+
+    fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        db.get_cf(handle, key)
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    /// Exposes RocksDB's "multi_get_cf" function
+    fn multi_get_cf(&self, query: Vec<(&str, Key)>) -> Vec<Result<Option<Value>, MassaDBError>> {
+        let db = &self.db;
+
+        let rocks_db_query = query
+            .into_iter()
+            .map(|(handle_cf, key)| (db.cf_handle(handle_cf).expect(CF_ERROR), key))
+            .collect::<Vec<_>>();
+
+        db.multi_get_cf(rocks_db_query)
+            .into_iter()
+            .map(|res| res.map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e))))
+            .collect()
+    }
+
+    /// Exposes RocksDB's "iterator_cf" function
+    fn iterator_cf(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        let rocksdb_mode = match mode {
+            MassaIteratorMode::Start => IteratorMode::Start,
+            MassaIteratorMode::End => IteratorMode::End,
+            MassaIteratorMode::From(key, MassaDirection::Forward) => {
+                IteratorMode::From(key, Direction::Forward)
+            }
+            MassaIteratorMode::From(key, MassaDirection::Reverse) => {
+                IteratorMode::From(key, Direction::Reverse)
+            }
+        };
+
+        Box::new(
+            db.iterator_cf(handle, rocksdb_mode)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Exposes RocksDB's "prefix_iterator_cf" function
+    fn prefix_iterator_cf(
+        &self,
+        handle_cf: &str,
+        prefix: &[u8],
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        Box::new(
+            db.prefix_iterator_cf(handle, prefix)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Get the current state hash of the database
+    fn get_db_hash(&self) -> Hash {
+        self.get_db_hash_opt()
+            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    }
+
+    /// Get the current change_id attached to the database.
+    fn get_change_id(&self) -> Result<Slot, ModelsError> {
+        self.get_change_id()
+    }
+
+    /// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
+    fn set_initial_change_id(&self, change_id: Slot) {
+        self.set_initial_change_id(change_id)
+    }
+
+    /// Flushes the underlying db.
+    fn flush(&self) -> Result<(), MassaDBError> {
+        self.db
+            .flush()
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    /// Write a stream_batch of database entries received from a bootstrap server
+    fn write_batch_bootstrap_client(
+        &mut self,
+        stream_changes: StreamBatch<Slot>,
+        stream_changes_versioning: StreamBatch<Slot>,
+    ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
+        self.write_batch_bootstrap_client(stream_changes, stream_changes_versioning)
+    }
+
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_batch_to_stream(
+        &self,
+        last_obtained: Option<(Vec<u8>, Slot)>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_batch_to_stream(last_obtained)
+    }
+
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_versioning_batch_to_stream(
+        &self,
+        last_obtained: Option<(Vec<u8>, Slot)>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_versioning_batch_to_stream(last_obtained)
     }
 }

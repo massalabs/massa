@@ -1,4 +1,5 @@
-use massa_db::{DBBatch, MassaDB, MassaDBConfig};
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
+use massa_db_worker::MassaDB;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -86,7 +87,9 @@ pub fn get_sample_state(
         max_new_elements: 100,
         thread_count: THREAD_COUNT,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
 
     let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();
