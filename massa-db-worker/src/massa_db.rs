@@ -160,7 +160,7 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_batch_to_stream(
@@ -250,7 +250,7 @@ where
         })
     }
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_versioning_batch_to_stream(
@@ -796,7 +796,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         self.write_batch_bootstrap_client(stream_changes, stream_changes_versioning)
     }
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<Slot>
     fn get_batch_to_stream(
@@ -806,7 +806,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         self.get_batch_to_stream(last_obtained)
     }
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
     ///
     /// Returns a StreamBatch<Slot>
     fn get_versioning_batch_to_stream(

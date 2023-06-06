@@ -65,7 +65,7 @@ pub trait MassaDBController: Send + Sync + Debug {
         stream_changes_versioning: StreamBatch<Slot>,
     ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError>;
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<Slot>
     fn get_batch_to_stream(
@@ -73,7 +73,7 @@ pub trait MassaDBController: Send + Sync + Debug {
         last_obtained: Option<(Vec<u8>, Slot)>,
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
     ///
     /// Returns a StreamBatch<Slot>
     fn get_versioning_batch_to_stream(
