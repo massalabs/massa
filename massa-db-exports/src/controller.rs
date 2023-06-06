@@ -6,6 +6,7 @@ use std::{fmt::Debug, sync::Arc};
 
 pub type ShareableMassaDBController = Arc<RwLock<Box<dyn MassaDBController>>>;
 
+/// Controller trait for the MassaDB
 pub trait MassaDBController: Send + Sync + Debug {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot);
@@ -81,12 +82,14 @@ pub trait MassaDBController: Send + Sync + Debug {
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
 }
 
+/// Similar to RocksDB's IteratorMode
 pub enum MassaIteratorMode<'a> {
     Start,
     End,
     From(&'a [u8], MassaDirection),
 }
 
+/// Similar to RocksDB's Direction
 pub enum MassaDirection {
     Forward,
     Reverse,

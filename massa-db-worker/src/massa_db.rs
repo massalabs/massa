@@ -787,6 +787,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
     }
 
+    /// Write a stream_batch of database entries received from a bootstrap server
     fn write_batch_bootstrap_client(
         &mut self,
         stream_changes: StreamBatch<Slot>,
@@ -795,6 +796,9 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         self.write_batch_bootstrap_client(stream_changes, stream_changes_versioning)
     }
 
+    /// Used for bootstrap servers (get a new batch to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
     fn get_batch_to_stream(
         &self,
         last_obtained: Option<(Vec<u8>, Slot)>,
@@ -802,6 +806,9 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         self.get_batch_to_stream(last_obtained)
     }
 
+    /// Used for bootstrap servers (get a new batch to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
     fn get_versioning_batch_to_stream(
         &self,
         last_obtained: Option<(Vec<u8>, Slot)>,
