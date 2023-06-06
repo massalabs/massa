@@ -89,9 +89,10 @@ impl TestFactory {
         let mip_store =
             MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
 
+        let (dir, wallet) = create_test_wallet(Some(accounts));
         let factory_manager = start_factory(
             factory_config.clone(),
-            Arc::new(RwLock::new(create_test_wallet(Some(accounts)))),
+            Arc::new(RwLock::new(wallet)),
             FactoryChannels {
                 selector: selector_controller.clone(),
                 consensus: consensus_controller,
