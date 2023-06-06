@@ -228,6 +228,7 @@ impl ExecutionState {
 
         if cfg!(feature = "metrics") {
             massa_metrics::set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
+            massa_metrics::set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
         }
     }
 

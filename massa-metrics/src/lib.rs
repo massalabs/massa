@@ -15,8 +15,14 @@ lazy_static! {
         register_int_counter!("operations_counter", "operations counter").unwrap();
 
         static ref CURRENT_SLOT: IntCounterVec = register_int_counter_vec!("current_slot", "help current slot", &["period","thread"]).unwrap();
-        static ref FINAL_CURSOR_PERIOD: IntGauge = register_int_gauge!("final_cursor_period", "final cursor period").unwrap();
-        static ref FINAL_CURSOR_THREAD: IntGauge = register_int_gauge!("final_cursor_thread", "final cursor thread").unwrap();
+
+
+        static ref FINAL_CURSOR_PERIOD: IntGauge = register_int_gauge!("final_cursor_period", "execution final cursor period").unwrap();
+        static ref FINAL_CURSOR_THREAD: IntGauge = register_int_gauge!("final_cursor_thread", "execution final cursor thread").unwrap();
+
+
+        static ref ACTIVE_CURSOR_PERIOD: IntGauge = register_int_gauge!("active_cursor_period", "execution active cursor period").unwrap();
+        static ref ACTIVE_CURSOR_THREAD: IntGauge = register_int_gauge!("active_cursor_thread", "execution active cursor thread").unwrap();
     // static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
 }
 
@@ -30,6 +36,11 @@ pub fn inc_blocks_counter() {
 
 pub fn inc_operations_counter() {
     OPERATIONS_COUNTER.inc();
+}
+
+pub fn set_active_cursor(period: u64, thread: u8) {
+    ACTIVE_CURSOR_THREAD.set(thread as i64);
+    ACTIVE_CURSOR_PERIOD.set(period as i64);
 }
 
 pub fn set_final_cursor(period: u64, thread: u8) {
