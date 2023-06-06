@@ -1622,28 +1622,6 @@
 <a href="#1622" id="1622">1622</a>
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
-<a href="#1625" id="1625">1625</a>
-<a href="#1626" id="1626">1626</a>
-<a href="#1627" id="1627">1627</a>
-<a href="#1628" id="1628">1628</a>
-<a href="#1629" id="1629">1629</a>
-<a href="#1630" id="1630">1630</a>
-<a href="#1631" id="1631">1631</a>
-<a href="#1632" id="1632">1632</a>
-<a href="#1633" id="1633">1633</a>
-<a href="#1634" id="1634">1634</a>
-<a href="#1635" id="1635">1635</a>
-<a href="#1636" id="1636">1636</a>
-<a href="#1637" id="1637">1637</a>
-<a href="#1638" id="1638">1638</a>
-<a href="#1639" id="1639">1639</a>
-<a href="#1640" id="1640">1640</a>
-<a href="#1641" id="1641">1641</a>
-<a href="#1642" id="1642">1642</a>
-<a href="#1643" id="1643">1643</a>
-<a href="#1644" id="1644">1644</a>
-<a href="#1645" id="1645">1645</a>
-<a href="#1646" id="1646">1646</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -1651,22 +1629,19 @@
 };
 <span class="kw">use crate</span>::{DeferredCredits, PoSConfig};
 <span class="kw">use </span>bitvec::vec::BitVec;
-<span class="kw">use </span>massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX,
-    CYCLE_HISTORY_SER_ERROR, DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX,
-    DEFERRED_CREDITS_SER_ERROR, STATE_CF,
+<span class="kw">use </span>massa_db_exports::{
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
+    CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX, CYCLE_HISTORY_SER_ERROR,
+    DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 <span class="kw">use </span>nom::AsBytes;
-<span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>rocksdb::{Direction, IteratorMode};
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 <span class="kw">use </span>std::ops::RangeBounds;
-<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::{collections::BTreeMap, path::PathBuf};
 <span class="kw">use </span>tracing::debug;
 
@@ -1776,7 +1751,7 @@
     <span class="doccomment">/// proof-of-stake configuration
     </span><span class="kw">pub </span>config: PoSConfig,
     <span class="doccomment">/// Access to the RocksDB database
-    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+    </span><span class="kw">pub </span>db: ShareableMassaDBController,
     <span class="doccomment">/// contiguous cycle history, back = newest
     </span><span class="kw">pub </span>cycle_history_cache: VecDeque&lt;(u64, bool)&gt;,
     <span class="doccomment">/// rng_seed cache to get rng_seed for the current cycle
@@ -1804,7 +1779,7 @@
         initial_seed_string: <span class="kw-2">&amp;</span>str,
         initial_rolls_path: <span class="kw-2">&amp;</span>PathBuf,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+        db: ShareableMassaDBController,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, PosError&gt; {
         <span class="comment">// load get initial rolls from file
         </span><span class="kw">let </span>initial_rolls = serde_json::from_str::&lt;BTreeMap&lt;Address, u64&gt;&gt;(
@@ -1941,11 +1916,10 @@
     <span class="doccomment">/// Deletes a given cycle from RocksDB
     </span><span class="kw">pub fn </span>delete_cycle_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle: u64, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
 
-        <span class="kw">for </span>(serialized_key, <span class="kw">_</span>) <span class="kw">in </span>db.db.prefix_iterator_cf(handle, <span class="kw-2">&amp;</span>prefix).flatten() {
+        <span class="kw">for </span>(serialized_key, <span class="kw">_</span>) <span class="kw">in </span>db.prefix_iterator_cf(STATE_CF, <span class="kw-2">&amp;</span>prefix) {
             <span class="kw">if </span>!serialized_key.starts_with(prefix.as_bytes()) {
                 <span class="kw">break</span>;
             }
@@ -2219,12 +2193,11 @@
             .and_then(|info| {
                 <span class="kw">let </span>cycle = info.<span class="number">0</span>;
                 <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-                <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
                 <span class="kw">let </span>key = <span class="macro">roll_count_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle), addr);
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(serialized_value) =
-                    db.db.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
+                    db.get_cf(STATE_CF, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
                     <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
                         </span>.cycle_info_deserializer
@@ -2247,12 +2220,11 @@
         <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
             <span class="prelude-val">Some</span>(lookback_cycle) =&gt; {
                 <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-                <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
                 <span class="kw">let </span>key = <span class="macro">roll_count_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(lookback_cycle), addr);
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(serialized_value) =
-                    db.db.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
+                    db.get_cf(STATE_CF, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
                     <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
                         </span>.cycle_info_deserializer
@@ -2277,7 +2249,6 @@
         </span>R: RangeBounds&lt;Slot&gt;,
     {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>deferred_credits = DeferredCredits::new_without_hash();
 
@@ -2305,14 +2276,10 @@
             <span class="kw">_ </span>=&gt; {}
         };
 
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db
-            .db
-            .iterator_cf(
-                handle,
-                IteratorMode::From(<span class="kw-2">&amp;</span>start_key_buffer, Direction::Forward),
-            )
-            .flatten()
-        {
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(<span class="kw-2">&amp;</span>start_key_buffer, MassaDirection::Forward),
+        ) {
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
@@ -2367,14 +2334,11 @@
     <span class="doccomment">/// Get all the roll counts for a given cycle
     </span><span class="kw">pub fn </span>get_all_roll_counts(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>roll_counts: BTreeMap&lt;Address, u64&gt; = BTreeMap::new();
 
         <span class="kw">let </span>prefix = <span class="macro">roll_count_prefix!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle));
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
-            </span>db.db.prefix_iterator_cf(handle, <span class="kw-2">&amp;</span>prefix).flatten()
-        {
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.prefix_iterator_cf(STATE_CF, <span class="kw-2">&amp;</span>prefix) {
             <span class="kw">if </span>!serialized_key.starts_with(prefix.as_bytes()) {
                 <span class="kw">break</span>;
             }
@@ -2423,16 +2387,13 @@
         cycle: u64,
     ) -&gt; PreHashMap&lt;Address, ProductionStats&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>production_stats: PreHashMap&lt;Address, ProductionStats&gt; = PreHashMap::default();
         <span class="kw">let </span><span class="kw-2">mut </span>cur_production_stat = ProductionStats::default();
         <span class="kw">let </span><span class="kw-2">mut </span>cur_address = <span class="prelude-val">None</span>;
 
         <span class="kw">let </span>prefix = <span class="macro">prod_stats_prefix!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle));
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
-            </span>db.db.prefix_iterator_cf(handle, <span class="kw-2">&amp;</span>prefix).flatten()
-        {
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.prefix_iterator_cf(STATE_CF, <span class="kw-2">&amp;</span>prefix) {
             <span class="kw">if </span>!serialized_key.starts_with(prefix.as_bytes()) {
                 <span class="kw">break</span>;
             }
@@ -2483,16 +2444,14 @@
     /// Panics if the cycle is not in the history.
     </span><span class="kw">fn </span>get_cycle_history_rng_seed(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BitVec&lt;u8&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>((cached_cycle, rng_seed)) = <span class="kw-2">&amp;</span><span class="self">self</span>.rng_seed_cache &amp;&amp; <span class="kw-2">*</span>cached_cycle == cycle {
             <span class="kw">return </span>rng_seed.clone();
         }
 
         <span class="kw">let </span>serialized_rng_seed = db
-            .db
             .get_cf(
-                handle,
+                STATE_CF,
                 <span class="macro">rng_seed_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle)),
             )
             .expect(CYCLE_HISTORY_DESER_ERROR)
@@ -2513,12 +2472,10 @@
     /// Panics if the cycle is not in the history.
     </span><span class="kw">fn </span>get_cycle_history_final_state_hash_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;Hash&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span>serialized_state_hash = db
-            .db
             .get_cf(
-                handle,
+                STATE_CF,
                 <span class="macro">final_state_hash_snapshot_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle)),
             )
             .expect(CYCLE_HISTORY_DESER_ERROR)
@@ -2536,26 +2493,26 @@
     ///
     </span><span class="kw">fn </span>get_cycle_history_cycles(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(u64, bool)&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>found_cycles: Vec&lt;(u64, bool)&gt; = Vec::new();
 
-        <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((serialized_key, <span class="kw">_</span>))) = <span class="kw">match </span>found_cycles.last() {
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_key, <span class="kw">_</span>)) = <span class="kw">match </span>found_cycles.last() {
             <span class="prelude-val">Some</span>((prev_cycle, <span class="kw">_</span>)) =&gt; db
-                .db
                 .iterator_cf(
-                    handle,
-                    IteratorMode::From(
+                    STATE_CF,
+                    MassaIteratorMode::From(
                         <span class="kw-2">&amp;</span><span class="self">self</span>.cycle_history_cycle_prefix(prev_cycle.saturating_add(<span class="number">1</span>)),
-                        Direction::Forward,
+                        MassaDirection::Forward,
                     ),
                 )
                 .next(),
             <span class="prelude-val">None </span>=&gt; db
-                .db
                 .iterator_cf(
-                    handle,
-                    IteratorMode::From(CYCLE_HISTORY_PREFIX.as_bytes(), Direction::Forward),
+                    STATE_CF,
+                    MassaIteratorMode::From(
+                        CYCLE_HISTORY_PREFIX.as_bytes(),
+                        MassaDirection::Forward,
+                    ),
                 )
                 .next(),
         } {
@@ -2596,7 +2553,6 @@
     <span class="doccomment">/// Gets the deferred credits for a given address that will be credited at a given slot
     </span><span class="kw">pub fn </span>get_address_credits_for_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, slot: <span class="kw-2">&amp;</span>Slot) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         <span class="self">self</span>.deferred_credits_serializer
@@ -2609,7 +2565,7 @@
             .serialize(addr, <span class="kw-2">&amp;mut </span>serialized_key)
             .expect(DEFERRED_CREDITS_SER_ERROR);
 
-        <span class="kw">match </span>db.db.get_cf(handle, <span class="macro">deferred_credits_key!</span>(serialized_key)) {
+        <span class="kw">match </span>db.get_cf(STATE_CF, <span class="macro">deferred_credits_key!</span>(serialized_key)) {
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(serialized_amount)) =&gt; {
                 <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
                     </span>.deferred_credits_deserializer
@@ -2630,16 +2586,15 @@
         address: Address,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;ProductionStats&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
 
         <span class="kw">let </span>query = <span class="macro">vec!</span>[
-            (handle, <span class="macro">prod_stats_fail_key!</span>(prefix, address)),
-            (handle, <span class="macro">prod_stats_success_key!</span>(prefix, address)),
+            (STATE_CF, <span class="macro">prod_stats_fail_key!</span>(prefix, address)),
+            (STATE_CF, <span class="macro">prod_stats_success_key!</span>(prefix, address)),
         ];
 
-        <span class="kw">let </span>results = db.db.multi_get_cf(query);
+        <span class="kw">let </span>results = db.multi_get_cf(query);
 
         <span class="kw">match </span>(results.get(<span class="number">0</span>), results.get(<span class="number">1</span>)) {
             (<span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(serialized_fail))), <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(serialized_success)))) =&gt; {
@@ -2669,11 +2624,10 @@
 
     <span class="kw">fn </span>is_cycle_complete(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; bool {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
 
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(complete_value)) = db.db.get_cf(handle, <span class="macro">complete_key!</span>(prefix)) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(complete_value)) = db.get_cf(STATE_CF, <span class="macro">complete_key!</span>(prefix)) {
             complete_value.len() == <span class="number">1 </span>&amp;&amp; complete_value[<span class="number">0</span>] == <span class="number">1
         </span>} <span class="kw">else </span>{
             <span class="bool-val">false
@@ -3069,14 +3023,11 @@
     <span class="doccomment">/// Queries all the deferred credits in the database
     </span><span class="kw">pub fn </span>get_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DeferredCredits {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>deferred_credits = DeferredCredits::new_with_hash();
 
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db
-            .db
-            .prefix_iterator_cf(handle, DEFERRED_CREDITS_PREFIX)
-            .flatten()
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
+            </span>db.prefix_iterator_cf(STATE_CF, DEFERRED_CREDITS_PREFIX.as_bytes())
         {
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
@@ -3112,13 +3063,16 @@
     <span class="kw">use </span><span class="kw">crate</span>::DeferredCredits;
     <span class="kw">use </span><span class="kw">crate</span>::PoSFinalState;
     <span class="kw">use </span>bitvec::prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig};
+    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
+    <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>massa_models::config::constants::{
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
     };
     <span class="kw">use </span>massa_signature::KeyPair;
+    <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>std::collections::HashMap;
+    <span class="kw">use </span>std::sync::Arc;
     <span class="kw">use </span>tempfile::TempDir;
 
     <span class="kw">let </span>pos_config = PoSConfig {
@@ -3138,7 +3092,9 @@
         max_new_elements: <span class="number">100</span>,
         thread_count: <span class="number">2</span>,
     };
-    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    <span class="kw">let </span>db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn for</span>&lt;<span class="lifetime">&#39;a</span>&gt; MassaDBController&lt;<span class="lifetime">&#39;a</span>&gt; + <span class="lifetime">&#39;static</span>)&gt;
+    ));
     <span class="kw">let </span>(selector_controller, <span class="kw">_</span>) = MockSelectorController::new_with_receiver();
     <span class="kw">let </span>init_seed = Hash::compute_from(<span class="string">b&quot;&quot;</span>);
     <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
