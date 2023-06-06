@@ -268,7 +268,7 @@
                 <span class="kw">let </span>path = entry.path();
                 <span class="kw">if </span>path.is_file() {
                     <span class="kw">let </span>content = <span class="kw-2">&amp;</span>std::fs::read(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>[..];
-                    <span class="kw">let </span>wallet = serde_yaml::from_slice::&lt;WalletFileFormat&gt;(<span class="kw-2">&amp;</span>content[..])<span class="question-mark">?</span>;
+                    <span class="kw">let </span>wallet = serde_yaml::from_slice::&lt;WalletFileFormat&gt;(content)<span class="question-mark">?</span>;
                     <span class="kw">let </span>secret_key = decrypt(
                         <span class="kw-2">&amp;</span>password,
                         CipherData {
@@ -386,7 +386,7 @@
             };
             <span class="kw">let </span>ser_keys = serde_yaml::to_string(<span class="kw-2">&amp;</span>file_formatted)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>file_path = <span class="self">self</span>.wallet_path.clone();
-            file_path.push(<span class="macro">format!</span>(<span class="string">&quot;wallet_{}&quot;</span>, addr.to_string()));
+            file_path.push(<span class="macro">format!</span>(<span class="string">&quot;wallet_{}&quot;</span>, addr));
             file_path.set_extension(<span class="string">&quot;.yaml&quot;</span>);
             std::fs::write(<span class="kw-2">&amp;</span>file_path, ser_keys)<span class="question-mark">?</span>;
         }
