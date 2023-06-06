@@ -6,9 +6,6 @@
 
 use pbkdf2::Params;
 
-/// Cipher version
-pub const VERSION: u32 = 0;
-
 /// AES-GCM-SIV nonce size.
 ///
 /// A nonce is a single-use value which enables securely encrypting multiple messages under the same key.
@@ -16,7 +13,7 @@ pub const VERSION: u32 = 0;
 pub const NONCE_SIZE: usize = 12;
 
 /// `PBKDF2` salt size.
-pub const SALT_SIZE: usize = 12;
+pub const SALT_SIZE: usize = 16;
 
 /// `PBKDF2` hash parameters.
 pub const HASH_PARAMS: Params = Params {

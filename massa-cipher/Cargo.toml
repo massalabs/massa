@@ -11,6 +11,3 @@ thiserror = "1.0"
 aes-gcm = "0.10"
 pbkdf2 = "0.11"
 rand = "0.8"
-
-# custom modules
-massa_serialization = { path = "../massa-serialization" }

@@ -50,7 +50,7 @@ struct Args {
         short = "w",
         long = "wallet",
         parse(from_os_str),
-        default_value = "wallet.dat"
+        default_value = "wallet.yaml"
     )]
     wallet: PathBuf,
     /// Enable a mode where input/output are serialized as JSON

@@ -7,7 +7,7 @@
 
 pub use error::WalletError;
 
-use massa_cipher::{decrypt, encrypt};
+use massa_cipher::{decrypt, encrypt, CipherData};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
@@ -17,6 +17,7 @@ use massa_models::secure_share::SecureShareContent;
 use massa_signature::{KeyPair, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 mod error;
 
@@ -31,14 +32,35 @@ pub struct Wallet {
     pub password: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+/// Follow the standard: https://github.com/massalabs/massa-standards/blob/main/wallet/file-format.md
+struct WalletFileFormat {
+    version: u64,
+    nickname: String,
+    address: String,
+    salt: [u8; 16],
+    nonce: [u8; 12],
+    ciphered_data: Vec<u8>,
+    public_key: Vec<u8>
+}
+
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
         if path.is_file() {
             let content = &std::fs::read(&path)?[..];
-            let (_version, decrypted_content) = decrypt(&password, content)?;
-            let keys =
-                serde_json::from_slice::<PreHashMap<Address, KeyPair>>(&decrypted_content[..])?;
+            let wallet =
+                serde_yaml::from_slice::<WalletFileFormat>(&content[..])?;
+            let secret_key = decrypt(&password, CipherData {
+                salt: wallet.salt,
+                nonce: wallet.nonce,
+                encrypted_bytes: wallet.ciphered_data
+            })?;
+            let mut keys = PreHashMap::default();
+            keys.insert(
+                Address::from_str(&wallet.address)?,
+                KeyPair::from_bytes(&secret_key)?,
+            );
             Ok(Wallet {
                 keys,
                 wallet_path: path,
@@ -126,9 +148,20 @@ impl Wallet {
     /// Save the wallet in json format in a file
     /// Only the keypair is dumped
     fn save(&self) -> Result<(), WalletError> {
-        let ser_keys = serde_json::to_string(&self.keys)?;
-        let encrypted_content = encrypt(&self.password, ser_keys.as_bytes())?;
-        std::fs::write(&self.wallet_path, encrypted_content)?;
+        for (addr, keypair) in &self.keys {
+            let encrypted_secret = encrypt(&self.password, &keypair.to_bytes())?;
+            let file_formatted = WalletFileFormat {
+                version: keypair.get_version(),
+                nickname: "default-massa-wallet".to_string(),
+                address: addr.to_string(),
+                salt: encrypted_secret.salt,
+                nonce: encrypted_secret.nonce,
+                ciphered_data: encrypted_secret.encrypted_bytes,
+                public_key: keypair.get_public_key().to_bytes().to_vec()
+            };
+            let ser_keys = serde_yaml::to_string(&file_formatted)?;
+            std::fs::write(&self.wallet_path, ser_keys)?;
+        }
         Ok(())
     }
 

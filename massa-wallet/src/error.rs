@@ -11,13 +11,15 @@ pub enum WalletError {
     /// IO error: {0}
     IOError(#[from] std::io::Error),
     /// JSON error: {0}
-    JSONError(#[from] serde_json::Error),
+    YAMLError(#[from] serde_yaml::Error),
     /// Serde Sq error: {0}
     SerdeqsError(#[from] serde_qs::Error),
     /// Models error: {0}
     ModelsError(#[from] massa_models::error::ModelsError),
     /// `MassaHash` error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
+    /// `MassaSignature` error: {0}
+    MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// Missing key error: {0}
     MissingKeyError(Address),
     /// `MassaCipher` error: {0}

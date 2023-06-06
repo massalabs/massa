@@ -11,32 +11,17 @@ use pbkdf2::{
     Pbkdf2,
 };
 
-use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
+use crate::constants::HASH_PARAMS;
+use crate::encrypt::CipherData;
 use crate::error::CipherError;
-use massa_serialization::{DeserializeError, Deserializer, U32VarIntDeserializer};
-
-use std::ops::Bound::Included;
 
 /// Decryption function using AES-GCM cipher.
 ///
 /// Read `lib.rs` module documentation for more information.
-pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherError> {
-    // parse cipher version
-    let (rest, version) = U32VarIntDeserializer::new(Included(0), Included(u32::MAX))
-        .deserialize::<DeserializeError>(data)
-        .map_err(|_| {
-            CipherError::DecryptionError(
-                "wallet file truncated: version missing or incomplete".to_string(),
-            )
-        })?;
-
+pub fn decrypt(password: &str, data: CipherData) -> Result<Vec<u8>, CipherError> {
     // parse PBKDF2 salt
-    let salt_data = rest.get(..SALT_SIZE).ok_or_else(|| {
-        CipherError::DecryptionError(
-            "wallet file truncated: salt missing or incomplete".to_string(),
-        )
-    })?;
-    let salt = SaltString::new(std::str::from_utf8(salt_data)?)
+    let salt_data = data.salt;
+    let salt = SaltString::new(std::str::from_utf8(&salt_data)?)
         .map_err(|e| CipherError::DecryptionError(e.to_string()))?;
 
     // compute PBKDF2 password hash
@@ -47,26 +32,17 @@ pub fn decrypt(password: &str, data: &[u8]) -> Result<(u32, Vec<u8>), CipherErro
         .expect("content is missing after a successful hash");
 
     // parse AES-GCM nonce
-    let nonce_end_index = SALT_SIZE + NONCE_SIZE;
-    let nonce = Nonce::from_slice(rest.get(SALT_SIZE..nonce_end_index).ok_or_else(|| {
-        CipherError::DecryptionError(
-            "wallet file truncated: nonce missing or incomplete".to_string(),
-        )
-    })?);
+    let nonce = Nonce::from_slice(&data.nonce);
 
     // decrypt the data
     let cipher = Aes256Gcm::new_from_slice(password_hash.as_bytes()).expect("invalid size key");
     let decrypted_bytes = cipher
         .decrypt(
             nonce,
-            rest.get(nonce_end_index..).ok_or_else(|| {
-                CipherError::DecryptionError(
-                    "wallet file truncated: encrypted data missing or incomplete".to_string(),
-                )
-            })?,
+            data.encrypted_bytes.as_ref()
         )
         .map_err(|_| {
             CipherError::DecryptionError("wrong password or corrupted data".to_string())
         })?;
-    Ok((version, decrypted_bytes))
+    Ok(decrypted_bytes)
 }

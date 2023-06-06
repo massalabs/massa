@@ -10,14 +10,19 @@ use pbkdf2::password_hash::Salt;
 use pbkdf2::{password_hash::PasswordHasher, Pbkdf2};
 use rand::{distributions::Alphanumeric, thread_rng, Rng, RngCore};
 
-use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE, VERSION};
+use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
 use crate::error::CipherError;
-use massa_serialization::{Serializer, U32VarIntSerializer};
+
+pub struct CipherData {
+    pub salt: [u8; SALT_SIZE],
+    pub nonce: [u8; NONCE_SIZE],
+    pub encrypted_bytes: Vec<u8>,
+}
 
 /// Encryption function using AES-GCM cipher.
 ///
 /// Read `lib.rs` module documentation for more information.
-pub fn encrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
+pub fn encrypt(password: &str, data: &[u8]) -> Result<CipherData, CipherError> {
     // generate the PBKDF2 salt
     let raw_salt: String = thread_rng()
         .sample_iter(&Alphanumeric)
@@ -45,12 +50,10 @@ pub fn encrypt(password: &str, data: &[u8]) -> Result<Vec<u8>, CipherError> {
         .map_err(|e| CipherError::EncryptionError(e.to_string()))?;
 
     // build the encryption result
-    let mut content = Vec::new();
-    U32VarIntSerializer::new()
-        .serialize(&VERSION, &mut content)
-        .map_err(|err| CipherError::EncryptionError(err.to_string()))?;
-    content.extend(salt.as_bytes());
-    content.extend(nonce_bytes);
-    content.extend(encrypted_bytes);
-    Ok(content)
+    let result = CipherData {
+        salt: salt.as_bytes().try_into().expect("invalid salt length"),
+        nonce: nonce_bytes,
+        encrypted_bytes,
+    };
+    Ok(result)
 }
