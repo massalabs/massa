@@ -1,6 +1,6 @@
-use crate::{DBBatch, Key, MassaDBError, Value};
+use crate::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 use massa_hash::Hash;
-use massa_models::{error::ModelsError, slot::Slot};
+use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
 use std::fmt::Debug;
 
 pub trait MassaDBController<'a>: Send + Sync + Debug {
@@ -50,6 +50,32 @@ pub trait MassaDBController<'a>: Send + Sync + Debug {
 
     /// Get the current state hash of the database
     fn get_db_hash(&self) -> Hash;
+
+    /// Flushes the underlying db.
+    fn flush(&self) -> Result<(), MassaDBError>;
+
+    /// Write a stream_batch of database entries received from a bootstrap server
+    fn write_batch_bootstrap_client(
+        &mut self,
+        stream_changes: StreamBatch<Slot>,
+        stream_changes_versioning: StreamBatch<Slot>,
+    ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError>;
+
+    /// Used for bootstrap servers (get a new batch to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_batch_to_stream(
+        &self,
+        last_obtained: Option<(Vec<u8>, Slot)>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError>;
+
+    /// Used for bootstrap servers (get a new batch to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_versioning_batch_to_stream(
+        &self,
+        last_obtained: Option<(Vec<u8>, Slot)>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError>;
 }
 
 pub enum MassaIteratorMode<'a> {

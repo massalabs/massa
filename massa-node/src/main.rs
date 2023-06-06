@@ -22,7 +22,8 @@ use massa_bootstrap::{
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_db_worker::{MassaDB, MassaDBConfig};
+use massa_db_exports::{MassaDBConfig, MassaDBController};
+use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -214,7 +215,9 @@ async fn launch(
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
         thread_count: THREAD_COUNT,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn for<'a> MassaDBController<'a> + 'static)>
+    ));
 
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
