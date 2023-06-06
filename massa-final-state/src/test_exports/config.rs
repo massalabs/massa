@@ -6,7 +6,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
-use massa_db_worker::MassaDB;
+use massa_db_exports::MassaDBController;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };
@@ -27,7 +27,7 @@ impl FinalState {
     pub fn create_final_state(
         pos_state: PoSFinalState,
         config: FinalStateConfig,
-        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     ) -> Self {
         FinalState {
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),

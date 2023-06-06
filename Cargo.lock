@@ -2622,6 +2622,7 @@ name = "massa_executed_ops"
 version = "0.23.0"
 dependencies = [
  "massa_db_exports",
+ "massa_db_worker",
  "massa_hash",
  "massa_ledger_worker",
  "massa_models",
@@ -2830,6 +2831,7 @@ name = "massa_ledger_worker"
 version = "0.23.0"
 dependencies = [
  "massa_db_exports",
+ "massa_db_worker",
  "massa_hash",
  "massa_ledger_exports",
  "massa_models",
@@ -2936,6 +2938,7 @@ dependencies = [
  "crossbeam-channel",
  "displaydoc",
  "massa_db_exports",
+ "massa_db_worker",
  "massa_hash",
  "massa_models",
  "massa_serialization",
@@ -3100,6 +3103,7 @@ version = "0.23.0"
 dependencies = [
  "machine",
  "massa_db_exports",
+ "massa_db_worker",
  "massa_hash",
  "massa_models",
  "massa_proto",

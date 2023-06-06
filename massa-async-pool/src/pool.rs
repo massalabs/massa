@@ -192,7 +192,7 @@ macro_rules! message_id_prefix {
 pub struct AsyncPool {
     /// Asynchronous pool configuration
     pub config: AsyncPoolConfig,
-    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
+    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
     pub message_info_cache: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
@@ -202,7 +202,10 @@ pub struct AsyncPool {
 
 impl AsyncPool {
     /// Creates an empty `AsyncPool`
-    pub fn new(config: AsyncPoolConfig, db: Arc<RwLock<Box<dyn MassaDBController>>>) -> AsyncPool {
+    pub fn new(
+        config: AsyncPoolConfig,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
+    ) -> AsyncPool {
         AsyncPool {
             config: config.clone(),
             db,

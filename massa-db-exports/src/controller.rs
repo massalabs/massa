@@ -1,10 +1,17 @@
 use crate::{DBBatch, Key, MassaDBError, Value};
-use massa_models::slot::Slot;
+use massa_hash::Hash;
+use massa_models::{error::ModelsError, slot::Slot};
 use std::fmt::Debug;
 
-pub trait MassaDBController: Send + Sync + Debug {
+pub trait MassaDBController<'a>: Send + Sync + Debug {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot);
+
+    /// Get the current change_id attached to the database.
+    fn get_change_id(&self) -> Result<Slot, ModelsError>;
+
+    /// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
+    fn set_initial_change_id(&self, change_id: Slot);
 
     /// Writes the batch to the DB
     fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>);
@@ -29,17 +36,20 @@ pub trait MassaDBController: Send + Sync + Debug {
 
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
-        &self,
+        &'a self,
         handle_cf: &str,
         mode: MassaIteratorMode,
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a>;
 
     /// Exposes RocksDB's "prefix_iterator_cf" function
     fn prefix_iterator_cf(
-        &self,
+        &'a self,
         handle_cf: &str,
         prefix: &[u8],
-    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + 'a>;
+
+    /// Get the current state hash of the database
+    fn get_db_hash(&self) -> Hash;
 }
 
 pub enum MassaIteratorMode<'a> {

@@ -8,13 +8,12 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use massa_async_pool::AsyncPool;
-use massa_db_exports::MassaDBController;
 use massa_db_exports::{
     DBBatch, ASYNC_POOL_PREFIX, CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX,
     DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX,
     MIP_STORE_PREFIX, STATE_CF,
 };
-use massa_db_worker::MassaDB;
+use massa_db_exports::{MassaDBController, MassaIteratorMode};
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
@@ -55,7 +54,7 @@ pub struct FinalState {
     /// * If from bootstrap: set during bootstrap
     pub last_slot_before_downtime: Option<Slot>,
     /// the rocksdb instance used to write every final_state struct on disk
-    pub db: Arc<RwLock<Box<dyn MassaDBController>>>,
+    pub db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
 }
 
 impl FinalState {
@@ -67,7 +66,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `reset_final_state`: if true, we only keep the ledger, and we reset the other fields of the final state
     pub fn new(
-        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -151,7 +150,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     pub fn new_derived_from_snapshot(
-        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        db: Arc<RwLock<Box<dyn for<'a> MassaDBController<'a>>>>,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -620,12 +619,8 @@ impl FinalState {
     /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
     pub fn is_db_valid(&self) -> bool {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).unwrap();
 
-        for (serialized_key, serialized_value) in db
-            .db
-            .iterator_cf(handle, MassaIteratorMode::Start)
-            .flatten()
+        for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
         {
             if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
                 && !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())

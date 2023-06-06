@@ -16,3 +16,4 @@ massa_db_exports = { path = "../massa-db-exports" }
 [dev-dependencies]
 tempfile = "3.3"
 massa_ledger_worker = { path = "../massa-ledger-worker" }
+massa_db_worker = { path = "../massa-db-worker" }
