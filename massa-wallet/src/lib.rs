@@ -41,7 +41,7 @@ struct WalletFileFormat {
     salt: [u8; 16],
     nonce: [u8; 12],
     ciphered_data: Vec<u8>,
-    public_key: Vec<u8>
+    public_key: Vec<u8>,
 }
 
 impl Wallet {
@@ -49,13 +49,15 @@ impl Wallet {
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
         if path.is_file() {
             let content = &std::fs::read(&path)?[..];
-            let wallet =
-                serde_yaml::from_slice::<WalletFileFormat>(&content[..])?;
-            let secret_key = decrypt(&password, CipherData {
-                salt: wallet.salt,
-                nonce: wallet.nonce,
-                encrypted_bytes: wallet.ciphered_data
-            })?;
+            let wallet = serde_yaml::from_slice::<WalletFileFormat>(&content[..])?;
+            let secret_key = decrypt(
+                &password,
+                CipherData {
+                    salt: wallet.salt,
+                    nonce: wallet.nonce,
+                    encrypted_bytes: wallet.ciphered_data,
+                },
+            )?;
             let mut keys = PreHashMap::default();
             keys.insert(
                 Address::from_str(&wallet.address)?,
@@ -157,7 +159,7 @@ impl Wallet {
                 salt: encrypted_secret.salt,
                 nonce: encrypted_secret.nonce,
                 ciphered_data: encrypted_secret.encrypted_bytes,
-                public_key: keypair.get_public_key().to_bytes().to_vec()
+                public_key: keypair.get_public_key().to_bytes().to_vec(),
             };
             let ser_keys = serde_yaml::to_string(&file_formatted)?;
             std::fs::write(&self.wallet_path, ser_keys)?;

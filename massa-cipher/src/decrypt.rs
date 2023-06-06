@@ -37,10 +37,7 @@ pub fn decrypt(password: &str, data: CipherData) -> Result<Vec<u8>, CipherError>
     // decrypt the data
     let cipher = Aes256Gcm::new_from_slice(password_hash.as_bytes()).expect("invalid size key");
     let decrypted_bytes = cipher
-        .decrypt(
-            nonce,
-            data.encrypted_bytes.as_ref()
-        )
+        .decrypt(nonce, data.encrypted_bytes.as_ref())
         .map_err(|_| {
             CipherError::DecryptionError("wrong password or corrupted data".to_string())
         })?;
