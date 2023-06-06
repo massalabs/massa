@@ -37,7 +37,7 @@
 </span><span class="kw">pub enum </span>WalletError {
     <span class="doccomment">/// IO error: {0}
     </span>IOError(<span class="attr">#[from] </span>std::io::Error),
-    <span class="doccomment">/// JSON error: {0}
+    <span class="doccomment">/// YAML error: {0}
     </span>YAMLError(<span class="attr">#[from] </span>serde_yaml::Error),
     <span class="doccomment">/// Serde Sq error: {0}
     </span>SerdeqsError(<span class="attr">#[from] </span>serde_qs::Error),
