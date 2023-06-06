@@ -54,7 +54,7 @@ impl Wallet {
                 let path = entry.path();
                 if path.is_file() {
                     let content = &std::fs::read(&path)?[..];
-                    let wallet = serde_yaml::from_slice::<WalletFileFormat>(&content[..])?;
+                    let wallet = serde_yaml::from_slice::<WalletFileFormat>(content)?;
                     let secret_key = decrypt(
                         &password,
                         CipherData {
@@ -172,7 +172,7 @@ impl Wallet {
             };
             let ser_keys = serde_yaml::to_string(&file_formatted)?;
             let mut file_path = self.wallet_path.clone();
-            file_path.push(format!("wallet_{}", addr.to_string()));
+            file_path.push(format!("wallet_{}", addr));
             file_path.set_extension(".yaml");
             std::fs::write(&file_path, ser_keys)?;
         }
