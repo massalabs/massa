@@ -17,4 +17,4 @@ tracing = "0.1"
 massa_channel = { path = "../massa-channel" }
 
 [features]
-metrics = []
+metrics = ["massa_channel/metrics"]
