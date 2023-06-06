@@ -1222,7 +1222,7 @@ async fn launch_loop(
                 .expect("double-lock() on interupted signal mutex");
             let wake = sigint_cv_pair
                 .1
-                .wait_timeout_ms(int_sig, 100)
+                .wait_timeout(int_sig, Duration::from_millis(100))
                 .expect("interupt signal mutex poisoned");
             if *wake.0 {
                 info!("interrupt signal received");
