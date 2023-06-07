@@ -2726,6 +2726,7 @@ name = "massa_factory_worker"
 version = "0.23.0"
 dependencies = [
  "crossbeam-channel",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_factory_exports",
  "massa_hash",

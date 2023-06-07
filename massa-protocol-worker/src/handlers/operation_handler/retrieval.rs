@@ -84,6 +84,7 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver) -> msg => {
+                    self.receiver.inc_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match operation_message_deserializer
@@ -132,6 +133,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver_ext) -> msg => {
+                    self.receiver_ext.inc_metrics();
                     match msg {
                         Ok(cmd) => match cmd {
                             OperationHandlerRetrievalCommand::Stop => {

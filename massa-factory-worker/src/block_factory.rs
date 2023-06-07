@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_channel::receiver::MassaReceiver;
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
@@ -16,11 +17,7 @@ use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::{
-    sync::{mpsc, Arc},
-    thread,
-    time::Instant,
-};
+use std::{sync::Arc, thread, time::Instant};
 use tracing::{debug, info, warn};
 
 /// Structure gathering all elements needed by the factory thread
@@ -28,7 +25,7 @@ pub(crate) struct BlockFactoryWorker {
     cfg: FactoryConfig,
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
-    factory_receiver: mpsc::Receiver<()>,
+    factory_receiver: MassaReceiver<()>,
     mip_store: MipStore,
 }
 
@@ -39,7 +36,7 @@ impl BlockFactoryWorker {
         cfg: FactoryConfig,
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
-        factory_receiver: mpsc::Receiver<()>,
+        factory_receiver: MassaReceiver<()>,
         mip_store: MipStore,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
@@ -116,9 +113,9 @@ impl BlockFactoryWorker {
             // message received => quit main loop
             Ok(()) => false,
             // timeout => continue main loop
-            Err(mpsc::RecvTimeoutError::Timeout) => true,
+            Err(crossbeam_channel::RecvTimeoutError::Timeout) => true,
             // channel disconnected (sender dropped) => quit main loop
-            Err(mpsc::RecvTimeoutError::Disconnected) => false,
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => false,
         }
     }
 

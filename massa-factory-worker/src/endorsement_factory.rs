@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_channel::receiver::MassaReceiver;
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_models::{
     block_id::BlockId,
@@ -12,11 +13,7 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::{
-    sync::{mpsc, Arc},
-    thread,
-    time::Instant,
-};
+use std::{sync::Arc, thread, time::Instant};
 use tracing::{debug, warn};
 
 /// Structure gathering all elements needed by the factory thread
@@ -24,7 +21,7 @@ pub(crate) struct EndorsementFactoryWorker {
     cfg: FactoryConfig,
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
-    factory_receiver: mpsc::Receiver<()>,
+    factory_receiver: MassaReceiver<()>,
     half_t0: MassaTime,
     endorsement_serializer: EndorsementSerializer,
 }
@@ -36,7 +33,7 @@ impl EndorsementFactoryWorker {
         cfg: FactoryConfig,
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
-        factory_receiver: mpsc::Receiver<()>,
+        factory_receiver: MassaReceiver<()>,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
             .name("endorsement-factory".into())
@@ -117,9 +114,9 @@ impl EndorsementFactoryWorker {
             // message received => quit main loop
             Ok(()) => false,
             // timeout => continue main loop
-            Err(mpsc::RecvTimeoutError::Timeout) => true,
+            Err(crossbeam_channel::RecvTimeoutError::Timeout) => true,
             // channel disconnected (sender dropped) => quit main loop
-            Err(mpsc::RecvTimeoutError::Disconnected) => false,
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => false,
         }
     }
 

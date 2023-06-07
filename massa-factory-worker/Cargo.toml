@@ -11,6 +11,7 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 crossbeam-channel = "0.5"
 tracing = "0.1"
 # custom modules
+massa_channel = { path = "../massa-channel" }
 massa_models = { path = "../massa-models" }
 massa_factory_exports = { path = "../massa-factory-exports" }
 massa_signature = { path = "../massa-signature" }
