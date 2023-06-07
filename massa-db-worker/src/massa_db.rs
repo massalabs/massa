@@ -535,17 +535,10 @@ where
     ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
         let mut changes = BTreeMap::new();
 
-        let new_cursor = match stream_changes.new_elements.last_key_value() {
+        let new_cursor: StreamingStep<Vec<u8>> = match stream_changes.new_elements.last_key_value()
+        {
             Some((k, _)) => StreamingStep::Ongoing(k.clone()),
-            None => {
-                let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-                match self.db.iterator_cf(handle, IteratorMode::End).next() {
-                    Some(Ok((serialized_key, _value))) => {
-                        StreamingStep::Finished(Some(serialized_key.to_vec()))
-                    }
-                    _ => StreamingStep::Finished(None),
-                }
-            }
+            None => StreamingStep::Finished(None),
         };
 
         changes.extend(stream_changes.updates_on_previous_elements);
@@ -560,15 +553,7 @@ where
 
         let new_cursor_versioning = match stream_changes_versioning.new_elements.last_key_value() {
             Some((k, _)) => StreamingStep::Ongoing(k.clone()),
-            None => {
-                let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-                match self.db.iterator_cf(handle, IteratorMode::End).next() {
-                    Some(Ok((serialized_key, _value))) => {
-                        StreamingStep::Finished(Some(serialized_key.to_vec()))
-                    }
-                    _ => StreamingStep::Finished(None),
-                }
-            }
+            None => StreamingStep::Finished(None),
         };
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
