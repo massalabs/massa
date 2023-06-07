@@ -48,6 +48,12 @@ impl OperationIndexes {
     /// * `operation_id`: the operation id to remove
     pub(crate) fn remove(&mut self, operation_id: &OperationId) -> Option<SecureShareOperation> {
         if let Some(o) = self.operations.remove(operation_id) {
+            #[cfg(feature = "metrics")]
+            {
+                use massa_metrics::dec_operations_counter;
+                dec_operations_counter();
+            }
+
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =
                 self.index_by_creator.entry(o.content_creator_address)

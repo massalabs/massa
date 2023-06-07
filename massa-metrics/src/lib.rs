@@ -1,18 +1,15 @@
 use lazy_static::lazy_static;
-use prometheus::{
-    register_int_counter, register_int_counter_vec, register_int_gauge, IntCounter, IntCounterVec,
-    IntGauge,
-};
+use prometheus::{register_int_counter_vec, register_int_gauge, IntCounterVec, IntGauge};
 
 mod server;
 
 // TODO load only if feature metrics is enabled
 lazy_static! {
-    static ref BLOCKS_COUNTER: IntCounter =
-        register_int_counter!("blocks_counter", "blocks len").unwrap();
+    static ref BLOCKS_COUNTER: IntGauge =
+    register_int_gauge!("blocks_counter", "blocks len").unwrap();
 
-        static ref OPERATIONS_COUNTER: IntCounter =
-        register_int_counter!("operations_counter", "operations counter").unwrap();
+        static ref OPERATIONS_COUNTER: IntGauge =
+        register_int_gauge!("operations_counter", "operations counter").unwrap();
 
         static ref CURRENT_SLOT: IntCounterVec = register_int_counter_vec!("current_slot", "help current slot", &["period","thread"]).unwrap();
 
@@ -34,8 +31,16 @@ pub fn inc_blocks_counter() {
     BLOCKS_COUNTER.inc();
 }
 
+pub fn dec_blocks_counter() {
+    BLOCKS_COUNTER.dec();
+}
+
 pub fn inc_operations_counter() {
     OPERATIONS_COUNTER.inc();
+}
+
+pub fn dec_operations_counter() {
+    OPERATIONS_COUNTER.dec();
 }
 
 pub fn set_active_cursor(period: u64, thread: u8) {
