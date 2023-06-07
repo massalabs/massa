@@ -756,21 +756,6 @@
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1257,41 +1242,37 @@
                     BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Error get_batch_to_stream: {}&quot;</span>, e))
                 })<span class="question-mark">?</span>;
 
-            <span class="comment">// TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            </span><span class="kw">let </span>new_state_step = <span class="kw">match </span>(
-                <span class="kw-2">&amp;</span>last_state_step,
-                state_part.is_empty(),
-                state_part.new_elements.last_key_value(),
-            ) {
+            <span class="kw">let </span>new_state_step = <span class="kw">match </span>(<span class="kw-2">&amp;</span>last_state_step, state_part.is_empty()) {
                 <span class="comment">// We already finished streaming the state
-                </span>(StreamingStep::Finished(<span class="kw">_</span>), <span class="kw">_</span>, <span class="kw">_</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
+                </span>(StreamingStep::Finished(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
+
                 <span class="comment">// We receive our first empty state batch
-                </span>(StreamingStep::Ongoing(<span class="kw">_</span>), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
-                <span class="comment">// We still need to stream the state - no new elements
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">false</span>, <span class="prelude-val">None</span>) =&gt; {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                <span class="comment">// We receive an empty batch, but we&#39;ve just started streaming
-                </span>(StreamingStep::Started, <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Bootstrap is finished but nothing has been streamed yet&quot;</span>);
+                </span>(StreamingStep::Ongoing(<span class="kw">_</span>), <span class="bool-val">true</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
+
+                <span class="comment">// We receive our first empty state batch, but we&#39;ve just started streaming: warn the user
+                </span>(StreamingStep::Started, <span class="bool-val">true</span>) =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;State bootstrap is finished but nothing has been streamed yet&quot;</span>);
                     StreamingStep::Finished(<span class="prelude-val">None</span>)
                 }
-                <span class="comment">// We still need to stream the state - new elements
-                </span>(<span class="kw">_</span>, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>))) =&gt; StreamingStep::Ongoing(new_last_key.clone()),
-                <span class="comment">// Else, we are in an inconsistent state
-                </span><span class="kw">_ </span>=&gt; {
-                    <span class="kw">if </span>state_part.is_empty() &amp;&amp; state_part.new_elements.last_key_value().is_some() {
-                        <span class="comment">// If is_empty() has a correct implementation, this should never happen
+
+                <span class="comment">// We still need to stream the state, we update the current reference to the last_key if needed
+                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">false</span>) =&gt; {
+                    <span class="kw">match </span>state_part.new_elements.last_key_value() {
+                        <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>)) =&gt; StreamingStep::Ongoing(new_last_key.clone()), <span class="comment">// We received new elements
+                        </span><span class="prelude-val">None </span>=&gt; StreamingStep::Ongoing(last_key.clone()), <span class="comment">// We only received changes
+                    </span>}
+                }
+
+                <span class="comment">// We still need to stream the state
+                </span>(StreamingStep::Started, <span class="bool-val">false</span>) =&gt; <span class="kw">match </span>state_part.new_elements.last_key_value() {
+                    <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>)) =&gt; StreamingStep::Ongoing(new_last_key.clone()), <span class="comment">// We received new elements
+                    </span><span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// We only received changes
                         </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap state_part is_empty() but it also contains new elements&quot;</span>,
-                        )));
-                    } <span class="kw">else </span>{
-                        <span class="comment">// StreamingStep::Started, false, None
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap started but we have no new elements to stream&quot;</span>,
+                            <span class="string">&quot;State bootstrap started but we have no new elements to stream&quot;</span>,
                         )));
                     }
-                }
+                },
             };
 
             versioning_part = final_state_read
@@ -1305,48 +1286,37 @@
                     ))
                 })<span class="question-mark">?</span>;
 
-            <span class="comment">// TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            </span><span class="kw">let </span>new_versioning_step = <span class="kw">match </span>(
-                <span class="kw-2">&amp;</span>last_versioning_step,
-                versioning_part.is_empty(),
-                versioning_part.new_elements.last_key_value(),
-            ) {
-                <span class="comment">// We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(_last_key)), <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((key, <span class="kw">_</span>))) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(key.clone()))
-                }
-                <span class="comment">// We finished streaming the state already, and we received nothing new (or only updates)
-                </span>(StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key)), <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We receive our first empty state batch
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    StreamingStep::Finished(<span class="prelude-val">Some</span>(last_key.clone()))
-                }
-                <span class="comment">// We still need to stream the state - no new elements
-                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">false</span>, <span class="prelude-val">None</span>) =&gt; {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                <span class="comment">// We receive an empty batch, but we&#39;ve just started streaming
-                </span>(StreamingStep::Started, <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Bootstrap is finished but nothing has been streamed yet&quot;</span>);
+            <span class="kw">let </span>new_versioning_step = <span class="kw">match </span>(<span class="kw-2">&amp;</span>last_versioning_step, versioning_part.is_empty()) {
+                <span class="comment">// We already finished streaming the versioning
+                </span>(StreamingStep::Finished(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
+
+                <span class="comment">// We receive our first empty versioning batch
+                </span>(StreamingStep::Ongoing(<span class="kw">_</span>), <span class="bool-val">true</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
+
+                <span class="comment">// We receive our first empty versioning batch, but we&#39;ve just started streaming: warn the user
+                </span>(StreamingStep::Started, <span class="bool-val">true</span>) =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;Versioning bootstrap is finished but nothing has been streamed yet&quot;</span>);
                     StreamingStep::Finished(<span class="prelude-val">None</span>)
                 }
-                <span class="comment">// We still need to stream the state - new elements
-                </span>(<span class="kw">_</span>, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>))) =&gt; StreamingStep::Ongoing(new_last_key.clone()),
-                <span class="comment">// We finished streaming the (empty) versioning already, but we received new elements while streaming the state
-                </span>(StreamingStep::Finished(<span class="prelude-val">None</span>), <span class="bool-val">true</span>, <span class="kw">_</span>) =&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
-                <span class="kw">_ </span>=&gt; {
-                    <span class="kw">if </span>state_part.is_empty() &amp;&amp; state_part.new_elements.last_key_value().is_some() {
-                        <span class="comment">// If is_empty() has a correct implementation, this should never happen
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap state_part is_empty() but it also contains new elements&quot;</span>,
-                        )));
-                    } <span class="kw">else </span>{
-                        <span class="comment">// StreamingStep::Started, false, None
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
-                            <span class="string">&quot;Bootstrap started but we have no new elements to stream&quot;</span>,
-                        )));
+
+                <span class="comment">// We still need to stream the versioning, we update the current reference to the last_key if needed
+                </span>(StreamingStep::Ongoing(last_key), <span class="bool-val">false</span>) =&gt; {
+                    <span class="kw">match </span>versioning_part.new_elements.last_key_value() {
+                        <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>)) =&gt; StreamingStep::Ongoing(new_last_key.clone()), <span class="comment">// We received new elements
+                        </span><span class="prelude-val">None </span>=&gt; StreamingStep::Ongoing(last_key.clone()), <span class="comment">// We only received changes
+                    </span>}
+                }
+
+                <span class="comment">// We still need to stream the versioning
+                </span>(StreamingStep::Started, <span class="bool-val">false</span>) =&gt; {
+                    <span class="kw">match </span>versioning_part.new_elements.last_key_value() {
+                        <span class="prelude-val">Some</span>((new_last_key, <span class="kw">_</span>)) =&gt; StreamingStep::Ongoing(new_last_key.clone()), <span class="comment">// We received new elements
+                        </span><span class="prelude-val">None </span>=&gt; {
+                            <span class="comment">// We only received changes
+                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(
+                                <span class="string">&quot;Versioning bootstrap started but we have no new elements to stream&quot;</span>,
+                            )));
+                        }
                     }
                 }
             };
