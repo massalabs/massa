@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["massa_db"],"struct":["RawMassaDB"],"type":["MassaDB"]};
+window.SIDEBAR_ITEMS = {"mod":["massa_db"],"struct":["MassaDbLsmtree","RawMassaDB"],"type":["MassaDB","SharedSmtCache"]};
