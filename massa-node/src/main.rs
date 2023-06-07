@@ -231,7 +231,7 @@ async fn launch(
     {
         use massa_metrics::start_metrics_server;
         // TODO addr from config
-        let addr = ([192, 168, 1, 183], 9898).into();
+        let addr = "0.0.0.0:9898".parse().unwrap();
         start_metrics_server(addr);
     }
 
