@@ -215,7 +215,13 @@ pub(crate) fn start_connectivity_thread(
                             }
                         }
                     default(config.try_connection_timer.to_duration()) => {
-                        let peers_connected = network_controller.get_active_connections().get_peers_connected();
+                        let active_conn = network_controller.get_active_connections();
+                        let peers_connected = active_conn.get_peers_connected();
+                        #[cfg(feature = "metrics")] {
+                            use massa_metrics::set_connections;
+                            set_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
+                        }
+
                         let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                                 if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {

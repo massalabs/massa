@@ -11,6 +11,12 @@ lazy_static! {
         static ref OPERATIONS_COUNTER: IntGauge =
         register_int_gauge!("operations_counter", "operations counter").unwrap();
 
+        static ref IN_CONNECTIONS: IntGauge =
+        register_int_gauge!("in_connections", "in connections").unwrap();
+
+        static ref OUT_CONNECTIONS: IntGauge =
+        register_int_gauge!("out_connections", "out connections").unwrap();
+
         static ref ENDORSEMENTS_COUNTER: IntGauge =
         register_int_gauge!("endorsements_counter", "endorsements counter").unwrap();
 
@@ -52,6 +58,11 @@ pub fn inc_endorsements_counter() {
 
 pub fn dec_endorsements_counter() {
     ENDORSEMENTS_COUNTER.dec();
+}
+
+pub fn set_connections(in_connections: usize, out_connections: usize) {
+    IN_CONNECTIONS.set(in_connections as i64);
+    OUT_CONNECTIONS.set(out_connections as i64);
 }
 
 pub fn set_active_cursor(period: u64, thread: u8) {
