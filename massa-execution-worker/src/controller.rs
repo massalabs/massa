@@ -5,6 +5,7 @@
 
 use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
+use massa_channel::MassaChannel;
 use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -192,8 +193,7 @@ impl ExecutionController for ExecutionControllerImpl {
             }
 
             // prepare the channel to send back the result of the read-only execution
-            let (resp_tx, resp_rx) =
-                std::sync::mpsc::channel::<Result<ReadOnlyExecutionOutput, ExecutionError>>();
+            let (resp_tx, resp_rx) = MassaChannel::new("read_only_request".to_string(), None);
 
             // append the request to the queue of input read-only requests
             input_data

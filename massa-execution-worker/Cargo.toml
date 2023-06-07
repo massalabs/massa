@@ -22,6 +22,7 @@ massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
 massa_pos_worker = { path = "../massa-pos-worker", optional = true }
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
+massa_channel = { path = "../massa-channel" }
 massa_executed_ops = { path = "../massa-executed-ops" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }

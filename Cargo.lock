@@ -2675,6 +2675,7 @@ dependencies = [
  "hex-literal",
  "massa-sc-runtime",
  "massa_async_pool",
+ "massa_channel",
  "massa_db",
  "massa_executed_ops",
  "massa_execution_exports",

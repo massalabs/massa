@@ -4,7 +4,7 @@ use crossbeam::channel::{SendError, Sender};
 #[cfg(feature = "metrics")]
 use prometheus::Gauge;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MassaSender<T> {
     pub(crate) sender: Sender<T>,
     pub(crate) name: String,
