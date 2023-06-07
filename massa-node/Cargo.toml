@@ -28,6 +28,7 @@ massa_api_exports = { path = "../massa-api-exports" }
 massa_api = { path = "../massa-api" }
 massa_async_pool = { path = "../massa-async-pool" }
 massa_bootstrap = { path = "../massa-bootstrap" }
+massa_channel = { path = "../massa-channel" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_consensus_worker = { path = "../massa-consensus-worker" }
 massa_executed_ops = { path = "../massa-executed-ops" }

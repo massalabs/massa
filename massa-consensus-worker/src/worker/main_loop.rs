@@ -1,4 +1,4 @@
-use std::{sync::mpsc, time::Instant};
+use std::time::Instant;
 
 use massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
 use massa_models::{
@@ -66,9 +66,9 @@ impl ConsensusWorker {
                 WaitingStatus::Interrupted
             }
             // timeout => continue main loop
-            Err(mpsc::RecvTimeoutError::Timeout) => WaitingStatus::Ended,
+            Err(crossbeam::channel::RecvTimeoutError::Timeout) => WaitingStatus::Ended,
             // channel disconnected (sender dropped) => quit main loop
-            Err(mpsc::RecvTimeoutError::Disconnected) => WaitingStatus::Disconnected,
+            Err(crossbeam::channel::RecvTimeoutError::Disconnected) => WaitingStatus::Disconnected,
         }
     }
 

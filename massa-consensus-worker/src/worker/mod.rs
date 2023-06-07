@@ -1,3 +1,4 @@
+use massa_channel::{receiver::MassaReceiver, MassaChannel};
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
@@ -10,7 +11,7 @@ use massa_models::slot::Slot;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
 
@@ -22,7 +23,7 @@ use crate::state::ConsensusState;
 /// The consensus worker structure that contains all information and tools for the consensus worker thread.
 pub struct ConsensusWorker {
     /// Channel to receive command from the controller
-    command_receiver: mpsc::Receiver<ConsensusCommand>,
+    command_receiver: MassaReceiver<ConsensusCommand>,
     /// Configuration of the consensus
     config: ConsensusConfig,
     /// State shared with the controller
@@ -55,7 +56,7 @@ pub fn start_consensus_worker(
     init_graph: Option<BootstrapableGraph>,
     storage: Storage,
 ) -> (Box<dyn ConsensusController>, Box<dyn ConsensusManager>) {
-    let (tx, rx) = mpsc::sync_channel(CHANNEL_SIZE);
+    let (tx, rx) = MassaChannel::new("consensus_command".to_string(), Some(CHANNEL_SIZE));
     // desync detection timespan
     let bootstrap_part_size = config.bootstrap_part_size;
     let stats_desync_detection_timespan =

@@ -8,7 +8,7 @@ extern crate massa_logging;
 
 use crate::settings::SETTINGS;
 
-use crossbeam_channel::{Receiver, TryRecvError};
+use crossbeam_channel::TryRecvError;
 use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -19,6 +19,8 @@ use massa_bootstrap::{
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
     DefaultConnector,
 };
+use massa_channel::receiver::MassaReceiver;
+use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
@@ -106,7 +108,7 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
     sig_int_toggled: Arc<(Mutex<bool>, Condvar)>,
 ) -> (
-    Receiver<ConsensusEvent>,
+    MassaReceiver<ConsensusEvent>,
     Option<BootstrapManager>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
@@ -650,7 +652,7 @@ async fn launch(
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
+        MassaChannel::new("consensus_event".to_string(), Some(CHANNEL_SIZE));
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -981,7 +983,7 @@ struct Managers {
 }
 
 async fn stop(
-    _consensus_event_receiver: Receiver<ConsensusEvent>,
+    _consensus_event_receiver: MassaReceiver<ConsensusEvent>,
     Managers {
         bootstrap_manager,
         mut execution_manager,
