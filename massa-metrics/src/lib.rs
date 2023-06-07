@@ -11,6 +11,9 @@ lazy_static! {
         static ref OPERATIONS_COUNTER: IntGauge =
         register_int_gauge!("operations_counter", "operations counter").unwrap();
 
+        static ref ENDORSEMENTS_COUNTER: IntGauge =
+        register_int_gauge!("endorsements_counter", "endorsements counter").unwrap();
+
         static ref CURRENT_SLOT: IntCounterVec = register_int_counter_vec!("current_slot", "help current slot", &["period","thread"]).unwrap();
 
 
@@ -41,6 +44,14 @@ pub fn inc_operations_counter() {
 
 pub fn dec_operations_counter() {
     OPERATIONS_COUNTER.dec();
+}
+
+pub fn inc_endorsements_counter() {
+    ENDORSEMENTS_COUNTER.inc();
+}
+
+pub fn dec_endorsements_counter() {
+    ENDORSEMENTS_COUNTER.dec();
 }
 
 pub fn set_active_cursor(period: u64, thread: u8) {
