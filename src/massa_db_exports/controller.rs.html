@@ -94,6 +94,8 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
@@ -166,7 +168,8 @@
     /// Returns a StreamBatch&lt;Slot&gt;
     </span><span class="kw">fn </span>get_batch_to_stream(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        last_obtained: <span class="prelude-ty">Option</span>&lt;(Vec&lt;u8&gt;, Slot)&gt;,
+        last_state_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
 
     <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
@@ -174,7 +177,8 @@
     /// Returns a StreamBatch&lt;Slot&gt;
     </span><span class="kw">fn </span>get_versioning_batch_to_stream(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        last_obtained: <span class="prelude-ty">Option</span>&lt;(Vec&lt;u8&gt;, Slot)&gt;,
+        last_versioning_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
 }
 
