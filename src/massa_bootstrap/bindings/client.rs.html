@@ -228,8 +228,6 @@
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -281,9 +279,7 @@
         cfg: BootstrapClientConfig,
         limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="comment">// let read_limit = limit.map(|limit| {
-        //     LimiterOptions::new(limit.into(), Duration::from_millis(20), limit as usize)
-        // });
+        <span class="comment">// A 1s window breaks anything requiring a 1s window
         </span><span class="kw">let </span>write_limit = limit.map(|limit| {
             LimiterOptions::new(
                 (limit / <span class="number">100</span>).into(),

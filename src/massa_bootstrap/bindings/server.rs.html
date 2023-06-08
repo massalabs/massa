@@ -373,8 +373,7 @@
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     local_keypair: KeyPair,
-    <span class="comment">// TODO: Reintroduce bandwidth limits
-    </span>duplex: Limiter&lt;TcpStream&gt;,
+    duplex: Limiter&lt;TcpStream&gt;,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -396,15 +395,16 @@
         rw_limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>BootstrapSrvBindCfg {
-            <span class="comment">// TODO: Reintroduce bandwidth limits
-            </span>max_bytes_read_write: _limit,
+            max_bytes_read_write: _limit,
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        <span class="kw">let </span>limit_opts = rw_limit.map(|limit| {
+
+        <span class="comment">// A 1s window breaks anything requiring a 1s window
+        </span><span class="kw">let </span>limit_opts = rw_limit.map(|limit| {
             LimiterOptions::new(
                 (limit / <span class="number">100</span>) <span class="kw">as </span>u128,
                 Duration::from_millis(<span class="number">10</span>),
