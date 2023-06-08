@@ -72,17 +72,14 @@ impl BootstrapServerBinder {
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        // let limit_opts = rw_limit.map(|limit| {
-        //     LimiterOptions::new(limit as u128, Duration::from_secs(1), limit as usize)
-        // });
-        let limit_opts = || {
-            Some(LimiterOptions::new(
-                u64::MAX.into(),
+        let limit_opts = rw_limit.map(|limit| {
+            LimiterOptions::new(
+                (limit / 100) as u128,
                 Duration::from_millis(10),
-                u64::MAX as usize,
-            ))
-        };
-        let duplex = Limiter::new(duplex, limit_opts(), limit_opts());
+                (limit / 10) as usize,
+            )
+        });
+        let duplex = Limiter::new(duplex, None, limit_opts);
         BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,

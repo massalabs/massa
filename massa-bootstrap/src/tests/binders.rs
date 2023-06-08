@@ -64,7 +64,7 @@ impl BootstrapClientBinder {
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         };
-        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg)
+        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg, None)
     }
 }
 

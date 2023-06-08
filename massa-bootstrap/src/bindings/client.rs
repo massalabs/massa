@@ -43,15 +43,23 @@ impl BootstrapClientBinder {
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
-        let limiter_opts = || {
-            Some(LimiterOptions::new(
-                u64::MAX.into(),
+    pub fn new(
+        duplex: TcpStream,
+        remote_pubkey: PublicKey,
+        cfg: BootstrapClientConfig,
+        limit: Option<u64>,
+    ) -> Self {
+        // let read_limit = limit.map(|limit| {
+        //     LimiterOptions::new(limit.into(), Duration::from_millis(20), limit as usize)
+        // });
+        let write_limit = limit.map(|limit| {
+            LimiterOptions::new(
+                (limit / 100).into(),
                 Duration::from_millis(10),
-                u64::MAX as usize,
-            ))
-        };
-        let duplex = Limiter::new(duplex, limiter_opts(), limiter_opts());
+                (limit / 10) as usize,
+            )
+        });
+        let duplex = Limiter::new(duplex, None, write_limit);
         BootstrapClientBinder {
             remote_pubkey,
             duplex,
