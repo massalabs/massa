@@ -22,13 +22,15 @@ pub fn start_operation_injector(
     protocol_controller: Box<dyn ProtocolController>,
     nb_op: u64,
 ) {
-    std::thread::sleep(
-        genesis_timestamp
-            .clone()
-            .saturating_sub(MassaTime::now().unwrap())
-            .saturating_add(MassaTime::from_millis(1000))
-            .to_duration(),
-    );
+    let mut wait = genesis_timestamp
+        .clone()
+        .saturating_sub(MassaTime::now().unwrap())
+        .saturating_add(MassaTime::from_millis(1000))
+        .to_duration();
+    if wait < Duration::from_secs(10) {
+        wait = Duration::from_secs(10);
+    }
+    std::thread::sleep(wait);
     let return_addr = wallet
         .get_wallet_address_list()
         .iter()
@@ -88,6 +90,7 @@ pub fn start_operation_injector(
                 genesis_timestamp,
                 MassaTime::now().unwrap(),
             );
+            println!("AURELIEN: Final slot: {}", final_slot);
             let mut ops = vec![];
 
             for i in 0..32 {
