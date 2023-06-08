@@ -476,89 +476,51 @@ pub fn stream_bootstrap_information(
                 None
             };
 
-            let last_obtained = match &last_state_step {
-                StreamingStep::Started => None,
-                StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(Some(last_key)) => {
-                    Some((last_key.clone(), last_slot.unwrap()))
-                }
-                StreamingStep::Finished(None) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
-                    None
-                }
-            };
-
             state_part = final_state_read
                 .db
                 .read()
-                .get_batch_to_stream(last_obtained)
+                .get_batch_to_stream(&last_state_step, last_slot)
                 .map_err(|e| {
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
                 })?;
 
-            // TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            let new_state_step = match (
-                &last_state_step,
-                state_part.is_empty(),
-                state_part.new_elements.last_key_value(),
-            ) {
-                // We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
-                (StreamingStep::Finished(Some(_last_key)), false, Some((key, _))) => {
-                    StreamingStep::Finished(Some(key.clone()))
-                }
-                // We finished streaming the state already, and we received nothing new (or only updates)
-                (StreamingStep::Finished(Some(last_key)), _, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
+            let new_state_step = match (&last_state_step, state_part.is_empty()) {
+                // We already finished streaming the state
+                (StreamingStep::Finished(_), _) => StreamingStep::Finished(None),
+
                 // We receive our first empty state batch
-                (StreamingStep::Ongoing(last_key), true, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
-                // We still need to stream the state - no new elements
-                (StreamingStep::Ongoing(last_key), false, None) => {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                // We receive an empty batch, but we've just started streaming
-                (StreamingStep::Started, true, _) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
+                (StreamingStep::Ongoing(_), true) => StreamingStep::Finished(None),
+
+                // We receive our first empty state batch, but we've just started streaming: warn the user
+                (StreamingStep::Started, true) => {
+                    warn!("State bootstrap is finished but nothing has been streamed yet");
                     StreamingStep::Finished(None)
                 }
-                // We still need to stream the state - new elements
-                (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
-                // We finished streaming the (empty) state already, but we received new elements while streaming the versioning
-                (StreamingStep::Finished(None), true, _) => StreamingStep::Finished(None),
-                // Else, we are in an inconsistent state
-                _ => {
-                    if state_part.is_empty() && state_part.new_elements.last_key_value().is_some() {
-                        // If is_empty() has a correct implementation, this should never happen
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap state_part is_empty() but it also contains new elements",
-                        )));
-                    } else {
-                        // StreamingStep::Started, false, None
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap started but we have no new elements to stream",
-                        )));
+
+                // We still need to stream the state, we update the current reference to the last_key if needed
+                (StreamingStep::Ongoing(last_key), false) => {
+                    match state_part.new_elements.last_key_value() {
+                        Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                        None => StreamingStep::Ongoing(last_key.clone()), // We only received changes
                     }
                 }
-            };
 
-            let last_obtained_versioning = match &last_versioning_step {
-                StreamingStep::Started => None,
-                StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(Some(last_key)) => {
-                    Some((last_key.clone(), last_slot.unwrap()))
-                }
-                StreamingStep::Finished(None) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
-                    None
-                }
+                // We still need to stream the state
+                (StreamingStep::Started, false) => match state_part.new_elements.last_key_value() {
+                    Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                    None => {
+                        // We only received changes
+                        return Err(BootstrapError::GeneralError(String::from(
+                            "State bootstrap started but we have no new elements to stream",
+                        )));
+                    }
+                },
             };
 
             versioning_part = final_state_read
                 .db
                 .read()
-                .get_versioning_batch_to_stream(last_obtained_versioning)
+                .get_versioning_batch_to_stream(&last_versioning_step, last_slot)
                 .map_err(|e| {
                     BootstrapError::GeneralError(format!(
                         "Error get_versioning_batch_to_stream: {}",
@@ -566,48 +528,37 @@ pub fn stream_bootstrap_information(
                     ))
                 })?;
 
-            // TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            let new_versioning_step = match (
-                &last_versioning_step,
-                versioning_part.is_empty(),
-                versioning_part.new_elements.last_key_value(),
-            ) {
-                // We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
-                (StreamingStep::Finished(Some(_last_key)), false, Some((key, _))) => {
-                    StreamingStep::Finished(Some(key.clone()))
-                }
-                // We finished streaming the state already, and we received nothing new (or only updates)
-                (StreamingStep::Finished(Some(last_key)), _, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
-                // We receive our first empty state batch
-                (StreamingStep::Ongoing(last_key), true, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
-                // We still need to stream the state - no new elements
-                (StreamingStep::Ongoing(last_key), false, None) => {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                // We receive an empty batch, but we've just started streaming
-                (StreamingStep::Started, true, _) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
+            let new_versioning_step = match (&last_versioning_step, versioning_part.is_empty()) {
+                // We already finished streaming the versioning
+                (StreamingStep::Finished(_), _) => StreamingStep::Finished(None),
+
+                // We receive our first empty versioning batch
+                (StreamingStep::Ongoing(_), true) => StreamingStep::Finished(None),
+
+                // We receive our first empty versioning batch, but we've just started streaming: warn the user
+                (StreamingStep::Started, true) => {
+                    warn!("Versioning bootstrap is finished but nothing has been streamed yet");
                     StreamingStep::Finished(None)
                 }
-                // We still need to stream the state - new elements
-                (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
-                // We finished streaming the (empty) versioning already, but we received new elements while streaming the state
-                (StreamingStep::Finished(None), true, _) => StreamingStep::Finished(None),
-                _ => {
-                    if state_part.is_empty() && state_part.new_elements.last_key_value().is_some() {
-                        // If is_empty() has a correct implementation, this should never happen
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap state_part is_empty() but it also contains new elements",
-                        )));
-                    } else {
-                        // StreamingStep::Started, false, None
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap started but we have no new elements to stream",
-                        )));
+
+                // We still need to stream the versioning, we update the current reference to the last_key if needed
+                (StreamingStep::Ongoing(last_key), false) => {
+                    match versioning_part.new_elements.last_key_value() {
+                        Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                        None => StreamingStep::Ongoing(last_key.clone()), // We only received changes
+                    }
+                }
+
+                // We still need to stream the versioning
+                (StreamingStep::Started, false) => {
+                    match versioning_part.new_elements.last_key_value() {
+                        Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                        None => {
+                            // We only received changes
+                            return Err(BootstrapError::GeneralError(String::from(
+                                "Versioning bootstrap started but we have no new elements to stream",
+                            )));
+                        }
                     }
                 }
             };

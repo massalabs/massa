@@ -19,8 +19,8 @@ use rocksdb::{
 use std::{
     collections::{BTreeMap, HashMap},
     format,
-    ops::Bound::{self, Excluded, Included},
     path::PathBuf,
+    ops::Bound::{self, Excluded, Included, Unbounded},
     sync::Arc,
 };
 
@@ -204,81 +204,101 @@ where
     /// Returns a StreamBatch<ChangeID>
     pub fn get_batch_to_stream(
         &self,
-        last_obtained: Option<(Vec<u8>, ChangeID)>,
+        last_state_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<ChangeID>,
     ) -> Result<StreamBatch<ChangeID>, MassaDBError> {
-        let (updates_on_previous_elements, max_key) = if let Some((max_key, last_change_id)) =
-            last_obtained
-        {
-            match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
-                std::cmp::Ordering::Greater => {
-                    return Err(MassaDBError::TimeError(String::from(
-                        "we don't have this change yet on this node (it's in the future for us)",
-                    )));
-                }
-                std::cmp::Ordering::Equal => {
-                    (BTreeMap::new(), Some(max_key)) // no new updates
-                }
-                std::cmp::Ordering::Less => {
-                    // We should send all the new updates since last_change_id
+        let bound_key_for_changes = match &last_state_step {
+            StreamingStep::Ongoing(max_key) => Included(max_key.clone()),
+            _ => Unbounded,
+        };
 
-                    let cursor = self
-                        .change_history
-                        .lower_bound(Bound::Excluded(&last_change_id));
+        let updates_on_previous_elements = match (&last_state_step, last_change_id) {
+            (StreamingStep::Started, _) => {
+                // Stream No changes, new elements from start
+                BTreeMap::new()
+            }
+            (_, Some(last_change_id)) => {
+                // Stream the changes depending on the previously computed bound
 
-                    if cursor.peek_prev().is_none() {
+                match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
+                    std::cmp::Ordering::Greater => {
                         return Err(MassaDBError::TimeError(String::from(
-                            "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
+                    std::cmp::Ordering::Equal => {
+                        BTreeMap::new() // no new updates
+                    }
+                    std::cmp::Ordering::Less => {
+                        // We should send all the new updates since last_change_id
 
-                    match cursor.key() {
-                        Some(cursor_change_id) => {
-                            // We have to send all the updates since cursor_change_id
-                            // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
-                            let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
-                            let iter = self
-                                .change_history
-                                .range((Bound::Included(cursor_change_id), Bound::Unbounded));
-                            for (_change_id, changes) in iter {
-                                updates.extend(
-                                    changes
-                                        .range((
-                                            Bound::<Vec<u8>>::Unbounded,
-                                            Included(max_key.clone()),
-                                        ))
-                                        .map(|(k, v)| (k.clone(), v.clone())),
-                                );
-                            }
-                            (updates, Some(max_key))
+                        let cursor = self
+                            .change_history
+                            .lower_bound(Bound::Excluded(&last_change_id));
+
+                        if cursor.peek_prev().is_none() {
+                            return Err(MassaDBError::TimeError(String::from(
+                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            )));
                         }
-                        None => (BTreeMap::new(), Some(max_key)), // no new updates
+
+                        match cursor.key() {
+                            Some(cursor_change_id) => {
+                                // We have to send all the updates since cursor_change_id
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
+                                    BTreeMap::new();
+                                let iter = self
+                                    .change_history
+                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                for (_change_id, changes) in iter {
+                                    updates.extend(
+                                        changes
+                                            .range((
+                                                Bound::<Vec<u8>>::Unbounded,
+                                                bound_key_for_changes.clone(),
+                                            ))
+                                            .map(|(k, v)| (k.clone(), v.clone())),
+                                    );
+                                }
+                                updates
+                            }
+                            None => BTreeMap::new(), // no new updates
+                        }
                     }
                 }
             }
-        } else {
-            (BTreeMap::new(), None) // we start from the beginning, so no updates on previous elements
+            _ => {
+                // last_change_id is None, but StreamingStep is either Ongoing or Finished
+                return Err(MassaDBError::TimeError(String::from(
+                    "State streaming was ongoing or finished, but no last_change_id was provided",
+                )));
+            }
         };
 
         let mut new_elements = BTreeMap::new();
-        let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        let db_iterator = match max_key {
-            None => self.db.iterator_cf(handle, IteratorMode::Start),
-            Some(max_key) => {
-                let mut iter = self
-                    .db
-                    .iterator_cf(handle, IteratorMode::From(&max_key, Direction::Forward));
-                iter.next();
-                iter
-            }
-        };
+        if !last_state_step.finished() {
+            let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        for (serialized_key, serialized_value) in db_iterator.flatten() {
-            if new_elements.len() < self.config.max_new_elements {
-                new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
-            } else {
-                break;
+            // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            let db_iterator = match &last_state_step {
+                StreamingStep::Ongoing(max_key) => {
+                    let mut iter = self
+                        .db
+                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    iter.next();
+                    iter
+                }
+                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+            };
+
+            for (serialized_key, serialized_value) in db_iterator.flatten() {
+                if new_elements.len() < self.config.max_new_elements {
+                    new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+                } else {
+                    break;
+                }
             }
         }
 
@@ -294,81 +314,101 @@ where
     /// Returns a StreamBatch<ChangeID>
     pub fn get_versioning_batch_to_stream(
         &self,
-        last_obtained: Option<(Vec<u8>, ChangeID)>,
+        last_versioning_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<ChangeID>,
     ) -> Result<StreamBatch<ChangeID>, MassaDBError> {
-        let (updates_on_previous_elements, max_key) = if let Some((max_key, last_change_id)) =
-            last_obtained
-        {
-            match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
-                std::cmp::Ordering::Greater => {
-                    return Err(MassaDBError::TimeError(String::from(
-                        "we don't have this change yet on this node (it's in the future for us)",
-                    )));
-                }
-                std::cmp::Ordering::Equal => {
-                    (BTreeMap::new(), Some(max_key)) // no new updates
-                }
-                std::cmp::Ordering::Less => {
-                    // We should send all the new updates since last_change_id
+        let bound_key_for_changes = match &last_versioning_step {
+            StreamingStep::Ongoing(max_key) => Included(max_key.clone()),
+            _ => Unbounded,
+        };
 
-                    let cursor = self
-                        .change_history
-                        .lower_bound(Bound::Excluded(&last_change_id));
+        let updates_on_previous_elements = match (&last_versioning_step, last_change_id) {
+            (StreamingStep::Started, _) => {
+                // Stream No changes, new elements from start
+                BTreeMap::new()
+            }
+            (_, Some(last_change_id)) => {
+                // Stream the changes depending on the previously computed bound
 
-                    if cursor.peek_prev().is_none() {
+                match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
+                    std::cmp::Ordering::Greater => {
                         return Err(MassaDBError::TimeError(String::from(
-                            "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
+                    std::cmp::Ordering::Equal => {
+                        BTreeMap::new() // no new updates
+                    }
+                    std::cmp::Ordering::Less => {
+                        // We should send all the new updates since last_change_id
 
-                    match cursor.key() {
-                        Some(cursor_change_id) => {
-                            // We have to send all the updates since cursor_change_id
-                            // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
-                            let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
-                            let iter = self
-                                .change_history
-                                .range((Bound::Included(cursor_change_id), Bound::Unbounded));
-                            for (_change_id, changes) in iter {
-                                updates.extend(
-                                    changes
-                                        .range((
-                                            Bound::<Vec<u8>>::Unbounded,
-                                            Included(max_key.clone()),
-                                        ))
-                                        .map(|(k, v)| (k.clone(), v.clone())),
-                                );
-                            }
-                            (updates, Some(max_key))
+                        let cursor = self
+                            .change_history_versioning
+                            .lower_bound(Bound::Excluded(&last_change_id));
+
+                        if cursor.peek_prev().is_none() {
+                            return Err(MassaDBError::TimeError(String::from(
+                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            )));
                         }
-                        None => (BTreeMap::new(), Some(max_key)), // no new updates
+
+                        match cursor.key() {
+                            Some(cursor_change_id) => {
+                                // We have to send all the updates since cursor_change_id
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
+                                    BTreeMap::new();
+                                let iter = self
+                                    .change_history_versioning
+                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                for (_change_id, changes) in iter {
+                                    updates.extend(
+                                        changes
+                                            .range((
+                                                Bound::<Vec<u8>>::Unbounded,
+                                                bound_key_for_changes.clone(),
+                                            ))
+                                            .map(|(k, v)| (k.clone(), v.clone())),
+                                    );
+                                }
+                                updates
+                            }
+                            None => BTreeMap::new(), // no new updates
+                        }
                     }
                 }
             }
-        } else {
-            (BTreeMap::new(), None) // we start from the beginning, so no updates on previous elements
+            _ => {
+                // last_change_id is None, but StreamingStep is either Ongoing or Finished
+                return Err(MassaDBError::TimeError(String::from(
+                    "State streaming was ongoing or finished, but no last_change_id was provided",
+                )));
+            }
         };
 
         let mut new_elements = BTreeMap::new();
-        let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        let db_iterator = match max_key {
-            None => self.db.iterator_cf(handle, IteratorMode::Start),
-            Some(max_key) => {
-                let mut iter = self
-                    .db
-                    .iterator_cf(handle, IteratorMode::From(&max_key, Direction::Forward));
-                iter.next();
-                iter
-            }
-        };
+        if !last_versioning_step.finished() {
+            let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
-        for (serialized_key, serialized_value) in db_iterator.flatten() {
-            if new_elements.len() < self.config.max_new_elements {
-                new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
-            } else {
-                break;
+            // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            let db_iterator = match &last_versioning_step {
+                StreamingStep::Ongoing(max_key) => {
+                    let mut iter = self
+                        .db
+                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    iter.next();
+                    iter
+                }
+                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+            };
+
+            for (serialized_key, serialized_value) in db_iterator.flatten() {
+                if new_elements.len() < self.config.max_new_elements {
+                    new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+                } else {
+                    break;
+                }
             }
         }
 
@@ -534,17 +574,10 @@ where
     ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
         let mut changes = BTreeMap::new();
 
-        let new_cursor = match stream_changes.new_elements.last_key_value() {
+        let new_cursor: StreamingStep<Vec<u8>> = match stream_changes.new_elements.last_key_value()
+        {
             Some((k, _)) => StreamingStep::Ongoing(k.clone()),
-            None => {
-                let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-                match self.db.iterator_cf(handle, IteratorMode::End).next() {
-                    Some(Ok((serialized_key, _value))) => {
-                        StreamingStep::Finished(Some(serialized_key.to_vec()))
-                    }
-                    _ => StreamingStep::Finished(None),
-                }
-            }
+            None => StreamingStep::Finished(None),
         };
 
         changes.extend(stream_changes.updates_on_previous_elements);
@@ -559,15 +592,7 @@ where
 
         let new_cursor_versioning = match stream_changes_versioning.new_elements.last_key_value() {
             Some((k, _)) => StreamingStep::Ongoing(k.clone()),
-            None => {
-                let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-                match self.db.iterator_cf(handle, IteratorMode::End).next() {
-                    Some(Ok((serialized_key, _value))) => {
-                        StreamingStep::Finished(Some(serialized_key.to_vec()))
-                    }
-                    _ => StreamingStep::Finished(None),
-                }
-            }
+            None => StreamingStep::Finished(None),
         };
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
