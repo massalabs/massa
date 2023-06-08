@@ -125,13 +125,11 @@ impl From<OperationType> for grpc_model::OperationType {
             }
             OperationType::RollBuy { roll_count } => {
                 let roll_buy = grpc_model::RollBuy { roll_count };
-                grpc_operation_type.r#type =
-                    Some(grpc_model::operation_type::Type::RollBuy(roll_buy));
+                grpc_operation_type.roll_buy = Some(roll_buy);
             }
             OperationType::RollSell { roll_count } => {
                 let roll_sell = grpc_model::RollSell { roll_count };
-                grpc_operation_type.r#type =
-                    Some(grpc_model::operation_type::Type::RollSell(roll_sell));
+                grpc_operation_type.roll_sell = Some(roll_sell);
             }
             OperationType::ExecuteSC {
                 data,

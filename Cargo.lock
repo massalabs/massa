@@ -2400,7 +2400,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=main#84e907d9a2f0dcdfe3149fe5348970f90bfa127b"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=main#f04bcb1198f5d3c678f85da1622ed608ad1684e1"
 dependencies = [
  "glob",
  "prost",
@@ -4984,6 +4984,8 @@ dependencies = [
  "cfg-if",
  "fastrand",
  "redox_syscall 0.3.5",
+ "rustix",
+ "windows-sys 0.48.0",
  "rustix 0.37.19",
  "windows-sys 0.48.0",
 ]
