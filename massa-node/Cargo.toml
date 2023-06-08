@@ -20,6 +20,7 @@ tracing = { version = "0.1", features = [
 peernet = { git = "https://github.com/massalabs/PeerNet", rev = "bf8adf5" }
 tracing-subscriber = "0.3"
 paw = "1.0"
+rand = "0.8.5"
 structopt = { version = "0.3", features = ["paw"] }
 dialoguer = "0.10"
 ctrlc = "3.2.5"
@@ -53,6 +54,7 @@ massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
 massa_grpc = { path = "../massa-grpc" }
 massa_versioning = { path = "../massa-versioning" }
+massa_signature = { path = "../massa-signature" }
 massa_db = { path = "../massa-db" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level

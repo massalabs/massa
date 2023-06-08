@@ -6,6 +6,7 @@
 #![feature(ip)]
 extern crate massa_logging;
 
+use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::TryRecvError;
@@ -101,6 +102,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
+mod operation_injector;
 mod settings;
 
 async fn launch(
