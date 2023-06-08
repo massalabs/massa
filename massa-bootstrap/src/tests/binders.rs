@@ -542,8 +542,9 @@ fn test_bandwidth() {
                     }
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
-                let after = before.elapsed();
-                assert!(after > Duration::from_secs(10));
+                let dur = before.elapsed();
+                assert!(dur > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(11_500));
 
                 let before = Instant::now();
                 server
@@ -554,6 +555,7 @@ fn test_bandwidth() {
                     .unwrap();
                 let dur = before.elapsed();
                 assert!(dbg!(dur) > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(11_500));
             }
         })
         .unwrap();
@@ -577,6 +579,7 @@ fn test_bandwidth() {
                     .unwrap();
                 let dur = before.elapsed();
                 assert!(dbg!(dur) > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(11_500));
 
                 let before = Instant::now();
                 let message = client.next_timeout(None).unwrap();
@@ -586,8 +589,9 @@ fn test_bandwidth() {
                     }
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
-                let after = before.elapsed();
-                assert!(after > Duration::from_secs(10));
+                let dur = before.elapsed();
+                assert!(dur > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(11_500));
             }
         })
         .unwrap();
