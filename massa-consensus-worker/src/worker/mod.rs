@@ -3,6 +3,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
 };
+use massa_metrics::MassaMetrics;
 use massa_models::block_id::BlockId;
 use massa_models::clique::Clique;
 use massa_models::config::CHANNEL_SIZE;
@@ -55,6 +56,7 @@ pub fn start_consensus_worker(
     channels: ConsensusChannels,
     init_graph: Option<BootstrapableGraph>,
     storage: Storage,
+    massa_metrics: MassaMetrics,
 ) -> (Box<dyn ConsensusController>, Box<dyn ConsensusManager>) {
     let (tx, rx) = MassaChannel::new("consensus_command".to_string(), Some(CHANNEL_SIZE));
     // desync detection timespan
@@ -99,6 +101,7 @@ pub fn start_consensus_worker(
         ),
         prev_blockclique: Default::default(),
         nonfinal_active_blocks_per_slot: Default::default(),
+        massa_metrics,
     }));
 
     let shared_state_cloned = shared_state.clone();

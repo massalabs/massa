@@ -24,11 +24,7 @@ impl OperationIndexes {
     /// * `operation`: the operation to insert
     pub(crate) fn insert(&mut self, operation: SecureShareOperation) {
         if let Ok(o) = self.operations.try_insert(operation.id, operation) {
-            #[cfg(feature = "metrics")]
-            {
-                use massa_metrics::inc_operations_counter;
-                inc_operations_counter();
-            }
+            massa_metrics::inc_operations_counter();
 
             // update creator index
             self.index_by_creator
@@ -48,11 +44,7 @@ impl OperationIndexes {
     /// * `operation_id`: the operation id to remove
     pub(crate) fn remove(&mut self, operation_id: &OperationId) -> Option<SecureShareOperation> {
         if let Some(o) = self.operations.remove(operation_id) {
-            #[cfg(feature = "metrics")]
-            {
-                use massa_metrics::dec_operations_counter;
-                dec_operations_counter();
-            }
+            massa_metrics::dec_operations_counter();
 
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =

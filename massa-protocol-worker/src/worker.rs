@@ -1,5 +1,6 @@
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 use massa_consensus_exports::ConsensusController;
+use massa_metrics::MassaMetrics;
 use massa_models::node::NodeId;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{
@@ -180,6 +181,7 @@ pub fn start_protocol_controller(
     storage: Storage,
     protocol_channels: ProtocolChannels,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 ) -> Result<(Box<dyn ProtocolManager>, KeyPair, NodeId), ProtocolError> {
     debug!("starting protocol controller");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
@@ -360,6 +362,7 @@ pub fn start_protocol_controller(
         config.default_category_info,
         config,
         mip_store,
+        massa_metrics,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

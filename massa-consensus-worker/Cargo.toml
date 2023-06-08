@@ -13,6 +13,7 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 crossbeam = "0.8"
 #custom modules
 massa_channel = { path = "../massa-channel" }
+massa_metrics = { path = "../massa-metrics"}
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
@@ -28,3 +29,4 @@ itertools = "0.10"
 [features]
 sandbox = []
 bootstrap_server = []
+
