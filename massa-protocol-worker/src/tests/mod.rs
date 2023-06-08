@@ -179,7 +179,7 @@ fn stop_with_controller_still_exists() {
     let mut config1 = ProtocolConfig::default();
     config1
         .listeners
-        .insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+        .insert("127.0.0.1:8083".parse().unwrap(), TransportType::Tcp);
     config1.keypair_file = "./src/tests/test_keypair1.json".to_string().into();
     let keypair_bs58_check_encoded = read_to_string(&config1.keypair_file)
         .map_err(|err| {
@@ -191,7 +191,7 @@ fn stop_with_controller_still_exists() {
     let mut config2 = ProtocolConfig::default();
     config2
         .listeners
-        .insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
+        .insert("127.0.0.1:8084".parse().unwrap(), TransportType::Tcp);
     config2.keypair_file = "./src/tests/test_keypair2.json".to_string().into();
     let keypair_bs58_check_encoded = read_to_string(&config2.keypair_file)
         .map_err(|err| {
@@ -205,7 +205,7 @@ fn stop_with_controller_still_exists() {
     let initial_peers_file = NamedTempFile::new().expect("cannot create temp file");
     let mut initial_peers1: HashMap<PeerId, PeerData> = HashMap::new();
     let mut peers_1 = HashMap::new();
-    peers_1.insert("127.0.0.1:8082".parse().unwrap(), TransportType::Tcp);
+    peers_1.insert("127.0.0.1:8084".parse().unwrap(), TransportType::Tcp);
     initial_peers1.insert(
         PeerId::from_public_key(keypair2.get_public_key()),
         PeerData {
@@ -218,7 +218,7 @@ fn stop_with_controller_still_exists() {
     let initial_peers_file_2 = NamedTempFile::new().expect("cannot create temp file");
     let mut initial_peers2: HashMap<PeerId, PeerData> = HashMap::new();
     let mut peers_2 = HashMap::new();
-    peers_2.insert("127.0.0.1:8081".parse().unwrap(), TransportType::Tcp);
+    peers_2.insert("127.0.0.1:8083".parse().unwrap(), TransportType::Tcp);
     initial_peers2.insert(
         PeerId::from_public_key(keypair1.get_public_key()),
         PeerData {
