@@ -475,24 +475,38 @@ pub fn get_state(
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(
+            let conn = connect_to_server(
                 &mut connector,
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
-            ) {
+            );
+            match conn {
                 Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
-                      // cancellable
-                    {
-                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
+                    let bs = bootstrap_from_server(
+                        bootstrap_config,
+                        &mut client,
+                        &mut next_bootstrap_message,
+                        &mut global_bootstrap_state,
+                        version,
+                    );
+                    // cancellable
+                    match bs {
+                        Err(BootstrapError::ReceivedError(error)) => {
+                            warn!("Error received from bootstrap server: {}", error)
+                        }
                         Err(e) => {
-                            warn!("Error while bootstrapping: {}", e);
+                            warn!("Error while bootstrapping: {}", (&e));
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _ = client.send_timeout(&BootstrapClientMessage::BootstrapError { error: e.to_string() }, Some(bootstrap_config.write_error_timeout.into()));
+                            let _ = client.send_timeout(
+                                &BootstrapClientMessage::BootstrapError {
+                                    error: e.to_string(),
+                                },
+                                Some(bootstrap_config.write_error_timeout.into()),
+                            );
                         }
                         Ok(()) => {
-                            return Ok(global_bootstrap_state)
+                            return Ok(global_bootstrap_state);
                         }
                     }
                 }

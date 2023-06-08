@@ -24,7 +24,7 @@ use std::{
     thread,
     time::Duration,
 };
-use stream_limiter::Limiter;
+use stream_limiter::{Limiter, LimiterOptions};
 use tracing::error;
 
 const KNOWN_PREFIX_LEN: usize = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
@@ -57,7 +57,12 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+    pub fn new(
+        duplex: TcpStream,
+        local_keypair: KeyPair,
+        cfg: BootstrapSrvBindCfg,
+        rw_limit: Option<u64>,
+    ) -> Self {
         let BootstrapSrvBindCfg {
             // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
@@ -67,7 +72,17 @@ impl BootstrapServerBinder {
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-        let duplex = Limiter::new(duplex, None, None);
+        // let limit_opts = rw_limit.map(|limit| {
+        //     LimiterOptions::new(limit as u128, Duration::from_secs(1), limit as usize)
+        // });
+        let limit_opts = || {
+            Some(LimiterOptions::new(
+                u64::MAX.into(),
+                Duration::from_millis(10),
+                u64::MAX as usize,
+            ))
+        };
+        let duplex = Limiter::new(duplex, limit_opts(), limit_opts());
         BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,

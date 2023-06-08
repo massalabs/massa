@@ -88,6 +88,7 @@ fn test_binders() {
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        Some(u64::MAX),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -238,6 +239,7 @@ fn test_binders_double_send_server_works() {
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        Some(u64::MAX),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -369,6 +371,7 @@ fn test_binders_try_double_send_client_works() {
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        Some(u64::MAX),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,

@@ -248,6 +248,7 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                 dplx,
                 self.keypair.clone(),
                 (&self.bootstrap_config).into(),
+                Some(u64::MAX),
             );
 
             // check whether incoming peer IP is allowed.

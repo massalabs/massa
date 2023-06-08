@@ -18,7 +18,7 @@ use massa_signature::{PublicKey, Signature};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::time::Instant;
 use std::{io::Write, net::TcpStream, time::Duration};
-use stream_limiter::Limiter;
+use stream_limiter::{Limiter, LimiterOptions};
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
@@ -44,7 +44,14 @@ impl BootstrapClientBinder {
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
     pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
-        let duplex = Limiter::new(duplex, None, None);
+        let limiter_opts = || {
+            Some(LimiterOptions::new(
+                u64::MAX.into(),
+                Duration::from_millis(10),
+                u64::MAX as usize,
+            ))
+        };
+        let duplex = Limiter::new(duplex, limiter_opts(), limiter_opts());
         BootstrapClientBinder {
             remote_pubkey,
             duplex,
