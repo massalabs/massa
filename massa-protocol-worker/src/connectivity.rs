@@ -1,6 +1,7 @@
 use crossbeam::select;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
+use massa_metrics::MassaMetrics;
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
@@ -72,6 +73,7 @@ pub(crate) fn start_connectivity_thread(
     _default_category: PeerCategoryInfo,
     config: ProtocolConfig,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 ) -> Result<(MassaSender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
@@ -217,10 +219,8 @@ pub(crate) fn start_connectivity_thread(
                     default(config.try_connection_timer.to_duration()) => {
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();
-                        #[cfg(feature = "metrics")] {
-                            use massa_metrics::set_connections;
-                            set_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
-                        }
+                        // update massa metrics
+                        massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
 
                         let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {

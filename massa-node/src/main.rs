@@ -39,6 +39,7 @@ use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::address::Address;
 use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -229,13 +230,8 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
-    #[cfg(feature = "metrics")]
-    {
-        use massa_metrics::start_metrics_server;
-        // TODO addr from config
-        let addr = "0.0.0.0:9898".parse().unwrap();
-        start_metrics_server(addr);
-    }
+    // Start massa metrics
+    let metrics = MassaMetrics::new(THREAD_COUNT);
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -486,6 +482,7 @@ async fn launch(
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
+        metrics.clone(),
     );
 
     // launch pool controller
@@ -677,6 +674,7 @@ async fn launch(
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
+        metrics.clone(),
     );
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
@@ -687,6 +685,7 @@ async fn launch(
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
+        metrics,
     )
     .expect("could not start protocol controller");
 

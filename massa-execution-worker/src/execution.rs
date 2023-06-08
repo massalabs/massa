@@ -22,6 +22,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -89,6 +90,8 @@ pub(crate) struct ExecutionState {
     selector: Box<dyn SelectorController>,
     // channels used by the execution worker
     channels: ExecutionChannels,
+    /// prometheus metrics
+    massa_metrics: MassaMetrics,
 }
 
 impl ExecutionState {
@@ -106,6 +109,7 @@ impl ExecutionState {
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
         channels: ExecutionChannels,
+        massa_metrics: MassaMetrics,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -178,6 +182,7 @@ impl ExecutionState {
             mip_store,
             selector,
             channels,
+            massa_metrics,
         }
     }
 
@@ -226,13 +231,11 @@ impl ExecutionState {
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
 
-        #[cfg(feature = "metrics")]
-        {
-            use massa_metrics::{set_active_cursor, set_final_cursor};
-            // update the prometheus metrics
-            set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
-            set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
-        }
+        // update the prometheus metrics
+        self.massa_metrics
+            .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
+        self.massa_metrics
+            .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
     }
 
     /// Applies an execution output to the active (non-final) state

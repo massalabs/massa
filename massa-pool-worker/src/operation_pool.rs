@@ -79,7 +79,12 @@ impl OperationPool {
             self.last_cs_final_periods
         );
         // prune old ops
-        debug!("AURELIEN: Lengths {} {} {}", self.operations.len(), self.sorted_ops_per_thread.len(), self.ops_per_expiration.len());
+        debug!(
+            "AURELIEN: Lengths {} {} {}",
+            self.operations.len(),
+            self.sorted_ops_per_thread.len(),
+            self.ops_per_expiration.len()
+        );
         for ops_debug in self.sorted_ops_per_thread.iter() {
             debug!("AURELIEN: Lengths {}", ops_debug.len());
         }
