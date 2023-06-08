@@ -18,11 +18,12 @@ use massa_signature::{PublicKey, Signature};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::time::Instant;
 use std::{io::Write, net::TcpStream, time::Duration};
+use stream_limiter::Limiter;
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
     remote_pubkey: PublicKey,
-    duplex: TcpStream,
+    duplex: Limiter<TcpStream>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
@@ -43,6 +44,7 @@ impl BootstrapClientBinder {
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
     pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
+        let duplex = Limiter::new(duplex, None, None);
         BootstrapClientBinder {
             remote_pubkey,
             duplex,
@@ -172,7 +174,7 @@ impl BootstrapClientBinder {
         }
 
         // Provide the message length
-        self.duplex.set_write_timeout(duration)?;
+        self.duplex.stream.set_write_timeout(duration)?;
         let msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)?;
         write_buf.extend(&msg_len_bytes);
 
@@ -204,7 +206,7 @@ impl BootstrapClientBinder {
 
 impl crate::bindings::BindingReadExact for BootstrapClientBinder {
     fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.set_read_timeout(duration)
+        self.duplex.stream.set_read_timeout(duration)
     }
 }
 

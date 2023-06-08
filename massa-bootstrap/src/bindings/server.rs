@@ -24,6 +24,7 @@ use std::{
     thread,
     time::Duration,
 };
+use stream_limiter::Limiter;
 use tracing::error;
 
 const KNOWN_PREFIX_LEN: usize = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
@@ -41,7 +42,7 @@ pub struct BootstrapServerBinder {
     randomness_size_bytes: usize,
     local_keypair: KeyPair,
     // TODO: Reintroduce bandwidth limits
-    duplex: TcpStream,
+    duplex: Limiter<TcpStream>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -66,6 +67,7 @@ impl BootstrapServerBinder {
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
+        let duplex = Limiter::new(duplex, None, None);
         BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,
@@ -92,7 +94,7 @@ impl BootstrapServerBinder {
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.duplex.set_read_timeout(duration)?;
+            self.duplex.stream.set_read_timeout(duration)?;
             self.duplex.read_exact(&mut msg_bytes)?;
             let (_, received_version) = self
                 .version_deserializer
@@ -211,7 +213,7 @@ impl BootstrapServerBinder {
         let stream_data = [sig.to_bytes().as_slice(), &msg_len_bytes, &msg_bytes].concat();
 
         // send the data
-        self.duplex.set_write_timeout(duration)?;
+        self.duplex.stream.set_write_timeout(duration)?;
         self.duplex.write_all(&stream_data)?;
 
         // update prev sig
@@ -313,6 +315,6 @@ impl io::Read for BootstrapServerBinder {
 
 impl crate::bindings::BindingReadExact for BootstrapServerBinder {
     fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.set_read_timeout(duration)
+        self.duplex.stream.set_read_timeout(duration)
     }
 }

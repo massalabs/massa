@@ -2534,6 +2534,7 @@ dependencies = [
  "serde",
  "serde_json",
  "socket2",
+ "stream_limiter",
  "substruct",
  "tempfile",
  "thiserror",
