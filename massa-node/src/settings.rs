@@ -69,7 +69,7 @@ pub struct BootstrapSettings {
     pub max_simultaneous_bootstraps: u32,
     pub per_ip_min_interval: MassaTime,
     pub ip_list_max_size: usize,
-    pub max_bytes_read_write: f64,
+    pub max_bytes_read_write: u64,
     /// Allocated time with which to manage the bootstrap process
     pub bootstrap_timeout: MassaTime,
 }

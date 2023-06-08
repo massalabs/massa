@@ -36,7 +36,7 @@ lazy_static::lazy_static! {
 impl BootstrapClientBinder {
     pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
         let cfg = BootstrapClientConfig {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: std::u64::MAX,
             max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
             endorsement_count: ENDORSEMENT_COUNT,
             max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -81,7 +81,7 @@ fn test_binders() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -231,7 +231,7 @@ fn test_binders_double_send_server_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -362,7 +362,7 @@ fn test_binders_try_double_send_client_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
