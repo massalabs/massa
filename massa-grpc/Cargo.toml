@@ -10,12 +10,13 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [dependencies]
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "main"}
 displaydoc = "0.2"
 thiserror = "1.0"
-tonic = { version = "0.9.1", features = ["gzip", "tls"] }
-tonic-web = "0.9.1"
-tonic-reflection = "0.9.1"
-tonic-health = "0.9.1"
+tonic = { version = "0.9.2", features = ["gzip", "tls"] }
+tonic-web = "0.9.2"
+tonic-reflection = "0.9.2"
+tonic-health = "0.9.2"
 tower-http = { version = "0.4.0", features = ["cors"] }
 hyper = "0.14.25"
 futures-util = "0.3.25"
@@ -37,7 +38,6 @@ massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_serialization = { path = "../massa-serialization" }
-massa_proto = { path = "../massa-proto" }
 massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]

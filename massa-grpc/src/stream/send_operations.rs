@@ -6,7 +6,7 @@ use futures_util::StreamExt;
 use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::operation::{OperationDeserializer, SecureShareOperation};
 use massa_models::secure_share::SecureShareDeserializer;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::collections::HashMap;
 use std::io::ErrorKind;
@@ -17,7 +17,7 @@ use tracing::log::{error, warn};
 /// Type declaration for SendOperations
 pub type SendOperationsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::SendOperationsResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc_api::SendOperationsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -28,7 +28,7 @@ pub type SendOperationsStreamType = Pin<
 /// operations ids messages
 pub(crate) async fn send_operations(
     grpc: &MassaGrpc,
-    request: tonic::Request<tonic::Streaming<grpc::SendOperationsRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc_api::SendOperationsRequest>>,
 ) -> Result<SendOperationsStreamType, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();
     let protocol_command_sender = grpc.protocol_command_sender.clone();
@@ -127,15 +127,15 @@ pub(crate) async fn send_operations(
                                     };
 
                                     // Build the response message
-                                    let result = grpc::OperationResult {
+                                    let result = grpc_api::OperationResult {
                                         operations_ids: verified_ops.keys().cloned().collect(),
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
-                                        .send(Ok(grpc::SendOperationsResponse {
+                                        .send(Ok(grpc_api::SendOperationsResponse {
                                             id: req_content.id.clone(),
                                             message: Some(
-                                                grpc::send_operations_response::Message::Result(
+                                                grpc_api::send_operations_response::Message::Result(
                                                     result,
                                                 ),
                                             ),
@@ -187,17 +187,17 @@ pub(crate) async fn send_operations(
 /// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendOperationsResponse, tonic::Status>>,
+    sender: tokio::sync::mpsc::Sender<Result<grpc_api::SendOperationsResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
-        .send(Ok(grpc::SendOperationsResponse {
+        .send(Ok(grpc_api::SendOperationsResponse {
             id,
-            message: Some(grpc::send_operations_response::Message::Error(
-                massa_proto::google::rpc::Status {
+            message: Some(grpc_api::send_operations_response::Message::Error(
+                massa_proto_rs::google::rpc::Status {
                     code: code.into(),
                     message: error,
                     details: Vec::new(),
