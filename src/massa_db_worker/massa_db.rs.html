@@ -889,27 +889,27 @@
     <span class="doccomment">/// The rocksdb instance
     </span><span class="kw">pub </span>db: Arc&lt;DB&gt;,
     <span class="doccomment">/// configuration for the `RawMassaDB`
-    </span><span class="kw">pub </span>config: MassaDBConfig,
+    </span>config: MassaDBConfig,
     <span class="doccomment">/// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
     </span><span class="kw">pub </span>change_history: BTreeMap&lt;ChangeID, BTreeMap&lt;Key, <span class="prelude-ty">Option</span>&lt;Value&gt;&gt;&gt;,
     <span class="doccomment">/// same as change_history but for versioning
     </span><span class="kw">pub </span>change_history_versioning: BTreeMap&lt;ChangeID, BTreeMap&lt;Key, <span class="prelude-ty">Option</span>&lt;Value&gt;&gt;&gt;,
     <span class="doccomment">/// A serializer for the ChangeID type
-    </span><span class="kw">pub </span>change_id_serializer: ChangeIDSerializer,
+    </span>change_id_serializer: ChangeIDSerializer,
     <span class="doccomment">/// A deserializer for the ChangeID type
-    </span><span class="kw">pub </span>change_id_deserializer: ChangeIDDeserializer,
+    </span>change_id_deserializer: ChangeIDDeserializer,
     <span class="doccomment">/// The Sparse Merkle Tree instance used to keep track of the global hash of the database
-    </span><span class="kw">pub </span>lsmtree: SparseMerkleTree&lt;MassaDbLsmtree&gt;,
+    </span>lsmtree: SparseMerkleTree&lt;MassaDbLsmtree&gt;,
     <span class="doccomment">/// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
-    </span><span class="kw">pub </span>current_batch: Arc&lt;Mutex&lt;WriteBatch&gt;&gt;,
+    </span>current_batch: Arc&lt;Mutex&lt;WriteBatch&gt;&gt;,
     <span class="doccomment">/// The current RocksDB cache for this batch, useful for lsmtree
-    </span><span class="kw">pub </span>current_hashmap: SharedSmtCache,
+    </span>current_hashmap: SharedSmtCache,
 }
 
-<span class="kw">pub type </span>SharedSmtCache = Arc&lt;RwLock&lt;HashMap&lt;[u8; <span class="number">32</span>], <span class="prelude-ty">Option</span>&lt;Bytes&gt;&gt;&gt;&gt;;
+<span class="kw">type </span>SharedSmtCache = Arc&lt;RwLock&lt;HashMap&lt;[u8; <span class="number">32</span>], <span class="prelude-ty">Option</span>&lt;Bytes&gt;&gt;&gt;&gt;;
 
 <span class="doccomment">/// Wrapper for the Lsm-tree database type
-</span><span class="kw">pub struct </span>MassaDbLsmtree {
+</span><span class="kw">struct </span>MassaDbLsmtree {
     <span class="kw">pub </span>cf: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
     <span class="kw">pub </span>db: Arc&lt;DB&gt;,
     <span class="kw">pub </span>current_batch: Arc&lt;Mutex&lt;WriteBatch&gt;&gt;,
