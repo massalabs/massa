@@ -18,7 +18,7 @@ tokio = { version = "1.23", features = ["sync"] }
 mockall = { version = "0.11.4",  optional = true}
 
 # custom modules
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "main"}
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "c9a6079" }
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
