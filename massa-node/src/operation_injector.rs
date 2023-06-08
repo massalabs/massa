@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use massa_consensus_exports::ConsensusController;
 use massa_models::{
     address::Address,
     amount::Amount,
-    config::{THREAD_COUNT, T0},
-    operation::{Operation, OperationType}, timeslots::get_closest_slot_to_timestamp,
+    config::{T0, THREAD_COUNT},
+    operation::{Operation, OperationType},
+    timeslots::get_closest_slot_to_timestamp,
 };
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolController;
@@ -20,6 +20,7 @@ pub fn start_operation_injector(
     mut wallet: Wallet,
     mut pool_controller: Box<dyn PoolController>,
     protocol_controller: Box<dyn ProtocolController>,
+    nb_op: u64,
 ) {
     std::thread::sleep(
         genesis_timestamp
@@ -39,7 +40,12 @@ pub fn start_operation_injector(
     let mut init_ops = vec![];
     while wallets_created.iter().any(|e| *e == false) {
         let keypair = KeyPair::generate(0).unwrap();
-        let final_slot = get_closest_slot_to_timestamp(THREAD_COUNT, T0, genesis_timestamp, MassaTime::now().unwrap());
+        let final_slot = get_closest_slot_to_timestamp(
+            THREAD_COUNT,
+            T0,
+            genesis_timestamp,
+            MassaTime::now().unwrap(),
+        );
         let addr = Address::from_public_key(&keypair.get_public_key());
         let index: usize = addr.get_thread(THREAD_COUNT) as usize;
         if !wallets_created[index] {
@@ -75,8 +81,13 @@ pub fn start_operation_injector(
         let mut rng = rand::thread_rng();
         loop {
             let mut storage = storage.clone_without_refs();
-            let txps = 1500 / 32;
-            let final_slot = get_closest_slot_to_timestamp(THREAD_COUNT, T0, genesis_timestamp, MassaTime::now().unwrap());
+            let txps = nb_op / 32;
+            let final_slot = get_closest_slot_to_timestamp(
+                THREAD_COUNT,
+                T0,
+                genesis_timestamp,
+                MassaTime::now().unwrap(),
+            );
             let mut ops = vec![];
 
             for i in 0..32 {
@@ -94,7 +105,6 @@ pub fn start_operation_injector(
                     ops.push(wallet.create_operation(content, address).unwrap())
                 }
             }
-            println!("AURELIEN: Sending ops len: {}", ops.len());
             storage.store_operations(ops);
             pool_controller.add_operations(storage.clone());
             protocol_controller

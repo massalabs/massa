@@ -6,6 +6,7 @@
 #![feature(ip)]
 extern crate massa_logging;
 
+#[cfg(feature = "op_spammer")]
 use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
@@ -102,6 +103,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
+#[cfg(feature = "op_spammer")]
 mod operation_injector;
 mod settings;
 
@@ -889,6 +891,16 @@ async fn launch(
         None
     };
 
+    #[cfg(feature = "op_spammer")]
+    start_operation_injector(
+        *GENESIS_TIMESTAMP,
+        shared_storage.clone_without_refs(),
+        node_wallet.read().clone(),
+        pool_controller.clone(),
+        protocol_controller.clone(),
+        args.nb_op,
+    );
+
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         protocol_controller.clone(),
@@ -1062,6 +1074,16 @@ struct Args {
     /// restart_from_snapshot_at_period
     #[structopt(long = "restart-from-snapshot-at-period")]
     restart_from_snapshot_at_period: Option<u64>,
+
+    #[cfg(feature = "op_spammer")]
+    /// number of operations
+    #[structopt(
+        name = "number of operations",
+        about = "Define the number of operations the node can spam.",
+        short = "nb-op",
+        long = "number-operations"
+    )]
+    nb_op: u64,
 
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector
