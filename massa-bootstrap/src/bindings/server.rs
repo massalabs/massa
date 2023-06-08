@@ -41,7 +41,6 @@ pub struct BootstrapServerBinder {
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     local_keypair: KeyPair,
-    // TODO: Reintroduce bandwidth limits
     duplex: Limiter<TcpStream>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
@@ -64,7 +63,6 @@ impl BootstrapServerBinder {
         rw_limit: Option<u64>,
     ) -> Self {
         let BootstrapSrvBindCfg {
-            // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
             thread_count,
             max_datastore_key_length,
@@ -72,6 +70,8 @@ impl BootstrapServerBinder {
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
+
+        // A 1s window breaks anything requiring a 1s window
         let limit_opts = rw_limit.map(|limit| {
             LimiterOptions::new(
                 (limit / 100) as u128,

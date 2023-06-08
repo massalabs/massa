@@ -494,7 +494,9 @@ fn test_binders_try_double_send_client_works() {
     client_thread.join().unwrap();
 }
 
-/// The server and the client will handshake and then send message in both ways in order
+/// Following a handshake, the server and client will exchange messages.
+///
+/// We use the limiter te ensure that these message exchanges each take slightly more than 10s
 #[test]
 fn test_bandwidth() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;

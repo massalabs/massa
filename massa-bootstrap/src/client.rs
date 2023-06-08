@@ -500,7 +500,7 @@ pub fn get_state(
                             warn!("Error received from bootstrap server: {}", error)
                         }
                         Err(e) => {
-                            warn!("Error while bootstrapping: {}", (&e));
+                            warn!("Error while bootstrapping: {}", &e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
                             let _ = client.send_timeout(
                                 &BootstrapClientMessage::BootstrapError {
@@ -509,9 +509,7 @@ pub fn get_state(
                                 Some(bootstrap_config.write_error_timeout.into()),
                             );
                         }
-                        Ok(()) => {
-                            return Ok(global_bootstrap_state);
-                        }
+                        Ok(()) => return Ok(global_bootstrap_state),
                     }
                 }
                 Err(e) => {

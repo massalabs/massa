@@ -49,9 +49,7 @@ impl BootstrapClientBinder {
         cfg: BootstrapClientConfig,
         limit: Option<u64>,
     ) -> Self {
-        // let read_limit = limit.map(|limit| {
-        //     LimiterOptions::new(limit.into(), Duration::from_millis(20), limit as usize)
-        // });
+        // A 1s window breaks anything requiring a 1s window
         let write_limit = limit.map(|limit| {
             LimiterOptions::new(
                 (limit / 100).into(),
