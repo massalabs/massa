@@ -427,6 +427,9 @@
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -436,7 +439,7 @@
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
-<span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
+<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 <span class="kw">use </span>massa_models::version::{Version, VersionDeserializer};
 <span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
@@ -470,16 +473,18 @@
         default_target_out_connections: usize,
     ) -&gt; (
         (
-            Sender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
-            Receiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
+            MassaSender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
+            MassaReceiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
         ),
         Vec&lt;Tester&gt;,
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>testers = Vec::new();
 
         <span class="comment">// create shared channel between thread for launching test
-        </span><span class="kw">let </span>(test_sender, test_receiver) =
-            crossbeam::channel::bounded(config.max_size_channel_commands_peer_testers);
+        </span><span class="kw">let </span>(test_sender, test_receiver) = MassaChannel::new(
+            <span class="string">&quot;test_sender&quot;</span>.to_string(),
+            <span class="prelude-val">Some</span>(config.max_size_channel_commands_peer_testers),
+        );
 
         <span class="kw">for _ in </span><span class="number">0</span>..config.thread_tester_count {
             testers.push(Tester::new(
@@ -666,7 +671,7 @@
         peer_db: SharedPeerDB,
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         protocol_config: ProtocolConfig,
-        receiver: crossbeam::channel::Receiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
+        receiver: MassaReceiver&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
         messages_handler: MessagesHandler,
         target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
         default_target_out_connections: usize,
@@ -691,6 +696,7 @@
             <span class="kw">loop </span>{
                 <span class="macro">crossbeam::select! </span>{
                     recv(receiver) -&gt; res =&gt; {
+                        receiver.inc_metrics();
                         <span class="kw">match </span>res {
                             <span class="prelude-val">Ok</span>(listener) =&gt; {
                                 <span class="kw">if </span>listener.<span class="number">1</span>.is_empty() {

@@ -53,11 +53,15 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_versioning::versioning::MipStore;
+</span><span class="kw">use </span>massa_channel::MassaChannel;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::sync::{mpsc, Arc};
+<span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use crate</span>::{
     block_factory::BlockFactoryWorker, endorsement_factory::EndorsementFactoryWorker,
@@ -82,10 +86,12 @@
     mip_store: MipStore,
 ) -&gt; Box&lt;<span class="kw">dyn </span>FactoryManager&gt; {
     <span class="comment">// create block factory channel
-    </span><span class="kw">let </span>(block_worker_tx, block_worker_rx) = mpsc::channel::&lt;()&gt;();
+    </span><span class="kw">let </span>(block_worker_tx, block_worker_rx) =
+        MassaChannel::new(<span class="string">&quot;factory_block_worker&quot;</span>.to_string(), <span class="prelude-val">None</span>);
 
     <span class="comment">// create endorsement factory channel
-    </span><span class="kw">let </span>(endorsement_worker_tx, endorsement_worker_rx) = mpsc::channel::&lt;()&gt;();
+    </span><span class="kw">let </span>(endorsement_worker_tx, endorsement_worker_rx) =
+        MassaChannel::new(<span class="string">&quot;factory_endorsement_worker&quot;</span>.to_string(), <span class="prelude-val">None</span>);
 
     <span class="comment">// start block factory worker
     </span><span class="kw">let </span>block_worker_handle = BlockFactoryWorker::spawn(

@@ -14,13 +14,15 @@
 <a href="#14" id="14">14</a>
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
 };
 
-<span class="kw">pub enum </span>BlockHandlerRetrievalCommand {
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub enum </span>BlockHandlerRetrievalCommand {
     Stop,
     <span class="doccomment">/// Wish list delta
     </span>WishlistDelta {

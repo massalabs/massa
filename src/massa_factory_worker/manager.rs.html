@@ -37,13 +37,15 @@
 <a href="#37" id="37">37</a>
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements a factory manager.
 //! See `massa-factory-exports/manager_traits.rs` for functional details.
 
-</span><span class="kw">use </span>std::{sync::mpsc, thread::JoinHandle};
+</span><span class="kw">use </span>std::thread::JoinHandle;
 
+<span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_factory_exports::FactoryManager;
 <span class="kw">use </span>tracing::{info, warn};
 
@@ -51,10 +53,10 @@
 /// Allows stopping the factory worker
 </span><span class="kw">pub struct </span>FactoryManagerImpl {
     <span class="doccomment">/// block worker message sender and join handle
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_worker: <span class="prelude-ty">Option</span>&lt;(mpsc::Sender&lt;()&gt;, JoinHandle&lt;()&gt;)&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_worker: <span class="prelude-ty">Option</span>&lt;(MassaSender&lt;()&gt;, JoinHandle&lt;()&gt;)&gt;,
 
     <span class="doccomment">/// endorsement worker message sender and join handle
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) endorsement_worker: <span class="prelude-ty">Option</span>&lt;(mpsc::Sender&lt;()&gt;, JoinHandle&lt;()&gt;)&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) endorsement_worker: <span class="prelude-ty">Option</span>&lt;(MassaSender&lt;()&gt;, JoinHandle&lt;()&gt;)&gt;,
 }
 
 <span class="kw">impl </span>FactoryManager <span class="kw">for </span>FactoryManagerImpl {

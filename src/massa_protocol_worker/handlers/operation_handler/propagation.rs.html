@@ -162,9 +162,11 @@
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{mem, thread::JoinHandle};
 
-<span class="kw">use </span>crossbeam::channel::{Receiver, RecvTimeoutError};
+<span class="kw">use </span>crossbeam::channel::RecvTimeoutError;
+<span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_protocol_exports::PeerId;
@@ -182,7 +184,7 @@
 };
 
 <span class="kw">struct </span>PropagationThread {
-    internal_receiver: Receiver&lt;OperationHandlerPropagationCommand&gt;,
+    internal_receiver: MassaReceiver&lt;OperationHandlerPropagationCommand&gt;,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     operations_to_announce: Vec&lt;OperationId&gt;,
     config: ProtocolConfig,
@@ -305,7 +307,7 @@
 }
 
 <span class="kw">pub fn </span>start_propagation_thread(
-    internal_receiver: Receiver&lt;OperationHandlerPropagationCommand&gt;,
+    internal_receiver: MassaReceiver&lt;OperationHandlerPropagationCommand&gt;,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     config: ProtocolConfig,
     cache: SharedOperationCache,

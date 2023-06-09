@@ -123,10 +123,16 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::{receiver::MassaReceiver, MassaChannel};
+<span class="kw">use </span>massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
     ConsensusController, ConsensusManager,
 };
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::config::CHANNEL_SIZE;
@@ -135,7 +141,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::sync::{mpsc, Arc};
+<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::time::Instant;
 
@@ -147,7 +153,7 @@
 <span class="doccomment">/// The consensus worker structure that contains all information and tools for the consensus worker thread.
 </span><span class="kw">pub struct </span>ConsensusWorker {
     <span class="doccomment">/// Channel to receive command from the controller
-    </span>command_receiver: mpsc::Receiver&lt;ConsensusCommand&gt;,
+    </span>command_receiver: MassaReceiver&lt;ConsensusCommand&gt;,
     <span class="doccomment">/// Configuration of the consensus
     </span>config: ConsensusConfig,
     <span class="doccomment">/// State shared with the controller
@@ -179,8 +185,9 @@
     channels: ConsensusChannels,
     init_graph: <span class="prelude-ty">Option</span>&lt;BootstrapableGraph&gt;,
     storage: Storage,
+    massa_metrics: MassaMetrics,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ConsensusController&gt;, Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;) {
-    <span class="kw">let </span>(tx, rx) = mpsc::sync_channel(CHANNEL_SIZE);
+    <span class="kw">let </span>(tx, rx) = MassaChannel::new(<span class="string">&quot;consensus_command&quot;</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
     <span class="comment">// desync detection timespan
     </span><span class="kw">let </span>bootstrap_part_size = config.bootstrap_part_size;
     <span class="kw">let </span>stats_desync_detection_timespan =
@@ -223,6 +230,7 @@
         ),
         prev_blockclique: Default::default(),
         nonfinal_active_blocks_per_slot: Default::default(),
+        massa_metrics,
     }));
 
     <span class="kw">let </span>shared_state_cloned = shared_state.clone();
