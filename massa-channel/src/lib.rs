@@ -10,6 +10,7 @@ pub mod sender;
 pub struct MassaChannel {}
 
 impl MassaChannel {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new<T>(name: String, capacity: Option<usize>) -> (MassaSender<T>, MassaReceiver<T>) {
         use prometheus::{Counter, Gauge};
         use tracing::error;

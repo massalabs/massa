@@ -173,6 +173,7 @@ pub fn create_protocol_controller(
 /// * `consensus_controller`: interact with consensus module
 /// * `bootstrap_peers`: list of peers to connect to retrieved from the bootstrap
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
+#[allow(clippy::too_many_arguments)]
 pub fn start_protocol_controller(
     config: ProtocolConfig,
     consensus_controller: Box<dyn ConsensusController>,
