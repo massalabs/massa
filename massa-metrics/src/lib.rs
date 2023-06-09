@@ -60,12 +60,18 @@ pub struct MassaMetrics {
     // block_cache
     block_cache_checked_headers_size: IntGauge,
     block_cache_blocks_known_by_peer: IntGauge,
-    block_cache_max_known_blocks_by_peer: IntGauge,
 
     // Operation cache
     operation_cache_checked_operations: IntGauge,
     operation_cache_checked_operations_prefix: IntGauge,
     operation_cache_ops_know_by_peer: IntGauge,
+
+    // Consensus state
+    consensus_state_active_index: IntGauge,
+    consensus_state_active_index_without_ops: IntGauge,
+    consensus_state_incoming_index: IntGauge,
+    consensus_state_discarded_index: IntGauge,
+    consensus_state_block_statuses: IntGauge,
 
     // blocks_counter: IntGauge,
     // endorsements_counter: IntGauge,
@@ -79,6 +85,8 @@ pub struct MassaMetrics {
 
 impl MassaMetrics {
     pub fn new(nb_thread: u8) -> Self {
+        // TODO unwrap
+
         let mut consensus_vec = vec![];
         for i in 0..nb_thread {
             let gauge = Gauge::new(
@@ -160,14 +168,6 @@ impl MassaMetrics {
         prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()))
             .expect("Failed to register gauge");
 
-        let block_cache_max_known_blocks_by_peer = IntGauge::new(
-            "block_cache_max_known_blocks_by_peer",
-            "BlockCache max_known_blocks_by_peer",
-        )
-        .unwrap();
-        prometheus::register(Box::new(block_cache_max_known_blocks_by_peer.clone()))
-            .expect("Failed to register gauge");
-
         // operation cache
         let operation_cache_checked_operations = IntGauge::new(
             "operation_cache_checked_operations",
@@ -193,12 +193,54 @@ impl MassaMetrics {
         prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()))
             .expect("Failed to register gauge");
 
+        // from retrieval thread of operation_handler
         let retrieval_thread_stored_operations_sum = IntGauge::new(
             "retrieval_thread_stored_operations_sum_size",
             "sum of retrieval_thread_stored_operations",
         )
         .unwrap();
         prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()))
+            .expect("Failed to register gauge");
+
+        // consensus state from tick.rs
+        let consensus_state_active_index = IntGauge::new(
+            "consensus_state_active_index",
+            "consensus state active index size",
+        )
+        .unwrap();
+        prometheus::register(Box::new(consensus_state_active_index.clone()))
+            .expect("Failed to register gauge");
+
+        let consensus_state_active_index_without_ops = IntGauge::new(
+            "consensus_state_active_index_without_ops",
+            "consensus state active index without ops size",
+        )
+        .unwrap();
+        prometheus::register(Box::new(consensus_state_active_index_without_ops.clone()))
+            .expect("Failed to register gauge");
+
+        let consensus_state_incoming_index = IntGauge::new(
+            "consensus_state_incoming_index",
+            "consensus state incoming index size",
+        )
+        .unwrap();
+        prometheus::register(Box::new(consensus_state_incoming_index.clone()))
+            .expect("Failed to register gauge");
+
+        let consensus_state_discarded_index = IntGauge::new(
+            "consensus_state_discarded_index",
+            "consensus state discarded index size",
+        )
+        .unwrap();
+        prometheus::register(Box::new(consensus_state_discarded_index.clone()))
+            .expect("Failed to register gauge");
+
+        let consensus_state_block_statuses = IntGauge::new(
+            "consensus_state_block_statuses",
+            "consensus state block statuses size",
+        )
+        .unwrap();
+        prometheus::register(Box::new(consensus_state_block_statuses.clone()))
             .expect("Failed to register gauge");
 
         MassaMetrics {
@@ -208,10 +250,14 @@ impl MassaMetrics {
             retrieval_thread_stored_operations_sum,
             block_cache_checked_headers_size,
             block_cache_blocks_known_by_peer,
-            block_cache_max_known_blocks_by_peer,
             operation_cache_checked_operations,
             operation_cache_checked_operations_prefix,
             operation_cache_ops_know_by_peer,
+            consensus_state_active_index,
+            consensus_state_active_index_without_ops,
+            consensus_state_incoming_index,
+            consensus_state_discarded_index,
+            consensus_state_block_statuses,
             // blocks_counter,
             // endorsements_counter,
             // operations_counter,
@@ -265,18 +311,30 @@ impl MassaMetrics {
         self.consensus_vec[thread].set(period as f64);
     }
 
-    pub fn set_block_cache_metrics(
+    pub fn set_consensus_state(
         &self,
-        checked_header_size: usize,
-        blocks_known_by_peer: usize,
-        max_known_blocks_by_peer: u32,
+        active_index: usize,
+        incoming_index: usize,
+        discarded_index: usize,
+        block_statuses: usize,
+        active_index_without_ops: usize,
     ) {
+        self.consensus_state_active_index.set(active_index as i64);
+        self.consensus_state_incoming_index
+            .set(incoming_index as i64);
+        self.consensus_state_discarded_index
+            .set(discarded_index as i64);
+        self.consensus_state_block_statuses
+            .set(block_statuses as i64);
+        self.consensus_state_active_index_without_ops
+            .set(active_index_without_ops as i64);
+    }
+
+    pub fn set_block_cache_metrics(&self, checked_header_size: usize, blocks_known_by_peer: usize) {
         self.block_cache_checked_headers_size
             .set(checked_header_size as i64);
         self.block_cache_blocks_known_by_peer
             .set(blocks_known_by_peer as i64);
-        self.block_cache_max_known_blocks_by_peer
-            .set(max_known_blocks_by_peer as i64);
     }
 
     pub fn set_retrieval_thread_stored_operations_sum(&self, sum: usize) {

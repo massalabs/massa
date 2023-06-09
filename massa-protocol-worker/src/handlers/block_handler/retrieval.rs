@@ -245,7 +245,6 @@ impl RetrievalThread {
                         self.massa_metrics.set_block_cache_metrics(
                             block_read.checked_headers.len(),
                             block_read.blocks_known_by_peer.len(),
-                            block_read.max_known_blocks_by_peer,
                         );
                     }
 

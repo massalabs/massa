@@ -80,6 +80,14 @@ impl ConsensusState {
             }
         }
 
+        self.massa_metrics.set_consensus_state(
+            self.active_index.len(),
+            self.incoming_index.len(),
+            self.discarded_index.len(),
+            self.block_statuses.len(),
+            self.active_index_without_ops.len(),
+        );
+
         Ok(())
     }
 }
