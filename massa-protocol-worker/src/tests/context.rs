@@ -5,11 +5,12 @@ use crate::{
     handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
     messages::MessagesHandler, tests::mock_network::MockNetworkController,
 };
+use massa_channel::MassaChannel;
 use massa_consensus_exports::{
     test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
     ConsensusController,
 };
-use massa_metrics::channels::MassaChannel;
+use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 //use crate::handlers::block_handler::BlockInfoReply;
 use massa_pool_exports::{
@@ -123,6 +124,7 @@ pub fn start_protocol_controller_with_mock_network(
         },
         config,
         mip_store,
+        MassaMetrics::new(32),
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

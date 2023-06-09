@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
+use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
@@ -132,6 +133,8 @@ fn basic() {
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
+    let metrics = MassaMetrics::new(32);
+
     // Setup the protocols
     let (mut manager1, _, _) = start_protocol_controller(
         config1,
@@ -141,6 +144,7 @@ fn basic() {
         storage1,
         channels1,
         mip_store.clone(),
+        metrics.clone(),
     )
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
@@ -151,6 +155,7 @@ fn basic() {
         storage2,
         channels2,
         mip_store,
+        metrics,
     )
     .expect("Failed to start protocol 2");
 
@@ -264,6 +269,7 @@ fn stop_with_controller_still_exists() {
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let metrics = MassaMetrics::new(32);
 
     // Setup the protocols
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());
@@ -276,6 +282,7 @@ fn stop_with_controller_still_exists() {
         storage1,
         channels1,
         mip_store.clone(),
+        metrics.clone(),
     )
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
@@ -286,6 +293,7 @@ fn stop_with_controller_still_exists() {
         storage2,
         channels2,
         mip_store,
+        metrics,
     )
     .expect("Failed to start protocol 2");
 
