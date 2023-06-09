@@ -1346,7 +1346,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39ae6b3d9530211fb3b12a95374b8b0823be812f53d09e18c5675c0146b09642"
 dependencies = [
  "cfg-if",
- "rustix",
+ "rustix 0.37.19",
  "windows-sys 0.48.0",
 ]
 
@@ -2231,6 +2231,12 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f051f77a7c8e6957c0696eac88f26b0117e54f52d3fc682ab19397a8812846a4"
+
+[[package]]
+name = "linux-raw-sys"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef53942eb7bf7ff43a617b3e2c1c4a5ecf5944a7c1bc12d7ee39bbb15e5c1519"
@@ -2353,6 +2359,7 @@ dependencies = [
  "massa_api_exports",
  "massa_async_pool",
  "massa_bootstrap",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_consensus_worker",
  "massa_db",
@@ -2366,6 +2373,7 @@ dependencies = [
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_logging",
+ "massa_metrics",
  "massa_models",
  "massa_pool_exports",
  "massa_pool_worker",
@@ -2373,6 +2381,7 @@ dependencies = [
  "massa_pos_worker",
  "massa_protocol_exports",
  "massa_protocol_worker",
+ "massa_signature",
  "massa_storage",
  "massa_time",
  "massa_versioning",
@@ -2380,6 +2389,7 @@ dependencies = [
  "parking_lot",
  "paw",
  "peernet",
+ "rand 0.8.5",
  "serde",
  "structopt",
  "tokio",
@@ -2540,6 +2550,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_channel"
+version = "0.23.0"
+dependencies = [
+ "crossbeam",
+ "prometheus",
+ "tracing",
+]
+
+[[package]]
 name = "massa_cipher"
 version = "0.23.0"
 dependencies = [
@@ -2558,6 +2577,7 @@ dependencies = [
  "crossbeam-channel",
  "displaydoc",
  "jsonrpsee",
+ "massa_channel",
  "massa_execution_exports",
  "massa_hash",
  "massa_models",
@@ -2580,10 +2600,13 @@ dependencies = [
 name = "massa_consensus_worker"
 version = "0.23.0"
 dependencies = [
+ "crossbeam",
  "itertools",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_hash",
  "massa_logging",
+ "massa_metrics",
  "massa_models",
  "massa_signature",
  "massa_storage",
@@ -2655,6 +2678,7 @@ dependencies = [
  "hex-literal",
  "massa-sc-runtime",
  "massa_async_pool",
+ "massa_channel",
  "massa_db",
  "massa_executed_ops",
  "massa_execution_exports",
@@ -2662,6 +2686,7 @@ dependencies = [
  "massa_hash",
  "massa_ledger_exports",
  "massa_ledger_worker",
+ "massa_metrics",
  "massa_models",
  "massa_module_cache",
  "massa_pos_exports",
@@ -2704,6 +2729,7 @@ name = "massa_factory_worker"
 version = "0.23.0"
 dependencies = [
  "crossbeam-channel",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_factory_exports",
  "massa_hash",
@@ -2751,12 +2777,12 @@ dependencies = [
 name = "massa_grpc"
 version = "0.23.0"
 dependencies = [
- "crossbeam",
  "displaydoc",
  "futures-util",
  "h2",
  "hyper",
  "itertools",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_hash",
@@ -2839,6 +2865,18 @@ name = "massa_logging"
 version = "0.23.0"
 dependencies = [
  "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "massa_metrics"
+version = "0.23.0"
+dependencies = [
+ "hyper",
+ "lazy_static",
+ "massa_channel",
+ "prometheus",
+ "tokio",
  "tracing",
 ]
 
@@ -2998,9 +3036,11 @@ name = "massa_protocol_worker"
 version = "0.23.0"
 dependencies = [
  "crossbeam",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_hash",
  "massa_logging",
+ "massa_metrics",
  "massa_models",
  "massa_pool_exports",
  "massa_protocol_exports",
@@ -3072,6 +3112,7 @@ name = "massa_storage"
 version = "0.23.0"
 dependencies = [
  "massa_factory_exports",
+ "massa_metrics",
  "massa_models",
  "massa_signature",
  "parking_lot",
@@ -3863,6 +3904,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "procfs"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1de8dacb0873f77e6aefc6d71e044761fcc68060290f5b1089fcdf84626bb69"
+dependencies = [
+ "bitflags",
+ "byteorder",
+ "hex",
+ "lazy_static",
+ "rustix 0.36.14",
+]
+
+[[package]]
+name = "prometheus"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "449811d15fbdf5ceb5c1144416066429cf82316e2ec8ce0c1f6f8a02e7bbcf8c"
+dependencies = [
+ "cfg-if",
+ "fnv",
+ "lazy_static",
+ "libc",
+ "memchr",
+ "parking_lot",
+ "procfs",
+ "protobuf",
+ "thiserror",
+]
+
+[[package]]
 name = "prost"
 version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3915,6 +3986,12 @@ checksum = "379119666929a1afd7a043aa6cf96fa67a6dce9af60c88095a4686dbce4c9c88"
 dependencies = [
  "prost",
 ]
+
+[[package]]
+name = "protobuf"
+version = "2.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
 
 [[package]]
 name = "ptr_meta"
@@ -4285,6 +4362,20 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustix"
+version = "0.36.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14e4d67015953998ad0eb82887a0eb0129e18a7e2f3b7b0f6c422fddcd503d62"
+dependencies = [
+ "bitflags",
+ "errno",
+ "io-lifetimes",
+ "libc",
+ "linux-raw-sys 0.1.4",
+ "windows-sys 0.45.0",
+]
+
+[[package]]
+name = "rustix"
 version = "0.37.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acf8729d8542766f1b2cf77eb034d52f40d375bb8b615d0b147089946e16613d"
@@ -4293,7 +4384,7 @@ dependencies = [
  "errno",
  "io-lifetimes",
  "libc",
- "linux-raw-sys",
+ "linux-raw-sys 0.3.8",
  "windows-sys 0.48.0",
 ]
 
@@ -4887,7 +4978,7 @@ dependencies = [
  "cfg-if",
  "fastrand",
  "redox_syscall 0.3.5",
- "rustix",
+ "rustix 0.37.19",
  "windows-sys 0.45.0",
 ]
 

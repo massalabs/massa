@@ -3,8 +3,9 @@
 //! This module implements a factory manager.
 //! See `massa-factory-exports/manager_traits.rs` for functional details.
 
-use std::{sync::mpsc, thread::JoinHandle};
+use std::thread::JoinHandle;
 
+use massa_channel::sender::MassaSender;
 use massa_factory_exports::FactoryManager;
 use tracing::{info, warn};
 
@@ -12,10 +13,10 @@ use tracing::{info, warn};
 /// Allows stopping the factory worker
 pub struct FactoryManagerImpl {
     /// block worker message sender and join handle
-    pub(crate) block_worker: Option<(mpsc::Sender<()>, JoinHandle<()>)>,
+    pub(crate) block_worker: Option<(MassaSender<()>, JoinHandle<()>)>,
 
     /// endorsement worker message sender and join handle
-    pub(crate) endorsement_worker: Option<(mpsc::Sender<()>, JoinHandle<()>)>,
+    pub(crate) endorsement_worker: Option<(MassaSender<()>, JoinHandle<()>)>,
 }
 
 impl FactoryManager for FactoryManagerImpl {

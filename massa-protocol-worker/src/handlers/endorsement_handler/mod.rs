@@ -1,6 +1,6 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::{Receiver, Sender};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
@@ -25,10 +25,14 @@ pub(crate) use messages::{EndorsementMessage, EndorsementMessageSerializer};
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 pub struct EndorsementHandler {
-    pub endorsement_retrieval_thread:
-        Option<(Sender<EndorsementHandlerRetrievalCommand>, JoinHandle<()>)>,
-    pub endorsement_propagation_thread:
-        Option<(Sender<EndorsementHandlerPropagationCommand>, JoinHandle<()>)>,
+    pub endorsement_retrieval_thread: Option<(
+        MassaSender<EndorsementHandlerRetrievalCommand>,
+        JoinHandle<()>,
+    )>,
+    pub endorsement_propagation_thread: Option<(
+        MassaSender<EndorsementHandlerPropagationCommand>,
+        JoinHandle<()>,
+    )>,
 }
 
 impl EndorsementHandler {
@@ -39,12 +43,12 @@ impl EndorsementHandler {
         storage: Storage,
         config: ProtocolConfig,
         active_connections: Box<dyn ActiveConnectionsTrait>,
-        receiver: Receiver<PeerMessageTuple>,
-        sender_retrieval_ext: Sender<EndorsementHandlerRetrievalCommand>,
-        receiver_retrieval_ext: Receiver<EndorsementHandlerRetrievalCommand>,
-        local_sender: Sender<EndorsementHandlerPropagationCommand>,
-        local_receiver: Receiver<EndorsementHandlerPropagationCommand>,
-        sender_peer_cmd: Sender<PeerManagementCmd>,
+        receiver: MassaReceiver<PeerMessageTuple>,
+        sender_retrieval_ext: MassaSender<EndorsementHandlerRetrievalCommand>,
+        receiver_retrieval_ext: MassaReceiver<EndorsementHandlerRetrievalCommand>,
+        local_sender: MassaSender<EndorsementHandlerPropagationCommand>,
+        local_receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
+        sender_peer_cmd: MassaSender<PeerManagementCmd>,
     ) -> Self {
         let endorsement_retrieval_thread = start_retrieval_thread(
             receiver,

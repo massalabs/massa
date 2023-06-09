@@ -1,3 +1,4 @@
+use massa_channel::sender::MassaSender;
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
@@ -18,7 +19,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 use parking_lot::RwLock;
-use std::sync::{mpsc::SyncSender, Arc};
+use std::sync::Arc;
 use tracing::log::{debug, trace, warn};
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
@@ -32,7 +33,7 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 /// Note that sending commands and reading the state is done from different, mutually-asynchronous tasks and they can have data that are not sync yet.
 #[derive(Clone)]
 pub struct ConsensusControllerImpl {
-    command_sender: SyncSender<ConsensusCommand>,
+    command_sender: MassaSender<ConsensusCommand>,
     channels: ConsensusChannels,
     shared_state: Arc<RwLock<ConsensusState>>,
     bootstrap_part_size: u64,
@@ -41,7 +42,7 @@ pub struct ConsensusControllerImpl {
 
 impl ConsensusControllerImpl {
     pub fn new(
-        command_sender: SyncSender<ConsensusCommand>,
+        command_sender: MassaSender<ConsensusCommand>,
         channels: ConsensusChannels,
         shared_state: Arc<RwLock<ConsensusState>>,
         bootstrap_part_size: u64,

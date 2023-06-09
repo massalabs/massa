@@ -17,6 +17,7 @@ jsonrpsee = { version = "0.18.2", features = ["server"] }
 tokio = { version = "1.23", features = ["sync"] }
 mockall = {version =  "0.11.4", features = ["nightly"], optional = true}
 #custom modules
+massa_channel = { path = "../massa-channel" }
 massa_hash = { path = "../massa-hash"}
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }

@@ -1,6 +1,7 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::{Receiver, Sender};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
+use massa_metrics::MassaMetrics;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
@@ -25,10 +26,14 @@ pub(crate) use messages::{OperationMessage, OperationMessageSerializer};
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 pub struct OperationHandler {
-    pub operation_retrieval_thread:
-        Option<(Sender<OperationHandlerRetrievalCommand>, JoinHandle<()>)>,
-    pub operation_propagation_thread:
-        Option<(Sender<OperationHandlerPropagationCommand>, JoinHandle<()>)>,
+    pub operation_retrieval_thread: Option<(
+        MassaSender<OperationHandlerRetrievalCommand>,
+        JoinHandle<()>,
+    )>,
+    pub operation_propagation_thread: Option<(
+        MassaSender<OperationHandlerPropagationCommand>,
+        JoinHandle<()>,
+    )>,
 }
 
 impl OperationHandler {
@@ -39,12 +44,13 @@ impl OperationHandler {
         config: ProtocolConfig,
         cache: SharedOperationCache,
         active_connections: Box<dyn ActiveConnectionsTrait>,
-        receiver_network: Receiver<PeerMessageTuple>,
-        sender_retrieval_ext: Sender<OperationHandlerRetrievalCommand>,
-        receiver_retrieval_ext: Receiver<OperationHandlerRetrievalCommand>,
-        local_sender: Sender<OperationHandlerPropagationCommand>,
-        local_receiver: Receiver<OperationHandlerPropagationCommand>,
-        peer_cmd_sender: Sender<PeerManagementCmd>,
+        receiver_network: MassaReceiver<PeerMessageTuple>,
+        sender_retrieval_ext: MassaSender<OperationHandlerRetrievalCommand>,
+        receiver_retrieval_ext: MassaReceiver<OperationHandlerRetrievalCommand>,
+        local_sender: MassaSender<OperationHandlerPropagationCommand>,
+        local_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
+        peer_cmd_sender: MassaSender<PeerManagementCmd>,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         let operation_retrieval_thread = start_retrieval_thread(
             receiver_network,
@@ -56,6 +62,7 @@ impl OperationHandler {
             receiver_retrieval_ext,
             local_sender.clone(),
             peer_cmd_sender,
+            massa_metrics,
         );
 
         let operation_propagation_thread =
