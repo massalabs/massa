@@ -15,5 +15,4 @@ massa_signature = { path = "../massa-signature" }
 
 [features]
 testing = ["massa_factory_exports/testing"]
-metrics = []
 
