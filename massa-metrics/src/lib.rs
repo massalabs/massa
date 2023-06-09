@@ -55,6 +55,16 @@ pub struct MassaMetrics {
     active_in_connections: IntGauge,
     active_out_connections: IntGauge,
 
+    // block_cache
+    block_cache_checked_headers_size: IntGauge,
+    block_cache_blocks_known_by_peer: IntGauge,
+    block_cache_max_known_blocks_by_peer: IntGauge,
+
+    // Operation cache
+    operation_cache_checked_operations: IntGauge,
+    operation_cache_checked_operations_prefix: IntGauge,
+    operation_cache_ops_know_by_peer: IntGauge,
+
     // blocks_counter: IntGauge,
     // endorsements_counter: IntGauge,
     // operations_counter: IntGauge,
@@ -131,10 +141,66 @@ impl MassaMetrics {
         prometheus::register(Box::new(active_out_connections.clone()))
             .expect("Failed to register gauge");
 
+        // block cache
+        let block_cache_checked_headers_size = IntGauge::new(
+            "block_cache_checked_headers_size",
+            "size of BlockCache checked_headers",
+        )
+        .unwrap();
+        prometheus::register(Box::new(block_cache_checked_headers_size.clone()))
+            .expect("Failed to register gauge");
+
+        let block_cache_blocks_known_by_peer = IntGauge::new(
+            "bloc_cache_blocks_known_by_peer_size",
+            "size of BlockCache blocks_known_by_peer",
+        )
+        .unwrap();
+        prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()))
+            .expect("Failed to register gauge");
+
+        let block_cache_max_known_blocks_by_peer = IntGauge::new(
+            "bloc_cache_max_known_blocks_by_peer",
+            "BlockCache max_known_blocks_by_peer",
+        )
+        .unwrap();
+        prometheus::register(Box::new(block_cache_max_known_blocks_by_peer.clone()))
+            .expect("Failed to register gauge");
+
+        // operation cache
+        let operation_cache_checked_operations = IntGauge::new(
+            "operation_cache_checked_operations",
+            "size of OperationCache checked_operations",
+        )
+        .unwrap();
+        prometheus::register(Box::new(operation_cache_checked_operations.clone()))
+            .expect("Failed to register gauge");
+
+        let operation_cache_checked_operations_prefix = IntGauge::new(
+            "operation_cache_checked_operations_prefix",
+            "size of OperationCache checked_operations_prefix",
+        )
+        .unwrap();
+        prometheus::register(Box::new(operation_cache_checked_operations_prefix.clone()))
+            .expect("Failed to register gauge");
+
+        let operation_cache_ops_know_by_peer = IntGauge::new(
+            "operation_cache_ops_know_by_peer",
+            "size of OperationCache operation_cache_ops_know_by_peer",
+        )
+        .unwrap();
+        prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()))
+            .expect("Failed to register gauge");
+
         MassaMetrics {
             consensus_vec,
             active_in_connections,
             active_out_connections,
+            block_cache_checked_headers_size,
+            block_cache_blocks_known_by_peer,
+            block_cache_max_known_blocks_by_peer,
+            operation_cache_checked_operations,
+            operation_cache_checked_operations_prefix,
+            operation_cache_ops_know_by_peer,
             // blocks_counter,
             // endorsements_counter,
             // operations_counter,
@@ -186,6 +252,34 @@ impl MassaMetrics {
 
     pub fn set_consensus_period(&self, thread: usize, period: u64) {
         self.consensus_vec[thread].set(period as f64);
+    }
+
+    pub fn set_block_cache_metrics(
+        &self,
+        checked_header_size: usize,
+        blocks_known_by_peer: usize,
+        max_known_blocks_by_peer: u32,
+    ) {
+        self.block_cache_checked_headers_size
+            .set(checked_header_size as i64);
+        self.block_cache_blocks_known_by_peer
+            .set(blocks_known_by_peer as i64);
+        self.block_cache_max_known_blocks_by_peer
+            .set(max_known_blocks_by_peer as i64);
+    }
+
+    pub fn set_operations_cache_metrics(
+        &self,
+        checked_operations: usize,
+        checked_operations_prefix: usize,
+        ops_know_by_peer: usize,
+    ) {
+        self.operation_cache_checked_operations
+            .set(checked_operations as i64);
+        self.operation_cache_checked_operations_prefix
+            .set(checked_operations_prefix as i64);
+        self.operation_cache_ops_know_by_peer
+            .set(ops_know_by_peer as i64);
     }
 }
 // mod test {

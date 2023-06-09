@@ -2,6 +2,7 @@ use std::thread::JoinHandle;
 
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
+use massa_metrics::MassaMetrics;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
@@ -62,6 +63,7 @@ impl BlockHandler {
         cache: SharedBlockCache,
         storage: Storage,
         mip_store: MipStore,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         let block_retrieval_thread = start_retrieval_thread(
             active_connections.clone(),
@@ -78,6 +80,7 @@ impl BlockHandler {
             cache.clone(),
             storage.clone_without_refs(),
             mip_store,
+            massa_metrics,
         );
         let block_propagation_thread = start_propagation_thread(
             active_connections,
