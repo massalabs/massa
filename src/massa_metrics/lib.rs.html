@@ -413,14 +413,6 @@
 <a href="#413" id="413">413</a>
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>lazy_static::lazy_static;
 <span class="kw">use </span>prometheus::{register_int_gauge, Gauge, IntGauge};
 
@@ -517,8 +509,11 @@
                 <span class="string">&quot;consensus thread actual period&quot;</span>,
             )
             .expect(<span class="string">&quot;Failed to create gauge&quot;</span>);
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+            </span>{
+                <span class="kw">let _ </span>= prometheus::register(Box::new(gauge.clone()));
+            }
 
-            prometheus::register(Box::new(gauge.clone())).expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
             consensus_vec.push(gauge);
         }
 
@@ -527,52 +522,36 @@
             IntGauge::new(<span class="string">&quot;active_cursor_thread&quot;</span>, <span class="string">&quot;execution active cursor thread&quot;</span>).unwrap();
         <span class="kw">let </span>active_cursor_period =
             IntGauge::new(<span class="string">&quot;active_cursor_period&quot;</span>, <span class="string">&quot;execution active cursor period&quot;</span>).unwrap();
-        prometheus::register(Box::new(active_cursor_thread.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
-        prometheus::register(Box::new(active_cursor_period.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="comment">// final cursor
         </span><span class="kw">let </span>final_cursor_thread =
             IntGauge::new(<span class="string">&quot;final_cursor_thread&quot;</span>, <span class="string">&quot;execution final cursor thread&quot;</span>).unwrap();
         <span class="kw">let </span>final_cursor_period =
             IntGauge::new(<span class="string">&quot;final_cursor_period&quot;</span>, <span class="string">&quot;execution final cursor period&quot;</span>).unwrap();
-        prometheus::register(Box::new(final_cursor_thread.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
-        prometheus::register(Box::new(final_cursor_period.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
-
-        <span class="comment">// TODO addr from config
-        </span><span class="kw">let </span>addr = <span class="string">&quot;0.0.0.0:9898&quot;</span>.parse().unwrap();
-        server::bind_metrics(addr);
 
         <span class="comment">// // block counter
         // let blocks_counter = IntGauge::new(&quot;blocks_counter&quot;, &quot;block counter len&quot;).unwrap();
-        // prometheus::register(Box::new(blocks_counter.clone())).expect(&quot;Failed to register gauge&quot;);
+        // let _ = prometheus::register(Box::new(blocks_counter.clone())).expect(&quot;Failed to register gauge&quot;);
 
         // // endorsement counter
         // let endorsements_counter =
         //     IntGauge::new(&quot;endorsements_counter&quot;, &quot;endorsements counter len&quot;).unwrap();
-        // prometheus::register(Box::new(endorsements_counter.clone()))
+        // let _ = prometheus::register(Box::new(endorsements_counter.clone()))
         //     .expect(&quot;Failed to register gauge&quot;);
 
         // operation counter
         // let operations_counter =
         //     IntGauge::new(&quot;operations_counter&quot;, &quot;operations counter len&quot;).unwrap();
-        // prometheus::register(Box::new(operations_counter.clone()))
+        // let _ = prometheus::register(Box::new(operations_counter.clone()))
         //     .expect(&quot;Failed to register gauge&quot;);
 
         // active connections IN
         </span><span class="kw">let </span>active_in_connections =
             IntGauge::new(<span class="string">&quot;active_in_connections&quot;</span>, <span class="string">&quot;active connections IN len&quot;</span>).unwrap();
-        prometheus::register(Box::new(active_in_connections.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="comment">// active connections OUT
         </span><span class="kw">let </span>active_out_connections =
             IntGauge::new(<span class="string">&quot;active_out_connections&quot;</span>, <span class="string">&quot;active connections OUT len&quot;</span>).unwrap();
-        prometheus::register(Box::new(active_out_connections.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="comment">// block cache
         </span><span class="kw">let </span>block_cache_checked_headers_size = IntGauge::new(
@@ -580,16 +559,12 @@
             <span class="string">&quot;size of BlockCache checked_headers&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(block_cache_checked_headers_size.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="kw">let </span>block_cache_blocks_known_by_peer = IntGauge::new(
             <span class="string">&quot;block_cache_blocks_known_by_peer_size&quot;</span>,
             <span class="string">&quot;size of BlockCache blocks_known_by_peer&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="comment">// operation cache
         </span><span class="kw">let </span>operation_cache_checked_operations = IntGauge::new(
@@ -597,24 +572,18 @@
             <span class="string">&quot;size of OperationCache checked_operations&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(operation_cache_checked_operations.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="kw">let </span>operation_cache_checked_operations_prefix = IntGauge::new(
             <span class="string">&quot;operation_cache_checked_operations_prefix&quot;</span>,
             <span class="string">&quot;size of OperationCache checked_operations_prefix&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(operation_cache_checked_operations_prefix.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="kw">let </span>operation_cache_ops_know_by_peer = IntGauge::new(
             <span class="string">&quot;operation_cache_ops_know_by_peer&quot;</span>,
             <span class="string">&quot;size of OperationCache operation_cache_ops_know_by_peer&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="comment">// from retrieval thread of operation_handler
         </span><span class="kw">let </span>retrieval_thread_stored_operations_sum = IntGauge::new(
@@ -622,8 +591,6 @@
             <span class="string">&quot;sum of retrieval_thread_stored_operations&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="comment">// consensus state from tick.rs
         </span><span class="kw">let </span>consensus_state_active_index = IntGauge::new(
@@ -631,40 +598,57 @@
             <span class="string">&quot;consensus state active index size&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_active_index.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="kw">let </span>consensus_state_active_index_without_ops = IntGauge::new(
             <span class="string">&quot;consensus_state_active_index_without_ops&quot;</span>,
             <span class="string">&quot;consensus state active index without ops size&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_active_index_without_ops.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="kw">let </span>consensus_state_incoming_index = IntGauge::new(
             <span class="string">&quot;consensus_state_incoming_index&quot;</span>,
             <span class="string">&quot;consensus state incoming index size&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_incoming_index.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="kw">let </span>consensus_state_discarded_index = IntGauge::new(
             <span class="string">&quot;consensus_state_discarded_index&quot;</span>,
             <span class="string">&quot;consensus state discarded index size&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_discarded_index.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
 
         <span class="kw">let </span>consensus_state_block_statuses = IntGauge::new(
             <span class="string">&quot;consensus_state_block_statuses&quot;</span>,
             <span class="string">&quot;consensus state block statuses size&quot;</span>,
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_block_statuses.clone()))
-            .expect(<span class="string">&quot;Failed to register gauge&quot;</span>);
+
+        <span class="comment">// TODO addr from config
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+        </span>{
+            <span class="kw">let </span>addr = <span class="string">&quot;0.0.0.0:9898&quot;</span>.parse().unwrap();
+            server::bind_metrics(addr);
+
+            <span class="kw">let _ </span>= prometheus::register(Box::new(final_cursor_thread.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(final_cursor_period.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(active_cursor_thread.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(active_cursor_period.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(active_out_connections.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(block_cache_checked_headers_size.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(operation_cache_checked_operations.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(active_in_connections.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(consensus_state_active_index.clone()));
+            <span class="kw">let _ </span>=
+                prometheus::register(Box::new(consensus_state_active_index_without_ops.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(consensus_state_incoming_index.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(consensus_state_discarded_index.clone()));
+            <span class="kw">let _ </span>= prometheus::register(Box::new(consensus_state_block_statuses.clone()));
+            <span class="kw">let _ </span>=
+                prometheus::register(Box::new(operation_cache_checked_operations_prefix.clone()));
+        }
 
         MassaMetrics {
             consensus_vec,
