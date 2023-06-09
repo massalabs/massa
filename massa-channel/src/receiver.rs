@@ -9,6 +9,7 @@ use prometheus::{Counter, Gauge};
 #[derive(Clone)]
 pub struct MassaReceiver<T> {
     pub(crate) receiver: Receiver<T>,
+    #[allow(dead_code)]
     pub(crate) name: String,
     /// channel size
     pub(crate) actual_len: Gauge,

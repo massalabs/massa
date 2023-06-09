@@ -6,6 +6,7 @@ use prometheus::Gauge;
 #[derive(Clone, Debug)]
 pub struct MassaSender<T> {
     pub(crate) sender: Sender<T>,
+    #[allow(dead_code)]
     pub(crate) name: String,
     /// channel size
     pub(crate) actual_len: Gauge,

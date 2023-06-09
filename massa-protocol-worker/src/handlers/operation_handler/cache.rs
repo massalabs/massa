@@ -18,7 +18,7 @@ impl OperationCache {
             checked_operations: LruMap::new(ByLength::new(max_known_ops)),
             checked_operations_prefix: LruMap::new(ByLength::new(max_known_ops)),
             ops_known_by_peer: LruMap::new(ByLength::new(max_peers)),
-            max_known_ops_by_peer
+            max_known_ops_by_peer,
         }
     }
 
@@ -28,7 +28,7 @@ impl OperationCache {
             .insert(operation_id.prefix(), ());
     }
 
-    pub fn update_cache(&mut self, peers_connected: HashSet<PeerId>, max_known_ops_by_peer: u32) {
+    pub fn update_cache(&mut self, peers_connected: HashSet<PeerId>, _max_known_ops_by_peer: u32) {
         let peers: Vec<PeerId> = self
             .ops_known_by_peer
             .iter()
