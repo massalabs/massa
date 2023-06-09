@@ -75,6 +75,7 @@ testing = [
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
+    "massa_metrics/testing"
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks

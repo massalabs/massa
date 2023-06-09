@@ -29,4 +29,5 @@ itertools = "0.10"
 [features]
 sandbox = []
 bootstrap_server = []
+testing = ["massa_metrics/testing"]
 

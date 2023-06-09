@@ -14,3 +14,6 @@ tracing = "0.1"
 
 [dev-dependencies]
 massa_channel = { path = "../massa-channel" }
+
+[features]
+testing = []

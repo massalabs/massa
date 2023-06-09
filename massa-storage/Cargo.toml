@@ -14,5 +14,5 @@ massa_factory_exports = { path = "../massa-factory-exports", features=["testing"
 massa_signature = { path = "../massa-signature" }
 
 [features]
-testing = ["massa_factory_exports/testing"]
+testing = ["massa_factory_exports/testing", "massa_metrics/testing"]
 
