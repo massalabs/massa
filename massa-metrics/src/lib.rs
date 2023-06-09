@@ -153,7 +153,7 @@ impl MassaMetrics {
             .expect("Failed to register gauge");
 
         let block_cache_blocks_known_by_peer = IntGauge::new(
-            "bloc_cache_blocks_known_by_peer_size",
+            "block_cache_blocks_known_by_peer_size",
             "size of BlockCache blocks_known_by_peer",
         )
         .unwrap();
@@ -161,7 +161,7 @@ impl MassaMetrics {
             .expect("Failed to register gauge");
 
         let block_cache_max_known_blocks_by_peer = IntGauge::new(
-            "bloc_cache_max_known_blocks_by_peer",
+            "block_cache_max_known_blocks_by_peer",
             "BlockCache max_known_blocks_by_peer",
         )
         .unwrap();
