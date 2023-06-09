@@ -40,10 +40,10 @@ impl BlockCache {
 }
 
 impl BlockCache {
-    pub fn new(max_known_blocks: u32, max_known_blocks_by_peer: u32) -> Self {
+    pub fn new(max_known_blocks: u32, max_peers: u32, max_known_blocks_by_peer: u32) -> Self {
         Self {
             checked_headers: LruMap::new(ByLength::new(max_known_blocks)),
-            blocks_known_by_peer: LruMap::new(ByLength::new(max_known_blocks_by_peer)),
+            blocks_known_by_peer: LruMap::new(ByLength::new(max_peers)),
             max_known_blocks_by_peer,
         }
     }
