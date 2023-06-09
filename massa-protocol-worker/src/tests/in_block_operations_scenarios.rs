@@ -5,15 +5,7 @@ use crate::{
     messages::Message,
 };
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
-use massa_hash::Hash;
-use massa_models::{
-    block::{Block, BlockSerializer},
-    block_header::{BlockHeader, BlockHeaderSerializer},
-    block_id::BlockId,
-    operation::OperationId,
-    secure_share::{Id, SecureShare, SecureShareContent},
-    slot::Slot,
-};
+use massa_models::slot::Slot;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
