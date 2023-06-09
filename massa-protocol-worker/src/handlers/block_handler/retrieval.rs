@@ -1,7 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -16,11 +16,15 @@ use crate::{
     sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
 };
-use crossbeam::{channel::at, select};
+use crossbeam::{
+    channel::{at, tick},
+    select,
+};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
@@ -98,6 +102,7 @@ pub struct RetrievalThread {
     config: ProtocolConfig,
     storage: Storage,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 }
 
 impl RetrievalThread {
@@ -117,6 +122,8 @@ impl RetrievalThread {
                 max_denunciations_in_block_header: self.config.max_denunciations_in_block_header,
                 last_start_period: Some(self.config.last_start_period),
             });
+
+        let tick_update_metrics = tick(Duration::from_secs(5));
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
@@ -228,6 +235,27 @@ impl RetrievalThread {
                         }
                     }
                 },
+                recv(tick_update_metrics) -> _ => {
+                    // update metrics
+                    {
+                        let block_read = self.cache.read();
+
+                        self.massa_metrics.set_block_cache_metrics(
+                            block_read.checked_headers.len(),
+                            block_read.blocks_known_by_peer.len(),
+                            block_read.max_known_blocks_by_peer,
+                        );
+                    }
+
+                    {
+                        let ope_read = self.operation_cache.read();
+                        self.massa_metrics.set_operations_cache_metrics(
+                            ope_read.checked_operations.len(),
+                            ope_read.checked_operations_prefix.len(),
+                            ope_read.ops_known_by_peer.len(),
+                        );
+                    }
+                }
                 recv(at(self.next_timer_ask_block)) -> _ => {
                     if let Err(err) = self.update_ask_block() {
                         warn!("Error in ask_blocks: {:?}", err);
@@ -1311,6 +1339,7 @@ pub fn start_retrieval_thread(
     cache: SharedBlockCache,
     storage: Storage,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -1336,6 +1365,7 @@ pub fn start_retrieval_thread(
                 config,
                 storage,
                 mip_store,
+                massa_metrics,
             };
             retrieval_thread.run();
         })

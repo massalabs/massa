@@ -6,10 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-prometheus = { version = "0.13.3", optional = true }
+prometheus = { version = "0.13.3"}
 crossbeam = "0.8.0"
 tracing = "0.1"
-
-
-[features]
-metrics = ["prometheus"]

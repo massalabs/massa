@@ -10,7 +10,6 @@ pub mod sender;
 pub struct MassaChannel {}
 
 impl MassaChannel {
-    #[cfg(feature = "metrics")]
     pub fn new<T>(name: String, capacity: Option<usize>) -> (MassaSender<T>, MassaReceiver<T>) {
         use prometheus::{Counter, Gauge};
         use tracing::error;
@@ -57,29 +56,6 @@ impl MassaChannel {
             name,
             actual_len,
             received,
-            ref_counter: Arc::new(()),
-        };
-
-        (sender, receiver)
-    }
-
-    /// Create new channel with optional capacity.
-    #[cfg(not(feature = "metrics"))]
-    pub fn new<T>(name: String, capacity: Option<usize>) -> (MassaSender<T>, MassaReceiver<T>) {
-        let (s, r) = if let Some(capacity) = capacity {
-            crossbeam::channel::bounded::<T>(capacity)
-        } else {
-            crossbeam::channel::unbounded::<T>()
-        };
-
-        let sender = MassaSender {
-            sender: s,
-            name: name.clone(),
-        };
-
-        let receiver = MassaReceiver {
-            receiver: r,
-            name,
             ref_counter: Arc::new(()),
         };
 

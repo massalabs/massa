@@ -170,6 +170,7 @@ pub(crate) fn start_connectivity_thread(
                 block_cache,
                 storage.clone_without_refs(),
                 mip_store,
+                massa_metrics.clone(),
             );
 
             //Try to connect to peers
