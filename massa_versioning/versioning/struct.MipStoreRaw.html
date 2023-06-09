@@ -14,21 +14,21 @@ Return list of updated / added if successful, UpdateWithError otherwise</p>
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.advance_states_on_updated_stats" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#883-909">source</a><h4 class="code-header">fn <a href="#method.advance_states_on_updated_stats" class="fn">advance_states_on_updated_stats</a>(&amp;mut self, slot_timestamp: MassaTime)</h4></section></summary><div class="docblock"><p>Used internally by <code>update_network_version_stats</code></p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.is_coherent_with_shutdown_period" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#913-953">source</a><h4 class="code-header">fn <a href="#method.is_coherent_with_shutdown_period" class="fn">is_coherent_with_shutdown_period</a>(
     &amp;self,
-    shutdown_start: Slot,
-    shutdown_end: Slot,
+    shutdown_start: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
+    shutdown_end: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     thread_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,
     t0: MassaTime,
     genesis_timestamp: MassaTime
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, ModelsError&gt;</h4></section></summary><div class="docblock"><p>Check if store is coherent with given last network shutdown
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, <a class="enum" href="../../massa_models/error/enum.ModelsError.html" title="enum massa_models::error::ModelsError">ModelsError</a>&gt;</h4></section></summary><div class="docblock"><p>Check if store is coherent with given last network shutdown
 On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent</p>
 </div></details><section id="method.update_for_network_shutdown" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#956-1039">source</a><h4 class="code-header">fn <a href="#method.update_for_network_shutdown" class="fn">update_for_network_shutdown</a>(
     &amp;mut self,
-    shutdown_start: Slot,
-    shutdown_end: Slot,
+    shutdown_start: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
+    shutdown_end: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     thread_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,
     t0: MassaTime,
     genesis_timestamp: MassaTime
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ModelsError&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.update_batches" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#1044-1085">source</a><h4 class="code-header">fn <a href="#method.update_batches" class="fn">update_batches</a>(
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../../massa_models/error/enum.ModelsError.html" title="enum massa_models::error::ModelsError">ModelsError</a>&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.update_batches" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#1044-1085">source</a><h4 class="code-header">fn <a href="#method.update_batches" class="fn">update_batches</a>(
     &amp;self,
     batch: &amp;mut DBBatch,
     versioning_batch: &amp;mut DBBatch,
