@@ -139,6 +139,7 @@ pub(crate) fn start_connectivity_thread(
                 sender_operations_propagation_ext.clone(),
                 protocol_channels.operation_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
+                massa_metrics.clone(),
             );
             let mut endorsement_handler = EndorsementHandler::new(
                 pool_controller.clone(),

@@ -55,6 +55,8 @@ pub struct MassaMetrics {
     active_in_connections: IntGauge,
     active_out_connections: IntGauge,
 
+    retrieval_thread_stored_operations_sum: IntGauge,
+
     // block_cache
     block_cache_checked_headers_size: IntGauge,
     block_cache_blocks_known_by_peer: IntGauge,
@@ -151,7 +153,7 @@ impl MassaMetrics {
             .expect("Failed to register gauge");
 
         let block_cache_blocks_known_by_peer = IntGauge::new(
-            "bloc_cache_blocks_known_by_peer_size",
+            "block_cache_blocks_known_by_peer_size",
             "size of BlockCache blocks_known_by_peer",
         )
         .unwrap();
@@ -159,7 +161,7 @@ impl MassaMetrics {
             .expect("Failed to register gauge");
 
         let block_cache_max_known_blocks_by_peer = IntGauge::new(
-            "bloc_cache_max_known_blocks_by_peer",
+            "block_cache_max_known_blocks_by_peer",
             "BlockCache max_known_blocks_by_peer",
         )
         .unwrap();
@@ -191,10 +193,19 @@ impl MassaMetrics {
         prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()))
             .expect("Failed to register gauge");
 
+        let retrieval_thread_stored_operations_sum = IntGauge::new(
+            "retrieval_thread_stored_operations_sum_size",
+            "sum of retrieval_thread_stored_operations",
+        )
+        .unwrap();
+        prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()))
+            .expect("Failed to register gauge");
+
         MassaMetrics {
             consensus_vec,
             active_in_connections,
             active_out_connections,
+            retrieval_thread_stored_operations_sum,
             block_cache_checked_headers_size,
             block_cache_blocks_known_by_peer,
             block_cache_max_known_blocks_by_peer,
@@ -266,6 +277,10 @@ impl MassaMetrics {
             .set(blocks_known_by_peer as i64);
         self.block_cache_max_known_blocks_by_peer
             .set(max_known_blocks_by_peer as i64);
+    }
+
+    pub fn set_retrieval_thread_stored_operations_sum(&self, sum: usize) {
+        self.retrieval_thread_stored_operations_sum.set(sum as i64);
     }
 
     pub fn set_operations_cache_metrics(
