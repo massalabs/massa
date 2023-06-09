@@ -236,6 +236,8 @@ impl RetrievalThread {
                     }
                 },
                 recv(tick_update_metrics) -> _ => {
+
+
                     // update metrics
                     {
                         let block_read = self.cache.read();

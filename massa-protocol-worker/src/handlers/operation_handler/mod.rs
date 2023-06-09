@@ -1,6 +1,7 @@
 use std::thread::JoinHandle;
 
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
+use massa_metrics::MassaMetrics;
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
@@ -49,6 +50,7 @@ impl OperationHandler {
         local_sender: MassaSender<OperationHandlerPropagationCommand>,
         local_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
         peer_cmd_sender: MassaSender<PeerManagementCmd>,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         let operation_retrieval_thread = start_retrieval_thread(
             receiver_network,
@@ -60,6 +62,7 @@ impl OperationHandler {
             receiver_retrieval_ext,
             local_sender.clone(),
             peer_cmd_sender,
+            massa_metrics,
         );
 
         let operation_propagation_thread =
