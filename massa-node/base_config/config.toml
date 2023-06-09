@@ -217,7 +217,20 @@
 
 [bootstrap]
     # list of bootstrap (ip, node id)
-    bootstrap_list = [ [ "141.94.218.103:31245", "N1VRyXjUaHeJd4Rmr3waVmpZDFzzH5ARRi3f5ye5BYgxBmxHC7X",],]
+    bootstrap_list = [ [ "141.94.218.103:31245", "N1VRyXjUaHeJd4Rmr3waVmpZDFzzH5ARRi3f5ye5BYgxBmxHC7X",],
+        ["149.202.86.103:31245", "N12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j"],
+        ["149.202.89.125:31245", "N12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq"],
+        ["158.69.120.215:31245", "N12rPDBmpnpnbECeAKDjbmeR19dYjAUwyLzsa8wmYJnkXLCNF28E"],
+        ["158.69.23.120:31245", "N1XxexKa3XNzvmakNmPawqFrE9Z2NFhfq1AhvV1Qx4zXq5p1Bp9"],
+        ["198.27.74.5:31245", "N1qxuqNnx9kyAMYxUfsYiv2gQd5viiBX126SzzexEdbbWd2vQKu"],
+        ["198.27.74.52:31245", "N1hdgsVsd4zkNp8cF1rdqqG6JPRQasAmx12QgJaJHBHFU1fRHEH"],
+        ["54.36.174.177:31245", "N1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
+        ["51.75.60.228:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"],
+        ["[2001:41d0:1004:67::]:31245", "N12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j"],
+        ["[2001:41d0:a:7f7d::]:31245", "N12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq"],
+        ["[2001:41d0:602:db1::]:31245", "N1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
+        ["[2001:41d0:602:21e4::]:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"],
+    ]
     # force the bootstrap protocol to use: "IPv4", "IPv6", or "Both". Defaults to using both protocols.
     bootstrap_protocol = "Both"
     # path to the bootstrap whitelist file. This whitelist define IPs that can bootstrap on your node.
