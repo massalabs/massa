@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use massa_metrics::channels::MassaReceiver;
+use massa_channel::receiver::MassaReceiver;
 use massa_models::{
     block::SecureShareBlock, block_id::BlockId, operation::SecureShareOperation,
     prehash::PreHashSet,

@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use massa_metrics::channels::{MassaChannel, MassaReceiver, MassaSender};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 use massa_protocol_exports::{PeerId, ProtocolError};
 use parking_lot::RwLock;
 use peernet::{

@@ -2783,6 +2783,7 @@ dependencies = [
  "h2",
  "hyper",
  "itertools",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_hash",

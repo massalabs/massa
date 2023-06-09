@@ -43,3 +43,4 @@ massa_versioning = { path = "../massa-versioning" }
 [dev-dependencies]
 crossbeam = "0.8.2"
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
+massa_channel = { path = "../massa-channel" }

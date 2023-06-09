@@ -94,8 +94,11 @@ impl MassaMetrics {
                 "consensus thread actual period",
             )
             .expect("Failed to create gauge");
+            #[cfg(not(feature = "testing"))]
+            {
+                let _ = prometheus::register(Box::new(gauge.clone()));
+            }
 
-            prometheus::register(Box::new(gauge.clone())).expect("Failed to register gauge");
             consensus_vec.push(gauge);
         }
 
@@ -104,52 +107,36 @@ impl MassaMetrics {
             IntGauge::new("active_cursor_thread", "execution active cursor thread").unwrap();
         let active_cursor_period =
             IntGauge::new("active_cursor_period", "execution active cursor period").unwrap();
-        prometheus::register(Box::new(active_cursor_thread.clone()))
-            .expect("Failed to register gauge");
-        prometheus::register(Box::new(active_cursor_period.clone()))
-            .expect("Failed to register gauge");
 
         // final cursor
         let final_cursor_thread =
             IntGauge::new("final_cursor_thread", "execution final cursor thread").unwrap();
         let final_cursor_period =
             IntGauge::new("final_cursor_period", "execution final cursor period").unwrap();
-        prometheus::register(Box::new(final_cursor_thread.clone()))
-            .expect("Failed to register gauge");
-        prometheus::register(Box::new(final_cursor_period.clone()))
-            .expect("Failed to register gauge");
-
-        // TODO addr from config
-        let addr = "0.0.0.0:9898".parse().unwrap();
-        server::bind_metrics(addr);
 
         // // block counter
         // let blocks_counter = IntGauge::new("blocks_counter", "block counter len").unwrap();
-        // prometheus::register(Box::new(blocks_counter.clone())).expect("Failed to register gauge");
+        // let _ = prometheus::register(Box::new(blocks_counter.clone())).expect("Failed to register gauge");
 
         // // endorsement counter
         // let endorsements_counter =
         //     IntGauge::new("endorsements_counter", "endorsements counter len").unwrap();
-        // prometheus::register(Box::new(endorsements_counter.clone()))
+        // let _ = prometheus::register(Box::new(endorsements_counter.clone()))
         //     .expect("Failed to register gauge");
 
         // operation counter
         // let operations_counter =
         //     IntGauge::new("operations_counter", "operations counter len").unwrap();
-        // prometheus::register(Box::new(operations_counter.clone()))
+        // let _ = prometheus::register(Box::new(operations_counter.clone()))
         //     .expect("Failed to register gauge");
 
         // active connections IN
         let active_in_connections =
             IntGauge::new("active_in_connections", "active connections IN len").unwrap();
-        prometheus::register(Box::new(active_in_connections.clone()))
-            .expect("Failed to register gauge");
 
         // active connections OUT
         let active_out_connections =
             IntGauge::new("active_out_connections", "active connections OUT len").unwrap();
-        prometheus::register(Box::new(active_out_connections.clone()))
-            .expect("Failed to register gauge");
 
         // block cache
         let block_cache_checked_headers_size = IntGauge::new(
@@ -157,16 +144,12 @@ impl MassaMetrics {
             "size of BlockCache checked_headers",
         )
         .unwrap();
-        prometheus::register(Box::new(block_cache_checked_headers_size.clone()))
-            .expect("Failed to register gauge");
 
         let block_cache_blocks_known_by_peer = IntGauge::new(
             "block_cache_blocks_known_by_peer_size",
             "size of BlockCache blocks_known_by_peer",
         )
         .unwrap();
-        prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()))
-            .expect("Failed to register gauge");
 
         // operation cache
         let operation_cache_checked_operations = IntGauge::new(
@@ -174,24 +157,18 @@ impl MassaMetrics {
             "size of OperationCache checked_operations",
         )
         .unwrap();
-        prometheus::register(Box::new(operation_cache_checked_operations.clone()))
-            .expect("Failed to register gauge");
 
         let operation_cache_checked_operations_prefix = IntGauge::new(
             "operation_cache_checked_operations_prefix",
             "size of OperationCache checked_operations_prefix",
         )
         .unwrap();
-        prometheus::register(Box::new(operation_cache_checked_operations_prefix.clone()))
-            .expect("Failed to register gauge");
 
         let operation_cache_ops_know_by_peer = IntGauge::new(
             "operation_cache_ops_know_by_peer",
             "size of OperationCache operation_cache_ops_know_by_peer",
         )
         .unwrap();
-        prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()))
-            .expect("Failed to register gauge");
 
         // from retrieval thread of operation_handler
         let retrieval_thread_stored_operations_sum = IntGauge::new(
@@ -199,8 +176,6 @@ impl MassaMetrics {
             "sum of retrieval_thread_stored_operations",
         )
         .unwrap();
-        prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()))
-            .expect("Failed to register gauge");
 
         // consensus state from tick.rs
         let consensus_state_active_index = IntGauge::new(
@@ -208,40 +183,57 @@ impl MassaMetrics {
             "consensus state active index size",
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_active_index.clone()))
-            .expect("Failed to register gauge");
 
         let consensus_state_active_index_without_ops = IntGauge::new(
             "consensus_state_active_index_without_ops",
             "consensus state active index without ops size",
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_active_index_without_ops.clone()))
-            .expect("Failed to register gauge");
 
         let consensus_state_incoming_index = IntGauge::new(
             "consensus_state_incoming_index",
             "consensus state incoming index size",
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_incoming_index.clone()))
-            .expect("Failed to register gauge");
 
         let consensus_state_discarded_index = IntGauge::new(
             "consensus_state_discarded_index",
             "consensus state discarded index size",
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_discarded_index.clone()))
-            .expect("Failed to register gauge");
 
         let consensus_state_block_statuses = IntGauge::new(
             "consensus_state_block_statuses",
             "consensus state block statuses size",
         )
         .unwrap();
-        prometheus::register(Box::new(consensus_state_block_statuses.clone()))
-            .expect("Failed to register gauge");
+
+        // TODO addr from config
+        #[cfg(not(feature = "testing"))]
+        {
+            let addr = "0.0.0.0:9898".parse().unwrap();
+            server::bind_metrics(addr);
+
+            let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
+            let _ = prometheus::register(Box::new(final_cursor_period.clone()));
+            let _ = prometheus::register(Box::new(active_cursor_thread.clone()));
+            let _ = prometheus::register(Box::new(active_cursor_period.clone()));
+            let _ = prometheus::register(Box::new(active_out_connections.clone()));
+            let _ = prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()));
+            let _ = prometheus::register(Box::new(block_cache_checked_headers_size.clone()));
+            let _ = prometheus::register(Box::new(operation_cache_checked_operations.clone()));
+            let _ = prometheus::register(Box::new(active_in_connections.clone()));
+            let _ = prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()));
+            let _ = prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()));
+            let _ = prometheus::register(Box::new(consensus_state_active_index.clone()));
+            let _ =
+                prometheus::register(Box::new(consensus_state_active_index_without_ops.clone()));
+            let _ = prometheus::register(Box::new(consensus_state_incoming_index.clone()));
+            let _ = prometheus::register(Box::new(consensus_state_discarded_index.clone()));
+            let _ = prometheus::register(Box::new(consensus_state_block_statuses.clone()));
+            let _ =
+                prometheus::register(Box::new(operation_cache_checked_operations_prefix.clone()));
+        }
 
         MassaMetrics {
             consensus_vec,
