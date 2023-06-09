@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use prometheus::{register_int_gauge, Gauge, IntGauge};
 
+#[cfg(not(feature = "testing"))]
 mod server;
 
 // TODO load only if feature metrics is enabled
