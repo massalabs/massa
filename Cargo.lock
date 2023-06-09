@@ -2777,7 +2777,6 @@ dependencies = [
 name = "massa_grpc"
 version = "0.23.0"
 dependencies = [
- "crossbeam",
  "displaydoc",
  "futures-util",
  "h2",
