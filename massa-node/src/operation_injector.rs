@@ -27,8 +27,8 @@ pub fn start_operation_injector(
         .saturating_sub(MassaTime::now().unwrap())
         .saturating_add(MassaTime::from_millis(1000))
         .to_duration();
-    if wait < Duration::from_secs(10) {
-        wait = Duration::from_secs(10);
+    if wait < Duration::from_secs(30) {
+        wait = Duration::from_secs(30);
     }
     std::thread::sleep(wait);
     let return_addr = wallet
@@ -78,6 +78,7 @@ pub fn start_operation_injector(
         .propagate_operations(storage.clone())
         .unwrap();
     wallet.add_keypairs(distant_wallets.clone()).unwrap();
+    std::thread::sleep(Duration::from_secs(30));
     std::thread::spawn(move || {
         use rand::Rng;
         let mut rng = rand::thread_rng();
