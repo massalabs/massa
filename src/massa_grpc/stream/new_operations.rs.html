@@ -116,12 +116,17 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
+<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::select;
 <span class="kw">use </span>tonic::codegen::futures_core;
@@ -131,7 +136,7 @@
 <span class="doccomment">/// Type declaration for NewOperations
 </span><span class="kw">pub type </span>NewOperationsStreamType = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::NewOperationsResponse, tonic::Status&gt;&gt;
+        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc_api::NewOperationsResponse, tonic::Status&gt;&gt;
             + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,
@@ -140,7 +145,7 @@
 <span class="doccomment">/// Creates a new stream of new produced and received operations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_operations(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: Request&lt;Streaming&lt;grpc::NewOperationsRequest&gt;&gt;,
+    request: Request&lt;Streaming&lt;grpc_api::NewOperationsRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewOperationsStreamType, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -167,7 +172,7 @@
                                 }
 
                                 <span class="comment">// Convert the operation to a gRPC operation
-                                </span><span class="kw">let </span>ret = grpc::SignedOperation {
+                                </span><span class="kw">let </span>ret = grpc_model::SignedOperation {
                                     content: <span class="prelude-val">Some</span>(operation.content.into()),
                                     signature: operation.signature.to_string(),
                                     content_creator_pub_key: operation.content_creator_pub_key.to_string(),
@@ -175,7 +180,7 @@
                                     id: operation.id.to_string()
                                 };
                                 <span class="comment">// Send the new operation through the channel
-                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc::NewOperationsResponse {
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewOperationsResponse {
                                     id: request_id.clone(),
                                     operation: <span class="prelude-val">Some</span>(ret)
                                 })).<span class="kw">await </span>{
@@ -220,7 +225,10 @@
     <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewOperationsStreamType)
 }
 
-<span class="kw">fn </span>should_send(filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc::NewOperationsFilter&gt;, ope_type: grpc::OpType) -&gt; bool {
+<span class="kw">fn </span>should_send(
+    filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc_api::NewOperationsFilter&gt;,
+    ope_type: grpc_api::OpType,
+) -&gt; bool {
     <span class="kw">match </span>filter_opt {
         <span class="prelude-val">Some</span>(filter) =&gt; {
             <span class="kw">let </span>filtered_ope_ids = <span class="kw-2">&amp;</span>filter.types;
