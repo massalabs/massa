@@ -304,6 +304,7 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
@@ -417,6 +418,7 @@
             <span class="kw">let </span>block_cache = Arc::new(RwLock::new(BlockCache::new(
                 config.max_known_blocks_size.try_into().unwrap(),
                 (total_in_slots + total_out_slots).try_into().unwrap(),
+                config.max_node_known_blocks_size.try_into().unwrap(),
             )));
 
             <span class="comment">// Start handlers

@@ -124,10 +124,10 @@
 }
 
 <span class="kw">impl </span>BlockCache {
-    <span class="kw">pub fn </span>new(max_known_blocks: u32, max_known_blocks_by_peer: u32) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(max_known_blocks: u32, max_peers: u32, max_known_blocks_by_peer: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             checked_headers: LruMap::new(ByLength::new(max_known_blocks)),
-            blocks_known_by_peer: LruMap::new(ByLength::new(max_known_blocks_by_peer)),
+            blocks_known_by_peer: LruMap::new(ByLength::new(max_peers)),
             max_known_blocks_by_peer,
         }
     }

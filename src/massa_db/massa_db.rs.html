@@ -746,6 +746,31 @@
 <a href="#746" id="746">746</a>
 <a href="#747" id="747">747</a>
 <a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
     LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
@@ -767,7 +792,7 @@
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap},
     format,
-    ops::Bound::{<span class="self">self</span>, Excluded, Included},
+    ops::Bound::{<span class="self">self</span>, Excluded, Included, Unbounded},
     path::PathBuf,
     sync::Arc,
 };
@@ -952,81 +977,101 @@
     /// Returns a StreamBatch&lt;ChangeID&gt;
     </span><span class="kw">pub fn </span>get_batch_to_stream(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        last_obtained: <span class="prelude-ty">Option</span>&lt;(Vec&lt;u8&gt;, ChangeID)&gt;,
+        last_state_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        last_change_id: <span class="prelude-ty">Option</span>&lt;ChangeID&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;ChangeID&gt;, MassaDBError&gt; {
-        <span class="kw">let </span>(updates_on_previous_elements, max_key) = <span class="kw">if let </span><span class="prelude-val">Some</span>((max_key, last_change_id)) =
-            last_obtained
-        {
-            <span class="kw">match </span>last_change_id.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
-                std::cmp::Ordering::Greater =&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                        <span class="string">&quot;we don&#39;t have this change yet on this node (it&#39;s in the future for us)&quot;</span>,
-                    )));
-                }
-                std::cmp::Ordering::Equal =&gt; {
-                    (BTreeMap::new(), <span class="prelude-val">Some</span>(max_key)) <span class="comment">// no new updates
-                </span>}
-                std::cmp::Ordering::Less =&gt; {
-                    <span class="comment">// We should send all the new updates since last_change_id
+        <span class="kw">let </span>bound_key_for_changes = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
+            StreamingStep::Ongoing(max_key) =&gt; Included(max_key.clone()),
+            <span class="kw">_ </span>=&gt; Unbounded,
+        };
 
-                    </span><span class="kw">let </span>cursor = <span class="self">self
-                        </span>.change_history
-                        .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
+        <span class="kw">let </span>updates_on_previous_elements = <span class="kw">match </span>(<span class="kw-2">&amp;</span>last_state_step, last_change_id) {
+            (StreamingStep::Started, <span class="kw">_</span>) =&gt; {
+                <span class="comment">// Stream No changes, new elements from start
+                </span>BTreeMap::new()
+            }
+            (<span class="kw">_</span>, <span class="prelude-val">Some</span>(last_change_id)) =&gt; {
+                <span class="comment">// Stream the changes depending on the previously computed bound
 
-                    <span class="kw">if </span>cursor.peek_prev().is_none() {
+                </span><span class="kw">match </span>last_change_id.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
+                    std::cmp::Ordering::Greater =&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                            <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                            <span class="string">&quot;we don&#39;t have this change yet on this node (it&#39;s in the future for us)&quot;</span>,
                         )));
                     }
-
-                    <span class="kw">match </span>cursor.key() {
-                        <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
-                            <span class="comment">// We have to send all the updates since cursor_change_id
-                            // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
-                            </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; = BTreeMap::new();
-                            <span class="kw">let </span>iter = <span class="self">self
-                                </span>.change_history
-                                .range((Bound::Included(cursor_change_id), Bound::Unbounded));
-                            <span class="kw">for </span>(_change_id, changes) <span class="kw">in </span>iter {
-                                updates.extend(
-                                    changes
-                                        .range((
-                                            Bound::&lt;Vec&lt;u8&gt;&gt;::Unbounded,
-                                            Included(max_key.clone()),
-                                        ))
-                                        .map(|(k, v)| (k.clone(), v.clone())),
-                                );
-                            }
-                            (updates, <span class="prelude-val">Some</span>(max_key))
-                        }
-                        <span class="prelude-val">None </span>=&gt; (BTreeMap::new(), <span class="prelude-val">Some</span>(max_key)), <span class="comment">// no new updates
+                    std::cmp::Ordering::Equal =&gt; {
+                        BTreeMap::new() <span class="comment">// no new updates
                     </span>}
+                    std::cmp::Ordering::Less =&gt; {
+                        <span class="comment">// We should send all the new updates since last_change_id
+
+                        </span><span class="kw">let </span>cursor = <span class="self">self
+                            </span>.change_history
+                            .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
+
+                        <span class="kw">if </span>cursor.peek_prev().is_none() {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
+                                <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                            )));
+                        }
+
+                        <span class="kw">match </span>cursor.key() {
+                            <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
+                                <span class="comment">// We have to send all the updates since cursor_change_id
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; =
+                                    BTreeMap::new();
+                                <span class="kw">let </span>iter = <span class="self">self
+                                    </span>.change_history
+                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                <span class="kw">for </span>(_change_id, changes) <span class="kw">in </span>iter {
+                                    updates.extend(
+                                        changes
+                                            .range((
+                                                Bound::&lt;Vec&lt;u8&gt;&gt;::Unbounded,
+                                                bound_key_for_changes.clone(),
+                                            ))
+                                            .map(|(k, v)| (k.clone(), v.clone())),
+                                    );
+                                }
+                                updates
+                            }
+                            <span class="prelude-val">None </span>=&gt; BTreeMap::new(), <span class="comment">// no new updates
+                        </span>}
+                    }
                 }
             }
-        } <span class="kw">else </span>{
-            (BTreeMap::new(), <span class="prelude-val">None</span>) <span class="comment">// we start from the beginning, so no updates on previous elements
-        </span>};
-
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
-        <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        </span><span class="kw">let </span>db_iterator = <span class="kw">match </span>max_key {
-            <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
-            <span class="prelude-val">Some</span>(max_key) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
-                    </span>.db
-                    .iterator_cf(handle, IteratorMode::From(<span class="kw-2">&amp;</span>max_key, Direction::Forward));
-                iter.next();
-                iter
+            <span class="kw">_ </span>=&gt; {
+                <span class="comment">// last_change_id is None, but StreamingStep is either Ongoing or Finished
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
+                    <span class="string">&quot;State streaming was ongoing or finished, but no last_change_id was provided&quot;</span>,
+                )));
             }
         };
 
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-            <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
-                new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
-            } <span class="kw">else </span>{
-                <span class="kw">break</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
+
+        <span class="kw">if </span>!last_state_step.finished() {
+            <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
+
+            <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            </span><span class="kw">let </span>db_iterator = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
+                StreamingStep::Ongoing(max_key) =&gt; {
+                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
+                        </span>.db
+                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    iter.next();
+                    iter
+                }
+                <span class="kw">_ </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
+            };
+
+            <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
+                    new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+                } <span class="kw">else </span>{
+                    <span class="kw">break</span>;
+                }
             }
         }
 
@@ -1042,81 +1087,101 @@
     /// Returns a StreamBatch&lt;ChangeID&gt;
     </span><span class="kw">pub fn </span>get_versioning_batch_to_stream(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        last_obtained: <span class="prelude-ty">Option</span>&lt;(Vec&lt;u8&gt;, ChangeID)&gt;,
+        last_versioning_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
+        last_change_id: <span class="prelude-ty">Option</span>&lt;ChangeID&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;ChangeID&gt;, MassaDBError&gt; {
-        <span class="kw">let </span>(updates_on_previous_elements, max_key) = <span class="kw">if let </span><span class="prelude-val">Some</span>((max_key, last_change_id)) =
-            last_obtained
-        {
-            <span class="kw">match </span>last_change_id.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
-                std::cmp::Ordering::Greater =&gt; {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                        <span class="string">&quot;we don&#39;t have this change yet on this node (it&#39;s in the future for us)&quot;</span>,
-                    )));
-                }
-                std::cmp::Ordering::Equal =&gt; {
-                    (BTreeMap::new(), <span class="prelude-val">Some</span>(max_key)) <span class="comment">// no new updates
-                </span>}
-                std::cmp::Ordering::Less =&gt; {
-                    <span class="comment">// We should send all the new updates since last_change_id
+        <span class="kw">let </span>bound_key_for_changes = <span class="kw">match </span><span class="kw-2">&amp;</span>last_versioning_step {
+            StreamingStep::Ongoing(max_key) =&gt; Included(max_key.clone()),
+            <span class="kw">_ </span>=&gt; Unbounded,
+        };
 
-                    </span><span class="kw">let </span>cursor = <span class="self">self
-                        </span>.change_history
-                        .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
+        <span class="kw">let </span>updates_on_previous_elements = <span class="kw">match </span>(<span class="kw-2">&amp;</span>last_versioning_step, last_change_id) {
+            (StreamingStep::Started, <span class="kw">_</span>) =&gt; {
+                <span class="comment">// Stream No changes, new elements from start
+                </span>BTreeMap::new()
+            }
+            (<span class="kw">_</span>, <span class="prelude-val">Some</span>(last_change_id)) =&gt; {
+                <span class="comment">// Stream the changes depending on the previously computed bound
 
-                    <span class="kw">if </span>cursor.peek_prev().is_none() {
+                </span><span class="kw">match </span>last_change_id.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
+                    std::cmp::Ordering::Greater =&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                            <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                            <span class="string">&quot;we don&#39;t have this change yet on this node (it&#39;s in the future for us)&quot;</span>,
                         )));
                     }
-
-                    <span class="kw">match </span>cursor.key() {
-                        <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
-                            <span class="comment">// We have to send all the updates since cursor_change_id
-                            // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
-                            </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; = BTreeMap::new();
-                            <span class="kw">let </span>iter = <span class="self">self
-                                </span>.change_history
-                                .range((Bound::Included(cursor_change_id), Bound::Unbounded));
-                            <span class="kw">for </span>(_change_id, changes) <span class="kw">in </span>iter {
-                                updates.extend(
-                                    changes
-                                        .range((
-                                            Bound::&lt;Vec&lt;u8&gt;&gt;::Unbounded,
-                                            Included(max_key.clone()),
-                                        ))
-                                        .map(|(k, v)| (k.clone(), v.clone())),
-                                );
-                            }
-                            (updates, <span class="prelude-val">Some</span>(max_key))
-                        }
-                        <span class="prelude-val">None </span>=&gt; (BTreeMap::new(), <span class="prelude-val">Some</span>(max_key)), <span class="comment">// no new updates
+                    std::cmp::Ordering::Equal =&gt; {
+                        BTreeMap::new() <span class="comment">// no new updates
                     </span>}
+                    std::cmp::Ordering::Less =&gt; {
+                        <span class="comment">// We should send all the new updates since last_change_id
+
+                        </span><span class="kw">let </span>cursor = <span class="self">self
+                            </span>.change_history_versioning
+                            .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
+
+                        <span class="kw">if </span>cursor.peek_prev().is_none() {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
+                                <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                            )));
+                        }
+
+                        <span class="kw">match </span>cursor.key() {
+                            <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
+                                <span class="comment">// We have to send all the updates since cursor_change_id
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; =
+                                    BTreeMap::new();
+                                <span class="kw">let </span>iter = <span class="self">self
+                                    </span>.change_history_versioning
+                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                <span class="kw">for </span>(_change_id, changes) <span class="kw">in </span>iter {
+                                    updates.extend(
+                                        changes
+                                            .range((
+                                                Bound::&lt;Vec&lt;u8&gt;&gt;::Unbounded,
+                                                bound_key_for_changes.clone(),
+                                            ))
+                                            .map(|(k, v)| (k.clone(), v.clone())),
+                                    );
+                                }
+                                updates
+                            }
+                            <span class="prelude-val">None </span>=&gt; BTreeMap::new(), <span class="comment">// no new updates
+                        </span>}
+                    }
                 }
             }
-        } <span class="kw">else </span>{
-            (BTreeMap::new(), <span class="prelude-val">None</span>) <span class="comment">// we start from the beginning, so no updates on previous elements
-        </span>};
-
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-
-        <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        </span><span class="kw">let </span>db_iterator = <span class="kw">match </span>max_key {
-            <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
-            <span class="prelude-val">Some</span>(max_key) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
-                    </span>.db
-                    .iterator_cf(handle, IteratorMode::From(<span class="kw-2">&amp;</span>max_key, Direction::Forward));
-                iter.next();
-                iter
+            <span class="kw">_ </span>=&gt; {
+                <span class="comment">// last_change_id is None, but StreamingStep is either Ongoing or Finished
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
+                    <span class="string">&quot;State streaming was ongoing or finished, but no last_change_id was provided&quot;</span>,
+                )));
             }
         };
 
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-            <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
-                new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
-            } <span class="kw">else </span>{
-                <span class="kw">break</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
+
+        <span class="kw">if </span>!last_versioning_step.finished() {
+            <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+
+            <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            </span><span class="kw">let </span>db_iterator = <span class="kw">match </span><span class="kw-2">&amp;</span>last_versioning_step {
+                StreamingStep::Ongoing(max_key) =&gt; {
+                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
+                        </span>.db
+                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    iter.next();
+                    iter
+                }
+                <span class="kw">_ </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
+            };
+
+            <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
+                    new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+                } <span class="kw">else </span>{
+                    <span class="kw">break</span>;
+                }
             }
         }
 
@@ -1282,17 +1347,10 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(StreamingStep&lt;Key&gt;, StreamingStep&lt;Key&gt;), MassaDBError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>changes = BTreeMap::new();
 
-        <span class="kw">let </span>new_cursor = <span class="kw">match </span>stream_changes.new_elements.last_key_value() {
+        <span class="kw">let </span>new_cursor: StreamingStep&lt;Vec&lt;u8&gt;&gt; = <span class="kw">match </span>stream_changes.new_elements.last_key_value()
+        {
             <span class="prelude-val">Some</span>((k, <span class="kw">_</span>)) =&gt; StreamingStep::Ongoing(k.clone()),
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
-                <span class="kw">match </span><span class="self">self</span>.db.iterator_cf(handle, IteratorMode::End).next() {
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((serialized_key, _value))) =&gt; {
-                        StreamingStep::Finished(<span class="prelude-val">Some</span>(serialized_key.to_vec()))
-                    }
-                    <span class="kw">_ </span>=&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
-                }
-            }
+            <span class="prelude-val">None </span>=&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
         };
 
         changes.extend(stream_changes.updates_on_previous_elements);
@@ -1307,15 +1365,7 @@
 
         <span class="kw">let </span>new_cursor_versioning = <span class="kw">match </span>stream_changes_versioning.new_elements.last_key_value() {
             <span class="prelude-val">Some</span>((k, <span class="kw">_</span>)) =&gt; StreamingStep::Ongoing(k.clone()),
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-                <span class="kw">match </span><span class="self">self</span>.db.iterator_cf(handle, IteratorMode::End).next() {
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((serialized_key, _value))) =&gt; {
-                        StreamingStep::Finished(<span class="prelude-val">Some</span>(serialized_key.to_vec()))
-                    }
-                    <span class="kw">_ </span>=&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
-                }
-            }
+            <span class="prelude-val">None </span>=&gt; StreamingStep::Finished(<span class="prelude-val">None</span>),
         };
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
