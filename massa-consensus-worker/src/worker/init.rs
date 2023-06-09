@@ -1,3 +1,4 @@
+use massa_channel::receiver::MassaReceiver;
 use massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
@@ -19,7 +20,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{mpsc, Arc},
+    sync::Arc,
 };
 use tracing::log::info;
 
@@ -80,7 +81,7 @@ impl ConsensusWorker {
     /// A `ConsensusWorker`, to interact with it use the `ConsensusController`
     pub fn new(
         config: ConsensusConfig,
-        command_receiver: mpsc::Receiver<ConsensusCommand>,
+        command_receiver: MassaReceiver<ConsensusCommand>,
         shared_state: Arc<RwLock<ConsensusState>>,
         init_graph: Option<BootstrapableGraph>,
         storage: Storage,

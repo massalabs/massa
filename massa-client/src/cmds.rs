@@ -820,12 +820,12 @@ impl Command {
                     } else {
                         println!("Generated {} address and added it to the wallet", ad);
                         println!(
-                            "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_add_staking_secret_keys <your secret key>` to start staking with this key.\n"
+                            "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking <your address>` to start staking.\n"
                         );
                         Ok(Box::new(()))
                     }
                 } else {
-                    bail!("GRPC is not enabled");
+                    bail!("Failed to establish connection. Please ensure that the gRPC API is enabled and accessible.");
                 }
             }
 

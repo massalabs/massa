@@ -4,6 +4,7 @@ use massa_models::{
 use massa_storage::Storage;
 
 #[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
 pub enum ConsensusCommand {
     RegisterBlock(BlockId, Slot, Storage, bool),
     RegisterBlockHeader(BlockId, SecureShare<BlockHeader, BlockId>),

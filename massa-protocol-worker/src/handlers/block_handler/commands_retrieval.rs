@@ -4,6 +4,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
 };
 
+#[derive(Clone)]
 pub enum BlockHandlerRetrievalCommand {
     Stop,
     /// Wish list delta

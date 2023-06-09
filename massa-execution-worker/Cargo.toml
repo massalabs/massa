@@ -22,12 +22,14 @@ massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
 massa_pos_worker = { path = "../massa-pos-worker", optional = true }
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
+massa_channel = { path = "../massa-channel" }
 massa_executed_ops = { path = "../massa-executed-ops" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
+massa_metrics = { path = "../massa-metrics" }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
@@ -73,6 +75,7 @@ testing = [
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
+    "massa_metrics/testing"
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks
@@ -83,3 +86,5 @@ benchmarking = [
     "massa_ledger_worker",
     "tempfile",
 ]
+
+metrics = []

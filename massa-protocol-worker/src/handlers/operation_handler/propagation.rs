@@ -1,6 +1,7 @@
 use std::{mem, thread::JoinHandle};
 
-use crossbeam::channel::{Receiver, RecvTimeoutError};
+use crossbeam::channel::RecvTimeoutError;
+use massa_channel::receiver::MassaReceiver;
 use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
 use massa_protocol_exports::PeerId;
@@ -18,7 +19,7 @@ use super::{
 };
 
 struct PropagationThread {
-    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
+    internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     operations_to_announce: Vec<OperationId>,
     config: ProtocolConfig,
@@ -119,6 +120,7 @@ impl PropagationThread {
                     );
                     for sub_list in new_ops.chunks(self.config.max_operations_per_message as usize)
                     {
+                        println!("AURELIEN: send: {:?}, to {}", sub_list, peer_id);
                         if let Err(err) = self.active_connections.send_to_peer(
                             &peer_id,
                             &self.operation_message_serializer,
@@ -141,7 +143,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
+    internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     config: ProtocolConfig,
     cache: SharedOperationCache,
