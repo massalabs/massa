@@ -120,15 +120,18 @@ impl From<OperationType> for grpc_model::OperationType {
                     recipient_address: recipient_address.to_string(),
                     amount: amount.to_raw(),
                 };
-                grpc_operation_type.transaction = Some(transaction);
+                grpc_operation_type.r#type =
+                    Some(grpc_model::operation_type::Type::Transaction(transaction));
             }
             OperationType::RollBuy { roll_count } => {
                 let roll_buy = grpc_model::RollBuy { roll_count };
-                grpc_operation_type.roll_buy = Some(roll_buy);
+                grpc_operation_type.r#type =
+                    Some(grpc_model::operation_type::Type::RollBuy(roll_buy));
             }
             OperationType::RollSell { roll_count } => {
                 let roll_sell = grpc_model::RollSell { roll_count };
-                grpc_operation_type.roll_sell = Some(roll_sell);
+                grpc_operation_type.r#type =
+                    Some(grpc_model::operation_type::Type::RollSell(roll_sell));
             }
             OperationType::ExecuteSC {
                 data,
@@ -145,7 +148,8 @@ impl From<OperationType> for grpc_model::OperationType {
                         .map(|(key, value)| grpc_model::BytesMapFieldEntry { key, value })
                         .collect(),
                 };
-                grpc_operation_type.execut_sc = Some(execute_sc);
+                grpc_operation_type.r#type =
+                    Some(grpc_model::operation_type::Type::ExecutSc(execute_sc));
             }
             OperationType::CallSC {
                 target_addr,
@@ -161,7 +165,8 @@ impl From<OperationType> for grpc_model::OperationType {
                     max_gas,
                     coins: coins.to_raw(),
                 };
-                grpc_operation_type.call_sc = Some(call_sc);
+                grpc_operation_type.r#type =
+                    Some(grpc_model::operation_type::Type::CallSc(call_sc));
             }
         }
 
