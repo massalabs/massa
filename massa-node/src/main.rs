@@ -233,7 +233,7 @@ async fn launch(
     };
 
     // Start massa metrics
-    let metrics = MassaMetrics::new(THREAD_COUNT);
+    let metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
