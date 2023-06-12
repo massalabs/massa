@@ -9,8 +9,12 @@ use massa_models::{
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use massa_wallet::Wallet;
-use std::collections::{BTreeMap, HashMap};
-use tracing::trace;
+use parking_lot::RwLock;
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
+use tracing::{trace, warn};
 
 pub struct EndorsementPool {
     /// configuration
@@ -151,7 +155,7 @@ impl EndorsementPool {
                 }
 
                 // Only keep endorsements that one of our addresses can include
-                if !self.wallet.read().keys.contains_key(&pos_draws.creator) {
+                if !self.wallet.read().keys.contains_key(&pos_draws.producer) {
                     continue;
                 }
 

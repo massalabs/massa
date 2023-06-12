@@ -10,6 +10,7 @@ use massa_execution_exports::ExecutionController;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
+use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{
     sync::mpsc::{sync_channel, Receiver, RecvError},

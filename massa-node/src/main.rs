@@ -542,6 +542,7 @@ async fn launch(
         &shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
+        node_wallet.clone(),
     );
 
     // launch protocol controller
