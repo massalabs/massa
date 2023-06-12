@@ -4,9 +4,9 @@
 //! Used to detect operation reuse.
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-use massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
-    EXECUTED_OPS_PREFIX, STATE_CF,
+use massa_db_exports::{
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR,
+    EXECUTED_OPS_ID_SER_ERROR, EXECUTED_OPS_PREFIX, STATE_CF,
 };
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
@@ -23,11 +23,9 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     ops::Bound::{Excluded, Included},
-    sync::Arc,
 };
 
 /// Op id key formatting macro
@@ -44,7 +42,7 @@ pub struct ExecutedOps {
     /// Executed operations configuration
     _config: ExecutedOpsConfig,
     /// RocksDB Instance
-    pub db: Arc<RwLock<MassaDB>>,
+    pub db: ShareableMassaDBController,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// execution status of operations (true: success, false: fail)
@@ -59,7 +57,7 @@ pub struct ExecutedOps {
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+    pub fn new(config: ExecutedOpsConfig, db: ShareableMassaDBController) -> Self {
         let slot_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
@@ -84,12 +82,9 @@ impl ExecutedOps {
         self.op_exec_status.clear();
 
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        for (serialized_op_id, serialized_value) in db
-            .db
-            .prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
-            .flatten()
+        for (serialized_op_id, serialized_value) in
+            db.prefix_iterator_cf(STATE_CF, EXECUTED_OPS_PREFIX.as_bytes())
         {
             if !serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
                 break;
@@ -165,15 +160,13 @@ impl ExecutedOps {
     /// Check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.db
-            .get_cf(handle, op_id_key!(serialized_op_id))
+        db.get_cf(STATE_CF, op_id_key!(serialized_op_id))
             .expect(CRUD_ERROR)
             .is_some()
     }
@@ -260,10 +253,13 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_hash_computing() {
-    use massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
+    use massa_db_worker::MassaDB;
     use massa_hash::Hash;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
+    use parking_lot::RwLock;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     // initialize the executed ops config
@@ -283,8 +279,14 @@ fn test_executed_ops_hash_computing() {
         max_new_elements: 100,
         thread_count,
     };
-    let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
-    let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
+
+    let db_a = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_a_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
+    let db_c = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_c_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
+
     // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone(), db_a.clone());
     let mut c = ExecutedOps::new(config, db_c.clone());

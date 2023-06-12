@@ -1,9 +1,11 @@
-use crate::{
-    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
-    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
-};
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
+use massa_db_exports::{
+    DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
+    MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
+    CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF,
+    METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    VERSIONING_CF,
+};
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
     error::ModelsError,
@@ -19,56 +21,15 @@ use rocksdb::{
 use std::{
     collections::{BTreeMap, HashMap},
     format,
-    ops::Bound::{self, Excluded, Included},
-    path::PathBuf,
+    ops::Bound::{self, Excluded, Included, Unbounded},
     sync::Arc,
 };
-
-type Key = Vec<u8>;
-type Value = Vec<u8>;
 
 /// Wrapped RocksDB database
 ///
 /// In our instance, we use Slot as the ChangeID
 pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
 
-/// We use batching to reduce the number of writes to the database
-///
-/// Here, a DBBatch is a map from Key to Some(Value) for a new or updated value, or None for a deletion
-pub type DBBatch = BTreeMap<Key, Option<Value>>;
-
-/// Config structure for a `MassaDBRaw`
-#[derive(Debug, Clone)]
-pub struct MassaDBConfig {
-    /// The path to the database, used in the wrapped RocksDB instance
-    pub path: PathBuf,
-    /// Change history to keep (indexed by ChangeID)
-    pub max_history_length: usize,
-    /// max_new_elements for bootstrap
-    pub max_new_elements: usize,
-    /// Thread count for slot serialization
-    pub thread_count: u8,
-}
-
-/// A Batch of elements from the database, used by a bootstrap server.
-#[derive(Debug, Clone)]
-pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
-    /// New elements to be streamed to the client.
-    pub new_elements: BTreeMap<Key, Value>,
-    /// The changes made to previously streamed keys. Note that a None value can delete a given key.
-    pub updates_on_previous_elements: BTreeMap<Key, Option<Value>>,
-    /// The ChangeID associated with this batch, useful for syncing the changes not streamed yet to the client.
-    pub change_id: ChangeID,
-}
-
-impl<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> StreamBatch<ChangeID> {
-    /// Helper function used to know if the main bootstrap state step is finished.
-    ///
-    /// Note: even after having an empty StreamBatch, we still need to send the updates on previous elements while bootstrap has not finished.
-    pub fn is_empty(&self) -> bool {
-        self.updates_on_previous_elements.is_empty() && self.new_elements.is_empty()
-    }
-}
 /// A generic wrapped RocksDB database.
 ///
 /// The added features are:
@@ -83,27 +44,27 @@ pub struct RawMassaDB<
     /// The rocksdb instance
     pub db: Arc<DB>,
     /// configuration for the `RawMassaDB`
-    config: MassaDBConfig,
+    pub config: MassaDBConfig,
     /// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
     pub change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     /// same as change_history but for versioning
     pub change_history_versioning: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     /// A serializer for the ChangeID type
-    change_id_serializer: ChangeIDSerializer,
+    pub change_id_serializer: ChangeIDSerializer,
     /// A deserializer for the ChangeID type
-    change_id_deserializer: ChangeIDDeserializer,
+    pub change_id_deserializer: ChangeIDDeserializer,
     /// The Sparse Merkle Tree instance used to keep track of the global hash of the database
-    lsmtree: SparseMerkleTree<MassaDbLsmtree>,
+    pub lsmtree: SparseMerkleTree<MassaDbLsmtree>,
     /// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
-    current_batch: Arc<Mutex<WriteBatch>>,
+    pub current_batch: Arc<Mutex<WriteBatch>>,
     /// The current RocksDB cache for this batch, useful for lsmtree
-    current_hashmap: SharedSmtCache,
+    pub current_hashmap: SharedSmtCache,
 }
 
-type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
+pub type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
 
 /// Wrapper for the Lsm-tree database type
-struct MassaDbLsmtree {
+pub struct MassaDbLsmtree {
     pub cf: &'static str,
     pub db: Arc<DB>,
     pub current_batch: Arc<Mutex<WriteBatch>>,
@@ -199,86 +160,106 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_batch_to_stream(
         &self,
-        last_obtained: Option<(Vec<u8>, ChangeID)>,
+        last_state_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<ChangeID>,
     ) -> Result<StreamBatch<ChangeID>, MassaDBError> {
-        let (updates_on_previous_elements, max_key) = if let Some((max_key, last_change_id)) =
-            last_obtained
-        {
-            match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
-                std::cmp::Ordering::Greater => {
-                    return Err(MassaDBError::TimeError(String::from(
-                        "we don't have this change yet on this node (it's in the future for us)",
-                    )));
-                }
-                std::cmp::Ordering::Equal => {
-                    (BTreeMap::new(), Some(max_key)) // no new updates
-                }
-                std::cmp::Ordering::Less => {
-                    // We should send all the new updates since last_change_id
+        let bound_key_for_changes = match &last_state_step {
+            StreamingStep::Ongoing(max_key) => Included(max_key.clone()),
+            _ => Unbounded,
+        };
 
-                    let cursor = self
-                        .change_history
-                        .lower_bound(Bound::Excluded(&last_change_id));
+        let updates_on_previous_elements = match (&last_state_step, last_change_id) {
+            (StreamingStep::Started, _) => {
+                // Stream No changes, new elements from start
+                BTreeMap::new()
+            }
+            (_, Some(last_change_id)) => {
+                // Stream the changes depending on the previously computed bound
 
-                    if cursor.peek_prev().is_none() {
+                match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
+                    std::cmp::Ordering::Greater => {
                         return Err(MassaDBError::TimeError(String::from(
-                            "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
+                    std::cmp::Ordering::Equal => {
+                        BTreeMap::new() // no new updates
+                    }
+                    std::cmp::Ordering::Less => {
+                        // We should send all the new updates since last_change_id
 
-                    match cursor.key() {
-                        Some(cursor_change_id) => {
-                            // We have to send all the updates since cursor_change_id
-                            // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
-                            let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
-                            let iter = self
-                                .change_history
-                                .range((Bound::Included(cursor_change_id), Bound::Unbounded));
-                            for (_change_id, changes) in iter {
-                                updates.extend(
-                                    changes
-                                        .range((
-                                            Bound::<Vec<u8>>::Unbounded,
-                                            Included(max_key.clone()),
-                                        ))
-                                        .map(|(k, v)| (k.clone(), v.clone())),
-                                );
-                            }
-                            (updates, Some(max_key))
+                        let cursor = self
+                            .change_history
+                            .lower_bound(Bound::Excluded(&last_change_id));
+
+                        if cursor.peek_prev().is_none() {
+                            return Err(MassaDBError::TimeError(String::from(
+                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            )));
                         }
-                        None => (BTreeMap::new(), Some(max_key)), // no new updates
+
+                        match cursor.key() {
+                            Some(cursor_change_id) => {
+                                // We have to send all the updates since cursor_change_id
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
+                                    BTreeMap::new();
+                                let iter = self
+                                    .change_history
+                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                for (_change_id, changes) in iter {
+                                    updates.extend(
+                                        changes
+                                            .range((
+                                                Bound::<Vec<u8>>::Unbounded,
+                                                bound_key_for_changes.clone(),
+                                            ))
+                                            .map(|(k, v)| (k.clone(), v.clone())),
+                                    );
+                                }
+                                updates
+                            }
+                            None => BTreeMap::new(), // no new updates
+                        }
                     }
                 }
             }
-        } else {
-            (BTreeMap::new(), None) // we start from the beginning, so no updates on previous elements
+            _ => {
+                // last_change_id is None, but StreamingStep is either Ongoing or Finished
+                return Err(MassaDBError::TimeError(String::from(
+                    "State streaming was ongoing or finished, but no last_change_id was provided",
+                )));
+            }
         };
 
         let mut new_elements = BTreeMap::new();
-        let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        let db_iterator = match max_key {
-            None => self.db.iterator_cf(handle, IteratorMode::Start),
-            Some(max_key) => {
-                let mut iter = self
-                    .db
-                    .iterator_cf(handle, IteratorMode::From(&max_key, Direction::Forward));
-                iter.next();
-                iter
-            }
-        };
+        if !last_state_step.finished() {
+            let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        for (serialized_key, serialized_value) in db_iterator.flatten() {
-            if new_elements.len() < self.config.max_new_elements {
-                new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
-            } else {
-                break;
+            // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            let db_iterator = match &last_state_step {
+                StreamingStep::Ongoing(max_key) => {
+                    let mut iter = self
+                        .db
+                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    iter.next();
+                    iter
+                }
+                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+            };
+
+            for (serialized_key, serialized_value) in db_iterator.flatten() {
+                if new_elements.len() < self.config.max_new_elements {
+                    new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+                } else {
+                    break;
+                }
             }
         }
 
@@ -289,86 +270,106 @@ where
         })
     }
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_versioning_batch_to_stream(
         &self,
-        last_obtained: Option<(Vec<u8>, ChangeID)>,
+        last_versioning_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<ChangeID>,
     ) -> Result<StreamBatch<ChangeID>, MassaDBError> {
-        let (updates_on_previous_elements, max_key) = if let Some((max_key, last_change_id)) =
-            last_obtained
-        {
-            match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
-                std::cmp::Ordering::Greater => {
-                    return Err(MassaDBError::TimeError(String::from(
-                        "we don't have this change yet on this node (it's in the future for us)",
-                    )));
-                }
-                std::cmp::Ordering::Equal => {
-                    (BTreeMap::new(), Some(max_key)) // no new updates
-                }
-                std::cmp::Ordering::Less => {
-                    // We should send all the new updates since last_change_id
+        let bound_key_for_changes = match &last_versioning_step {
+            StreamingStep::Ongoing(max_key) => Included(max_key.clone()),
+            _ => Unbounded,
+        };
 
-                    let cursor = self
-                        .change_history
-                        .lower_bound(Bound::Excluded(&last_change_id));
+        let updates_on_previous_elements = match (&last_versioning_step, last_change_id) {
+            (StreamingStep::Started, _) => {
+                // Stream No changes, new elements from start
+                BTreeMap::new()
+            }
+            (_, Some(last_change_id)) => {
+                // Stream the changes depending on the previously computed bound
 
-                    if cursor.peek_prev().is_none() {
+                match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
+                    std::cmp::Ordering::Greater => {
                         return Err(MassaDBError::TimeError(String::from(
-                            "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
+                    std::cmp::Ordering::Equal => {
+                        BTreeMap::new() // no new updates
+                    }
+                    std::cmp::Ordering::Less => {
+                        // We should send all the new updates since last_change_id
 
-                    match cursor.key() {
-                        Some(cursor_change_id) => {
-                            // We have to send all the updates since cursor_change_id
-                            // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
-                            let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> = BTreeMap::new();
-                            let iter = self
-                                .change_history
-                                .range((Bound::Included(cursor_change_id), Bound::Unbounded));
-                            for (_change_id, changes) in iter {
-                                updates.extend(
-                                    changes
-                                        .range((
-                                            Bound::<Vec<u8>>::Unbounded,
-                                            Included(max_key.clone()),
-                                        ))
-                                        .map(|(k, v)| (k.clone(), v.clone())),
-                                );
-                            }
-                            (updates, Some(max_key))
+                        let cursor = self
+                            .change_history_versioning
+                            .lower_bound(Bound::Excluded(&last_change_id));
+
+                        if cursor.peek_prev().is_none() {
+                            return Err(MassaDBError::TimeError(String::from(
+                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                            )));
                         }
-                        None => (BTreeMap::new(), Some(max_key)), // no new updates
+
+                        match cursor.key() {
+                            Some(cursor_change_id) => {
+                                // We have to send all the updates since cursor_change_id
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
+                                    BTreeMap::new();
+                                let iter = self
+                                    .change_history_versioning
+                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                for (_change_id, changes) in iter {
+                                    updates.extend(
+                                        changes
+                                            .range((
+                                                Bound::<Vec<u8>>::Unbounded,
+                                                bound_key_for_changes.clone(),
+                                            ))
+                                            .map(|(k, v)| (k.clone(), v.clone())),
+                                    );
+                                }
+                                updates
+                            }
+                            None => BTreeMap::new(), // no new updates
+                        }
                     }
                 }
             }
-        } else {
-            (BTreeMap::new(), None) // we start from the beginning, so no updates on previous elements
+            _ => {
+                // last_change_id is None, but StreamingStep is either Ongoing or Finished
+                return Err(MassaDBError::TimeError(String::from(
+                    "State streaming was ongoing or finished, but no last_change_id was provided",
+                )));
+            }
         };
 
         let mut new_elements = BTreeMap::new();
-        let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
-        // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
-        let db_iterator = match max_key {
-            None => self.db.iterator_cf(handle, IteratorMode::Start),
-            Some(max_key) => {
-                let mut iter = self
-                    .db
-                    .iterator_cf(handle, IteratorMode::From(&max_key, Direction::Forward));
-                iter.next();
-                iter
-            }
-        };
+        if !last_versioning_step.finished() {
+            let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
-        for (serialized_key, serialized_value) in db_iterator.flatten() {
-            if new_elements.len() < self.config.max_new_elements {
-                new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
-            } else {
-                break;
+            // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
+            let db_iterator = match &last_versioning_step {
+                StreamingStep::Ongoing(max_key) => {
+                    let mut iter = self
+                        .db
+                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    iter.next();
+                    iter
+                }
+                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+            };
+
+            for (serialized_key, serialized_value) in db_iterator.flatten() {
+                if new_elements.len() < self.config.max_new_elements {
+                    new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+                } else {
+                    break;
+                }
             }
         }
 
@@ -534,17 +535,10 @@ where
     ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
         let mut changes = BTreeMap::new();
 
-        let new_cursor = match stream_changes.new_elements.last_key_value() {
+        let new_cursor: StreamingStep<Vec<u8>> = match stream_changes.new_elements.last_key_value()
+        {
             Some((k, _)) => StreamingStep::Ongoing(k.clone()),
-            None => {
-                let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-                match self.db.iterator_cf(handle, IteratorMode::End).next() {
-                    Some(Ok((serialized_key, _value))) => {
-                        StreamingStep::Finished(Some(serialized_key.to_vec()))
-                    }
-                    _ => StreamingStep::Finished(None),
-                }
-            }
+            None => StreamingStep::Finished(None),
         };
 
         changes.extend(stream_changes.updates_on_previous_elements);
@@ -559,15 +553,7 @@ where
 
         let new_cursor_versioning = match stream_changes_versioning.new_elements.last_key_value() {
             Some((k, _)) => StreamingStep::Ongoing(k.clone()),
-            None => {
-                let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-                match self.db.iterator_cf(handle, IteratorMode::End).next() {
-                    Some(Ok((serialized_key, _value))) => {
-                        StreamingStep::Finished(Some(serialized_key.to_vec()))
-                    }
-                    _ => StreamingStep::Finished(None),
-                }
-            }
+            None => StreamingStep::Finished(None),
         };
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
@@ -586,12 +572,6 @@ where
         )?;
 
         Ok((new_cursor, new_cursor_versioning))
-    }
-
-    /// Get the current state hash of the database
-    pub fn get_db_hash(&self) -> Hash {
-        self.get_db_hash_opt()
-            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
     }
 
     /// Get the current state hash of the database
@@ -680,9 +660,11 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
         massa_db
     }
+}
 
+impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
-    pub fn backup_db(&self, slot: Slot) {
+    fn backup_db(&self, slot: Slot) {
         let db = &self.db;
 
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
@@ -694,28 +676,23 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Writes the batch to the DB
-    pub fn write_batch(
-        &mut self,
-        batch: DBBatch,
-        versioning_batch: DBBatch,
-        change_id: Option<Slot>,
-    ) {
+    fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>) {
         self.write_changes(batch, versioning_batch, change_id, false)
             .expect(CRUD_ERROR);
     }
 
     /// Utility function to put / update a key & value in the batch
-    pub fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
+    fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
         batch.insert(key, Some(value.to_vec()));
     }
 
     /// Utility function to delete a key & value in the batch
-    pub fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
+    fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
         batch.insert(key, None);
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
+    fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
         let db = &self.db;
 
         let handle = db.cf_handle(handle_str).expect(CF_ERROR);
@@ -740,9 +717,129 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Reset the database, and attach it to the given slot.
-    pub fn reset(&mut self, slot: Slot) {
+    fn reset(&mut self, slot: Slot) {
         self.set_initial_change_id(slot);
         self.change_history.clear();
         self.current_hashmap.write().clear();
+    }
+
+    fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        db.get_cf(handle, key)
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    /// Exposes RocksDB's "multi_get_cf" function
+    fn multi_get_cf(&self, query: Vec<(&str, Key)>) -> Vec<Result<Option<Value>, MassaDBError>> {
+        let db = &self.db;
+
+        let rocks_db_query = query
+            .into_iter()
+            .map(|(handle_cf, key)| (db.cf_handle(handle_cf).expect(CF_ERROR), key))
+            .collect::<Vec<_>>();
+
+        db.multi_get_cf(rocks_db_query)
+            .into_iter()
+            .map(|res| res.map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e))))
+            .collect()
+    }
+
+    /// Exposes RocksDB's "iterator_cf" function
+    fn iterator_cf(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        let rocksdb_mode = match mode {
+            MassaIteratorMode::Start => IteratorMode::Start,
+            MassaIteratorMode::End => IteratorMode::End,
+            MassaIteratorMode::From(key, MassaDirection::Forward) => {
+                IteratorMode::From(key, Direction::Forward)
+            }
+            MassaIteratorMode::From(key, MassaDirection::Reverse) => {
+                IteratorMode::From(key, Direction::Reverse)
+            }
+        };
+
+        Box::new(
+            db.iterator_cf(handle, rocksdb_mode)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Exposes RocksDB's "prefix_iterator_cf" function
+    fn prefix_iterator_cf(
+        &self,
+        handle_cf: &str,
+        prefix: &[u8],
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        Box::new(
+            db.prefix_iterator_cf(handle, prefix)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Get the current state hash of the database
+    fn get_db_hash(&self) -> Hash {
+        self.get_db_hash_opt()
+            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    }
+
+    /// Get the current change_id attached to the database.
+    fn get_change_id(&self) -> Result<Slot, ModelsError> {
+        self.get_change_id()
+    }
+
+    /// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
+    fn set_initial_change_id(&self, change_id: Slot) {
+        self.set_initial_change_id(change_id)
+    }
+
+    /// Flushes the underlying db.
+    fn flush(&self) -> Result<(), MassaDBError> {
+        self.db
+            .flush()
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    /// Write a stream_batch of database entries received from a bootstrap server
+    fn write_batch_bootstrap_client(
+        &mut self,
+        stream_changes: StreamBatch<Slot>,
+        stream_changes_versioning: StreamBatch<Slot>,
+    ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
+        self.write_batch_bootstrap_client(stream_changes, stream_changes_versioning)
+    }
+
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_batch_to_stream(
+        &self,
+        last_state_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<Slot>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_batch_to_stream(last_state_step, last_change_id)
+    }
+
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_versioning_batch_to_stream(
+        &self,
+        last_versioning_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<Slot>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
     }
 }
