@@ -1252,6 +1252,7 @@
 <a href="#1252" id="1252">1252</a>
 <a href="#1253" id="1253">1253</a>
 <a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1772,6 +1773,7 @@
         <span class="kw-2">&amp;</span>shared_storage,
         execution_controller.clone(),
         pool_channels.clone(),
+        node_wallet.clone(),
     );
 
     <span class="comment">// launch protocol controller

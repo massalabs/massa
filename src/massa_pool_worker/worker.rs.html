@@ -232,6 +232,7 @@
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Write worker for the pools, allowing asynchronous writes.
@@ -244,6 +245,7 @@
 <span class="kw">use </span>massa_pool_exports::PoolConfig;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
     sync::mpsc::{sync_channel, Receiver, RecvError},
@@ -413,9 +415,8 @@
     storage: <span class="kw-2">&amp;</span>Storage,
     execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     channels: PoolChannels,
-    <span class="comment">// denunciation_factory_tx: Sender&lt;DenunciationPrecursor&gt;,
-    // denunciation_factory_rx: Receiver&lt;DenunciationPrecursor&gt;,
-</span>) -&gt; (Box&lt;<span class="kw">dyn </span>PoolManager&gt;, Box&lt;<span class="kw">dyn </span>PoolController&gt;) {
+    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
+) -&gt; (Box&lt;<span class="kw">dyn </span>PoolManager&gt;, Box&lt;<span class="kw">dyn </span>PoolController&gt;) {
     <span class="kw">let </span>(operations_input_sender, operations_input_receiver) =
         sync_channel(config.operations_channel_size);
     <span class="kw">let </span>(endorsements_input_sender, endorsements_input_receiver) =
@@ -432,6 +433,7 @@
         config,
         storage,
         channels.clone(),
+        wallet.clone(),
     )));
     <span class="kw">let </span>denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
         config,

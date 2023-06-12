@@ -1042,34 +1042,6 @@
 <a href="#1042" id="1042">1042</a>
 <a href="#1043" id="1043">1043</a>
 <a href="#1044" id="1044">1044</a>
-<a href="#1045" id="1045">1045</a>
-<a href="#1046" id="1046">1046</a>
-<a href="#1047" id="1047">1047</a>
-<a href="#1048" id="1048">1048</a>
-<a href="#1049" id="1049">1049</a>
-<a href="#1050" id="1050">1050</a>
-<a href="#1051" id="1051">1051</a>
-<a href="#1052" id="1052">1052</a>
-<a href="#1053" id="1053">1053</a>
-<a href="#1054" id="1054">1054</a>
-<a href="#1055" id="1055">1055</a>
-<a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
-<a href="#1059" id="1059">1059</a>
-<a href="#1060" id="1060">1060</a>
-<a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
-<a href="#1064" id="1064">1064</a>
-<a href="#1065" id="1065">1065</a>
-<a href="#1066" id="1066">1066</a>
-<a href="#1067" id="1067">1067</a>
-<a href="#1068" id="1068">1068</a>
-<a href="#1069" id="1069">1069</a>
-<a href="#1070" id="1070">1070</a>
-<a href="#1071" id="1071">1071</a>
-<a href="#1072" id="1072">1072</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1527,7 +1499,15 @@
 
     <span class="doccomment">/// Creates a new smart contract address with initial bytecode, and returns this address
     </span><span class="kw">pub fn </span>create_new_sc_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: Bytecode) -&gt; <span class="prelude-ty">Result</span>&lt;Address, ExecutionError&gt; {
-        <span class="comment">// deterministically generate a new unique smart contract address
+        <span class="comment">// TODO: collision problem:
+        //  prefix addresses to know if they are SCs or normal,
+        //  otherwise people can already create new accounts by sending coins to the right hash
+        //  they won&#39;t have ownership over it but this can still be unexpected
+        //  to have initial extra coins when an address is created
+        //  It may also induce that for read-only calls.
+        //  https://github.com/massalabs/massa/issues/2331
+
+        // deterministically generate a new unique smart contract address
         </span><span class="kw">let </span>slot_timestamp = get_block_slot_timestamp(
             <span class="self">self</span>.config.thread_count,
             <span class="self">self</span>.config.t0,
@@ -1539,7 +1519,7 @@
         <span class="comment">// create a seed from the current slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>data: Vec&lt;u8&gt; = <span class="self">self</span>.slot.to_bytes_key().to_vec();
         <span class="comment">// add the index of the created address within this context to the seed
-        </span>data.extend(<span class="self">self</span>.created_addr_index.to_be_bytes());
+        </span>data.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.created_addr_index.to_be_bytes().to_vec());
         <span class="comment">// add a flag on whether we are in read-only mode or not to the seed
         // this prevents read-only contexts from shadowing existing addresses
         </span><span class="kw">if </span><span class="self">self</span>.read_only {
@@ -1547,36 +1527,12 @@
         } <span class="kw">else </span>{
             data.push(<span class="number">1u8</span>);
         }
-
-        <span class="comment">// Loop over nonces until we find an address that doesn&#39;t exist in the speculative ledger.
-        // Note that this loop is here for robustness, and should not be looping because
-        // even through the SC addresses are predictable, nobody can create them beforehand because:
-        // - their category is &quot;SC&quot; and not &quot;USER&quot; so they can&#39;t be derived from a public key
-        // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
-        </span><span class="kw">let </span><span class="kw-2">mut </span>nonce = <span class="number">0u64</span>;
-        <span class="kw">let </span>address = <span class="kw">loop </span>{
-            <span class="comment">// compute the hash of the concatenation [data, nonce]
-            </span><span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>data[..], <span class="kw-2">&amp;</span>nonce.to_be_bytes()[..]].concat());
-            <span class="kw">let </span>addr = <span class="self">self</span>.address_factory.create(
-                <span class="kw-2">&amp;</span>AddressArgs::SC { hash },
-                FactoryStrategy::At(slot_timestamp),
-            )<span class="question-mark">?</span>;
-            <span class="comment">// check if this address already exists in the speculative ledger
-            </span><span class="kw">if </span>!<span class="self">self</span>.speculative_ledger.entry_exists(<span class="kw-2">&amp;</span>addr) {
-                <span class="comment">// if not, we can use it
-                </span><span class="kw">break </span>addr;
-            }
-            <span class="comment">// otherwise, increment the nonce to get a new hash and try again
-            </span>nonce = nonce.checked_add(<span class="number">1</span>).ok_or_else(|| {
-                ExecutionError::RuntimeError(<span class="string">&quot;nonce overflow when creating SC address&quot;</span>.into())
-            })<span class="question-mark">?</span>;
-        };
-        <span class="kw">if </span>nonce &gt; <span class="number">0 </span>{
-            <span class="macro">warn!</span>(
-                <span class="string">&quot;smart contract address generation required {} nonces&quot;</span>,
-                nonce
-            );
-        }
+        <span class="comment">// hash the seed to get a unique address
+        </span><span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>data);
+        <span class="kw">let </span>address = <span class="self">self</span>.address_factory.create(
+            <span class="kw-2">&amp;</span>AddressArgs::SC { hash },
+            FactoryStrategy::At(slot_timestamp),
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// add this address with its bytecode to the speculative ledger
         </span><span class="self">self</span>.speculative_ledger.create_new_sc_address(
@@ -1752,25 +1708,13 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
             <span class="comment">// check access rights
-            </span><span class="kw">if </span>check_rights {
-                <span class="comment">// ensure we can&#39;t spend from an address on which we have no write access
-                </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
-                        from_addr
-                    )));
-                }
-
-                <span class="comment">// ensure we can&#39;t transfer towards SC addresses on which we have no write access
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(to_addr) = <span class="kw-2">&amp;</span>to_addr {
-                    <span class="kw">if </span><span class="macro">matches!</span>(to_addr, Address::SC(..)) &amp;&amp; !<span class="self">self</span>.has_write_rights_on(to_addr) {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                            <span class="string">&quot;crediting SC address {} is not allowed without write access to it&quot;</span>,
-                            to_addr
-                        )));
-                    }
-                }
+            </span><span class="kw">if </span>check_rights &amp;&amp; !<span class="self">self</span>.has_write_rights_on(from_addr) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
+                    from_addr
+                )));
             }
+
             <span class="comment">// control vesting min_balance for sender address
             </span><span class="self">self</span>.vesting_manager
                 .check_vesting_transfer_coins(<span class="self">self</span>, from_addr, amount)<span class="question-mark">?</span>;
