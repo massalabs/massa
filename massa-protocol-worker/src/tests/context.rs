@@ -124,7 +124,7 @@ pub fn start_protocol_controller_with_mock_network(
         },
         config,
         mip_store,
-        MassaMetrics::new(32),
+        MassaMetrics::new(false, 32),
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

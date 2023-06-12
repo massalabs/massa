@@ -215,6 +215,9 @@
 
 [network]
 
+[metrics]
+    enabled = false
+
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [

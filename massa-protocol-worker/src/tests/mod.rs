@@ -133,7 +133,7 @@ fn basic() {
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-    let metrics = MassaMetrics::new(32);
+    let metrics = MassaMetrics::new(false, 32);
 
     // Setup the protocols
     let (mut manager1, _, _) = start_protocol_controller(
@@ -196,7 +196,7 @@ fn stop_with_controller_still_exists() {
     let mut config2 = ProtocolConfig::default();
     config2
         .listeners
-        .insert("127.0.0.1:8084".parse().unwrap(), TransportType::Tcp);
+        .insert("127.0.0.1:8086".parse().unwrap(), TransportType::Tcp);
     config2.keypair_file = "./src/tests/test_keypair2.json".to_string().into();
     let keypair_bs58_check_encoded = read_to_string(&config2.keypair_file)
         .map_err(|err| {
@@ -210,7 +210,7 @@ fn stop_with_controller_still_exists() {
     let initial_peers_file = NamedTempFile::new().expect("cannot create temp file");
     let mut initial_peers1: HashMap<PeerId, PeerData> = HashMap::new();
     let mut peers_1 = HashMap::new();
-    peers_1.insert("127.0.0.1:8084".parse().unwrap(), TransportType::Tcp);
+    peers_1.insert("127.0.0.1:8086".parse().unwrap(), TransportType::Tcp);
     initial_peers1.insert(
         PeerId::from_public_key(keypair2.get_public_key()),
         PeerData {
@@ -269,7 +269,7 @@ fn stop_with_controller_still_exists() {
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
-    let metrics = MassaMetrics::new(32);
+    let metrics = MassaMetrics::new(false, 32);
 
     // Setup the protocols
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());
