@@ -76,7 +76,7 @@ testing = [
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
-    "massa_metrics/testing"
+    "massa_metrics/testing",
     "massa_db_worker",
 ]
 
