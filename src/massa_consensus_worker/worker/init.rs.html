@@ -332,9 +332,7 @@
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
-<span class="kw">use </span>massa_consensus_exports::{
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
     block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     ConsensusConfig,
 };
@@ -355,7 +353,7 @@
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
-    sync::Arc,
+    sync::{mpsc, Arc},
 };
 <span class="kw">use </span>tracing::log::info;
 
@@ -416,7 +414,7 @@
     /// A `ConsensusWorker`, to interact with it use the `ConsensusController`
     </span><span class="kw">pub fn </span>new(
         config: ConsensusConfig,
-        command_receiver: MassaReceiver&lt;ConsensusCommand&gt;,
+        command_receiver: mpsc::Receiver&lt;ConsensusCommand&gt;,
         shared_state: Arc&lt;RwLock&lt;ConsensusState&gt;&gt;,
         init_graph: <span class="prelude-ty">Option</span>&lt;BootstrapableGraph&gt;,
         storage: Storage,

@@ -171,7 +171,7 @@
 <a href="#171" id="171">171</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle};
 
-<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
+<span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{block_id::BlockId, prehash::PreHashSet};
 <span class="kw">use </span>massa_protocol_exports::PeerId;
@@ -191,13 +191,13 @@
 };
 
 <span class="kw">pub struct </span>PropagationThread {
-    receiver: MassaReceiver&lt;BlockHandlerPropagationCommand&gt;,
+    receiver: Receiver&lt;BlockHandlerPropagationCommand&gt;,
     config: ProtocolConfig,
     cache: SharedBlockCache,
     storage: Storage,
     saved_blocks: VecDeque&lt;BlockId&gt;,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
-    peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     block_serializer: MessagesSerializer,
 }
 
@@ -315,8 +315,8 @@
 
 <span class="kw">pub fn </span>start_propagation_thread(
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
-    receiver: MassaReceiver&lt;BlockHandlerPropagationCommand&gt;,
-    peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    receiver: Receiver&lt;BlockHandlerPropagationCommand&gt;,
+    peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     config: ProtocolConfig,
     cache: SharedBlockCache,
     storage: Storage,

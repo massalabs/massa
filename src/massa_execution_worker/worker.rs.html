@@ -287,9 +287,6 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -306,7 +303,6 @@
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
-<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
@@ -541,7 +537,6 @@
     selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     mip_store: MipStore,
     channels: ExecutionChannels,
-    massa_metrics: MassaMetrics,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
     <span class="comment">// create an execution state
     </span><span class="kw">let </span>execution_state = Arc::new(RwLock::new(ExecutionState::new(
@@ -550,7 +545,6 @@
         mip_store,
         selector.clone(),
         channels,
-        massa_metrics,
     )));
 
     <span class="comment">// define the input data interface

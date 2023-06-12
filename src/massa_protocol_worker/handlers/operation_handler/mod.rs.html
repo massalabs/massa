@@ -77,17 +77,9 @@
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
-<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
-<span class="kw">use </span>massa_metrics::MassaMetrics;
+<span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
@@ -112,14 +104,10 @@
 <span class="kw">use </span><span class="kw">super</span>::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 <span class="kw">pub struct </span>OperationHandler {
-    <span class="kw">pub </span>operation_retrieval_thread: <span class="prelude-ty">Option</span>&lt;(
-        MassaSender&lt;OperationHandlerRetrievalCommand&gt;,
-        JoinHandle&lt;()&gt;,
-    )&gt;,
-    <span class="kw">pub </span>operation_propagation_thread: <span class="prelude-ty">Option</span>&lt;(
-        MassaSender&lt;OperationHandlerPropagationCommand&gt;,
-        JoinHandle&lt;()&gt;,
-    )&gt;,
+    <span class="kw">pub </span>operation_retrieval_thread:
+        <span class="prelude-ty">Option</span>&lt;(Sender&lt;OperationHandlerRetrievalCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
+    <span class="kw">pub </span>operation_propagation_thread:
+        <span class="prelude-ty">Option</span>&lt;(Sender&lt;OperationHandlerPropagationCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
 }
 
 <span class="kw">impl </span>OperationHandler {
@@ -130,13 +118,12 @@
         config: ProtocolConfig,
         cache: SharedOperationCache,
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
-        receiver_network: MassaReceiver&lt;PeerMessageTuple&gt;,
-        sender_retrieval_ext: MassaSender&lt;OperationHandlerRetrievalCommand&gt;,
-        receiver_retrieval_ext: MassaReceiver&lt;OperationHandlerRetrievalCommand&gt;,
-        local_sender: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
-        local_receiver: MassaReceiver&lt;OperationHandlerPropagationCommand&gt;,
-        peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
-        massa_metrics: MassaMetrics,
+        receiver_network: Receiver&lt;PeerMessageTuple&gt;,
+        sender_retrieval_ext: Sender&lt;OperationHandlerRetrievalCommand&gt;,
+        receiver_retrieval_ext: Receiver&lt;OperationHandlerRetrievalCommand&gt;,
+        local_sender: Sender&lt;OperationHandlerPropagationCommand&gt;,
+        local_receiver: Receiver&lt;OperationHandlerPropagationCommand&gt;,
+        peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>operation_retrieval_thread = start_retrieval_thread(
             receiver_network,
@@ -148,7 +135,6 @@
             receiver_retrieval_ext,
             local_sender.clone(),
             peer_cmd_sender,
-            massa_metrics,
         );
 
         <span class="kw">let </span>operation_propagation_thread =

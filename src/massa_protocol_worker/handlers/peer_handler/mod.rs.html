@@ -600,19 +600,15 @@
 <a href="#600" id="600">600</a>
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::channel::tick;
-<span class="kw">use </span>crossbeam::select;
-<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
+<span class="kw">use </span>crossbeam::{
+    channel::{Receiver, Sender},
+    select,
+};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::config::SIGNATURE_DESER_SIZE;
 <span class="kw">use </span>massa_models::version::{VersionDeserializer, VersionSerializer};
@@ -677,14 +673,8 @@
         initial_peers: InitialPeers,
         peer_id: PeerId,
         peer_db: SharedPeerDB,
-        (sender_msg, receiver_msg): (
-            MassaSender&lt;PeerMessageTuple&gt;,
-            MassaReceiver&lt;PeerMessageTuple&gt;,
-        ),
-        (sender_cmd, receiver_cmd): (
-            MassaSender&lt;PeerManagementCmd&gt;,
-            MassaReceiver&lt;PeerManagementCmd&gt;,
-        ),
+        (sender_msg, receiver_msg): (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
+        (sender_cmd, receiver_cmd): (Sender&lt;PeerManagementCmd&gt;, Receiver&lt;PeerManagementCmd&gt;),
         messages_handler: MessagesHandler,
         <span class="kw-2">mut </span>active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
@@ -734,7 +724,6 @@
                             }
                         }
                         recv(receiver_cmd) -&gt; cmd =&gt; {
-                            receiver_cmd.inc_metrics();
                             <span class="comment">// internal command
                            </span><span class="kw">match </span>cmd {
                              <span class="prelude-val">Ok</span>(PeerManagementCmd::Ban(peer_ids)) =&gt; {
@@ -776,7 +765,6 @@
                            }
                         },
                         recv(receiver_msg) -&gt; msg =&gt; {
-                            receiver_msg.inc_metrics();
                             <span class="kw">let </span>(peer_id, message) = <span class="kw">match </span>msg {
                                 <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; (peer_id, message),
                                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {

@@ -166,9 +166,9 @@
 
 </span><span class="doccomment">//! This file defines a generic finite-size execution request queue with an MPSC-based result sender.
 
-</span><span class="kw">use </span>massa_channel::sender::MassaSender;
-<span class="kw">use </span>massa_execution_exports::ExecutionError;
+</span><span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::sync::mpsc::Sender;
 
 <span class="doccomment">/// Represents an execution request T coupled with an MPSC sender for a result of type R
 </span><span class="attr">#[derive(Debug)]
@@ -176,7 +176,7 @@
     <span class="doccomment">/// The underlying execution request
     </span>request: T,
     <span class="doccomment">/// An std::mpsc::Sender to later send the execution output R (or an error)
-    </span>response_tx: MassaSender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;,
+    </span>response_tx: Sender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;T, R&gt; RequestWithResponseSender&lt;T, R&gt; {
@@ -185,7 +185,7 @@
     /// # Arguments
     /// * `request`: the underlying request of type T
     /// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)
-    </span><span class="kw">pub fn </span>new(request: T, response_tx: MassaSender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(request: T, response_tx: Sender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;) -&gt; <span class="self">Self </span>{
         RequestWithResponseSender {
             request,
             response_tx,
@@ -204,7 +204,7 @@
     }
 
     <span class="doccomment">/// Destructure self into a (request, response sender) pair
-    </span><span class="kw">pub fn </span>into_request_sender_pair(<span class="self">self</span>) -&gt; (T, MassaSender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;) {
+    </span><span class="kw">pub fn </span>into_request_sender_pair(<span class="self">self</span>) -&gt; (T, Sender&lt;<span class="prelude-ty">Result</span>&lt;R, ExecutionError&gt;&gt;) {
         (<span class="self">self</span>.request, <span class="self">self</span>.response_tx)
     }
 }

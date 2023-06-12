@@ -281,8 +281,10 @@
 <a href="#281" id="281">281</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
-<span class="kw">use </span>crossbeam::select;
-<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
+<span class="kw">use </span>crossbeam::{
+    channel::{Receiver, Sender},
+    select,
+};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     endorsement::SecureShareEndorsement,
@@ -314,14 +316,14 @@
 };
 
 <span class="kw">pub struct </span>RetrievalThread {
-    receiver: MassaReceiver&lt;PeerMessageTuple&gt;,
-    receiver_ext: MassaReceiver&lt;EndorsementHandlerRetrievalCommand&gt;,
+    receiver: Receiver&lt;PeerMessageTuple&gt;,
+    receiver_ext: Receiver&lt;EndorsementHandlerRetrievalCommand&gt;,
     cache: SharedEndorsementCache,
-    internal_sender: MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
+    internal_sender: Sender&lt;EndorsementHandlerPropagationCommand&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     config: ProtocolConfig,
     storage: Storage,
-    peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
 }
 
 <span class="kw">impl </span>RetrievalThread {
@@ -335,7 +337,6 @@
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
-                    <span class="self">self</span>.receiver.inc_metrics();
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>endorsement_message_deserializer
@@ -376,7 +377,6 @@
                     }
                 },
                 recv(<span class="self">self</span>.receiver_ext) -&gt; msg =&gt; {
-                    <span class="self">self</span>.receiver_ext.inc_metrics();
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>(msg) =&gt; {
                             <span class="kw">match </span>msg {
@@ -534,10 +534,10 @@
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>start_retrieval_thread(
-    receiver: MassaReceiver&lt;PeerMessageTuple&gt;,
-    receiver_ext: MassaReceiver&lt;EndorsementHandlerRetrievalCommand&gt;,
-    internal_sender: MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
-    peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    receiver: Receiver&lt;PeerMessageTuple&gt;,
+    receiver_ext: Receiver&lt;EndorsementHandlerRetrievalCommand&gt;,
+    internal_sender: Sender&lt;EndorsementHandlerPropagationCommand&gt;,
+    peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     cache: SharedEndorsementCache,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     config: ProtocolConfig,
