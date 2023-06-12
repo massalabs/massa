@@ -638,41 +638,6 @@
 <a href="#638" id="638">638</a>
 <a href="#639" id="639">639</a>
 <a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -814,33 +779,7 @@
         };
 
         <span class="kw">let </span>res = storage.read_blocks().get(<span class="kw-2">&amp;</span>block_id).map(|b| {
-            <span class="comment">// TODO rework ?
-            </span><span class="kw">let </span>header = b.clone().content.header;
-            <span class="comment">// transform to grpc struct
-            </span><span class="kw">let </span>parents = header
-                .content
-                .parents
-                .into_iter()
-                .map(|p| p.to_string())
-                .collect();
-
-            <span class="kw">let </span>endorsements = header
-                .content
-                .endorsements
-                .into_iter()
-                .map(|endorsement| endorsement.into())
-                .collect();
-
-            <span class="kw">let </span>block_header = grpc_model::BlockHeader {
-                slot: <span class="prelude-val">Some</span>(grpc_model::Slot {
-                    period: header.content.slot.period,
-                    thread: header.content.slot.thread <span class="kw">as </span>u32,
-                }),
-                parents,
-                operation_merkle_root: header.content.operation_merkle_root.to_string(),
-                endorsements,
-            };
-
+            <span class="kw">let </span>massa_header = b.clone().content.header;
             <span class="kw">let </span>operations: Vec&lt;String&gt; = b
                 .content
                 .operations
@@ -848,16 +787,7 @@
                 .map(|ope| ope.to_string())
                 .collect();
 
-            (
-                grpc_model::SignedBlockHeader {
-                    content: <span class="prelude-val">Some</span>(block_header),
-                    signature: header.signature.to_string(),
-                    content_creator_pub_key: header.content_creator_pub_key.to_string(),
-                    content_creator_address: header.content_creator_address.to_string(),
-                    id: header.id.to_string(),
-                },
-                operations,
-            )
+            (massa_header.into(), operations)
         });
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = res {
