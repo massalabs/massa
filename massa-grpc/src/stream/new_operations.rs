@@ -4,7 +4,6 @@ use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::model::v1 as grpc_model;
 use std::pin::Pin;
 use tokio::select;
 use tonic::codegen::futures_core;
@@ -43,24 +42,16 @@ pub(crate) async fn new_operations(
                     // Receive a new operation from the subscriber
                      event = subscriber.recv() => {
                         match event {
-                            Ok(operation) => {
+                            Ok(massa_operation) => {
                                 // Check if the operation should be sent
-                                if !should_send(&filter, operation.clone().content.op.into()) {
+                                if !should_send(&filter, massa_operation.clone().content.op.into()) {
                                     continue;
                                 }
 
-                                // Convert the operation to a gRPC operation
-                                let ret = grpc_model::SignedOperation {
-                                    content: Some(operation.content.into()),
-                                    signature: operation.signature.to_string(),
-                                    content_creator_pub_key: operation.content_creator_pub_key.to_string(),
-                                    content_creator_address: operation.content_creator_address.to_string(),
-                                    id: operation.id.to_string()
-                                };
                                 // Send the new operation through the channel
                                 if let Err(e) = tx.send(Ok(grpc_api::NewOperationsResponse {
                                     id: request_id.clone(),
-                                    operation: Some(ret)
+                                    operation: Some(massa_operation.into())
                                 })).await {
                                     error!("failed to send operation : {}", e);
                                     break;

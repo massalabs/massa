@@ -64,24 +64,28 @@ impl From<FilledBlock> for grpc_model::FilledBlock {
 
 impl From<SecureShareBlock> for grpc_model::SignedBlock {
     fn from(value: SecureShareBlock) -> Self {
+        let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedBlock {
             content: Some(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
+            serialized_size,
         }
     }
 }
 
 impl From<SecuredHeader> for grpc_model::SignedBlockHeader {
     fn from(value: SecuredHeader) -> Self {
+        let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedBlockHeader {
             content: Some(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
+            serialized_size,
         }
     }
 }
@@ -98,12 +102,14 @@ impl From<Endorsement> for grpc_model::Endorsement {
 
 impl From<SecureShareEndorsement> for grpc_model::SignedEndorsement {
     fn from(value: SecureShareEndorsement) -> Self {
+        let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedEndorsement {
             content: Some(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
+            serialized_size,
         }
     }
 }
@@ -198,12 +204,14 @@ impl From<OperationType> for grpc_api::OpType {
 
 impl From<SecureShareOperation> for grpc_model::SignedOperation {
     fn from(value: SecureShareOperation) -> Self {
+        let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedOperation {
             content: Some(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
+            serialized_size,
         }
     }
 }

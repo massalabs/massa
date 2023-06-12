@@ -28,7 +28,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_sdk = { path = "../massa-sdk" }
 massa_wallet = { path = "../massa-wallet" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "main", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "feature/develop", features = ["tonic"] }
 
 [dev-dependencies]
 toml_edit = "0.19"

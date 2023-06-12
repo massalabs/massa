@@ -20,7 +20,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_db = { path = "../massa-db" }
 massa_time = { path = "../massa-time" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "main", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "feature/develop", features = ["tonic"] }
 
 [dev-dependencies]
 tempfile = "3.3"
