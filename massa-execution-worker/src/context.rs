@@ -475,34 +475,30 @@ impl ExecutionContext {
         } else {
             data.push(1u8);
         }
-        // hash the seed to get an address
-        let mut hash = Hash::compute_from(&data);
-        let mut nonce = 0u64;
-        let mut address;
 
         // Loop over nonces until we find an address that doesn't exist in the speculative ledger.
         // Note that this loop is here for robustness, and should not be looping because
         // even through the SC addresses are predictable, nobody can create them beforehand because:
         // - their category is "SC" and not "USER" so they can't be derived from a public key
         // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
-        loop {
-            address = self.address_factory.create(
+        let mut nonce = 0u64;
+        let address = loop {
+            // compute the hash of the concatenation [data, nonce]
+            let hash = Hash::compute_from(&[&data[..], &nonce.to_be_bytes()[..]].concat());
+            let addr = self.address_factory.create(
                 &AddressArgs::SC { hash },
                 FactoryStrategy::At(slot_timestamp),
             )?;
             // check if this address already exists in the speculative ledger
-            if !self.speculative_ledger.entry_exists(&address) {
+            if !self.speculative_ledger.entry_exists(&addr) {
                 // if not, we can use it
-                break;
+                break addr;
             }
             // otherwise, increment the nonce to get a new hash and try again
             nonce = nonce.checked_add(1).ok_or_else(|| {
                 ExecutionError::RuntimeError("nonce overflow when creating SC address".into())
             })?;
-            let mut hash_content = hash.to_bytes().to_vec();
-            hash_content.extend(nonce.to_be_bytes());
-            hash = Hash::compute_from(&hash_content);
-        }
+        };
         if nonce > 0 {
             warn!(
                 "smart contract address generation required {} nonces",

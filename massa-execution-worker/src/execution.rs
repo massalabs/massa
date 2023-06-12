@@ -684,7 +684,7 @@ impl ExecutionState {
             operation_datastore: None,
         }];
 
-        // send `roll_price` * `roll_count` coins from the sender to the recipient
+        // transfer coins from sender to destination
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, true)
         {
