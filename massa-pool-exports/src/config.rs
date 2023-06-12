@@ -17,6 +17,8 @@ pub struct PoolConfig {
     pub roll_price: Amount,
     /// operation validity periods
     pub operation_validity_periods: u64,
+    /// operation pool refresh interval
+    pub operation_pool_refresh_interval: MassaTime,
     /// max operations per block
     pub max_operations_per_block: u32,
     /// max operation pool size per thread (in number of operations)

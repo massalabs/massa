@@ -11,7 +11,7 @@ use massa_models::{
     denunciation::{Denunciation, DenunciationPrecursor},
     timeslots::get_closest_slot_to_timestamp,
 };
-use massa_pool_exports::PoolConfig;
+use massa_pool_exports::{PoolConfig, PoolChannels};
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -19,10 +19,8 @@ use massa_time::MassaTime;
 pub struct DenunciationPool {
     /// pool configuration
     config: PoolConfig,
-    /// selector controller to get draws
-    pub selector: Box<dyn SelectorController>,
-    /// execution controller
-    execution_controller: Box<dyn ExecutionController>,
+    /// pool channels
+    channels: PoolChannels,
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
     /// Internal cache for denunciations
@@ -32,13 +30,11 @@ pub struct DenunciationPool {
 impl DenunciationPool {
     pub fn init(
         config: PoolConfig,
-        selector: Box<dyn SelectorController>,
-        execution_controller: Box<dyn ExecutionController>,
+        channels: PoolChannels
     ) -> Self {
         Self {
             config,
-            selector,
-            execution_controller,
+            channels,
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             denunciations_cache: Default::default(),
         }
