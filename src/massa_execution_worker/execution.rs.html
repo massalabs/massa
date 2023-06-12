@@ -1758,6 +1758,22 @@
 <a href="#1758" id="1758">1758</a>
 <a href="#1759" id="1759">1759</a>
 <a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1782,6 +1798,7 @@
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -1849,6 +1866,8 @@
     </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     <span class="comment">// channels used by the execution worker
     </span>channels: ExecutionChannels,
+    <span class="doccomment">/// prometheus metrics
+    </span>massa_metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -1866,6 +1885,7 @@
         mip_store: MipStore,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         channels: ExecutionChannels,
+        massa_metrics: MassaMetrics,
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -1938,6 +1958,7 @@
             mip_store,
             selector,
             channels,
+            massa_metrics,
         }
     }
 
@@ -1985,6 +2006,12 @@
         </span>exec_out.events.finalize();
         <span class="self">self</span>.final_events.extend(exec_out.events);
         <span class="self">self</span>.final_events.prune(<span class="self">self</span>.config.max_final_events);
+
+        <span class="comment">// update the prometheus metrics
+        </span><span class="self">self</span>.massa_metrics
+            .set_active_cursor(<span class="self">self</span>.active_cursor.period, <span class="self">self</span>.active_cursor.thread);
+        <span class="self">self</span>.massa_metrics
+            .set_final_cursor(<span class="self">self</span>.final_cursor.period, <span class="self">self</span>.final_cursor.thread);
     }
 
     <span class="doccomment">/// Applies an execution output to the active (non-final) state
@@ -2405,7 +2432,7 @@
             )));
         }
 
-        <span class="comment">// add rolls to the buyer withing the context
+        <span class="comment">// add rolls to the buyer within the context
         </span>context.add_rolls(<span class="kw-2">&amp;</span>buyer_addr, <span class="kw-2">*</span>roll_count);
 
         <span class="prelude-val">Ok</span>(())
@@ -2444,9 +2471,9 @@
             operation_datastore: <span class="prelude-val">None</span>,
         }];
 
-        <span class="comment">// send `roll_price` * `roll_count` coins from the sender to the recipient
+        <span class="comment">// transfer coins from sender to destination
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-            context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>recipient_address), <span class="kw-2">*</span>amount, <span class="bool-val">false</span>)
+            context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>recipient_address), <span class="kw-2">*</span>amount, <span class="bool-val">true</span>)
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::TransactionError(<span class="macro">format!</span>(
                 <span class="string">&quot;transfer of {} coins from {} to {} failed: {}&quot;</span>,
@@ -2570,19 +2597,21 @@
                 },
             ];
 
-            <span class="comment">// Debit the sender&#39;s balance with the coins to transfer
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, coins, <span class="bool-val">false</span>) {
+            <span class="comment">// Ensure that the target address is an SC address
+            </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to debit operation sender {} with {} operation coins: {}&quot;</span>,
-                    sender_addr, coins, err
+                    <span class="string">&quot;cannot callSC towards non-SC address {}&quot;</span>,
+                    target_addr
                 )));
             }
 
-            <span class="comment">// Credit the operation target with coins.
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(target_addr), coins, <span class="bool-val">false</span>) {
+            <span class="comment">// Transfer coins from the sender to the target
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(target_addr), coins, <span class="bool-val">false</span>)
+            {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to credit operation target {} with {} operation coins: {}&quot;</span>,
-                    target_addr, coins, err
+                    <span class="string">&quot;failed to transfer {} operation coins from {} to {}: {}&quot;</span>,
+                    coins, sender_addr, target_addr, err
                 )));
             }
 
@@ -2656,18 +2685,21 @@
                 },
             ];
 
-            <span class="comment">// If there is no target bytecode or if message data is invalid,
-            // reimburse sender with coins and quit
+            <span class="comment">// if the target address is not SC: fail
+            </span><span class="kw">if </span>!<span class="macro">matches!</span>(message.destination, Address::SC(..)) {
+                <span class="kw">let </span>err = ExecutionError::RuntimeError(
+                    <span class="string">&quot;the target address is not a smart contract address&quot;</span>.into(),
+                );
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+            }
+
+            <span class="comment">// if there is no bytecode: fail
             </span><span class="kw">let </span>bytecode = <span class="kw">match </span>bytecode {
-                <span class="prelude-val">Some</span>(bc) =&gt; bc,
-                bc =&gt; {
-                    <span class="kw">let </span>err = <span class="kw">if </span>bc.is_none() {
-                        ExecutionError::RuntimeError(<span class="string">&quot;no target bytecode found&quot;</span>.into())
-                    } <span class="kw">else </span>{
-                        ExecutionError::RuntimeError(
-                            <span class="string">&quot;message data does not convert to utf-8&quot;</span>.into(),
-                        )
-                    };
+                <span class="prelude-val">Some</span>(bytecode) =&gt; bytecode,
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="string">&quot;no target bytecode found&quot;</span>.into());
                     context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(<span class="kw-2">&amp;</span>message);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(err);

@@ -194,7 +194,7 @@
 <a href="#194" id="194">194</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, time::Duration};
 
-<span class="kw">use </span>crossbeam::channel::Sender;
+<span class="kw">use </span>massa_channel::{sender::MassaSender, MassaChannel};
 <span class="kw">use </span>massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
@@ -225,22 +225,22 @@
     // This is needed as to be able to stop the controller, the Sender has to be dropped,
     // if not, the handler will deadlock on `recv`
     // As this is never None, we allow ourselves to use `unwrap` to acceed to the senders
-    </span><span class="kw">pub </span>sender_block_retrieval_handler: <span class="prelude-ty">Option</span>&lt;Sender&lt;BlockHandlerRetrievalCommand&gt;&gt;,
-    <span class="kw">pub </span>sender_block_handler: <span class="prelude-ty">Option</span>&lt;Sender&lt;BlockHandlerPropagationCommand&gt;&gt;,
-    <span class="kw">pub </span>sender_operation_handler: <span class="prelude-ty">Option</span>&lt;Sender&lt;OperationHandlerPropagationCommand&gt;&gt;,
-    <span class="kw">pub </span>sender_endorsement_handler: <span class="prelude-ty">Option</span>&lt;Sender&lt;EndorsementHandlerPropagationCommand&gt;&gt;,
-    <span class="kw">pub </span>sender_connectivity_thread: <span class="prelude-ty">Option</span>&lt;Sender&lt;ConnectivityCommand&gt;&gt;,
-    <span class="kw">pub </span>sender_peer_management_thread: <span class="prelude-ty">Option</span>&lt;Sender&lt;PeerManagementCmd&gt;&gt;,
+    </span><span class="kw">pub </span>sender_block_retrieval_handler: <span class="prelude-ty">Option</span>&lt;MassaSender&lt;BlockHandlerRetrievalCommand&gt;&gt;,
+    <span class="kw">pub </span>sender_block_handler: <span class="prelude-ty">Option</span>&lt;MassaSender&lt;BlockHandlerPropagationCommand&gt;&gt;,
+    <span class="kw">pub </span>sender_operation_handler: <span class="prelude-ty">Option</span>&lt;MassaSender&lt;OperationHandlerPropagationCommand&gt;&gt;,
+    <span class="kw">pub </span>sender_endorsement_handler: <span class="prelude-ty">Option</span>&lt;MassaSender&lt;EndorsementHandlerPropagationCommand&gt;&gt;,
+    <span class="kw">pub </span>sender_connectivity_thread: <span class="prelude-ty">Option</span>&lt;MassaSender&lt;ConnectivityCommand&gt;&gt;,
+    <span class="kw">pub </span>sender_peer_management_thread: <span class="prelude-ty">Option</span>&lt;MassaSender&lt;PeerManagementCmd&gt;&gt;,
 }
 
 <span class="kw">impl </span>ProtocolControllerImpl {
     <span class="kw">pub fn </span>new(
-        sender_block_retrieval_handler: Sender&lt;BlockHandlerRetrievalCommand&gt;,
-        sender_block_handler: Sender&lt;BlockHandlerPropagationCommand&gt;,
-        sender_operation_handler: Sender&lt;OperationHandlerPropagationCommand&gt;,
-        sender_endorsement_handler: Sender&lt;EndorsementHandlerPropagationCommand&gt;,
-        sender_connectivity_thread: Sender&lt;ConnectivityCommand&gt;,
-        sender_peer_management_thread: Sender&lt;PeerManagementCmd&gt;,
+        sender_block_retrieval_handler: MassaSender&lt;BlockHandlerRetrievalCommand&gt;,
+        sender_block_handler: MassaSender&lt;BlockHandlerPropagationCommand&gt;,
+        sender_operation_handler: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
+        sender_endorsement_handler: MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
+        sender_connectivity_thread: MassaSender&lt;ConnectivityCommand&gt;,
+        sender_peer_management_thread: MassaSender&lt;PeerManagementCmd&gt;,
     ) -&gt; <span class="self">Self </span>{
         ProtocolControllerImpl {
             sender_block_retrieval_handler: <span class="prelude-val">Some</span>(sender_block_retrieval_handler),
@@ -341,7 +341,7 @@
         ),
         ProtocolError,
     &gt; {
-        <span class="kw">let </span>(sender, receiver) = crossbeam::channel::bounded(<span class="number">1</span>);
+        <span class="kw">let </span>(sender, receiver) = MassaChannel::new(<span class="string">&quot;get_stats&quot;</span>.to_string(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
         <span class="self">self</span>.sender_connectivity_thread
             .as_ref()
             .unwrap()
@@ -369,7 +369,7 @@
     }
 
     <span class="kw">fn </span>get_bootstrap_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapPeers, ProtocolError&gt; {
-        <span class="kw">let </span>(sender, receiver) = crossbeam::channel::bounded(<span class="number">1</span>);
+        <span class="kw">let </span>(sender, receiver) = MassaChannel::new(<span class="string">&quot;get_bootstrap_peers&quot;</span>.to_string(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
         <span class="self">self</span>.sender_peer_management_thread
             .as_ref()
             .unwrap()

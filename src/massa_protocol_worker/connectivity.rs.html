@@ -284,11 +284,31 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::{
-    channel::{Receiver, Sender},
-    select,
-};
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::select;
+<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::stats::NetworkStats;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
@@ -317,11 +337,12 @@
     wrap_network::NetworkController,
 };
 
-<span class="kw">pub enum </span>ConnectivityCommand {
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub enum </span>ConnectivityCommand {
     Stop,
     GetStats {
         <span class="attr">#[allow(clippy::type_complexity)]
-        </span>responder: Sender&lt;(
+        </span>responder: MassaSender&lt;(
             NetworkStats,
             HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt;,
         )&gt;,
@@ -334,10 +355,22 @@
     <span class="kw-2">mut </span>network_controller: Box&lt;<span class="kw">dyn </span>NetworkController&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-    channel_blocks: (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
-    channel_endorsements: (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
-    channel_operations: (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
-    channel_peers: (Sender&lt;PeerMessageTuple&gt;, Receiver&lt;PeerMessageTuple&gt;),
+    channel_blocks: (
+        MassaSender&lt;PeerMessageTuple&gt;,
+        MassaReceiver&lt;PeerMessageTuple&gt;,
+    ),
+    channel_endorsements: (
+        MassaSender&lt;PeerMessageTuple&gt;,
+        MassaReceiver&lt;PeerMessageTuple&gt;,
+    ),
+    channel_operations: (
+        MassaSender&lt;PeerMessageTuple&gt;,
+        MassaReceiver&lt;PeerMessageTuple&gt;,
+    ),
+    channel_peers: (
+        MassaSender&lt;PeerMessageTuple&gt;,
+        MassaReceiver&lt;PeerMessageTuple&gt;,
+    ),
     initial_peers: InitialPeers,
     peer_db: SharedPeerDB,
     storage: Storage,
@@ -347,7 +380,8 @@
     _default_category: PeerCategoryInfo,
     config: ProtocolConfig,
     mip_store: MipStore,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(Sender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;), ProtocolError&gt; {
+    massa_metrics: MassaMetrics,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(MassaSender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;), ProtocolError&gt; {
     <span class="kw">let </span>handle = std::thread::Builder::new()
     .name(<span class="string">&quot;protocol-connectivity&quot;</span>.to_string())
     .spawn({
@@ -369,10 +403,11 @@
             </span>std::thread::sleep(Duration::from_millis(<span class="number">100</span>));
 
             <span class="comment">// Create cache outside of the op handler because it could be used by other handlers
-            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake;
-            <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections;
+            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake +<span class="number">1 </span>;
+            <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections + <span class="number">1</span>;
             <span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                config.max_known_blocks_size.try_into().unwrap(),
+                config.max_known_ops_size.try_into().unwrap(),
+                config.max_node_known_ops_size.try_into().unwrap(),
                 (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
             <span class="kw">let </span>endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
@@ -383,6 +418,7 @@
             <span class="kw">let </span>block_cache = Arc::new(RwLock::new(BlockCache::new(
                 config.max_known_blocks_size.try_into().unwrap(),
                 (total_in_slots + total_out_slots).try_into().unwrap(),
+                config.max_node_known_blocks_size.try_into().unwrap(),
             )));
 
             <span class="comment">// Start handlers
@@ -411,6 +447,7 @@
                 sender_operations_propagation_ext.clone(),
                 protocol_channels.operation_handler_propagation.<span class="number">1</span>.clone(),
                 peer_management_handler.sender.command_sender.clone(),
+                massa_metrics.clone(),
             );
             <span class="kw">let </span><span class="kw-2">mut </span>endorsement_handler = EndorsementHandler::new(
                 pool_controller.clone(),
@@ -419,8 +456,8 @@
                 config.clone(),
                 network_controller.get_active_connections(),
                 channel_endorsements.<span class="number">1</span>,
-                protocol_channels.endorsement_handler_retrieval.<span class="number">0</span>.clone(),
-                protocol_channels.endorsement_handler_retrieval.<span class="number">1</span>.clone(),
+                protocol_channels.endorsement_handler_retrieval.<span class="number">0</span>,
+                protocol_channels.endorsement_handler_retrieval.<span class="number">1</span>,
                 sender_endorsements_propagation_ext,
                 protocol_channels.endorsement_handler_propagation.<span class="number">1</span>.clone(),
                 peer_management_handler.sender.command_sender.clone(),
@@ -442,6 +479,7 @@
                 block_cache,
                 storage.clone_without_refs(),
                 mip_store,
+                massa_metrics.clone(),
             );
 
             <span class="comment">//Try to connect to peers
@@ -490,7 +528,11 @@
                             }
                         }
                     default(config.try_connection_timer.to_duration()) =&gt; {
-                        <span class="kw">let </span>peers_connected = network_controller.get_active_connections().get_peers_connected();
+                        <span class="kw">let </span>active_conn = network_controller.get_active_connections();
+                        <span class="kw">let </span>peers_connected = active_conn.get_peers_connected();
+                        <span class="comment">// update massa metrics
+                        </span>massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
+
                         <span class="kw">let </span><span class="kw-2">mut </span>slots_per_category: Vec&lt;(String, usize)&gt; = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.<span class="number">1</span>.target_out_connections.saturating_sub(peers_connected.iter().filter(|(<span class="kw">_</span>, peer)| {
                                 <span class="kw">if </span>peer.<span class="number">1 </span>== PeerConnectionType::OUT &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(peer_category) = <span class="kw-2">&amp;</span>peer.<span class="number">2 </span>{

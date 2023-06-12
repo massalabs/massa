@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"massa_channel":[["impl&lt;T&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/deref/trait.DerefMut.html\" title=\"trait core::ops::deref::DerefMut\">DerefMut</a> for <a class=\"struct\" href=\"massa_channel/receiver/struct.MassaReceiver.html\" title=\"struct massa_channel::receiver::MassaReceiver\">MassaReceiver</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

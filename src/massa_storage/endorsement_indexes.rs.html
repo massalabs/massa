@@ -75,6 +75,10 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map;
 
 <span class="kw">use </span>massa_models::{
@@ -99,6 +103,8 @@
     /// - endorsement: the endorsement to insert
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsement: SecureShareEndorsement) {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(e) = <span class="self">self</span>.endorsements.try_insert(endorsement.id, endorsement) {
+            massa_metrics::inc_endorsements_counter();
+
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(e.content_creator_address)
@@ -115,6 +121,8 @@
         endorsement_id: <span class="kw-2">&amp;</span>EndorsementId,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareEndorsement&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = <span class="self">self</span>.endorsements.remove(endorsement_id) {
+            massa_metrics::dec_endorsements_counter();
+
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
                 <span class="self">self</span>.index_by_creator.entry(e.content_creator_address)

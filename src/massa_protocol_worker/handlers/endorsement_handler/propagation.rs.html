@@ -168,7 +168,7 @@
 <a href="#168" id="168">168</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
-<span class="kw">use </span>crossbeam::channel::Receiver;
+<span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
@@ -185,7 +185,7 @@
 };
 
 <span class="kw">struct </span>PropagationThread {
-    receiver: Receiver&lt;EndorsementHandlerPropagationCommand&gt;,
+    receiver: MassaReceiver&lt;EndorsementHandlerPropagationCommand&gt;,
     config: ProtocolConfig,
     cache: SharedEndorsementCache,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
@@ -313,7 +313,7 @@
 }
 
 <span class="kw">pub fn </span>start_propagation_thread(
-    receiver: Receiver&lt;EndorsementHandlerPropagationCommand&gt;,
+    receiver: MassaReceiver&lt;EndorsementHandlerPropagationCommand&gt;,
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
