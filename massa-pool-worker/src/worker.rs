@@ -179,8 +179,7 @@ pub fn start_pool_controller(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
     channels: PoolChannels,
-    // denunciation_factory_tx: Sender<DenunciationPrecursor>,
-    // denunciation_factory_rx: Receiver<DenunciationPrecursor>,
+    wallet: Arc<RwLock<Wallet>>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) =
         sync_channel(config.operations_channel_size);
@@ -198,6 +197,7 @@ pub fn start_pool_controller(
         config,
         storage,
         channels.clone(),
+        wallet.clone(),
     )));
     let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
         config,

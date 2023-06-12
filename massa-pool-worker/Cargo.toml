@@ -15,6 +15,7 @@ massa_pool_exports = { path = "../massa-pool-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_time = { path = "../massa-time" }
 massa_pos_exports = { path = "../massa-pos-exports" }
+massa_wallet = { path = "../massa-wallet" }
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }
