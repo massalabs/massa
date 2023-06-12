@@ -1,8 +1,11 @@
 use lazy_static::lazy_static;
 use prometheus::{register_int_gauge, Gauge, IntGauge};
+use survey::MassaSurvey;
 
 #[cfg(not(feature = "testing"))]
 mod server;
+
+mod survey;
 
 // TODO load only if feature metrics is enabled
 lazy_static! {
@@ -240,6 +243,11 @@ impl MassaMetrics {
                     operation_cache_checked_operations_prefix.clone(),
                 ));
             }
+
+            MassaSurvey::run(
+                active_in_connections.clone(),
+                active_out_connections.clone(),
+            );
         }
 
         MassaMetrics {

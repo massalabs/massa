@@ -17,3 +17,4 @@ massa_channel = { path = "../massa-channel" }
 
 [features]
 testing = []
+sandbox = []
