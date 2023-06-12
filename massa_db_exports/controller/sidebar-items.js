@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["MassaDirection","MassaIteratorMode"],"trait":["MassaDBController"],"type":["ShareableMassaDBController"]};
