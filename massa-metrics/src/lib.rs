@@ -85,23 +85,10 @@ pub struct MassaMetrics {
 }
 
 impl MassaMetrics {
-    pub fn new(nb_thread: u8) -> Self {
+    pub fn new(enabled: bool, nb_thread: u8) -> Self {
         // TODO unwrap
 
         let mut consensus_vec = vec![];
-        for i in 0..nb_thread {
-            let gauge = Gauge::new(
-                format!("consensus_thread_{}", i),
-                "consensus thread actual period",
-            )
-            .expect("Failed to create gauge");
-            #[cfg(not(feature = "testing"))]
-            {
-                let _ = prometheus::register(Box::new(gauge.clone()));
-            }
-
-            consensus_vec.push(gauge);
-        }
 
         // active cursor
         let active_cursor_thread =
@@ -209,31 +196,50 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        // TODO addr from config
-        #[cfg(not(feature = "testing"))]
-        {
-            let addr = "0.0.0.0:9898".parse().unwrap();
-            server::bind_metrics(addr);
+        if enabled {
+            for i in 0..nb_thread {
+                let gauge = Gauge::new(
+                    format!("consensus_thread_{}", i),
+                    "consensus thread actual period",
+                )
+                .expect("Failed to create gauge");
+                #[cfg(not(feature = "testing"))]
+                {
+                    let _ = prometheus::register(Box::new(gauge.clone()));
+                }
 
-            let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
-            let _ = prometheus::register(Box::new(final_cursor_period.clone()));
-            let _ = prometheus::register(Box::new(active_cursor_thread.clone()));
-            let _ = prometheus::register(Box::new(active_cursor_period.clone()));
-            let _ = prometheus::register(Box::new(active_out_connections.clone()));
-            let _ = prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()));
-            let _ = prometheus::register(Box::new(block_cache_checked_headers_size.clone()));
-            let _ = prometheus::register(Box::new(operation_cache_checked_operations.clone()));
-            let _ = prometheus::register(Box::new(active_in_connections.clone()));
-            let _ = prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()));
-            let _ = prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()));
-            let _ = prometheus::register(Box::new(consensus_state_active_index.clone()));
-            let _ =
-                prometheus::register(Box::new(consensus_state_active_index_without_ops.clone()));
-            let _ = prometheus::register(Box::new(consensus_state_incoming_index.clone()));
-            let _ = prometheus::register(Box::new(consensus_state_discarded_index.clone()));
-            let _ = prometheus::register(Box::new(consensus_state_block_statuses.clone()));
-            let _ =
-                prometheus::register(Box::new(operation_cache_checked_operations_prefix.clone()));
+                consensus_vec.push(gauge);
+            }
+
+            // TODO addr from config
+            #[cfg(not(feature = "testing"))]
+            {
+                let addr = "0.0.0.0:9898".parse().unwrap();
+                server::bind_metrics(addr);
+
+                let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
+                let _ = prometheus::register(Box::new(final_cursor_period.clone()));
+                let _ = prometheus::register(Box::new(active_cursor_thread.clone()));
+                let _ = prometheus::register(Box::new(active_cursor_period.clone()));
+                let _ = prometheus::register(Box::new(active_out_connections.clone()));
+                let _ = prometheus::register(Box::new(block_cache_blocks_known_by_peer.clone()));
+                let _ = prometheus::register(Box::new(block_cache_checked_headers_size.clone()));
+                let _ = prometheus::register(Box::new(operation_cache_checked_operations.clone()));
+                let _ = prometheus::register(Box::new(active_in_connections.clone()));
+                let _ = prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()));
+                let _ =
+                    prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()));
+                let _ = prometheus::register(Box::new(consensus_state_active_index.clone()));
+                let _ = prometheus::register(Box::new(
+                    consensus_state_active_index_without_ops.clone(),
+                ));
+                let _ = prometheus::register(Box::new(consensus_state_incoming_index.clone()));
+                let _ = prometheus::register(Box::new(consensus_state_discarded_index.clone()));
+                let _ = prometheus::register(Box::new(consensus_state_block_statuses.clone()));
+                let _ = prometheus::register(Box::new(
+                    operation_cache_checked_operations_prefix.clone(),
+                ));
+            }
         }
 
         MassaMetrics {

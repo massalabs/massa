@@ -5,7 +5,17 @@ use crate::{
     messages::Message,
 };
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
-use massa_models::slot::Slot;
+use massa_hash::Hash;
+use massa_models::block_header::BlockHeaderSerializer;
+use massa_models::operation::OperationId;
+use massa_models::secure_share::{Id, SecureShareContent};
+use massa_models::{
+    block::{Block, BlockSerializer},
+    block_header::BlockHeader,
+    block_id::BlockId,
+    secure_share::SecureShare,
+    slot::Slot,
+};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
@@ -144,7 +154,7 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
             let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
             let op_thread = op_1
                 .content_creator_address
-                .get_thread(protocol_config.thread_count);
+                .get_thread(protocol_config.thread_count.clone());
             let block = tools::create_block_with_operations(
                 &node_a_keypair,
                 Slot::new(1, op_thread),
@@ -185,7 +195,7 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let op = tools::create_operation_with_expire_period(&node_a_keypair, 5);
                 let op_thread = op
                     .content_creator_address
-                    .get_thread(protocol_config.thread_count);
+                    .get_thread(protocol_config.thread_count.clone());
                 let block: SecureShare<Block, BlockId> = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 

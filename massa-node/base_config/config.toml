@@ -215,6 +215,9 @@
 
 [network]
 
+[metrics]
+    enabled = false
+
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [ [ "141.94.218.103:31245", "N1VRyXjUaHeJd4Rmr3waVmpZDFzzH5ARRi3f5ye5BYgxBmxHC7X",],]
