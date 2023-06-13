@@ -69,4 +69,6 @@ pub struct APIConfig {
     pub periods_per_cycle: u64,
     /// keypair file
     pub keypair: KeyPair,
+    /// last_start_period file
+    pub last_start_period: u64,
 }
