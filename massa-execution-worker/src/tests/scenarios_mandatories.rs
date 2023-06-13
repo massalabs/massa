@@ -2356,6 +2356,8 @@ mod tests {
             .data
             .contains("runtime error when executing operation"));
         assert!(events[0].data.contains("can't set the bytecode of address"));
+
+
     }
 
     #[test]
@@ -2712,6 +2714,7 @@ mod tests {
         data: &[u8],
         datastore: Datastore,
     ) -> Result<SecureShareOperation, ExecutionError> {
+        
         let op = OperationType::ExecuteSC {
             data: data.to_vec(),
             max_gas: 100_000_000,
