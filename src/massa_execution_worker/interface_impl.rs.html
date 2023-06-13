@@ -1660,7 +1660,7 @@
     }
 
     <span class="doccomment">/// Sets the bytecode of an arbitrary address.
-    /// Fails if the address does not exist of if the context doesn&#39;t have write access rights on it.
+    /// Fails if the address does not exist, is an user address, or if the context doesn&#39;t have write access rights on it.
     </span><span class="kw">fn </span>raw_set_bytecode_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>address = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
