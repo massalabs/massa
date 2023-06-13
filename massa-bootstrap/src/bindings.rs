@@ -8,8 +8,6 @@ use std::{
 pub(crate) use client::*;
 pub(crate) use server::*;
 
-use crate::BootstrapError;
-
 trait BindingReadExact: io::Read {
     /// similar to std::io::Read::read_exact, but with a timeout that is function-global instead of per-individual-read
     fn read_exact_timeout(

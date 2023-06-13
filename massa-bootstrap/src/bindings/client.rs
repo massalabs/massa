@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::bindings::BindingReadExact;
+use crate::bindings::{BindingReadExact, BindingWriteExact};
 use crate::error::BootstrapError;
 use crate::messages::{
     BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapServerMessage,
@@ -17,7 +17,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::{PublicKey, Signature};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::time::Instant;
-use std::{io::Write, net::TcpStream, time::Duration};
+use std::{net::TcpStream, time::Duration};
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
@@ -64,7 +64,8 @@ impl BootstrapClientBinder {
                 vec![0u8; version_ser.len() + self.cfg.randomness_size_bytes];
             version_random_bytes[..version_ser.len()].clone_from_slice(&version_ser);
             StdRng::from_entropy().fill_bytes(&mut version_random_bytes[version_ser.len()..]);
-            self.duplex.write_all(&version_random_bytes)?;
+            self.write_all_timeout(&version_random_bytes, None)
+                .map_err(|(e, _)| e)?;
             Hash::compute_from(&version_random_bytes)
         };
 
@@ -145,6 +146,7 @@ impl BootstrapClientBinder {
         msg: &BootstrapClientMessage,
         duration: Option<Duration>,
     ) -> Result<(), BootstrapError> {
+        let deadline = duration.map(|d| Instant::now() + d);
         let mut msg_bytes = Vec::new();
         let message_serializer = BootstrapClientMessageSerializer::new();
         message_serializer.serialize(msg, &mut msg_bytes)?;
@@ -178,51 +180,10 @@ impl BootstrapClientBinder {
         // Provide the message
         write_buf.extend(&msg_bytes);
 
-        let mut send_timeout = |timeout: Duration| -> Result<(), BootstrapError> {
-            let start_time = std::time::Instant::now();
-            self.duplex.set_write_timeout(Some(timeout))?;
-            let mut total_bytes_written = 0;
-            let chunk_size = 1024;
-
-            while total_bytes_written < write_buf.len() {
-                if start_time.elapsed() >= timeout {
-                    return Err(BootstrapError::TimedOut(
-                        std::io::ErrorKind::TimedOut.into(),
-                    ));
-                }
-
-                let end = (total_bytes_written + chunk_size).min(write_buf.len());
-                match self.duplex.write(&write_buf[total_bytes_written..end]) {
-                    Ok(bytes_written) => {
-                        total_bytes_written += bytes_written;
-                    }
-                    Err(ref err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                        // Timeout exceeded
-                        if start_time.elapsed() >= timeout {
-                            return Err(BootstrapError::TimedOut(
-                                std::io::ErrorKind::TimedOut.into(),
-                            ));
-                        }
-                    }
-                    Err(err) => {
-                        return Err(BootstrapError::IoError(err));
-                    }
-                }
-            }
-
-            Ok(())
-        };
-
-        if let Some(timeout) = duration {
-            let to_return = send_timeout(timeout);
-            // Reset the timeout to None
-            self.duplex.set_write_timeout(None)?;
-            to_return
-        } else {
-            self.duplex
-                .write_all(&write_buf)
-                .map_err(BootstrapError::IoError)
-        }
+        // And send it off
+        self.write_all_timeout(&write_buf, deadline)
+            .map_err(|(e, _)| e)?;
+        Ok(())
     }
 
     /// We are using this instead of of our library deserializer as the process is relatively straight forward
@@ -252,5 +213,21 @@ impl crate::bindings::BindingReadExact for BootstrapClientBinder {
 impl std::io::Read for BootstrapClientBinder {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, std::io::Error> {
         self.duplex.read(buf)
+    }
+}
+
+impl crate::bindings::BindingWriteExact for BootstrapClientBinder {
+    fn set_write_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
+        self.duplex.set_write_timeout(duration)
+    }
+}
+
+impl std::io::Write for BootstrapClientBinder {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        self.duplex.write(buf)
+    }
+
+    fn flush(&mut self) -> Result<(), std::io::Error> {
+        self.duplex.flush()
     }
 }
