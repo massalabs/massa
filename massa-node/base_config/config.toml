@@ -216,7 +216,7 @@
 [network]
 
 [metrics]
-    enabled = false
+    enabled = true
 
 [bootstrap]
     # list of bootstrap (ip, node id)
