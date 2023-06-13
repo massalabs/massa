@@ -11,7 +11,7 @@ use massa_models::{
     denunciation::{Denunciation, DenunciationPrecursor},
     timeslots::get_closest_slot_to_timestamp,
 };
-use massa_pool_exports::{PoolConfig, PoolChannels};
+use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -28,10 +28,7 @@ pub struct DenunciationPool {
 }
 
 impl DenunciationPool {
-    pub fn init(
-        config: PoolConfig,
-        channels: PoolChannels
-    ) -> Self {
+    pub fn init(config: PoolConfig, channels: PoolChannels) -> Self {
         Self {
             config,
             channels,

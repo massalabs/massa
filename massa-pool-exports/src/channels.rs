@@ -2,7 +2,6 @@ use massa_execution_exports::ExecutionController;
 use massa_models::{endorsement::SecureShareEndorsement, operation::SecureShareOperation};
 use massa_pos_exports::SelectorController;
 
-
 /// channels used by the pool worker
 #[derive(Clone)]
 pub struct PoolChannels {

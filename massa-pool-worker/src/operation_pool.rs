@@ -6,14 +6,20 @@ use massa_models::{
     amount::Amount,
     operation::OperationId,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
-    slot::Slot, timeslots::{get_latest_block_slot_at_timestamp, get_block_slot_timestamp},
+    slot::Slot,
+    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
 };
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    cmp::PartialOrd,
+    cmp::{Ordering, Reverse},
+    collections::BTreeSet,
+    sync::Arc,
+};
 use tracing::{debug, trace};
 
 use crate::types::{OperationInfo, PoolOperationCursor};
@@ -55,92 +61,211 @@ impl OperationPool {
         }
     }
 
-    /// Efficiently prefilters operations worth keeping
-    fn prefilter(&mut self, removed: &mut PreHashSet<OperationId>, now: &MassaTime) {
-        let filter_fn = |op_info: &OperationInfo| -> bool {
-            // operation validity ends before (or at) the last final period of its thread
-            if *op_info.validity_period_range.end() <= self.last_cs_final_periods[op_info.thread as usize] {
-                return false;
-            }
-    
-            // operation validity starts too far in the future
-            match get_block_slot_timestamp(self.config.thread_count, self.config.t0, self.config.genesis_timestamp, *op_info.validity_period_range.start()) {
-                Err(_) => return false,
-                Ok(timestamp) => if timestamp.saturating_sub(*now) > self.config.operation_max_future_start_delay {
-                    return false;
-                }
-            }
-        };
+    /// Get the relevant PoS draws of our staking addresses
+    fn get_pos_draws(&mut self) -> BTreeSet<Slot> {
+        let now = MassaTime::now().expect("could not get current time");
 
-        // prefilter operations
-        self.sorted_ops.retain(|op_info| {
-            if(!filter_fn(op_info)) {
-                removed.insert(op_info.id);
-                false
-            }
-            true
-        });
-    }
-
-    // Get the next draws of our addresses
-    fn filter_by_pos_draws(&mut self, removed: &mut PreHashSet<OperationId>, now: &MassaTime) {
-        // min slot for PoS draw search = the slot just after the earliest final one
-        let min_slot = self.last_cs_final_periods.iter().enumerate().min_by_key(|(t, p)| (p, t)).expect("empty last_vs_final_periods in operation pool");
-        let min_slot = Slot::new(min_slot.1, min_slot.0 as u8);
-        let min_slot = min_slot.get_next_slot(self.config.thread_count).unwrap_or(min_slot);
-        // max slot for PoS draw search = the slot after now() + max future start delay
-        let max_slot = get_latest_block_slot_at_timestamp(self.config.thread_count, self.config.t0, self.config.genesis_timestamp,
-            now.saturating_add(self.config.operation_max_future_start_delay)).unwrap_or(Some(Slot::max(self.config.thread_count))).unwrap_or(min_slot);
-        let max_slot = max_slot.get_next_slot(self.config.thread_count).unwrap_or(max_slot);
+        // min slot for PoS draw search = the earliest final slot
+        let min_slot = self
+            .last_cs_final_periods
+            .iter()
+            .enumerate()
+            .map(|(t, p)| Slot::new(p, t as u8))
+            .min()
+            .expect("empty last_vs_final_periods in operation pool");
+        // max slot for PoS draw search = the slot after now() + max future start delay + margin
+        let max_slot = get_latest_block_slot_at_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            now.saturating_add(self.config.operation_max_future_start_delay)
+                .saturating_add(self.config.t0 * 2),
+        )
+        .unwrap_or(Some(Slot::max(self.config.thread_count)))
+        .unwrap_or(min_slot);
         let max_slot = std::cmp::max(max_slot, min_slot);
+
         // search for all our PoS draws
-        let next_draw_slots = BTreeSet::new();
+        let pos_draws = BTreeSet::new();
         let addrs = self.wallet.read().keys.keys().copied().collect::<Vec<_>>();
         for addr in addrs {
-            let (d, _) = self.channels.selector.get_address_selections(&addr, min_slot, max_slot).expect("could not get PoS draws");
-            next_draw_slots.extend(d.into_iter());
+            let (d, _) = self
+                .channels
+                .selector
+                .get_address_selections(&addr, min_slot, max_slot)
+                .expect("could not get PoS draws");
+            self.pos_draws.extend(d.into_iter());
         }
+        // retain only the ones that are strictly after the last final slot of their thread
+        self.pos_draws
+            .retain(|s| s.period > self.last_cs_final_periods[s.thread as usize]);
+        pos_draws
+    }
 
-        // filter ops by PoS draws
+    /// Returns the list of executed ops with a boolean indicating whether they are executed as final.
+    fn get_execution_statuses(&self) -> PreHashMap<OperationId, bool> {
+        /// TODO make it lighter by not querying ALL executed ops !
+        /// https://github.com/massalabs/massa/issues/4075
+        let (speculative_status, final_status) =
+            self.channels.execution_controller.get_op_exec_status();
+        self.sorted_ops
+            .iter()
+            .filter_map(|op_info| {
+                if final_status.contains_key(&op_info.id) {
+                    Some((op_info.id, true))
+                } else if speculative_status.contains_key(&op_info.id) {
+                    Some((op_info.id, false))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Get the candidate balances of the addresses sending the ops.
+    fn get_sender_balances(&self) -> PreHashMap<Address, Amount> {
+        let addrs: Vec<Address> = self
+            .sorted_ops
+            .iter()
+            .map(|op_info| op_info.creator_address)
+            .collect::<PreHashSet<Address>>()
+            .into_iter()
+            .collect();
+        let ret = self
+            .channels
+            .execution_controller
+            .get_final_and_candidate_balance(&addrs);
+        ret.into_iter()
+            .zip(addrs.into_iter())
+            .map(|((_, c_balance), addr)| (addr, balance))
+            .collect()
+    }
+
+    /// Filter out ops that are not of interest.
+    fn prefilter_ops(
+        &mut self,
+        exec_statuses: &PreHashMap<OperationId, bool>,
+        pos_draws: &BTreeSet<Slot>,
+        sender_balances: &PreHashMap<Address, Amount>,
+    ) {
+        let mut removed = PreHashSet::default();
         self.sorted_ops.retain(|op_info| {
-            let retain = next_draw_slots.iter().any(|slot| op_info.thread == slot.thread && op_info.validity_period_range.contains(&slot.period));
-            // TODO get the info of the next slot opportunity to include it
+            // filter out ops that are not valid during our PoS draws
+            let mut retain = pos_draws.iter().any(|slot| {
+                op_info.thread == slot.thread
+                    && op_info.validity_period_range.contains(&slot.period)
+            });
+
+            // filter out ops that have been executed in final slots
+            if retain {
+                retain = (exec_statuses.get(&op_info.id) != Some(&true));
+            }
+
+            // filter out ops that spend more than the sender's balance
+            if retain {
+                retain = sender_balances
+                    .get(&op_info.creator_address)
+                    .copied()
+                    .unwrap_or(0)
+                    >= op_info.max_spending;
+            }
+
             if !retain {
                 removed.insert(op_info.id);
                 return false;
             }
             true
         });
-    }
-
-    /// Filter out operations that were already executed in final slots
-    fn filter_by_execution(&mut self, removed: &mut PreHashSet<OperationId>) {
-        // TODO also mark operations that were executed in non-final slots but
-        self.channels.execution_controller.get_op_exec_status()
-    }
-    
-    
-    /// refreshes the pool
-    pub(crate) fn refresh(&mut self) {
-        
-        let mut removed = PreHashSet::default();
-
-
-        // TODO filter out transactions that have been executed in a final slot
-        // TODO filter out out-of-balance
-        
-
-
-
-        // get 
-
-
-        // remove operations that are not relevant anymore
+        // drop from storage
         self.storage.drop_operation_refs(&removed);
-
     }
 
+    /// Eliminate all operations that would cause a sender balance overflow.
+    /// Assumes that the ops are sorted by ascending score.
+    fn eliminate_balance_overflows(&mut self, sender_balances: &PreHashMap<Address, Amount>) {
+        let mut balance_cache = PreHashMap::default();
+        let mut removed = PreHashSet::default();
+        self.sorted_ops.retain(|op_info| {
+            let balance = balance_cache
+                .entry(op_info.creator_address)
+                .or_insert_with(|| {
+                    sender_balances
+                        .get(&op_info.creator_address)
+                        .copied()
+                        .unwrap_or(0)
+                });
+            match *balance.saturating_sub(op_info.max_spending) {
+                Some(v) => {
+                    *balance = v;
+                    true
+                }
+                None => {
+                    removed.insert(op_info.id);
+                    false
+                }
+            }
+            true
+        });
+        // drop from storage
+        self.storage.drop_operation_refs(&removed);
+    }
 
+    /// Truncates the container to the max allowed size
+    fn truncate_container(&mut self) {
+        if self.sorted_ops.len() > self.config.max_operation_pool_size {
+            let mut removed = PreHashSet::default();
+            for op_info in self.sorted_ops.iter().skip(self.config.max_container_size) {
+                removed.insert(op_info.id);
+            }
+            self.sorted_ops.truncate(self.config.max_container_size);
+            // drop from storage
+            self.storage.drop_operation_refs(&removed);
+        }
+    }
+
+    /// Score the operations
+    fn score_operations(
+        &self,
+        exec_statuses: &PreHashMap<OperationId, bool>,
+        pos_draws: &BTreeSet<Slot>,
+    ) -> Vec<f32> {
+        // TODO
+        unimplemented!()
+    }
+
+    /// Refresh the pool
+    pub(crate) fn refresh(&mut self) {
+        // get PoS draws
+        let pos_draws = self.get_pos_draws();
+
+        // get execution statuses
+        let exec_statuses = self.get_execution_statuses();
+
+        // get sender balances
+        let sender_balances = self.get_sender_balances();
+
+        // pre-filter to eliminate obviously uninteresting ops
+        self.prefilter_ops(&exec_statuses, &pos_draws, &sender_balances);
+
+        // score operations
+        let scores = self.score_operations(&exec_statuses, &pos_draws);
+
+        // sort by score
+        self.sorted_ops.sort_unstable_by(|op1, op2| {
+            // note1: scores are float => we need to use partial_cmp.
+            // note2: operands are reversed to sort from highest to lowest !
+            scores
+                .get(&op2.id)
+                .partial_cmp(scores.get(&op1.id))
+                .unwrap_or(Ordering::Equal)
+        });
+
+        // eliminate balance overflows in sorted ops
+        self.eliminate_balance_overflows(&sender_balances);
+
+        // eliminate container size overflows
+        self.truncate_container();
+    }
 
     /// Get the number of stored elements
     pub fn len(&self) -> usize {

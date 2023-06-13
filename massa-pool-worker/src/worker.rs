@@ -205,7 +205,7 @@ pub fn start_pool_controller(
     )));
     let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
         config,
-        channels.clone()
+        channels.clone(),
     )));
     let controller = PoolControllerImpl {
         _config: config,
