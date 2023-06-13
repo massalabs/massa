@@ -1253,6 +1253,38 @@
 <a href="#1253" id="1253">1253</a>
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1261,9 +1293,11 @@
 #![feature(ip)]
 </span><span class="kw">extern crate </span>massa_logging;
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::operation_injector::start_operation_injector;
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 
-<span class="kw">use </span>crossbeam_channel::{Receiver, TryRecvError};
+<span class="kw">use </span>crossbeam_channel::TryRecvError;
 <span class="kw">use </span>ctrlc <span class="kw">as _</span>;
 <span class="kw">use </span>dialoguer::Password;
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -1274,6 +1308,8 @@
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
     DefaultConnector,
 };
+<span class="kw">use </span>massa_channel::receiver::MassaReceiver;
+<span class="kw">use </span>massa_channel::MassaChannel;
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
@@ -1292,6 +1328,7 @@
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -1355,6 +1392,8 @@
 <span class="kw">use </span>tracing::{error, info, warn};
 <span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+</span><span class="kw">mod </span>operation_injector;
 <span class="kw">mod </span>settings;
 
 <span class="kw">async fn </span>launch(
@@ -1362,7 +1401,7 @@
     node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     sig_int_toggled: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
 ) -&gt; (
-    Receiver&lt;ConsensusEvent&gt;,
+    MassaReceiver&lt;ConsensusEvent&gt;,
     <span class="prelude-ty">Option</span>&lt;BootstrapManager&gt;,
     Box&lt;<span class="kw">dyn </span>ConsensusManager&gt;,
     Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;,
@@ -1480,6 +1519,9 @@
         t0: T0,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
     };
+
+    <span class="comment">// Start massa metrics
+    </span><span class="kw">let </span>metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
 
     <span class="comment">// Remove current disk ledger if there is one and we don&#39;t want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -1732,6 +1774,7 @@
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
+        metrics.clone(),
     );
 
     <span class="comment">// launch pool controller
@@ -1900,7 +1943,7 @@
     };
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
+        MassaChannel::new(<span class="string">&quot;consensus_event&quot;</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
     <span class="kw">let </span>consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -1923,6 +1966,7 @@
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
+        metrics.clone(),
     );
 
     <span class="kw">let </span>(protocol_manager, keypair, node_id) = start_protocol_controller(
@@ -1933,6 +1977,7 @@
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
+        metrics,
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -2014,7 +2059,6 @@
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
-        last_start_period: final_state.read().last_start_period,
     };
 
     <span class="comment">// spawn Massa API
@@ -2136,6 +2180,16 @@
         <span class="prelude-val">None
     </span>};
 
+    <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+    </span>start_operation_injector(
+        <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        shared_storage.clone_without_refs(),
+        node_wallet.read().clone(),
+        pool_controller.clone(),
+        protocol_controller.clone(),
+        args.nb_op,
+    );
+
     <span class="comment">// spawn private API
     </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
         protocol_controller.clone(),
@@ -2232,7 +2286,7 @@
 }
 
 <span class="kw">async fn </span>stop(
-    _consensus_event_receiver: Receiver&lt;ConsensusEvent&gt;,
+    _consensus_event_receiver: MassaReceiver&lt;ConsensusEvent&gt;,
     Managers {
         bootstrap_manager,
         <span class="kw-2">mut </span>execution_manager,
@@ -2309,6 +2363,16 @@
     <span class="doccomment">/// restart_from_snapshot_at_period
     </span><span class="attr">#[structopt(long = <span class="string">&quot;restart-from-snapshot-at-period&quot;</span>)]
     </span>restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+    </span><span class="doccomment">/// number of operations
+    </span><span class="attr">#[structopt(
+        name = <span class="string">&quot;number of operations&quot;</span>,
+        about = <span class="string">&quot;Define the number of operations the node can spam.&quot;</span>,
+        short = <span class="string">&quot;nb-op&quot;</span>,
+        long = <span class="string">&quot;number-operations&quot;
+    </span>)]
+    </span>nb_op: u64,
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
     </span><span class="doccomment">/// Deadlocks detector

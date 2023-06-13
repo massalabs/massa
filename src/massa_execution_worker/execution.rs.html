@@ -1763,6 +1763,17 @@
 <a href="#1763" id="1763">1763</a>
 <a href="#1764" id="1764">1764</a>
 <a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1787,6 +1798,7 @@
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -1854,6 +1866,8 @@
     </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     <span class="comment">// channels used by the execution worker
     </span>channels: ExecutionChannels,
+    <span class="doccomment">/// prometheus metrics
+    </span>massa_metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -1871,6 +1885,7 @@
         mip_store: MipStore,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         channels: ExecutionChannels,
+        massa_metrics: MassaMetrics,
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -1943,6 +1958,7 @@
             mip_store,
             selector,
             channels,
+            massa_metrics,
         }
     }
 
@@ -1990,6 +2006,12 @@
         </span>exec_out.events.finalize();
         <span class="self">self</span>.final_events.extend(exec_out.events);
         <span class="self">self</span>.final_events.prune(<span class="self">self</span>.config.max_final_events);
+
+        <span class="comment">// update the prometheus metrics
+        </span><span class="self">self</span>.massa_metrics
+            .set_active_cursor(<span class="self">self</span>.active_cursor.period, <span class="self">self</span>.active_cursor.thread);
+        <span class="self">self</span>.massa_metrics
+            .set_final_cursor(<span class="self">self</span>.final_cursor.period, <span class="self">self</span>.final_cursor.thread);
     }
 
     <span class="doccomment">/// Applies an execution output to the active (non-final) state

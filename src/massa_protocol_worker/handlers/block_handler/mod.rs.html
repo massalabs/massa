@@ -103,10 +103,15 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
-<span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
+<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
@@ -143,8 +148,9 @@
 };
 
 <span class="kw">pub struct </span>BlockHandler {
-    <span class="kw">pub </span>block_retrieval_thread: <span class="prelude-ty">Option</span>&lt;(Sender&lt;BlockHandlerRetrievalCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
-    <span class="kw">pub </span>block_propagation_thread: <span class="prelude-ty">Option</span>&lt;(Sender&lt;BlockHandlerPropagationCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
+    <span class="kw">pub </span>block_retrieval_thread: <span class="prelude-ty">Option</span>&lt;(MassaSender&lt;BlockHandlerRetrievalCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
+    <span class="kw">pub </span>block_propagation_thread:
+        <span class="prelude-ty">Option</span>&lt;(MassaSender&lt;BlockHandlerPropagationCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
 }
 
 <span class="kw">impl </span>BlockHandler {
@@ -153,19 +159,20 @@
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
         consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
         pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-        receiver_network: Receiver&lt;PeerMessageTuple&gt;,
-        sender_ext: Sender&lt;BlockHandlerRetrievalCommand&gt;,
-        receiver_ext: Receiver&lt;BlockHandlerRetrievalCommand&gt;,
-        internal_receiver: Receiver&lt;BlockHandlerPropagationCommand&gt;,
-        internal_sender: Sender&lt;BlockHandlerPropagationCommand&gt;,
-        sender_propagations_ops: Sender&lt;OperationHandlerPropagationCommand&gt;,
-        peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
+        receiver_network: MassaReceiver&lt;PeerMessageTuple&gt;,
+        sender_ext: MassaSender&lt;BlockHandlerRetrievalCommand&gt;,
+        receiver_ext: MassaReceiver&lt;BlockHandlerRetrievalCommand&gt;,
+        internal_receiver: MassaReceiver&lt;BlockHandlerPropagationCommand&gt;,
+        internal_sender: MassaSender&lt;BlockHandlerPropagationCommand&gt;,
+        sender_propagations_ops: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
+        peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
         config: ProtocolConfig,
         endorsement_cache: SharedEndorsementCache,
         operation_cache: SharedOperationCache,
         cache: SharedBlockCache,
         storage: Storage,
         mip_store: MipStore,
+        massa_metrics: MassaMetrics,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>block_retrieval_thread = start_retrieval_thread(
             active_connections.clone(),
@@ -182,6 +189,7 @@
             cache.clone(),
             storage.clone_without_refs(),
             mip_store,
+            massa_metrics,
         );
         <span class="kw">let </span>block_propagation_thread = start_propagation_thread(
             active_connections,

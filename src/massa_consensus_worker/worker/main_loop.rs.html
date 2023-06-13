@@ -171,7 +171,7 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::mpsc, time::Instant};
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::time::Instant;
 
 <span class="kw">use </span>massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
 <span class="kw">use </span>massa_models::{
@@ -239,9 +239,9 @@
                 WaitingStatus::Interrupted
             }
             <span class="comment">// timeout =&gt; continue main loop
-            </span><span class="prelude-val">Err</span>(mpsc::RecvTimeoutError::Timeout) =&gt; WaitingStatus::Ended,
+            </span><span class="prelude-val">Err</span>(crossbeam::channel::RecvTimeoutError::Timeout) =&gt; WaitingStatus::Ended,
             <span class="comment">// channel disconnected (sender dropped) =&gt; quit main loop
-            </span><span class="prelude-val">Err</span>(mpsc::RecvTimeoutError::Disconnected) =&gt; WaitingStatus::Disconnected,
+            </span><span class="prelude-val">Err</span>(crossbeam::channel::RecvTimeoutError::Disconnected) =&gt; WaitingStatus::Disconnected,
         }
     }
 

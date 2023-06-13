@@ -79,9 +79,13 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
-<span class="kw">use </span>crossbeam::channel::{Receiver, Sender};
+<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
@@ -106,10 +110,14 @@
 <span class="kw">use </span><span class="kw">super</span>::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
 <span class="kw">pub struct </span>EndorsementHandler {
-    <span class="kw">pub </span>endorsement_retrieval_thread:
-        <span class="prelude-ty">Option</span>&lt;(Sender&lt;EndorsementHandlerRetrievalCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
-    <span class="kw">pub </span>endorsement_propagation_thread:
-        <span class="prelude-ty">Option</span>&lt;(Sender&lt;EndorsementHandlerPropagationCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
+    <span class="kw">pub </span>endorsement_retrieval_thread: <span class="prelude-ty">Option</span>&lt;(
+        MassaSender&lt;EndorsementHandlerRetrievalCommand&gt;,
+        JoinHandle&lt;()&gt;,
+    )&gt;,
+    <span class="kw">pub </span>endorsement_propagation_thread: <span class="prelude-ty">Option</span>&lt;(
+        MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
+        JoinHandle&lt;()&gt;,
+    )&gt;,
 }
 
 <span class="kw">impl </span>EndorsementHandler {
@@ -120,12 +128,12 @@
         storage: Storage,
         config: ProtocolConfig,
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
-        receiver: Receiver&lt;PeerMessageTuple&gt;,
-        sender_retrieval_ext: Sender&lt;EndorsementHandlerRetrievalCommand&gt;,
-        receiver_retrieval_ext: Receiver&lt;EndorsementHandlerRetrievalCommand&gt;,
-        local_sender: Sender&lt;EndorsementHandlerPropagationCommand&gt;,
-        local_receiver: Receiver&lt;EndorsementHandlerPropagationCommand&gt;,
-        sender_peer_cmd: Sender&lt;PeerManagementCmd&gt;,
+        receiver: MassaReceiver&lt;PeerMessageTuple&gt;,
+        sender_retrieval_ext: MassaSender&lt;EndorsementHandlerRetrievalCommand&gt;,
+        receiver_retrieval_ext: MassaReceiver&lt;EndorsementHandlerRetrievalCommand&gt;,
+        local_sender: MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
+        local_receiver: MassaReceiver&lt;EndorsementHandlerPropagationCommand&gt;,
+        sender_peer_cmd: MassaSender&lt;PeerManagementCmd&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>endorsement_retrieval_thread = start_retrieval_thread(
             receiver,

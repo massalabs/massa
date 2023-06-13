@@ -311,6 +311,7 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionState;
 <span class="kw">use </span><span class="kw">crate</span>::request_queue::{RequestQueue, RequestWithResponseSender};
+<span class="kw">use </span>massa_channel::MassaChannel;
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -498,8 +499,7 @@
             }
 
             <span class="comment">// prepare the channel to send back the result of the read-only execution
-            </span><span class="kw">let </span>(resp_tx, resp_rx) =
-                std::sync::mpsc::channel::&lt;<span class="prelude-ty">Result</span>&lt;ReadOnlyExecutionOutput, ExecutionError&gt;&gt;();
+            </span><span class="kw">let </span>(resp_tx, resp_rx) = MassaChannel::new(<span class="string">&quot;read_only_request&quot;</span>.to_string(), <span class="prelude-val">None</span>);
 
             <span class="comment">// append the request to the queue of input read-only requests
             </span>input_data

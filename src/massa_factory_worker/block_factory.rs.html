@@ -276,12 +276,10 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
+</span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
+<span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     block::{Block, BlockSerializer},
@@ -297,11 +295,7 @@
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::{
-    sync::{mpsc, Arc},
-    thread,
-    time::Instant,
-};
+<span class="kw">use </span>std::{sync::Arc, thread, time::Instant};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="doccomment">/// Structure gathering all elements needed by the factory thread
@@ -309,7 +303,7 @@
     cfg: FactoryConfig,
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     channels: FactoryChannels,
-    factory_receiver: mpsc::Receiver&lt;()&gt;,
+    factory_receiver: MassaReceiver&lt;()&gt;,
     mip_store: MipStore,
 }
 
@@ -320,7 +314,7 @@
         cfg: FactoryConfig,
         wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
         channels: FactoryChannels,
-        factory_receiver: mpsc::Receiver&lt;()&gt;,
+        factory_receiver: MassaReceiver&lt;()&gt;,
         mip_store: MipStore,
     ) -&gt; thread::JoinHandle&lt;()&gt; {
         thread::Builder::new()
@@ -397,9 +391,9 @@
             <span class="comment">// message received =&gt; quit main loop
             </span><span class="prelude-val">Ok</span>(()) =&gt; <span class="bool-val">false</span>,
             <span class="comment">// timeout =&gt; continue main loop
-            </span><span class="prelude-val">Err</span>(mpsc::RecvTimeoutError::Timeout) =&gt; <span class="bool-val">true</span>,
+            </span><span class="prelude-val">Err</span>(crossbeam_channel::RecvTimeoutError::Timeout) =&gt; <span class="bool-val">true</span>,
             <span class="comment">// channel disconnected (sender dropped) =&gt; quit main loop
-            </span><span class="prelude-val">Err</span>(mpsc::RecvTimeoutError::Disconnected) =&gt; <span class="bool-val">false</span>,
+            </span><span class="prelude-val">Err</span>(crossbeam_channel::RecvTimeoutError::Disconnected) =&gt; <span class="bool-val">false</span>,
         }
     }
 

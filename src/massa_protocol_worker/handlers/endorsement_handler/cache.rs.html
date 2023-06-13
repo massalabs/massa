@@ -62,10 +62,10 @@
 }
 
 <span class="kw">impl </span>EndorsementCache {
-    <span class="kw">pub fn </span>new(max_known_endorsements: u32, max_known_endorsements_by_peer: u32) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(max_known_endorsements: u32, max_peers: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             checked_endorsements: LruMap::new(ByLength::new(max_known_endorsements)),
-            endorsements_known_by_peer: LruMap::new(ByLength::new(max_known_endorsements_by_peer)),
+            endorsements_known_by_peer: LruMap::new(ByLength::new(max_peers)),
         }
     }
 

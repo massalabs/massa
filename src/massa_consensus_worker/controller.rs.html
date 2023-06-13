@@ -328,7 +328,9 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
+<a href="#331" id="331">331</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
+<span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
     export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
@@ -348,7 +350,7 @@
 };
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>std::sync::{mpsc::SyncSender, Arc};
+<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::log::{debug, trace, warn};
 
 <span class="kw">use crate</span>::{commands::ConsensusCommand, state::ConsensusState};
@@ -362,7 +364,7 @@
 /// Note that sending commands and reading the state is done from different, mutually-asynchronous tasks and they can have data that are not sync yet.
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ConsensusControllerImpl {
-    command_sender: SyncSender&lt;ConsensusCommand&gt;,
+    command_sender: MassaSender&lt;ConsensusCommand&gt;,
     channels: ConsensusChannels,
     shared_state: Arc&lt;RwLock&lt;ConsensusState&gt;&gt;,
     bootstrap_part_size: u64,
@@ -371,7 +373,7 @@
 
 <span class="kw">impl </span>ConsensusControllerImpl {
     <span class="kw">pub fn </span>new(
-        command_sender: SyncSender&lt;ConsensusCommand&gt;,
+        command_sender: MassaSender&lt;ConsensusCommand&gt;,
         channels: ConsensusChannels,
         shared_state: Arc&lt;RwLock&lt;ConsensusState&gt;&gt;,
         bootstrap_part_size: u64,
