@@ -43,6 +43,7 @@ impl BootstrapTcpListener {
         if addr.is_ipv6() {
             socket.set_only_v6(false)?;
         }
+        //socket.set_nonblocking(true)?;
         socket.bind(&(*addr).into())?;
 
         // Number of connections to queue, set to the hardcoded value used by tokio
@@ -53,7 +54,7 @@ impl BootstrapTcpListener {
 
         let mut mio_server =
             MioTcpListener::from_std(server.try_clone().expect("Unable to clone server socket"));
-
+            
         let poll = Poll::new()?;
 
         // wake up the poll when we want to stop the listener
@@ -63,7 +64,7 @@ impl BootstrapTcpListener {
             .register(&mut mio_server, NEW_CONNECTION, Interest::READABLE)?;
 
         // TODO use config for capacity ?
-        let events = Events::with_capacity(32);
+        let events = Events::with_capacity(1);
         Ok((
             waker,
             BootstrapTcpListener {
@@ -77,19 +78,34 @@ impl BootstrapTcpListener {
 }
 
 impl BSEventPoller for BootstrapTcpListener {
-    fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
+    fn poll(&mut self) -> Result<Vec<PollEvent>, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
         // Confirm that we are not being signalled to shut down
         if self.events.iter().any(|ev| ev.token() == STOP_LISTENER) {
-            return Ok(PollEvent::Stop);
+            return Ok(vec![PollEvent::Stop]);
         }
 
-        // Ther could be more than one connection ready, but we want to re-check for the stop
+        let mut results = Vec::new();
+
+        // Process each event.
+        for event in self.events.iter() {
+            match event.token() {
+                NEW_CONNECTION => {
+                    results.push(PollEvent::NewConnection(self.server.accept()?));
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // FIXME: We should not have to re-register the listener after each poll
+        self.poll
+            .registry()
+            .reregister(&mut self._mio_server, NEW_CONNECTION, Interest::READABLE)?;
+
+        // There could be more than one connection ready, but we want to re-check for the stop
         // signal after processing each connection.
-        Ok(PollEvent::NewConnection(
-            self.server.accept().map_err(BootstrapError::from)?,
-        ))
+        Ok(results)
     }
 }
 
