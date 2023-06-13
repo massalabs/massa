@@ -228,7 +228,7 @@ impl OperationPool {
         &self,
         exec_statuses: &PreHashMap<OperationId, bool>,
         pos_draws: &BTreeSet<Slot>,
-    ) -> Vec<f32> {
+    ) -> PreHashMap<OperationId, f32> {
         // TODO
         unimplemented!()
     }
