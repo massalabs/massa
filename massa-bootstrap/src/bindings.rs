@@ -38,7 +38,16 @@ trait BindingReadExact: io::Read {
                     count += n;
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                Err(e) => return Err((e, count)),
+                Err(e) => {
+                    if e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock {
+                        return Err((
+                            std::io::Error::new(ErrorKind::TimedOut, "deadline has elapsed"),
+                            count,
+                        ));
+                    } else {
+                        return Err((e, count));
+                    }
+                }
             }
         }
         if count != buf.len() {
