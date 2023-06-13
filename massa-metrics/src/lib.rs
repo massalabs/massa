@@ -96,7 +96,19 @@ impl MassaMetrics {
         // TODO unwrap
 
         let mut consensus_vec = vec![];
+        for i in 0..nb_thread {
+            let gauge = Gauge::new(
+                format!("consensus_thread_{}", i),
+                "consensus thread actual period",
+            )
+            .expect("Failed to create gauge");
+            #[cfg(not(feature = "testing"))]
+            {
+                let _ = prometheus::register(Box::new(gauge.clone()));
+            }
 
+            consensus_vec.push(gauge);
+        }
         // active cursor
         let active_cursor_thread =
             IntGauge::new("active_cursor_thread", "execution active cursor thread").unwrap();
@@ -222,20 +234,6 @@ impl MassaMetrics {
         .unwrap();
 
         if enabled {
-            for i in 0..nb_thread {
-                let gauge = Gauge::new(
-                    format!("consensus_thread_{}", i),
-                    "consensus thread actual period",
-                )
-                .expect("Failed to create gauge");
-                #[cfg(not(feature = "testing"))]
-                {
-                    let _ = prometheus::register(Box::new(gauge.clone()));
-                }
-
-                consensus_vec.push(gauge);
-            }
-
             // TODO addr from config
             #[cfg(not(feature = "testing"))]
             {
@@ -339,7 +337,9 @@ impl MassaMetrics {
     }
 
     pub fn set_consensus_period(&self, thread: usize, period: u64) {
-        self.consensus_vec[thread].set(period as f64);
+        if let Some(g) = self.consensus_vec.get(thread) {
+            g.set(period as f64);
+        }
     }
 
     pub fn set_consensus_state(

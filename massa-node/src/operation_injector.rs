@@ -91,7 +91,6 @@ pub fn start_operation_injector(
                 genesis_timestamp,
                 MassaTime::now().unwrap(),
             );
-            println!("AURELIEN: Final slot: {}", final_slot);
             let mut ops = vec![];
 
             for i in 0..32 {
