@@ -565,7 +565,19 @@
         <span class="comment">// TODO unwrap
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>consensus_vec = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..nb_thread {
+            <span class="kw">let </span>gauge = Gauge::new(
+                <span class="macro">format!</span>(<span class="string">&quot;consensus_thread_{}&quot;</span>, i),
+                <span class="string">&quot;consensus thread actual period&quot;</span>,
+            )
+            .expect(<span class="string">&quot;Failed to create gauge&quot;</span>);
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+            </span>{
+                <span class="kw">let _ </span>= prometheus::register(Box::new(gauge.clone()));
+            }
 
+            consensus_vec.push(gauge);
+        }
         <span class="comment">// active cursor
         </span><span class="kw">let </span>active_cursor_thread =
             IntGauge::new(<span class="string">&quot;active_cursor_thread&quot;</span>, <span class="string">&quot;execution active cursor thread&quot;</span>).unwrap();
@@ -691,20 +703,6 @@
         .unwrap();
 
         <span class="kw">if </span>enabled {
-            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..nb_thread {
-                <span class="kw">let </span>gauge = Gauge::new(
-                    <span class="macro">format!</span>(<span class="string">&quot;consensus_thread_{}&quot;</span>, i),
-                    <span class="string">&quot;consensus thread actual period&quot;</span>,
-                )
-                .expect(<span class="string">&quot;Failed to create gauge&quot;</span>);
-                <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
-                </span>{
-                    <span class="kw">let _ </span>= prometheus::register(Box::new(gauge.clone()));
-                }
-
-                consensus_vec.push(gauge);
-            }
-
             <span class="comment">// TODO addr from config
             </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
             </span>{
@@ -808,7 +806,9 @@
     }
 
     <span class="kw">pub fn </span>set_consensus_period(<span class="kw-2">&amp;</span><span class="self">self</span>, thread: usize, period: u64) {
-        <span class="self">self</span>.consensus_vec[thread].set(period <span class="kw">as </span>f64);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(g) = <span class="self">self</span>.consensus_vec.get(thread) {
+            g.set(period <span class="kw">as </span>f64);
+        }
     }
 
     <span class="kw">pub fn </span>set_consensus_state(
