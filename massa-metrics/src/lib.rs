@@ -18,8 +18,6 @@ lazy_static! {
     static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!("operations_counter", "operations counter len").unwrap();
     static ref BLOCKS_COUNTER: IntGauge = register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge = register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
-    static ref DELTA_BLOCK_GRAPH_SLOT: IntGauge = register_int_gauge!("delta_block_graph_slot", "delta in ms between block inclusion in graph and block slot").unwrap();
-
 
     // static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
 }
