@@ -305,7 +305,6 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
@@ -462,7 +461,6 @@
                 sender_endorsements_propagation_ext,
                 protocol_channels.endorsement_handler_propagation.<span class="number">1</span>.clone(),
                 peer_management_handler.sender.command_sender.clone(),
-                massa_metrics.clone(),
             );
             <span class="kw">let </span><span class="kw-2">mut </span>block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),

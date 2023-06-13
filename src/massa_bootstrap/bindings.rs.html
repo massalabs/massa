@@ -54,6 +54,9 @@
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>client;
 <span class="kw">mod </span>server;
 <span class="kw">use </span>std::{
@@ -99,7 +102,10 @@
         }
         <span class="kw">if </span>count != buf.len() {
             <span class="prelude-val">Err</span>((
-                std::io::Error::new(ErrorKind::UnexpectedEof, <span class="string">&quot;failed to fill whole buffer&quot;</span>),
+                std::io::Error::new(
+                    ErrorKind::UnexpectedEof,
+                    <span class="macro">format!</span>(<span class="string">&quot;failed to fill whole buffer: {}/{}&quot;</span>, count, buf.len()),
+                ),
                 count,
             ))
         } <span class="kw">else </span>{
