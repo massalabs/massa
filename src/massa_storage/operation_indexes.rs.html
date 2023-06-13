@@ -96,10 +96,6 @@
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map;
 
 <span class="kw">use </span>massa_models::{
@@ -126,8 +122,6 @@
     /// * `operation`: the operation to insert
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operation: SecureShareOperation) {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(o) = <span class="self">self</span>.operations.try_insert(operation.id, operation) {
-            massa_metrics::inc_operations_counter();
-
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(o.content_creator_address)
@@ -146,8 +140,6 @@
     /// * `operation_id`: the operation id to remove
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operation_id: <span class="kw-2">&amp;</span>OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareOperation&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(o) = <span class="self">self</span>.operations.remove(operation_id) {
-            massa_metrics::dec_operations_counter();
-
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
                 <span class="self">self</span>.index_by_creator.entry(o.content_creator_address)

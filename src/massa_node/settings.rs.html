@@ -304,12 +304,6 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -445,7 +439,6 @@
     <span class="kw">pub </span>selector: SelectionSettings,
     <span class="kw">pub </span>factory: FactorySettings,
     <span class="kw">pub </span>grpc: GrpcSettings,
-    <span class="kw">pub </span>metrics: MetricsSettings,
 }
 
 <span class="doccomment">/// Consensus configuration
@@ -479,11 +472,6 @@
 </span><span class="kw">pub struct </span>NetworkSettings {
     <span class="doccomment">/// Ip seen by others. If none the bind ip is used
     </span><span class="kw">pub </span>routable_ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
-}
-
-<span class="attr">#[derive(Debug, Deserialize, Clone)]
-</span><span class="kw">pub struct </span>MetricsSettings {
-    <span class="kw">pub </span>enabled: bool,
 }
 
 <span class="doccomment">/// Protocol Configuration, read from toml user configuration file

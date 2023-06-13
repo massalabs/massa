@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["receiver","sender"],"struct":["MassaChannel"]};

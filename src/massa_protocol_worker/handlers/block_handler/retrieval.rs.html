@@ -1341,41 +1341,10 @@
 <a href="#1341" id="1341">1341</a>
 <a href="#1342" id="1342">1342</a>
 <a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 <span class="kw">use crate</span>::{
@@ -1391,14 +1360,12 @@
     wrap_network::ActiveConnectionsTrait,
 };
 <span class="kw">use </span>crossbeam::{
-    channel::{at, tick},
+    channel::{at, Receiver, Sender},
     select,
 };
-<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
@@ -1461,14 +1428,14 @@
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-    receiver_network: MassaReceiver&lt;PeerMessageTuple&gt;,
-    _internal_sender: MassaSender&lt;BlockHandlerPropagationCommand&gt;,
-    receiver: MassaReceiver&lt;BlockHandlerRetrievalCommand&gt;,
+    receiver_network: Receiver&lt;PeerMessageTuple&gt;,
+    _internal_sender: Sender&lt;BlockHandlerPropagationCommand&gt;,
+    receiver: Receiver&lt;BlockHandlerRetrievalCommand&gt;,
     block_message_serializer: MessagesSerializer,
     block_wishlist: PreHashMap&lt;BlockId, BlockInfo&gt;,
     asked_blocks: HashMap&lt;PeerId, PreHashMap&lt;BlockId, Instant&gt;&gt;,
-    peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
-    sender_propagation_ops: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
+    peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
+    sender_propagation_ops: Sender&lt;OperationHandlerPropagationCommand&gt;,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     next_timer_ask_block: Instant,
@@ -1476,7 +1443,6 @@
     config: ProtocolConfig,
     storage: Storage,
     mip_store: MipStore,
-    massa_metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>RetrievalThread {
@@ -1496,12 +1462,9 @@
                 max_denunciations_in_block_header: <span class="self">self</span>.config.max_denunciations_in_block_header,
                 last_start_period: <span class="prelude-val">Some</span>(<span class="self">self</span>.config.last_start_period),
             });
-
-        <span class="kw">let </span>tick_update_metrics = tick(Duration::from_secs(<span class="number">5</span>));
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver_network) -&gt; msg =&gt; {
-                    <span class="self">self</span>.receiver_network.inc_metrics();
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>block_message_deserializer
@@ -1568,7 +1531,6 @@
                     }
                 },
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
-                    <span class="self">self</span>.receiver.inc_metrics();
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>(command) =&gt; {
                             <span class="kw">match </span>command {
@@ -1609,28 +1571,6 @@
                         }
                     }
                 },
-                recv(tick_update_metrics) -&gt; <span class="kw">_ </span>=&gt; {
-
-
-                    <span class="comment">// update metrics
-                    </span>{
-                        <span class="kw">let </span>block_read = <span class="self">self</span>.cache.read();
-
-                        <span class="self">self</span>.massa_metrics.set_block_cache_metrics(
-                            block_read.checked_headers.len(),
-                            block_read.blocks_known_by_peer.len(),
-                        );
-                    }
-
-                    {
-                        <span class="kw">let </span>ope_read = <span class="self">self</span>.operation_cache.read();
-                        <span class="self">self</span>.massa_metrics.set_operations_cache_metrics(
-                            ope_read.checked_operations.len(),
-                            ope_read.checked_operations_prefix.len(),
-                            ope_read.ops_known_by_peer.len(),
-                        );
-                    }
-                }
                 recv(at(<span class="self">self</span>.next_timer_ask_block)) -&gt; <span class="kw">_ </span>=&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.update_ask_block() {
                         <span class="macro">warn!</span>(<span class="string">&quot;Error in ask_blocks: {:?}&quot;</span>, err);
@@ -2703,18 +2643,17 @@
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-    receiver_network: MassaReceiver&lt;PeerMessageTuple&gt;,
-    receiver: MassaReceiver&lt;BlockHandlerRetrievalCommand&gt;,
-    _internal_sender: MassaSender&lt;BlockHandlerPropagationCommand&gt;,
-    sender_propagation_ops: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
-    peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    receiver_network: Receiver&lt;PeerMessageTuple&gt;,
+    receiver: Receiver&lt;BlockHandlerRetrievalCommand&gt;,
+    _internal_sender: Sender&lt;BlockHandlerPropagationCommand&gt;,
+    sender_propagation_ops: Sender&lt;OperationHandlerPropagationCommand&gt;,
+    peer_cmd_sender: Sender&lt;PeerManagementCmd&gt;,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     cache: SharedBlockCache,
     storage: Storage,
     mip_store: MipStore,
-    massa_metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
     <span class="kw">let </span>block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -2740,7 +2679,6 @@
                 config,
                 storage,
                 mip_store,
-                massa_metrics,
             };
             retrieval_thread.run();
         })

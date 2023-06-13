@@ -151,10 +151,7 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
+</pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::Sender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -200,19 +197,16 @@
     Trusted,
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="kw">pub enum </span>PeerManagementCmd {
+<span class="kw">pub enum </span>PeerManagementCmd {
     Ban(Vec&lt;PeerId&gt;),
     Unban(Vec&lt;PeerId&gt;),
-    GetBootstrapPeers {
-        responder: MassaSender&lt;BootstrapPeers&gt;,
-    },
+    GetBootstrapPeers { responder: Sender&lt;BootstrapPeers&gt; },
     Stop,
 }
 
 <span class="kw">pub struct </span>PeerManagementChannel {
-    <span class="kw">pub </span>msg_sender: MassaSender&lt;PeerMessageTuple&gt;,
-    <span class="kw">pub </span>command_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    <span class="kw">pub </span>msg_sender: Sender&lt;PeerMessageTuple&gt;,
+    <span class="kw">pub </span>command_sender: Sender&lt;PeerManagementCmd&gt;,
 }
 
 <span class="kw">impl </span>PeerDB {

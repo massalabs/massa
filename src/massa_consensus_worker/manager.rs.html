@@ -21,16 +21,14 @@
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
-<span class="kw">use </span>massa_consensus_exports::ConsensusManager;
-<span class="kw">use </span>std::thread::JoinHandle;
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::ConsensusManager;
+<span class="kw">use </span>std::{sync::mpsc::SyncSender, thread::JoinHandle};
 <span class="kw">use </span>tracing::log::info;
 
 <span class="kw">use </span><span class="kw">crate</span>::commands::ConsensusCommand;
 
 <span class="kw">pub struct </span>ConsensusManagerImpl {
-    <span class="kw">pub </span>consensus_thread: <span class="prelude-ty">Option</span>&lt;(MassaSender&lt;ConsensusCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
+    <span class="kw">pub </span>consensus_thread: <span class="prelude-ty">Option</span>&lt;(SyncSender&lt;ConsensusCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
 }
 
 <span class="kw">impl </span>ConsensusManager <span class="kw">for </span>ConsensusManagerImpl {

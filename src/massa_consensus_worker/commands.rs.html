@@ -9,14 +9,12 @@
 <a href="#9" id="9">9</a>
 <a href="#10" id="10">10</a>
 <a href="#11" id="11">11</a>
-<a href="#12" id="12">12</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::BlockHeader, block_id::BlockId, secure_share::SecureShare, slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="attr">#[allow(clippy::large_enum_variant)]
-#[derive(Clone)]
 </span><span class="kw">pub enum </span>ConsensusCommand {
     RegisterBlock(BlockId, Slot, Storage, bool),
     RegisterBlockHeader(BlockId, SecureShare&lt;BlockHeader, BlockId&gt;),

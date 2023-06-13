@@ -35,7 +35,7 @@
 <a href="#35" id="35">35</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
-<span class="kw">use </span>massa_channel::sender::MassaSender;
+<span class="kw">use </span>crossbeam::channel::Sender;
 <span class="kw">use </span>massa_protocol_exports::ProtocolManager;
 <span class="kw">use </span>tracing::info;
 
@@ -43,11 +43,11 @@
 
 <span class="doccomment">/// protocol manager used to stop the protocol
 </span><span class="kw">pub struct </span>ProtocolManagerImpl {
-    connectivity_thread: <span class="prelude-ty">Option</span>&lt;(MassaSender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
+    connectivity_thread: <span class="prelude-ty">Option</span>&lt;(Sender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;)&gt;,
 }
 
 <span class="kw">impl </span>ProtocolManagerImpl {
-    <span class="kw">pub fn </span>new(connectivity_thread: (MassaSender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;)) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(connectivity_thread: (Sender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;)) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             connectivity_thread: <span class="prelude-val">Some</span>(connectivity_thread),
         }
