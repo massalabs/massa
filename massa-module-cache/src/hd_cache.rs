@@ -150,11 +150,14 @@ impl HDCache {
             && *key_1 == module_key!(hash)
             && *key_2 == metadata_key!(hash)
         {
-            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs).expect(MOD_DESER_ERROR);
             let (_, metadata) = self
                 .meta_deser
                 .deserialize::<DeserializeError>(&ser_metadata)
                 .expect(DATA_DESER_ERROR);
+            if metadata == ModuleMetadata::Invalid {
+                return Some(ModuleInfo::Invalid);
+            }
+            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs).expect(MOD_DESER_ERROR);
             let result = match metadata {
                 ModuleMetadata::Invalid => ModuleInfo::Invalid,
                 ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
