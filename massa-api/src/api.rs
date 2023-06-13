@@ -79,11 +79,9 @@ impl MassaApiServer for API<ApiV2> {
             now,
         );
 
-        let last_start_period_cycle =
-            Slot::new(self.0.api_settings.last_start_period, 0).get_cycle(cfg.periods_per_cycle);
         let curr_cycle = match latest_block_slot_at_timestamp_result {
             Ok(Some(cur_slot)) if cur_slot.period <= self.0.api_settings.last_start_period => {
-                last_start_period_cycle
+                Slot::new(self.0.api_settings.last_start_period, 0).get_cycle(cfg.periods_per_cycle)
             }
             Ok(Some(cur_slot)) => cur_slot.get_cycle(cfg.periods_per_cycle),
             Ok(None) => 0,
