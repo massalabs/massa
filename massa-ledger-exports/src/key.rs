@@ -1,3 +1,4 @@
+use massa_db_exports::LEDGER_PREFIX;
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -135,6 +136,7 @@ impl Key {
 
 pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
     let mut prefix = Vec::new();
+    prefix.extend(LEDGER_PREFIX.as_bytes());
     U64VarIntSerializer::new()
         .serialize(&KEY_VERSION, &mut prefix)
         .unwrap();
@@ -180,6 +182,8 @@ impl Serializer<Key> for KeySerializer {
     /// KeySerializer::new(true).serialize(&key, &mut serialized).unwrap();
     /// ```
     fn serialize(&self, value: &Key, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.extend(LEDGER_PREFIX.as_bytes());
+
         self.version_byte_serializer
             .serialize(&KEY_VERSION, buffer)?;
         self.address_serializer.serialize(&value.address, buffer)?;
@@ -244,7 +248,9 @@ impl Deserializer<Key> for KeyDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> nom::IResult<&'a [u8], Key, E> {
-        let (rest, _version) = self.version_byte_deserializer.deserialize(buffer)?;
+        let (rest, _version) = self
+            .version_byte_deserializer
+            .deserialize(&buffer[LEDGER_PREFIX.as_bytes().len()..])?;
         let (rest, address) = self.address_deserializer.deserialize(rest)?;
         let (rest, key_type) = self.key_type_deserializer.deserialize(rest)?;
 

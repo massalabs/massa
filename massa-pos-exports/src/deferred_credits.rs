@@ -225,11 +225,13 @@ impl DeferredCredits {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for `DeferredCredits`
 pub struct DeferredCreditsSerializer {
-    slot_ser: SlotSerializer,
-    u64_ser: U64VarIntSerializer,
-    credits_ser: CreditsSerializer,
+    pub slot_ser: SlotSerializer,
+    pub u64_ser: U64VarIntSerializer,
+    pub credits_ser: CreditsSerializer,
 }
 
 impl Default for DeferredCreditsSerializer {
@@ -269,11 +271,13 @@ impl Serializer<DeferredCredits> for DeferredCreditsSerializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for `DeferredCredits`
 pub struct DeferredCreditsDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    slot_deserializer: SlotDeserializer,
-    credit_deserializer: CreditsDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
+    pub slot_deserializer: SlotDeserializer,
+    pub credit_deserializer: CreditsDeserializer,
     enable_hash: bool,
 }
 
@@ -334,11 +338,13 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for `Credits`
 pub struct CreditsSerializer {
-    u64_ser: U64VarIntSerializer,
-    address_ser: AddressSerializer,
-    amount_ser: AmountSerializer,
+    pub u64_ser: U64VarIntSerializer,
+    pub address_ser: AddressSerializer,
+    pub amount_ser: AmountSerializer,
 }
 
 impl Default for CreditsSerializer {
@@ -377,11 +383,13 @@ impl Serializer<PreHashMap<Address, Amount>> for CreditsSerializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for a single credit
-struct CreditsDeserializer {
+pub struct CreditsDeserializer {
     u64_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    amount_deserializer: AmountDeserializer,
+    pub address_deserializer: AddressDeserializer,
+    pub amount_deserializer: AmountDeserializer,
 }
 
 impl CreditsDeserializer {

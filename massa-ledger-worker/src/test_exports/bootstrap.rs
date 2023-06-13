@@ -1,30 +1,30 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_db_exports::ShareableMassaDBController;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
 use massa_models::address::Address;
 use std::collections::HashMap;
-use tempfile::TempDir;
 
 use crate::{ledger_db::LedgerDB, FinalLedger};
 
 /// This file defines tools to test the ledger bootstrap
 
 pub fn create_final_ledger(
+    db: ShareableMassaDBController,
     config: LedgerConfig,
     initial_ledger: HashMap<Address, LedgerEntry>,
 ) -> FinalLedger {
-    let temp_dir = TempDir::new().unwrap();
-    let mut db = LedgerDB::new(
-        temp_dir.path().to_path_buf(),
+    // Create final ledger
+    let mut ledger_db = LedgerDB::new(
+        db,
         config.thread_count,
         config.max_key_length,
-        config.max_ledger_part_size,
-        false,
+        config.max_datastore_value_length,
     );
-    db.load_initial_ledger(initial_ledger);
+    ledger_db.load_initial_ledger(initial_ledger);
     FinalLedger {
         config,
-        sorted_ledger: db,
+        sorted_ledger: ledger_db,
     }
 }
 

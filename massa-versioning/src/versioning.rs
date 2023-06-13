@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -8,17 +7,28 @@ use machine::{machine, transitions};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::warn;
+use tracing::{debug, warn};
 
+use massa_db_exports::{
+    DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
+    VERSIONING_CF,
+};
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
+use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
+
+use crate::versioning_ser_der::{
+    MipInfoDeserializer, MipInfoSerializer, MipStateDeserializer, MipStateSerializer,
+    MipStoreStatsDeserializer, MipStoreStatsSerializer,
+};
 
 /// Versioning component enum
 #[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum MipComponent {
     // Address and KeyPair versions are directly related
@@ -39,7 +49,7 @@ pub struct MipInfo {
     /// Network (or global) version (to be included in block header)
     pub version: u32,
     /// Components concerned by this versioning (e.g. a new Block version), and the associated component_version
-    pub components: HashMap<MipComponent, u32>,
+    pub components: BTreeMap<MipComponent, u32>,
     /// a timestamp at which the version gains its meaning (e.g. announced in block header)
     pub start: MassaTime,
     /// a timestamp at the which the deployment is considered failed
@@ -74,17 +84,6 @@ impl PartialEq for MipInfo {
 }
 
 impl Eq for MipInfo {}
-
-// Need to impl this manually otherwise clippy is angry :-P
-impl Hash for MipInfo {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.version.hash(state);
-        self.components.iter().for_each(|c| c.hash(state));
-        self.start.hash(state);
-        self.timeout.hash(state);
-    }
-}
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
@@ -204,6 +203,7 @@ impl Started {
         }
 
         if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
+            debug!("(VERSIONING LOG) transition accepted, locking in");
             ComponentState::locked_in(input.now)
         } else {
             ComponentState::started(input.threshold)
@@ -215,6 +215,7 @@ impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
         if input.now > self.at.saturating_add(input.activation_delay) {
+            debug!("(VERSIONING LOG) locked version has become active");
             ComponentState::active(input.now)
         } else {
             ComponentState::locked_in(self.at)
@@ -234,6 +235,20 @@ impl Failed {
     pub fn on_advance(self, _input: Advance) -> Failed {
         Failed {}
     }
+}
+
+/// Error returned by `MipState::is_coherent_with`
+#[derive(Error, Debug, PartialEq)]
+pub enum IsCoherentError {
+    // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+    #[error("MipState history is empty")]
+    EmptyHistory,
+    #[error("MipState is at state Error")]
+    AtError,
+    #[error("History must start at state 'Defined' and not {0:?}")]
+    InvalidHistory(ComponentStateTypeId),
+    #[error("Non coherent state: {0:?} versus rebuilt state: {1:?}")]
+    NonCoherent(ComponentState, ComponentState),
 }
 
 /// Wrapper of ComponentState (in order to keep state history)
@@ -303,35 +318,37 @@ impl MipState {
         }
     }
 
-    /// Given a corresponding VersioningInfo, check if state is coherent
+    /// Given a corresponding MipInfo, check if state is coherent
     /// it is coherent
     ///   if state can be at this position (e.g. can it be at state "Started" according to given time range)
     ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
-    pub fn is_coherent_with(&self, versioning_info: &MipInfo) -> bool {
-        // TODO: rename versioning_info -> mip_info
-
+    pub fn is_coherent_with(&self, mip_info: &MipInfo) -> Result<(), IsCoherentError> {
         // Always return false for state Error or if history is empty
-        if matches!(&self.state, &ComponentState::Error) || self.history.is_empty() {
-            return false;
+        if matches!(&self.state, &ComponentState::Error) {
+            return Err(IsCoherentError::AtError);
+        }
+
+        if self.history.is_empty() {
+            return Err(IsCoherentError::EmptyHistory);
         }
 
         // safe to unwrap (already tested if empty or not)
         let (initial_ts, initial_state_id) = self.history.first_key_value().unwrap();
         if *initial_state_id != ComponentStateTypeId::Defined {
             // self.history does not start with Defined -> (always) false
-            return false;
+            return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
-        // Build a new VersionStateHistory from initial state, replaying the whole history
+        // Build a new MipStateHistory from initial state, replaying the whole history
         // but with given versioning info then compare
         let mut vsh = MipState::new(initial_ts.now);
         let mut advance_msg = Advance {
-            start_timestamp: versioning_info.start,
-            timeout: versioning_info.timeout,
+            start_timestamp: mip_info.start,
+            timeout: mip_info.timeout,
             threshold: Amount::zero(),
             now: initial_ts.now,
-            activation_delay: versioning_info.activation_delay,
+            activation_delay: mip_info.activation_delay,
         };
 
         for (adv, _state) in self.history.iter().skip(1) {
@@ -340,7 +357,28 @@ impl MipState {
             vsh.on_advance(&advance_msg);
         }
 
-        vsh == *self
+        // Advance state if both are at 'Started' (to have the same threshold)
+        // Note: because in history we do not add entries for every threshold update
+        if let (
+            ComponentState::Started(Started { threshold }),
+            ComponentState::Started(Started {
+                threshold: threshold_2,
+            }),
+        ) = (vsh.state, self.state)
+        {
+            if threshold_2 != threshold {
+                advance_msg.threshold = threshold_2;
+                // Need to advance now timestamp otherwise it will be ignored
+                advance_msg.now = advance_msg.now.saturating_add(MassaTime::from_millis(1));
+                vsh.on_advance(&advance_msg);
+            }
+        }
+
+        if vsh == *self {
+            Ok(())
+        } else {
+            Err(IsCoherentError::NonCoherent(self.state, vsh.state))
+        }
     }
 
     /// Query state at given timestamp
@@ -521,6 +559,8 @@ impl MipStore {
         lock.update_with(lock_other.deref())
     }
 
+    // GRPC
+
     /// Retrieve a list of MIP info with their corresponding state (as id) - used for grpc API
     pub fn get_mip_status(&self) -> BTreeMap<MipInfo, ComponentStateTypeId> {
         let guard = self.0.read();
@@ -535,10 +575,57 @@ impl MipStore {
             })
             .collect()
     }
+
+    // Network restart
+    pub fn is_coherent_with_shutdown_period(
+        &self,
+        shutdown_start: Slot,
+        shutdown_end: Slot,
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> Result<bool, ModelsError> {
+        let guard = self.0.read();
+        guard.is_coherent_with_shutdown_period(
+            shutdown_start,
+            shutdown_end,
+            thread_count,
+            t0,
+            genesis_timestamp,
+        )
+    }
+
+    // DB
+    pub fn update_batches(
+        &self,
+        db_batch: &mut DBBatch,
+        db_versioning_batch: &mut DBBatch,
+        between: (&MassaTime, &MassaTime),
+    ) -> Result<(), SerializeError> {
+        let guard = self.0.read();
+        guard.update_batches(db_batch, db_versioning_batch, between)
+    }
+
+    pub fn extend_from_db(
+        &mut self,
+        db: ShareableMassaDBController,
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
+        let mut guard = self.0.write();
+        guard.extend_from_db(db)
+    }
+
+    pub fn reset_db(&self, db: ShareableMassaDBController) {
+        {
+            let mut guard = db.write();
+            guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None);
+            guard.delete_prefix(MIP_STORE_PREFIX, VERSIONING_CF, None);
+            guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, None);
+        }
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
-    type Error = ();
+    type Error = UpdateWithError;
 
     fn try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -557,8 +644,11 @@ pub struct MipStatsConfig {
 /// In order for a MIP to be accepted, we compute statistics about other node 'network' version announcement
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct MipStoreStats {
+    // config for max counters + block to consider when computing the vote ratio
     pub(crate) config: MipStatsConfig,
+    // used to clean up the counters (pop the oldest then subtract matching counter)
     pub(crate) latest_announcements: VecDeque<u32>,
+    // counter per network version
     pub(crate) network_version_counters: BTreeMap<u32, u64>,
 }
 
@@ -578,18 +668,29 @@ impl MipStoreStats {
     }
 }
 
-/// Error returned by
+/// Error returned by `MipStoreRaw::update_with`
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateWithError {
     // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    #[error("MipInfo {0:?} is not coherent with state: {1:?}")]
-    NonCoherent(MipInfo, MipState),
+    #[error("MipInfo {0:#?} is not coherent with state: {1:#?}, error: {2}")]
+    NonCoherent(MipInfo, MipState, IsCoherentError),
     // ex: State is already started but received state is only defined
     #[error("For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}")]
     Downgrade(MipInfo, ComponentState, ComponentState),
     // ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
     #[error("MipInfo {0:?} has overlapping data of MipInfo {1:?}")]
     Overlapping(MipInfo, MipInfo),
+}
+
+/// Error returned by 'extend_from_db`
+#[derive(Error, Debug)]
+pub enum ExtendFromDbError {
+    #[error("Unable to get an handle over db column: {0}")]
+    UnknownDbColumn(String),
+    #[error("{0}")]
+    Update(#[from] UpdateWithError),
+    #[error("{0}")]
+    Deserialize(String),
 }
 
 /// Store of all versioning info
@@ -632,11 +733,12 @@ impl MipStoreRaw {
         let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
-            if !v_state.is_coherent_with(v_info) {
+            if let Err(e) = v_state.is_coherent_with(v_info) {
                 // As soon as we found one non coherent state we abort the merge
                 has_error = Some(UpdateWithError::NonCoherent(
                     v_info.clone(),
                     v_state.clone(),
+                    e,
                 ));
                 break;
             }
@@ -737,7 +839,7 @@ impl MipStoreRaw {
     ) {
         if let Some((_current_network_version, announced_network_version)) = network_versions {
             let removed_version_ = match self.stats.latest_announcements.len() {
-                n if n > self.stats.config.block_count_considered => {
+                n if n >= self.stats.config.block_count_considered => {
                     self.stats.latest_announcements.pop_front()
                 }
                 _ => None,
@@ -747,21 +849,23 @@ impl MipStoreRaw {
                 .push_back(announced_network_version);
 
             // We update the count of the received version
-            *self
+            let entry_value = self
                 .stats
                 .network_version_counters
                 .entry(announced_network_version)
-                .or_default() += 1;
+                .or_default();
+            *entry_value = entry_value.saturating_add(1);
 
             if let Some(removed_version) = removed_version_ {
-                *self
+                let entry_value = self
                     .stats
                     .network_version_counters
                     .entry(removed_version)
-                    .or_insert(1) -= 1;
+                    .or_insert(1);
+                *entry_value = entry_value.saturating_sub(1);
             }
 
-            // Cleanup for the counters
+            // Cleanup the counters
             if self.stats.network_version_counters.len() > self.stats.config.counters_max {
                 if let Some((version, count)) = self.stats.network_version_counters.pop_first() {
                     // TODO: return version / count for unit tests?
@@ -790,6 +894,8 @@ impl MipStoreRaw {
 
             let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
 
+            debug!("(VERSIONING LOG) vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+
             let advance_msg = Advance {
                 start_timestamp: mi.start,
                 timeout: mi.timeout,
@@ -805,7 +911,6 @@ impl MipStoreRaw {
 
     /// Check if store is coherent with given last network shutdown
     /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
-    #[allow(dead_code)]
     fn is_coherent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
@@ -897,8 +1002,8 @@ impl MipStoreRaw {
                     }
                     new_store.insert(new_mip_info, mip_state.clone());
                 }
-                ComponentState::Started(..) => {
-                    // Started -> Reset to Defined, offset start & timeout
+                ComponentState::Started(..) | ComponentState::LockedIn(..) => {
+                    // Started or LockedIn -> Reset to Defined, offset start & timeout
 
                     let mut new_mip_info = mip_info.clone();
 
@@ -924,7 +1029,6 @@ impl MipStoreRaw {
                 }
                 _ => {
                     // active / failed, error, nothing to do
-                    // locked in, nothing to do (might go from 'locked in' to 'active' during shutdown)
                     new_store.insert(mip_info.clone(), mip_state.clone());
                 }
             }
@@ -934,10 +1038,155 @@ impl MipStoreRaw {
         self.stats = new_stats;
         Ok(())
     }
+
+    // DB methods
+
+    /// Get MIP store changes between 2 timestamps - used by the db to update the disk
+    fn update_batches(
+        &self,
+        batch: &mut DBBatch,
+        versioning_batch: &mut DBBatch,
+        between: (&MassaTime, &MassaTime),
+    ) -> Result<(), SerializeError> {
+        let mip_info_ser = MipInfoSerializer::new();
+        let mip_state_ser = MipStateSerializer::new();
+
+        let bounds = (*between.0)..=(*between.1);
+        let mut key = Vec::new();
+        let mut value = Vec::new();
+
+        for (mip_info, mip_state) in self.store.iter() {
+            if let Some((advance, state_id)) = mip_state.history.last_key_value() {
+                if bounds.contains(&advance.now) {
+                    key.extend(MIP_STORE_PREFIX.as_bytes().to_vec());
+                    mip_info_ser.serialize(mip_info, &mut key)?;
+                    mip_state_ser.serialize(mip_state, &mut value)?;
+                    match state_id {
+                        ComponentStateTypeId::Active => {
+                            batch.insert(key.clone(), Some(value.clone()));
+                        }
+                        _ => {
+                            versioning_batch.insert(key.clone(), Some(value.clone()));
+                        }
+                    }
+                    key.clear();
+                    value.clear();
+                }
+            }
+        }
+
+        key.clear();
+        value.clear();
+        key.extend(MIP_STORE_STATS_PREFIX.as_bytes().to_vec());
+        let mip_stats_ser = MipStoreStatsSerializer::new();
+        mip_stats_ser.serialize(&self.stats, &mut value)?;
+        versioning_batch.insert(key.clone(), Some(value.clone()));
+
+        Ok(())
+    }
+
+    /// Extend MIP store with what is written on the disk
+    fn extend_from_db(
+        &mut self,
+        db: ShareableMassaDBController,
+    ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
+        let mip_info_deser = MipInfoDeserializer::new();
+        let mip_state_deser = MipStateDeserializer::new();
+        let mip_store_stats_deser = MipStoreStatsDeserializer::new(
+            MIP_STORE_STATS_BLOCK_CONSIDERED,
+            MIP_STORE_STATS_COUNTERS_MAX,
+        );
+
+        let db = db.read();
+
+        // Get data from state cf handle
+        let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
+        for (ser_mip_info, ser_mip_state) in
+            db.prefix_iterator_cf(STATE_CF, MIP_STORE_PREFIX.as_bytes())
+        {
+            if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                break;
+            }
+
+            // deser
+            let (_, mip_info) = mip_info_deser
+                .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+            let (_, mip_state) = mip_state_deser
+                .deserialize::<DeserializeError>(&ser_mip_state)
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+            update_data.insert(mip_info, mip_state);
+        }
+
+        let store_raw_ = MipStoreRaw {
+            store: update_data,
+            stats: MipStoreStats {
+                config: MipStatsConfig {
+                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+                },
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
+        };
+        let (mut updated, mut added) = self.update_with(&store_raw_)?;
+
+        let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
+
+        // Get data from state cf handle
+        for (ser_mip_info, ser_mip_state) in
+            db.prefix_iterator_cf(VERSIONING_CF, MIP_STORE_PREFIX.as_bytes())
+        {
+            // deser
+
+            match &ser_mip_info {
+                key if key.starts_with(MIP_STORE_PREFIX.as_bytes()) => {
+                    let (_, mip_info) = mip_info_deser
+                        .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                        .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+                    let (_, mip_state) = mip_state_deser
+                        .deserialize::<DeserializeError>(&ser_mip_state)
+                        .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+                    update_data.insert(mip_info, mip_state);
+                }
+                key if key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes()) => {
+                    let (_, mip_store_stats) = mip_store_stats_deser
+                        .deserialize::<DeserializeError>(&ser_mip_state)
+                        .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+                    self.stats = mip_store_stats;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+
+        let store_raw_ = MipStoreRaw {
+            store: update_data,
+            stats: MipStoreStats {
+                config: MipStatsConfig {
+                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+                },
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
+        };
+        let (updated_2, added_2) = self.update_with(&store_raw_)?;
+        updated.extend(updated_2);
+        added.extend(added_2);
+
+        Ok((updated, added))
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStoreRaw {
-    type Error = ();
+    type Error = UpdateWithError;
 
     fn try_from(
         (value, cfg): ([(MipInfo, MipState); N], MipStatsConfig),
@@ -960,7 +1209,7 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
                 store.store.append(&mut added);
                 Ok(store)
             }
-            Err(_) => Err(()),
+            Err(e) => Err(e),
         }
     }
 }
@@ -970,11 +1219,15 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_worker::MassaDB;
+    use more_asserts::assert_le;
+    use parking_lot::RwLock;
     use std::assert_matches::assert_matches;
-
     use std::str::FromStr;
-
-    use chrono::{Days, NaiveDate, NaiveDateTime};
+    use std::sync::Arc;
+    use tempfile::tempdir;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
@@ -990,6 +1243,7 @@ mod test {
         }
     }
 
+    // helper
     impl From<(&MipInfo, &Amount, &MassaTime)> for Advance {
         fn from((mip_info, threshold, now): (&MipInfo, &Amount, &MassaTime)) -> Self {
             Self {
@@ -1002,19 +1256,13 @@ mod test {
         }
     }
 
-    fn get_a_version_info() -> (NaiveDateTime, NaiveDateTime, MipInfo) {
-        // A helper function to provide a  default VersioningInfo
+    fn get_a_version_info() -> (MassaTime, MassaTime, MipInfo) {
+        // A helper function to provide a default MipInfo
+
         // Models a Massa Improvements Proposal (MIP-0002), transitioning component address to v2
 
-        let start: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 01)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
-
-        let timeout: NaiveDateTime = NaiveDate::from_ymd_opt(2017, 11, 11)
-            .unwrap()
-            .and_hms_opt(7, 33, 44)
-            .unwrap();
+        let start = MassaTime::from_utc_ymd_hms(2017, 11, 1, 7, 33, 44).unwrap();
+        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
 
         return (
             start,
@@ -1022,9 +1270,9 @@ mod test {
             MipInfo {
                 name: "MIP-0002".to_string(),
                 version: 2,
-                components: HashMap::from([(MipComponent::Address, 1)]),
-                start: MassaTime::from_millis(start.timestamp() as u64),
-                timeout: MassaTime::from_millis(timeout.timestamp() as u64),
+                components: BTreeMap::from([(MipComponent::Address, 1)]),
+                start,
+                timeout,
                 activation_delay: MassaTime::from_millis(20),
             },
         );
@@ -1063,8 +1311,11 @@ mod test {
         let mut state: ComponentState = ComponentState::started(Default::default());
 
         let now = mi.start;
-        let threshold_too_low = Amount::from_str("74.9").unwrap();
-        let threshold_ok = Amount::from_str("82.42").unwrap();
+        let threshold_too_low = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_sub(Amount::from_str("0.1").unwrap());
+        let threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_add(Amount::from_str("5.42").unwrap());
+        assert_le!(threshold_ok, Amount::from_str("100.0").unwrap());
         let mut advance_msg = Advance::from((&mi, &threshold_too_low, &now));
 
         state = state.on_advance(advance_msg.clone());
@@ -1099,7 +1350,7 @@ mod test {
     fn test_state_advance_from_active() {
         // Test Versioning state transition (from state: Active)
         let (start, _, mi) = get_a_version_info();
-        let mut state = ComponentState::active(MassaTime::from_millis(start.timestamp() as u64));
+        let mut state = ComponentState::active(start);
         let now = mi.start;
         let advance = Advance::from((&mi, &Amount::zero(), &now));
 
@@ -1139,7 +1390,7 @@ mod test {
         // Test MipStateHistory::state_at() function
 
         let (start, _, mi) = get_a_version_info();
-        let now_0 = MassaTime::from_millis(start.timestamp() as u64);
+        let now_0 = start;
         let mut state = MipState::new(now_0);
 
         assert_eq!(state, ComponentState::defined());
@@ -1222,16 +1473,16 @@ mod test {
 
         let mut mi_2 = mi.clone();
         mi_2.version += 1;
-        mi_2.start = MassaTime::from_millis(
-            timeout.checked_add_days(Days::new(2)).unwrap().timestamp() as u64,
-        );
-        mi_2.timeout = MassaTime::from_millis(
-            timeout.checked_add_days(Days::new(5)).unwrap().timestamp() as u64,
-        );
+        mi_2.start = timeout
+            .checked_add(MassaTime::from_millis(1000 * 60 * 60 * 24 * 2))
+            .unwrap(); // Add 2 days
+        mi_2.timeout = timeout
+            .checked_add(MassaTime::from_millis(1000 * 60 * 60 * 24 * 5))
+            .unwrap(); // Add 5 days
 
         // Can only build such object in test - history is empty :-/
         let vs_1 = MipState {
-            state: ComponentState::active(MassaTime::from_millis(start.timestamp() as u64)),
+            state: ComponentState::active(start),
             history: Default::default(),
         };
         let vs_2 = MipState {
@@ -1266,9 +1517,9 @@ mod test {
 
     #[test]
     fn test_is_coherent_with() {
-        // Test MipStateHistory::is_coherent_with
+        // Test MipStateHistory::is_coherent_with (coherence of MIP state against its MIP info)
 
-        // Given the following versioning info, we expect state
+        // Given the following MIP info, we expect state
         // Defined @ time <= 2
         // Started @ time > 2 && <= 5
         // LockedIn @ time > time(Started) && <= 5
@@ -1276,7 +1527,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1285,7 +1536,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(7),
             timeout: MassaTime::from_millis(10),
             activation_delay: MassaTime::from_millis(2),
@@ -1296,18 +1547,18 @@ mod test {
             history: Default::default(),
         };
         // At state Error -> (always) false
-        assert_eq!(vsh.is_coherent_with(&vi_1), false);
+        assert_eq!(vsh.is_coherent_with(&vi_1), Err(IsCoherentError::AtError));
 
         let vsh = MipState {
             state: ComponentState::defined(),
             history: Default::default(),
         };
         // At state Defined but no history -> false
-        assert_eq!(vsh.is_coherent_with(&vi_1), false);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), false);
 
         let mut vsh = MipState::new(MassaTime::from_millis(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
         // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from_millis(3)), false);
 
@@ -1315,12 +1566,18 @@ mod test {
         let now = MassaTime::from_millis(3);
         let adv = Advance::from((&vi_1, &Amount::zero(), &now));
         vsh.on_advance(&adv);
+        let now = MassaTime::from_millis(4);
+        let adv = Advance::from((&vi_1, &Amount::from_str("14.42").unwrap(), &now));
+        vsh.on_advance(&adv);
 
         // At state Started at time now -> true
-        assert_eq!(vsh.state, ComponentState::started(Amount::zero()));
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(
+            vsh.state,
+            ComponentState::started(Amount::from_str("14.42").unwrap())
+        );
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // Now with another versioning info
-        assert_eq!(vsh.is_coherent_with(&vi_2), false);
+        assert_eq!(vsh.is_coherent_with(&vi_2).is_ok(), false);
 
         // Advance to LockedIn
         let now = MassaTime::from_millis(4);
@@ -1329,19 +1586,20 @@ mod test {
 
         // At state LockedIn at time now -> true
         assert_eq!(vsh.state, ComponentState::locked_in(now));
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
-        assert_eq!(vsh.is_coherent_with(&vi_1), true);
+        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
 
         // edge cases
         // TODO: history all good but does not start with Defined, start with Started
     }
 
     #[test]
-    fn test_merge_with() {
+    fn test_update_with() {
+        // Test MipStoreRaw.update_with method (e.g. update a store from another, used in bootstrap)
+
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1354,7 +1612,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(17),
             timeout: MassaTime::from_millis(27),
             activation_delay: MassaTime::from_millis(2),
@@ -1393,16 +1651,16 @@ mod test {
     }
 
     #[test]
-    fn test_merge_with_invalid() {
-        // Test updating a versioning store with another invalid:
-        // 1- overlapping time range
-        // 2- overlapping versioning component
+    fn test_update_with_invalid() {
+        // Test updating a MIP store with another invalid one:
+        // case 1: overlapping time range
+        // case 2: overlapping versioning component
 
         // part 0 - defines data for the test
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1414,7 +1672,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(17),
             timeout: MassaTime::from_millis(27),
             activation_delay: MassaTime::from_millis(2),
@@ -1427,7 +1685,7 @@ mod test {
             counters_max: 5,
         };
 
-        // part 1
+        // case 1
         {
             let mut vs_raw_1 = MipStoreRaw::try_from((
                 [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -1467,7 +1725,7 @@ mod test {
             }
         }
 
-        // part 2
+        // case 2
         {
             let mut vs_raw_1 = MipStoreRaw::try_from((
                 [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -1509,7 +1767,7 @@ mod test {
 
     #[test]
     fn test_update_with_unknown() {
-        // Test update_with with unknown MipComponent
+        // Test update_with with unknown MipComponent (can happen if a node software is outdated)
 
         // data
         let mip_stats_config = MipStatsConfig {
@@ -1522,7 +1780,7 @@ mod test {
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::__Nonexhaustive, 1)]),
+            components: BTreeMap::from([(MipComponent::__Nonexhaustive, 1)]),
             start: MassaTime::from_millis(0),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
@@ -1550,7 +1808,7 @@ mod test {
         let shutdown_start = Slot::new(2, 0);
         let shutdown_end = Slot::new(8, 0);
 
-        // helper to make the easy to read
+        // helper functions so the test code is easy to read
         let get_slot_ts =
             |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
         let is_coherent = |store: &MipStoreRaw, shutdown_start, shutdown_end| {
@@ -1607,7 +1865,7 @@ mod test {
         let mut mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(100),
@@ -1615,7 +1873,7 @@ mod test {
         let mut mi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 3,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(7),
             timeout: MassaTime::from_millis(11),
             activation_delay: MassaTime::from_millis(100),
@@ -1702,19 +1960,17 @@ mod test {
             assert!(locked_in_at < shutdown_start);
             let activate_at = Slot::new(4, 0);
             assert!(shutdown_range.contains(&activate_at));
+            // MIP 1 in state 'LockedIn', should transition to 'Active' during shutdown period
             mi_1.activation_delay =
                 get_slot_ts(activate_at).saturating_sub(get_slot_ts(locked_in_at));
-
-            // Note: 2 states will transition right after shutdown_end
-            //       mi_1, ms_1 -> 'LockedIn' -> 'Active'
-            //       mi_2 -> 'Defined' -> 'Started'
-            mi_2.start = get_slot_ts(Slot::new(7, 7));
-            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
-
             let ms_1 = advance_state_until(
                 ComponentState::locked_in(get_slot_ts(Slot::new(1, 9))),
                 &mi_1,
             );
+
+            // MIP 2 in state 'Defined'
+            mi_2.start = get_slot_ts(Slot::new(7, 7));
+            mi_2.timeout = get_slot_ts(Slot::new(10, 7));
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
@@ -1728,7 +1984,7 @@ mod test {
             assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
 
-            // Update stats - so should force 2 version transitions
+            // Update stats - so should force transitions if any
             store.update_network_version_stats(
                 get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
                 Some((1, 0)),
@@ -1736,16 +1992,219 @@ mod test {
 
             let (first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
             assert_eq!(*first_mi_info.name, mi_1.name);
+            // State was 'LockedIn' -> reset, start ts now defined right after network restart
             assert_eq!(
                 ComponentStateTypeId::from(&first_mi_state.state),
-                ComponentStateTypeId::Active
+                ComponentStateTypeId::Started
             );
             let (last_mi_info, last_mi_state) = store.store.last_key_value().unwrap();
             assert_eq!(*last_mi_info.name, mi_2.name);
+            // State was 'Defined' -> start is set up after MIP 1 start & timeout
             assert_eq!(
                 ComponentStateTypeId::from(&last_mi_state.state),
-                ComponentStateTypeId::Started
+                ComponentStateTypeId::Defined
             );
         }
+    }
+
+    #[test]
+    fn test_mip_store_db() {
+        // Test interaction of MIP store with MassaDB
+        // 1- init from db (empty disk)
+        // 2- update state
+        // 3- write changes to db
+        // 4- init a new mip store from disk and compare
+
+        let genesis_timestamp = MassaTime::from_millis(0);
+        // helpers
+        let get_slot_ts =
+            |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
+
+        // Db init
+
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        // println!("Using temp dir: {:?}", temp_dir.path());
+
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // MIP info / store init
+
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: get_slot_ts(Slot::new(2, 0)),
+            timeout: get_slot_ts(Slot::new(3, 0)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+        let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
+
+        let mi_2 = MipInfo {
+            name: "MIP-0003".to_string(),
+            version: 3,
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
+            start: get_slot_ts(Slot::new(4, 2)),
+            timeout: get_slot_ts(Slot::new(7, 2)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+        let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mut mip_store = MipStore::try_from((
+            [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
+            mip_stats_config.clone(),
+        ))
+        .expect("Cannot create an empty MIP store");
+
+        // Step 1
+
+        mip_store.extend_from_db(db.clone()).unwrap();
+        // Check that we extend from an empty folder
+        assert_eq!(mip_store.0.read().store.len(), 2);
+        assert_eq!(
+            mip_store.0.read().store.first_key_value(),
+            Some((&mi_1, &ms_1))
+        );
+        assert_eq!(
+            mip_store.0.read().store.last_key_value(),
+            Some((&mi_2, &ms_2))
+        );
+
+        // Step 2
+        let active_at = get_slot_ts(Slot::new(2, 5));
+        let ms_1_ = advance_state_until(ComponentState::active(active_at), &mi_1);
+
+        let mip_store_ =
+            MipStore::try_from(([(mi_1.clone(), ms_1_.clone())], mip_stats_config.clone()))
+                .expect("Cannot create an empty MIP store");
+
+        let (updated, added) = mip_store.update_with(&mip_store_).unwrap();
+
+        // Check update_with result - only 1 state should be updated
+        assert_eq!(updated.len(), 1);
+        assert_eq!(added.len(), 0);
+        assert_eq!(mip_store.0.read().store.len(), 2);
+        assert_eq!(
+            mip_store.0.read().store.first_key_value(),
+            Some((&mi_1, &ms_1_))
+        );
+        assert_eq!(
+            mip_store.0.read().store.last_key_value(),
+            Some((&mi_2, &ms_2))
+        );
+
+        // Step 3
+
+        let mut db_batch = DBBatch::new();
+        let mut db_versioning_batch = DBBatch::new();
+
+        // FIXME: get slot right after active at - no hardcode
+        let slot_bounds_ = (&Slot::new(1, 0), &Slot::new(4, 2));
+        let between = (&get_slot_ts(*slot_bounds_.0), &get_slot_ts(*slot_bounds_.1));
+
+        mip_store
+            .update_batches(&mut db_batch, &mut db_versioning_batch, between)
+            .unwrap();
+
+        assert_eq!(db_batch.len(), 1);
+        assert_eq!(db_versioning_batch.len(), 2); // + stats
+
+        let mut guard_db = db.write();
+        // FIXME / TODO: no slot hardcoding?
+        guard_db.write_batch(db_batch, db_versioning_batch, Some(Slot::new(3, 0)));
+        drop(guard_db);
+
+        // Step 4
+        let mut mip_store_2 = MipStore::try_from((
+            [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
+            mip_stats_config.clone(),
+        ))
+        .expect("Cannot create an empty MIP store");
+        // assert_eq!(mip_store_2.0.read().store.len(), 0);
+
+        mip_store_2.extend_from_db(db.clone()).unwrap();
+
+        let guard_1 = mip_store.0.read();
+        let guard_2 = mip_store_2.0.read();
+        let st1_raw = guard_1.deref();
+        let st2_raw = guard_2.deref();
+
+        // println!("st1_raw: {:?}", st1_raw);
+        // println!("st2_raw: {:?}", st2_raw);
+        assert_eq!(st1_raw, st2_raw);
+    }
+
+    #[test]
+    fn test_mip_store_stats() {
+        // Test MipStoreRaw stats
+
+        // helper functions so the test code is easy to read
+        let genesis_timestamp = MassaTime::from_millis(0);
+        let get_slot_ts =
+            |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: 2,
+            counters_max: 1,
+        };
+        let activation_delay = MassaTime::from_millis(100);
+        let timeout = MassaTime::now()
+            .unwrap()
+            .saturating_add(MassaTime::from_millis(50_000)); // + 50 seconds
+        let mi_1 = MipInfo {
+            name: "MIP-0001".to_string(),
+            version: 1,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(2),
+            timeout,
+            activation_delay,
+        };
+        let ms_1 = advance_state_until(ComponentState::started(Amount::zero()), &mi_1);
+
+        let mut mip_store =
+            MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
+
+        //
+        // mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 0)));
+        // TODO: should not add a counter for version 0 ?
+        // assert_eq!(mip_store.stats.network_version_counters.len(), 0);
+
+        // Current network version is 0, next one is 1
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
+        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
+        assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&1));
+
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
+        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
+        assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&2));
+
+        // Check that MipInfo is now
+        let (mi_, ms_) = mip_store.store.last_key_value().unwrap();
+        assert_eq!(*mi_, mi_1);
+        assert_matches!(ms_.state, ComponentState::LockedIn(..));
+
+        let mut at = MassaTime::now().unwrap();
+        at = at.saturating_add(activation_delay);
+        assert_eq!(
+            ms_.state_at(at, mi_1.start, mi_1.timeout),
+            Ok(ComponentStateTypeId::Active)
+        );
+
+        // Now network version is 1, next one is 2
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((1, 2)));
+        // Config is set to allow only 1 counter
+        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
+        assert_eq!(mip_store.stats.network_version_counters.get(&2), Some(&1));
     }
 }

@@ -2,6 +2,7 @@
 
 use crate::config::GrpcConfig;
 use crate::server::MassaGrpc;
+use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
@@ -31,7 +32,8 @@ async fn test_start_grpc_server() {
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
     let pool_ctrl = MockPoolController::new_with_receiver();
-    let (consensus_event_sender, _consensus_event_receiver) = crossbeam::channel::bounded(1024);
+    let (consensus_event_sender, _consensus_event_receiver) =
+        MassaChannel::new("consensus_event".to_string(), Some(1024));
 
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_ctrl.0.clone(),

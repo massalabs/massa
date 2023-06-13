@@ -1,5 +1,5 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
-use crate::versioning::{ComponentStateTypeId, MipInfo};
+use crate::versioning::{ComponentStateTypeId, MipComponent, MipInfo};
 use massa_proto::massa::api::v1 as grpc;
 
 impl From<&ComponentStateTypeId> for grpc::ComponentStateId {
@@ -15,13 +15,23 @@ impl From<&ComponentStateTypeId> for grpc::ComponentStateId {
     }
 }
 
+impl From<&MipComponent> for grpc::MipComponent {
+    fn from(value: &MipComponent) -> Self {
+        match value {
+            MipComponent::KeyPair => grpc::MipComponent::Keypair,
+            MipComponent::Address => grpc::MipComponent::Address,
+            _ => grpc::MipComponent::Unspecified,
+        }
+    }
+}
+
 impl From<&MipInfo> for grpc::MipInfo {
     fn from(value: &MipInfo) -> Self {
         let components = value
             .components
             .iter()
             .map(|(mip_component, version)| grpc::MipComponentEntry {
-                kind: u32::from(mip_component.clone()),
+                kind: grpc::MipComponent::from(mip_component).into(),
                 version: *version,
             })
             .collect();

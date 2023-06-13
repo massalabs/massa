@@ -6,45 +6,26 @@
 //! and need to be bootstrapped by nodes joining the network.
 
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
-use massa_async_pool::{
-    AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges, AsyncPoolDeserializer,
-    AsyncPoolSerializer, Change,
+
+use massa_async_pool::AsyncPool;
+use massa_db_exports::{
+    DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
+    CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
+    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
-use massa_executed_ops::{
-    ExecutedDenunciations, ExecutedDenunciationsDeserializer, ExecutedDenunciationsSerializer,
-    ExecutedOps, ExecutedOpsDeserializer, ExecutedOpsSerializer,
-};
-use massa_hash::{Hash, HashDeserializer, HASH_SIZE_BYTES};
-use massa_ledger_exports::{Key as LedgerKey, LedgerChanges, LedgerController};
-use massa_models::denunciation::DenunciationIndex;
-use massa_models::{
-    // TODO: uncomment when deserializing the final state from ledger
-    /*config::{
-        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-        MAX_EXECUTED_OPS_LENGTH, MAX_OPERATIONS_PER_BLOCK, MAX_PRODUCTION_STATS_LENGTH,
-        MAX_ROLLS_COUNT_LENGTH,
-    },*/
-    operation::OperationId,
-    prehash::PreHashSet,
-    slot::{Slot, SlotDeserializer, SlotSerializer},
-    streaming_step::StreamingStep,
-};
-use massa_pos_exports::{
-    CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCredits,
-    DeferredCreditsDeserializer, DeferredCreditsSerializer, PoSFinalState, SelectorController,
-};
-use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::{error::context, sequence::tuple, IResult, Parser};
-use std::collections::{BTreeMap, HashSet, VecDeque};
-use std::ops::Bound::{Excluded, Included};
-use tracing::{debug, info};
+use massa_executed_ops::ExecutedDenunciations;
+use massa_executed_ops::ExecutedOps;
+use massa_ledger_exports::LedgerController;
+use massa_models::config::PERIODS_BETWEEN_BACKUPS;
+use massa_models::slot::Slot;
+use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_versioning::versioning::MipStore;
+use tracing::{debug, info, warn};
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
     /// execution state configuration
     pub(crate) config: FinalStateConfig,
-    /// slot at the output of which the state is attached
-    pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
     pub ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
@@ -55,19 +36,21 @@ pub struct FinalState {
     pub executed_ops: ExecutedOps,
     /// executed denunciations
     pub executed_denunciations: ExecutedDenunciations,
-    /// history of recent final state changes, useful for streaming bootstrap
-    /// `front = oldest`, `back = newest`
-    pub changes_history: VecDeque<(Slot, StateChanges)>,
-    /// hash of the final state, it is computed on finality
-    pub final_state_hash: Hash,
+    /// MIP store
+    pub mip_store: MipStore,
     /// last_start_period
-    /// * If start all new network: set to 0
+    /// * If start new network: set to 0
     /// * If from snapshot: retrieve from args
     /// * If from bootstrap: set during bootstrap
     pub last_start_period: u64,
+    /// last_slot_before_downtime
+    /// * None if start new network
+    /// * If from snapshot: retrieve from the slot attached to the snapshot
+    /// * If from bootstrap: set during bootstrap
+    pub last_slot_before_downtime: Option<Slot>,
+    /// the rocksdb instance used to write every final_state struct on disk
+    pub db: ShareableMassaDBController,
 }
-
-const FINAL_STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
 impl FinalState {
     /// Initializes a new `FinalState`
@@ -76,47 +59,81 @@ impl FinalState {
     /// * `config`: the configuration of the final state to use for initialization
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
+    /// * `reset_final_state`: if true, we only keep the ledger, and we reset the other fields of the final state
     pub fn new(
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        mut mip_store: MipStore,
+        reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
+        let db_slot = db
+            .read()
+            .get_change_id()
+            .map_err(|_| FinalStateError::InvalidSlot(String::from("Could not get slot in db")))?;
+
         // create the pos state
         let pos_state = PoSFinalState::new(
             config.pos_config.clone(),
             &config.initial_seed_string,
             &config.initial_rolls_path,
             selector,
-            ledger.get_ledger_hash(),
+            db.clone(),
         )
         .map_err(|err| FinalStateError::PosError(format!("PoS final state init error: {}", err)))?;
 
         // attach at the output of the latest initial final slot, that is the last genesis slot
-        let slot = Slot::new(0, config.thread_count.saturating_sub(1));
+        let slot = if reset_final_state {
+            Slot::new(0, config.thread_count.saturating_sub(1))
+        } else {
+            db_slot
+        };
 
         // create the async pool
-        let async_pool = AsyncPool::new(config.async_pool_config.clone());
+        let async_pool = AsyncPool::new(config.async_pool_config.clone(), db.clone());
 
         // create a default executed ops
-        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone());
+        let executed_ops = ExecutedOps::new(config.executed_ops_config.clone(), db.clone());
 
         // create a default executed denunciations
         let executed_denunciations =
-            ExecutedDenunciations::new(config.executed_denunciations_config.clone());
+            ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
-        // create the final state
-        Ok(FinalState {
-            slot,
+        // init MIP store by reading from the db
+        mip_store
+            .extend_from_db(db.clone())
+            .map_err(FinalStateError::from)?;
+
+        let mut final_state = FinalState {
             ledger,
             async_pool,
             pos_state,
             config,
             executed_ops,
             executed_denunciations,
-            changes_history: Default::default(), // no changes in history
-            final_state_hash: Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES),
+            mip_store,
             last_start_period: 0,
-        })
+            last_slot_before_downtime: None,
+            db,
+        };
+
+        if reset_final_state {
+            final_state.async_pool.reset();
+            final_state.pos_state.reset();
+            final_state.executed_ops.reset();
+            final_state.executed_denunciations.reset();
+            final_state.db.read().set_initial_change_id(slot);
+        }
+
+        info!(
+            "final_state hash at slot {}: {}",
+            slot,
+            final_state.db.read().get_db_hash()
+        );
+
+        // create the final state
+        Ok(final_state)
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
@@ -128,44 +145,89 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     pub fn new_derived_from_snapshot(
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
+        mip_store: MipStore,
         last_start_period: u64,
     ) -> Result<Self, FinalStateError> {
         info!("Restarting from snapshot");
 
-        // FIRST, we recover the last known final_state
-        let mut final_state = FinalState::new(config, ledger, selector)?;
-        let _final_state_hash_from_snapshot = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
-        final_state.pos_state.create_initial_cycle();
+        let mut final_state =
+            FinalState::new(db, config.clone(), ledger, selector, mip_store, false)?;
 
-        // TODO: We recover the final_state from the RocksDB instance instead
-        /*let final_state_data = ledger
-        .get_final_state()
-        .expect("Cannot retrieve ledger final_state data");*/
+        let recovered_slot =
+            final_state.db.read().get_change_id().map_err(|_| {
+                FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
+            })?;
 
-        final_state.slot = final_state.ledger.get_slot().map_err(|_| {
-            FinalStateError::InvalidSlot(String::from("Could not recover Slot in Ledger"))
-        })?;
+        // This is needed for `test_bootstrap_server` to work
+        if cfg!(feature = "testing") {
+            let mut batch = DBBatch::new();
+            final_state.pos_state.create_initial_cycle(&mut batch);
+            final_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(recovered_slot));
+        }
+
+        final_state.last_slot_before_downtime = Some(recovered_slot);
+
+        // Check that MIP store is coherent with the network shutdown time range
+        // Assume that the final state has been edited during network shutdown
+        let shutdown_start = recovered_slot
+            .get_next_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to get next slot from recovered slot: {:?}",
+                    e
+                ))
+            })?;
+        let shutdown_end = Slot::new(last_start_period, 0)
+            .get_prev_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to compute prev slot from last start period: {:?}",
+                    e
+                ))
+            })?;
+        debug!(
+            "Checking if MIP store is coherent against shutdown period: {} - {}",
+            shutdown_start, shutdown_end
+        );
+
+        if !final_state
+            .mip_store
+            .is_coherent_with_shutdown_period(
+                shutdown_start,
+                shutdown_end,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            )
+            .unwrap_or(false)
+        {
+            return Err(FinalStateError::InvalidSlot(
+                "MIP store is Not coherent".to_string(),
+            ));
+        }
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
-            final_state.slot
+            recovered_slot
         );
 
-        final_state.compute_state_hash_at_slot(final_state.slot);
-
-        // Check the hash to see if we correctly recovered the snapshot
-        // TODO: Redo this check when we get the final_state from the ledger
-        /*if final_state.final_state_hash != final_state_hash_from_snapshot {
-            warn!("The hash of the final_state recovered from the snapshot is different from the hash saved.");
-        }*/
+        info!(
+            "final_state hash at slot {}: {}",
+            recovered_slot,
+            final_state.db.read().get_db_hash()
+        );
 
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
 
-        final_state.init_ledger_hash(last_start_period);
+        final_state.recompute_caches();
 
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
@@ -175,27 +237,13 @@ impl FinalState {
         Ok(final_state)
     }
 
-    /// Used after bootstrap, to set the initial ledger hash (used in initial draws)
-    pub fn init_ledger_hash(&mut self, last_start_period: u64) {
-        let slot = Slot::new(
-            last_start_period,
-            self.config.thread_count.saturating_sub(1),
-        );
-        self.ledger.set_initial_slot(slot);
-        self.pos_state.initial_ledger_hash = self.ledger.get_ledger_hash();
-
-        info!(
-            "Set initial ledger hash to {}",
-            self.ledger.get_ledger_hash().to_string()
-        )
-    }
-
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
     /// This basically recreates the history of the final_state, without executing the slots.
     fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
-        // TODO: Change the current_slot when we deserialize the final state from RocksDB. Until then, final_state slot and the ledger slot are not consistent!
-        // let current_slot = self.slot;
-        let current_slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        let current_slot =
+            self.db.read().get_change_id().map_err(|_| {
+                FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
+            })?;
         let current_slot_cycle = current_slot.get_cycle(self.config.periods_per_cycle);
 
         let end_slot = Slot::new(
@@ -217,15 +265,18 @@ impl FinalState {
             )?;
         }
 
-        self.slot = end_slot;
-
         // Recompute the hash with the updated data and feed it to POS_state.
-        self.compute_state_hash_at_slot(self.slot);
+        let final_state_hash = self.db.read().get_db_hash();
+
+        info!(
+            "final_state hash at slot {}: {}",
+            end_slot, final_state_hash
+        );
 
         // feed final_state_hash to the last cycle
-        let cycle = self.slot.get_cycle(self.config.periods_per_cycle);
+        let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
-            .feed_cycle_state_hash(cycle, self.final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         Ok(())
     }
@@ -236,13 +287,27 @@ impl FinalState {
         current_slot: Slot,
         end_slot: Slot,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle_info =
+        let latest_snapshot_cycle =
             self.pos_state
-                .cycle_history
+                .cycle_history_cache
                 .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     "Invalid cycle_history",
                 )))?;
+
+        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+
+        let mut batch = DBBatch::new();
+
+        self.pos_state
+            .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
+
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
+
+        let mut batch = DBBatch::new();
 
         self.pos_state
             .create_new_cycle_from_last(
@@ -251,8 +316,14 @@ impl FinalState {
                     .get_next_slot(self.config.thread_count)
                     .expect("Cannot get next slot"),
                 end_slot,
+                &mut batch,
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         Ok(())
     }
@@ -265,16 +336,27 @@ impl FinalState {
         current_slot_cycle: u64,
         end_slot_cycle: u64,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle_info =
+        let latest_snapshot_cycle =
             self.pos_state
-                .cycle_history
+                .cycle_history_cache
                 .pop_back()
                 .ok_or(FinalStateError::SnapshotError(String::from(
                     "Invalid cycle_history",
                 )))?;
 
-        // Firstly, complete the first cycle
+        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
 
+        let mut batch = DBBatch::new();
+
+        self.pos_state
+            .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
+
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
+
+        // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
             current_slot_cycle,
             self.config.periods_per_cycle,
@@ -287,6 +369,8 @@ impl FinalState {
             ))
         })?;
 
+        let mut batch = DBBatch::new();
+
         self.pos_state
             .create_new_cycle_from_last(
                 &latest_snapshot_cycle_info,
@@ -294,14 +378,25 @@ impl FinalState {
                     .get_next_slot(self.config.thread_count)
                     .expect("Cannot get next slot"),
                 last_slot,
+                &mut batch,
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+        self.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
 
-        // Then, build all the already completed cycles
-        for cycle in (current_slot_cycle + 1)..end_slot_cycle {
+        // TODO: Bring back the following optimisation (it fails because of selector)
+        // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
+        //let current_slot_cycle = (current_slot_cycle + 1)
+        //    .max(end_slot_cycle.saturating_sub(self.config.pos_config.cycle_history_length as u64));
+        let current_slot_cycle = current_slot_cycle + 1;
+
+        for cycle in current_slot_cycle..end_slot_cycle {
             let first_slot = Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(format!(
@@ -322,9 +417,21 @@ impl FinalState {
                 ))
             })?;
 
+            let mut batch = DBBatch::new();
+
             self.pos_state
-                .create_new_cycle_from_last(&latest_snapshot_cycle_info, first_slot, last_slot)
+                .create_new_cycle_from_last(
+                    &latest_snapshot_cycle_info,
+                    first_slot,
+                    last_slot,
+                    &mut batch,
+                )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
+
+            self.pos_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(end_slot));
 
             // Feed final_state_hash to the completed cycle
             self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
@@ -339,8 +446,15 @@ impl FinalState {
                 ))
             })?;
 
+        let mut batch = DBBatch::new();
+
         self.pos_state
-            .create_new_cycle_from_last(&latest_snapshot_cycle_info, first_slot, end_slot)
+            .create_new_cycle_from_last(
+                &latest_snapshot_cycle_info,
+                first_slot,
+                end_slot,
+                &mut batch,
+            )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
         // If the end_slot_cycle is completed
@@ -350,9 +464,16 @@ impl FinalState {
         }
 
         // We reduce the cycle_history len as needed
-        while self.pos_state.cycle_history.len() > self.pos_state.config.cycle_history_length {
-            self.pos_state.cycle_history.pop_front();
+        while self.pos_state.cycle_history_cache.len() > self.pos_state.config.cycle_history_length
+        {
+            if let Some((cycle, _)) = self.pos_state.cycle_history_cache.pop_front() {
+                self.pos_state.delete_cycle_info(cycle, &mut batch);
+            }
         }
+
+        self.db
+            .write()
+            .write_batch(batch, Default::default(), Some(end_slot));
 
         Ok(())
     }
@@ -362,8 +483,10 @@ impl FinalState {
         &mut self,
         cycle: u64,
     ) -> Result<(), FinalStateError> {
+        let final_state_hash = self.db.read().get_db_hash();
+
         self.pos_state
-            .feed_cycle_state_hash(cycle, self.final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         self.pos_state
             .feed_selector(cycle.checked_add(2).ok_or_else(|| {
@@ -379,53 +502,15 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        self.slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        self.db
+            .write()
+            .reset(Slot::new(0, self.config.thread_count.saturating_sub(1)));
         self.ledger.reset();
         self.async_pool.reset();
         self.pos_state.reset();
         self.executed_ops.reset();
         self.executed_denunciations.reset();
-        self.changes_history.clear();
-        // reset the final state hash
-        self.final_state_hash = Hash::from_bytes(FINAL_STATE_HASH_INITIAL_BYTES);
-    }
-
-    /// Compute the current state hash.
-    ///
-    /// Used when finalizing a slot.
-    /// Slot information is only used for logging.
-    pub fn compute_state_hash_at_slot(&mut self, slot: Slot) {
-        // 1. init hash concatenation with the ledger hash
-        let ledger_hash = self.ledger.get_ledger_hash();
-        let mut hash_concat: Vec<u8> = ledger_hash.to_bytes().to_vec();
-        // 2. async_pool hash
-        hash_concat.extend(self.async_pool.hash.to_bytes());
-        // 3. pos deferred_credit hash
-        let deferred_credit_hash = match self.pos_state.deferred_credits.get_hash() {
-            Some(hash) => hash,
-            None => self
-                .pos_state
-                .deferred_credits
-                .enable_hash_tracker_and_compute_hash(),
-        };
-        hash_concat.extend(deferred_credit_hash.to_bytes());
-        // 4. pos cycle history hashes, skip the bootstrap safety cycle if there is one
-        let n = (self.pos_state.cycle_history.len() == self.config.pos_config.cycle_history_length)
-            as usize;
-        for cycle_info in self.pos_state.cycle_history.iter().skip(n) {
-            hash_concat.extend(cycle_info.cycle_global_hash.to_bytes());
-        }
-        // 5. executed operations hash
-        hash_concat.extend(self.executed_ops.hash.to_bytes());
-        // 6. executed denunciations hash
-        hash_concat.extend(self.executed_denunciations.hash.to_bytes());
-        // 7. compute and save final state hash
-        self.final_state_hash = Hash::compute_from(&hash_concat);
-
-        info!(
-            "final_state hash at slot {}: {}",
-            slot, self.final_state_hash
-        );
+        self.mip_store.reset_db(self.db.clone());
     }
 
     /// Performs the initial draws.
@@ -440,504 +525,178 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
+        let cur_slot = self.db.read().get_change_id().expect(CHANGE_ID_DESER_ERROR);
         // check slot consistency
-        let next_slot = self
-            .slot
+        let next_slot = cur_slot
             .get_next_slot(self.config.thread_count)
             .expect("overflow in execution state slot");
-        if slot != next_slot {
-            panic!("attempting to apply execution state changes at slot {} while the current slot is {}", slot, self.slot);
-        }
 
-        // update current slot
-        self.slot = slot;
+        assert_eq!(
+            slot, next_slot,
+            "attempting to apply execution state changes at slot {} while the current slot is {}",
+            slot, cur_slot
+        );
 
-        // apply the state changes
+        let mut db_batch = DBBatch::new();
+
+        // apply the state changes to the batch
+
         self.async_pool
-            .apply_changes_unchecked(&changes.async_pool_changes);
+            .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
+
         self.pos_state
-            .apply_changes(changes.pos_changes.clone(), self.slot, true)
+            .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
-        self.executed_ops
-            .apply_changes(changes.executed_ops_changes.clone(), self.slot);
-        self.executed_denunciations
-            .apply_changes(changes.executed_denunciations_changes.clone(), self.slot);
-
-        let mut final_state_data = None;
-
-        if cfg!(feature = "create_snapshot") {
-            let /*mut*/ final_state_buffer = Vec::new();
-
-            /*let final_state_raw_serializer = FinalStateRawSerializer::new();
-
-            let final_state_raw = FinalStateRaw {
-                async_pool_messages: self.async_pool.messages.clone(),
-                cycle_history: self.pos_state.cycle_history.clone(),
-                deferred_credits: self.pos_state.deferred_credits.clone(),
-                sorted_ops: self.executed_ops.sorted_ops.clone(),
-                latest_consistent_slot: self.slot,
-                final_state_hash_from_snapshot: self.final_state_hash,
-            };
-
-            if final_state_raw_serializer
-                .serialize(&final_state_raw, &mut final_state_buffer)
-                .is_err()
-            {
-                debug!("Error while trying to serialize final_state");
-            }*/
-
-            final_state_data = Some(final_state_buffer)
-        }
 
         self.ledger
-            .apply_changes(changes.ledger_changes.clone(), self.slot, final_state_data);
+            .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
 
-        // push history element and limit history size
-        if self.config.final_history_length > 0 {
-            while self.changes_history.len() >= self.config.final_history_length {
-                self.changes_history.pop_front();
-            }
-            self.changes_history.push_back((slot, changes));
-        }
+        self.executed_ops.apply_changes_to_batch(
+            changes.executed_ops_changes.clone(),
+            slot,
+            &mut db_batch,
+        );
+
+        self.executed_denunciations.apply_changes_to_batch(
+            changes.executed_denunciations_changes.clone(),
+            slot,
+            &mut db_batch,
+        );
+
+        self.db
+            .write()
+            .write_batch(db_batch, Default::default(), Some(slot));
+
+        let final_state_hash = self.db.read().get_db_hash();
 
         // compute the final state hash
-        self.compute_state_hash_at_slot(slot);
+        info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
-        if cfg!(feature = "create_snapshot") {
-            let /*mut*/ hash_buffer = Vec::new();
+        // Backup DB if needed
+        if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {
+            let state_slot = self.db.read().get_change_id();
+            match state_slot {
+                Ok(slot) => {
+                    info!(
+                        "Backuping db for slot {}, state slot: {}, state hash: {}",
+                        slot, slot, final_state_hash
+                    );
+                }
+                Err(e) => {
+                    info!("{}", e);
+                    info!(
+                        "Backuping db for unknown state slot, state hash: {}",
+                        final_state_hash
+                    );
+                }
+            }
 
-            /*
-            let hash_serializer = HashSerializer::new();
-
-            if hash_serializer
-                .serialize(&self.final_state_hash, &mut hash_buffer)
-                .is_err()
-            {
-                debug!("Error while trying to serialize final_state_hash");
-            }*/
-
-            self.ledger.set_final_state_hash(hash_buffer);
+            self.db.read().backup_db(slot);
         }
 
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
-            .feed_cycle_state_hash(cycle, self.final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash);
     }
 
-    /// Used for bootstrap.
-    ///
-    /// Retrieves every:
-    /// * ledger change that is after `slot` and before or equal to `ledger_step` key
-    /// * ledger change if main bootstrap process is finished
-    /// * async pool change that is after `slot` and before or equal to `pool_step` message id
-    /// * async pool change if main bootstrap process is finished
-    /// * proof-of-stake deferred credits change if main bootstrap process is finished
-    /// * proof-of-stake deferred credits change that is after `slot` and before or equal to `credits_step` slot
-    /// * proof-of-stake cycle history change if main bootstrap process is finished
-    /// * executed ops change if main bootstrap process is finished
-    ///
-    /// Produces an error when the `slot` is too old for `self.changes_history`
-    #[allow(clippy::too_many_arguments)]
-    pub fn get_state_changes_part(
-        &self,
-        slot: Slot,
-        ledger_step: StreamingStep<LedgerKey>,
-        pool_step: StreamingStep<AsyncMessageId>,
-        cycle_step: StreamingStep<u64>,
-        credits_step: StreamingStep<Slot>,
-        ops_step: StreamingStep<Slot>,
-        de_step: StreamingStep<Slot>,
-    ) -> Result<Vec<(Slot, StateChanges)>, FinalStateError> {
-        let position_slot = if let Some((first_slot, _)) = self.changes_history.front() {
-            // Safe because we checked that there is changes just above.
-            let index = slot
-                .slots_since(first_slot, self.config.thread_count)
-                .map_err(|_| {
-                    FinalStateError::InvalidSlot(
-                        "get_state_changes_part given slot is overflowing history".to_string(),
-                    )
-                })?
-                .saturating_add(1);
+    /// After bootstrap or load from disk, recompute all the caches.
+    pub fn recompute_caches(&mut self) {
+        self.async_pool.recompute_message_info_cache();
+        self.executed_ops.recompute_sorted_ops_and_op_exec_status();
+        self.executed_denunciations.recompute_sorted_denunciations();
+        self.pos_state.recompute_pos_state_caches();
+    }
 
-            // Check if the `slot` index isn't in the future
-            if self.changes_history.len() as u64 <= index {
-                return Err(FinalStateError::InvalidSlot(
-                    "slot index is overflowing history".to_string(),
-                ));
+    /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
+    pub fn is_db_valid(&self) -> bool {
+        let db = self.db.read();
+
+        for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
+        {
+            if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
+                && !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())
+                && !serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes())
+                && !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes())
+                && !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes())
+                && !serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
+                && !serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes())
+            {
+                warn!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                return false;
             }
-            index
-        } else {
-            return Ok(Vec::new());
-        };
-        let mut res_changes: Vec<(Slot, StateChanges)> = Vec::new();
-        for (slot, changes) in self.changes_history.range((position_slot as usize)..) {
-            let mut slot_changes = StateChanges::default();
 
-            // Get ledger change that concern address <= ledger_step
-            match ledger_step.clone() {
-                StreamingStep::Ongoing(key) => {
-                    let ledger_changes: LedgerChanges = LedgerChanges(
-                        changes
-                            .ledger_changes
-                            .0
-                            .iter()
-                            .filter_map(|(address, change)| {
-                                if *address <= key.address {
-                                    Some((*address, change.clone()))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect(),
+            if serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                if !self
+                    .pos_state
+                    .is_cycle_history_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
                     );
-                    slot_changes.ledger_changes = ledger_changes;
+                    return false;
                 }
-                StreamingStep::Finished(_) => {
-                    slot_changes.ledger_changes = changes.ledger_changes.clone();
-                }
-                _ => (),
-            }
-
-            // Get async pool changes that concern ids <= pool_step
-            match pool_step {
-                StreamingStep::Ongoing(last_id) => {
-                    let async_pool_changes: AsyncPoolChanges = AsyncPoolChanges(
-                        changes
-                            .async_pool_changes
-                            .0
-                            .iter()
-                            .filter_map(|change| match change {
-                                Change::Add(id, _) | Change::Activate(id) | Change::Delete(id)
-                                    if id <= &last_id =>
-                                {
-                                    Some(change.clone())
-                                }
-                                _ => None,
-                            })
-                            .collect(),
+            } else if serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+                if !self
+                    .pos_state
+                    .is_deferred_credits_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
                     );
-                    slot_changes.async_pool_changes = async_pool_changes;
+                    return false;
                 }
-                StreamingStep::Finished(_) => {
-                    slot_changes.async_pool_changes = changes.async_pool_changes.clone();
+            } else if serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
+                if !self
+                    .async_pool
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
+                    );
+                    return false;
                 }
-                _ => (),
-            }
-
-            // Get PoS deferred credits changes that concern credits <= credits_step
-            match credits_step {
-                StreamingStep::Ongoing(cursor_slot) => {
-                    let mut deferred_credits = DeferredCredits::new_with_hash();
-                    deferred_credits.credits = changes
-                        .pos_changes
-                        .deferred_credits
-                        .credits
-                        .iter()
-                        .filter_map(|(credits_slot, credits)| {
-                            if *credits_slot <= cursor_slot {
-                                Some((*credits_slot, credits.clone()))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    slot_changes.pos_changes.deferred_credits = deferred_credits;
+            } else if serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
+                if !self
+                    .executed_ops
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!(
+                        "Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
+                    );
+                    return false;
                 }
-                StreamingStep::Finished(_) => {
-                    slot_changes.pos_changes.deferred_credits =
-                        changes.pos_changes.deferred_credits.clone();
+            } else if serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
+                if !self
+                    .executed_denunciations
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!("Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
+                    return false;
                 }
-                _ => (),
+            } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
+                && !self
+                    .ledger
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+            {
+                warn!(
+                    "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                return false;
             }
-
-            // Get PoS cycle changes if cycle history main bootstrap finished
-            if cycle_step.finished() {
-                slot_changes.pos_changes.seed_bits = changes.pos_changes.seed_bits.clone();
-                slot_changes.pos_changes.roll_changes = changes.pos_changes.roll_changes.clone();
-                slot_changes.pos_changes.production_stats =
-                    changes.pos_changes.production_stats.clone();
-            }
-
-            // Get executed operations changes if executed ops main bootstrap finished
-            if ops_step.finished() {
-                slot_changes.executed_ops_changes = changes.executed_ops_changes.clone();
-            }
-            if de_step.finished() {
-                slot_changes.executed_denunciations_changes =
-                    changes.executed_denunciations_changes.clone();
-            }
-
-            // Push the slot changes
-            res_changes.push((*slot, slot_changes));
         }
-        Ok(res_changes)
-    }
-}
 
-/// Serializer for `FinalStateRaw`
-pub struct FinalStateRawSerializer {
-    async_pool_serializer: AsyncPoolSerializer,
-    cycle_history_serializer: CycleHistorySerializer,
-    deferred_credits_serializer: DeferredCreditsSerializer,
-    executed_ops_serializer: ExecutedOpsSerializer,
-    executed_denunciations_serializer: ExecutedDenunciationsSerializer,
-    slot_serializer: SlotSerializer,
-}
-
-impl Default for FinalStateRawSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl From<FinalState> for FinalStateRaw {
-    fn from(value: FinalState) -> Self {
-        Self {
-            async_pool_messages: value.async_pool.messages,
-            cycle_history: value.pos_state.cycle_history,
-            deferred_credits: value.pos_state.deferred_credits,
-            sorted_ops: value.executed_ops.sorted_ops,
-            sorted_denunciations: value.executed_denunciations.sorted_denunciations,
-            latest_consistent_slot: value.slot,
-            final_state_hash_from_snapshot: value.final_state_hash,
-        }
-    }
-}
-
-impl FinalStateRawSerializer {
-    /// Initialize a `FinalStateRaweSerializer`
-    pub fn new() -> Self {
-        Self {
-            async_pool_serializer: AsyncPoolSerializer::new(),
-            cycle_history_serializer: CycleHistorySerializer::new(),
-            deferred_credits_serializer: DeferredCreditsSerializer::new(),
-            executed_ops_serializer: ExecutedOpsSerializer::new(),
-            executed_denunciations_serializer: ExecutedDenunciationsSerializer::new(),
-            slot_serializer: SlotSerializer::new(),
-        }
-    }
-}
-
-impl Serializer<FinalStateRaw> for FinalStateRawSerializer {
-    fn serialize(&self, value: &FinalStateRaw, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        // Serialize Async Pool
-        self.async_pool_serializer
-            .serialize(&value.async_pool_messages, buffer)?;
-
-        // Serialize pos state
-        self.cycle_history_serializer
-            .serialize(&value.cycle_history, buffer)?;
-        self.deferred_credits_serializer
-            .serialize(&value.deferred_credits, buffer)?;
-
-        // Serialize Executed Ops
-        self.executed_ops_serializer
-            .serialize(&value.sorted_ops, buffer)?;
-        // Serialize Executed Denunciations
-        self.executed_denunciations_serializer
-            .serialize(&value.sorted_denunciations, buffer)?;
-
-        // Serialize metadata
-        self.slot_serializer
-            .serialize(&value.latest_consistent_slot, buffer)?;
-
-        // /!\ The final_state_hash has to be serialized separately!
-
-        Ok(())
-    }
-}
-
-pub struct FinalStateRaw {
-    async_pool_messages: BTreeMap<AsyncMessageId, AsyncMessage>,
-    cycle_history: VecDeque<CycleInfo>,
-    deferred_credits: DeferredCredits,
-    sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
-    sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
-    latest_consistent_slot: Slot,
-    #[allow(dead_code)]
-    final_state_hash_from_snapshot: Hash,
-}
-
-/// Deserializer for `FinalStateRaw`
-pub struct FinalStateRawDeserializer {
-    async_deser: AsyncPoolDeserializer,
-    cycle_history_deser: CycleHistoryDeserializer,
-    deferred_credits_deser: DeferredCreditsDeserializer,
-    executed_ops_deser: ExecutedOpsDeserializer,
-    executed_denunciations_deser: ExecutedDenunciationsDeserializer,
-    slot_deser: SlotDeserializer,
-    hash_deser: HashDeserializer,
-}
-
-impl FinalStateRawDeserializer {
-    #[allow(clippy::too_many_arguments)]
-    #[allow(dead_code)]
-    /// Initialize a `FinalStateRawDeserializer`
-    pub fn new(
-        config: FinalStateConfig,
-        max_async_pool_length: u64,
-        max_datastore_key_length: u8,
-        max_rolls_length: u64,
-        max_production_stats_length: u64,
-        max_credit_length: u64,
-        max_executed_ops_length: u64,
-        max_operations_per_block: u32,
-    ) -> Self {
-        Self {
-            async_deser: AsyncPoolDeserializer::new(
-                config.thread_count,
-                max_async_pool_length,
-                config.async_pool_config.max_async_message_data,
-                max_datastore_key_length as u32,
-            ),
-            cycle_history_deser: CycleHistoryDeserializer::new(
-                config.pos_config.cycle_history_length as u64,
-                max_rolls_length,
-                max_production_stats_length,
-            ),
-            deferred_credits_deser: DeferredCreditsDeserializer::new(
-                config.thread_count,
-                max_credit_length,
-                true,
-            ),
-            executed_ops_deser: ExecutedOpsDeserializer::new(
-                config.thread_count,
-                max_executed_ops_length,
-                max_operations_per_block as u64,
-            ),
-            executed_denunciations_deser: ExecutedDenunciationsDeserializer::new(
-                config.thread_count,
-                config.endorsement_count,
-                config.max_executed_denunciations_length,
-                config.max_denunciations_per_block_header as u64,
-            ),
-            slot_deser: SlotDeserializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(config.thread_count)),
-            ),
-            hash_deser: HashDeserializer::new(),
-        }
-    }
-}
-
-impl Deserializer<FinalStateRaw> for FinalStateRawDeserializer {
-    fn deserialize<'a, E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], FinalStateRaw, E> {
-        context("Failed FinalStateRaw deserialization", |buffer| {
-            tuple((
-                context("Failed async_pool_messages deserialization", |input| {
-                    self.async_deser.deserialize(input)
-                }),
-                context("Failed cycle_history deserialization", |input| {
-                    self.cycle_history_deser.deserialize(input)
-                }),
-                context("Failed deferred_credits deserialization", |input| {
-                    self.deferred_credits_deser.deserialize(input)
-                }),
-                context("Failed executed_ops deserialization", |input| {
-                    self.executed_ops_deser.deserialize(input)
-                }),
-                context("Failed executed_denunciations deserialization", |input| {
-                    self.executed_denunciations_deser.deserialize(input)
-                }),
-                context("Failed slot deserialization", |input| {
-                    self.slot_deser.deserialize(input)
-                }),
-                context("Failed hash deserialization", |input| {
-                    self.hash_deser.deserialize(input)
-                }),
-            ))
-            .map(
-                |(
-                    async_pool_messages,
-                    cycle_history,
-                    deferred_credits,
-                    sorted_ops,
-                    sorted_denunciations,
-                    latest_consistent_slot,
-                    final_state_hash_from_snapshot,
-                )| FinalStateRaw {
-                    async_pool_messages,
-                    cycle_history: cycle_history.into(),
-                    deferred_credits,
-                    sorted_ops,
-                    sorted_denunciations,
-                    latest_consistent_slot,
-                    final_state_hash_from_snapshot,
-                },
-            )
-            .parse(buffer)
-        })
-        .parse(buffer)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::collections::VecDeque;
-
-    use crate::StateChanges;
-    use massa_async_pool::test_exports::get_random_message;
-    use massa_ledger_exports::SetUpdateOrDelete;
-    use massa_models::{address::Address, slot::Slot};
-    use massa_signature::KeyPair;
-
-    fn get_random_address() -> Address {
-        let keypair = KeyPair::generate(0).unwrap();
-        Address::from_public_key(&keypair.get_public_key())
-    }
-
-    #[test]
-    fn get_state_changes_part() {
-        let message = get_random_message(None);
-        // Building the state changes
-        let mut history_state_changes: VecDeque<(Slot, StateChanges)> = VecDeque::new();
-        let (low_address, high_address) = {
-            let address1 = get_random_address();
-            let address2 = get_random_address();
-            if address1 < address2 {
-                (address1, address2)
-            } else {
-                (address2, address1)
-            }
-        };
-        let mut state_changes = StateChanges::default();
-        state_changes
-            .ledger_changes
-            .0
-            .insert(low_address, SetUpdateOrDelete::Delete);
-        state_changes
-            .async_pool_changes
-            .0
-            .push(massa_async_pool::Change::Add(message.compute_id(), message));
-        history_state_changes.push_front((Slot::new(3, 0), state_changes));
-        let mut state_changes = StateChanges::default();
-        state_changes
-            .ledger_changes
-            .0
-            .insert(high_address, SetUpdateOrDelete::Delete);
-        history_state_changes.push_front((Slot::new(2, 0), state_changes.clone()));
-        history_state_changes.push_front((Slot::new(1, 0), state_changes));
-        // TODO: re-enable this test after refactoring is over
-        // let mut final_state: FinalState = Default::default();
-        // final_state.changes_history = history_state_changes;
-        // // Test slot filter
-        // let part = final_state
-        //     .get_state_changes_part(Slot::new(2, 0), low_address, message.compute_id(), None)
-        //     .unwrap();
-        // assert_eq!(part.ledger_changes.0.len(), 1);
-        // // Test address filter
-        // let part = final_state
-        //     .get_state_changes_part(Slot::new(2, 0), high_address, message.compute_id(), None)
-        //     .unwrap();
-        // assert_eq!(part.ledger_changes.0.len(), 1);
+        true
     }
 }

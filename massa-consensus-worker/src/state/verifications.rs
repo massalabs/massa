@@ -49,7 +49,7 @@ impl ConsensusState {
     // Verify that we haven't already received 2 blocks for this slot
     // If the block isn't already present two times we save it and return false
     // If the block is already present two times we return true
-    pub(crate) fn detect_multistake(&mut self, header: &SecuredHeader) -> bool {
+    fn detect_multistake(&mut self, header: &SecuredHeader) -> bool {
         let entry = self
             .nonfinal_active_blocks_per_slot
             .entry(header.content.slot)
@@ -300,7 +300,7 @@ impl ConsensusState {
     /// - Check grandpa incompatibility test.
     /// - Check if the block is incompatible with a parent.
     /// - Check if the block is incompatible with a final block.
-    pub fn check_header(
+    fn check_header(
         &self,
         block_id: &BlockId,
         header: &SecuredHeader,

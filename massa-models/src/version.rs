@@ -193,8 +193,8 @@ impl Version {
     pub fn is_compatible(&self, other: &Version) -> bool {
         self.instance == other.instance
             && self.major == other.major
-            && self.minor >= 1
-            && other.minor >= 1
+            && self.minor > 0
+            && other.minor > 0
     }
 }
 

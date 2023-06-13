@@ -1,9 +1,11 @@
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
+use massa_db_worker::MassaDB;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
-use massa_models::config::ENDORSEMENT_COUNT;
+use massa_models::config::{ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, T0};
 use massa_models::denunciation::Denunciation;
 use massa_models::execution::TempFileVestingRange;
 use massa_models::prehash::PreHashMap;
@@ -21,6 +23,7 @@ use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use parking_lot::RwLock;
 use std::str::FromStr;
 use std::{
@@ -78,7 +81,17 @@ pub fn get_sample_state(
 ) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let mut ledger = FinalLedger::new(ledger_config.clone(), false);
+    let db_config = MassaDBConfig {
+        path: tempdir.path().to_path_buf(),
+        max_history_length: 10,
+        max_new_elements: 100,
+        thread_count: THREAD_COUNT,
+    };
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
+
+    let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();
     let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {
@@ -94,24 +107,49 @@ pub fn get_sample_state(
         max_executed_denunciations_length: 1000,
         initial_seed_string: "".to_string(),
         periods_per_cycle: 10,
-
         max_denunciations_per_block_header: 0,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
     let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
         .expect("could not start selector controller");
+    let mip_store = MipStore::try_from((
+        [],
+        MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 10,
+        },
+    ))
+    .unwrap();
+
     let mut final_state = if last_start_period > 0 {
         FinalState::new_derived_from_snapshot(
+            db.clone(),
             cfg,
             Box::new(ledger),
             selector_controller,
+            mip_store,
             last_start_period,
         )
         .unwrap()
     } else {
-        FinalState::new(cfg, Box::new(ledger), selector_controller).unwrap()
+        FinalState::new(
+            db.clone(),
+            cfg,
+            Box::new(ledger),
+            selector_controller,
+            mip_store,
+            true,
+        )
+        .unwrap()
     };
+    let mut batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
+    final_state.pos_state.create_initial_cycle(&mut batch);
+    final_state
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
     final_state.compute_initial_draws().unwrap();
-    final_state.pos_state.create_initial_cycle();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
 

@@ -51,10 +51,10 @@ impl Display for CompactConfig {
         writeln!(
             f,
             "    Genesis time: {}",
-            self.genesis_timestamp.to_utc_string()
+            self.genesis_timestamp.format_instant()
         )?;
         if let Some(end) = self.end_timestamp {
-            writeln!(f, "    End time: {}", end.to_utc_string())?;
+            writeln!(f, "    End time: {}", end.format_instant())?;
         }
         writeln!(f, "    Thread count: {}", self.thread_count)?;
         writeln!(f, "    t0: {}", self.t0)?;

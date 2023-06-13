@@ -13,7 +13,10 @@ pub fn advance_state_until(at_state: ComponentState, versioning_info: &MipInfo) 
     let timeout = versioning_info.timeout;
 
     if matches!(at_state, ComponentState::Error) {
-        todo!()
+        return MipState {
+            state: ComponentState::error(),
+            history: Default::default(),
+        };
     }
 
     let mut state = MipState::new(start.saturating_sub(MassaTime::from_millis(1)));

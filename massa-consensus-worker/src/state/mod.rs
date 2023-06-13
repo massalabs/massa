@@ -9,6 +9,7 @@ use massa_consensus_exports::{
     error::ConsensusError,
     ConsensusChannels, ConsensusConfig,
 };
+use massa_metrics::MassaMetrics;
 use massa_models::{
     active_block::ActiveBlock,
     address::Address,
@@ -49,6 +50,8 @@ pub struct ConsensusState {
     pub max_cliques: Vec<Clique>,
     /// ids of active blocks
     pub active_index: PreHashSet<BlockId>,
+    /// ids of active blocks without ops
+    pub active_index_without_ops: PreHashSet<BlockId>,
     /// Save of latest periods
     pub save_final_periods: Vec<u64>,
     /// One (block id, period) per thread
@@ -94,6 +97,8 @@ pub struct ConsensusState {
     /// Blocks indexed by slot (used for multi-stake limiting). Blocks
     /// should be saved in this map when we receive the header or the full block directly.
     pub nonfinal_active_blocks_per_slot: HashMap<Slot, PreHashSet<BlockId>>,
+    /// massa metrics
+    pub(crate) massa_metrics: MassaMetrics,
 }
 
 impl ConsensusState {
@@ -108,7 +113,7 @@ impl ConsensusState {
     /// Get a full active block
     ///
     /// Returns an error if it was not found
-    pub fn try_get_full_active_block(
+    fn try_get_full_active_block(
         &self,
         block_id: &BlockId,
     ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {

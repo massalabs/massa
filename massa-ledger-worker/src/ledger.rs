@@ -3,20 +3,16 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use massa_hash::Hash;
+use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_ledger_exports::{
-    Key, LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
+    LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
 use massa_models::{
     address::Address,
     amount::{Amount, AmountDeserializer},
     bytecode::{Bytecode, BytecodeDeserializer},
-    error::ModelsError,
-    slot::Slot,
-    streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer};
-use nom::AsBytes;
 use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound::Included;
 
@@ -34,14 +30,13 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, with_final_state: bool) -> Self {
+    pub fn new(config: LedgerConfig, db: ShareableMassaDBController) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
-            config.disk_ledger_path.clone(),
+            db,
             config.thread_count,
             config.max_key_length,
-            config.max_ledger_part_size,
-            with_final_state,
+            config.max_datastore_value_length,
         );
 
         // generate the final ledger
@@ -53,17 +48,6 @@ impl FinalLedger {
 }
 
 impl LedgerController for FinalLedger {
-    /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes(
-        &mut self,
-        changes: LedgerChanges,
-        slot: Slot,
-        final_state_data: Option<Vec<u8>>,
-    ) {
-        self.sorted_ledger
-            .apply_changes(changes, slot, final_state_data);
-    }
-
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError> {
         // load the ledger tree from file
@@ -158,34 +142,6 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.get_datastore_keys(addr)
     }
 
-    /// Get the current disk ledger hash
-    fn get_ledger_hash(&self) -> Hash {
-        self.sorted_ledger.get_ledger_hash()
-    }
-
-    /// Get a part of the disk ledger.
-    ///
-    /// Solely used by the bootstrap.
-    ///
-    /// # Returns
-    /// A tuple containing the data and the last returned key
-    fn get_ledger_part(
-        &self,
-        last_key: StreamingStep<Key>,
-    ) -> Result<(Vec<u8>, StreamingStep<Key>), ModelsError> {
-        self.sorted_ledger.get_ledger_part(last_key)
-    }
-
-    /// Set a part of the disk ledger.
-    ///
-    /// Solely used by the bootstrap.
-    ///
-    /// # Returns
-    /// The last key inserted
-    fn set_ledger_part(&self, data: Vec<u8>) -> Result<StreamingStep<Key>, ModelsError> {
-        self.sorted_ledger.set_ledger_part(data.as_bytes())
-    }
-
     /// Reset the disk ledger.
     ///
     /// USED FOR BOOTSTRAP ONLY
@@ -193,24 +149,16 @@ impl LedgerController for FinalLedger {
         self.sorted_ledger.reset();
     }
 
-    fn set_initial_slot(&mut self, slot: Slot) {
-        self.sorted_ledger.set_initial_slot(slot);
+    /// Allows applying `LedgerChanges` to the final ledger
+    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch) {
+        self.sorted_ledger
+            .apply_changes_to_batch(changes, ledger_batch);
     }
 
-    /// Get the slot associated with the current ledger
-    fn get_slot(&self) -> Result<Slot, ModelsError> {
-        self.sorted_ledger.get_slot()
-    }
-
-    /// Set the final_state_hash of the slot associated with the current ledger
-    /// Can be used to verify the integrity of the final state saved when restarting from snapshot
-    fn set_final_state_hash(&mut self, data: Vec<u8>) {
-        self.sorted_ledger.set_final_state_hash(&data)
-    }
-
-    /// Get the final state stored in the ledger, to restart from snapshot
-    fn get_final_state(&self) -> Result<Vec<u8>, ModelsError> {
-        self.sorted_ledger.get_final_state()
+    /// Deserializes the key and value, useful after bootstrap
+    fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        self.sorted_ledger
+            .is_key_value_valid(serialized_key, serialized_value)
     }
 
     /// Get every address and their corresponding balance.

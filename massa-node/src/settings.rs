@@ -133,6 +133,7 @@ pub struct Settings {
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
     pub grpc: GrpcSettings,
+    pub metrics: MetricsSettings,
 }
 
 /// Consensus configuration
@@ -149,6 +150,8 @@ pub struct ConsensusSettings {
     pub stats_timespan: MassaTime,
     /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
+    /// force keep at least this number of final periods without operations in RAM for each thread
+    pub force_keep_final_periods_without_ops: u64,
     /// old blocks are pruned every `block_db_prune_interval`
     pub block_db_prune_interval: MassaTime,
     /// blocks headers channel capacity
@@ -164,6 +167,11 @@ pub struct ConsensusSettings {
 pub struct NetworkSettings {
     /// Ip seen by others. If none the bind ip is used
     pub routable_ip: Option<IpAddr>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MetricsSettings {
+    pub enabled: bool,
 }
 
 /// Protocol Configuration, read from toml user configuration file

@@ -1,8 +1,9 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_channel::MassaChannel;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 
 use crate::{
     block_factory::BlockFactoryWorker, endorsement_factory::EndorsementFactoryWorker,
@@ -27,10 +28,12 @@ pub fn start_factory(
     mip_store: MipStore,
 ) -> Box<dyn FactoryManager> {
     // create block factory channel
-    let (block_worker_tx, block_worker_rx) = mpsc::channel::<()>();
+    let (block_worker_tx, block_worker_rx) =
+        MassaChannel::new("factory_block_worker".to_string(), None);
 
     // create endorsement factory channel
-    let (endorsement_worker_tx, endorsement_worker_rx) = mpsc::channel::<()>();
+    let (endorsement_worker_tx, endorsement_worker_rx) =
+        MassaChannel::new("factory_endorsement_worker".to_string(), None);
 
     // start block factory worker
     let block_worker_handle = BlockFactoryWorker::spawn(

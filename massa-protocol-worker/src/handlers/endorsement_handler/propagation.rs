@@ -1,13 +1,12 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::Receiver;
+use massa_channel::receiver::MassaReceiver;
 use massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
-use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, log::warn};
 
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
@@ -18,7 +17,7 @@ use super::{
 };
 
 struct PropagationThread {
-    receiver: Receiver<EndorsementHandlerPropagationCommand>,
+    receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedEndorsementCache,
     active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -60,37 +59,15 @@ impl PropagationThread {
                                     cache_write.checked_endorsements.insert(endorsement_id, ());
                                 }
                                 // Add peers that potentially don't exist in cache
-                                let peer_connected =
+                                let peers_connected =
                                     self.active_connections.get_peer_ids_connected();
-                                for peer_id in &peer_connected {
-                                    if cache_write
-                                        .endorsements_known_by_peer
-                                        .get(peer_id)
-                                        .is_none()
-                                    {
-                                        cache_write.endorsements_known_by_peer.insert(
-                                            peer_id.clone(),
-                                            LruMap::new(
-                                                ByLength::new(
-                                                    self.config.max_node_known_endorsements_size.try_into()
-                                                .expect(
-                                                    "max_node_known_endorsements_size in config is > 0",
-                                                )),
-                                            ),
-                                        );
-                                    }
-                                }
-                                let peers: Vec<PeerId> = cache_write
-                                    .endorsements_known_by_peer
-                                    .iter()
-                                    .map(|(id, _)| id.clone())
-                                    .collect();
-                                // Clean shared cache if peers do not exist anymore
-                                for peer_id in peers {
-                                    if !peer_connected.contains(&peer_id) {
-                                        cache_write.endorsements_known_by_peer.remove(&peer_id);
-                                    }
-                                }
+                                cache_write.update_cache(
+                                    peers_connected,
+                                    self.config
+                                        .max_node_known_endorsements_size
+                                        .try_into()
+                                        .expect("max_node_known_endorsements_size is too big"),
+                                );
                                 let all_keys: Vec<PeerId> = cache_write
                                     .endorsements_known_by_peer
                                     .iter()
@@ -98,9 +75,6 @@ impl PropagationThread {
                                     .cloned()
                                     .collect();
                                 for peer_id in all_keys.iter() {
-                                    // for (peer_id, endorsement_ids) in
-                                    //     cache_write.endorsements_known_by_peer.iter()
-                                    // {
                                     let endorsement_ids = cache_write
                                         .endorsements_known_by_peer
                                         .peek_mut(peer_id)
@@ -171,7 +145,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    receiver: Receiver<EndorsementHandlerPropagationCommand>,
+    receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
     active_connections: Box<dyn ActiveConnectionsTrait>,

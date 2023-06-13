@@ -27,21 +27,30 @@ impl Default for SelectorConfig {
 /// Compare two PoS States
 pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
     assert_eq!(
-        s1.cycle_history.len(),
-        s2.cycle_history.len(),
-        "PoS cycle_history len mismatching"
+        s1.cycle_history_cache.len(),
+        s2.cycle_history_cache.len(),
+        "PoS cycle_history_cache len mismatching"
     );
     assert_eq!(
-        s1.cycle_history, s2.cycle_history,
-        "PoS cycle_history mismatching"
+        s1.cycle_history_cache, s2.cycle_history_cache,
+        "PoS cycle_history_cache mismatching"
     );
+    for cycle in s1.cycle_history_cache.clone() {
+        assert_eq!(
+            s1.get_cycle_info(cycle.0),
+            s2.get_cycle_info(cycle.0),
+            "PoS cycle_history mismatching"
+        );
+    }
+    let deferred_credits_s1 = s1.get_deferred_credits();
+    let deferred_credits_s2 = s2.get_deferred_credits();
     assert_eq!(
-        s1.deferred_credits.credits.len(),
-        s2.deferred_credits.credits.len(),
+        deferred_credits_s1.credits.len(),
+        deferred_credits_s2.credits.len(),
         "PoS deferred_credits len mismatching"
     );
     assert_eq!(
-        s1.deferred_credits.credits, s2.deferred_credits.credits,
+        deferred_credits_s1.credits, deferred_credits_s2.credits,
         "PoS deferred_credits mismatching"
     );
     assert_eq!(

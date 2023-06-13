@@ -1,0 +1,19 @@
+[package]
+name = "massa_metrics"
+version = "0.23.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+prometheus = { version = "0.13.3", features = ["process"] }
+hyper = { version = "0.14.26", features = ["server", "tcp", "http1"] }
+tokio = { version = "1.28.0", features = ["full"] }
+lazy_static = "1.4.0"
+tracing = "0.1"
+
+[dev-dependencies]
+massa_channel = { path = "../massa-channel" }
+
+[features]
+testing = []

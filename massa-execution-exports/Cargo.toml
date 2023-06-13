@@ -1,6 +1,6 @@
 [package]
 name = "massa_execution_exports"
-version = "0.1.0"
+version = "0.23.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -27,7 +27,7 @@ massa_final_state = { path = "../massa-final-state" }
 massa_ledger_exports = { path = "../massa-ledger-exports", optional = true }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_versioning = { path = "../massa-versioning" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "testnet_23" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
 
 [dev-dependencies]
 mockall = "0.11.4"

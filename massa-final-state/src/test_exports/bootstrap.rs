@@ -1,110 +1,120 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This file defines tools to test the final state bootstrap
-
-use std::collections::VecDeque;
-
 use massa_async_pool::AsyncPool;
+use massa_db_exports::{
+    MassaIteratorMode, ShareableMassaDBController, METADATA_CF, STATE_CF, STATE_HASH_KEY,
+};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
-use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::LedgerController;
-use massa_models::slot::Slot;
 use massa_pos_exports::PoSFinalState;
+use massa_versioning::versioning::MipStore;
 
-use crate::{FinalState, FinalStateConfig, StateChanges};
+use crate::{FinalState, FinalStateConfig};
 
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
     config: FinalStateConfig,
-    slot: Slot,
     ledger: Box<dyn LedgerController>,
     async_pool: AsyncPool,
-    changes_history: VecDeque<(Slot, StateChanges)>,
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
+    mip_store: MipStore,
+    db: ShareableMassaDBController,
 ) -> FinalState {
     FinalState {
         config,
-        slot,
         ledger,
         async_pool,
-        changes_history,
         pos_state,
         executed_ops,
         executed_denunciations,
-        final_state_hash: Hash::from_bytes(&[0; HASH_SIZE_BYTES]),
+        mip_store,
         last_start_period: 0,
+        last_slot_before_downtime: None,
+        db,
     }
 }
 
 /// asserts that two `FinalState` are equal
 pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
-    // compare slot
-    assert_eq!(v1.slot, v2.slot, "final slot mismatch");
+    assert_eq!(
+        v1.db.read().get_change_id().unwrap(),
+        v2.db.read().get_change_id().unwrap(),
+        "final slot mismatch"
+    );
+    assert_eq!(
+        v1.last_start_period, v2.last_start_period,
+        "last_start_period mismatch"
+    );
+    assert_eq!(
+        v1.last_slot_before_downtime, v2.last_slot_before_downtime,
+        "last_slot_before_downtime mismatch"
+    );
 
-    // compare final state
-    massa_ledger_worker::test_exports::assert_eq_ledger(&*v1.ledger, &*v2.ledger);
-    massa_async_pool::test_exports::assert_eq_async_pool_bootstrap_state(
-        &v1.async_pool,
-        &v2.async_pool,
-    );
-    massa_pos_exports::test_exports::assert_eq_pos_state(&v1.pos_state, &v2.pos_state);
+    let db1 = v1.db.read();
+    let db2 = v2.db.read();
+
+    let iter_state_db1 = db1.iterator_cf(STATE_CF, MassaIteratorMode::Start);
+    let iter_state_db2 = db2.iterator_cf(STATE_CF, MassaIteratorMode::Start);
+
+    let iter_metadata_db1 = db1.iterator_cf(METADATA_CF, MassaIteratorMode::Start);
+    let iter_metadata_db2 = db2.iterator_cf(METADATA_CF, MassaIteratorMode::Start);
+
+    let count_1 = iter_state_db1.count();
+    let count_2 = iter_state_db2.count();
+
+    assert_eq!(count_1, count_2, "state count mismatch");
+
+    let iter_state_db1 = db1.iterator_cf(STATE_CF, MassaIteratorMode::Start);
+    let iter_state_db2 = db2.iterator_cf(STATE_CF, MassaIteratorMode::Start);
+
+    let mut count = 0;
+    for ((key1, value1), (key2, value2)) in iter_state_db1.zip(iter_state_db2) {
+        count += 1;
+        assert_eq!(key1, key2, "{}", format!("state key mismatch {}", count));
+        assert_eq!(
+            value1,
+            value2,
+            "{}",
+            format!("state value n°{} mismatch for key {:?} ", count, key1)
+        );
+    }
+
+    for ((key1, value1), (key2, value2)) in iter_metadata_db1.zip(iter_metadata_db2) {
+        assert_eq!(key1, key2, "metadata key mismatch");
+        if key1.to_vec() != STATE_HASH_KEY.to_vec() {
+            assert_eq!(value1, value2, "metadata value mismatch");
+        }
+    }
+
     assert_eq!(
-        v1.executed_ops.ops.len(),
-        v2.executed_ops.ops.len(),
-        "executed_ops.ops lenght mismatch"
+        v1.pos_state.cycle_history_cache, v2.pos_state.cycle_history_cache,
+        "pos_state.cycle_history_cache mismatch"
     );
     assert_eq!(
-        v1.executed_ops.ops, v2.executed_ops.ops,
-        "executed_ops.ops mismatch"
+        v1.pos_state.rng_seed_cache, v2.pos_state.rng_seed_cache,
+        "pos_state.rng_seed_cache mismatch"
     );
+
     assert_eq!(
-        v1.executed_ops.sorted_ops, v2.executed_ops.sorted_ops,
-        "executed_ops.sorted_ops mismatch"
+        v1.async_pool.message_info_cache.len(),
+        v2.async_pool.message_info_cache.len(),
+        "async_pool.message_info_cache len mismatch"
+    );
+
+    assert_eq!(
+        v1.async_pool.message_info_cache, v2.async_pool.message_info_cache,
+        "async_pool.message_info_cache mismatch"
     );
 }
 
 /// asserts that two `FinalState` hashes are equal
 pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
     assert_eq!(
-        v1.ledger.get_ledger_hash(),
-        v2.ledger.get_ledger_hash(),
-        "ledger hash mismatch"
-    );
-    assert_eq!(
-        v1.async_pool.hash, v2.async_pool.hash,
-        "async pool hash mismatch"
-    );
-    assert_eq!(
-        v1.pos_state.deferred_credits.get_hash(),
-        v2.pos_state.deferred_credits.get_hash(),
-        "deferred credits hash mismatch"
-    );
-    for (cycle1, cycle2) in v1
-        .pos_state
-        .cycle_history
-        .iter()
-        .zip(v2.pos_state.cycle_history.iter())
-    {
-        assert_eq!(
-            cycle1.roll_counts_hash, cycle2.roll_counts_hash,
-            "cycle ({}) roll_counts_hash mismatch",
-            cycle1.cycle
-        );
-        assert_eq!(
-            cycle1.production_stats_hash, cycle2.production_stats_hash,
-            "cycle ({}) roll_counts_hash mismatch",
-            cycle1.cycle
-        );
-        assert_eq!(
-            cycle1.cycle_global_hash, cycle2.cycle_global_hash,
-            "cycle ({}) global_hash mismatch",
-            cycle1.cycle
-        );
-    }
-    assert_eq!(
-        v1.executed_ops.hash, v2.executed_ops.hash,
-        "executed ops hash mismatch"
+        v1.db.read().get_db_hash(),
+        v2.db.read().get_db_hash(),
+        "rocks_db hash mismatch"
     );
 }

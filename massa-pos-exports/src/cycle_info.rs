@@ -4,7 +4,6 @@ use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
     serialization::{BitVecDeserializer, BitVecSerializer},
-    slot::Slot,
 };
 use massa_serialization::{
     Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
@@ -23,8 +22,6 @@ use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::Included;
-
-use crate::PoSChanges;
 
 const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 
@@ -155,188 +152,17 @@ impl CycleInfo {
             final_state_hash_snapshot: None,
         }
     }
-
-    /// Apply every part of a `PoSChanges` to a cycle info, except for `deferred_credits`
-    pub(crate) fn apply_changes(
-        &mut self,
-        changes: PoSChanges,
-        slot: Slot,
-        periods_per_cycle: u64,
-        thread_count: u8,
-    ) -> bool {
-        let hash_computer = CycleInfoHashComputer::new();
-        let slots_per_cycle = periods_per_cycle.saturating_mul(thread_count as u64);
-        let mut hash_concat: Vec<u8> = Vec::new();
-
-        // compute cycle hash and concat
-        let cycle_hash = hash_computer.compute_cycle_hash(self.cycle);
-        hash_concat.extend(cycle_hash.to_bytes());
-
-        // check for completion
-        self.complete = slot.is_last_of_cycle(periods_per_cycle, thread_count);
-        let complete_hash = hash_computer.compute_complete_hash(self.complete);
-        hash_concat.extend(complete_hash.to_bytes());
-
-        // extend seed_bits with changes.seed_bits
-        self.rng_seed.extend(changes.seed_bits);
-        let rng_seed_hash = hash_computer.compute_seed_hash(&self.rng_seed);
-        hash_concat.extend(rng_seed_hash.to_bytes());
-
-        // extend roll counts
-        for (addr, roll_count) in changes.roll_changes {
-            if roll_count == 0 && let Some(removed_count) = self.roll_counts.remove(&addr) {
-                self.roll_counts_hash ^=
-                    hash_computer.compute_roll_entry_hash(&addr, removed_count);
-            } else {
-                if let Some(replaced_count) = self.roll_counts.insert(addr, roll_count) {
-                    self.roll_counts_hash ^=
-                        hash_computer.compute_roll_entry_hash(&addr, replaced_count);
-                }
-                self.roll_counts_hash ^= hash_computer.compute_roll_entry_hash(&addr, roll_count);
-            }
-        }
-        hash_concat.extend(self.roll_counts_hash.to_bytes());
-
-        // extend production stats
-        for (addr, stats) in changes.production_stats {
-            self.production_stats
-                .entry(addr)
-                .and_modify(|current_stats| {
-                    self.production_stats_hash ^=
-                        hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
-                    current_stats.extend(&stats);
-                    self.production_stats_hash ^=
-                        hash_computer.compute_prod_stats_entry_hash(&addr, current_stats);
-                })
-                .or_insert_with(|| {
-                    self.production_stats_hash ^=
-                        hash_computer.compute_prod_stats_entry_hash(&addr, &stats);
-                    stats
-                });
-        }
-        hash_concat.extend(self.production_stats_hash.to_bytes());
-
-        // if the cycle just completed, check that it has the right number of seed bits
-        if self.complete && self.rng_seed.len() as u64 != slots_per_cycle {
-            panic!(
-                "cycle completed with incorrect number of seed bits: {} instead of {}",
-                self.rng_seed.len(),
-                slots_per_cycle
-            );
-        }
-
-        // compute the global hash
-        self.cycle_global_hash = Hash::compute_from(&hash_concat);
-
-        // return the completion status
-        self.complete
-    }
 }
 
-#[test]
-fn test_cycle_info_hash_computation() {
-    use crate::DeferredCredits;
-    use bitvec::prelude::*;
-    use massa_models::address::{UserAddress, UserAddressV0};
-
-    // cycle and address
-    let mut cycle_a = CycleInfo::new_with_hash(
-        0,
-        false,
-        BTreeMap::default(),
-        BitVec::default(),
-        PreHashMap::default(),
-    );
-    let addr = Address::User(UserAddress::UserAddressV0(UserAddressV0(
-        Hash::compute_from(&[0]),
-    )));
-
-    // add changes
-    let mut roll_changes = PreHashMap::default();
-    roll_changes.insert(addr, 10);
-    let mut production_stats = PreHashMap::default();
-    production_stats.insert(
-        addr,
-        ProductionStats {
-            block_success_count: 4,
-            block_failure_count: 0,
-        },
-    );
-    let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 0, 10],
-        roll_changes: roll_changes.clone(),
-        production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::new_with_hash(),
-    };
-    cycle_a.apply_changes(changes, Slot::new(0, 0), 2, 2);
-
-    // update changes once
-    roll_changes.clear();
-    roll_changes.insert(addr, 20);
-    production_stats.clear();
-    production_stats.insert(
-        addr,
-        ProductionStats {
-            block_success_count: 4,
-            block_failure_count: 6,
-        },
-    );
-    let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 0, 20],
-        roll_changes: roll_changes.clone(),
-        production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::new_with_hash(),
-    };
-    cycle_a.apply_changes(changes, Slot::new(0, 1), 2, 2);
-
-    // update changes twice
-    roll_changes.clear();
-    roll_changes.insert(addr, 0);
-    production_stats.clear();
-    production_stats.insert(
-        addr,
-        ProductionStats {
-            block_success_count: 4,
-            block_failure_count: 12,
-        },
-    );
-    let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 0, 30],
-        roll_changes,
-        production_stats,
-        deferred_credits: DeferredCredits::new_with_hash(),
-    };
-    cycle_a.apply_changes(changes, Slot::new(1, 0), 2, 2);
-
-    // create a seconde cycle from same value and match hash
-    let cycle_b = CycleInfo::new_with_hash(
-        0,
-        cycle_a.complete,
-        cycle_a.roll_counts,
-        cycle_a.rng_seed,
-        cycle_a.production_stats,
-    );
-    assert_eq!(
-        cycle_a.roll_counts_hash, cycle_b.roll_counts_hash,
-        "roll_counts_hash mismatch"
-    );
-    assert_eq!(
-        cycle_a.production_stats_hash, cycle_b.production_stats_hash,
-        "production_stats_hash mismatch"
-    );
-    assert_eq!(
-        cycle_a.cycle_global_hash, cycle_b.cycle_global_hash,
-        "global_hash mismatch"
-    );
-}
-
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for `CycleInfo`
 pub struct CycleInfoSerializer {
-    u64_ser: U64VarIntSerializer,
-    bitvec_ser: BitVecSerializer,
-    production_stats_ser: ProductionStatsSerializer,
-    address_ser: AddressSerializer,
-    opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
+    pub u64_ser: U64VarIntSerializer,
+    pub bitvec_ser: BitVecSerializer,
+    pub production_stats_ser: ProductionStatsSerializer,
+    pub address_ser: AddressSerializer,
+    pub opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
 }
 
 impl Default for CycleInfoSerializer {
@@ -389,13 +215,15 @@ impl Serializer<CycleInfo> for CycleInfoSerializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for `CycleInfo`
 pub struct CycleInfoDeserializer {
-    u64_deser: U64VarIntDeserializer,
-    rolls_deser: RollsDeserializer,
-    bitvec_deser: BitVecDeserializer,
-    production_stats_deser: ProductionStatsDeserializer,
-    opt_hash_deser: OptionDeserializer<Hash, HashDeserializer>,
+    pub u64_deser: U64VarIntDeserializer,
+    pub rolls_deser: RollsDeserializer,
+    pub bitvec_deser: BitVecDeserializer,
+    pub production_stats_deser: ProductionStatsDeserializer,
+    pub opt_hash_deser: OptionDeserializer<Hash, HashDeserializer>,
 }
 
 impl CycleInfoDeserializer {
@@ -489,9 +317,11 @@ impl ProductionStats {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for `ProductionStats`
 pub struct ProductionStatsSerializer {
-    u64_ser: U64VarIntSerializer,
+    pub u64_ser: U64VarIntSerializer,
     address_ser: AddressSerializer,
 }
 
@@ -534,11 +364,13 @@ impl Serializer<PreHashMap<Address, ProductionStats>> for ProductionStatsSeriali
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for `ProductionStats`
 pub struct ProductionStatsDeserializer {
     length_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    pub address_deserializer: AddressDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
 }
 
 impl ProductionStatsDeserializer {
@@ -597,11 +429,13 @@ impl Deserializer<PreHashMap<Address, ProductionStats>> for ProductionStatsDeser
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for rolls
 pub struct RollsDeserializer {
     length_deserializer: U64VarIntDeserializer,
-    address_deserializer: AddressDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    pub address_deserializer: AddressDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
 }
 
 impl RollsDeserializer {
@@ -643,10 +477,12 @@ impl Deserializer<Vec<(Address, u64)>> for RollsDeserializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Serializer for cycle history
 pub struct CycleHistorySerializer {
-    u64_serializer: U64VarIntSerializer,
-    cycle_info_serializer: CycleInfoSerializer,
+    pub u64_serializer: U64VarIntSerializer,
+    pub cycle_info_serializer: CycleInfoSerializer,
 }
 
 impl CycleHistorySerializer {
@@ -680,10 +516,12 @@ impl Serializer<VecDeque<CycleInfo>> for CycleHistorySerializer {
     }
 }
 
+#[derive(Clone)]
+#[allow(missing_docs)]
 /// Deserializer for cycle history, useful when restarting from a snapshot
 pub struct CycleHistoryDeserializer {
-    u64_deserializer: U64VarIntDeserializer,
-    cycle_info_deserializer: CycleInfoDeserializer,
+    pub u64_deserializer: U64VarIntDeserializer,
+    pub cycle_info_deserializer: CycleInfoDeserializer,
 }
 
 impl CycleHistoryDeserializer {

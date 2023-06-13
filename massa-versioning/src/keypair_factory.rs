@@ -26,7 +26,7 @@ impl VersioningFactory for KeyPairFactory {
     fn create(
         &self,
         _args: &Self::Arguments,
-        strategy: Option<FactoryStrategy>,
+        strategy: FactoryStrategy,
     ) -> Result<Self::Output, Self::Error> {
         let version = self.get_component_version_with_strategy(strategy)?;
 

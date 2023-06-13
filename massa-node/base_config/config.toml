@@ -131,7 +131,9 @@
     max_future_processing_blocks = 400
     # max number of blocks waiting for dependencies
     max_dependency_blocks = 2048
-    # number of final periods that must be kept at all times (increase to more resilience to short network disconnections, high values will increase RAM usage.)
+    # number of final periods that must be kept without operations (increase improve bootstrap process, high values will increase RAM usage.)
+    force_keep_final_periods_without_ops = 128
+    # number of final periods that must be kept with operations (increase to more resilience to short network disconnections, high values will increase RAM usage.)
     force_keep_final_periods = 10
 
     # useless blocks are pruned every block_db_prune_interval ms
@@ -212,6 +214,9 @@
     Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections_pre_handshake = 8, max_in_connections_post_handshake = 1}
 
 [network]
+
+[metrics]
+    enabled = false
 
 [bootstrap]
     # list of bootstrap (ip, node id)

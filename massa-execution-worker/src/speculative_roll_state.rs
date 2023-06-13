@@ -331,12 +331,11 @@ impl SpeculativeRollState {
             let final_state = self.final_state.read();
             for (slot, addr_amount) in final_state
                 .pos_state
-                .deferred_credits
+                .get_deferred_credits_range(min_slot..)
                 .credits
-                .range(min_slot..)
             {
                 if let Some(amount) = addr_amount.get(address) {
-                    let _ = res.try_insert(*slot, *amount);
+                    let _ = res.try_insert(slot, *amount);
                 };
             }
         }
@@ -369,7 +368,6 @@ impl SpeculativeRollState {
             .final_state
             .read()
             .pos_state
-            .deferred_credits
             .get_address_credits_for_slot(addr, slot)
         {
             return Some(v);
@@ -391,20 +389,27 @@ impl SpeculativeRollState {
         let final_state = self.final_state.read();
 
         // add finals
-        final_state.pos_state.cycle_history.iter().for_each(|c| {
-            let mut cur_item = ExecutionAddressCycleInfo {
-                cycle: c.cycle,
-                is_final: c.complete,
-                ok_count: 0,
-                nok_count: 0,
-                active_rolls: None, // will be filled afterwards
-            };
-            if let Some(prod_stats) = c.production_stats.get(address) {
-                cur_item.ok_count = prod_stats.block_success_count;
-                cur_item.nok_count = prod_stats.block_failure_count;
-            }
-            res.push(cur_item);
-        });
+        final_state
+            .pos_state
+            .cycle_history_cache
+            .iter()
+            .for_each(|c| {
+                let mut cur_item = ExecutionAddressCycleInfo {
+                    cycle: c.0,
+                    is_final: c.1,
+                    ok_count: 0,
+                    nok_count: 0,
+                    active_rolls: None, // will be filled afterwards
+                };
+                if let Some(prod_stats) = final_state
+                    .pos_state
+                    .get_production_stats_for_address(c.0, *address)
+                {
+                    cur_item.ok_count = prod_stats.block_success_count;
+                    cur_item.nok_count = prod_stats.block_failure_count;
+                }
+                res.push(cur_item);
+            });
 
         // add active history
         // note that a last cycle might overlap between final and active histories
@@ -531,9 +536,9 @@ impl SpeculativeRollState {
             if let Some(final_stats) = final_state.pos_state.get_all_production_stats(cycle) {
                 for (addr, stats) in final_stats {
                     accumulated_stats
-                        .entry(*addr)
-                        .and_modify(|cur| cur.extend(stats))
-                        .or_insert_with(|| *stats);
+                        .entry(addr)
+                        .and_modify(|cur| cur.extend(&stats))
+                        .or_insert_with(|| stats);
                 }
                 underflow = false;
             }

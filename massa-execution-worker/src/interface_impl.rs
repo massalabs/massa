@@ -170,6 +170,11 @@ impl Interface for InterfaceImpl {
         // get target address
         let to_address = Address::from_str(address)?;
 
+        // check that the target address is an SC address
+        if !matches!(to_address, Address::SC(..)) {
+            bail!("called address {} is not an SC address", to_address);
+        }
+
         // write-lock context
         let mut context = context_guard!(self);
 
@@ -187,7 +192,9 @@ impl Interface for InterfaceImpl {
 
         // transfer coins from caller to target address
         let coins = Amount::from_raw(raw_coins);
-        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, true)
+        // note: rights are not checked here we checked that to_address is an SC address above
+        // and we know that the sender is at the top of the call stack
+        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, false)
         {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
@@ -740,19 +747,26 @@ impl Interface for InterfaceImpl {
         if validity_end.1 >= self.config.thread_count {
             bail!("validity end thread exceeds the configuration thread count")
         }
+        let target_addr = Address::from_str(target_address)?;
+
+        // check that the target address is an SC address
+        if !matches!(target_addr, Address::SC(..)) {
+            bail!("target address is not a smart contract address")
+        }
+
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
-        let fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(Some(sender), None, coins, true)?;
+        let fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(Some(sender), None, fee, true)?;
         execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
             sender,
-            Address::from_str(target_address)?,
+            target_addr,
             target_handler.to_string(),
             max_gas,
             fee,
@@ -774,6 +788,7 @@ impl Interface for InterfaceImpl {
                     })
                 })
                 .transpose()?,
+            None,
         ));
         execution_context.created_message_index += 1;
         Ok(())

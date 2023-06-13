@@ -1,11 +1,11 @@
 use std::{mem, thread::JoinHandle};
 
-use crossbeam::channel::{Receiver, RecvTimeoutError};
+use crossbeam::channel::RecvTimeoutError;
+use massa_channel::receiver::MassaReceiver;
 use massa_logging::massa_trace;
 use massa_models::operation::OperationId;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
-use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, log::warn};
 
 use crate::{
@@ -19,7 +19,7 @@ use super::{
 };
 
 struct PropagationThread {
-    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
+    internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     operations_to_announce: Vec<OperationId>,
     config: ProtocolConfig,
@@ -86,34 +86,14 @@ impl PropagationThread {
         });
         {
             let mut cache_write = self.cache.write();
-            let peers: Vec<PeerId> = cache_write
-                .ops_known_by_peer
-                .iter()
-                .map(|(id, _)| id.clone())
-                .collect();
             let peers_connected = self.active_connections.get_peer_ids_connected();
-            // Clean shared cache if peers do not exist anymore
-
-            for peer_id in peers {
-                if !peers_connected.contains(&peer_id) {
-                    cache_write.ops_known_by_peer.remove(&peer_id);
-                }
-            }
-
-            // Add new potential peers
-            for peer_id in peers_connected {
-                if cache_write.ops_known_by_peer.peek(&peer_id).is_none() {
-                    cache_write.ops_known_by_peer.insert(
-                        peer_id.clone(),
-                        LruMap::new(ByLength::new(
-                            self.config
-                                .max_node_known_ops_size
-                                .try_into()
-                                .expect("max_node_known_endorsements_size in config is > 0"),
-                        )),
-                    );
-                }
-            }
+            cache_write.update_cache(
+                peers_connected,
+                self.config
+                    .max_node_known_ops_size
+                    .try_into()
+                    .expect("max_node_known_ops_size is too big"),
+            );
 
             // Propagate to peers
             let all_keys: Vec<PeerId> = cache_write
@@ -140,6 +120,7 @@ impl PropagationThread {
                     );
                     for sub_list in new_ops.chunks(self.config.max_operations_per_message as usize)
                     {
+                        println!("AURELIEN: send: {:?}, to {}", sub_list, peer_id);
                         if let Err(err) = self.active_connections.send_to_peer(
                             &peer_id,
                             &self.operation_message_serializer,
@@ -162,7 +143,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    internal_receiver: Receiver<OperationHandlerPropagationCommand>,
+    internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     config: ProtocolConfig,
     cache: SharedOperationCache,

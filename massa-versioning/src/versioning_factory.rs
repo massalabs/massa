@@ -23,7 +23,7 @@ pub enum FactoryError {
 /// Strategy to use when creating a new object from a factory
 pub enum FactoryStrategy {
     /// use get_latest_version (see Factory trait)
-    Latest,
+    // Latest,
     /// Require to create an object with this specific version
     Exact(u32),
     /// Create an object given a timestamp (e.g slot)
@@ -54,6 +54,7 @@ pub trait VersioningFactory {
     /// Access to the MipStore
     fn get_versioning_store(&self) -> MipStore;
 
+    /*
     /// Get latest component version (aka last active for the factory component)
     fn get_latest_component_version(&self) -> u32 {
         let component = Self::get_component();
@@ -73,6 +74,7 @@ pub trait VersioningFactory {
             })
             .unwrap_or(0)
     }
+    */
 
     /// Get latest version at given timestamp (e.g. slot)
     fn get_latest_component_version_at(&self, ts: MassaTime) -> Result<u32, FactoryError> {
@@ -140,18 +142,18 @@ pub trait VersioningFactory {
     /// Get the version the current component with the given startegy
     fn get_component_version_with_strategy(
         &self,
-        strategy: Option<FactoryStrategy>,
+        strategy: FactoryStrategy,
     ) -> Result<u32, FactoryError> {
         match strategy {
-            Some(FactoryStrategy::Exact(v)) => match self.get_all_component_versions().get(&v) {
+            FactoryStrategy::Exact(v) => match self.get_all_component_versions().get(&v) {
                 Some(s) if *s == ComponentStateTypeId::Active => Ok(v),
                 Some(s) if *s != ComponentStateTypeId::Active => {
                     Err(FactoryError::OnStateNotReady(v))
                 }
                 _ => Err(FactoryError::UnknownVersion(v)),
             },
-            Some(FactoryStrategy::At(ts)) => self.get_latest_component_version_at(ts),
-            None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
+            FactoryStrategy::At(ts) => self.get_latest_component_version_at(ts),
+            // None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
         }
     }
 
@@ -159,7 +161,7 @@ pub trait VersioningFactory {
     fn create(
         &self,
         args: &Self::Arguments,
-        strategy: Option<FactoryStrategy>,
+        strategy: FactoryStrategy,
     ) -> Result<Self::Output, Self::Error>;
 }
 
@@ -167,7 +169,7 @@ pub trait VersioningFactory {
 mod test {
     use super::*;
 
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
     use crate::versioning::{MipInfo, MipState, MipStatsConfig};
@@ -245,7 +247,7 @@ mod test {
         fn create(
             &self,
             args: &Self::Arguments,
-            strategy: Option<FactoryStrategy>,
+            strategy: FactoryStrategy,
         ) -> Result<Self::Output, Self::Error> {
             let version = self.get_component_version_with_strategy(strategy);
 
@@ -275,7 +277,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(12),
             timeout: MassaTime::from_millis(15),
             activation_delay: MassaTime::from_millis(2),
@@ -285,7 +287,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(25),
             timeout: MassaTime::from_millis(28),
             activation_delay: MassaTime::from_millis(2),
@@ -320,13 +322,12 @@ mod test {
         };
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0]);
-        assert_eq!(fa.get_latest_component_version(), 0);
 
-        let addr_a = fa.create(&args, None);
+        let addr_a = fa.create(&args, 0.into());
         assert!(matches!(addr_a, Ok(TestAddress::V0(_))));
         //
         // Version 2 is unknown
-        let addr_ = fa.create(&args, Some(2.into()));
+        let addr_ = fa.create(&args, 2.into());
         assert!(matches!(addr_, Err(FactoryError::OnStateNotReady(2))));
 
         // Advance state 1 to Active
@@ -345,16 +346,16 @@ mod test {
                 .collect::<Vec<u32>>(),
             vec![0, 1, 2]
         );
-        assert_eq!(fa.get_latest_component_version(), 1);
-        let addr_b = fa.create(&args, None);
+        // assert_eq!(fa.get_latest_component_version(), 1);
+        let addr_b = fa.create(&args, FactoryStrategy::At(MassaTime::now().unwrap()));
         assert!(matches!(addr_b, Ok(TestAddress::V1(_))));
 
         // Error if not enough args
-        let addr_ = fa.create(&args_no_v1, Some(1.into()));
+        let addr_ = fa.create(&args_no_v1, 1.into());
         assert!(matches!(addr_, Err(FactoryError::OnCreate(_, _))));
 
         // Can still create AddressV0
-        let addr_c = fa.create(&args, Some(0.into()));
+        let addr_c = fa.create(&args, 0.into());
         println!("addr_c: {:?}", addr_c);
         assert!(matches!(addr_c, Ok(TestAddress::V0(_))));
     }
@@ -367,7 +368,7 @@ mod test {
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,
-            components: HashMap::from([(MipComponent::Address, 1)]),
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(12),
             timeout: MassaTime::from_millis(15),
             activation_delay: MassaTime::from_millis(2),
@@ -377,7 +378,7 @@ mod test {
         let vi_2 = MipInfo {
             name: "MIP-0003".to_string(),
             version: 2,
-            components: HashMap::from([(MipComponent::Address, 2)]),
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(25),
             timeout: MassaTime::from_millis(28),
             activation_delay: MassaTime::from_millis(2),
@@ -414,11 +415,11 @@ mod test {
         let st_3 = FactoryStrategy::At(MassaTime::from_millis(27)); // vi_2 is started or locked_in
         let st_4 = FactoryStrategy::At(MassaTime::from_millis(30)); // vi_2 is active (after vi_2.timeout)
 
-        let addr_st_1 = fa.create(&args, Some(st_1));
-        let addr_st_1_2 = fa.create(&args, Some(st_1_2.clone()));
-        let addr_st_2 = fa.create(&args, Some(st_2));
-        let addr_st_3 = fa.create(&args, Some(st_3));
-        let addr_st_4 = fa.create(&args, Some(st_4.clone()));
+        let addr_st_1 = fa.create(&args, st_1);
+        let addr_st_1_2 = fa.create(&args, st_1_2.clone());
+        let addr_st_2 = fa.create(&args, st_2);
+        let addr_st_3 = fa.create(&args, st_3);
+        let addr_st_4 = fa.create(&args, st_4.clone());
 
         assert!(matches!(addr_st_1, Ok(TestAddress::V0(_))));
         assert!(matches!(addr_st_1_2, Ok(TestAddress::V0(_))));
@@ -433,7 +434,7 @@ mod test {
         vs.0.write().store = info;
 
         assert_eq!(fa.get_all_active_component_versions(), vec![0, 1, 2]);
-        let addr_st_4 = fa.create(&args, Some(st_4));
+        let addr_st_4 = fa.create(&args, st_4);
         // Version 2 is selected but this is not implemented in factory yet
         assert!(matches!(
             addr_st_4,

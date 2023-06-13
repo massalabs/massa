@@ -14,6 +14,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
+use massa_db_exports::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -21,6 +22,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -88,6 +90,8 @@ pub(crate) struct ExecutionState {
     selector: Box<dyn SelectorController>,
     // channels used by the execution worker
     channels: ExecutionChannels,
+    /// prometheus metrics
+    massa_metrics: MassaMetrics,
 }
 
 impl ExecutionState {
@@ -105,10 +109,16 @@ impl ExecutionState {
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
         channels: ExecutionChannels,
+        massa_metrics: MassaMetrics,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_state.read().slot;
+        let last_final_slot = final_state
+            .read()
+            .db
+            .read()
+            .get_change_id()
+            .expect("Critical error: Final state has no slot attached");
 
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
@@ -172,6 +182,7 @@ impl ExecutionState {
             mip_store,
             selector,
             channels,
+            massa_metrics,
         }
     }
 
@@ -219,6 +230,12 @@ impl ExecutionState {
         exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
+
+        // update the prometheus metrics
+        self.massa_metrics
+            .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
+        self.massa_metrics
+            .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
     }
 
     /// Applies an execution output to the active (non-final) state
@@ -639,7 +656,7 @@ impl ExecutionState {
             )));
         }
 
-        // add rolls to the buyer withing the context
+        // add rolls to the buyer within the context
         context.add_rolls(&buyer_addr, *roll_count);
 
         Ok(())
@@ -678,9 +695,9 @@ impl ExecutionState {
             operation_datastore: None,
         }];
 
-        // send `roll_price` * `roll_count` coins from the sender to the recipient
+        // transfer coins from sender to destination
         if let Err(err) =
-            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, false)
+            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, true)
         {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
@@ -804,19 +821,21 @@ impl ExecutionState {
                 },
             ];
 
-            // Debit the sender's balance with the coins to transfer
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, coins, false) {
+            // Ensure that the target address is an SC address
+            if !matches!(target_addr, Address::SC(..)) {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation coins: {}",
-                    sender_addr, coins, err
+                    "cannot callSC towards non-SC address {}",
+                    target_addr
                 )));
             }
 
-            // Credit the operation target with coins.
-            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false) {
+            // Transfer coins from the sender to the target
+            if let Err(err) =
+                context.transfer_coins(Some(sender_addr), Some(target_addr), coins, false)
+            {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to credit operation target {} with {} operation coins: {}",
-                    target_addr, coins, err
+                    "failed to transfer {} operation coins from {} to {}: {}",
+                    coins, sender_addr, target_addr, err
                 )));
             }
 
@@ -890,18 +909,21 @@ impl ExecutionState {
                 },
             ];
 
-            // If there is no target bytecode or if message data is invalid,
-            // reimburse sender with coins and quit
+            // if the target address is not SC: fail
+            if !matches!(message.destination, Address::SC(..)) {
+                let err = ExecutionError::RuntimeError(
+                    "the target address is not a smart contract address".into(),
+                );
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(&message);
+                return Err(err);
+            }
+
+            // if there is no bytecode: fail
             let bytecode = match bytecode {
-                Some(bc) => bc,
-                bc => {
-                    let err = if bc.is_none() {
-                        ExecutionError::RuntimeError("no target bytecode found".into())
-                    } else {
-                        ExecutionError::RuntimeError(
-                            "message data does not convert to utf-8".into(),
-                        )
-                    };
+                Some(bytecode) => bytecode,
+                None => {
+                    let err = ExecutionError::RuntimeError("no target bytecode found".into());
                     context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(&message);
                     return Err(err);
@@ -1261,7 +1283,10 @@ impl ExecutionState {
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
 
-                debug!("execute_final_slot: found in cache, applied cache");
+                // update versioning stats
+                self.update_versioning_stats(exec_target, slot);
+
+                debug!("execute_final_slot: found in cache, applied cache and updated versioning stats");
 
                 // Broadcast a final slot execution output to active channel subscribers.
                 if self.config.broadcast_enabled {
@@ -1557,15 +1582,8 @@ impl ExecutionState {
 
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
-                let lookback_cycle_index =
-                    match final_state.pos_state.get_cycle_index(lookback_cycle) {
-                        Some(v) => v,
-                        None => Default::default(),
-                    };
                 // get rolls
-                final_state.pos_state.cycle_history[lookback_cycle_index]
-                    .roll_counts
-                    .clone()
+                final_state.pos_state.get_all_roll_counts(lookback_cycle)
             }
             None => final_state.pos_state.initial_rolls.clone(),
         }
@@ -1712,6 +1730,37 @@ impl ExecutionState {
                     self.mip_store.update_network_version_stats(
                         slot_ts,
                         Some((current_version, announced_version)),
+                    );
+
+                    // Now write mip store changes to disk (if any)
+                    let mut db_batch = DBBatch::new();
+                    let mut db_versioning_batch = DBBatch::new();
+                    // Unwrap/Expect because if something fails we can only panic here
+                    let slot_prev_ts = get_block_slot_timestamp(
+                        self.config.thread_count,
+                        self.config.t0,
+                        self.config.genesis_timestamp,
+                        slot.get_prev_slot(self.config.thread_count).unwrap(),
+                    )
+                    .unwrap();
+
+                    self.mip_store
+                        .update_batches(
+                            &mut db_batch,
+                            &mut db_versioning_batch,
+                            (&slot_prev_ts, &slot_ts),
+                        )
+                        .unwrap_or_else(|e| {
+                            panic!(
+                                "Unable to get MIP store changes between {} and {}: {}",
+                                slot_prev_ts, slot_ts, e
+                            )
+                        });
+
+                    self.final_state.write().db.write().write_batch(
+                        db_batch,
+                        db_versioning_batch,
+                        None,
                     );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);

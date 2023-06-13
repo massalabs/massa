@@ -1,11 +1,12 @@
+use massa_channel::sender::MassaSender;
 use massa_consensus_exports::ConsensusManager;
-use std::{sync::mpsc::SyncSender, thread::JoinHandle};
+use std::thread::JoinHandle;
 use tracing::log::info;
 
 use crate::commands::ConsensusCommand;
 
 pub struct ConsensusManagerImpl {
-    pub consensus_thread: Option<(SyncSender<ConsensusCommand>, JoinHandle<()>)>,
+    pub consensus_thread: Option<(MassaSender<ConsensusCommand>, JoinHandle<()>)>,
 }
 
 impl ConsensusManager for ConsensusManagerImpl {
