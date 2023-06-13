@@ -685,6 +685,9 @@ impl Command {
             }
 
             Command::wallet_get_public_key => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let addresses = parse_vec::<Address>(parameters)?;
@@ -706,6 +709,9 @@ impl Command {
             }
 
             Command::wallet_get_secret_key => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 if !json {
@@ -731,6 +737,9 @@ impl Command {
             }
 
             Command::node_start_staking => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let addresses = parse_vec::<Address>(parameters)?;
@@ -756,6 +765,9 @@ impl Command {
             }
 
             Command::node_stop_staking => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let addresses = parse_vec::<Address>(parameters)?;
                 match client.private.remove_staking_addresses(addresses).await {
                     Ok(()) => {
@@ -830,6 +842,9 @@ impl Command {
             }
 
             Command::wallet_add_secret_keys => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let keypairs = parse_vec::<KeyPair>(parameters)?;
@@ -846,6 +861,9 @@ impl Command {
             }
 
             Command::wallet_remove_addresses => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let mut res = "".to_string();
