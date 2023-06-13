@@ -255,7 +255,6 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
             }
 
             for (dplx, remote_addr) in connections {
-
                 // claim a slot in the max_bootstrap_sessions
                 let server_binding = BootstrapServerBinder::new(
                     dplx,

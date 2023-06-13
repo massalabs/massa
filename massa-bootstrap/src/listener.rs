@@ -3,7 +3,7 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use mio::net::TcpListener as MioTcpListener;
 
 use mio::{Events, Interest, Poll, Token, Waker};
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::error::BootstrapError;
 use crate::server::BSEventPoller;
@@ -43,7 +43,7 @@ impl BootstrapTcpListener {
         if addr.is_ipv6() {
             socket.set_only_v6(false)?;
         }
-        //socket.set_nonblocking(true)?;
+        socket.set_nonblocking(true)?;
         socket.bind(&(*addr).into())?;
 
         // Number of connections to queue, set to the hardcoded value used by tokio
@@ -54,7 +54,7 @@ impl BootstrapTcpListener {
 
         let mut mio_server =
             MioTcpListener::from_std(server.try_clone().expect("Unable to clone server socket"));
-            
+
         let poll = Poll::new()?;
 
         // wake up the poll when we want to stop the listener
@@ -64,7 +64,7 @@ impl BootstrapTcpListener {
             .register(&mut mio_server, NEW_CONNECTION, Interest::READABLE)?;
 
         // TODO use config for capacity ?
-        let events = Events::with_capacity(1);
+        let events = Events::with_capacity(32);
         Ok((
             waker,
             BootstrapTcpListener {
@@ -98,13 +98,10 @@ impl BSEventPoller for BootstrapTcpListener {
             }
         }
 
-        // FIXME: We should not have to re-register the listener after each poll
-        self.poll
-            .registry()
-            .reregister(&mut self._mio_server, NEW_CONNECTION, Interest::READABLE)?;
+        if self._mio_server.accept().is_ok() {
+            debug!("Mio server still had bootstrap connection data to read");
+        }
 
-        // There could be more than one connection ready, but we want to re-check for the stop
-        // signal after processing each connection.
         Ok(results)
     }
 }
