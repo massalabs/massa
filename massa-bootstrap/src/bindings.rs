@@ -43,7 +43,10 @@ trait BindingReadExact: io::Read {
         }
         if count != buf.len() {
             Err((
-                std::io::Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"),
+                std::io::Error::new(
+                    ErrorKind::UnexpectedEof,
+                    format!("failed to fill whole buffer: {}/{}", count, buf.len()),
+                ),
                 count,
             ))
         } else {
