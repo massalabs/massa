@@ -74,6 +74,10 @@ pub struct MassaMetrics {
     consensus_state_discarded_index: IntGauge,
     consensus_state_block_statuses: IntGauge,
 
+    // endorsement cache
+    endorsement_cache_checked_endorsements: IntGauge,
+    endorsement_cache_known_by_peer: IntGauge,
+
     // blocks_counter: IntGauge,
     // endorsements_counter: IntGauge,
     // operations_counter: IntGauge,
@@ -196,6 +200,18 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let endorsement_cache_checked_endorsements = IntGauge::new(
+            "endorsement_cache_checked_endorsements",
+            "endorsement cache checked endorsements size",
+        )
+        .unwrap();
+
+        let endorsement_cache_known_by_peer = IntGauge::new(
+            "endorsement_cache_known_by_peer",
+            "endorsement cache know by peer size",
+        )
+        .unwrap();
+
         if enabled {
             for i in 0..nb_thread {
                 let gauge = Gauge::new(
@@ -239,6 +255,9 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(
                     operation_cache_checked_operations_prefix.clone(),
                 ));
+                let _ =
+                    prometheus::register(Box::new(endorsement_cache_checked_endorsements.clone()));
+                let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
             }
         }
 
@@ -257,6 +276,8 @@ impl MassaMetrics {
             consensus_state_incoming_index,
             consensus_state_discarded_index,
             consensus_state_block_statuses,
+            endorsement_cache_checked_endorsements,
+            endorsement_cache_known_by_peer,
             // blocks_counter,
             // endorsements_counter,
             // operations_counter,
@@ -352,6 +373,17 @@ impl MassaMetrics {
             .set(checked_operations_prefix as i64);
         self.operation_cache_ops_know_by_peer
             .set(ops_know_by_peer as i64);
+    }
+
+    pub fn set_endorsements_cache_metrics(
+        &self,
+        checked_endorsements: usize,
+        known_by_peer: usize,
+    ) {
+        self.endorsement_cache_checked_endorsements
+            .set(checked_endorsements as i64);
+        self.endorsement_cache_known_by_peer
+            .set(known_by_peer as i64);
     }
 }
 // mod test {

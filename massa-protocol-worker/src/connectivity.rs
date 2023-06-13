@@ -154,6 +154,7 @@ pub(crate) fn start_connectivity_thread(
                 sender_endorsements_propagation_ext,
                 protocol_channels.endorsement_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
+                massa_metrics.clone(),
             );
             let mut block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),
