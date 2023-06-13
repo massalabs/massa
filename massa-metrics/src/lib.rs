@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use prometheus::{register_int_gauge, Gauge, IntGauge};
+use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
 
 #[cfg(not(feature = "testing"))]
 mod server;
@@ -15,7 +15,7 @@ lazy_static! {
     static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!("operations_counter", "operations counter len").unwrap();
     static ref BLOCKS_COUNTER: IntGauge = register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge = register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
-    static ref DELTA_BLOCK_GRAPH_SLOT: IntGauge = register_int_gauge!("delta_block_graph_slot", "delta in ms between block inclusion in graph and block slot").unwrap();
+    // static ref BLOCK_GRAPH_SLOT_TIME: IntGauge = register_int_gauge!("block_graph_slot_time", "sum of delta in ms between block inclusion in graph and block slot").unwrap();
 
 
     // static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
@@ -26,12 +26,8 @@ pub fn set_connections(in_connections: usize, out_connections: usize) {
     OUT_CONNECTIONS.set(out_connections as i64);
 }
 
-pub fn inc_blocks_counter() {
-    BLOCKS_COUNTER.inc();
-}
-
-pub fn dec_blocks_counter() {
-    BLOCKS_COUNTER.dec();
+pub fn set_blocks_counter(val: usize) {
+    BLOCKS_COUNTER.set(val as i64);
 }
 
 pub fn inc_endorsements_counter() {
@@ -54,7 +50,8 @@ pub fn dec_operations_counter() {
 pub struct MassaMetrics {
     consensus_vec: Vec<Gauge>,
 
-    block_graph_diff_ms: IntGauge,
+    block_graph_counter: IntCounter,
+    block_graph_ms: IntCounter,
 
     active_in_connections: IntGauge,
     active_out_connections: IntGauge,
@@ -227,9 +224,11 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let block_graph_diff_ms = IntGauge::new(
-            "block_slot_graph_diff_ms",
-            "time in ms between slot creation and his inclusion in graph",
+        let block_graph_counter =
+            IntCounter::new("block_slot_graph_counter", "total block in graph").unwrap();
+        let block_graph_ms = IntCounter::new(
+            "block_slot_graph_ms",
+            "sum of delta in ms between block inclusion in graph and block slot",
         )
         .unwrap();
 
@@ -265,13 +264,15 @@ impl MassaMetrics {
                 let _ =
                     prometheus::register(Box::new(endorsement_cache_checked_endorsements.clone()));
                 let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
-                let _ = prometheus::register(Box::new(block_graph_diff_ms.clone()));
+                let _ = prometheus::register(Box::new(block_graph_counter.clone()));
+                let _ = prometheus::register(Box::new(block_graph_ms.clone()));
             }
         }
 
         MassaMetrics {
             consensus_vec,
-            block_graph_diff_ms,
+            block_graph_counter,
+            block_graph_ms,
             active_in_connections,
             active_out_connections,
             retrieval_thread_stored_operations_sum,
@@ -397,8 +398,12 @@ impl MassaMetrics {
             .set(known_by_peer as i64);
     }
 
-    pub fn set_block_graph_diff_ms(&self, diff: u64) {
-        self.block_graph_diff_ms.set(diff as i64);
+    pub fn inc_block_graph_ms(&self, diff: u64) {
+        self.block_graph_ms.inc_by(diff);
+    }
+
+    pub fn inc_block_graph_counter(&self) {
+        self.block_graph_counter.inc();
     }
 }
 // mod test {
