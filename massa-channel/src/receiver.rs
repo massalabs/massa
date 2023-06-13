@@ -1,9 +1,10 @@
 use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
+    time::{Duration, Instant},
 };
 
-use crossbeam::channel::{Receiver, RecvError, TryRecvError};
+use crossbeam::channel::{Receiver, RecvError, RecvTimeoutError, TryRecvError};
 use prometheus::{Counter, Gauge};
 
 #[derive(Clone)]
@@ -59,6 +60,38 @@ impl<T> MassaReceiver<T> {
                 let _ = prometheus::unregister(Box::new(self.received.clone()));
 
                 Err(TryRecvError::Disconnected)
+            }
+        }
+    }
+
+    pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
+        match self.receiver.recv_deadline(deadline) {
+            Ok(msg) => {
+                self.inc_metrics();
+
+                Ok(msg)
+            }
+            Err(e) => {
+                let _ = prometheus::unregister(Box::new(self.actual_len.clone()));
+                let _ = prometheus::unregister(Box::new(self.received.clone()));
+
+                Err(e)
+            }
+        }
+    }
+
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
+        match self.receiver.recv_timeout(timeout) {
+            Ok(msg) => {
+                self.inc_metrics();
+
+                Ok(msg)
+            }
+            Err(e) => {
+                let _ = prometheus::unregister(Box::new(self.actual_len.clone()));
+                let _ = prometheus::unregister(Box::new(self.received.clone()));
+
+                Err(e)
             }
         }
     }
