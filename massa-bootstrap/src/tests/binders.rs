@@ -77,6 +77,7 @@ fn test_binders() {
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
     let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
 
     let mut server = BootstrapServerBinder::new(
         server.0,
@@ -119,9 +120,7 @@ fn test_binders() {
                     peers: BootstrapPeers(vector_peers.clone()),
                 };
 
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-
-                server.handshake_timeout(version, None).unwrap();
+                server.handshake_timeout(version(), None).unwrap();
 
                 server
                     .send_timeout(test_peers_message.clone(), None)
@@ -173,9 +172,7 @@ fn test_binders() {
                 );
                 let vector_peers = vec![(peer_id1, listeners)];
 
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-
-                client.handshake(version).unwrap();
+                client.handshake(version()).unwrap();
                 let message = client.next_timeout(None).unwrap();
                 match message {
                     BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -227,6 +224,7 @@ fn test_binders_double_send_server_works() {
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let client = std::net::TcpStream::connect(server.local_addr().unwrap()).unwrap();
     let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
 
     let mut server = BootstrapServerBinder::new(
         server.0,
@@ -269,9 +267,7 @@ fn test_binders_double_send_server_works() {
                     peers: BootstrapPeers(vector_peers.clone()),
                 };
 
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-
-                server.handshake_timeout(version, None).unwrap();
+                server.handshake_timeout(version(), None).unwrap();
                 server
                     .send_timeout(test_peers_message.clone(), None)
                     .unwrap();
@@ -313,9 +309,8 @@ fn test_binders_double_send_server_works() {
                     TransportType::Tcp,
                 );
                 let vector_peers = vec![(peer_id1, listeners.clone())];
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-                client.handshake(version).unwrap();
+                client.handshake(version()).unwrap();
                 let message = client.next_timeout(None).unwrap();
                 match message {
                     BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -375,6 +370,7 @@ fn test_binders_try_double_send_client_works() {
         client,
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
+    let version = || Version::from_str("TEST.1.10").unwrap();
 
     let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
@@ -393,9 +389,8 @@ fn test_binders_try_double_send_client_works() {
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                     peers: BootstrapPeers(vector_peers.clone()),
                 };
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-                server.handshake_timeout(version, None).unwrap();
+                server.handshake_timeout(version(), None).unwrap();
                 server
                     .send_timeout(test_peers_message.clone(), None)
                     .unwrap();
@@ -435,9 +430,8 @@ fn test_binders_try_double_send_client_works() {
                     TransportType::Tcp,
                 );
                 let vector_peers = vec![(peer_id1.clone(), listeners.clone())];
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-                client.handshake(version).unwrap();
+                client.handshake(version()).unwrap();
                 let message = client.next_timeout(None).unwrap();
                 match message {
                     BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -494,6 +488,7 @@ fn test_partial_msg() {
     let client = std::net::TcpStream::connect(addr).unwrap();
     let mut client_clone = client.try_clone().unwrap();
     let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
 
     let mut server = BootstrapServerBinder::new(
         server.0,
@@ -516,9 +511,7 @@ fn test_partial_msg() {
         .name("test_binders::server_thread".to_string())
         .spawn({
             move || {
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-
-                server.handshake_timeout(version, None).unwrap();
+                server.handshake_timeout(version(), None).unwrap();
 
                 let message = server.next_timeout(None).unwrap_err();
                 match message {
@@ -526,7 +519,7 @@ fn test_partial_msg() {
                         assert_eq!(message.kind(), std::io::ErrorKind::UnexpectedEof);
                         assert_eq!(message.to_string(), "failed to fill whole buffer: 0/2");
                     }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
+                    _ => panic!("expected an io_error"),
                 }
             }
         })
@@ -536,8 +529,7 @@ fn test_partial_msg() {
         .name("test_binders::server_thread".to_string())
         .spawn({
             move || {
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-                client.handshake(version).unwrap();
+                client.handshake(version()).unwrap();
 
                 // write the signature.
                 // This test  assumes that the the signature is not checked until the message is read in
