@@ -19,12 +19,14 @@ use std::io;
 use std::time::Instant;
 use std::{
     convert::TryInto,
-    io::{ErrorKind, Read, Write},
+    io::ErrorKind,
     net::{SocketAddr, TcpStream},
     thread,
     time::Duration,
 };
 use tracing::error;
+
+use super::BindingWriteExact;
 
 const KNOWN_PREFIX_LEN: usize = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
 /// The known-length component of a message to be received.
@@ -93,7 +95,8 @@ impl BootstrapServerBinder {
             self.version_serializer
                 .serialize(&version, &mut version_bytes)?;
             let mut msg_bytes = vec![0u8; version_bytes.len() + self.randomness_size_bytes];
-            self.read_exact_timeout(&mut msg_bytes, deadline)?;
+            self.read_exact_timeout(&mut msg_bytes, deadline)
+                .map_err(|(e, _)| e)?;
             let (_, received_version) = self
                 .version_deserializer
                 .deserialize::<DeserializeError>(&msg_bytes[..version_bytes.len()])
@@ -212,7 +215,8 @@ impl BootstrapServerBinder {
         let stream_data = [sig.to_bytes().as_slice(), &msg_len_bytes, &msg_bytes].concat();
 
         // send the data
-        self.write_all_timeout(&stream_data, deadline)?;
+        self.write_all_timeout(&stream_data, deadline)
+            .map_err(|(e, _)| e)?;
 
         // update prev sig
         self.prev_message = Some(Hash::compute_from(&sig.to_bytes()));
@@ -327,7 +331,7 @@ impl io::Write for BootstrapServerBinder {
     }
 }
 
-impl crate::bindings::BindingWriteAll for BootstrapServerBinder {
+impl crate::bindings::BindingWriteExact for BootstrapServerBinder {
     fn set_write_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
         self.duplex.set_write_timeout(duration)
     }
