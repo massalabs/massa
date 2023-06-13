@@ -15,6 +15,7 @@ lazy_static! {
     static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!("operations_counter", "operations counter len").unwrap();
     static ref BLOCKS_COUNTER: IntGauge = register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge = register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
+    static ref DELTA_BLOCK_GRAPH_SLOT: IntGauge = register_int_gauge!("delta_block_graph_slot", "delta in ms between block inclusion in graph and block slot").unwrap();
 
 
     // static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
@@ -53,6 +54,8 @@ pub fn dec_operations_counter() {
 pub struct MassaMetrics {
     consensus_vec: Vec<Gauge>,
 
+    block_graph_diff_ms: IntGauge,
+
     active_in_connections: IntGauge,
     active_out_connections: IntGauge,
 
@@ -73,6 +76,10 @@ pub struct MassaMetrics {
     consensus_state_incoming_index: IntGauge,
     consensus_state_discarded_index: IntGauge,
     consensus_state_block_statuses: IntGauge,
+
+    // endorsement cache
+    endorsement_cache_checked_endorsements: IntGauge,
+    endorsement_cache_known_by_peer: IntGauge,
 
     // blocks_counter: IntGauge,
     // endorsements_counter: IntGauge,
@@ -196,6 +203,24 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let endorsement_cache_checked_endorsements = IntGauge::new(
+            "endorsement_cache_checked_endorsements",
+            "endorsement cache checked endorsements size",
+        )
+        .unwrap();
+
+        let endorsement_cache_known_by_peer = IntGauge::new(
+            "endorsement_cache_known_by_peer",
+            "endorsement cache know by peer size",
+        )
+        .unwrap();
+
+        let block_graph_diff_ms = IntGauge::new(
+            "block_slot_graph_diff_ms",
+            "time in ms between slot creation and his inclusion in graph",
+        )
+        .unwrap();
+
         if enabled {
             for i in 0..nb_thread {
                 let gauge = Gauge::new(
@@ -239,11 +264,16 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(
                     operation_cache_checked_operations_prefix.clone(),
                 ));
+                let _ =
+                    prometheus::register(Box::new(endorsement_cache_checked_endorsements.clone()));
+                let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
+                let _ = prometheus::register(Box::new(block_graph_diff_ms.clone()));
             }
         }
 
         MassaMetrics {
             consensus_vec,
+            block_graph_diff_ms,
             active_in_connections,
             active_out_connections,
             retrieval_thread_stored_operations_sum,
@@ -257,6 +287,8 @@ impl MassaMetrics {
             consensus_state_incoming_index,
             consensus_state_discarded_index,
             consensus_state_block_statuses,
+            endorsement_cache_checked_endorsements,
+            endorsement_cache_known_by_peer,
             // blocks_counter,
             // endorsements_counter,
             // operations_counter,
@@ -352,6 +384,21 @@ impl MassaMetrics {
             .set(checked_operations_prefix as i64);
         self.operation_cache_ops_know_by_peer
             .set(ops_know_by_peer as i64);
+    }
+
+    pub fn set_endorsements_cache_metrics(
+        &self,
+        checked_endorsements: usize,
+        known_by_peer: usize,
+    ) {
+        self.endorsement_cache_checked_endorsements
+            .set(checked_endorsements as i64);
+        self.endorsement_cache_known_by_peer
+            .set(known_by_peer as i64);
+    }
+
+    pub fn set_block_graph_diff_ms(&self, diff: u64) {
+        self.block_graph_diff_ms.set(diff as i64);
     }
 }
 // mod test {
