@@ -2,9 +2,9 @@
 
 //! This file defines a generic finite-size execution request queue with an MPSC-based result sender.
 
+use massa_channel::sender::MassaSender;
 use massa_execution_exports::ExecutionError;
 use std::collections::VecDeque;
-use std::sync::mpsc::Sender;
 
 /// Represents an execution request T coupled with an MPSC sender for a result of type R
 #[derive(Debug)]
@@ -12,7 +12,7 @@ pub(crate) struct RequestWithResponseSender<T, R> {
     /// The underlying execution request
     request: T,
     /// An std::mpsc::Sender to later send the execution output R (or an error)
-    response_tx: Sender<Result<R, ExecutionError>>,
+    response_tx: MassaSender<Result<R, ExecutionError>>,
 }
 
 impl<T, R> RequestWithResponseSender<T, R> {
@@ -21,7 +21,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
     /// # Arguments
     /// * `request`: the underlying request of type T
     /// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)
-    pub fn new(request: T, response_tx: Sender<Result<R, ExecutionError>>) -> Self {
+    pub fn new(request: T, response_tx: MassaSender<Result<R, ExecutionError>>) -> Self {
         RequestWithResponseSender {
             request,
             response_tx,
@@ -40,7 +40,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
     }
 
     /// Destructure self into a (request, response sender) pair
-    pub fn into_request_sender_pair(self) -> (T, Sender<Result<R, ExecutionError>>) {
+    pub fn into_request_sender_pair(self) -> (T, MassaSender<Result<R, ExecutionError>>) {
         (self.request, self.response_tx)
     }
 }

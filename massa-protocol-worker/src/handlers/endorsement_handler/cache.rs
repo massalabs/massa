@@ -11,10 +11,10 @@ pub struct EndorsementCache {
 }
 
 impl EndorsementCache {
-    pub fn new(max_known_endorsements: u32, max_known_endorsements_by_peer: u32) -> Self {
+    pub fn new(max_known_endorsements: u32, max_peers: u32) -> Self {
         Self {
             checked_endorsements: LruMap::new(ByLength::new(max_known_endorsements)),
-            endorsements_known_by_peer: LruMap::new(ByLength::new(max_known_endorsements_by_peer)),
+            endorsements_known_by_peer: LruMap::new(ByLength::new(max_peers)),
         }
     }
 

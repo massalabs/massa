@@ -1,7 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -17,12 +17,14 @@ use crate::{
     wrap_network::ActiveConnectionsTrait,
 };
 use crossbeam::{
-    channel::{at, Receiver, Sender},
+    channel::{at, tick},
     select,
 };
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
@@ -85,14 +87,14 @@ pub struct RetrievalThread {
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    receiver_network: Receiver<PeerMessageTuple>,
-    _internal_sender: Sender<BlockHandlerPropagationCommand>,
-    receiver: Receiver<BlockHandlerRetrievalCommand>,
+    receiver_network: MassaReceiver<PeerMessageTuple>,
+    _internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+    receiver: MassaReceiver<BlockHandlerRetrievalCommand>,
     block_message_serializer: MessagesSerializer,
     block_wishlist: PreHashMap<BlockId, BlockInfo>,
     asked_blocks: HashMap<PeerId, PreHashMap<BlockId, Instant>>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
-    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    sender_propagation_ops: MassaSender<OperationHandlerPropagationCommand>,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     next_timer_ask_block: Instant,
@@ -100,6 +102,7 @@ pub struct RetrievalThread {
     config: ProtocolConfig,
     storage: Storage,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 }
 
 impl RetrievalThread {
@@ -119,9 +122,12 @@ impl RetrievalThread {
                 max_denunciations_in_block_header: self.config.max_denunciations_in_block_header,
                 last_start_period: Some(self.config.last_start_period),
             });
+
+        let tick_update_metrics = tick(Duration::from_secs(5));
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
+                    self.receiver_network.inc_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match block_message_deserializer
@@ -188,6 +194,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver) -> msg => {
+                    self.receiver.inc_metrics();
                     match msg {
                         Ok(command) => {
                             match command {
@@ -228,6 +235,28 @@ impl RetrievalThread {
                         }
                     }
                 },
+                recv(tick_update_metrics) -> _ => {
+
+
+                    // update metrics
+                    {
+                        let block_read = self.cache.read();
+
+                        self.massa_metrics.set_block_cache_metrics(
+                            block_read.checked_headers.len(),
+                            block_read.blocks_known_by_peer.len(),
+                        );
+                    }
+
+                    {
+                        let ope_read = self.operation_cache.read();
+                        self.massa_metrics.set_operations_cache_metrics(
+                            ope_read.checked_operations.len(),
+                            ope_read.checked_operations_prefix.len(),
+                            ope_read.ops_known_by_peer.len(),
+                        );
+                    }
+                }
                 recv(at(self.next_timer_ask_block)) -> _ => {
                     if let Err(err) = self.update_ask_block() {
                         warn!("Error in ask_blocks: {:?}", err);
@@ -1300,17 +1329,18 @@ pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    receiver_network: Receiver<PeerMessageTuple>,
-    receiver: Receiver<BlockHandlerRetrievalCommand>,
-    _internal_sender: Sender<BlockHandlerPropagationCommand>,
-    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    receiver_network: MassaReceiver<PeerMessageTuple>,
+    receiver: MassaReceiver<BlockHandlerRetrievalCommand>,
+    _internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+    sender_propagation_ops: MassaSender<OperationHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     cache: SharedBlockCache,
     storage: Storage,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -1336,6 +1366,7 @@ pub fn start_retrieval_thread(
                 config,
                 storage,
                 mip_store,
+                massa_metrics,
             };
             retrieval_thread.run();
         })

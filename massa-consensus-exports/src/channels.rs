@@ -1,3 +1,4 @@
+use massa_channel::sender::MassaSender;
 use massa_execution_exports::ExecutionController;
 use massa_models::block::{FilledBlock, SecureShareBlock};
 use massa_models::block_header::BlockHeader;
@@ -21,7 +22,7 @@ pub struct ConsensusChannels {
     /// Interface to interact with Protocol module
     pub protocol_controller: Box<dyn ProtocolController>,
     /// Channel used by the consensus to send events to the node globally
-    pub controller_event_tx: crossbeam_channel::Sender<ConsensusEvent>,
+    pub controller_event_tx: MassaSender<ConsensusEvent>,
     /// Channel used for Websocket broadcast (if enabled) of new blocks being integrated in the graph
     pub block_sender: tokio::sync::broadcast::Sender<SecureShareBlock>,
     /// Channel used for Websocket broadcast (if enabled) of new block headers being integrated in the graph

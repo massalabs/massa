@@ -1,14 +1,13 @@
 use std::{
     collections::{HashMap, VecDeque},
     thread::JoinHandle,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
-use crossbeam::{
-    channel::{tick, Receiver, Sender},
-    select,
-};
+use crossbeam::{channel::tick, select};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
     operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
@@ -53,7 +52,7 @@ pub struct OperationBatchItem {
 }
 
 pub struct RetrievalThread {
-    receiver: Receiver<PeerMessageTuple>,
+    receiver: MassaReceiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
     asked_operations: LruMap<OperationPrefixId, (Instant, Vec<PeerId>)>,
@@ -62,10 +61,11 @@ pub struct RetrievalThread {
     stored_operations: HashMap<Instant, PreHashSet<OperationId>>,
     storage: Storage,
     config: ProtocolConfig,
-    internal_sender: Sender<OperationHandlerPropagationCommand>,
-    receiver_ext: Receiver<OperationHandlerRetrievalCommand>,
+    internal_sender: MassaSender<OperationHandlerPropagationCommand>,
+    receiver_ext: MassaReceiver<OperationHandlerRetrievalCommand>,
     operation_message_serializer: MessagesSerializer,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    massa_metrics: MassaMetrics,
 }
 
 impl RetrievalThread {
@@ -83,9 +83,12 @@ impl RetrievalThread {
             });
         let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
         let tick_clear_storage = tick(self.config.asked_operations_pruning_period.to_duration());
+        let tick_metrics = tick(Duration::from_secs(5));
+
         loop {
             select! {
                 recv(self.receiver) -> msg => {
+                    self.receiver.inc_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match operation_message_deserializer
@@ -134,6 +137,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver_ext) -> msg => {
+                    self.receiver_ext.inc_metrics();
                     match msg {
                         Ok(cmd) => match cmd {
                             OperationHandlerRetrievalCommand::Stop => {
@@ -154,6 +158,13 @@ impl RetrievalThread {
                 },
                 recv(tick_clear_storage) -> _ => {
                     self.clear_storage();
+                },
+                recv(tick_metrics) -> _ => {
+                    // update metrics
+                    let count: usize = self.stored_operations.values().map(|set| set.len()).sum();
+
+                    self.massa_metrics
+                        .set_retrieval_thread_stored_operations_sum(count);
                 }
             }
         }
@@ -501,15 +512,16 @@ impl RetrievalThread {
 
 #[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
-    receiver: Receiver<PeerMessageTuple>,
+    receiver: MassaReceiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
     config: ProtocolConfig,
     cache: SharedOperationCache,
     active_connections: Box<dyn ActiveConnectionsTrait>,
-    receiver_ext: Receiver<OperationHandlerRetrievalCommand>,
-    internal_sender: Sender<OperationHandlerPropagationCommand>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    receiver_ext: MassaReceiver<OperationHandlerRetrievalCommand>,
+    internal_sender: MassaSender<OperationHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    massa_metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
         .name("protocol-operation-handler-retrieval".to_string())
@@ -534,6 +546,7 @@ pub fn start_retrieval_thread(
                     .with_operation_message_serializer(OperationMessageSerializer::new()),
                 op_batch_buffer: VecDeque::new(),
                 peer_cmd_sender,
+                massa_metrics,
             };
             retrieval_thread.run();
         })
