@@ -74,7 +74,7 @@ pub struct BootstrapManager {
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
-    listener_stopper: Option<BootstrapListenerStopHandle>,
+    listener_stopper: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
@@ -85,29 +85,22 @@ impl BootstrapManager {
         update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         update_stopper_tx: crossbeam::channel::Sender<()>,
+        listener_stopper: BootstrapListenerStopHandle,
     ) -> Self {
         Self {
             update_handle,
             main_handle,
             update_stopper_tx,
-            listener_stopper: None,
+            listener_stopper,
         }
-    }
-    /// Sets an event-emmiter. `Self::stop`] will use this stopper to signal the listener that created this stopper.
-    pub fn set_listener_stopper(&mut self, listener_stopper: BootstrapListenerStopHandle) {
-        self.listener_stopper = Some(listener_stopper);
     }
 
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        // `as_ref` is critical here, as the stopper has to be alive until the poll in the event
-        // loop acts on the stop-signal
         // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
-        if let Some(listen_stop_handle) = self.listener_stopper.as_ref() {
-            if listen_stop_handle.stop().is_err() {
-                warn!("bootstrap server already dropped");
-            }
+        if self.listener_stopper.stop().is_err() {
+            warn!("bootstrap server already dropped");
         }
         if self.update_stopper_tx.send(()).is_err() {
             warn!("bootstrap ip-list-updater already dropped");
@@ -130,6 +123,7 @@ impl BootstrapManager {
 #[allow(clippy::too_many_arguments)]
 pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
     ev_poller: L,
+    listener_stopper: BootstrapListenerStopHandle,
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
@@ -191,6 +185,7 @@ pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
         update_handle,
         main_handle,
         update_stopper_tx,
+        listener_stopper,
     ))
 }
 
