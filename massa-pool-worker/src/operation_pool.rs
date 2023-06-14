@@ -15,6 +15,7 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{
+    cmp::max,
     cmp::PartialOrd,
     cmp::{Ordering, Reverse},
     collections::BTreeSet,
@@ -83,7 +84,7 @@ impl OperationPool {
         )
         .unwrap_or(Some(Slot::max(self.config.thread_count)))
         .unwrap_or(min_slot);
-        let max_slot = std::cmp::max(max_slot, min_slot);
+        let max_slot = max(max_slot, min_slot);
 
         // search for all our PoS draws in the interval of interest
         let pos_draws = BTreeSet::new();
@@ -103,14 +104,20 @@ impl OperationPool {
     }
 
     /// Returns the list of executed ops with a boolean indicating whether they are executed as final.
-    fn get_final_execution_statuses(&self) -> PreHashMap<OperationId, bool> {
+    fn get_execution_statuses(&self) -> PreHashMap<OperationId, bool> {
         let op_ids: Vec<OperationId> = self.sorted_ops.iter().map(|op_info| op_info.id).collect();
         self.channels
             .execution_controller
             .get_ops_exec_status(&op_ids)
             .into_iter()
             .zip(op_ids.into_iter())
-            .map(|((_, final_status), op_id)| (op_id, final_status))
+            .filter_map(
+                |((spec_status, final_status), op_id)| match (spec_status, final_status) {
+                    (Some(_), Some(_)) => Some((op_id, true)),
+                    (Some(_), None) => Some((op_id, false)),
+                    _ => None,
+                },
+            )
             .collect()
     }
 
@@ -142,11 +149,17 @@ impl OperationPool {
     ) {
         let mut removed = PreHashSet::default();
         self.sorted_ops.retain(|op_info| {
+            // filter out ops that use too much resources
+            let mut retain = (op_info.max_gas <= self.config.max_block_gas)
+                && (op_info.size <= self.config.max_block_size);
+
             // filter out ops that are not valid during our PoS draws
-            let mut retain = pos_draws.iter().any(|slot| {
-                op_info.thread == slot.thread
-                    && op_info.validity_period_range.contains(&slot.period)
-            });
+            if retain {
+                retain = pos_draws.iter().any(|slot| {
+                    op_info.thread == slot.thread
+                        && op_info.validity_period_range.contains(&slot.period)
+                });
+            }
 
             // filter out ops that have been executed in final slots
             if retain {
@@ -221,8 +234,77 @@ impl OperationPool {
         exec_statuses: &PreHashMap<OperationId, bool>,
         pos_draws: &BTreeSet<Slot>,
     ) -> PreHashMap<OperationId, f32> {
-        // TODO
-        unimplemented!()
+        let now = MassaTime::now().expect("could not get current time");
+        let now_period = get_latest_block_slot_at_timestamp(
+            self.config.th,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            now,
+        )
+        .expect("could not get current slot")
+        .map_or(0, |s| s.period);
+
+        for op_info in &self.sorted_ops {
+            // size score:
+            //    0% of block size => score 1
+            //    100% of block size => score 0
+            let size_score = 1.0 - (op_info.size as f32) / (self.config.max_block_size as f32);
+
+            // gas score:
+            //    0% of block gas => score 1
+            //    100% of block gas => score 0
+            let gas_score = 1.0 - (op_info.max_gas as f32) / (self.config.max_block_gas as f32);
+
+            // general resource score (mean of gas and size scores)
+            let resource_factor = (size_score + gas_score) / 2.0;
+
+            // inclusion probability factor
+            //    If we are selected to produce a block in a long time,
+            //    there is exponential likelihood that someone includes the op before us.
+            let tau_inclusion = 1.0; // exponential decay factor
+            let earliest_inclusion_opportunity = pos_draws.iter().find_map(|s| {
+                if s.thread == op_info.thread
+                    && op_info.validity_period_range.contains(&s.period)
+                    && s.period >= now_period.saturating_sub(1)
+                {
+                    Some(s.period)
+                } else {
+                    None
+                }
+            });
+            let inclusion_factor =
+                if let Some(earliest_inclusion_opportunity) = earliest_inclusion_opportunity {
+                    // compute the number of slots other stakers have available to include the op before we do
+                    let foreign_opportunities = earliest_inclusion_opportunity.saturating_sub(max(
+                        now_period.saturating_add(1),
+                        *op_info.validity_period_range.start(),
+                    ));
+                    (-(period_delta as f32) / tau_inclusion).exp()
+                } else {
+                    // no inclusion opportunity => score 0
+                    0
+                };
+
+            // If the op was executed previously, there is still an exponentially decaying chance of its block being cancelled
+            // so that it can be reincluded.
+            // We approximate it with a constant factor for simplicity since we don't have the inclusion slot for now.
+            let reexecution_penalty = 1.0 / 1000.0; // re-execution penalty factor
+            let reexecution_factor = if execution_state.is_some() {
+                // executed previously
+                reexecution_penalty
+            } else {
+                // not executed previously => score 1
+                1.0
+            };
+
+            // compute the score as being thre product of all the factors and the fee
+            let score =
+                (op_info.fee as f32) * resource_factor * inclusion_factor * reexecution_factor;
+
+            // store the score
+            scores.insert(op_info.id, score);
+        }
+        scores
     }
 
     /// Refresh the pool
