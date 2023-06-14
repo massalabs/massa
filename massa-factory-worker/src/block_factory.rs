@@ -134,8 +134,8 @@ impl BlockFactoryWorker {
         };
 
         debug!(
-            "block factory selected block producer address for slot {}: {}",
-            slot, block_producer_addr
+            "AURELIEN: Block prod {}: block factory selected block producer address for slot {}: {}",
+            slot, slot, block_producer_addr
         );
 
         // check if the block producer address is handled by the wallet
@@ -149,9 +149,17 @@ impl BlockFactoryWorker {
             // the selected block producer is not managed locally => quit
             return;
         };
+        debug!(
+            "AURELIEN: Block prod {}: kp fetched",
+            slot, 
+        );
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
+        debug!(
+            "AURELIEN: Block prod {}: parents fetched",
+            slot, 
+        );
         let mut block_storage = self.channels.storage.clone_without_refs();
 
         // claim block parents in local storage
@@ -172,12 +180,19 @@ impl BlockFactoryWorker {
         // will not panic because the thread is validated before the call
         let (same_thread_parent_id, _) = parents[slot.thread as usize];
 
+        debug!(
+            "AURELIEN: Block prod {}: before endo fetched",
+            slot, 
+        );
         // gather endorsements
         let (endorsements_ids, endo_storage) = self
             .channels
             .pool
             .get_block_endorsements(&same_thread_parent_id, &slot);
-
+        debug!(
+            "AURELIEN: Block prod {}: after endo fetched",
+            slot, 
+        );
         //TODO: Do we want ot populate only with endorsement id in the future ?
         let endorsements: Vec<SecureShareEndorsement> = {
             let endo_read = endo_storage.read_endorsements();
@@ -195,8 +210,15 @@ impl BlockFactoryWorker {
         block_storage.extend(endo_storage);
 
         // gather operations and compute global operations hash
+        debug!(
+            "AURELIEN: Block prod {}: before ops fetched",
+            slot, 
+        );
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
-
+        debug!(
+            "AURELIEN: Block prod {}: after ops fetched",
+            slot, 
+        );
         if op_ids.len() > self.cfg.max_operations_per_block as usize {
             warn!("Too many operations returned");
             return;
@@ -211,6 +233,10 @@ impl BlockFactoryWorker {
         );
 
         // create header
+        debug!(
+            "AURELIEN: Block prod {}: before get version",
+            slot, 
+        );
         let current_version = self.mip_store.get_network_version_current();
         let announced_version = self.mip_store.get_network_version_to_announce();
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
@@ -254,6 +280,10 @@ impl BlockFactoryWorker {
         self.channels
             .consensus
             .register_block(block_id, slot, block_storage, true);
+        debug!(
+            "AURELIEN: Block prod {}: after register block",
+            slot, 
+        );
     }
 
     /// main run loop of the block creator thread
