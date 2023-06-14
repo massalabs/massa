@@ -32,4 +32,4 @@ mockall = "0.11.4"
 
 [features]
 gas_calibration = ["tempfile"]
-testing = ["massa_models/testing",   "tempfile", "mockall"]
+testing = ["massa_models/testing", "tempfile", "mockall"]
