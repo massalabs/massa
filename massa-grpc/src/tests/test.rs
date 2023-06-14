@@ -5,7 +5,8 @@ use crate::server::MassaGrpc;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
-use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
+use massa_execution_exports::ExecutionChannels;
+use massa_execution_exports::MockExecutionController;
 use massa_models::config::{
     ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
@@ -28,7 +29,6 @@ use std::{
 #[tokio::test]
 async fn test_start_grpc_server() {
     let consensus_controller = MockConsensusControllerImpl::new();
-    let execution_ctrl = MockExecutionController::new_with_receiver();
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
     let pool_ctrl = MockPoolController::new_with_receiver();
@@ -36,7 +36,7 @@ async fn test_start_grpc_server() {
         MassaChannel::new("consensus_event".to_string(), Some(1024));
 
     let consensus_channels = ConsensusChannels {
-        execution_controller: execution_ctrl.0.clone(),
+        execution_controller: Box::new(MockExecutionController::new()),
         selector_controller: selector_ctrl.0.clone(),
         pool_controller: pool_ctrl.0.clone(),
         protocol_controller: Box::new(MockProtocolController::new()),
@@ -108,7 +108,7 @@ async fn test_start_grpc_server() {
     let service = MassaGrpc {
         consensus_controller: Box::new(consensus_controller),
         consensus_channels,
-        execution_controller: execution_ctrl.0,
+        execution_controller: Box::new(MockExecutionController::new()),
         execution_channels: ExecutionChannels {
             slot_execution_output_sender,
         },

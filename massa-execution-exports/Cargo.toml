@@ -10,9 +10,6 @@ edition = "2021"
 displaydoc = "0.2"
 thiserror = "1.0"
 num = { version = "0.4", features = ["serde"] }
-parking_lot = { version = "0.12", features = [
-    "deadlock_detection",
-], optional = true }
 tempfile = { version = "3.3", optional = true }
 tokio = { version = "1.23", features = ["sync"] }
 mockall = { version = "0.11.4",  optional = true}
@@ -24,7 +21,6 @@ massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
 massa_storage = { path = "../massa-storage" }
 massa_final_state = { path = "../massa-final-state" }
-massa_ledger_exports = { path = "../massa-ledger-exports", optional = true }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_versioning = { path = "../massa-versioning" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
@@ -35,5 +31,5 @@ mockall = "0.11.4"
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 
 [features]
-gas_calibration = ["massa_ledger_exports/testing", "parking_lot", "tempfile"]
-testing = ["massa_models/testing", "massa_ledger_exports/testing", "parking_lot", "tempfile", "mockall"]
+gas_calibration = ["tempfile"]
+testing = ["massa_models/testing",   "tempfile", "mockall"]

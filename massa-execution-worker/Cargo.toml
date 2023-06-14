@@ -66,6 +66,7 @@ gas_calibration = [
     "massa_pos_worker",
     "massa_ledger_worker",
     "tempfile",
+    "massa_db_worker",
 ]
 testing = [
     "massa_execution_exports/testing",
