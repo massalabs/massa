@@ -43,6 +43,7 @@ impl BootstrapTcpListener {
         if addr.is_ipv6() {
             socket.set_only_v6(false)?;
         }
+        // This is needed for the mio-polling system, which depends on the socket being non-blocking.
         socket.set_nonblocking(true)?;
         socket.bind(&(*addr).into())?;
 
@@ -86,7 +87,7 @@ impl BSEventPoller for BootstrapTcpListener {
             return Ok(vec![PollEvent::Stop]);
         }
 
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(self.events.iter().count());
 
         // Process each event.
         for event in self.events.iter() {
