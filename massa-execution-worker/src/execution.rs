@@ -215,12 +215,12 @@ impl ExecutionState {
         }
         debug!("AURELIEN: Execution: after stat counter {:?}", exec_out.slot);
 
-        debug!("AURELIEN: Execution: before stat counter {:?}", exec_out.slot);
+        debug!("AURELIEN: Execution: before finalize {:?}", exec_out.slot);
         // apply state changes to the final ledger
         self.final_state
             .write()
             .finalize(exec_out.slot, exec_out.state_changes);
-        debug!("AURELIEN: Execution: end stat counter {:?}", exec_out.slot);
+        debug!("AURELIEN: Execution: after finalize {:?}", exec_out.slot);
 
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
