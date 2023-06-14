@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
-use massa_consensus_exports::test_exports::ConsensusControllerImpl;
+use massa_consensus_exports::AutoMockConsensusController;
 use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
-use massa_pool_exports::test_exports::MockPoolController;
+use massa_pool_exports::AutoMockPoolController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -35,11 +35,17 @@ fn basic() {
         std::process::exit(1);
     }));
 
-    let (pool_controller1, _) = MockPoolController::new_with_receiver();
-    let (pool_controller2, _) = MockPoolController::new_with_receiver();
+    let mut pool_controller1 = Box::new(AutoMockPoolController::new());
+    pool_controller1
+        .expect_clone_box()
+        .returning(move || Box::new(AutoMockPoolController::new()));
+    let mut pool_controller2 = Box::new(AutoMockPoolController::new());
+    pool_controller2
+        .expect_clone_box()
+        .returning(move || Box::new(AutoMockPoolController::new()));
 
-    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
-    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+    let consensus_controller1 = Box::new(AutoMockConsensusController::new());
+    let consensus_controller2 = Box::new(AutoMockConsensusController::new());
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
@@ -175,11 +181,17 @@ fn stop_with_controller_still_exists() {
         std::process::exit(1);
     }));
 
-    let (pool_controller1, _) = MockPoolController::new_with_receiver();
-    let (pool_controller2, _) = MockPoolController::new_with_receiver();
+    let mut pool_controller1 = Box::new(AutoMockPoolController::new());
+    pool_controller1
+        .expect_clone_box()
+        .returning(move || Box::new(AutoMockPoolController::new()));
+    let mut pool_controller2 = Box::new(AutoMockPoolController::new());
+    pool_controller2
+        .expect_clone_box()
+        .returning(move || Box::new(AutoMockPoolController::new()));
 
-    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
-    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+    let consensus_controller1 = Box::new(AutoMockConsensusController::new());
+    let consensus_controller2 = Box::new(AutoMockConsensusController::new());
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1

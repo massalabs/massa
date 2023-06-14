@@ -11,9 +11,13 @@ mod controller_traits;
 
 pub use channels::PoolChannels;
 pub use config::PoolConfig;
+
 pub use controller_traits::{PoolController, PoolManager};
 
 /// Test utils
 #[cfg(feature = "testing")]
 /// Exports related to tests as Mocks and configurations
 pub mod test_exports;
+
+#[cfg(feature = "testing")]
+pub use controller_traits::MockPoolController as AutoMockPoolController;

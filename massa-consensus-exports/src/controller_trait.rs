@@ -8,6 +8,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
+#[cfg_attr(feature = "testing", mockall::automock)]
 /// Interface that communicates with the graph worker thread
 pub trait ConsensusController: Send + Sync {
     /// Get an export of a part of the graph

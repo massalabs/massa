@@ -2946,6 +2946,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_storage",
  "massa_time",
+ "mockall",
  "serde",
  "tokio",
 ]

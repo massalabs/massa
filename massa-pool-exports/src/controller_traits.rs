@@ -9,6 +9,7 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
+#[cfg_attr(feature = "testing", mockall::automock)]
 /// Trait defining a pool controller
 pub trait PoolController: Send + Sync {
     /// Asynchronously add operations to pool. Simply print a warning on failure.
