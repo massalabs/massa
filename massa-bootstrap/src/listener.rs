@@ -98,6 +98,8 @@ impl BSEventPoller for BootstrapTcpListener {
             }
         }
 
+        // We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
+        // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
         if self._mio_server.accept().is_ok() {
             debug!("Mio server still had bootstrap connection data to read");
         }
