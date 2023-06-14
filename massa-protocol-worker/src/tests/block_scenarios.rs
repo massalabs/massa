@@ -302,6 +302,85 @@ fn test_empty_block() {
 
 #[test]
 #[serial]
+fn test_own_double_staking_detection() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    protocol_test(
+        &protocol_config,
+        move |mut network_controller,
+              protocol_controller,
+              protocol_manager,
+              consensus_event_receiver,
+              pool_event_receiver| {
+            //1. Create 2 nodes
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = node_a_keypair.clone();
+            let (node_a_peer_id, node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            let (_node_b_peer_id, node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
+
+            //2. Create a block coming from node a.
+            let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
+            let op_2 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
+            let op_thread = op_1
+                .content_creator_address
+                .get_thread(protocol_config.thread_count);
+            let block = tools::create_block_with_operations(
+                &node_a_keypair,
+                Slot::new(1, op_thread),
+                vec![op_1.clone(), op_2.clone()],
+            );
+            //end setup
+
+            //3. Send the block header from node a
+            network_controller
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Block(Box::new(BlockMessage::BlockHeader(
+                        block.content.header.clone(),
+                    ))),
+                )
+                .unwrap();
+
+            //4. Send a wishlist that ask for the block
+            protocol_controller
+                .send_wishlist_delta(
+                    vec![(block.id, Some(block.content.header.clone()))]
+                        .into_iter()
+                        .collect(),
+                    PreHashSet::<BlockId>::default(),
+                )
+                .unwrap();
+
+            //5. Assert that we asked the block to node b
+            assert_hash_asked_to_node(&node_b, &block.id);
+
+            //5. Assert that node a disconnected (panic)
+            let _ = node_a
+                .recv_timeout(Duration::from_millis(1500))
+                .expect_err("Node was disconnected.");
+
+            (
+                network_controller,
+                protocol_controller,
+                protocol_manager,
+                consensus_event_receiver,
+                pool_event_receiver,
+            )
+        },
+    )
+}
+
+#[test]
+#[serial]
 fn test_dont_want_it_anymore() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
