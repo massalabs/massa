@@ -85,10 +85,7 @@ use massa_protocol_worker::{create_protocol_controller, start_protocol_controlle
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipComponent, MipInfo, MipState};
-use massa_versioning::{
-    mips::MIP_LIST,
-    versioning::{MipStatsConfig, MipStore},
-};
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
