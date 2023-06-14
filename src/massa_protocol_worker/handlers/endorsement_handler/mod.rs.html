@@ -83,13 +83,9 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
-<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
@@ -138,7 +134,6 @@
         local_sender: MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
         local_receiver: MassaReceiver&lt;EndorsementHandlerPropagationCommand&gt;,
         sender_peer_cmd: MassaSender&lt;PeerManagementCmd&gt;,
-        massa_metrics: MassaMetrics,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>endorsement_retrieval_thread = start_retrieval_thread(
             receiver,
@@ -149,7 +144,6 @@
             pool_controller,
             config.clone(),
             storage.clone_without_refs(),
-            massa_metrics,
         );
 
         <span class="kw">let </span>endorsement_propagation_thread =
