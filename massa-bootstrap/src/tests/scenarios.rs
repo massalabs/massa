@@ -161,7 +161,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .return_once(move || stream_mock2);
 
     start_bootstrap_server(
-        BootstrapTcpListener::new(&addr).unwrap().1,
+        BootstrapTcpListener::create(&addr).unwrap().1,
+        listener_stopper,
         stream_mock1,
         mocked1,
         final_state_server,
@@ -411,6 +412,7 @@ fn test_bootstrap_server() {
         .spawn(move || {
             start_bootstrap_server(
                 mock_bs_listener,
+                listener_stopper,
                 stream_mock1,
                 Box::new(mocked1),
                 final_state_server_clone1,

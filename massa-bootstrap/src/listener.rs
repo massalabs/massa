@@ -6,7 +6,6 @@ use mio::{Events, Interest, Poll, Token, Waker};
 use tracing::info;
 
 use crate::error::BootstrapError;
-use crate::server::BSEventPoller;
 
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
@@ -27,11 +26,15 @@ pub enum PollEvent {
     NewConnection((TcpStream, SocketAddr)),
     Stop,
 }
+
+#[cfg_attr(test, mockall::automock)]
 impl BootstrapTcpListener {
     /// Setup a mio-listener that functions as a `select!` on a connection, or a waker
     ///
     /// * `addr` - the address to listen on
-    pub fn new(addr: &SocketAddr) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
+    pub fn create(
+        addr: &SocketAddr,
+    ) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
         let domain = if addr.is_ipv4() {
             socket2::Domain::IPV4
         } else {
@@ -74,10 +77,7 @@ impl BootstrapTcpListener {
             },
         ))
     }
-}
-
-impl BSEventPoller for BootstrapTcpListener {
-    fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
+    pub(crate) fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
         // Confirm that we are not being signalled to shut down

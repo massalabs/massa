@@ -722,12 +722,13 @@ async fn launch(
     );
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        let (listener_stopper, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
-            panic!(
-                "{}",
-                format!("Could not bind to address: {}", addr).as_str()
-            )
-        });
+        let (listener_stopper, listener) =
+            BootstrapTcpListener::create(&addr).unwrap_or_else(|_| {
+                panic!(
+                    "{}",
+                    format!("Could not bind to address: {}", addr).as_str()
+                )
+            });
         start_bootstrap_server(
             listener,
             listener_stopper,

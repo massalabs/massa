@@ -57,7 +57,7 @@ use crate::{
     error::BootstrapError,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    BootstrapConfig,
+    BootstrapConfig, BootstrapTcpListener,
 };
 
 /// Specifies a common interface that can be used by standard, or mockers
@@ -121,8 +121,8 @@ impl BootstrapManager {
 
 /// See module level documentation for details
 #[allow(clippy::too_many_arguments)]
-pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
-    ev_poller: L,
+pub fn start_bootstrap_server(
+    ev_poller: BootstrapTcpListener,
     listener_stopper: BootstrapListenerStopHandle,
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
@@ -149,7 +149,7 @@ pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = BootstrapServer::<L>::run_updater(
+            let res = BootstrapServer::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -189,11 +189,11 @@ pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
     ))
 }
 
-struct BootstrapServer<'a, L: BSEventPoller> {
+struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
-    ev_poller: L,
+    ev_poller: BootstrapTcpListener,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -201,7 +201,7 @@ struct BootstrapServer<'a, L: BSEventPoller> {
     ip_hist_map: HashMap<IpAddr, Instant>,
 }
 
-impl<L: BSEventPoller> BootstrapServer<'_, L> {
+impl BootstrapServer<'_> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -275,7 +275,7 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                 }
 
                 // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::<L>::greedy_client_check(
+                if let Err(msg) = BootstrapServer::greedy_client_check(
                     &mut self.ip_hist_map,
                     remote_addr,
                     now,
