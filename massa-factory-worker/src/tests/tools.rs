@@ -21,8 +21,7 @@ use massa_pool_exports::test_exports::{
     MockPoolController, MockPoolControllerMessage, PoolEventReceiver,
 };
 use massa_pos_exports::{
-    test_exports::{MockSelectorController, MockSelectorControllerMessage},
-    Selection,
+    test_exports::MockSelectorControllerMessage, MockSelectorController, Selection,
 };
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
@@ -56,7 +55,7 @@ impl TestFactory {
     /// Returns
     /// - `TestFactory`: the structure that will be used to manage the tests
     pub fn new(default_keypair: &KeyPair) -> TestFactory {
-        let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
+        let selector_controller = MockSelectorController::new();
         let (consensus_controller, consensus_event_receiver) =
             ConsensusControllerImpl::new_with_receiver();
         let (pool_controller, pool_receiver) = MockPoolController::new_with_receiver();
@@ -93,7 +92,7 @@ impl TestFactory {
             factory_config.clone(),
             Arc::new(RwLock::new(create_test_wallet(Some(accounts)))),
             FactoryChannels {
-                selector: selector_controller.clone(),
+                selector: Box::new(selector_controller),
                 consensus: consensus_controller,
                 pool: pool_controller.clone(),
                 protocol: Box::new(protocol_controller),
@@ -105,7 +104,7 @@ impl TestFactory {
         TestFactory {
             consensus_event_receiver: Some(consensus_event_receiver),
             pool_receiver,
-            selector_receiver: Some(selector_receiver),
+            selector_receiver: None,
             factory_config,
             factory_manager,
             genesis_blocks,

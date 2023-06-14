@@ -15,7 +15,7 @@ use massa_models::config::{
 };
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
-use massa_pos_exports::test_exports::MockSelectorController;
+use massa_pos_exports::MockSelectorController;
 use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
 use massa_protocol_exports::MockProtocolController;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
@@ -28,14 +28,14 @@ use std::{
 async fn test_start_grpc_server() {
     let consensus_controller = MockConsensusControllerImpl::new();
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
-    let selector_ctrl = MockSelectorController::new_with_receiver();
+    let selector_ctrl = MockSelectorController::new();
     let pool_ctrl = MockPoolController::new_with_receiver();
     let (consensus_event_sender, _consensus_event_receiver) =
         MassaChannel::new("consensus_event".to_string(), Some(1024));
 
     let consensus_channels = ConsensusChannels {
         execution_controller: Box::new(MockExecutionController::new()),
-        selector_controller: selector_ctrl.0.clone(),
+        selector_controller: Box::new(selector_ctrl),
         pool_controller: pool_ctrl.0.clone(),
         protocol_controller: Box::new(MockProtocolController::new()),
         controller_event_tx: consensus_event_sender,
@@ -113,11 +113,11 @@ async fn test_start_grpc_server() {
         pool_channels: PoolChannels {
             endorsement_sender,
             operation_sender,
-            selector: selector_ctrl.0.clone(),
+            selector: Box::new(MockSelectorController::new()),
         },
         pool_command_sender: pool_ctrl.0,
         protocol_command_sender: Box::new(MockProtocolController::new()),
-        selector_controller: selector_ctrl.0,
+        selector_controller: Box::new(MockSelectorController::new()),
         storage: shared_storage,
         grpc_config: grpc_config.clone(),
         version: *VERSION,

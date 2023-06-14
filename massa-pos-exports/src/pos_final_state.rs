@@ -1435,8 +1435,8 @@ impl PoSFinalState {
 
 #[test]
 fn test_pos_final_state_hash_computation() {
-    use crate::test_exports::MockSelectorController;
     use crate::DeferredCredits;
+    use crate::MockSelectorController;
     use crate::PoSFinalState;
     use bitvec::prelude::*;
     use massa_db_exports::{MassaDBConfig, MassaDBController};
@@ -1471,7 +1471,7 @@ fn test_pos_final_state_hash_computation() {
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
     ));
-    let (selector_controller, _) = MockSelectorController::new_with_receiver();
+    let selector_controller = MockSelectorController::new();
     let init_seed = Hash::compute_from(b"");
     let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
@@ -1491,7 +1491,7 @@ fn test_pos_final_state_hash_computation() {
         db: db.clone(),
         cycle_history_cache: Default::default(),
         rng_seed_cache: None,
-        selector: selector_controller,
+        selector: Box::new(selector_controller),
         initial_rolls: Default::default(),
         initial_seeds,
         deferred_credits_serializer: DeferredCreditsSerializer::new(),
