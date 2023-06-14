@@ -112,6 +112,8 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::{SocketAddr, TcpListener, TcpStream};
 
 <span class="kw">use </span>mio::net::TcpListener <span class="kw">as </span>MioTcpListener;
@@ -212,7 +214,9 @@
             }
         }
 
-        <span class="kw">if </span><span class="self">self</span>._mio_server.accept().is_ok() {
+        <span class="comment">// We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
+        // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
+        </span><span class="kw">if </span><span class="self">self</span>._mio_server.accept().is_ok() {
             <span class="macro">debug!</span>(<span class="string">&quot;Mio server still had bootstrap connection data to read&quot;</span>);
         }
 
