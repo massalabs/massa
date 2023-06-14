@@ -120,7 +120,7 @@
 <span class="kw">use </span>mio::net::TcpListener <span class="kw">as </span>MioTcpListener;
 
 <span class="kw">use </span>mio::{Events, Interest, Poll, Token, Waker};
-<span class="kw">use </span>tracing::{debug, info};
+<span class="kw">use </span>tracing::{info, warn};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
 <span class="kw">use </span><span class="kw">crate</span>::server::BSEventPoller;
@@ -141,7 +141,7 @@
 <span class="kw">pub struct </span>BootstrapListenerStopHandle(Waker);
 
 <span class="kw">pub enum </span>PollEvent {
-    NewConnection((TcpStream, SocketAddr)),
+    NewConnections(Vec&lt;(TcpStream, SocketAddr)&gt;),
     Stop,
 }
 <span class="kw">impl </span>BootstrapTcpListener {
@@ -196,12 +196,12 @@
 }
 
 <span class="kw">impl </span>BSEventPoller <span class="kw">for </span>BootstrapTcpListener {
-    <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;PollEvent&gt;, BootstrapError&gt; {
+    <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt; {
         <span class="self">self</span>.poll.poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">None</span>).unwrap();
 
         <span class="comment">// Confirm that we are not being signalled to shut down
         </span><span class="kw">if </span><span class="self">self</span>.events.iter().any(|ev| ev.token() == STOP_LISTENER) {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[PollEvent::Stop]);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(PollEvent::Stop);
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::with_capacity(<span class="self">self</span>.events.iter().count());
@@ -210,7 +210,7 @@
         </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.iter() {
             <span class="kw">match </span>event.token() {
                 NEW_CONNECTION =&gt; {
-                    results.push(PollEvent::NewConnection(<span class="self">self</span>.server.accept()<span class="question-mark">?</span>));
+                    results.push(<span class="self">self</span>.server.accept()<span class="question-mark">?</span>);
                 }
                 <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
             }
@@ -218,11 +218,11 @@
 
         <span class="comment">// We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
         // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
-        </span><span class="kw">if </span><span class="self">self</span>._mio_server.accept().is_ok() {
-            <span class="macro">debug!</span>(<span class="string">&quot;Mio server still had bootstrap connection data to read&quot;</span>);
+        </span><span class="kw">while </span><span class="self">self</span>._mio_server.accept().is_ok() {
+            <span class="macro">warn!</span>(<span class="string">&quot;Mio server still had bootstrap connection data to read&quot;</span>);
         }
 
-        <span class="prelude-val">Ok</span>(results)
+        <span class="prelude-val">Ok</span>(PollEvent::NewConnections(results))
     }
 }
 
