@@ -457,30 +457,34 @@ pub(crate) fn get_operations(
         .execution_controller
         .get_ops_exec_status(&ops)
         .into_iter()
-        .map(|(spec_exec, final_exex)| {
-            let mut grpc_statuses: Vec<_> = Vec::new();
-            match (spec_exec, final_exec) {
-                (Some(true), Some(true)) => {
-                    status.push(grpc::OperationStatus::Success.into());
-                    status.push(grpc::OperationStatus::Final.into())
-                }
-                (Some(false), Some(false)) => {
-                    status.push(grpc::OperationStatus::Failure.into());
-                    status.push(grpc::OperationStatus::Final.into())
-                }
-                (Some(true), None) => {
-                    status.push(grpc::OperationStatus::Success.into());
-                    status.push(grpc::OperationStatus::Pending.into())
-                }
-                (Some(false), None) => {
-                    status.push(grpc::OperationStatus::Failure.into());
-                    status.push(grpc::OperationStatus::Pending.into())
-                }
-                _ => {
-                    status.push(grpc::OperationStatus::Unknown.into());
-                }
+        .map(|(spec_exec, final_exec)| match (spec_exec, final_exec) {
+            (Some(true), Some(true)) => {
+                vec![
+                    grpc::OperationStatus::Success.into(),
+                    grpc::OperationStatus::Final.into(),
+                ]
             }
-            grpc_statuses
+            (Some(false), Some(false)) => {
+                vec![
+                    grpc::OperationStatus::Failure.into(),
+                    grpc::OperationStatus::Final.into(),
+                ]
+            }
+            (Some(true), None) => {
+                vec![
+                    grpc::OperationStatus::Success.into(),
+                    grpc::OperationStatus::Pending.into(),
+                ]
+            }
+            (Some(false), None) => {
+                vec![
+                    grpc::OperationStatus::Failure.into(),
+                    grpc::OperationStatus::Pending.into(),
+                ]
+            }
+            _ => {
+                vec![grpc::OperationStatus::Unknown.into()]
+            }
         })
         .collect();
 

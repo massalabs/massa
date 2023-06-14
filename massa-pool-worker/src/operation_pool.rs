@@ -1,29 +1,22 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_execution_exports::ExecutionController;
 use massa_models::{
     address::Address,
     amount::Amount,
     operation::OperationId,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
+    timeslots::get_latest_block_slot_at_timestamp,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::{
-    cmp::max,
-    cmp::PartialOrd,
-    cmp::{Ordering, Reverse},
-    collections::BTreeSet,
-    sync::Arc,
-};
-use tracing::{debug, trace};
+use std::{cmp::max, cmp::Ordering, cmp::PartialOrd, collections::BTreeSet, sync::Arc};
+use tracing::debug;
 
-use crate::types::{OperationInfo, PoolOperationCursor};
+use crate::types::OperationInfo;
 
 pub struct OperationPool {
     /// configuration
@@ -71,7 +64,7 @@ impl OperationPool {
             .last_cs_final_periods
             .iter()
             .enumerate()
-            .map(|(t, p)| Slot::new(p, t as u8))
+            .map(|(t, p)| Slot::new(*p, t as u8))
             .min()
             .expect("empty last_vs_final_periods in operation pool");
         // max slot for PoS draw search = the slot after now() + max future start delay + margin
@@ -80,14 +73,14 @@ impl OperationPool {
             self.config.t0,
             self.config.genesis_timestamp,
             now.saturating_add(self.config.operation_max_future_start_delay)
-                .saturating_add(self.config.t0 * 2),
+                .saturating_add(self.config.t0.saturating_mul(2)),
         )
         .unwrap_or(Some(Slot::max(self.config.thread_count)))
         .unwrap_or(min_slot);
         let max_slot = max(max_slot, min_slot);
 
         // search for all our PoS draws in the interval of interest
-        let pos_draws = BTreeSet::new();
+        let mut pos_draws = BTreeSet::new();
         let addrs = self.wallet.read().keys.keys().copied().collect::<Vec<_>>();
         for addr in addrs {
             let (d, _) = self
@@ -95,11 +88,10 @@ impl OperationPool {
                 .selector
                 .get_address_selections(&addr, min_slot, max_slot)
                 .expect("could not get PoS draws");
-            self.pos_draws.extend(d.into_iter());
+            pos_draws.extend(d.into_iter());
         }
         // retain only the ones that are strictly after the last final slot of their thread
-        self.pos_draws
-            .retain(|s| s.period > self.last_cs_final_periods[s.thread as usize]);
+        pos_draws.retain(|s| s.period > self.last_cs_final_periods[s.thread as usize]);
         pos_draws
     }
 
@@ -136,7 +128,7 @@ impl OperationPool {
             .get_final_and_candidate_balance(&addrs);
         ret.into_iter()
             .zip(addrs.into_iter())
-            .map(|((_, c_balance), addr)| (addr, balance))
+            .map(|((_, c_balance), addr)| (addr, c_balance.unwrap_or_default()))
             .collect()
     }
 
@@ -151,7 +143,7 @@ impl OperationPool {
         self.sorted_ops.retain(|op_info| {
             // filter out ops that use too much resources
             let mut retain = (op_info.max_gas <= self.config.max_block_gas)
-                && (op_info.size <= self.config.max_block_size);
+                && (op_info.size <= self.config.max_block_size as usize);
 
             // filter out ops that are not valid during our PoS draws
             if retain {
@@ -163,7 +155,7 @@ impl OperationPool {
 
             // filter out ops that have been executed in final slots
             if retain {
-                retain = (exec_statuses.get(&op_info.id) != Some(&true));
+                retain = exec_statuses.get(&op_info.id) != Some(&true);
             }
 
             // filter out ops that spend more than the sender's balance
@@ -171,7 +163,7 @@ impl OperationPool {
                 retain = sender_balances
                     .get(&op_info.creator_address)
                     .copied()
-                    .unwrap_or(0)
+                    .unwrap_or_default()
                     >= op_info.max_spending;
             }
 
@@ -197,9 +189,9 @@ impl OperationPool {
                     sender_balances
                         .get(&op_info.creator_address)
                         .copied()
-                        .unwrap_or(0)
+                        .unwrap_or_default()
                 });
-            match *balance.saturating_sub(op_info.max_spending) {
+            match balance.checked_sub(op_info.max_spending) {
                 Some(v) => {
                     *balance = v;
                     true
@@ -209,7 +201,6 @@ impl OperationPool {
                     false
                 }
             }
-            true
         });
         // drop from storage
         self.storage.drop_operation_refs(&removed);
@@ -219,10 +210,15 @@ impl OperationPool {
     fn truncate_container(&mut self) {
         if self.sorted_ops.len() > self.config.max_operation_pool_size {
             let mut removed = PreHashSet::default();
-            for op_info in self.sorted_ops.iter().skip(self.config.max_container_size) {
+            for op_info in self
+                .sorted_ops
+                .iter()
+                .skip(self.config.max_operation_pool_size)
+            {
                 removed.insert(op_info.id);
             }
-            self.sorted_ops.truncate(self.config.max_container_size);
+            self.sorted_ops
+                .truncate(self.config.max_operation_pool_size);
             // drop from storage
             self.storage.drop_operation_refs(&removed);
         }
@@ -236,7 +232,7 @@ impl OperationPool {
     ) -> PreHashMap<OperationId, f32> {
         let now = MassaTime::now().expect("could not get current time");
         let now_period = get_latest_block_slot_at_timestamp(
-            self.config.th,
+            self.config.thread_count,
             self.config.t0,
             self.config.genesis_timestamp,
             now,
@@ -244,6 +240,7 @@ impl OperationPool {
         .expect("could not get current slot")
         .map_or(0, |s| s.period);
 
+        let mut scores = PreHashMap::with_capacity(self.sorted_ops.len());
         for op_info in &self.sorted_ops {
             // size score:
             //    0% of block size => score 1
@@ -279,17 +276,17 @@ impl OperationPool {
                         now_period.saturating_add(1),
                         *op_info.validity_period_range.start(),
                     ));
-                    (-(period_delta as f32) / tau_inclusion).exp()
+                    (-(foreign_opportunities as f32) / tau_inclusion).exp()
                 } else {
                     // no inclusion opportunity => score 0
-                    0
+                    0.0
                 };
 
             // If the op was executed previously, there is still an exponentially decaying chance of its block being cancelled
             // so that it can be reincluded.
             // We approximate it with a constant factor for simplicity since we don't have the inclusion slot for now.
             let reexecution_penalty = 1.0 / 1000.0; // re-execution penalty factor
-            let reexecution_factor = if execution_state.is_some() {
+            let reexecution_factor = if exec_statuses.contains_key(&op_info.id) {
                 // executed previously
                 reexecution_penalty
             } else {
@@ -298,8 +295,10 @@ impl OperationPool {
             };
 
             // compute the score as being thre product of all the factors and the fee
-            let score =
-                (op_info.fee as f32) * resource_factor * inclusion_factor * reexecution_factor;
+            let score = (op_info.fee.to_raw() as f32)
+                * resource_factor
+                * inclusion_factor
+                * reexecution_factor;
 
             // store the score
             scores.insert(op_info.id, score);
@@ -330,7 +329,7 @@ impl OperationPool {
             // note2: operands are reversed to sort from highest to lowest !
             scores
                 .get(&op2.id)
-                .partial_cmp(scores.get(&op1.id))
+                .partial_cmp(&scores.get(&op1.id))
                 .unwrap_or(Ordering::Equal)
         });
 
@@ -343,12 +342,12 @@ impl OperationPool {
 
     /// Get the number of stored elements
     pub fn len(&self) -> usize {
-        self.operations.len()
+        self.sorted_ops.len()
     }
 
     /// Checks whether an element is stored in the pool.
     pub fn contains(&self, id: &OperationId) -> bool {
-        self.operations.contains_key(id)
+        self.storage.get_op_refs().contains(id)
     }
 
     /// notify of new final slot
@@ -359,103 +358,26 @@ impl OperationPool {
             "notified of new final consensus periods: {:?}",
             self.last_cs_final_periods
         );
-        // prune old ops
-        let mut removed_ops: PreHashSet<_> = Default::default();
-        while let Some((expire_slot, op_id)) = self.ops_per_expiration.first().copied() {
-            if expire_slot.period > self.last_cs_final_periods[expire_slot.thread as usize] {
-                break;
-            }
-            self.ops_per_expiration.pop_first();
-            let op_info = self
-                .operations
-                .remove(&op_id)
-                .expect("expected op presence in operations list");
-            if !self.sorted_ops_per_thread[expire_slot.thread as usize].remove(&op_info.cursor) {
-                panic!("expected op presence in sorted list")
-            }
-            removed_ops.insert(op_id);
-        }
-
-        // notify storage that pool has lost references to removed_ops
-        self.storage.drop_operation_refs(&removed_ops);
     }
 
-    /// Checks if an operation is relevant according to its thread and period validity range
-    pub(crate) fn is_operation_relevant(&self, op_info: &OperationInfo) -> bool {
-        // too old
-        *op_info.validity_period_range.end() > self.last_cs_final_periods[op_info.thread as usize]
-        // todo check if validity not started yet
-    }
-
-    /// Add a list of operations to the pool
+    /// Add a list of operations to the end of the pool.
+    /// They will be cleaned up at the next refresh.
     pub(crate) fn add_operations(&mut self, mut ops_storage: Storage) {
-        let items = ops_storage
-            .get_op_refs()
-            .iter()
-            .copied()
-            .collect::<Vec<_>>();
-
-        let mut added = PreHashSet::with_capacity(items.len());
-        let mut removed = PreHashSet::with_capacity(items.len());
-
-        // add items to pool
+        let new_op_ids = ops_storage.get_op_refs() - self.storage.get_op_refs();
         {
             let ops = ops_storage.read_operations();
-            for op_id in items {
+            for new_op_id in &new_op_ids {
                 let op = ops
-                    .get(&op_id)
-                    .expect("attempting to add operation to pool, but it is absent from storage");
-                // Broadcast operation to active channel subscribers.
-                if self.config.broadcast_enabled {
-                    if let Err(err) = self.channels.operation_sender.send(op.clone()) {
-                        trace!(
-                            "error, failed to broadcast operation with id {} due to: {}",
-                            op.id.clone(),
-                            err
-                        );
-                    }
-                }
-
-                let op_info = OperationInfo::from_op(
+                    .get(new_op_id)
+                    .expect("operation not found in storage but listed as owned");
+                self.sorted_ops.push(OperationInfo::from_op(
                     op,
                     self.config.operation_validity_periods,
                     self.config.roll_price,
                     self.config.thread_count,
-                );
-                if !self.is_operation_relevant(&op_info) {
-                    continue;
-                }
-                if let Ok(op_info) = self.operations.try_insert(op_info.id, op_info) {
-                    if !self.sorted_ops_per_thread[op_info.thread as usize].insert(op_info.cursor) {
-                        panic!("sorted ops should not contain the op at this point");
-                    }
-                    if !self.ops_per_expiration.insert((
-                        Slot::new(*op_info.validity_period_range.end(), op_info.thread),
-                        op_info.id,
-                    )) {
-                        panic!("expiration indexed ops should not contain the op at this point");
-                    }
-                    added.insert(op_info.id);
-                }
+                ));
             }
         }
-
-        // prune excess operations
-        self.sorted_ops_per_thread.iter_mut().for_each(|ops| {
-            while ops.len() > self.config.max_operation_pool_size_per_thread {
-                // the unwrap below won't panic because the loop condition tests for non-emptines of self.operations
-                let cursor = ops.pop_last().unwrap();
-                let op_info = self
-                    .operations
-                    .remove(&cursor.get_id())
-                    .expect("the operation should be in self.operations at this point");
-                let end_slot = Slot::new(*op_info.validity_period_range.end(), op_info.thread);
-                if !self.ops_per_expiration.remove(&(end_slot, op_info.id)) {
-                    panic!("the operation should be in self.ops_per_expiration at this point");
-                }
-                removed.insert(op_info.id);
-            }
-        });
 
         // This will add the new ops to the storage without taking locks.
         // It just take the local references from `ops_storage` if they are not in `self.storage` yet.
@@ -465,12 +387,9 @@ impl OperationPool {
         // and when we will drop `ops_storage` it doesn't have the references anymore and so doesn't drop those objects.
         self.storage.extend(ops_storage.split_off(
             &Default::default(),
-            &added,
+            &new_op_ids,
             &Default::default(),
         ));
-
-        // Clean the removed operations from storage.
-        self.storage.drop_operation_refs(&removed);
     }
 
     /// get operations for block creation
@@ -492,15 +411,16 @@ impl OperationPool {
         let mut balance_cache: PreHashMap<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
-        for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+        for op_info in &self.sorted_ops {
+            // check thread
+            if op_info.thread != slot.thread {
+                continue;
+            }
+
             // if we have reached the maximum number of operations, stop
             if remaining_ops == 0 {
                 break;
             }
-            let op_info = self
-                .operations
-                .get(&cursor.get_id())
-                .expect("the operation should be in self.operations at this point");
 
             // exclude ops for which the block slot is outside of their validity range
             if !op_info.validity_period_range.contains(&slot.period) {
@@ -519,11 +439,14 @@ impl OperationPool {
 
             // check if the op was already executed
             // TODO batch this
-            if self
+            let already_executed = self
+                .channels
                 .execution_controller
-                .unexecuted_ops_among(&vec![op_info.id].into_iter().collect(), slot.thread)
-                .is_empty()
-            {
+                .get_ops_exec_status(&vec![op_info.id])
+                .get(0)
+                .map(|(c, _f)| c)
+                .is_some();
+            if already_executed {
                 continue;
             }
 
@@ -535,6 +458,7 @@ impl OperationPool {
                 if let Some(amount) = balance_cache.get_mut(&op_info.creator_address) {
                     amount
                 } else if let Some(balance) = self
+                    .channels
                     .execution_controller
                     .get_final_and_candidate_balance(&[op_info.creator_address])
                     .get(0)
@@ -546,7 +470,6 @@ impl OperationPool {
                 } else {
                     continue;
                 };
-
             if *creator_balance < op_info.fee {
                 continue;
             }

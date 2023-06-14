@@ -3,8 +3,6 @@ use massa_models::{
     amount::Amount,
     operation::{OperationId, SecureShareOperation},
 };
-use num::rational::Ratio;
-use std::cmp::Reverse;
 use std::ops::RangeInclusive;
 
 #[derive(Debug, Clone)]

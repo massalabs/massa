@@ -19,10 +19,12 @@ pub struct PoolConfig {
     pub operation_validity_periods: u64,
     /// operation pool refresh interval
     pub operation_pool_refresh_interval: MassaTime,
+    /// max delay in the future for operation validity start
+    pub operation_max_future_start_delay: MassaTime,
     /// max operations per block
     pub max_operations_per_block: u32,
     /// max operation pool size per thread (in number of operations)
-    pub max_operation_pool_size_per_thread: usize,
+    pub max_operation_pool_size: usize,
     /// max endorsement pool size per thread (in number of endorsements)
     pub max_endorsements_pool_size_per_thread: usize,
     /// max number of endorsements per block

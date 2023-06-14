@@ -6,13 +6,12 @@ use crate::controller_impl::{Command, PoolManagerImpl};
 use crate::denunciation_pool::DenunciationPool;
 use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
-use massa_execution_exports::ExecutionController;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::time::Duration;
+use std::time::Instant;
 use std::{
     sync::mpsc::{sync_channel, Receiver, RecvError, RecvTimeoutError},
     sync::Arc,
@@ -88,7 +87,7 @@ impl OperationPoolThread {
     ) -> JoinHandle<()> {
         let thread_builder = thread::Builder::new().name("operation-pool".into());
         thread_builder
-            .spawn(|| {
+            .spawn(move || {
                 let this = Self {
                     receiver,
                     operation_pool,
@@ -100,9 +99,9 @@ impl OperationPoolThread {
 
     /// Run the thread.
     fn run(self, config: PoolConfig) {
-        let refresh_interval: Duration = config.operation_pool_refresh_interval.to_duration();
+        let mut next_refresh = Instant::now();
         loop {
-            match self.receiver.recv_timeout(refresh_interval) {
+            match self.receiver.recv_deadline(next_refresh) {
                 Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
                 Ok(Command::AddItems(operations)) => {
                     self.operation_pool.write().add_operations(operations)
@@ -115,10 +114,14 @@ impl OperationPoolThread {
                     warn!("OperationPoolThread received an unexpected command");
                     continue;
                 }
-                Err(RecvTimeoutError::Timeout) => {
-                    self.operation_pool.write().refresh();
-                }
+                Err(RecvTimeoutError::Timeout) => {}
             };
+            if next_refresh <= Instant::now() {
+                self.operation_pool.write().refresh();
+                next_refresh = Instant::now()
+                    .checked_add(config.operation_pool_refresh_interval.to_duration())
+                    .expect("could not compute time of next op pool refresh")
+            }
         }
     }
 }
@@ -181,7 +184,6 @@ impl DenunciationPoolThread {
 pub fn start_pool_controller(
     config: PoolConfig,
     storage: &Storage,
-    execution_controller: Box<dyn ExecutionController>,
     channels: PoolChannels,
     wallet: Arc<RwLock<Wallet>>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
