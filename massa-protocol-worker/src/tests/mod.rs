@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::read_to_string, time::Duration};
+use std::{collections::HashMap, fs::read_to_string, sync::Arc, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_metrics::MassaMetrics;
@@ -8,6 +8,8 @@ use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig}
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use massa_wallet::test_exports::create_test_wallet;
+use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use tempfile::NamedTempFile;
 
@@ -135,6 +137,8 @@ fn basic() {
 
     let metrics = MassaMetrics::new(false, 32);
 
+    let test_wallet = Arc::new(RwLock::new(create_test_wallet(Default::default())));
+
     // Setup the protocols
     let (mut manager1, _, _) = start_protocol_controller(
         config1,
@@ -145,6 +149,7 @@ fn basic() {
         channels1,
         mip_store.clone(),
         metrics.clone(),
+        test_wallet.clone(),
     )
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
@@ -156,6 +161,7 @@ fn basic() {
         channels2,
         mip_store,
         metrics,
+        test_wallet,
     )
     .expect("Failed to start protocol 2");
 
@@ -271,6 +277,8 @@ fn stop_with_controller_still_exists() {
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
     let metrics = MassaMetrics::new(false, 32);
 
+    let test_wallet = Arc::new(RwLock::new(create_test_wallet(Default::default())));
+
     // Setup the protocols
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());
     let (mut sender_manager2, channels2) = create_protocol_controller(config2.clone());
@@ -283,6 +291,7 @@ fn stop_with_controller_still_exists() {
         channels1,
         mip_store.clone(),
         metrics.clone(),
+        test_wallet.clone(),
     )
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
@@ -294,6 +303,7 @@ fn stop_with_controller_still_exists() {
         channels2,
         mip_store,
         metrics,
+        test_wallet,
     )
     .expect("Failed to start protocol 2");
 

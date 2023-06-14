@@ -1,9 +1,11 @@
-use std::thread::JoinHandle;
+use std::{sync::Arc, thread::JoinHandle};
 
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
+use massa_wallet::Wallet;
+use parking_lot::RwLock;
 
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -49,6 +51,7 @@ impl EndorsementHandler {
         local_sender: MassaSender<EndorsementHandlerPropagationCommand>,
         local_receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
         sender_peer_cmd: MassaSender<PeerManagementCmd>,
+        wallet: Arc<RwLock<Wallet>>,
     ) -> Self {
         let endorsement_retrieval_thread = start_retrieval_thread(
             receiver,
@@ -59,6 +62,7 @@ impl EndorsementHandler {
             pool_controller,
             config.clone(),
             storage.clone_without_refs(),
+            wallet,
         );
 
         let endorsement_propagation_thread =

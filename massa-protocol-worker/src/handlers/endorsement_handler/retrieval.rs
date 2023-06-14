@@ -1,4 +1,4 @@
-use std::thread::JoinHandle;
+use std::{sync::Arc, thread::JoinHandle};
 
 use crossbeam::select;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -14,6 +14,8 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_wallet::Wallet;
+use parking_lot::RwLock;
 use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
@@ -41,6 +43,7 @@ pub struct RetrievalThread {
     config: ProtocolConfig,
     storage: Storage,
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    wallet: Arc<RwLock<Wallet>>,
 }
 
 impl RetrievalThread {
@@ -124,6 +127,9 @@ impl RetrievalThread {
     ///
     /// Checks performed:
     /// - Valid signature.
+    ///
+    /// Additionally, we detect if we are currently double staking
+    /// (If our staking wallet manages the same address as one of the endorsements's creator)
     pub(crate) fn note_endorsements_from_peer(
         &mut self,
         endorsements: Vec<SecureShareEndorsement>,
@@ -163,6 +169,18 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
+
+        // Check if any of the new endorsements creator address are handled by the wallet (this would mean double staking)
+        for (_, endorsement) in new_endorsements.iter() {
+            if let Some(_kp) = self
+                .wallet
+                .read()
+                .find_associated_keypair(&endorsement.content_creator_address)
+            {
+                panic!("Double staking detected on endorsement {:?}", endorsement);
+            }
+        }
+
         'write_cache: {
             let mut cache_write = self.cache.write();
             // add to verified signature cache
@@ -261,6 +279,7 @@ pub fn start_retrieval_thread(
     pool_controller: Box<dyn PoolController>,
     config: ProtocolConfig,
     storage: Storage,
+    wallet: Arc<RwLock<Wallet>>,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
         .name("protocol-endorsement-handler-retrieval".to_string())
@@ -274,6 +293,7 @@ pub fn start_retrieval_thread(
                 pool_controller,
                 config,
                 storage,
+                wallet,
             };
             retrieval_thread.run();
         })

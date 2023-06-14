@@ -691,6 +691,7 @@ async fn launch(
         protocol_channels,
         mip_store.clone(),
         metrics,
+        node_wallet.clone(),
     )
     .expect("could not start protocol controller");
 

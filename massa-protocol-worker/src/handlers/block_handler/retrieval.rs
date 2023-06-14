@@ -1,5 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
+    sync::Arc,
     thread::JoinHandle,
     time::{Duration, Instant},
 };
@@ -42,6 +43,8 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::TimeError;
 use massa_versioning::versioning::MipStore;
+use massa_wallet::Wallet;
+use parking_lot::RwLock;
 use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
@@ -103,6 +106,7 @@ pub struct RetrievalThread {
     storage: Storage,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc<RwLock<Wallet>>,
 }
 
 impl RetrievalThread {
@@ -483,6 +487,9 @@ impl RetrievalThread {
     /// - Unique indices.
     /// - Slot matches that of the block.
     /// - Block matches that of the block.
+    ///
+    /// Additionally, we detect if we are currently double staking
+    /// (If our staking wallet manages the same address as the block header's creator)
     pub(crate) fn note_header_from_peer(
         &mut self,
         header: &SecuredHeader,
@@ -532,6 +539,15 @@ impl RetrievalThread {
                 }
                 return Ok(Some((block_id, false)));
             }
+        }
+
+        // Check if the block producer address is handled by the wallet (this would mean double staking)
+        if let Some(_kp) = self
+            .wallet
+            .read()
+            .find_associated_keypair(&header.content_creator_address)
+        {
+            panic!("Double staking detected on header {:?}", header);
         }
 
         if let Err(err) =
@@ -634,6 +650,8 @@ impl RetrievalThread {
     ///
     /// Checks performed:
     /// - Valid signature.
+    ///
+    /// Here, we don't check for double staking, because our own endorsements will come in unknown block headers.
     pub(crate) fn note_endorsements_from_peer(
         &mut self,
         endorsements: Vec<SecureShareEndorsement>,
@@ -1341,6 +1359,7 @@ pub fn start_retrieval_thread(
     storage: Storage,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc<RwLock<Wallet>>,
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -1367,6 +1386,7 @@ pub fn start_retrieval_thread(
                 storage,
                 mip_store,
                 massa_metrics,
+                wallet,
             };
             retrieval_thread.run();
         })

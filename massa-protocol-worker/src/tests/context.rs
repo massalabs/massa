@@ -24,6 +24,7 @@ use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use massa_wallet::test_exports::create_test_wallet;
 use parking_lot::RwLock;
 use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
@@ -100,6 +101,7 @@ pub fn start_protocol_controller_with_mock_network(
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+    let test_wallet = Arc::new(RwLock::new(create_test_wallet(Default::default())));
 
     let connectivity_thread_handle = start_connectivity_thread(
         PeerId::from_public_key(keypair.get_public_key()),
@@ -125,6 +127,7 @@ pub fn start_protocol_controller_with_mock_network(
         config,
         mip_store,
         MassaMetrics::new(false, 32),
+        test_wallet,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

@@ -7,6 +7,7 @@ use massa_pool_exports::PoolController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
+use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::peer::PeerConnectionType;
 use std::net::SocketAddr;
@@ -74,6 +75,7 @@ pub(crate) fn start_connectivity_thread(
     config: ProtocolConfig,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc<RwLock<Wallet>>,
 ) -> Result<(MassaSender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
@@ -154,6 +156,7 @@ pub(crate) fn start_connectivity_thread(
                 sender_endorsements_propagation_ext,
                 protocol_channels.endorsement_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
+                wallet.clone(),
             );
             let mut block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),
@@ -173,6 +176,7 @@ pub(crate) fn start_connectivity_thread(
                 storage.clone_without_refs(),
                 mip_store,
                 massa_metrics.clone(),
+                wallet.clone(),
             );
 
             //Try to connect to peers

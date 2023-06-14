@@ -3061,6 +3061,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_versioning",
+ "massa_wallet",
  "nom",
  "num_enum",
  "parking_lot",

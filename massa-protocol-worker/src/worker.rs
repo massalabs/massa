@@ -16,6 +16,7 @@ use massa_versioning::{
     versioning::MipStore,
     versioning_factory::{FactoryStrategy, VersioningFactory},
 };
+use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::{
     config::{PeerNetCategoryInfo, PeerNetConfiguration},
@@ -183,6 +184,7 @@ pub fn start_protocol_controller(
     protocol_channels: ProtocolChannels,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc<RwLock<Wallet>>,
 ) -> Result<(Box<dyn ProtocolManager>, KeyPair, NodeId), ProtocolError> {
     debug!("starting protocol controller");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
@@ -364,6 +366,7 @@ pub fn start_protocol_controller(
         config,
         mip_store,
         massa_metrics,
+        wallet,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

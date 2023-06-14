@@ -32,10 +32,12 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_versioning = { path = "../massa-versioning" }
+massa_wallet = { path = "../massa-wallet" }
 
 [dev-dependencies]
 tempfile = "3.3"
 serial_test = "2.0.0"
+massa_wallet = { path = "../massa-wallet", features=["testing"]  }
 
 [features]
-testing = ["massa_protocol_exports/testing", "tempfile", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_metrics/testing"]
+testing = ["massa_protocol_exports/testing", "tempfile", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_metrics/testing", "massa_wallet/testing"]

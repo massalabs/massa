@@ -1,4 +1,4 @@
-use std::thread::JoinHandle;
+use std::{sync::Arc, thread::JoinHandle};
 
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
@@ -7,6 +7,8 @@ use massa_pool_exports::PoolController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
+use massa_wallet::Wallet;
+use parking_lot::RwLock;
 
 use crate::wrap_network::ActiveConnectionsTrait;
 
@@ -64,6 +66,7 @@ impl BlockHandler {
         storage: Storage,
         mip_store: MipStore,
         massa_metrics: MassaMetrics,
+        wallet: Arc<RwLock<Wallet>>,
     ) -> Self {
         let block_retrieval_thread = start_retrieval_thread(
             active_connections.clone(),
@@ -81,6 +84,7 @@ impl BlockHandler {
             storage.clone_without_refs(),
             mip_store,
             massa_metrics,
+            wallet,
         );
         let block_propagation_thread = start_propagation_thread(
             active_connections,
