@@ -76,7 +76,7 @@
 <span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use crate</span>::{LedgerChanges, LedgerError};
-<span class="kw">use </span>massa_db_exports::DBBatch;
+<span class="kw">use </span>::massa_db::DBBatch;
 
 <span class="kw">pub trait </span>LedgerController: Send + Sync + Debug {
     <span class="doccomment">/// Loads ledger from file

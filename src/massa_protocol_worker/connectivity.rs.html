@@ -404,7 +404,7 @@
             </span>std::thread::sleep(Duration::from_millis(<span class="number">100</span>));
 
             <span class="comment">// Create cache outside of the op handler because it could be used by other handlers
-            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake +<span class="number">1 </span>;
+            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake + <span class="number">1</span>;
             <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections + <span class="number">1</span>;
             <span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 config.max_known_ops_size.try_into().unwrap(),
