@@ -197,11 +197,13 @@ impl ExecutionState {
     /// # Arguments
     /// * `exec_out`: execution output to apply
     pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
+        debug!("AURELIEN: Execution: start function cache for final slot {:?}", exec_out.slot);
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
 
         // count stats
+        debug!("AURELIEN: Execution: before stat counter {:?}", exec_out.slot);
         if exec_out.block_id.is_some() {
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
@@ -211,11 +213,14 @@ impl ExecutionState {
                 exec_out.state_changes.executed_denunciations_changes.len(),
             );
         }
+        debug!("AURELIEN: Execution: after stat counter {:?}", exec_out.slot);
 
+        debug!("AURELIEN: Execution: before stat counter {:?}", exec_out.slot);
         // apply state changes to the final ledger
         self.final_state
             .write()
             .finalize(exec_out.slot, exec_out.state_changes);
+        debug!("AURELIEN: Execution: end stat counter {:?}", exec_out.slot);
 
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
@@ -227,15 +232,20 @@ impl ExecutionState {
         }
 
         // append generated events to the final event store
+        debug!("AURELIEN: Execution: before finalize events for final slot {:?}", exec_out.slot);
         exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
+        debug!("AURELIEN: Execution: after finalize events for final slot {:?}", exec_out.slot);
 
         // update the prometheus metrics
+        debug!("AURELIEN: Execution: before metrics for final slot {:?}", exec_out.slot);
         self.massa_metrics
             .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
         self.massa_metrics
             .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
+        debug!("AURELIEN: Execution: after metrics for final slot {:?}", exec_out.slot);
+        debug!("AURELIEN: Execution: end function cache for final slot {:?}", exec_out.slot);
     }
 
     /// Applies an execution output to the active (non-final) state
