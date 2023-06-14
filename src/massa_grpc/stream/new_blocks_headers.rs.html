@@ -98,7 +98,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::select;
@@ -109,7 +109,7 @@
 <span class="doccomment">/// Type declaration for NewBlocksHeaders
 </span><span class="kw">pub type </span>NewBlocksHeadersStreamType = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::NewBlocksHeadersResponse, tonic::Status&gt;&gt;
+        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc_api::NewBlocksHeadersResponse, tonic::Status&gt;&gt;
             + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,
@@ -118,7 +118,7 @@
 <span class="doccomment">/// Creates a new stream of new produced and received blocks headers
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_blocks_headers(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: Request&lt;Streaming&lt;grpc::NewBlocksHeadersRequest&gt;&gt;,
+    request: Request&lt;Streaming&lt;grpc_api::NewBlocksHeadersRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewBlocksHeadersStreamType, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -137,7 +137,7 @@
                     <span class="kw">match </span>event {
                         <span class="prelude-val">Ok</span>(massa_block_header) =&gt; {
                             <span class="comment">// Send the new block header through the channel
-                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc::NewBlocksHeadersResponse {
+                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewBlocksHeadersResponse {
                                     id: request_id.clone(),
                                     block_header: <span class="prelude-val">Some</span>(massa_block_header.into())
                             })).<span class="kw">await </span>{

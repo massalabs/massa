@@ -1485,6 +1485,7 @@
 <a href="#1485" id="1485">1485</a>
 <a href="#1486" id="1486">1486</a>
 <a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1509,7 +1510,8 @@
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
-<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
+<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 <span class="kw">use </span>massa_sdk::Client;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -2260,13 +2262,13 @@
 
                 <span class="comment">// In order to generate a KeyPair we need to get the MIP statuses and use the latest
                 // active version
-                </span><span class="kw">let </span>req = grpc::GetMipStatusRequest { id: <span class="string">&quot;&quot;</span>.to_string() };
+                </span><span class="kw">let </span>req = grpc_api::GetMipStatusRequest { id: <span class="string">&quot;&quot;</span>.to_string() };
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>grpc) = client.grpc {
                     <span class="kw">let </span>versioning_status = <span class="kw">match </span>grpc.get_mip_status(req).<span class="kw">await </span>{
                         <span class="prelude-val">Ok</span>(resp_) =&gt; {
                             <span class="kw">let </span>resp = resp_.into_inner();
-                            resp.entry
+                            resp.entries
                         }
                         <span class="prelude-val">Err</span>(e) =&gt; {
                             <span class="macro">grpc_error!</span>(e)
@@ -2282,16 +2284,16 @@
                             <span class="kw">let </span>is_about_keypair = <span class="kw">match </span>entry.mip_info {
                                 <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
                                 <span class="prelude-val">Some</span>(mip_info) =&gt; mip_info.components.iter().any(|st_entry| {
-                                    grpc::MipComponent::from_i32(st_entry.kind)
-                                        .unwrap_or(grpc::MipComponent::Unspecified)
-                                        == grpc::MipComponent::Keypair
+                                    grpc_model::MipComponent::from_i32(st_entry.kind)
+                                        .unwrap_or(grpc_model::MipComponent::Unspecified)
+                                        == grpc_model::MipComponent::Keypair
                                 }),
                             };
 
-                            <span class="kw">let </span>state = grpc::ComponentStateId::from_i32(entry.state_id)
-                                .unwrap_or(grpc::ComponentStateId::Error);
+                            <span class="kw">let </span>state = grpc_model::ComponentStateId::from_i32(entry.state_id)
+                                .unwrap_or(grpc_model::ComponentStateId::Error);
 
-                            <span class="kw">if </span>is_about_keypair &amp;&amp; state == grpc::ComponentStateId::Active {
+                            <span class="kw">if </span>is_about_keypair &amp;&amp; state == grpc_model::ComponentStateId::Active {
                                 <span class="prelude-val">Some</span>(entry.state_id)
                             } <span class="kw">else </span>{
                                 <span class="prelude-val">None

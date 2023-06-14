@@ -95,11 +95,12 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{error::GrpcError, server::MassaGrpc};
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>tokio::{select, time};
@@ -116,8 +117,9 @@
 <span class="doccomment">/// Type declaration for TransactionsThroughput
 </span><span class="kw">pub type </span>TransactionsThroughputStreamType = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::TransactionsThroughputResponse, tonic::Status&gt;&gt;
-            + Send
+        <span class="kw">dyn </span>futures_core::Stream&lt;
+                Item = <span class="prelude-ty">Result</span>&lt;grpc_api::TransactionsThroughputResponse, tonic::Status&gt;,
+            &gt; + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,
 &gt;;
@@ -125,7 +127,7 @@
 <span class="doccomment">/// The function returns a stream of transaction throughput statistics
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>transactions_throughput(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;tonic::Streaming&lt;grpc::TransactionsThroughputRequest&gt;&gt;,
+    request: tonic::Request&lt;tonic::Streaming&lt;grpc_api::TransactionsThroughputRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;TransactionsThroughputStreamType, GrpcError&gt; {
     <span class="kw">let </span>execution_controller = grpc.execution_controller.clone();
 
@@ -174,7 +176,7 @@
                         .unwrap_or_default() <span class="kw">as </span>u32;
                     <span class="comment">// Send the throughput response back to the client
                     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
-                        .send(<span class="prelude-val">Ok</span>(grpc::TransactionsThroughputResponse {
+                        .send(<span class="prelude-val">Ok</span>(grpc_api::TransactionsThroughputResponse {
                             id: request_id.clone(),
                             throughput,
                         }))
