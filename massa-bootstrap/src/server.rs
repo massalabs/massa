@@ -52,14 +52,17 @@ use std::{
 use tracing::{debug, error, info, warn};
 use white_black_list::*;
 
+#[cfg(not(test))]
+use crate::listener::BootstrapTcpListener;
+#[cfg(test)]
+use crate::listener::MockBootstrapTcpListener as BootstrapTcpListener;
 use crate::{
     bindings::BootstrapServerBinder,
     error::BootstrapError,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
-    BootstrapConfig, BootstrapTcpListener,
+    BootstrapConfig,
 };
-
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
 pub trait BSEventPoller {

@@ -9,10 +9,11 @@ use crate::tests::tools::{
     get_random_executed_ops_changes, get_random_pos_changes,
 };
 use crate::{
-    client::MockBSConnector, get_state, server::MockBSEventPoller, start_bootstrap_server,
-    tests::tools::get_bootstrap_config,
+    client::MockBSConnector, get_state, start_bootstrap_server, tests::tools::get_bootstrap_config,
 };
-use crate::{BootstrapConfig, BootstrapManager, BootstrapTcpListener};
+use crate::{
+    listener::MockBootstrapTcpListener, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
+};
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
@@ -160,8 +161,15 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .expect_clone_box()
         .return_once(move || stream_mock2);
 
+    let (listener_stopper, mut _listener) = BootstrapTcpListener::create(&addr).unwrap();
+    let mut listener = MockBootstrapTcpListener::new();
+    listener
+        .expect_poll()
+        .times(1)
+        .returning(move || _listener.poll());
+    listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
     start_bootstrap_server(
-        BootstrapTcpListener::create(&addr).unwrap().1,
+        listener,
         listener_stopper,
         stream_mock1,
         mocked1,
@@ -410,6 +418,8 @@ fn test_bootstrap_server() {
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
+            let (listener_stopper, _) =
+                BootstrapTcpListener::create(&"127.0.0.1:0".parse().unwrap()).unwrap();
             start_bootstrap_server(
                 mock_bs_listener,
                 listener_stopper,
@@ -557,7 +567,7 @@ fn test_bootstrap_server() {
     client_selector_manager.stop();
 }
 
-fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
+fn conn_establishment_mocks() -> (MockBootstrapTcpListener, MockBSConnector) {
     // Setup the server/client connection
     // Bind a TcpListener to localhost on a specific port
     let listener = std::net::TcpListener::bind("127.0.0.1:8069").unwrap();
@@ -573,9 +583,14 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .unwrap();
 
     // Mock the connection setups
-    // TODO: Why is it twice, and not just once?
     let mut seq = Sequence::new();
-    let mut mock_bs_listener = MockBSEventPoller::new();
+    let mut mock_bs_listener = MockBootstrapTcpListener::new();
+    let mut mock_remote_connector = MockBSConnector::new();
+    mock_remote_connector
+        .expect_connect_timeout()
+        .times(1)
+        .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
+        .in_sequence(&mut seq);
     mock_bs_listener
         .expect_poll()
         .times(1)
@@ -589,12 +604,5 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .returning(move || Ok(PollEvent::Stop))
         .in_sequence(&mut seq);
 
-    let mut seq = Sequence::new();
-    let mut mock_remote_connector = MockBSConnector::new();
-    mock_remote_connector
-        .expect_connect_timeout()
-        .times(1)
-        .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
-        .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)
 }
