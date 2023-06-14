@@ -214,6 +214,7 @@ impl OperationPool {
 
         // iterate over pool operations in the right thread, from best to worst
         for cursor in self.sorted_ops_per_thread[slot.thread as usize].iter() {
+            debug!("AURELIEN: Block prod {}: LEVEL2: Op pool: get_block_operations start one iter on op id {}", slot, cursor.get_id());
             // if we have reached the maximum number of operations, stop
             if remaining_ops == 0 {
                 break;
@@ -222,7 +223,7 @@ impl OperationPool {
                 .operations
                 .get(&cursor.get_id())
                 .expect("the operation should be in self.operations at this point");
-
+            debug!("AURELIEN: Block prod {}: LEVEL2: Op pool: get_block_operations one iter on op id {} cursor acquired", slot, cursor.get_id());
             // exclude ops for which the block slot is outside of their validity range
             if !op_info.validity_period_range.contains(&slot.period) {
                 continue;
@@ -238,6 +239,7 @@ impl OperationPool {
                 continue;
             }
 
+            debug!("AURELIEN: Block prod {}: LEVEL2: Op pool: get_block_operations one iter on op id {} before unexecuted check", slot, cursor.get_id());
             // check if the op was already executed
             // TODO batch this
             if self
@@ -247,7 +249,7 @@ impl OperationPool {
             {
                 continue;
             }
-
+            debug!("AURELIEN: Block prod {}: LEVEL2: Op pool: get_block_operations one iter on op id {} after unexecuted check", slot, cursor.get_id());
             // check balance
             //TODO: It's a weird behaviour because if the address is created afterwards this operation will be executed
             // and also it spams the pool maybe we should just try to put the operation if there is no balance and 0 gas price
@@ -267,7 +269,7 @@ impl OperationPool {
                 } else {
                     continue;
                 };
-
+            debug!("AURELIEN: Block prod {}: LEVEL2: Op pool: get_block_operations one iter on op id {} after balance check", slot, cursor.get_id());
             if *creator_balance < op_info.fee {
                 continue;
             }
@@ -286,6 +288,7 @@ impl OperationPool {
 
             // update balance cache
             *creator_balance = creator_balance.saturating_sub(op_info.max_spending);
+            debug!("AURELIEN: Block prod {}: LEVEL2: Op pool: get_block_operations end one iter on op id {}", slot, cursor.get_id());
         }
         debug!("AURELIEN: Block prod {}: Op pool: get_block_operations end iterating", slot);
 
