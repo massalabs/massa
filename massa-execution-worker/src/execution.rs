@@ -1240,7 +1240,6 @@ impl ExecutionState {
                 .get_prev_slot(self.config.thread_count)
                 .expect("overflow when iterating on slots");
         }
-
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to active state
@@ -1273,13 +1272,16 @@ impl ExecutionState {
         let first_exec_output = self.active_history.write().0.pop_front();
         if let Some(exec_out) = first_exec_output {
             if &exec_out.slot == slot && exec_out.block_id == target_id {
+                debug!("AURELIEN: Execution: start cache for final slot {:?}", slot);
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
 
+                debug!("AURELIEN: Execution: end apply cache for final slot {:?}", slot);
                 // update versioning stats
                 self.update_versioning_stats(exec_target, slot);
+                debug!("AURELIEN: Execution: end versioning update for final slot {:?}", slot);
 
                 debug!("execute_final_slot: found in cache, applied cache and updated versioning stats");
 
@@ -1298,7 +1300,7 @@ impl ExecutionState {
                 );
                     }
                 }
-
+                debug!("AURELIEN: Execution: end cache for final slot {:?}", slot);
                 return;
             } else {
                 // speculative cache mismatch
@@ -1315,6 +1317,7 @@ impl ExecutionState {
             );
         }
 
+        debug!("AURELIEN: Execution: start recompute for final slot {:?}", slot);
         // truncate the whole execution queue
         self.active_history.write().0.clear();
         self.active_cursor = self.final_cursor;
@@ -1630,15 +1633,12 @@ impl ExecutionState {
         let mut ops = ops.clone();
 
         if ops.is_empty() {
-            debug!("AURELIEN: Execution: {:?} stop ops is empty", ops);
             return ops;
         }
 
         {
             // check active history
-            debug!("AURELIEN: Execution: {:?} before take active history read", ops);
             let history = self.active_history.read();
-            debug!("AURELIEN: Execution: {:?} after take active history read", ops);
             for hist_item in history.0.iter().rev() {
                 if hist_item.slot.thread != thread {
                     continue;
@@ -1653,18 +1653,14 @@ impl ExecutionState {
                     return ops;
                 }
             }
-            debug!("AURELIEN: Execution: {:?} after iter active history", ops);
         }
 
         {
             // check final state
-            debug!("AURELIEN: Execution: {:?} before take final state read", ops);
             let final_state = self.final_state.read();
-            debug!("AURELIEN: Execution: {:?} after take final state read", ops);
             ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
-            debug!("AURELIEN: Execution: {:?} after filter ops final state", ops);
         }
-
+        debug!("AURELIEN: Execution: {:?} end op check", ops);
         ops
     }
 
@@ -1717,6 +1713,7 @@ impl ExecutionState {
         exec_target: Option<&(BlockId, Storage)>,
         slot: &Slot,
     ) {
+        debug!("AURELIEN: Execution: Start versioning update for {:?}", slot);
         // update versioning statistics
         if let Some((block_id, storage)) = exec_target {
             if let Some(block) = storage.read_blocks().get(block_id) {
@@ -1729,11 +1726,13 @@ impl ExecutionState {
 
                 let current_version = block.content.header.content.current_version;
                 let announced_version = block.content.header.content.announced_version;
+                debug!("AURELIEN: Execution: before  update_network_version_stats update for {:?}", slot);
                 if let Ok(slot_ts) = slot_ts_ {
                     self.mip_store.update_network_version_stats(
                         slot_ts,
                         Some((current_version, announced_version)),
                     );
+                    debug!("AURELIEN: Execution: after update_network_version_stats update for {:?}", slot);
 
                     // Now write mip store changes to disk (if any)
                     let mut db_batch = DBBatch::new();
@@ -1747,6 +1746,7 @@ impl ExecutionState {
                     )
                     .unwrap();
 
+                    debug!("AURELIEN: Execution: before update_batches update for {:?}", slot);
                     self.mip_store
                         .update_batches(
                             &mut db_batch,
@@ -1759,12 +1759,15 @@ impl ExecutionState {
                                 slot_prev_ts, slot_ts, e
                             )
                         });
+                        debug!("AURELIEN: Execution: after update_batches update for {:?}", slot);
 
+                    debug!("AURELIEN: Execution: after update_batches update for {:?}", slot);
                     self.final_state.write().db.write().write_batch(
                         db_batch,
                         db_versioning_batch,
                         None,
                     );
+                    debug!("AURELIEN: Execution: after write_batch update for {:?}", slot);
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);
                 }
