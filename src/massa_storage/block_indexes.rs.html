@@ -167,7 +167,6 @@
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::hash_map, collections::HashMap};
 
 <span class="kw">use </span>massa_models::{
@@ -203,8 +202,6 @@
 
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: SecureShareBlock) {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(b) = <span class="self">self</span>.blocks.try_insert(block.id, block) {
-            massa_metrics::inc_blocks_counter();
-
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(b.content_creator_address)
@@ -229,6 +226,8 @@
                     .or_default()
                     .insert(b.id);
             }
+
+            massa_metrics::set_blocks_counter(<span class="self">self</span>.blocks.len());
         }
     }
 
@@ -237,8 +236,6 @@
     /// * `block_id`: the block id to remove
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareBlock&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = <span class="self">self</span>.blocks.remove(block_id) {
-            massa_metrics::dec_blocks_counter();
-
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
                 <span class="self">self</span>.index_by_creator.entry(b.content_creator_address)
@@ -278,6 +275,7 @@
                     }
                 }
             }
+            massa_metrics::set_blocks_counter(<span class="self">self</span>.blocks.len());
             <span class="kw">return </span><span class="prelude-val">Some</span>(b);
         }
         <span class="prelude-val">None

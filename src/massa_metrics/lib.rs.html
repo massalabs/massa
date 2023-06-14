@@ -467,11 +467,25 @@
 <a href="#467" id="467">467</a>
 <a href="#468" id="468">468</a>
 <a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>lazy_static::lazy_static;
-<span class="kw">use </span>prometheus::{register_int_gauge, Gauge, IntGauge};
+<span class="kw">use </span>prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
+<span class="kw">use </span>survey::MassaSurvey;
 
 <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
 </span><span class="kw">mod </span>server;
+
+<span class="kw">mod </span>survey;
 
 <span class="comment">// TODO load only if feature metrics is enabled
 </span><span class="macro">lazy_static! </span>{
@@ -484,8 +498,6 @@
     <span class="kw">static </span><span class="kw-2">ref </span>OPERATIONS_COUNTER: IntGauge = <span class="macro">register_int_gauge!</span>(<span class="string">&quot;operations_counter&quot;</span>, <span class="string">&quot;operations counter len&quot;</span>).unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>BLOCKS_COUNTER: IntGauge = <span class="macro">register_int_gauge!</span>(<span class="string">&quot;blocks_counter&quot;</span>, <span class="string">&quot;blocks counter len&quot;</span>).unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>ENDORSEMENTS_COUNTER: IntGauge = <span class="macro">register_int_gauge!</span>(<span class="string">&quot;endorsements_counter&quot;</span>, <span class="string">&quot;endorsements counter len&quot;</span>).unwrap();
-    <span class="kw">static </span><span class="kw-2">ref </span>DELTA_BLOCK_GRAPH_SLOT: IntGauge = <span class="macro">register_int_gauge!</span>(<span class="string">&quot;delta_block_graph_slot&quot;</span>, <span class="string">&quot;delta in ms between block inclusion in graph and block slot&quot;</span>).unwrap();
-
 
     <span class="comment">// static ref A_INT_GAUGE: IntGauge = register_int_gauge!(&quot;A_int_gauge&quot;, &quot;foobar&quot;).unwrap();
 </span>}
@@ -495,12 +507,8 @@
     OUT_CONNECTIONS.set(out_connections <span class="kw">as </span>i64);
 }
 
-<span class="kw">pub fn </span>inc_blocks_counter() {
-    BLOCKS_COUNTER.inc();
-}
-
-<span class="kw">pub fn </span>dec_blocks_counter() {
-    BLOCKS_COUNTER.dec();
+<span class="kw">pub fn </span>set_blocks_counter(val: usize) {
+    BLOCKS_COUNTER.set(val <span class="kw">as </span>i64);
 }
 
 <span class="kw">pub fn </span>inc_endorsements_counter() {
@@ -523,7 +531,8 @@
 </span><span class="kw">pub struct </span>MassaMetrics {
     consensus_vec: Vec&lt;Gauge&gt;,
 
-    block_graph_diff_ms: IntGauge,
+    block_graph_counter: IntCounter,
+    block_graph_ms: IntCounter,
 
     active_in_connections: IntGauge,
     active_out_connections: IntGauge,
@@ -696,9 +705,11 @@
         )
         .unwrap();
 
-        <span class="kw">let </span>block_graph_diff_ms = IntGauge::new(
-            <span class="string">&quot;block_slot_graph_diff_ms&quot;</span>,
-            <span class="string">&quot;time in ms between slot creation and his inclusion in graph&quot;</span>,
+        <span class="kw">let </span>block_graph_counter =
+            IntCounter::new(<span class="string">&quot;block_slot_graph_counter&quot;</span>, <span class="string">&quot;total block in graph&quot;</span>).unwrap();
+        <span class="kw">let </span>block_graph_ms = IntCounter::new(
+            <span class="string">&quot;block_slot_graph_ms&quot;</span>,
+            <span class="string">&quot;sum of delta in ms between block inclusion in graph and block slot&quot;</span>,
         )
         .unwrap();
 
@@ -734,13 +745,20 @@
                 <span class="kw">let _ </span>=
                     prometheus::register(Box::new(endorsement_cache_checked_endorsements.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(block_graph_diff_ms.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(block_graph_counter.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(block_graph_ms.clone()));
             }
+
+            MassaSurvey::run(
+                active_in_connections.clone(),
+                active_out_connections.clone(),
+            );
         }
 
         MassaMetrics {
             consensus_vec,
-            block_graph_diff_ms,
+            block_graph_counter,
+            block_graph_ms,
             active_in_connections,
             active_out_connections,
             retrieval_thread_stored_operations_sum,
@@ -866,8 +884,12 @@
             .set(known_by_peer <span class="kw">as </span>i64);
     }
 
-    <span class="kw">pub fn </span>set_block_graph_diff_ms(<span class="kw-2">&amp;</span><span class="self">self</span>, diff: u64) {
-        <span class="self">self</span>.block_graph_diff_ms.set(diff <span class="kw">as </span>i64);
+    <span class="kw">pub fn </span>inc_block_graph_ms(<span class="kw-2">&amp;</span><span class="self">self</span>, diff: u64) {
+        <span class="self">self</span>.block_graph_ms.inc_by(diff);
+    }
+
+    <span class="kw">pub fn </span>inc_block_graph_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.block_graph_counter.inc();
     }
 }
 <span class="comment">// mod test {
