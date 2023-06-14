@@ -571,13 +571,13 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .expect_poll()
         .times(1)
         // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(vec![PollEvent::NewConnection(conn_rx.recv().unwrap())]))
+        .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
         .in_sequence(&mut seq);
     mock_bs_listener
         .expect_poll()
         .times(1)
         // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(vec![PollEvent::Stop]))
+        .returning(move || Ok(PollEvent::Stop))
         .in_sequence(&mut seq);
 
     let mut seq = Sequence::new();

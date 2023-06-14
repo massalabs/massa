@@ -63,7 +63,7 @@ use crate::{
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
 pub trait BSEventPoller {
-    fn poll(&mut self) -> Result<Vec<PollEvent>, BootstrapError>;
+    fn poll(&mut self) -> Result<PollEvent, BootstrapError>;
 }
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
@@ -235,24 +235,14 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
         loop {
             // block until we have a connection to work with, or break out of main-loop
 
-            let mut connections = Vec::new();
-
-            match self.ev_poller.poll() {
-                Ok(events) => {
-                    for event in events {
-                        match event {
-                            PollEvent::NewConnection((dplx, remote_addr)) => {
-                                connections.push((dplx, remote_addr))
-                            }
-                            PollEvent::Stop => return Ok(()),
-                        };
-                    }
-                }
+            let connections = match self.ev_poller.poll() {
+                Ok(PollEvent::Stop) => return Ok(()),
+                Ok(PollEvent::NewConnections(connections)) => connections,
                 Err(e) => {
                     error!("bootstrap listener error: {}", e);
                     return Err(e);
                 }
-            }
+            };
 
             for (dplx, remote_addr) in connections {
                 // claim a slot in the max_bootstrap_sessions

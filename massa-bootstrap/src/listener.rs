@@ -3,7 +3,7 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use mio::net::TcpListener as MioTcpListener;
 
 use mio::{Events, Interest, Poll, Token, Waker};
-use tracing::{debug, info};
+use tracing::{info, warn};
 
 use crate::error::BootstrapError;
 use crate::server::BSEventPoller;
@@ -24,7 +24,7 @@ pub struct BootstrapTcpListener {
 pub struct BootstrapListenerStopHandle(Waker);
 
 pub enum PollEvent {
-    NewConnection((TcpStream, SocketAddr)),
+    NewConnections(Vec<(TcpStream, SocketAddr)>),
     Stop,
 }
 impl BootstrapTcpListener {
@@ -79,12 +79,12 @@ impl BootstrapTcpListener {
 }
 
 impl BSEventPoller for BootstrapTcpListener {
-    fn poll(&mut self) -> Result<Vec<PollEvent>, BootstrapError> {
+    fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
         // Confirm that we are not being signalled to shut down
         if self.events.iter().any(|ev| ev.token() == STOP_LISTENER) {
-            return Ok(vec![PollEvent::Stop]);
+            return Ok(PollEvent::Stop);
         }
 
         let mut results = Vec::with_capacity(self.events.iter().count());
@@ -93,7 +93,7 @@ impl BSEventPoller for BootstrapTcpListener {
         for event in self.events.iter() {
             match event.token() {
                 NEW_CONNECTION => {
-                    results.push(PollEvent::NewConnection(self.server.accept()?));
+                    results.push(self.server.accept()?);
                 }
                 _ => unreachable!(),
             }
@@ -101,11 +101,11 @@ impl BSEventPoller for BootstrapTcpListener {
 
         // We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
         // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
-        if self._mio_server.accept().is_ok() {
-            debug!("Mio server still had bootstrap connection data to read");
+        while self._mio_server.accept().is_ok() {
+            warn!("Mio server still had bootstrap connection data to read");
         }
 
-        Ok(results)
+        Ok(PollEvent::NewConnections(results))
     }
 }
 
