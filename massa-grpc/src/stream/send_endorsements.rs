@@ -6,7 +6,7 @@ use futures_util::StreamExt;
 use massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::secure_share::SecureShareDeserializer;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::collections::HashMap;
 use std::io::ErrorKind;
@@ -17,7 +17,7 @@ use tracing::log::{error, warn};
 /// Type declaration for SendEndorsements
 pub type SendEndorsementsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::SendEndorsementsResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc_api::SendEndorsementsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -28,7 +28,7 @@ pub type SendEndorsementsStreamType = Pin<
 /// endorsements ids messages
 pub(crate) async fn send_endorsements(
     grpc: &MassaGrpc,
-    request: tonic::Request<tonic::Streaming<grpc::SendEndorsementsRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc_api::SendEndorsementsRequest>>,
 ) -> Result<SendEndorsementsStreamType, GrpcError> {
     let mut pool_command_sender = grpc.pool_command_sender.clone();
     let protocol_command_sender = grpc.protocol_command_sender.clone();
@@ -127,15 +127,15 @@ pub(crate) async fn send_endorsements(
                                     };
 
                                     // Build the response message
-                                    let result = grpc::EndorsementResult {
+                                    let result = grpc_api::EndorsementResult {
                                         endorsements_ids: verified_eds.keys().cloned().collect(),
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
-                                        .send(Ok(grpc::SendEndorsementsResponse {
+                                        .send(Ok(grpc_api::SendEndorsementsResponse {
                                             id: req_content.id.clone(),
                                             message: Some(
-                                                grpc::send_endorsements_response::Message::Result(
+                                                grpc_api::send_endorsements_response::Message::Result(
                                                     result,
                                                 ),
                                             ),
@@ -190,17 +190,17 @@ pub(crate) async fn send_endorsements(
 /// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender<Result<grpc::SendEndorsementsResponse, tonic::Status>>,
+    sender: tokio::sync::mpsc::Sender<Result<grpc_api::SendEndorsementsResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
 ) {
     error!("{}", error);
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
-        .send(Ok(grpc::SendEndorsementsResponse {
+        .send(Ok(grpc_api::SendEndorsementsResponse {
             id,
-            message: Some(grpc::send_endorsements_response::Message::Error(
-                massa_proto::google::rpc::Status {
+            message: Some(grpc_api::send_endorsements_response::Message::Error(
+                massa_proto_rs::google::rpc::Status {
                     code: code.into(),
                     message: error,
                     details: Vec::new(),

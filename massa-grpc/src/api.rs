@@ -11,7 +11,8 @@ use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
@@ -24,8 +25,8 @@ const DEFAULT_LIMIT: u64 = 50;
 /// Get blocks
 pub(crate) fn get_blocks(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetBlocksRequest>,
-) -> Result<grpc::GetBlocksResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetBlocksRequest>,
+) -> Result<grpc_api::GetBlocksResponse, GrpcError> {
     let inner_req = request.into_inner();
 
     // Get the block IDs from the request.
@@ -64,7 +65,7 @@ pub(crate) fn get_blocks(
     .unwrap_or_else(|| Slot::new(0, 0));
 
     // Create the context for the response.
-    let context = Some(grpc::BlocksContext {
+    let context = Some(grpc_api::BlocksContext {
         slot: Some(current_slot.into()),
     });
 
@@ -87,21 +88,21 @@ pub(crate) fn get_blocks(
                 let mut status = Vec::new();
 
                 if graph_status == BlockGraphStatus::Final {
-                    status.push(grpc::BlockStatus::Final.into());
+                    status.push(grpc_model::BlockStatus::Final.into());
                 };
                 if graph_status == BlockGraphStatus::ActiveInBlockclique {
-                    status.push(grpc::BlockStatus::InBlockclique.into());
+                    status.push(grpc_model::BlockStatus::InBlockclique.into());
                 };
                 if graph_status == BlockGraphStatus::ActiveInBlockclique
                     || graph_status == BlockGraphStatus::ActiveInAlternativeCliques
                 {
-                    status.push(grpc::BlockStatus::Candidate.into());
+                    status.push(grpc_model::BlockStatus::Candidate.into());
                 };
                 if graph_status == BlockGraphStatus::Discarded {
-                    status.push(grpc::BlockStatus::Discarded.into());
+                    status.push(grpc_model::BlockStatus::Discarded.into());
                 };
 
-                return Some(grpc::BlockWrapper {
+                return Some(grpc_model::BlockWrapper {
                     id: id.to_string(),
                     block: Some(content.into()),
                     status,
@@ -110,9 +111,9 @@ pub(crate) fn get_blocks(
 
             None
         })
-        .collect::<Vec<grpc::BlockWrapper>>();
+        .collect::<Vec<grpc_model::BlockWrapper>>();
 
-    Ok(grpc::GetBlocksResponse {
+    Ok(grpc_api::GetBlocksResponse {
         id: inner_req.id,
         context,
         blocks,
@@ -122,8 +123,8 @@ pub(crate) fn get_blocks(
 /// get blocks by slots
 pub(crate) fn get_blocks_by_slots(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetBlocksBySlotsRequest>,
-) -> Result<grpc::GetBlocksBySlotsResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetBlocksBySlotsRequest>,
+) -> Result<grpc_api::GetBlocksBySlotsResponse, GrpcError> {
     let inner_req = request.into_inner();
     let storage = grpc.storage.clone_without_refs();
 
@@ -155,8 +156,8 @@ pub(crate) fn get_blocks_by_slots(
                 .map(|endorsement| endorsement.into())
                 .collect();
 
-            let block_header = grpc::BlockHeader {
-                slot: Some(grpc::Slot {
+            let block_header = grpc_model::BlockHeader {
+                slot: Some(grpc_model::Slot {
                     period: header.content.slot.period,
                     thread: header.content.slot.thread as u32,
                 }),
@@ -173,7 +174,7 @@ pub(crate) fn get_blocks_by_slots(
                 .collect();
 
             (
-                grpc::SignedBlockHeader {
+                grpc_model::SignedBlockHeader {
                     content: Some(block_header),
                     signature: header.signature.to_string(),
                     content_creator_pub_key: header.content_creator_pub_key.to_string(),
@@ -185,14 +186,14 @@ pub(crate) fn get_blocks_by_slots(
         });
 
         if let Some(block) = res {
-            blocks.push(grpc::Block {
+            blocks.push(grpc_model::Block {
                 header: Some(block.0),
                 operations: block.1,
             });
         }
     }
 
-    Ok(grpc::GetBlocksBySlotsResponse {
+    Ok(grpc_api::GetBlocksBySlotsResponse {
         id: inner_req.id,
         blocks,
     })
@@ -201,8 +202,8 @@ pub(crate) fn get_blocks_by_slots(
 /// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetDatastoreEntriesRequest>,
-) -> Result<grpc::GetDatastoreEntriesResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetDatastoreEntriesRequest>,
+) -> Result<grpc_api::GetDatastoreEntriesResponse, GrpcError> {
     let inner_req = request.into_inner();
     let id = inner_req.id;
 
@@ -221,63 +222,64 @@ pub(crate) fn get_datastore_entries(
         .execution_controller
         .get_final_and_active_data_entry(filters)
         .into_iter()
-        .map(|output| grpc::DatastoreEntry {
+        .map(|output| grpc_api::DatastoreEntry {
             final_value: output.0.unwrap_or_default(),
             candidate_value: output.1.unwrap_or_default(),
         })
         .collect();
 
-    Ok(grpc::GetDatastoreEntriesResponse { id, entries })
+    Ok(grpc_api::GetDatastoreEntriesResponse { id, entries })
 }
 
 /// Get the largest stakers
 pub(crate) fn get_largest_stakers(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetLargestStakersRequest>,
-) -> Result<grpc::GetLargestStakersResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetLargestStakersRequest>,
+) -> Result<grpc_api::GetLargestStakersResponse, GrpcError> {
     let inner_req = request.into_inner();
     let id = inner_req.id;
 
     // Parse the query parameters, if provided.
-    let query_res: Result<(u64, u64, Option<grpc::LargestStakersFilter>), GrpcError> = inner_req
-        .query
-        .map_or(Ok((DEFAULT_OFFSET, DEFAULT_LIMIT, None)), |query| {
-            let limit = if query.limit == 0 {
-                DEFAULT_LIMIT
-            } else {
-                query.limit
-            };
-            let filter = query.filter;
-            // If the filter is provided, validate the minimum and maximum roll counts.
-            let filter_opt = filter
-                .map(|filter| {
-                    if let Some(min_rolls) = filter.min_rolls {
-                        if min_rolls == 0 {
-                            return Err(GrpcError::InvalidArgument(
-                                "min_rolls should be a positive number".into(),
-                            ));
-                        }
-                        if let Some(max_rolls) = filter.max_rolls {
-                            if max_rolls == 0 {
+    let query_res: Result<(u64, u64, Option<grpc_api::LargestStakersFilter>), GrpcError> =
+        inner_req
+            .query
+            .map_or(Ok((DEFAULT_OFFSET, DEFAULT_LIMIT, None)), |query| {
+                let limit = if query.limit == 0 {
+                    DEFAULT_LIMIT
+                } else {
+                    query.limit
+                };
+                let filter = query.filter;
+                // If the filter is provided, validate the minimum and maximum roll counts.
+                let filter_opt = filter
+                    .map(|filter| {
+                        if let Some(min_rolls) = filter.min_rolls {
+                            if min_rolls == 0 {
                                 return Err(GrpcError::InvalidArgument(
-                                    "max_rolls should be a positive number".into(),
+                                    "min_rolls should be a positive number".into(),
                                 ));
                             }
-                            if min_rolls > max_rolls {
-                                return Err(GrpcError::InvalidArgument(format!(
-                                    "min_rolls {} cannot be greater than max_rolls {}",
-                                    min_rolls, max_rolls
-                                )));
+                            if let Some(max_rolls) = filter.max_rolls {
+                                if max_rolls == 0 {
+                                    return Err(GrpcError::InvalidArgument(
+                                        "max_rolls should be a positive number".into(),
+                                    ));
+                                }
+                                if min_rolls > max_rolls {
+                                    return Err(GrpcError::InvalidArgument(format!(
+                                        "min_rolls {} cannot be greater than max_rolls {}",
+                                        min_rolls, max_rolls
+                                    )));
+                                }
                             }
                         }
-                    }
 
-                    Ok(filter)
-                })
-                .transpose()?; // Convert `Option<Result>` to `Result<Option>`.
+                        Ok(filter)
+                    })
+                    .transpose()?; // Convert `Option<Result>` to `Result<Option>`.
 
-            Ok((query.offset, limit, filter_opt))
-        });
+                Ok((query.offset, limit, filter_opt))
+            });
 
     let (offset, limit, filter_opt) = query_res?;
 
@@ -293,7 +295,7 @@ pub(crate) fn get_largest_stakers(
     let current_cycle = current_slot.get_cycle(grpc.grpc_config.periods_per_cycle);
 
     // Create the context for the response.
-    let context = Some(grpc::LargestStakersContext {
+    let context = Some(grpc_api::LargestStakersContext {
         slot: Some(current_slot.into()),
     });
 
@@ -326,13 +328,13 @@ pub(crate) fn get_largest_stakers(
     // Paginate the stakers based on the specified offset and limit.
     let stakers = staker_vec
         .into_iter()
-        .map(|(address, rolls)| grpc::LargestStakerEntry { address, rolls })
+        .map(|(address, rolls)| grpc_api::LargestStakerEntry { address, rolls })
         .skip(offset as usize)
         .take(limit as usize)
         .collect();
 
     // Return a response with the given id, context, and the collected stakers.
-    Ok(grpc::GetLargestStakersResponse {
+    Ok(grpc_api::GetLargestStakersResponse {
         id,
         context,
         stakers,
@@ -342,42 +344,42 @@ pub(crate) fn get_largest_stakers(
 // Get node version
 pub(crate) fn get_mip_status(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetMipStatusRequest>,
-) -> Result<grpc::GetMipStatusResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetMipStatusRequest>,
+) -> Result<grpc_api::GetMipStatusResponse, GrpcError> {
     let mip_store_status_ = grpc.mip_store.get_mip_status();
-    let mip_store_status: Result<Vec<grpc::MipStatusEntry>, GrpcError> = mip_store_status_
+    let mip_store_status: Result<Vec<grpc_model::MipStatusEntry>, GrpcError> = mip_store_status_
         .iter()
         .map(|(mip_info, state_id_)| {
-            let state_id = grpc::ComponentStateId::from(state_id_);
-            Ok(grpc::MipStatusEntry {
-                mip_info: Some(grpc::MipInfo::from(mip_info)),
+            let state_id = grpc_model::ComponentStateId::from(state_id_);
+            Ok(grpc_model::MipStatusEntry {
+                mip_info: Some(grpc_model::MipInfo::from(mip_info)),
                 state_id: i32::from(state_id),
             })
         })
         .collect();
 
-    Ok(grpc::GetMipStatusResponse {
+    Ok(grpc_api::GetMipStatusResponse {
         id: request.into_inner().id,
-        entry: mip_store_status?,
+        entries: mip_store_status?,
     })
 }
 
 /// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetNextBlockBestParentsRequest>,
-) -> Result<grpc::GetNextBlockBestParentsResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetNextBlockBestParentsRequest>,
+) -> Result<grpc_api::GetNextBlockBestParentsResponse, GrpcError> {
     let inner_req = request.into_inner();
     let parents = grpc
         .consensus_controller
         .get_best_parents()
         .into_iter()
-        .map(|p| grpc::BlockParent {
+        .map(|p| grpc_api::BlockParent {
             block_id: p.0.to_string(),
             period: p.1,
         })
         .collect();
-    Ok(grpc::GetNextBlockBestParentsResponse {
+    Ok(grpc_api::GetNextBlockBestParentsResponse {
         id: inner_req.id,
         parents,
     })
@@ -386,10 +388,10 @@ pub(crate) fn get_next_block_best_parents(
 /// Get operations
 pub(crate) fn get_operations(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetOperationsRequest>,
-) -> Result<grpc::GetOperationsResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetOperationsRequest>,
+) -> Result<grpc_api::GetOperationsResponse, GrpcError> {
     let storage = grpc.storage.clone_without_refs();
-    let inner_req: grpc::GetOperationsRequest = request.into_inner();
+    let inner_req: grpc_api::GetOperationsRequest = request.into_inner();
     let id = inner_req.id;
 
     let operations_ids: Vec<OperationId> = inner_req
@@ -423,7 +425,7 @@ pub(crate) fn get_operations(
     .unwrap_or_else(|| Slot::new(0, 0));
 
     // Create the context for the response.
-    let context = Some(grpc::OperationsContext {
+    let context = Some(grpc_api::OperationsContext {
         slot: Some(current_slot.into()),
     });
 
@@ -470,7 +472,7 @@ pub(crate) fn get_operations(
         .unzip();
 
     // Gather all values into a vector of OperationWrapper instances
-    let mut operations: Vec<grpc::OperationWrapper> = Vec::with_capacity(ops.len());
+    let mut operations: Vec<grpc_model::OperationWrapper> = Vec::with_capacity(ops.len());
     let zipped_iterator = izip!(
         ops.into_iter(),
         storage_info.into_iter(),
@@ -483,21 +485,21 @@ pub(crate) fn get_operations(
         let mut status: Vec<i32> = Vec::new();
         if let Some(op_exec_status) = op_exec_status {
             if op_exec_status {
-                status.push(grpc::OperationStatus::Success.into());
+                status.push(grpc_model::OperationStatus::Success.into());
             } else {
-                status.push(grpc::OperationStatus::Failure.into());
+                status.push(grpc_model::OperationStatus::Failure.into());
             }
         } else {
-            status.push(grpc::OperationStatus::Unknown.into());
+            status.push(grpc_model::OperationStatus::Unknown.into());
         }
         if is_operation_final.unwrap_or_default() {
-            status.push(grpc::OperationStatus::Final.into());
+            status.push(grpc_model::OperationStatus::Final.into());
         }
         if in_pool {
-            status.push(grpc::OperationStatus::Pending.into());
+            status.push(grpc_model::OperationStatus::Pending.into());
         }
 
-        operations.push(grpc::OperationWrapper {
+        operations.push(grpc_model::OperationWrapper {
             id: id.to_string(),
             thread: operation
                 .content_creator_address
@@ -508,7 +510,7 @@ pub(crate) fn get_operations(
         });
     }
 
-    Ok(grpc::GetOperationsResponse {
+    Ok(grpc_api::GetOperationsResponse {
         id,
         context,
         operations,
@@ -518,9 +520,9 @@ pub(crate) fn get_operations(
 /// Get smart contract execution events
 pub(crate) fn get_sc_execution_events(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetScExecutionEventsRequest>,
-) -> Result<grpc::GetScExecutionEventsResponse, GrpcError> {
-    let inner_req: grpc::GetScExecutionEventsRequest = request.into_inner();
+    request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
+) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
+    let inner_req: grpc_api::GetScExecutionEventsRequest = request.into_inner();
     let id = inner_req.id;
 
     let event_filter = inner_req
@@ -544,18 +546,18 @@ pub(crate) fn get_sc_execution_events(
     .unwrap_or_else(|| Slot::new(0, 0));
 
     // Create the context for the response.
-    let context = Some(grpc::GetScExecutionEventsContext {
+    let context = Some(grpc_api::GetScExecutionEventsContext {
         slot: Some(current_slot.into()),
     });
 
-    let events: Vec<grpc::ScExecutionEvent> = grpc
+    let events: Vec<grpc_model::ScExecutionEvent> = grpc
         .execution_controller
         .get_filtered_sc_output_event(event_filter)
         .into_iter()
         .map(|event| event.into())
         .collect();
 
-    Ok(grpc::GetScExecutionEventsResponse {
+    Ok(grpc_api::GetScExecutionEventsResponse {
         id,
         context,
         events,
@@ -565,8 +567,8 @@ pub(crate) fn get_sc_execution_events(
 //  Get selector draws
 pub(crate) fn get_selector_draws(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetSelectorDrawsRequest>,
-) -> Result<grpc::GetSelectorDrawsResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
+) -> Result<grpc_api::GetSelectorDrawsResponse, GrpcError> {
     let inner_req = request.into_inner();
     let id = inner_req.id;
 
@@ -624,14 +626,14 @@ pub(crate) fn get_selector_draws(
     let mut res = Vec::with_capacity(addresses.len());
     let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
     for (address, (next_block_draws, next_endorsement_draws)) in iterator {
-        res.push(grpc::SelectorDraws {
+        res.push(grpc_model::SelectorDraws {
             address: address.to_string(),
             next_block_draws,
             next_endorsement_draws,
         });
     }
 
-    Ok(grpc::GetSelectorDrawsResponse {
+    Ok(grpc_api::GetSelectorDrawsResponse {
         id,
         selector_draws: res,
     })
@@ -640,8 +642,8 @@ pub(crate) fn get_selector_draws(
 /// Get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetTransactionsThroughputRequest>,
-) -> Result<grpc::GetTransactionsThroughputResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetTransactionsThroughputRequest>,
+) -> Result<grpc_api::GetTransactionsThroughputResponse, GrpcError> {
     let stats = grpc.execution_controller.get_stats();
     let nb_sec_range = stats
         .time_window_end
@@ -655,7 +657,7 @@ pub(crate) fn get_transactions_throughput(
         .checked_div(nb_sec_range as usize)
         .unwrap_or_default() as u32;
 
-    Ok(grpc::GetTransactionsThroughputResponse {
+    Ok(grpc_api::GetTransactionsThroughputResponse {
         id: request.into_inner().id,
         throughput,
     })
@@ -664,9 +666,9 @@ pub(crate) fn get_transactions_throughput(
 // Get node version
 pub(crate) fn get_version(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc::GetVersionRequest>,
-) -> Result<grpc::GetVersionResponse, GrpcError> {
-    Ok(grpc::GetVersionResponse {
+    request: tonic::Request<grpc_api::GetVersionRequest>,
+) -> Result<grpc_api::GetVersionResponse, GrpcError> {
+    Ok(grpc_api::GetVersionResponse {
         id: request.into_inner().id,
         version: grpc.version.to_string(),
     })

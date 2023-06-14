@@ -3,7 +3,7 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -14,7 +14,7 @@ use tracing::log::{error, warn};
 /// Type declaration for NewEndorsements
 pub type NewEndorsementsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewEndorsementsResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc_api::NewEndorsementsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -23,7 +23,7 @@ pub type NewEndorsementsStreamType = Pin<
 /// Creates a new stream of new produced and received endorsements
 pub(crate) async fn new_endorsements(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewEndorsementsRequest>>,
+    request: Request<Streaming<grpc_api::NewEndorsementsRequest>>,
 ) -> Result<NewEndorsementsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -42,7 +42,7 @@ pub(crate) async fn new_endorsements(
                     match event {
                         Ok(massa_endorsement) => {
                             // Send the new endorsement through the channel
-                            if let Err(e) = tx.send(Ok(grpc::NewEndorsementsResponse {
+                            if let Err(e) = tx.send(Ok(grpc_api::NewEndorsementsResponse {
                                     id: request_id.clone(),
                                     endorsement: Some(massa_endorsement.into())
                             })).await {

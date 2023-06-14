@@ -3,7 +3,7 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -14,7 +14,7 @@ use tracing::log::{error, warn};
 /// Type declaration for NewBlocksHeaders
 pub type NewBlocksHeadersStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewBlocksHeadersResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc_api::NewBlocksHeadersResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -23,7 +23,7 @@ pub type NewBlocksHeadersStreamType = Pin<
 /// Creates a new stream of new produced and received blocks headers
 pub(crate) async fn new_blocks_headers(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewBlocksHeadersRequest>>,
+    request: Request<Streaming<grpc_api::NewBlocksHeadersRequest>>,
 ) -> Result<NewBlocksHeadersStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -42,7 +42,7 @@ pub(crate) async fn new_blocks_headers(
                     match event {
                         Ok(massa_block_header) => {
                             // Send the new block header through the channel
-                            if let Err(e) = tx.send(Ok(grpc::NewBlocksHeadersResponse {
+                            if let Err(e) = tx.send(Ok(grpc_api::NewBlocksHeadersResponse {
                                     id: request_id.clone(),
                                     block_header: Some(massa_block_header.into())
                             })).await {

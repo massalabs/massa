@@ -3,7 +3,8 @@
 use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use std::pin::Pin;
 use tokio::select;
 use tonic::codegen::futures_core;
@@ -13,7 +14,7 @@ use tracing::log::error;
 /// Type declaration for NewOperations
 pub type NewOperationsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewOperationsResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc_api::NewOperationsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -22,7 +23,7 @@ pub type NewOperationsStreamType = Pin<
 /// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewOperationsRequest>>,
+    request: Request<Streaming<grpc_api::NewOperationsRequest>>,
 ) -> Result<NewOperationsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -49,7 +50,7 @@ pub(crate) async fn new_operations(
                                 }
 
                                 // Convert the operation to a gRPC operation
-                                let ret = grpc::SignedOperation {
+                                let ret = grpc_model::SignedOperation {
                                     content: Some(operation.content.into()),
                                     signature: operation.signature.to_string(),
                                     content_creator_pub_key: operation.content_creator_pub_key.to_string(),
@@ -57,7 +58,7 @@ pub(crate) async fn new_operations(
                                     id: operation.id.to_string()
                                 };
                                 // Send the new operation through the channel
-                                if let Err(e) = tx.send(Ok(grpc::NewOperationsResponse {
+                                if let Err(e) = tx.send(Ok(grpc_api::NewOperationsResponse {
                                     id: request_id.clone(),
                                     operation: Some(ret)
                                 })).await {
@@ -102,7 +103,10 @@ pub(crate) async fn new_operations(
     Ok(Box::pin(out_stream) as NewOperationsStreamType)
 }
 
-fn should_send(filter_opt: &Option<grpc::NewOperationsFilter>, ope_type: grpc::OpType) -> bool {
+fn should_send(
+    filter_opt: &Option<grpc_api::NewOperationsFilter>,
+    ope_type: grpc_api::OpType,
+) -> bool {
     match filter_opt {
         Some(filter) => {
             let filtered_ope_ids = &filter.types;
