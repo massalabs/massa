@@ -1285,7 +1285,6 @@
 <a href="#1285" id="1285">1285</a>
 <a href="#1286" id="1286">1286</a>
 <a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1979,7 +1978,6 @@
         protocol_channels,
         mip_store.clone(),
         metrics,
-        node_wallet.clone(),
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -2011,14 +2009,16 @@
     );
 
     <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
-            <span class="macro">panic!</span>(
-                <span class="string">&quot;{}&quot;</span>,
-                <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
-            )
-        });
-        <span class="kw">let </span><span class="kw-2">mut </span>manager = start_bootstrap_server(
+        <span class="kw">let </span>(listener_stopper, listener) =
+            BootstrapTcpListener::create(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
+                <span class="macro">panic!</span>(
+                    <span class="string">&quot;{}&quot;</span>,
+                    <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
+                )
+            });
+        start_bootstrap_server(
             listener,
+            listener_stopper,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -2026,9 +2026,7 @@
             keypair.clone(),
             <span class="kw-2">*</span>VERSION,
         )
-        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>);
-        manager.set_listener_stopper(waker);
-        manager
+        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>)
     });
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {

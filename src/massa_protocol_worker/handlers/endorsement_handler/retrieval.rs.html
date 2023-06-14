@@ -279,27 +279,7 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{sync::Arc, thread::JoinHandle};
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -315,8 +295,6 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_wallet::Wallet;
-<span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
@@ -344,7 +322,6 @@
     config: ProtocolConfig,
     storage: Storage,
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
-    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 }
 
 <span class="kw">impl </span>RetrievalThread {
@@ -428,9 +405,6 @@
     ///
     /// Checks performed:
     /// - Valid signature.
-    ///
-    /// Additionally, we detect if we are currently double staking
-    /// (If our staking wallet manages the same address as one of the endorsements&#39;s creator)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         endorsements: Vec&lt;SecureShareEndorsement&gt;,
@@ -470,18 +444,6 @@
                 })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         )<span class="question-mark">?</span>;
-
-        <span class="comment">// Check if any of the new endorsements creator address are handled by the wallet (this would mean double staking)
-        </span><span class="kw">for </span>(<span class="kw">_</span>, endorsement) <span class="kw">in </span>new_endorsements.iter() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(_kp) = <span class="self">self
-                </span>.wallet
-                .read()
-                .find_associated_keypair(<span class="kw-2">&amp;</span>endorsement.content_creator_address)
-            {
-                <span class="macro">panic!</span>(<span class="string">&quot;Double staking detected on endorsement {:?}&quot;</span>, endorsement);
-            }
-        }
-
         <span class="lifetime">&#39;write_cache</span>: {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
             <span class="comment">// add to verified signature cache
@@ -580,7 +542,6 @@
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     config: ProtocolConfig,
     storage: Storage,
-    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-endorsement-handler-retrieval&quot;</span>.to_string())
@@ -594,7 +555,6 @@
                 pool_controller,
                 config,
                 storage,
-                wallet,
             };
             retrieval_thread.run();
         })
