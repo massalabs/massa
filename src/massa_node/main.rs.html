@@ -1288,6 +1288,13 @@
 <a href="#1288" id="1288">1288</a>
 <a href="#1289" id="1289">1289</a>
 <a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1316,8 +1323,7 @@
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
-<span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
-<span class="kw">use </span>massa_db_worker::MassaDB;
+<span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -1375,14 +1381,12 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::{
-    mips::MIP_LIST,
-    versioning::{MipStatsConfig, MipStore},
-};
+<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipInfo, MipState};
+<span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
@@ -1547,9 +1551,7 @@
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS <span class="kw">as </span>usize,
         thread_count: THREAD_COUNT,
     };
-    <span class="kw">let </span>db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
-    ));
+    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
     <span class="comment">// Create final ledger
     </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), db.clone());
@@ -1570,8 +1572,23 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
+    <span class="comment">// let mip_0001_start: u64 = std::env::var(&quot;MIP_0001_START&quot;).unwrap().parse().unwrap();
+    </span><span class="kw">let </span>mip_0001_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">15</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0001_end = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">16</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0001_defined_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">2</span>, <span class="number">14</span>, <span class="number">14</span>, <span class="number">30</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_list_1: [(MipInfo, MipState); <span class="number">1</span>] = [(
+        MipInfo {
+            name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
+            version: <span class="number">1</span>,
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>), (MipComponent::KeyPair, <span class="number">1</span>)]),
+            start: mip_0001_start,
+            timeout: mip_0001_end,
+            activation_delay: MassaTime::from_millis(<span class="number">100</span>),
+        },
+        MipState::new(mip_0001_defined_start),
+    )];
     <span class="kw">let </span>mip_store =
-        MipStore::try_from((MIP_LIST, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+        MipStore::try_from((mip_list_1, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
 
     <span class="comment">// Create final state, either from a snapshot, or from scratch
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
@@ -1789,10 +1806,8 @@
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        max_operation_pool_size: SETTINGS.pool.max_pool_size,
-        operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
-        operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
-        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
+        max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
         operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
         endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
         denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
@@ -1814,14 +1829,13 @@
             .<span class="number">0</span>,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).<span class="number">0</span>,
         selector: selector_controller.clone(),
-        execution_controller: execution_controller.clone(),
     };
 
     <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         <span class="kw-2">&amp;</span>shared_storage,
+        execution_controller.clone(),
         pool_channels.clone(),
-        node_wallet.clone(),
     );
 
     <span class="comment">// launch protocol controller

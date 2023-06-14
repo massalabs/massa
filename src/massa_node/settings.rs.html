@@ -310,7 +310,6 @@
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -399,10 +398,9 @@
 <span class="doccomment">/// Pool configuration, read from a file configuration
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>PoolSettings {
-    <span class="kw">pub </span>max_pool_size: usize,
-    <span class="kw">pub </span>operation_max_future_start_delay: MassaTime,
-    <span class="kw">pub </span>operation_pool_refresh_interval: MassaTime,
-    <span class="kw">pub </span>max_endorsements_pool_size_per_thread: usize,
+    <span class="kw">pub </span>max_pool_size_per_thread: usize,
+    <span class="kw">pub </span>max_operation_future_validity_start_periods: u64,
+    <span class="kw">pub </span>max_endorsement_count: u64,
     <span class="kw">pub </span>max_item_return_count: usize,
     <span class="doccomment">/// endorsements channel capacity
     </span><span class="kw">pub </span>broadcast_endorsements_channel_capacity: usize,
