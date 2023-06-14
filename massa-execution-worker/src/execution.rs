@@ -1626,15 +1626,19 @@ impl ExecutionState {
         ops: &PreHashSet<OperationId>,
         thread: u8,
     ) -> PreHashSet<OperationId> {
+        debug!("AURELIEN: Execution: {:?} start op check", ops);
         let mut ops = ops.clone();
 
         if ops.is_empty() {
+            debug!("AURELIEN: Execution: {:?} stop ops is empty", ops);
             return ops;
         }
 
         {
             // check active history
+            debug!("AURELIEN: Execution: {:?} before take active history read", ops);
             let history = self.active_history.read();
+            debug!("AURELIEN: Execution: {:?} after take active history read", ops);
             for hist_item in history.0.iter().rev() {
                 if hist_item.slot.thread != thread {
                     continue;
@@ -1649,12 +1653,16 @@ impl ExecutionState {
                     return ops;
                 }
             }
+            debug!("AURELIEN: Execution: {:?} after iter active history", ops);
         }
 
         {
             // check final state
+            debug!("AURELIEN: Execution: {:?} before take final state read", ops);
             let final_state = self.final_state.read();
+            debug!("AURELIEN: Execution: {:?} after take final state read", ops);
             ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
+            debug!("AURELIEN: Execution: {:?} after filter ops final state", ops);
         }
 
         ops
