@@ -57,6 +57,7 @@ massa_versioning = { path = "../massa-versioning" }
 massa_signature = { path = "../massa-signature", optional = true }
 massa_db_exports = { path = "../massa-db-exports" }
 massa_db_worker = { path = "../massa-db-worker" }
+#massa_signature = { path = "../massa-signature", optional = true }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

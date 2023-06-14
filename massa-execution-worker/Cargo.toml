@@ -78,6 +78,7 @@ testing = [
     "massa_ledger_worker",
     "massa_metrics/testing",
     "massa_db_worker",
+    "massa_metrics/testing"
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks

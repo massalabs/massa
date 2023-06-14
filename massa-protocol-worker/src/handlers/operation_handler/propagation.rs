@@ -120,6 +120,7 @@ impl PropagationThread {
                     );
                     for sub_list in new_ops.chunks(self.config.max_operations_per_message as usize)
                     {
+                        println!("AURELIEN: send: {:?}, to {}", sub_list, peer_id);
                         if let Err(err) = self.active_connections.send_to_peer(
                             &peer_id,
                             &self.operation_message_serializer,
