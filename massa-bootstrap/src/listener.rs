@@ -44,6 +44,7 @@ impl BootstrapTcpListener {
             socket.set_only_v6(false)?;
         }
         // This is needed for the mio-polling system, which depends on the socket being non-blocking.
+        // If we don't set non-blocking, then we can .accept() on the mio_server bellow, which is needed to ensure the polling triggers every time.
         socket.set_nonblocking(true)?;
         socket.bind(&(*addr).into())?;
 
@@ -101,8 +102,13 @@ impl BSEventPoller for BootstrapTcpListener {
 
         // We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
         // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
-        while self._mio_server.accept().is_ok() {
-            warn!("Mio server still had bootstrap connection data to read");
+        // However, we cannot add potential connections on the mio_server to the connections vec,
+        // as this yields mio::net::TcpStream instead of std::net::TcpStream
+        while let Ok((_, remote_addr)) = self._mio_server.accept() {
+            warn!(
+                "Mio server still had bootstrap connection data to read. Remote address: {}",
+                remote_addr
+            );
         }
 
         Ok(PollEvent::NewConnections(results))
