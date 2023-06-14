@@ -756,13 +756,6 @@
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -999,116 +992,109 @@
         <span class="comment">// TODO: Work out how to integration-test this
         </span><span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
-
-            </span><span class="kw">let </span>connections = <span class="kw">match </span><span class="self">self</span>.ev_poller.poll() {
-                <span class="prelude-val">Ok</span>(PollEvent::Stop) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
-                <span class="prelude-val">Ok</span>(PollEvent::NewConnections(connections)) =&gt; connections,
+            </span><span class="kw">let </span>(dplx, remote_addr) = <span class="kw">match </span><span class="self">self</span>.ev_poller.poll() {
+                <span class="prelude-val">Ok</span>(PollEvent::NewConnection((dplx, remote_addr))) =&gt; (dplx, remote_addr),
+                <span class="prelude-val">Ok</span>(PollEvent::Stop) =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
                 <span class="prelude-val">Err</span>(e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;bootstrap listener error: {}&quot;</span>, e);
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(e);
+                    <span class="kw">break </span><span class="prelude-val">Err</span>(e);
                 }
             };
 
-            <span class="kw">for </span>(dplx, remote_addr) <span class="kw">in </span>connections {
-                <span class="comment">// claim a slot in the max_bootstrap_sessions
-                </span><span class="kw">let </span>server_binding = BootstrapServerBinder::new(
-                    dplx,
-                    <span class="self">self</span>.keypair.clone(),
-                    (<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config).into(),
-                );
+            <span class="comment">// claim a slot in the max_bootstrap_sessions
+            </span><span class="kw">let </span>server_binding = BootstrapServerBinder::new(
+                dplx,
+                <span class="self">self</span>.keypair.clone(),
+                (<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config).into(),
+            );
 
-                <span class="comment">// check whether incoming peer IP is allowed.
-                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.white_black_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
-                    server_binding.close_and_send_error(
-                        error_msg.to_string(),
-                        remote_addr,
-                        <span class="kw">move </span>|| {},
+            <span class="comment">// check whether incoming peer IP is allowed.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.white_black_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
+                server_binding.close_and_send_error(error_msg.to_string(), remote_addr, <span class="kw">move </span>|| {});
+                <span class="kw">continue</span>;
+            };
+
+            <span class="comment">// the `- 1` is to account for the top-level Arc that is created at the top
+            // of this method. subsequent counts correspond to each `clone` that is passed
+            // into a thread
+            // TODO: If we don&#39;t find a way to handle the counting automagically, make
+            //       a dedicated wrapper-type with doc-comments, manual drop impl that
+            //       integrates logging, etc...
+            </span><span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1 </span>&lt; max_bootstraps {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {
+                    <span class="string">&quot;remote_addr&quot;</span>: remote_addr
+                });
+                <span class="kw">let </span>now = Instant::now();
+
+                <span class="comment">// clear IP history if necessary
+                </span><span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
+                    <span class="self">self</span>.ip_hist_map
+                        .retain(|_k, v| now.duration_since(<span class="kw-2">*</span>v) &lt;= per_ip_min_interval);
+                    <span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
+                        <span class="comment">// too many IPs are spamming us: clear cache
+                        </span><span class="macro">warn!</span>(<span class="string">&quot;high bootstrap load: at least {} different IPs attempted bootstrap in the last {}&quot;</span>, <span class="self">self</span>.ip_hist_map.len(),format_duration(<span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
+                        <span class="self">self</span>.ip_hist_map.clear();
+                    }
+                }
+
+                <span class="comment">// check IP&#39;s bootstrap attempt history
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(msg) = BootstrapServer::&lt;L&gt;::greedy_client_check(
+                    <span class="kw-2">&amp;mut </span><span class="self">self</span>.ip_hist_map,
+                    remote_addr,
+                    now,
+                    per_ip_min_interval,
+                ) {
+                    <span class="comment">// Client has been too greedy: send out the bad-news :(
+                    </span><span class="kw">let </span>msg = <span class="macro">format!</span>(
+                        <span class="string">&quot;Your last bootstrap on this server was {} ago and you have to wait {} before retrying.&quot;</span>,
+                        format_duration(msg),
+                        format_duration(per_ip_min_interval.saturating_sub(msg))
                     );
+                    <span class="kw">let </span>tracer = <span class="kw">move </span>|| {
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_limit&quot;</span>, {
+                            <span class="string">&quot;remote_addr&quot;</span>: remote_addr
+                        })
+                    };
+                    server_binding.close_and_send_error(msg, remote_addr, tracer);
                     <span class="kw">continue</span>;
                 };
 
-                <span class="comment">// the `- 1` is to account for the top-level Arc that is created at the top
-                // of this method. subsequent counts correspond to each `clone` that is passed
-                // into a thread
-                // TODO: If we don&#39;t find a way to handle the counting automagically, make
-                //       a dedicated wrapper-type with doc-comments, manual drop impl that
-                //       integrates logging, etc...
-                </span><span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1 </span>&lt; max_bootstraps {
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {
-                        <span class="string">&quot;remote_addr&quot;</span>: remote_addr
+                <span class="comment">// Clients Option&lt;last-attempt&gt; is good, and has been updated
+                </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.cache_available&quot;</span>, {});
+
+                <span class="comment">// launch bootstrap
+                </span><span class="kw">let </span>version = <span class="self">self</span>.version;
+                <span class="kw">let </span>data_execution = <span class="self">self</span>.final_state.clone();
+                <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.consensus_controller.clone();
+                <span class="kw">let </span>protocol_controller = <span class="self">self</span>.protocol_controller.clone();
+                <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
+
+                <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
+
+                <span class="kw">let _ </span>= thread::Builder::new()
+                    .name(<span class="macro">format!</span>(<span class="string">&quot;bootstrap thread, peer: {}&quot;</span>, remote_addr))
+                    .spawn(<span class="kw">move </span>|| {
+                        run_bootstrap_session(
+                            server_binding,
+                            bootstrap_count_token,
+                            config,
+                            remote_addr,
+                            data_execution,
+                            version,
+                            consensus_command_sender,
+                            protocol_controller,
+                        )
                     });
-                    <span class="kw">let </span>now = Instant::now();
 
-                    <span class="comment">// clear IP history if necessary
-                    </span><span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
-                        <span class="self">self</span>.ip_hist_map
-                            .retain(|_k, v| now.duration_since(<span class="kw-2">*</span>v) &lt;= per_ip_min_interval);
-                        <span class="kw">if </span><span class="self">self</span>.ip_hist_map.len() &gt; <span class="self">self</span>.bootstrap_config.ip_list_max_size {
-                            <span class="comment">// too many IPs are spamming us: clear cache
-                            </span><span class="macro">warn!</span>(<span class="string">&quot;high bootstrap load: at least {} different IPs attempted bootstrap in the last {}&quot;</span>, <span class="self">self</span>.ip_hist_map.len(),format_duration(<span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
-                            <span class="self">self</span>.ip_hist_map.clear();
-                        }
-                    }
-
-                    <span class="comment">// check IP&#39;s bootstrap attempt history
-                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(msg) = BootstrapServer::&lt;L&gt;::greedy_client_check(
-                        <span class="kw-2">&amp;mut </span><span class="self">self</span>.ip_hist_map,
-                        remote_addr,
-                        now,
-                        per_ip_min_interval,
-                    ) {
-                        <span class="comment">// Client has been too greedy: send out the bad-news :(
-                        </span><span class="kw">let </span>msg = <span class="macro">format!</span>(
-                            <span class="string">&quot;Your last bootstrap on this server was {} ago and you have to wait {} before retrying.&quot;</span>,
-                            format_duration(msg),
-                            format_duration(per_ip_min_interval.saturating_sub(msg))
-                        );
-                        <span class="kw">let </span>tracer = <span class="kw">move </span>|| {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.refuse_limit&quot;</span>, {
-                                <span class="string">&quot;remote_addr&quot;</span>: remote_addr
-                            })
-                        };
-                        server_binding.close_and_send_error(msg, remote_addr, tracer);
-                        <span class="kw">continue</span>;
-                    };
-
-                    <span class="comment">// Clients Option&lt;last-attempt&gt; is good, and has been updated
-                    </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.cache_available&quot;</span>, {});
-
-                    <span class="comment">// launch bootstrap
-                    </span><span class="kw">let </span>version = <span class="self">self</span>.version;
-                    <span class="kw">let </span>data_execution = <span class="self">self</span>.final_state.clone();
-                    <span class="kw">let </span>consensus_command_sender = <span class="self">self</span>.consensus_controller.clone();
-                    <span class="kw">let </span>protocol_controller = <span class="self">self</span>.protocol_controller.clone();
-                    <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
-
-                    <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
-
-                    <span class="kw">let _ </span>= thread::Builder::new()
-                        .name(<span class="macro">format!</span>(<span class="string">&quot;bootstrap thread, peer: {}&quot;</span>, remote_addr))
-                        .spawn(<span class="kw">move </span>|| {
-                            run_bootstrap_session(
-                                server_binding,
-                                bootstrap_count_token,
-                                config,
-                                remote_addr,
-                                data_execution,
-                                version,
-                                consensus_command_sender,
-                                protocol_controller,
-                            )
-                        });
-
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {
-                        <span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1
-                    </span>});
-                } <span class="kw">else </span>{
-                    server_binding.close_and_send_error(
-                        <span class="string">&quot;Bootstrap failed because the bootstrap server currently has no slots available.&quot;</span>.to_string(),
-                        remote_addr,
-                        <span class="kw">move </span>|| <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr),
-                    );
-                }
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {
+                    <span class="string">&quot;active_count&quot;</span>: Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1
+                </span>});
+            } <span class="kw">else </span>{
+                server_binding.close_and_send_error(
+                    <span class="string">&quot;Bootstrap failed because the bootstrap server currently has no slots available.&quot;</span>.to_string(),
+                    remote_addr,
+                    <span class="kw">move </span>|| <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr),
+                );
             }
         }
     }
