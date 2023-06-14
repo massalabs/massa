@@ -979,7 +979,7 @@ impl RetrievalThread {
                         operations: block_operation_ids.clone(),
                     };
                     let latency = MassaTime::now().unwrap().saturating_sub(get_block_slot_timestamp(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, header.content.slot).unwrap());
-                    println!("AURELIEN: Finish receive block id {} from peer {} with a latency of {}", block_id, from_peer_id);
+                    println!("AURELIEN: Finish receive block id {} from peer {} with a latency of {}", block_id, from_peer_id, latency);
 
                     let mut content_serialized = Vec::new();
                     BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
