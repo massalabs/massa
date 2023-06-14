@@ -99,12 +99,25 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::{SocketAddr, TcpListener, TcpStream};
 
 <span class="kw">use </span>mio::net::TcpListener <span class="kw">as </span>MioTcpListener;
 
 <span class="kw">use </span>mio::{Events, Interest, Poll, Token, Waker};
-<span class="kw">use </span>tracing::info;
+<span class="kw">use </span>tracing::{debug, info};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
 <span class="kw">use </span><span class="kw">crate</span>::server::BSEventPoller;
@@ -144,6 +157,7 @@
         <span class="kw">if </span>addr.is_ipv6() {
             socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
         }
+        socket.set_nonblocking(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
         socket.bind(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr).into())<span class="question-mark">?</span>;
 
         <span class="comment">// Number of connections to queue, set to the hardcoded value used by tokio
@@ -178,19 +192,31 @@
 }
 
 <span class="kw">impl </span>BSEventPoller <span class="kw">for </span>BootstrapTcpListener {
-    <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt; {
+    <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;PollEvent&gt;, BootstrapError&gt; {
         <span class="self">self</span>.poll.poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">None</span>).unwrap();
 
         <span class="comment">// Confirm that we are not being signalled to shut down
         </span><span class="kw">if </span><span class="self">self</span>.events.iter().any(|ev| ev.token() == STOP_LISTENER) {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(PollEvent::Stop);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[PollEvent::Stop]);
         }
 
-        <span class="comment">// Ther could be more than one connection ready, but we want to re-check for the stop
-        // signal after processing each connection.
-        </span><span class="prelude-val">Ok</span>(PollEvent::NewConnection(
-            <span class="self">self</span>.server.accept().map_err(BootstrapError::from)<span class="question-mark">?</span>,
-        ))
+        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
+
+        <span class="comment">// Process each event.
+        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.iter() {
+            <span class="kw">match </span>event.token() {
+                NEW_CONNECTION =&gt; {
+                    results.push(PollEvent::NewConnection(<span class="self">self</span>.server.accept()<span class="question-mark">?</span>));
+                }
+                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            }
+        }
+
+        <span class="kw">if </span><span class="self">self</span>._mio_server.accept().is_ok() {
+            <span class="macro">debug!</span>(<span class="string">&quot;Mio server still had bootstrap connection data to read&quot;</span>);
+        }
+
+        <span class="prelude-val">Ok</span>(results)
     }
 }
 
