@@ -374,6 +374,9 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
@@ -392,6 +395,7 @@
     versioning::MipStore,
     versioning_factory::{FactoryStrategy, VersioningFactory},
 };
+<span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::{
     config::{PeerNetCategoryInfo, PeerNetConfiguration},
@@ -559,6 +563,7 @@
     protocol_channels: ProtocolChannels,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;, KeyPair, NodeId), ProtocolError&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;starting protocol controller&quot;</span>);
     <span class="kw">let </span>peer_db = Arc::new(RwLock::new(PeerDB::default()));
@@ -740,6 +745,7 @@
         config,
         mip_store,
         massa_metrics,
+        wallet,
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>manager = ProtocolManagerImpl::new(connectivity_thread_handle);

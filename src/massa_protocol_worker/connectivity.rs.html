@@ -306,6 +306,9 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
@@ -315,6 +318,7 @@
 <span class="kw">use </span>massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
+<span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::peer::PeerConnectionType;
 <span class="kw">use </span>std::net::SocketAddr;
@@ -382,6 +386,7 @@
     config: ProtocolConfig,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(MassaSender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;), ProtocolError&gt; {
     <span class="kw">let </span>handle = std::thread::Builder::new()
     .name(<span class="string">&quot;protocol-connectivity&quot;</span>.to_string())
@@ -462,7 +467,7 @@
                 sender_endorsements_propagation_ext,
                 protocol_channels.endorsement_handler_propagation.<span class="number">1</span>.clone(),
                 peer_management_handler.sender.command_sender.clone(),
-                massa_metrics.clone(),
+                wallet.clone(),
             );
             <span class="kw">let </span><span class="kw-2">mut </span>block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),
@@ -482,6 +487,7 @@
                 storage.clone_without_refs(),
                 mip_store,
                 massa_metrics.clone(),
+                wallet.clone(),
             );
 
             <span class="comment">//Try to connect to peers

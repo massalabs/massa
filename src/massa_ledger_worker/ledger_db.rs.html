@@ -584,28 +584,14 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
 
-</span><span class="kw">use </span>massa_db::{DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF};
+</span><span class="kw">use </span>massa_db_exports::{
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, CRUD_ERROR,
+    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+};
 <span class="kw">use </span>massa_ledger_exports::<span class="kw-2">*</span>;
 <span class="kw">use </span>massa_models::amount::AmountDeserializer;
 <span class="kw">use </span>massa_models::bytecode::BytecodeDeserializer;
@@ -613,10 +599,8 @@
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
-<span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>rocksdb::{Direction, IteratorMode, ReadOptions};
 <span class="kw">use </span>std::collections::{BTreeSet, HashMap};
-<span class="kw">use </span>std::{fmt::Debug, sync::Arc};
+<span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>std::ops::Bound;
@@ -645,7 +629,7 @@
 ///
 /// Contains a `RocksDB` DB instance
 </span><span class="kw">pub struct </span>LedgerDB {
-    db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+    db: ShareableMassaDBController,
     thread_count: u8,
     key_serializer_db: KeySerializer,
     key_deserializer_db: KeyDeserializer,
@@ -669,7 +653,7 @@
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
     </span><span class="kw">pub fn </span>new(
-        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+        db: ShareableMassaDBController,
         thread_count: u8,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -746,13 +730,12 @@
     /// An Option of the sub-entry value as bytes
     </span><span class="kw">pub fn </span>get_sub_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ty: LedgerSubEntry) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
         <span class="kw">let </span>key = ty.derive_key(addr);
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         <span class="self">self</span>.key_serializer_db
             .serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized_key)
             .expect(KEY_SER_ERROR);
-        db.db.get_cf(handle, serialized_key).expect(CRUD_ERROR)
+        db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)
     }
 
     <span class="doccomment">/// Get every key of the datastore for a given address.
@@ -761,17 +744,15 @@
     /// A `BTreeSet` of the datastore keys
     </span><span class="kw">pub fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
         <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
 
-        opt.set_iterate_range(key_prefix.clone()..end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap());
-
         <span class="kw">let </span><span class="kw-2">mut </span>iter = db
-            .db
-            .iterator_cf_opt(handle, opt, IteratorMode::Start)
-            .flatten()
+            .iterator_cf(
+                STATE_CF,
+                MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
+            )
+            .take_while(|(key, <span class="kw">_</span>)| key &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
             .map(|(key, <span class="kw">_</span>)| {
                 <span class="kw">let </span>(_rest, key) = <span class="self">self
                     </span>.key_deserializer_db
@@ -949,7 +930,6 @@
     /// * batch: the given operation batch to update
     </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="comment">// balance
         </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
@@ -966,17 +946,14 @@
         db.delete_key(batch, serialized_key);
 
         <span class="comment">// datastore
-        </span><span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
-        <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
-        opt.set_iterate_upper_bound(end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap());
+        </span><span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
+
         <span class="kw">for </span>(serialized_key, <span class="kw">_</span>) <span class="kw">in </span>db
-            .db
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, Direction::Forward),
+            .iterator_cf(
+                STATE_CF,
+                MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
             )
-            .flatten()
+            .take_while(|(key, <span class="kw">_</span>)| key &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
         {
             db.delete_key(batch, serialized_key.to_vec());
         }
@@ -998,22 +975,14 @@
         <span class="kw">use </span>massa_models::address::AddressDeserializer;
         <span class="kw">let </span>db = <span class="self">self</span>.db.write();
 
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
         <span class="kw">let </span>ledger = db
-            .db
-            .prefix_iterator_cf(handle, LEDGER_PREFIX)
-            .take_while(|kv| {
-                kv.clone()
-                    .unwrap_or_default()
-                    .<span class="number">0
-                    </span>.starts_with(LEDGER_PREFIX.as_bytes())
-            })
+            .prefix_iterator_cf(STATE_CF, LEDGER_PREFIX.as_bytes())
+            .take_while(|(key, <span class="kw">_</span>)| key.starts_with(LEDGER_PREFIX.as_bytes()))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">let </span><span class="kw-2">mut </span>addresses = std::collections::BTreeMap::new();
         <span class="kw">let </span>address_deserializer = AddressDeserializer::new();
-        <span class="kw">for </span>(key, entry) <span class="kw">in </span>ledger.iter().flatten() {
+        <span class="kw">for </span>(key, entry) <span class="kw">in </span>ledger.iter() {
             <span class="kw">let </span>(rest, address) = address_deserializer
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key[LEDGER_PREFIX.len()..])
                 .unwrap();
@@ -1042,29 +1011,23 @@
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap());
-
-        db.db
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, Direction::Forward),
-            )
-            .flatten()
-            .map(|(key, data)| {
-                <span class="kw">let </span>(_rest, key) = <span class="self">self
-                    </span>.key_deserializer_db
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
-                    .unwrap();
-                <span class="kw">match </span>key.key_type {
-                    KeyType::DATASTORE(datastore_vec) =&gt; (datastore_vec, data.to_vec()),
-                    <span class="kw">_ </span>=&gt; (<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]),
-                }
-            })
-            .collect()
+        db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(k, <span class="kw">_</span>)| k &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
+        .map(|(key, data)| {
+            <span class="kw">let </span>(_rest, key) = <span class="self">self
+                </span>.key_deserializer_db
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
+                .unwrap();
+            <span class="kw">match </span>key.key_type {
+                KeyType::DATASTORE(datastore_vec) =&gt; (datastore_vec, data.to_vec()),
+                <span class="kw">_ </span>=&gt; (<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]),
+            }
+        })
+        .collect()
     }
 }
 
@@ -1088,7 +1051,8 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_db::{MassaDB, STATE_HASH_INITIAL_BYTES};
+    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
+    <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>massa_hash::Hash;
     <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     <span class="kw">use </span>massa_models::{
@@ -1097,17 +1061,17 @@
     };
     <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
     <span class="kw">use </span>massa_signature::KeyPair;
+    <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>std::collections::BTreeMap;
     <span class="kw">use </span>std::ops::Bound::Included;
     <span class="kw">use </span>std::str::FromStr;
+    <span class="kw">use </span>std::sync::Arc;
     <span class="kw">use </span>tempfile::TempDir;
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">fn </span>init_test_ledger(addr: Address) -&gt; (LedgerDB, BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;) {
+    <span class="kw">fn </span>init_test_ledger(addr: Address) -&gt; (LedgerDB, BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;) {
         <span class="comment">// init data
-        </span><span class="kw">use </span>massa_db::MassaDBConfig;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>data = BTreeMap::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>data = BTreeMap::new();
         data.insert(<span class="string">b&quot;1&quot;</span>.to_vec(), <span class="string">b&quot;a&quot;</span>.to_vec());
         data.insert(<span class="string">b&quot;2&quot;</span>.to_vec(), <span class="string">b&quot;b&quot;</span>.to_vec());
         data.insert(<span class="string">b&quot;3&quot;</span>.to_vec(), <span class="string">b&quot;c&quot;</span>.to_vec());
@@ -1132,7 +1096,9 @@
             thread_count: <span class="number">32</span>,
         };
 
-        <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+        <span class="kw">let </span>db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
 
         <span class="kw">let </span>ledger_db = LedgerDB::new(db.clone(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();

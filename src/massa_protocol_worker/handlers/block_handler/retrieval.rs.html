@@ -1372,8 +1372,29 @@
 <a href="#1372" id="1372">1372</a>
 <a href="#1373" id="1373">1373</a>
 <a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
+    sync::Arc,
     thread::JoinHandle,
     time::{Duration, Instant},
 };
@@ -1416,6 +1437,8 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
+<span class="kw">use </span>massa_wallet::Wallet;
+<span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
@@ -1477,6 +1500,7 @@
     storage: Storage,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 }
 
 <span class="kw">impl </span>RetrievalThread {
@@ -1857,6 +1881,9 @@
     /// - Unique indices.
     /// - Slot matches that of the block.
     /// - Block matches that of the block.
+    ///
+    /// Additionally, we detect if we are currently double staking
+    /// (If our staking wallet manages the same address as the block header&#39;s creator)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_header_from_peer(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         header: <span class="kw-2">&amp;</span>SecuredHeader,
@@ -1906,6 +1933,15 @@
                 }
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((block_id, <span class="bool-val">false</span>)));
             }
+        }
+
+        <span class="comment">// Check if the block producer address is handled by the wallet (this would mean double staking)
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(_kp) = <span class="self">self
+            </span>.wallet
+            .read()
+            .find_associated_keypair(<span class="kw-2">&amp;</span>header.content_creator_address)
+        {
+            <span class="macro">panic!</span>(<span class="string">&quot;Double staking detected on header {:?}&quot;</span>, header);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
@@ -2008,6 +2044,8 @@
     ///
     /// Checks performed:
     /// - Valid signature.
+    ///
+    /// Here, we don&#39;t check for double staking, because our own endorsements will come in unknown block headers.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         endorsements: Vec&lt;SecureShareEndorsement&gt;,
@@ -2715,6 +2753,7 @@
     storage: Storage,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 ) -&gt; JoinHandle&lt;()&gt; {
     <span class="kw">let </span>block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -2741,6 +2780,7 @@
                 storage,
                 mip_store,
                 massa_metrics,
+                wallet,
             };
             retrieval_thread.run();
         })
