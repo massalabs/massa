@@ -49,6 +49,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
         high_priority: bool,
     ) -> Result<(), ProtocolError> {
         if let Some(connection) = self.read().connections.get(peer_id) {
+            println!("AURELIEN: send to peer {}, message {:?}", peer_id, message);
             connection
                 .send_channels
                 .try_send(message_serializer, message, high_priority)

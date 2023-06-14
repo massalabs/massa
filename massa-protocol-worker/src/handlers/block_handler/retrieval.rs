@@ -29,18 +29,19 @@ use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
     block_id::BlockId,
+    config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT},
     endorsement::SecureShareEndorsement,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::{Id, SecureShare},
-    timeslots::get_block_slot_timestamp, config::{T0, GENESIS_TIMESTAMP, THREAD_COUNT},
+    timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
-use massa_time::{TimeError, MassaTime};
+use massa_time::{MassaTime, TimeError};
 use massa_versioning::versioning::MipStore;
 use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
@@ -978,8 +979,19 @@ impl RetrievalThread {
                         header: header.clone(),
                         operations: block_operation_ids.clone(),
                     };
-                    let latency = MassaTime::now().unwrap().saturating_sub(get_block_slot_timestamp(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, header.content.slot).unwrap());
-                    println!("AURELIEN: Finish receive block id {} from peer {} with a latency of {}", block_id, from_peer_id, latency);
+                    let latency = MassaTime::now().unwrap().saturating_sub(
+                        get_block_slot_timestamp(
+                            THREAD_COUNT,
+                            T0,
+                            *GENESIS_TIMESTAMP,
+                            header.content.slot,
+                        )
+                        .unwrap(),
+                    );
+                    println!(
+                        "AURELIEN: Finish receive block id {} from peer {} with a latency of {}",
+                        block_id, from_peer_id, latency
+                    );
 
                     let mut content_serialized = Vec::new();
                     BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
