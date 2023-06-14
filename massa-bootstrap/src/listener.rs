@@ -79,6 +79,9 @@ impl BootstrapTcpListener {
 
 impl BSEventPoller for BootstrapTcpListener {
     fn poll(&mut self) -> Result<Vec<PollEvent>, BootstrapError> {
+
+        println!("Waiting for poll event");
+
         self.poll.poll(&mut self.events, None).unwrap();
 
         // Confirm that we are not being signalled to shut down
@@ -87,6 +90,8 @@ impl BSEventPoller for BootstrapTcpListener {
         }
 
         let mut results = Vec::new();
+
+        println!("Accepting {} new connection", self.events.iter().count());
 
         // Process each event.
         for event in self.events.iter() {
