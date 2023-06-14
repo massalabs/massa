@@ -85,7 +85,7 @@ impl OperationPool {
         .unwrap_or(min_slot);
         let max_slot = std::cmp::max(max_slot, min_slot);
 
-        // search for all our PoS draws
+        // search for all our PoS draws in the interval of interest
         let pos_draws = BTreeSet::new();
         let addrs = self.wallet.read().keys.keys().copied().collect::<Vec<_>>();
         for addr in addrs {
@@ -103,22 +103,14 @@ impl OperationPool {
     }
 
     /// Returns the list of executed ops with a boolean indicating whether they are executed as final.
-    fn get_execution_statuses(&self) -> PreHashMap<OperationId, bool> {
-        /// TODO make it lighter by not querying ALL executed ops !
-        /// https://github.com/massalabs/massa/issues/4075
-        let (speculative_status, final_status) =
-            self.channels.execution_controller.get_op_exec_status();
-        self.sorted_ops
-            .iter()
-            .filter_map(|op_info| {
-                if final_status.contains_key(&op_info.id) {
-                    Some((op_info.id, true))
-                } else if speculative_status.contains_key(&op_info.id) {
-                    Some((op_info.id, false))
-                } else {
-                    None
-                }
-            })
+    fn get_final_execution_statuses(&self) -> PreHashMap<OperationId, bool> {
+        let op_ids: Vec<OperationId> = self.sorted_ops.iter().map(|op_info| op_info.id).collect();
+        self.channels
+            .execution_controller
+            .get_ops_exec_status(&op_ids)
+            .into_iter()
+            .zip(op_ids.into_iter())
+            .map(|((_, final_status), op_id)| (op_id, final_status))
             .collect()
     }
 

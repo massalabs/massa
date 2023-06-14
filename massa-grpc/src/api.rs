@@ -452,33 +452,44 @@ pub(crate) fn get_operations(
     // Keep only the ops id (found in storage)
     let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
 
-    // Ask pool whether it carries the operations
-    let in_pool = grpc.pool_command_sender.contains_operations(&ops);
-
-    let (speculative_op_exec_statuses, final_op_exec_statuses) =
-        grpc.execution_controller.get_op_exec_status();
-
-    // Compute operation finality and execution status
-    let (is_operation_final, statuses): (Vec<Option<bool>>, Vec<Option<bool>>) = ops
-        .iter()
-        .map(|op| {
-            let final_status = final_op_exec_statuses.get(op);
-            let is_final = final_status.copied();
-            let status = final_status
-                .or(speculative_op_exec_statuses.get(op))
-                .copied();
-            (is_final, status)
+    // Get the speculative and final execution status of the operations
+    let exec_statuses: Vec<_> = grpc
+        .execution_controller
+        .get_ops_exec_status(&ops)
+        .into_iter()
+        .map(|(spec_exec, final_exex)| {
+            let mut grpc_statuses: Vec<_> = Vec::new();
+            match (spec_exec, final_exec) {
+                (Some(true), Some(true)) => {
+                    status.push(grpc::OperationStatus::Success.into());
+                    status.push(grpc::OperationStatus::Final.into())
+                }
+                (Some(false), Some(false)) => {
+                    status.push(grpc::OperationStatus::Failure.into());
+                    status.push(grpc::OperationStatus::Final.into())
+                }
+                (Some(true), None) => {
+                    status.push(grpc::OperationStatus::Success.into());
+                    status.push(grpc::OperationStatus::Pending.into())
+                }
+                (Some(false), None) => {
+                    status.push(grpc::OperationStatus::Failure.into());
+                    status.push(grpc::OperationStatus::Pending.into())
+                }
+                _ => {
+                    status.push(grpc::OperationStatus::Unknown.into());
+                }
+            }
+            grpc_statuses
         })
-        .unzip();
+        .collect();
 
     // Gather all values into a vector of OperationWrapper instances
     let mut operations: Vec<grpc_model::OperationWrapper> = Vec::with_capacity(ops.len());
     let zipped_iterator = izip!(
         ops.into_iter(),
         storage_info.into_iter(),
-        in_pool.into_iter(),
-        is_operation_final.into_iter(),
-        statuses.into_iter(),
+        exec_statuses.into_iter(),
     );
     for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in zipped_iterator
     {
@@ -506,7 +517,7 @@ pub(crate) fn get_operations(
                 .get_thread(grpc.grpc_config.thread_count) as u32,
             operation: Some(operation.into()),
             block_ids: in_blocks.into_iter().map(|id| id.to_string()).collect(),
-            status,
+            status: exec_status,
         });
     }
 
