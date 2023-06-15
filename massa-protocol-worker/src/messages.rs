@@ -10,7 +10,6 @@ use peernet::{
         MessagesHandler as PeerNetMessagesHandler, MessagesSerializer as PeerNetMessagesSerializer,
     },
 };
-use tracing::debug;
 
 use crate::handlers::{
     block_handler::{BlockMessage, BlockMessageSerializer},
@@ -228,7 +227,6 @@ pub struct MessagesHandler {
 
 impl PeerNetMessagesHandler<PeerId> for MessagesHandler {
     fn handle(&self, data: &[u8], peer_id: &PeerId) -> PeerNetResult<()> {
-        debug!("AURELIEN: received message of len {:?}", data.len());
         let (data, raw_id) = self
             .id_deserializer
             .deserialize::<DeserializeError>(data)

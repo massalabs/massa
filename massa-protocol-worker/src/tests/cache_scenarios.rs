@@ -36,7 +36,8 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
               protocol_controller,
               protocol_manager,
               mut consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -184,6 +185,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )

@@ -24,7 +24,6 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
-use tracing::debug;
 
 type Key = Vec<u8>;
 type Value = Vec<u8>;
@@ -433,7 +432,6 @@ where
         reset_history: bool,
         only_use_xor: bool,
     ) -> Result<(), MassaDBError> {
-        debug!("AURELIEN: MassaDB: start write changes");
         if let Some(change_id) = change_id.clone() {
             if change_id < self.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
                 return Err(MassaDBError::InvalidChangeID(String::from(
@@ -445,7 +443,6 @@ where
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-        debug!("AURELIEN: MassaDB: after get handles");
 
         let mut current_xor_hash = self.get_db_hash_xor();
 
@@ -453,13 +450,10 @@ where
 
         for (key, value) in changes.iter() {
             if let Some(value) = value {
-                debug!("AURELIEN: MassaDB: before insert value");
                 self.current_batch.lock().put_cf(handle_state, key, value);
-                debug!("AURELIEN: MassaDB: after insert value");
 
                 // Compute LSM TREE if we need to
                 if !only_use_xor {
-                    debug!("AURELIEN: MassaDB: before tree update");
                     let key_hash = Hash::compute_from(key);
                     let value_hash = Hash::compute_from(value);
 
@@ -469,7 +463,6 @@ where
                             Bytes::from(value_hash.to_bytes().to_vec()),
                         )
                         .expect(LSMTREE_ERROR);
-                    debug!("AURELIEN: MassaDB: after tree update");
                 }
 
                 // Compute the XOR in all cases
@@ -482,18 +475,14 @@ where
                 let new_hash = Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
                 current_xor_hash ^= new_hash;
             } else {
-                debug!("AURELIEN: MassaDB: before delete");
                 self.current_batch.lock().delete_cf(handle_state, key);
-                debug!("AURELIEN: MassaDB: after delete");
 
                 // Compute LSM TREE if we need to
                 if !only_use_xor {
-                    debug!("AURELIEN: MassaDB: before tree remove");
                     let key_hash = Hash::compute_from(key);
                     self.lsmtree
                         .remove(key_hash.to_bytes())
                         .expect(LSMTREE_ERROR);
-                    debug!("AURELIEN: MassaDB: after tree remove");
                 }
 
                 // Compute the XOR in all cases
@@ -508,7 +497,6 @@ where
         // in versioning_changes, we have the data that we do not want to include in hash
         // e.g everything that is not in 'Active' state (so hashes remain compatibles)
         for (key, value) in versioning_changes.iter() {
-            debug!("AURELIEN: MassaDB: before add versioning change");
             if let Some(value) = value {
                 self.current_batch
                     .lock()
@@ -516,16 +504,11 @@ where
             } else {
                 self.current_batch.lock().delete_cf(handle_versioning, key);
             }
-            debug!("AURELIEN: MassaDB: after add versioning change");
         }
 
-        debug!("AURELIEN: MassaDB: before change id");
         if let Some(change_id) = change_id {
             self.set_change_id_to_batch(change_id);
         }
-        debug!("AURELIEN: MassaDB: after change id");
-
-        debug!("AURELIEN: MassaDB: before state hash change");
 
         // Update the hash entries:
         // - always update the STATE_HASH_XOR_KEY
@@ -551,9 +534,6 @@ where
                 .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
         }
 
-        debug!("AURELIEN: MassaDB: after state hash change");
-
-        debug!("AURELIEN: MassaDB: before write rocks");
         {
             let mut current_batch_guard = self.current_batch.lock();
             let batch = WriteBatch::from_data(current_batch_guard.data());
@@ -563,11 +543,9 @@ where
                 MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
             })?;
         }
-        debug!("AURELIEN: MassaDB: after write rocks");
 
         self.current_hashmap.write().clear();
 
-        debug!("AURELIEN: MassaDB: before changes history update");
         self.change_history
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
             .and_modify(|map| map.extend(changes.clone().into_iter()))
@@ -577,9 +555,7 @@ where
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
             .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
             .or_insert(versioning_changes);
-        debug!("AURELIEN: MassaDB: after changes history update");
 
-        debug!("AURELIEN: MassaDB: before cleaning");
         if reset_history {
             self.change_history.clear();
         }
@@ -587,9 +563,6 @@ where
         while self.change_history.len() > self.config.max_history_length {
             self.change_history.pop_first();
         }
-        debug!("AURELIEN: MassaDB: after cleaning");
-
-        debug!("AURELIEN: MassaDB: end write changes");
         Ok(())
     }
 

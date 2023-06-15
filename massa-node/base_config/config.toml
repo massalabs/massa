@@ -272,12 +272,14 @@
     max_bytes_read_write = 20_000_000.0
 
 [pool]
-    # max number of operations kept per thread
-    max_pool_size_per_thread = 25000
-    # if an operation is too much in the future it will be ignored
-    max_operation_future_validity_start_periods = 100
-    # max number of endorsements kept
-    max_endorsement_count = 10000
+    # max number of operations kept in the pool
+    max_operation_pool_size = 800000
+    # refresh interval of the operation pool scoring (milliseconds)
+    operation_pool_refresh_interval = 5000
+    # if an operation is too much in the future it will be ignored (milliseconds)
+    operation_max_future_start_delay = 50000
+    # max number of endorsements kept per thread
+    max_endorsements_pool_size_per_thread = 25000
     # max number of items returned per query
     max_item_return_count = 100
     # endorsements channel capacity

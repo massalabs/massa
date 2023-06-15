@@ -6,13 +6,14 @@ use crate::controller_impl::{Command, PoolManagerImpl};
 use crate::denunciation_pool::DenunciationPool;
 use crate::operation_pool::OperationPool;
 use crate::{controller_impl::PoolControllerImpl, endorsement_pool::EndorsementPool};
-use massa_execution_exports::ExecutionController;
 use massa_pool_exports::PoolConfig;
 use massa_pool_exports::{PoolChannels, PoolController, PoolManager};
 use massa_storage::Storage;
+use massa_wallet::Wallet;
 use parking_lot::RwLock;
+use std::time::Instant;
 use std::{
-    sync::mpsc::{sync_channel, Receiver, RecvError},
+    sync::mpsc::{sync_channel, Receiver, RecvError, RecvTimeoutError},
     sync::Arc,
     thread,
     thread::JoinHandle,
@@ -82,27 +83,26 @@ impl OperationPoolThread {
     pub(crate) fn spawn(
         receiver: Receiver<Command>,
         operation_pool: Arc<RwLock<OperationPool>>,
+        config: PoolConfig,
     ) -> JoinHandle<()> {
         let thread_builder = thread::Builder::new().name("operation-pool".into());
         thread_builder
-            .spawn(|| {
+            .spawn(move || {
                 let this = Self {
                     receiver,
                     operation_pool,
                 };
-                this.run()
+                this.run(config)
             })
-            .expect("failed to spawn thread : operation-pool")
+            .expect("failed to spawn thread: operation-pool")
     }
 
     /// Run the thread.
-    fn run(self) {
+    fn run(self, config: PoolConfig) {
+        let mut next_refresh = Instant::now();
         loop {
-            match self.receiver.recv() {
-                Err(RecvError) => break,
-                Ok(Command::Stop) => {
-                    break;
-                }
+            match self.receiver.recv_deadline(next_refresh) {
+                Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
                 Ok(Command::AddItems(operations)) => {
                     self.operation_pool.write().add_operations(operations)
                 }
@@ -110,11 +110,18 @@ impl OperationPoolThread {
                     .operation_pool
                     .write()
                     .notify_final_cs_periods(&final_cs_periods),
-                _ => {
+                Ok(_) => {
                     warn!("OperationPoolThread received an unexpected command");
                     continue;
                 }
+                Err(RecvTimeoutError::Timeout) => {}
             };
+            if next_refresh <= Instant::now() {
+                self.operation_pool.write().refresh();
+                next_refresh = Instant::now()
+                    .checked_add(config.operation_pool_refresh_interval.to_duration())
+                    .expect("could not compute time of next op pool refresh")
+            }
         }
     }
 }
@@ -177,10 +184,8 @@ impl DenunciationPoolThread {
 pub fn start_pool_controller(
     config: PoolConfig,
     storage: &Storage,
-    execution_controller: Box<dyn ExecutionController>,
     channels: PoolChannels,
-    // denunciation_factory_tx: Sender<DenunciationPrecursor>,
-    // denunciation_factory_rx: Receiver<DenunciationPrecursor>,
+    wallet: Arc<RwLock<Wallet>>,
 ) -> (Box<dyn PoolManager>, Box<dyn PoolController>) {
     let (operations_input_sender, operations_input_receiver) =
         sync_channel(config.operations_channel_size);
@@ -191,19 +196,16 @@ pub fn start_pool_controller(
     let operation_pool = Arc::new(RwLock::new(OperationPool::init(
         config,
         storage,
-        execution_controller.clone(),
         channels.clone(),
+        wallet.clone(),
     )));
     let endorsement_pool = Arc::new(RwLock::new(EndorsementPool::init(
         config,
         storage,
         channels.clone(),
+        wallet,
     )));
-    let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(
-        config,
-        channels.selector.clone(),
-        execution_controller,
-    )));
+    let denunciation_pool = Arc::new(RwLock::new(DenunciationPool::init(config, channels)));
     let controller = PoolControllerImpl {
         _config: config,
         operation_pool: operation_pool.clone(),
@@ -216,7 +218,7 @@ pub fn start_pool_controller(
     };
 
     let operations_thread_handle =
-        OperationPoolThread::spawn(operations_input_receiver, operation_pool);
+        OperationPoolThread::spawn(operations_input_receiver, operation_pool, config);
     let endorsements_thread_handle =
         EndorsementPoolThread::spawn(endorsements_input_receiver, endorsement_pool);
     let denunciations_thread_handle =

@@ -3,7 +3,7 @@
 //! ## **Overview**
 //!
 //! This Rust module is a gRPC API for providing services for the Massa blockchain.
-//! It implements gRPC services defined in the [massa_proto] module.
+//! It implements gRPC services defined in the [massa_proto_rs] crate.
 //!
 //! ## **Structure**
 //!

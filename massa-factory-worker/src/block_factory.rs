@@ -18,7 +18,7 @@ use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{sync::Arc, thread, time::Instant};
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
@@ -133,11 +133,6 @@ impl BlockFactoryWorker {
             }
         };
 
-        debug!(
-            "AURELIEN: Block prod {}: block factory selected block producer address for slot {}: {}",
-            slot, slot, block_producer_addr
-        );
-
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();
         let block_producer_keypair = if let Some(kp) =
@@ -194,9 +189,7 @@ impl BlockFactoryWorker {
         block_storage.extend(endo_storage);
 
         // gather operations and compute global operations hash
-        debug!("AURELIEN: Block prod {}: before ops fetched", slot,);
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
-        debug!("AURELIEN: Block prod {}: after ops fetched", slot,);
         if op_ids.len() > self.cfg.max_operations_per_block as usize {
             warn!("Too many operations returned");
             return;
@@ -211,7 +204,6 @@ impl BlockFactoryWorker {
         );
 
         // create header
-        debug!("AURELIEN: Block prod {}: before get version", slot,);
         let current_version = self.mip_store.get_network_version_current();
         let announced_version = self.mip_store.get_network_version_to_announce();
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
@@ -228,10 +220,6 @@ impl BlockFactoryWorker {
             block_producer_keypair,
         )
         .expect("error while producing block header");
-        debug!(
-            "AURELIEN: Block prod {}: after create block and get denunciations",
-            slot,
-        );
         // create block
         let block_ = Block {
             header,
@@ -258,7 +246,6 @@ impl BlockFactoryWorker {
         self.channels
             .consensus
             .register_block(block_id, slot, block_storage, true);
-        debug!("AURELIEN: Block prod {}: after register block", slot,);
     }
 
     /// main run loop of the block creator thread

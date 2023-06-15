@@ -32,7 +32,6 @@ use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
     block_id::BlockId,
-    config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT},
     endorsement::SecureShareEndorsement,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
@@ -41,6 +40,7 @@ use massa_models::{
     timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -90,6 +90,7 @@ impl BlockInfo {
 
 pub struct RetrievalThread {
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: MassaReceiver<PeerMessageTuple>,
@@ -150,13 +151,11 @@ impl RetrievalThread {
                             }
                             match message {
                                 BlockMessage::AskForBlocks(block_infos) => {
-                                    debug!("AURELIEN: Received block message: AskForBlocks {:?} from {}", block_infos, peer_id);
                                     if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
-                                    debug!("AURELIEN: Received block message: ReplyForBlocks {:?} from {}", block_infos, peer_id);
                                     for (block_id, block_info) in block_infos.into_iter() {
                                         if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
@@ -167,7 +166,6 @@ impl RetrievalThread {
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
-                                    debug!("AURELIEN: Received block message: BlockHeader {:?} from {}", header, peer_id);
                                     massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
                                     if let Ok(Some((block_id, is_new))) =
                                         self.note_header_from_peer(&header, &peer_id)
@@ -205,7 +203,6 @@ impl RetrievalThread {
                         Ok(command) => {
                             match command {
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } => {
-                                    debug!("AURELIEN: Received block message: command WishlistDelta {:?} {:?}", new, remove);
                                     massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                                     for (block_id, header) in new.into_iter() {
                                         self.block_wishlist.insert(
@@ -677,6 +674,28 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
+
+        // Check PoS draws
+        for endorsement in new_endorsements.values() {
+            let selection = self
+                .selector_controller
+                .get_selection(endorsement.content.slot)?;
+            let Some(address) = selection.endorsements.get(endorsement.content.index as usize) else {
+                return Err(ProtocolError::GeneralProtocolError(
+                    format!(
+                        "No selection on slot {} for index {}",
+                        endorsement.content.slot, endorsement.content.index
+                    )
+                ))
+            };
+            if address != &endorsement.content_creator_address {
+                return Err(ProtocolError::GeneralProtocolError(format!(
+                    "Invalid endorsement: expected address {}, got {}",
+                    address, endorsement.content_creator_address
+                )));
+            }
+        }
+
         'write_cache: {
             let mut cache_write = self.endorsement_cache.write();
             // add to verified signature cache
@@ -1026,19 +1045,6 @@ impl RetrievalThread {
                         header: header.clone(),
                         operations: block_operation_ids.clone(),
                     };
-                    let latency = MassaTime::now().unwrap().saturating_sub(
-                        get_block_slot_timestamp(
-                            THREAD_COUNT,
-                            T0,
-                            *GENESIS_TIMESTAMP,
-                            header.content.slot,
-                        )
-                        .unwrap(),
-                    );
-                    println!(
-                        "AURELIEN: Finish receive block id {} from peer {} with a latency of {}",
-                        block_id, from_peer_id, latency
-                    );
 
                     let mut content_serialized = Vec::new();
                     BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
@@ -1452,6 +1458,7 @@ impl RetrievalThread {
 // bookmark
 pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: MassaReceiver<PeerMessageTuple>,
@@ -1475,6 +1482,7 @@ pub fn start_retrieval_thread(
         .spawn(move || {
             let mut retrieval_thread = RetrievalThread {
                 active_connections,
+                selector_controller,
                 consensus_controller,
                 pool_controller,
                 next_timer_ask_block: Instant::now() + config.ask_block_timeout.to_duration(),

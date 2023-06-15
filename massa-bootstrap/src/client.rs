@@ -416,7 +416,7 @@ pub fn get_state(
         {
             let mut final_state_guard = final_state.write();
 
-            let only_use_xor = final_state_guard.get_only_use_xor();
+            let only_use_xor = final_state_guard.get_only_use_xor(&Slot::new(0, 31));
 
             if !bootstrap_config.keep_ledger {
                 // load ledger from initial ledger file
