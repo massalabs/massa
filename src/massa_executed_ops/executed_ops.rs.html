@@ -475,15 +475,27 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
 //! Used to detect operation reuse.
 
 </span><span class="kw">use crate</span>::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-<span class="kw">use </span>massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
-    EXECUTED_OPS_PREFIX, STATE_CF,
+<span class="kw">use </span>massa_db_exports::{
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR,
+    EXECUTED_OPS_ID_SER_ERROR, EXECUTED_OPS_PREFIX, STATE_CF,
 };
 <span class="kw">use </span>massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
@@ -500,11 +512,9 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap, HashSet},
     ops::Bound::{Excluded, Included},
-    sync::Arc,
 };
 
 <span class="doccomment">/// Op id key formatting macro
@@ -521,7 +531,7 @@
     <span class="doccomment">/// Executed operations configuration
     </span>_config: ExecutedOpsConfig,
     <span class="doccomment">/// RocksDB Instance
-    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+    </span><span class="kw">pub </span>db: ShareableMassaDBController,
     <span class="doccomment">/// Executed operations btreemap with slot as index for better pruning complexity
     </span><span class="kw">pub </span>sorted_ops: BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
     <span class="doccomment">/// execution status of operations (true: success, false: fail)
@@ -536,7 +546,7 @@
 
 <span class="kw">impl </span>ExecutedOps {
     <span class="doccomment">/// Creates a new `ExecutedOps`
-    </span><span class="kw">pub fn </span>new(config: ExecutedOpsConfig, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(config: ExecutedOpsConfig, db: ShareableMassaDBController) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>slot_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(<span class="number">0</span>), Excluded(config.thread_count)),
@@ -555,18 +565,25 @@
         }
     }
 
+    <span class="doccomment">/// Get the execution statuses of a set of operations.
+    /// Returns a list where each element is None if no execution was found for that op,
+    /// or a boolean indicating whether the execution was successful (true) or had an error (false).
+    </span><span class="kw">pub fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt; {
+        batch
+            .iter()
+            .map(|op_id| <span class="self">self</span>.op_exec_status.get(op_id).copied())
+            .collect()
+    }
+
     <span class="doccomment">/// Recomputes the local caches after bootstrap or loading the state from disk
     </span><span class="kw">pub fn </span>recompute_sorted_ops_and_op_exec_status(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.sorted_ops.clear();
         <span class="self">self</span>.op_exec_status.clear();
 
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        <span class="kw">for </span>(serialized_op_id, serialized_value) <span class="kw">in </span>db
-            .db
-            .prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
-            .flatten()
+        <span class="kw">for </span>(serialized_op_id, serialized_value) <span class="kw">in
+            </span>db.prefix_iterator_cf(STATE_CF, EXECUTED_OPS_PREFIX.as_bytes())
         {
             <span class="kw">if </span>!serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
@@ -642,15 +659,13 @@
     <span class="doccomment">/// Check if an operation was executed
     </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_op_id = Vec::new();
         <span class="self">self</span>.operation_id_serializer
             .serialize(op_id, <span class="kw-2">&amp;mut </span>serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.db
-            .get_cf(handle, <span class="macro">op_id_key!</span>(serialized_op_id))
+        db.get_cf(STATE_CF, <span class="macro">op_id_key!</span>(serialized_op_id))
             .expect(CRUD_ERROR)
             .is_some()
     }
@@ -737,10 +752,13 @@
 
 <span class="attr">#[test]
 </span><span class="kw">fn </span>test_executed_ops_hash_computing() {
-    <span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
+    <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>massa_hash::Hash;
     <span class="kw">use </span>massa_models::prehash::PreHashMap;
     <span class="kw">use </span>massa_models::secure_share::Id;
+    <span class="kw">use </span>parking_lot::RwLock;
+    <span class="kw">use </span>std::sync::Arc;
     <span class="kw">use </span>tempfile::TempDir;
 
     <span class="comment">// initialize the executed ops config
@@ -760,8 +778,14 @@
         max_new_elements: <span class="number">100</span>,
         thread_count,
     };
-    <span class="kw">let </span>db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
-    <span class="kw">let </span>db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
+
+    <span class="kw">let </span>db_a = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_a_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+    ));
+    <span class="kw">let </span>db_c = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_c_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+    ));
+
     <span class="comment">// initialize the executed ops and executed ops changes
     </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone(), db_a.clone());
     <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config, db_c.clone());

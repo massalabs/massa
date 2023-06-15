@@ -668,11 +668,6 @@
 <a href="#668" id="668">668</a>
 <a href="#669" id="669">669</a>
 <a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -686,8 +681,7 @@
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::{<span class="self">self</span>, get_latest_block_slot_at_timestamp};
-<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
-<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
+<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>tracing::log::warn;
@@ -700,8 +694,8 @@
 <span class="doccomment">/// Get blocks
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_blocks(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetBlocksRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetBlocksResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetBlocksRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetBlocksResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
 
     <span class="comment">// Get the block IDs from the request.
@@ -740,7 +734,7 @@
     </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
 
     <span class="comment">// Create the context for the response.
-    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc_api::BlocksContext {
+    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc::BlocksContext {
         slot: <span class="prelude-val">Some</span>(current_slot.into()),
     });
 
@@ -763,21 +757,21 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>status = Vec::new();
 
                 <span class="kw">if </span>graph_status == BlockGraphStatus::Final {
-                    status.push(grpc_model::BlockStatus::Final.into());
+                    status.push(grpc::BlockStatus::Final.into());
                 };
                 <span class="kw">if </span>graph_status == BlockGraphStatus::ActiveInBlockclique {
-                    status.push(grpc_model::BlockStatus::InBlockclique.into());
+                    status.push(grpc::BlockStatus::InBlockclique.into());
                 };
                 <span class="kw">if </span>graph_status == BlockGraphStatus::ActiveInBlockclique
                     || graph_status == BlockGraphStatus::ActiveInAlternativeCliques
                 {
-                    status.push(grpc_model::BlockStatus::Candidate.into());
+                    status.push(grpc::BlockStatus::Candidate.into());
                 };
                 <span class="kw">if </span>graph_status == BlockGraphStatus::Discarded {
-                    status.push(grpc_model::BlockStatus::Discarded.into());
+                    status.push(grpc::BlockStatus::Discarded.into());
                 };
 
-                <span class="kw">return </span><span class="prelude-val">Some</span>(grpc_model::BlockWrapper {
+                <span class="kw">return </span><span class="prelude-val">Some</span>(grpc::BlockWrapper {
                     id: id.to_string(),
                     block: <span class="prelude-val">Some</span>(content.into()),
                     status,
@@ -786,9 +780,9 @@
 
             <span class="prelude-val">None
         </span>})
-        .collect::&lt;Vec&lt;grpc_model::BlockWrapper&gt;&gt;();
+        .collect::&lt;Vec&lt;grpc::BlockWrapper&gt;&gt;();
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetBlocksResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetBlocksResponse {
         id: inner_req.id,
         context,
         blocks,
@@ -798,8 +792,8 @@
 <span class="doccomment">/// get blocks by slots
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_blocks_by_slots(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetBlocksBySlotsRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetBlocksBySlotsResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetBlocksBySlotsRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetBlocksBySlotsResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
 
@@ -831,8 +825,8 @@
                 .map(|endorsement| endorsement.into())
                 .collect();
 
-            <span class="kw">let </span>block_header = grpc_model::BlockHeader {
-                slot: <span class="prelude-val">Some</span>(grpc_model::Slot {
+            <span class="kw">let </span>block_header = grpc::BlockHeader {
+                slot: <span class="prelude-val">Some</span>(grpc::Slot {
                     period: header.content.slot.period,
                     thread: header.content.slot.thread <span class="kw">as </span>u32,
                 }),
@@ -849,7 +843,7 @@
                 .collect();
 
             (
-                grpc_model::SignedBlockHeader {
+                grpc::SignedBlockHeader {
                     content: <span class="prelude-val">Some</span>(block_header),
                     signature: header.signature.to_string(),
                     content_creator_pub_key: header.content_creator_pub_key.to_string(),
@@ -861,14 +855,14 @@
         });
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = res {
-            blocks.push(grpc_model::Block {
+            blocks.push(grpc::Block {
                 header: <span class="prelude-val">Some</span>(block.<span class="number">0</span>),
                 operations: block.<span class="number">1</span>,
             });
         }
     }
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetBlocksBySlotsResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetBlocksBySlotsResponse {
         id: inner_req.id,
         blocks,
     })
@@ -877,8 +871,8 @@
 <span class="doccomment">/// Get multiple datastore entries
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_datastore_entries(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetDatastoreEntriesRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetDatastoreEntriesResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetDatastoreEntriesRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetDatastoreEntriesResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
     <span class="kw">let </span>id = inner_req.id;
 
@@ -897,64 +891,63 @@
         .execution_controller
         .get_final_and_active_data_entry(filters)
         .into_iter()
-        .map(|output| grpc_api::DatastoreEntry {
+        .map(|output| grpc::DatastoreEntry {
             final_value: output.<span class="number">0</span>.unwrap_or_default(),
             candidate_value: output.<span class="number">1</span>.unwrap_or_default(),
         })
         .collect();
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetDatastoreEntriesResponse { id, entries })
+    <span class="prelude-val">Ok</span>(grpc::GetDatastoreEntriesResponse { id, entries })
 }
 
 <span class="doccomment">/// Get the largest stakers
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_largest_stakers(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetLargestStakersRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetLargestStakersResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetLargestStakersRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetLargestStakersResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
     <span class="kw">let </span>id = inner_req.id;
 
     <span class="comment">// Parse the query parameters, if provided.
-    </span><span class="kw">let </span>query_res: <span class="prelude-ty">Result</span>&lt;(u64, u64, <span class="prelude-ty">Option</span>&lt;grpc_api::LargestStakersFilter&gt;), GrpcError&gt; =
-        inner_req
-            .query
-            .map_or(<span class="prelude-val">Ok</span>((DEFAULT_OFFSET, DEFAULT_LIMIT, <span class="prelude-val">None</span>)), |query| {
-                <span class="kw">let </span>limit = <span class="kw">if </span>query.limit == <span class="number">0 </span>{
-                    DEFAULT_LIMIT
-                } <span class="kw">else </span>{
-                    query.limit
-                };
-                <span class="kw">let </span>filter = query.filter;
-                <span class="comment">// If the filter is provided, validate the minimum and maximum roll counts.
-                </span><span class="kw">let </span>filter_opt = filter
-                    .map(|filter| {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(min_rolls) = filter.min_rolls {
-                            <span class="kw">if </span>min_rolls == <span class="number">0 </span>{
+    </span><span class="kw">let </span>query_res: <span class="prelude-ty">Result</span>&lt;(u64, u64, <span class="prelude-ty">Option</span>&lt;grpc::LargestStakersFilter&gt;), GrpcError&gt; = inner_req
+        .query
+        .map_or(<span class="prelude-val">Ok</span>((DEFAULT_OFFSET, DEFAULT_LIMIT, <span class="prelude-val">None</span>)), |query| {
+            <span class="kw">let </span>limit = <span class="kw">if </span>query.limit == <span class="number">0 </span>{
+                DEFAULT_LIMIT
+            } <span class="kw">else </span>{
+                query.limit
+            };
+            <span class="kw">let </span>filter = query.filter;
+            <span class="comment">// If the filter is provided, validate the minimum and maximum roll counts.
+            </span><span class="kw">let </span>filter_opt = filter
+                .map(|filter| {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(min_rolls) = filter.min_rolls {
+                        <span class="kw">if </span>min_rolls == <span class="number">0 </span>{
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+                                <span class="string">&quot;min_rolls should be a positive number&quot;</span>.into(),
+                            ));
+                        }
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(max_rolls) = filter.max_rolls {
+                            <span class="kw">if </span>max_rolls == <span class="number">0 </span>{
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                                    <span class="string">&quot;min_rolls should be a positive number&quot;</span>.into(),
+                                    <span class="string">&quot;max_rolls should be a positive number&quot;</span>.into(),
                                 ));
                             }
-                            <span class="kw">if let </span><span class="prelude-val">Some</span>(max_rolls) = filter.max_rolls {
-                                <span class="kw">if </span>max_rolls == <span class="number">0 </span>{
-                                    <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                                        <span class="string">&quot;max_rolls should be a positive number&quot;</span>.into(),
-                                    ));
-                                }
-                                <span class="kw">if </span>min_rolls &gt; max_rolls {
-                                    <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                        <span class="string">&quot;min_rolls {} cannot be greater than max_rolls {}&quot;</span>,
-                                        min_rolls, max_rolls
-                                    )));
-                                }
+                            <span class="kw">if </span>min_rolls &gt; max_rolls {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                                    <span class="string">&quot;min_rolls {} cannot be greater than max_rolls {}&quot;</span>,
+                                    min_rolls, max_rolls
+                                )));
                             }
                         }
+                    }
 
-                        <span class="prelude-val">Ok</span>(filter)
-                    })
-                    .transpose()<span class="question-mark">?</span>; <span class="comment">// Convert `Option&lt;Result&gt;` to `Result&lt;Option&gt;`.
+                    <span class="prelude-val">Ok</span>(filter)
+                })
+                .transpose()<span class="question-mark">?</span>; <span class="comment">// Convert `Option&lt;Result&gt;` to `Result&lt;Option&gt;`.
 
-                </span><span class="prelude-val">Ok</span>((query.offset, limit, filter_opt))
-            });
+            </span><span class="prelude-val">Ok</span>((query.offset, limit, filter_opt))
+        });
 
     <span class="kw">let </span>(offset, limit, filter_opt) = query_res<span class="question-mark">?</span>;
 
@@ -970,7 +963,7 @@
     <span class="kw">let </span>current_cycle = current_slot.get_cycle(grpc.grpc_config.periods_per_cycle);
 
     <span class="comment">// Create the context for the response.
-    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc_api::LargestStakersContext {
+    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc::LargestStakersContext {
         slot: <span class="prelude-val">Some</span>(current_slot.into()),
     });
 
@@ -1003,13 +996,13 @@
     <span class="comment">// Paginate the stakers based on the specified offset and limit.
     </span><span class="kw">let </span>stakers = staker_vec
         .into_iter()
-        .map(|(address, rolls)| grpc_api::LargestStakerEntry { address, rolls })
+        .map(|(address, rolls)| grpc::LargestStakerEntry { address, rolls })
         .skip(offset <span class="kw">as </span>usize)
         .take(limit <span class="kw">as </span>usize)
         .collect();
 
     <span class="comment">// Return a response with the given id, context, and the collected stakers.
-    </span><span class="prelude-val">Ok</span>(grpc_api::GetLargestStakersResponse {
+    </span><span class="prelude-val">Ok</span>(grpc::GetLargestStakersResponse {
         id,
         context,
         stakers,
@@ -1019,42 +1012,42 @@
 <span class="comment">// Get node version
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_mip_status(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetMipStatusRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetMipStatusResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetMipStatusRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetMipStatusResponse, GrpcError&gt; {
     <span class="kw">let </span>mip_store_status_ = grpc.mip_store.get_mip_status();
-    <span class="kw">let </span>mip_store_status: <span class="prelude-ty">Result</span>&lt;Vec&lt;grpc_model::MipStatusEntry&gt;, GrpcError&gt; = mip_store_status_
+    <span class="kw">let </span>mip_store_status: <span class="prelude-ty">Result</span>&lt;Vec&lt;grpc::MipStatusEntry&gt;, GrpcError&gt; = mip_store_status_
         .iter()
         .map(|(mip_info, state_id_)| {
-            <span class="kw">let </span>state_id = grpc_model::ComponentStateId::from(state_id_);
-            <span class="prelude-val">Ok</span>(grpc_model::MipStatusEntry {
-                mip_info: <span class="prelude-val">Some</span>(grpc_model::MipInfo::from(mip_info)),
+            <span class="kw">let </span>state_id = grpc::ComponentStateId::from(state_id_);
+            <span class="prelude-val">Ok</span>(grpc::MipStatusEntry {
+                mip_info: <span class="prelude-val">Some</span>(grpc::MipInfo::from(mip_info)),
                 state_id: i32::from(state_id),
             })
         })
         .collect();
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetMipStatusResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetMipStatusResponse {
         id: request.into_inner().id,
-        entries: mip_store_status<span class="question-mark">?</span>,
+        entry: mip_store_status<span class="question-mark">?</span>,
     })
 }
 
 <span class="doccomment">/// Get next block best parents
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_next_block_best_parents(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetNextBlockBestParentsRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetNextBlockBestParentsResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetNextBlockBestParentsRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetNextBlockBestParentsResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
     <span class="kw">let </span>parents = grpc
         .consensus_controller
         .get_best_parents()
         .into_iter()
-        .map(|p| grpc_api::BlockParent {
+        .map(|p| grpc::BlockParent {
             block_id: p.<span class="number">0</span>.to_string(),
             period: p.<span class="number">1</span>,
         })
         .collect();
-    <span class="prelude-val">Ok</span>(grpc_api::GetNextBlockBestParentsResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetNextBlockBestParentsResponse {
         id: inner_req.id,
         parents,
     })
@@ -1063,10 +1056,10 @@
 <span class="doccomment">/// Get operations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_operations(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetOperationsRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetOperationsResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetOperationsRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetOperationsResponse, GrpcError&gt; {
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
-    <span class="kw">let </span>inner_req: grpc_api::GetOperationsRequest = request.into_inner();
+    <span class="kw">let </span>inner_req: grpc::GetOperationsRequest = request.into_inner();
     <span class="kw">let </span>id = inner_req.id;
 
     <span class="kw">let </span>operations_ids: Vec&lt;OperationId&gt; = inner_req
@@ -1100,7 +1093,7 @@
     </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
 
     <span class="comment">// Create the context for the response.
-    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc_api::OperationsContext {
+    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc::OperationsContext {
         slot: <span class="prelude-val">Some</span>(current_slot.into()),
     });
 
@@ -1127,65 +1120,62 @@
     <span class="comment">// Keep only the ops id (found in storage)
     </span><span class="kw">let </span>ops: Vec&lt;OperationId&gt; = storage_info.iter().map(|(op, <span class="kw">_</span>)| op.id).collect();
 
-    <span class="comment">// Ask pool whether it carries the operations
-    </span><span class="kw">let </span>in_pool = grpc.pool_command_sender.contains_operations(<span class="kw-2">&amp;</span>ops);
-
-    <span class="kw">let </span>(speculative_op_exec_statuses, final_op_exec_statuses) =
-        grpc.execution_controller.get_op_exec_status();
-
-    <span class="comment">// Compute operation finality and execution status
-    </span><span class="kw">let </span>(is_operation_final, statuses): (Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;, Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;) = ops
-        .iter()
-        .map(|op| {
-            <span class="kw">let </span>final_status = final_op_exec_statuses.get(op);
-            <span class="kw">let </span>is_final = final_status.copied();
-            <span class="kw">let </span>status = final_status
-                .or(speculative_op_exec_statuses.get(op))
-                .copied();
-            (is_final, status)
+    <span class="comment">// Get the speculative and final execution status of the operations
+    </span><span class="kw">let </span>exec_statuses: Vec&lt;<span class="kw">_</span>&gt; = grpc
+        .execution_controller
+        .get_ops_exec_status(<span class="kw-2">&amp;</span>ops)
+        .into_iter()
+        .map(|(spec_exec, final_exec)| <span class="kw">match </span>(spec_exec, final_exec) {
+            (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
+                <span class="macro">vec!</span>[
+                    grpc::OperationStatus::Success.into(),
+                    grpc::OperationStatus::Final.into(),
+                ]
+            }
+            (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
+                <span class="macro">vec!</span>[
+                    grpc::OperationStatus::Failure.into(),
+                    grpc::OperationStatus::Final.into(),
+                ]
+            }
+            (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">None</span>) =&gt; {
+                <span class="macro">vec!</span>[
+                    grpc::OperationStatus::Success.into(),
+                    grpc::OperationStatus::Pending.into(),
+                ]
+            }
+            (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">None</span>) =&gt; {
+                <span class="macro">vec!</span>[
+                    grpc::OperationStatus::Failure.into(),
+                    grpc::OperationStatus::Pending.into(),
+                ]
+            }
+            <span class="kw">_ </span>=&gt; {
+                <span class="macro">vec!</span>[grpc::OperationStatus::Unknown.into()]
+            }
         })
-        .unzip();
+        .collect();
 
     <span class="comment">// Gather all values into a vector of OperationWrapper instances
-    </span><span class="kw">let </span><span class="kw-2">mut </span>operations: Vec&lt;grpc_model::OperationWrapper&gt; = Vec::with_capacity(ops.len());
+    </span><span class="kw">let </span><span class="kw-2">mut </span>operations: Vec&lt;grpc::OperationWrapper&gt; = Vec::with_capacity(ops.len());
     <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
         ops.into_iter(),
         storage_info.into_iter(),
-        in_pool.into_iter(),
-        is_operation_final.into_iter(),
-        statuses.into_iter(),
+        exec_statuses.into_iter(),
     );
-    <span class="kw">for </span>(id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) <span class="kw">in </span>zipped_iterator
-    {
-        <span class="kw">let </span><span class="kw-2">mut </span>status: Vec&lt;i32&gt; = Vec::new();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(op_exec_status) = op_exec_status {
-            <span class="kw">if </span>op_exec_status {
-                status.push(grpc_model::OperationStatus::Success.into());
-            } <span class="kw">else </span>{
-                status.push(grpc_model::OperationStatus::Failure.into());
-            }
-        } <span class="kw">else </span>{
-            status.push(grpc_model::OperationStatus::Unknown.into());
-        }
-        <span class="kw">if </span>is_operation_final.unwrap_or_default() {
-            status.push(grpc_model::OperationStatus::Final.into());
-        }
-        <span class="kw">if </span>in_pool {
-            status.push(grpc_model::OperationStatus::Pending.into());
-        }
-
-        operations.push(grpc_model::OperationWrapper {
+    <span class="kw">for </span>(id, (operation, in_blocks), exec_status) <span class="kw">in </span>zipped_iterator {
+        operations.push(grpc::OperationWrapper {
             id: id.to_string(),
             thread: operation
                 .content_creator_address
                 .get_thread(grpc.grpc_config.thread_count) <span class="kw">as </span>u32,
             operation: <span class="prelude-val">Some</span>(operation.into()),
             block_ids: in_blocks.into_iter().map(|id| id.to_string()).collect(),
-            status,
+            status: exec_status,
         });
     }
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetOperationsResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetOperationsResponse {
         id,
         context,
         operations,
@@ -1195,9 +1185,9 @@
 <span class="doccomment">/// Get smart contract execution events
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_sc_execution_events(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetScExecutionEventsRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetScExecutionEventsResponse, GrpcError&gt; {
-    <span class="kw">let </span>inner_req: grpc_api::GetScExecutionEventsRequest = request.into_inner();
+    request: tonic::Request&lt;grpc::GetScExecutionEventsRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetScExecutionEventsResponse, GrpcError&gt; {
+    <span class="kw">let </span>inner_req: grpc::GetScExecutionEventsRequest = request.into_inner();
     <span class="kw">let </span>id = inner_req.id;
 
     <span class="kw">let </span>event_filter = inner_req
@@ -1221,18 +1211,18 @@
     </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
 
     <span class="comment">// Create the context for the response.
-    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc_api::GetScExecutionEventsContext {
+    </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc::GetScExecutionEventsContext {
         slot: <span class="prelude-val">Some</span>(current_slot.into()),
     });
 
-    <span class="kw">let </span>events: Vec&lt;grpc_model::ScExecutionEvent&gt; = grpc
+    <span class="kw">let </span>events: Vec&lt;grpc::ScExecutionEvent&gt; = grpc
         .execution_controller
         .get_filtered_sc_output_event(event_filter)
         .into_iter()
         .map(|event| event.into())
         .collect();
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetScExecutionEventsResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetScExecutionEventsResponse {
         id,
         context,
         events,
@@ -1242,8 +1232,8 @@
 <span class="comment">//  Get selector draws
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_selector_draws(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetSelectorDrawsRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetSelectorDrawsResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetSelectorDrawsRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetSelectorDrawsResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
     <span class="kw">let </span>id = inner_req.id;
 
@@ -1301,14 +1291,14 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
     <span class="kw">let </span>iterator = <span class="macro">izip!</span>(addresses.into_iter(), selection_draws.into_iter());
     <span class="kw">for </span>(address, (next_block_draws, next_endorsement_draws)) <span class="kw">in </span>iterator {
-        res.push(grpc_model::SelectorDraws {
+        res.push(grpc::SelectorDraws {
             address: address.to_string(),
             next_block_draws,
             next_endorsement_draws,
         });
     }
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetSelectorDrawsResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetSelectorDrawsResponse {
         id,
         selector_draws: res,
     })
@@ -1317,8 +1307,8 @@
 <span class="doccomment">/// Get transactions throughput
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_transactions_throughput(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetTransactionsThroughputRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetTransactionsThroughputResponse, GrpcError&gt; {
+    request: tonic::Request&lt;grpc::GetTransactionsThroughputRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetTransactionsThroughputResponse, GrpcError&gt; {
     <span class="kw">let </span>stats = grpc.execution_controller.get_stats();
     <span class="kw">let </span>nb_sec_range = stats
         .time_window_end
@@ -1332,7 +1322,7 @@
         .checked_div(nb_sec_range <span class="kw">as </span>usize)
         .unwrap_or_default() <span class="kw">as </span>u32;
 
-    <span class="prelude-val">Ok</span>(grpc_api::GetTransactionsThroughputResponse {
+    <span class="prelude-val">Ok</span>(grpc::GetTransactionsThroughputResponse {
         id: request.into_inner().id,
         throughput,
     })
@@ -1341,9 +1331,9 @@
 <span class="comment">// Get node version
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_version(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;grpc_api::GetVersionRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetVersionResponse, GrpcError&gt; {
-    <span class="prelude-val">Ok</span>(grpc_api::GetVersionResponse {
+    request: tonic::Request&lt;grpc::GetVersionRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;grpc::GetVersionResponse, GrpcError&gt; {
+    <span class="prelude-val">Ok</span>(grpc::GetVersionResponse {
         id: request.into_inner().id,
         version: grpc.version.to_string(),
     })
