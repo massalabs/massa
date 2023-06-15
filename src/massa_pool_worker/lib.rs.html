@@ -20,6 +20,10 @@
 <a href="#20" id="20">20</a>
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Pool of operation &amp;&amp; endorsements &amp;&amp; denunciations waiting to be included in a block
@@ -30,6 +34,7 @@
 #![feature(map_try_insert)]
 #![feature(let_chains)]
 #![feature(hash_drain_filter)]
+#![feature(deadline_api)]
 
 </span><span class="kw">mod </span>controller_impl;
 <span class="kw">mod </span>denunciation_pool;
@@ -39,6 +44,9 @@
 <span class="kw">mod </span>worker;
 
 <span class="kw">pub use </span>worker::start_pool_controller;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span>mockall <span class="kw">as _</span>;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
