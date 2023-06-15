@@ -19,12 +19,13 @@ use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
-use massa_versioning::versioning::MipStore;
+use massa_versioning::versioning::{MipComponent, MipStore};
 
 use parking_lot::RwLock;
 use rocksdb::IteratorMode;
 use tracing::{debug, info, warn};
 
+use massa_time::MassaTime;
 use std::sync::Arc;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -58,14 +59,6 @@ pub struct FinalState {
 }
 
 impl FinalState {
-    /// Temporary getter to know if we should compute the lsm tree during db writes
-    pub fn get_only_use_xor(&self) -> bool {
-        self.get_hash_kind_version() == 1
-    }
-
-    fn get_hash_kind_version(&self) -> u32 {
-        0
-    }
 
     /// Initializes a new `FinalState`
     ///
@@ -807,5 +800,18 @@ impl FinalState {
         }
 
         true
+    }
+
+    /// Temporary getter to know if we should compute the lsm tree during db writes
+    pub fn get_only_use_xor(&self) -> bool {
+        self.get_hash_kind_version() == 1
+    }
+
+    fn get_hash_kind_version(&self) -> u32 {
+        // Temp code
+        // Return version for hash kind of final state: 0 -> LSM, 1 -> Xor
+        let now = MassaTime::now().expect("Cannot get current time");
+        self.mip_store
+            .get_latest_component_version_at(&MipComponent::FinalStateHashKind, now)
     }
 }
