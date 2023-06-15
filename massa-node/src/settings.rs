@@ -172,6 +172,7 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct MetricsSettings {
     pub enabled: bool,
+    pub bind: SocketAddr,
 }
 
 /// Protocol Configuration, read from toml user configuration file

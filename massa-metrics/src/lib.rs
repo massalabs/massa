@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    net::SocketAddr,
     sync::{Arc, RwLock},
 };
 
@@ -100,12 +101,11 @@ pub struct MassaMetrics {
     final_cursor_period: IntGauge,
 
     // peer bandwidth (bytes sent, bytes received)
-    // todo remove Arc<RwLock<...>> ?
     peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
 }
 
 impl MassaMetrics {
-    pub fn new(enabled: bool, nb_thread: u8) -> Self {
+    pub fn new(enabled: bool, addr: SocketAddr, nb_thread: u8) -> Self {
         // TODO unwrap
 
         let mut consensus_vec = vec![];
@@ -122,6 +122,7 @@ impl MassaMetrics {
 
             consensus_vec.push(gauge);
         }
+
         // active cursor
         let active_cursor_thread =
             IntGauge::new("active_cursor_thread", "execution active cursor thread").unwrap();
@@ -261,7 +262,7 @@ impl MassaMetrics {
             // TODO addr from config
             #[cfg(not(feature = "testing"))]
             {
-                let addr = "0.0.0.0:9898".parse().unwrap();
+                // let addr = "0.0.0.0:9898".parse().unwrap();
                 server::bind_metrics(addr);
 
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));

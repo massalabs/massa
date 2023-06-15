@@ -217,6 +217,7 @@
 
 [metrics]
     enabled = true
+    bind = "[::]:31248"
 
 [bootstrap]
     # list of bootstrap (ip, node id)
