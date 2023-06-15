@@ -1747,7 +1747,7 @@ impl ExecutionState {
                             )
                         });
 
-                    let use_only_xor = self.final_state.read().get_only_use_xor();
+                    let use_only_xor = self.final_state.read().get_only_use_xor(&slot);
 
                     self.final_state.write().db.write().write_batch(
                         db_batch,

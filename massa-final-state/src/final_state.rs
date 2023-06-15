@@ -25,6 +25,7 @@ use parking_lot::RwLock;
 use rocksdb::IteratorMode;
 use tracing::{debug, info, warn};
 
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_time::MassaTime;
 use std::sync::Arc;
 
@@ -125,7 +126,7 @@ impl FinalState {
         };
 
         if reset_final_state {
-            let only_use_xor = final_state.get_only_use_xor();
+            let only_use_xor = final_state.get_only_use_xor(&slot);
 
             final_state.async_pool.reset(only_use_xor);
             final_state.pos_state.reset(only_use_xor);
@@ -242,7 +243,7 @@ impl FinalState {
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 
-        let only_use_xor = final_state.get_only_use_xor();
+        let only_use_xor = final_state.get_only_use_xor(&recovered_slot);
 
         final_state.interpolate_downtime(only_use_xor)?;
 
@@ -529,11 +530,10 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        let only_use_xor = self.get_only_use_xor();
+        let slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        let only_use_xor = self.get_only_use_xor(&slot);
 
-        self.db
-            .write()
-            .reset(Slot::new(0, self.config.thread_count.saturating_sub(1)));
+        self.db.write().reset(slot);
         self.ledger.reset(only_use_xor);
         self.async_pool.reset(only_use_xor);
         self.pos_state.reset(only_use_xor);
@@ -593,7 +593,7 @@ impl FinalState {
             &mut db_batch,
         );
 
-        let only_use_xor = self.get_only_use_xor();
+        let only_use_xor = self.get_only_use_xor(&slot);
 
         self.db
             .write()
@@ -732,15 +732,22 @@ impl FinalState {
     }
 
     /// Temporary getter to know if we should compute the lsm tree during db writes
-    pub fn get_only_use_xor(&self) -> bool {
-        self.get_hash_kind_version() == 1
+    pub fn get_only_use_xor(&self, slot: &Slot) -> bool {
+        let ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot.clone(),
+        )
+        .unwrap();
+        self.get_hash_kind_version(ts) == 1
     }
 
-    fn get_hash_kind_version(&self) -> u32 {
+    fn get_hash_kind_version(&self, ts: MassaTime) -> u32 {
         // Temp code
         // Return version for hash kind of final state: 0 -> LSM, 1 -> Xor
-        let now = MassaTime::now().expect("Cannot get current time");
+        // let now = MassaTime::now().expect("Cannot get current time");
         self.mip_store
-            .get_latest_component_version_at(&MipComponent::FinalStateHashKind, now)
+            .get_latest_component_version_at(&MipComponent::FinalStateHashKind, ts)
     }
 }
