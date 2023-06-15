@@ -72,12 +72,8 @@ impl BootstrapServerBinder {
         } = cfg;
 
         // A 1s window breaks anything requiring a 1s window
-        let limit_opts = rw_limit.map(|limit| {
-            LimiterOptions::new(
-                (limit / 100) as u128,
-                Duration::from_millis(10),
-                (limit / 10) as usize,
-            )
+        let limit_opts = rw_limit.map(|limit| -> LimiterOptions {
+            LimiterOptions::new(limit / 100, Duration::from_millis(10), limit / 10)
         });
         let duplex = Limiter::new(duplex, None, limit_opts);
         BootstrapServerBinder {

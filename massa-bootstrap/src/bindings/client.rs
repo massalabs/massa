@@ -51,11 +51,7 @@ impl BootstrapClientBinder {
     ) -> Self {
         // A 1s window breaks anything requiring a 1s window
         let write_limit = limit.map(|limit| {
-            LimiterOptions::new(
-                (limit / 100).into(),
-                Duration::from_millis(10),
-                (limit / 10) as usize,
-            )
+            LimiterOptions::new((limit / 100).into(), Duration::from_millis(10), limit / 10)
         });
         let duplex = Limiter::new(duplex, None, write_limit);
         BootstrapClientBinder {

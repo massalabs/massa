@@ -2534,7 +2534,7 @@ dependencies = [
  "serde",
  "serde_json",
  "socket2",
- "stream_limiter",
+ "stream_limiter 3.0.0",
  "substruct",
  "tempfile",
  "thiserror",
@@ -3627,7 +3627,7 @@ dependencies = [
  "quiche",
  "rand 0.8.5",
  "serde",
- "stream_limiter",
+ "stream_limiter 2.0.0",
  "thiserror",
 ]
 
@@ -4766,6 +4766,12 @@ name = "stream_limiter"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92b85d49eee44700a8dc9a3e2d316e8e1f7d661d3eccd606ad9d02e9969e04bc"
+
+[[package]]
+name = "stream_limiter"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8923572f28f925b9b8bcb8073e670872c677037f5e96a8092366ef19f271ff02"
 
 [[package]]
 name = "strsim"

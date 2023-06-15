@@ -556,7 +556,7 @@ fn test_bandwidth() {
                     )
                     .unwrap();
                 let dur = before.elapsed();
-                assert!(dbg!(dur) > Duration::from_secs(10));
+                assert!(dur > Duration::from_secs(10));
                 assert!(dur < Duration::from_millis(11_500));
             }
         })
