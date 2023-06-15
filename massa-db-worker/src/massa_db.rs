@@ -827,10 +827,9 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Returns a StreamBatch<Slot>
     fn get_batch_to_stream(
         &self,
-        last_state_step: &StreamingStep<Vec<u8>>,
-        last_change_id: Option<Slot>,
+        last_obtained: Option<(Vec<u8>, Slot)>,
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
-        self.get_batch_to_stream(last_state_step, last_change_id)
+        self.get_batch_to_stream(last_obtained)
     }
 
     /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
@@ -838,9 +837,8 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Returns a StreamBatch<Slot>
     fn get_versioning_batch_to_stream(
         &self,
-        last_versioning_step: &StreamingStep<Vec<u8>>,
-        last_change_id: Option<Slot>,
+        last_obtained: Option<(Vec<u8>, Slot)>,
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
-        self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
+        self.get_versioning_batch_to_stream(last_obtained)
     }
 }
