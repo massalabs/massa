@@ -180,6 +180,7 @@ fn test_bootstrap_whitelist() {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))]
 fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;

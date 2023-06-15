@@ -67,7 +67,7 @@ impl From<SecureShareBlock> for grpc_model::SignedBlock {
         let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedBlock {
             content: Some(value.content.into()),
-            signature: value.signature.to_bs58_check(),
+            signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
@@ -81,7 +81,7 @@ impl From<SecuredHeader> for grpc_model::SignedBlockHeader {
         let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedBlockHeader {
             content: Some(value.content.into()),
-            signature: value.signature.to_bs58_check(),
+            signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
@@ -105,7 +105,7 @@ impl From<SecureShareEndorsement> for grpc_model::SignedEndorsement {
         let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedEndorsement {
             content: Some(value.content.into()),
-            signature: value.signature.to_bs58_check(),
+            signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
@@ -207,7 +207,7 @@ impl From<SecureShareOperation> for grpc_model::SignedOperation {
         let serialized_size = value.serialized_size() as u64;
         grpc_model::SignedOperation {
             content: Some(value.content.into()),
-            signature: value.signature.to_bs58_check(),
+            signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             id: value.id.to_string(),
