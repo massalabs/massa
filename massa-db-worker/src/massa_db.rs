@@ -62,10 +62,10 @@ pub struct RawMassaDB<
     current_hashmap: SharedSmtCache,
 }
 
-pub type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
+type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
 
 /// Wrapper for the Lsm-tree database type
-pub struct MassaDbLsmtree {
+struct MassaDbLsmtree {
     pub cf: &'static str,
     pub db: Arc<DB>,
     pub current_batch: Arc<Mutex<WriteBatch>>,
