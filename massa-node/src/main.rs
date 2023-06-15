@@ -697,6 +697,7 @@ async fn launch(
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
         protocol_config.clone(),
+        selector_controller.clone(),
         consensus_controller.clone(),
         bootstrap_state.peers,
         pool_controller.clone(),

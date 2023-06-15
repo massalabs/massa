@@ -215,9 +215,15 @@ fn test_block_header_denunciation_creation() {
     let config = PoolConfig::default();
     // let mut selector_controller = Box::new(MockSelectorController::new());
     let mut res = MockSelectorController::new();
-    res.expect_get_producer()
-        .times(2)
-        .returning(move |_| PosResult::Ok(address));
+    res.expect_get_address_selections().returning(|_, _, _| {
+        let mut all_slots = Vec::new();
+        for i in 0..15 {
+            for j in 0..32 {
+                all_slots.push(Slot::new(i, j));
+            }
+        }
+        Ok((all_slots.clone(), vec![]))
+    });
     let selector_controller = pool_test_mock_selector_controller(res);
 
     let mut execution_controller = Box::new(MockExecutionController::new());

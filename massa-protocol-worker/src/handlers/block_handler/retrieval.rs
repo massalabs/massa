@@ -36,6 +36,7 @@ use massa_models::{
     timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -85,6 +86,7 @@ impl BlockInfo {
 
 pub struct RetrievalThread {
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: MassaReceiver<PeerMessageTuple>,
@@ -673,6 +675,27 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
+
+        // Check PoS draws
+        for endorsement in new_endorsements.values() {
+            let selection = self
+                .selector_controller
+                .get_selection(endorsement.content.slot)?;
+            let Some(address) = selection.endorsements.get(endorsement.content.index as usize) else {
+                return Err(ProtocolError::GeneralProtocolError(
+                    format!(
+                        "No selection on slot {} for index {}",
+                        endorsement.content.slot, endorsement.content.index
+                    )
+                ))
+            };
+            if address != &endorsement.content_creator_address {
+                return Err(ProtocolError::GeneralProtocolError(format!(
+                    "Invalid endorsement: expected address {}, got {}",
+                    address, endorsement.content_creator_address
+                )));
+            }
+        }
 
         'write_cache: {
             let mut cache_write = self.endorsement_cache.write();
@@ -1327,6 +1350,7 @@ impl RetrievalThread {
 // bookmark
 pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: MassaReceiver<PeerMessageTuple>,
@@ -1349,6 +1373,7 @@ pub fn start_retrieval_thread(
         .spawn(move || {
             let mut retrieval_thread = RetrievalThread {
                 active_connections,
+                selector_controller,
                 consensus_controller,
                 pool_controller,
                 next_timer_ask_block: Instant::now() + config.ask_block_timeout.to_duration(),
