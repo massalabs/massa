@@ -19,12 +19,13 @@ use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
-use massa_versioning::versioning::MipStore;
+use massa_versioning::versioning::{MipComponent, MipStore};
 
 use parking_lot::RwLock;
 use rocksdb::IteratorMode;
 use tracing::{debug, info, warn};
 
+use massa_time::MassaTime;
 use std::sync::Arc;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -530,7 +531,10 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        debug!("AURELIEN: Execution: finalize slot {}: start function", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: start function",
+            slot
+        );
         let cur_slot = self.db.read().get_change_id().expect(CHANGE_ID_DESER_ERROR);
         // check slot consistency
         let next_slot = cur_slot
@@ -547,46 +551,82 @@ impl FinalState {
 
         // apply the state changes to the batch
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply async pool", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply async pool",
+            slot
+        );
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
-        debug!("AURELIEN: Execution: finalize slot {}: after apply async pool", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply async pool",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply pos state", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply pos state",
+            slot
+        );
         self.pos_state
             .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
-        debug!("AURELIEN: Execution: finalize slot {}: after apply pos state", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply pos state",
+            slot
+        );
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply ledger changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply ledger changes",
+            slot
+        );
         self.ledger
             .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
-        debug!("AURELIEN: Execution: finalize slot {}: after apply ledger changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply ledger changes",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply executed ops changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply executed ops changes",
+            slot
+        );
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
             slot,
             &mut db_batch,
         );
-        debug!("AURELIEN: Execution: finalize slot {}: after apply executed ops changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply executed ops changes",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply executed denunciations changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply executed denunciations changes",
+            slot
+        );
         self.executed_denunciations.apply_changes_to_batch(
             changes.executed_denunciations_changes.clone(),
             slot,
             &mut db_batch,
         );
-        debug!("AURELIEN: Execution: finalize slot {}: after apply executed denunciations changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply executed denunciations changes",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before db write batch", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before db write batch",
+            slot
+        );
         self.db
             .write()
             .write_batch(db_batch, Default::default(), Some(slot));
-        debug!("AURELIEN: Execution: finalize slot {}: after db write batch", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after db write batch",
+            slot
+        );
 
         let final_state_hash = self.db.read().get_db_hash();
 
@@ -618,11 +658,17 @@ impl FinalState {
         debug!("AURELIEN: Execution: finalize slot {}: after backup", slot);
 
         // feed final_state_hash to the last cycle
-        debug!("AURELIEN: Execution: finalize slot {}: before feed_cycle_state_hash", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before feed_cycle_state_hash",
+            slot
+        );
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
-        debug!("AURELIEN: Execution: finalize slot {}: after feed_cycle_state_hash", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after feed_cycle_state_hash",
+            slot
+        );
         debug!("AURELIEN: Execution: finalize slot {}: end function", slot);
     }
 
@@ -723,5 +769,13 @@ impl FinalState {
         }
 
         true
+    }
+
+    fn get_hash_kind_version(&self) -> u32 {
+        // Temp code
+        // Return version for hash kind of final state: 0 -> LSM, 1 -> Xor
+        let now = MassaTime::now().expect("Cannot get current time");
+        self.mip_store
+            .get_latest_component_version_at(&MipComponent::FinalStateHashKind, now)
     }
 }

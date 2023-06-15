@@ -35,6 +35,7 @@ pub enum MipComponent {
     KeyPair,
     Block,
     VM,
+    FinalStateHashKind,
     #[doc(hidden)]
     #[num_enum(default)]
     __Nonexhaustive,
@@ -558,6 +559,13 @@ impl MipStore {
         lock.update_with(lock_other.deref())
     }
 
+    // Query
+
+    pub fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
+        let lock = self.0.read();
+        lock.get_latest_component_version_at(component, ts)
+    }
+
     // GRPC
 
     /// Retrieve a list of MIP info with their corresponding state (as id) - used for grpc API
@@ -893,7 +901,7 @@ impl MipStoreRaw {
 
             let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
 
-            debug!("(VERSIONING LOG) vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,
@@ -907,6 +915,33 @@ impl MipStoreRaw {
             state.on_advance(&advance_msg.clone());
         }
     }
+
+    // Query
+
+    fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
+        // TODO: duplicated code with the same function in versioning_factory - factorize
+
+        let version = self
+            .store
+            .iter()
+            .rev()
+            .filter(|(vi, vsh)| {
+                vi.components.get(component).is_some()
+                    && matches!(vsh.state, ComponentState::Active(_))
+            })
+            .find_map(|(vi, vsh)| {
+                let res = vsh.state_at(ts, vi.start, vi.timeout);
+                match res {
+                    Ok(ComponentStateTypeId::Active) => vi.components.get(&component).copied(),
+                    _ => None,
+                }
+            })
+            .unwrap_or(0);
+
+        version
+    }
+
+    // Network restart
 
     /// Check if store is coherent with given last network shutdown
     /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
