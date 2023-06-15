@@ -737,7 +737,7 @@ impl FinalState {
             self.config.thread_count,
             self.config.t0,
             self.config.genesis_timestamp,
-            slot.clone(),
+            *slot,
         )
         .unwrap();
         self.get_hash_kind_version(ts) == 1
