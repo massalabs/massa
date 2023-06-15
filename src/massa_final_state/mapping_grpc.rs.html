@@ -97,27 +97,33 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::StateChanges;
 <span class="kw">use </span>massa_async_pool::AsyncMessageId;
 <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
-<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
+<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 
-<span class="kw">impl </span>From&lt;StateChanges&gt; <span class="kw">for </span>grpc::StateChanges {
+<span class="kw">impl </span>From&lt;StateChanges&gt; <span class="kw">for </span>grpc_model::StateChanges {
     <span class="kw">fn </span>from(value: StateChanges) -&gt; <span class="self">Self </span>{
-        grpc::StateChanges {
+        grpc_model::StateChanges {
             executed_ops_changes: value
                 .executed_ops_changes
                 .into_iter()
                 .map(|(op_id, (op_exec_status, op_valid_until_slot))| {
-                    grpc::ExecutedOpsChangeEntry {
+                    grpc_model::ExecutedOpsChangeEntry {
                         operation_id: op_id.to_string(),
-                        value: <span class="prelude-val">Some</span>(grpc::ExecutedOpsChangeValue {
+                        value: <span class="prelude-val">Some</span>(grpc_model::ExecutedOpsChangeValue {
                             status: <span class="kw">if </span>op_exec_status {
-                                <span class="macro">vec!</span>[grpc::OperationExecutionStatus::Success <span class="kw">as </span>i32]
+                                <span class="macro">vec!</span>[grpc_model::OperationExecutionStatus::Success <span class="kw">as </span>i32]
                             } <span class="kw">else </span>{
-                                <span class="macro">vec!</span>[grpc::OperationExecutionStatus::Failed <span class="kw">as </span>i32]
+                                <span class="macro">vec!</span>[grpc_model::OperationExecutionStatus::Failed <span class="kw">as </span>i32]
                             },
                             slot: <span class="prelude-val">Some</span>(op_valid_until_slot.into()),
                         }),
@@ -129,28 +135,34 @@
                 .<span class="number">0
                 </span>.into_iter()
                 .map(|(async_msg_id, change)| <span class="kw">match </span>change {
-                    SetUpdateOrDelete::Set(async_msg) =&gt; grpc::AsyncPoolChangeEntry {
+                    SetUpdateOrDelete::Set(async_msg) =&gt; grpc_model::AsyncPoolChangeEntry {
                         async_message_id: async_msg_id_to_string(async_msg_id),
-                        value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
-                            r#type: grpc::AsyncPoolChangeType::Set <span class="kw">as </span>i32,
-                            message: <span class="prelude-val">Some</span>(grpc::async_pool_change_value::Message::CreatedMessage(
-                                async_msg.into(),
-                            )),
+                        value: <span class="prelude-val">Some</span>(grpc_model::AsyncPoolChangeValue {
+                            r#type: grpc_model::AsyncPoolChangeType::Set <span class="kw">as </span>i32,
+                            message: <span class="prelude-val">Some</span>(
+                                grpc_model::async_pool_change_value::Message::CreatedMessage(
+                                    async_msg.into(),
+                                ),
+                            ),
                         }),
                     },
-                    SetUpdateOrDelete::Update(async_msg_update) =&gt; grpc::AsyncPoolChangeEntry {
+                    SetUpdateOrDelete::Update(async_msg_update) =&gt; {
+                        grpc_model::AsyncPoolChangeEntry {
+                            async_message_id: async_msg_id_to_string(async_msg_id),
+                            value: <span class="prelude-val">Some</span>(grpc_model::AsyncPoolChangeValue {
+                                r#type: grpc_model::AsyncPoolChangeType::Update <span class="kw">as </span>i32,
+                                message: <span class="prelude-val">Some</span>(
+                                    grpc_model::async_pool_change_value::Message::UpdatedMessage(
+                                        async_msg_update.into(),
+                                    ),
+                                ),
+                            }),
+                        }
+                    }
+                    SetUpdateOrDelete::Delete =&gt; grpc_model::AsyncPoolChangeEntry {
                         async_message_id: async_msg_id_to_string(async_msg_id),
-                        value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
-                            r#type: grpc::AsyncPoolChangeType::Update <span class="kw">as </span>i32,
-                            message: <span class="prelude-val">Some</span>(grpc::async_pool_change_value::Message::UpdatedMessage(
-                                async_msg_update.into(),
-                            )),
-                        }),
-                    },
-                    SetUpdateOrDelete::Delete =&gt; grpc::AsyncPoolChangeEntry {
-                        async_message_id: async_msg_id_to_string(async_msg_id),
-                        value: <span class="prelude-val">Some</span>(grpc::AsyncPoolChangeValue {
-                            r#type: grpc::AsyncPoolChangeType::Delete <span class="kw">as </span>i32,
+                        value: <span class="prelude-val">Some</span>(grpc_model::AsyncPoolChangeValue {
+                            r#type: grpc_model::AsyncPoolChangeType::Delete <span class="kw">as </span>i32,
                             message: <span class="prelude-val">None</span>,
                         }),
                     },
@@ -160,23 +172,23 @@
                 .ledger_changes
                 .<span class="number">0
                 </span>.into_iter()
-                .map(|(key, value)| grpc::LedgerChangeEntry {
+                .map(|(key, value)| grpc_model::LedgerChangeEntry {
                     address: key.to_string(),
                     value: <span class="prelude-val">Some</span>(<span class="kw">match </span>value {
-                        SetUpdateOrDelete::Set(value) =&gt; grpc::LedgerChangeValue {
-                            r#type: grpc::LedgerChangeType::Set <span class="kw">as </span>i32,
-                            entry: <span class="prelude-val">Some</span>(grpc::ledger_change_value::Entry::CreatedEntry(
+                        SetUpdateOrDelete::Set(value) =&gt; grpc_model::LedgerChangeValue {
+                            r#type: grpc_model::LedgerChangeType::Set <span class="kw">as </span>i32,
+                            entry: <span class="prelude-val">Some</span>(grpc_model::ledger_change_value::Entry::CreatedEntry(
                                 value.into(),
                             )),
                         },
-                        SetUpdateOrDelete::Update(value) =&gt; grpc::LedgerChangeValue {
-                            r#type: grpc::LedgerChangeType::Update <span class="kw">as </span>i32,
-                            entry: <span class="prelude-val">Some</span>(grpc::ledger_change_value::Entry::UpdatedEntry(
+                        SetUpdateOrDelete::Update(value) =&gt; grpc_model::LedgerChangeValue {
+                            r#type: grpc_model::LedgerChangeType::Update <span class="kw">as </span>i32,
+                            entry: <span class="prelude-val">Some</span>(grpc_model::ledger_change_value::Entry::UpdatedEntry(
                                 value.into(),
                             )),
                         },
-                        SetUpdateOrDelete::Delete =&gt; grpc::LedgerChangeValue {
-                            r#type: grpc::LedgerChangeType::Delete <span class="kw">as </span>i32,
+                        SetUpdateOrDelete::Delete =&gt; grpc_model::LedgerChangeValue {
+                            r#type: grpc_model::LedgerChangeType::Delete <span class="kw">as </span>i32,
                             entry: <span class="prelude-val">None</span>,
                         },
                     }),
