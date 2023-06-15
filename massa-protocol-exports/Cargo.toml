@@ -11,7 +11,7 @@ nom = "=7.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 # TODO tag peernet version
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "ff6c81e42fcd7a185bb2c31c45e7ef42df4fa1eb" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "19a14fadf7b07ccb2584403cc5c7ad57c62b1b70" }
 tempfile = { version = "3.3", optional = true } # use with testing feature
 mockall = "0.11.4"
 

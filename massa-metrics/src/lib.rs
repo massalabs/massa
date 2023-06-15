@@ -1,6 +1,12 @@
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
+
 use lazy_static::lazy_static;
 use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
 use survey::MassaSurvey;
+use tracing::warn;
 
 #[cfg(not(feature = "testing"))]
 mod server;
@@ -49,6 +55,8 @@ pub fn dec_operations_counter() {
 
 #[derive(Clone)]
 pub struct MassaMetrics {
+    enabled: bool,
+
     consensus_vec: Vec<Gauge>,
 
     peernet_total_bytes_receive: IntCounter,
@@ -90,6 +98,10 @@ pub struct MassaMetrics {
 
     final_cursor_thread: IntGauge,
     final_cursor_period: IntGauge,
+
+    // peer bandwidth (bytes sent, bytes received)
+    // todo remove Arc<RwLock<...>> ?
+    peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
 }
 
 impl MassaMetrics {
@@ -290,6 +302,7 @@ impl MassaMetrics {
         }
 
         MassaMetrics {
+            enabled,
             consensus_vec,
             peernet_total_bytes_receive,
             peernet_total_bytes_sent,
@@ -317,6 +330,7 @@ impl MassaMetrics {
             active_cursor_period,
             final_cursor_thread,
             final_cursor_period,
+            peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -434,6 +448,70 @@ impl MassaMetrics {
 
     pub fn inc_peernet_total_bytes_sent(&self, diff: u64) {
         self.peernet_total_bytes_sent.inc_by(diff);
+    }
+
+    /// Update the bandwidth metrics for all peers
+    /// HashMap<peer_id, (tx, rx)>
+    pub fn update_peers_tx_rx(&self, data: HashMap<String, (u64, u64)>) {
+        if self.enabled {
+            // #[cfg(not(feature = "testing"))]
+            // {
+
+            let mut write = self.peers_bandwidth.write().unwrap();
+
+            // metrics of peers that are not in the data HashMap are removed
+            let missing_peer: Vec<String> = write
+                .keys()
+                .filter(|key| !data.contains_key(key.as_str()))
+                .cloned()
+                .collect();
+
+            for key in missing_peer {
+                // remove peer and unregister metrics
+                if let Some((tx, rx)) = write.remove(&key) {
+                    if let Err(e) = prometheus::unregister(Box::new(tx)) {
+                        warn!("Failed to unregister tx metric: {}", e);
+                    }
+
+                    if let Err(e) = prometheus::unregister(Box::new(rx)) {
+                        warn!("Failed to unregister rx metric: {}", e);
+                    }
+                }
+            }
+
+            for (k, (tx_peernet, rx_peernet)) in data {
+                if let Some((tx_metric, rx_metric)) = write.get_mut(&k) {
+                    // peer metrics exist
+                    // update tx and rx
+
+                    let to_add = tx_peernet.saturating_sub(tx_metric.get());
+                    tx_metric.inc_by(to_add);
+
+                    let to_add = rx_peernet.saturating_sub(rx_metric.get());
+                    rx_metric.inc_by(to_add);
+                } else {
+                    // peer metrics does not exist
+                    let label_rx = format!("peer_total_bytes_receive_{}", k);
+                    let label_tx = format!("peer_total_bytes_sent_{}", k);
+
+                    let peer_total_bytes_receive =
+                        IntCounter::new(label_rx, "total byte received by the peer").unwrap();
+
+                    let peer_total_bytes_sent =
+                        IntCounter::new(label_tx, "total byte sent by the peer").unwrap();
+
+                    peer_total_bytes_sent.inc_by(tx_peernet);
+                    peer_total_bytes_receive.inc_by(rx_peernet);
+
+                    let _ = prometheus::register(Box::new(peer_total_bytes_receive.clone()));
+                    let _ = prometheus::register(Box::new(peer_total_bytes_sent.clone()));
+
+                    write.insert(k, (peer_total_bytes_sent, peer_total_bytes_receive));
+                }
+            }
+
+            // }
+        }
     }
 }
 // mod test {

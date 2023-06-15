@@ -17,7 +17,7 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "ff6c81e42fcd7a185bb2c31c45e7ef42df4fa1eb" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "19a14fadf7b07ccb2584403cc5c7ad57c62b1b70" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 rand = { version = "0.8.5", optional = true }

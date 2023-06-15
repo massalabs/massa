@@ -226,12 +226,16 @@ pub(crate) fn start_connectivity_thread(
                         },
                         recv(tick_metrics) -> _ => {
                             if let Ok(count) = network_controller.get_total_bytes_received() {
-                                massa_metrics.inc_peernet_total_bytes_receive(count as u64);
+                                massa_metrics.inc_peernet_total_bytes_receive(count);
                             }
 
                             if let Ok(count) = network_controller.get_total_bytes_sent() {
-                                massa_metrics.inc_peernet_total_bytes_sent(count as u64);
+                                massa_metrics.inc_peernet_total_bytes_sent(count);
                             }
+
+                            let active_conn = network_controller.get_active_connections();
+                            let peers_map = active_conn.get_peers_connections_bandwidth();
+                            massa_metrics.update_peers_tx_rx(peers_map);
                         },
                     default(config.try_connection_timer.to_duration()) => {
                         let active_conn = network_controller.get_active_connections();

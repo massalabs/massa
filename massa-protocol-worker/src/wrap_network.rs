@@ -32,6 +32,7 @@ pub trait ActiveConnectionsTrait: Send + Sync {
     fn get_nb_out_connections(&self) -> usize;
     fn get_nb_in_connections(&self) -> usize;
     fn shutdown_connection(&mut self, peer_id: &PeerId);
+    fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)>;
 }
 
 impl Clone for Box<dyn ActiveConnectionsTrait> {
@@ -99,6 +100,16 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
         if let Some(connection) = self.write().connections.get_mut(peer_id) {
             connection.shutdown();
         }
+    }
+
+    fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)> {
+        let mut map = HashMap::new();
+        for (peerid, conn) in self.read().connections.iter() {
+            if let Ok(tuple) = conn.endpoint.get_bandwidth() {
+                map.insert(peerid.to_string(), tuple);
+            }
+        }
+        map
     }
 }
 
