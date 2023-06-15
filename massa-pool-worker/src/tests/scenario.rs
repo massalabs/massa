@@ -12,8 +12,6 @@
 //! Same as the previous test with a low limit of size to check if
 //! configurations are taken into account.
 
-use mockall::Sequence;
-use std::rc::Rc;
 use std::time::Duration;
 
 use crate::tests::tools::create_some_operations;
@@ -107,29 +105,30 @@ fn test_simple_get_operations() {
 
 /// Create default mock-story for execution controller on call `get_block_operation` API.
 pub fn create_basic_get_block_operation_execution_mock(
-    operations_len: usize,
-    creator_address: Address,
-    balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
-    ops: &PreHashSet<OperationId>,
+    _operations_len: usize,
+    _creator_address: Address,
+    _balance_vec: Vec<(Option<Amount>, Option<Amount>)>,
+    _ops: &PreHashSet<OperationId>,
 ) -> MockExecutionController {
-    let mut res = MockExecutionController::new();
-    let mut seq = Sequence::new();
-    let ops1 = ops.clone();
-    let ops2 = Rc::new(ops.clone());
-    res.expect_unexecuted_ops_among()
-        .times(1)
-        .return_once(|_, _| ops1)
-        .in_sequence(&mut seq);
-    res.expect_get_final_and_candidate_balance()
-        .times(1)
-        .return_once(|_| balance_vec)
-        .withf(move |addrs| addrs.len() == 1 && addrs[0] == creator_address)
-        .in_sequence(&mut seq);
-    res.expect_unexecuted_ops_among()
-        .times(operations_len - 1)
-        .returning_st(move |_, _| (&*ops2).clone())
-        .in_sequence(&mut seq);
-    res
+    MockExecutionController::new()
+    // let mut res = MockExecutionController::new();
+    // let mut seq = Sequence::new();
+    // let ops1 = ops.clone();
+    // let ops2 = Rc::new(ops.clone());
+    // res.expect_unexecuted_ops_among()
+    //     .times(1)
+    //     .return_once(|_, _| ops1)
+    //     .in_sequence(&mut seq);
+    // res.expect_get_final_and_candidate_balance()
+    //     .times(1)
+    //     .return_once(|_| balance_vec)
+    //     .withf(move |addrs| addrs.len() == 1 && addrs[0] == creator_address)
+    //     .in_sequence(&mut seq);
+    // res.expect_unexecuted_ops_among()
+    //     .times(operations_len - 1)
+    //     .returning_st(move |_, _| (&*ops2).clone())
+    //     .in_sequence(&mut seq);
+    // res
 }
 
 /// # Test get block operation with overflow

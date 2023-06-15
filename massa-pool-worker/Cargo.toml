@@ -26,4 +26,4 @@ crossbeam-channel = { version = "0.5" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-testing = ["massa_pool_exports/testing", "massa_execution_exports/testing", "massa_pos_exports/testing"]
+testing = ["massa_pool_exports/testing", "massa_execution_exports/testing", "massa_pos_exports/testing", "massa_wallet/testing"]
