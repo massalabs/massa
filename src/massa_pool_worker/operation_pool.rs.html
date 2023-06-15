@@ -293,10 +293,6 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_execution_exports::ExecutionController;
@@ -412,7 +408,6 @@
             .iter()
             .copied()
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-
         <span class="kw">let </span><span class="kw-2">mut </span>added = PreHashSet::with_capacity(items.len());
         <span class="kw">let </span><span class="kw-2">mut </span>removed = PreHashSet::with_capacity(items.len());
 
@@ -519,7 +514,6 @@
                 </span>.operations
                 .get(<span class="kw-2">&amp;</span>cursor.get_id())
                 .expect(<span class="string">&quot;the operation should be in self.operations at this point&quot;</span>);
-
             <span class="comment">// exclude ops for which the block slot is outside of their validity range
             </span><span class="kw">if </span>!op_info.validity_period_range.contains(<span class="kw-2">&amp;</span>slot.period) {
                 <span class="kw">continue</span>;
@@ -544,7 +538,6 @@
             {
                 <span class="kw">continue</span>;
             }
-
             <span class="comment">// check balance
             //TODO: It&#39;s a weird behaviour because if the address is created afterwards this operation will be executed
             // and also it spams the pool maybe we should just try to put the operation if there is no balance and 0 gas price
@@ -564,7 +557,6 @@
                 } <span class="kw">else </span>{
                     <span class="kw">continue</span>;
                 };
-
             <span class="kw">if </span><span class="kw-2">*</span>creator_balance &lt; op_info.fee {
                 <span class="kw">continue</span>;
             }
