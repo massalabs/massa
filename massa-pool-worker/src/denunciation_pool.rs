@@ -1,6 +1,5 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use massa_execution_exports::ExecutionController;
 use std::collections::{btree_map::Entry, BTreeMap};
 use tracing::{debug, info};
 
@@ -11,18 +10,15 @@ use massa_models::{
     denunciation::{Denunciation, DenunciationPrecursor},
     timeslots::get_closest_slot_to_timestamp,
 };
-use massa_pool_exports::PoolConfig;
-use massa_pos_exports::SelectorController;
+use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
 pub struct DenunciationPool {
     /// pool configuration
     config: PoolConfig,
-    /// selector controller to get draws
-    pub selector: Box<dyn SelectorController>,
-    /// execution controller
-    execution_controller: Box<dyn ExecutionController>,
+    /// pool channels
+    channels: PoolChannels,
     /// last consensus final periods, per thread
     last_cs_final_periods: Vec<u64>,
     /// Internal cache for denunciations
@@ -30,15 +26,10 @@ pub struct DenunciationPool {
 }
 
 impl DenunciationPool {
-    pub fn init(
-        config: PoolConfig,
-        selector: Box<dyn SelectorController>,
-        execution_controller: Box<dyn ExecutionController>,
-    ) -> Self {
+    pub fn init(config: PoolConfig, channels: PoolChannels) -> Self {
         Self {
             config,
-            selector,
-            execution_controller,
+            channels,
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             denunciations_cache: Default::default(),
         }
@@ -111,7 +102,7 @@ impl DenunciationPool {
         match &denunciation_precursor {
             DenunciationPrecursor::Endorsement(de_p) => {
                 // Get selected address from selector and check
-                let selected = self.selector.get_selection(de_p.slot);
+                let selected = self.channels.selector.get_selection(de_p.slot);
                 match selected {
                     Ok(selection) => {
                         if let Some(address) = selection.endorsements.get(de_p.index as usize) {
@@ -132,7 +123,7 @@ impl DenunciationPool {
                 }
             }
             DenunciationPrecursor::BlockHeader(de_p) => {
-                let selected_address = self.selector.get_producer(de_p.slot);
+                let selected_address = self.channels.selector.get_producer(de_p.slot);
                 match selected_address {
                     Ok(address) => {
                         if address
@@ -212,7 +203,10 @@ impl DenunciationPool {
                 // 2. Denounced item slot is equal or before target slot of block header
                 // 3. Denounced item slot is not too old
                 let de_slot = de.get_slot();
-                if !self.execution_controller.is_denunciation_executed(de_idx)
+                if !self
+                    .channels
+                    .execution_controller
+                    .is_denunciation_executed(de_idx)
                     && de_slot <= target_slot
                     && !Denunciation::is_expired(
                         &de_slot.period,

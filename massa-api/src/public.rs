@@ -514,30 +514,22 @@ impl MassaRpcServer for API<Public> {
         // ask pool whether it carries the operations
         let in_pool = self.0.pool_command_sender.contains_operations(&ops);
 
-        let (speculative_op_exec_statuses, final_op_exec_statuses) =
-            self.0.execution_controller.get_op_exec_status();
+        let op_exec_statuses = self.0.execution_controller.get_ops_exec_status(&ops);
 
         // compute operation finality and operation execution status from *_op_exec_statuses
-        let (is_operation_final, statuses): (Vec<Option<bool>>, Vec<Option<bool>>) = ops
-            .iter()
-            .map(|op| {
-                match (
-                    final_op_exec_statuses.get(op),
-                    speculative_op_exec_statuses.get(op),
-                ) {
-                    // op status found in the final hashmap, so the op is "final"(first value of the tuple: Some(true))
-                    // and we keep its status (copied as the second value of the tuple)
-                    (Some(val), _) => (Some(true), Some(*val)),
-                    // op status NOT found in the final hashmap but in the speculative one, so the op is "not final"(first value of the tuple: Some(false))
-                    // and we keep its status (copied as the second value of the tuple)
-                    (None, Some(val)) => (Some(false), Some(*val)),
-                    // op status not defined in any hashmap, finality and status are unknow hence (None, None)
-                    (None, None) => (None, None),
-                }
-            })
-            .collect::<Vec<(Option<bool>, Option<bool>)>>()
-            .into_iter()
-            .unzip();
+        let (is_operation_final, statuses): (Vec<Option<bool>>, Vec<Option<bool>>) =
+            op_exec_statuses
+                .into_iter()
+                .map(|(spec_exec, final_exec)| match (spec_exec, final_exec) {
+                    (Some(true), Some(true)) => (Some(true), Some(true)),
+                    (Some(false), Some(false)) => (Some(true), Some(false)),
+                    (Some(true), None) => (Some(false), Some(true)),
+                    (Some(false), None) => (Some(false), Some(false)),
+                    _ => (None, None),
+                })
+                .collect::<Vec<(Option<bool>, Option<bool>)>>()
+                .into_iter()
+                .unzip();
 
         // gather all values into a vector of OperationInfo instances
         let mut res: Vec<OperationInfo> = Vec::with_capacity(ops.len());

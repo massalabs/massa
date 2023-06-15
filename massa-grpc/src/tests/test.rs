@@ -108,7 +108,7 @@ async fn test_start_grpc_server() {
     let service = MassaGrpc {
         consensus_controller: Box::new(consensus_controller),
         consensus_channels,
-        execution_controller: execution_ctrl.0,
+        execution_controller: execution_ctrl.0.clone(),
         execution_channels: ExecutionChannels {
             slot_execution_output_sender,
         },
@@ -116,6 +116,7 @@ async fn test_start_grpc_server() {
             endorsement_sender,
             operation_sender,
             selector: selector_ctrl.0.clone(),
+            execution_controller: execution_ctrl.0.clone(),
         },
         pool_command_sender: pool_ctrl.0,
         protocol_command_sender: Box::new(MockProtocolController::new()),

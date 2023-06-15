@@ -13,7 +13,6 @@ use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashMap;
-use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
 use massa_storage::Storage;
@@ -53,15 +52,14 @@ pub trait ExecutionController: Send + Sync {
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)>;
 
-    /// Get the execution status of operation that have been executed both speculatively or finaly
+    /// Get the execution status of a batch of operations.
     ///
-    ///  Return value
-    ///  `(speculative_statuses, final_statuses)`
-    ///  for each hashmap:
-    ///      key: the operation id
-    ///      value: true: operation executed successfully,
-    ///             false: operation failed
-    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>);
+    ///  Return value: vector of
+    ///  `(Option<speculative_status>, Option<final_status>)`
+    ///  If an Option is None it means that the op execution was not found.
+    ///  Note that old op executions are forgotten.
+    /// Otherwise, the status is a boolean indicating whether the execution was successful (true) or if there was an error (false.)
+    fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)>;
 
     /// Get a copy of a single datastore entry with its final and active values
     ///
@@ -91,13 +89,6 @@ pub trait ExecutionController: Send + Sync {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError>;
-
-    /// List which operations inside the provided list were not executed
-    fn unexecuted_ops_among(
-        &self,
-        ops: &PreHashSet<OperationId>,
-        thread: u8,
-    ) -> PreHashSet<OperationId>;
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
     fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool;

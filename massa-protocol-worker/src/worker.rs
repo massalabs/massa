@@ -3,6 +3,7 @@ use massa_consensus_exports::ConsensusController;
 use massa_metrics::MassaMetrics;
 use massa_models::node::NodeId;
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{
     BootstrapPeers, PeerData, PeerId, ProtocolConfig, ProtocolController, ProtocolError,
     ProtocolManager,
@@ -176,6 +177,7 @@ pub fn create_protocol_controller(
 #[allow(clippy::too_many_arguments)]
 pub fn start_protocol_controller(
     config: ProtocolConfig,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     bootstrap_peers: Option<BootstrapPeers>,
     pool_controller: Box<dyn PoolController>,
@@ -318,6 +320,7 @@ pub fn start_protocol_controller(
 
     let connectivity_thread_handle = start_connectivity_thread(
         PeerId::from_public_key(keypair.get_public_key()),
+        selector_controller,
         network_controller,
         consensus_controller,
         pool_controller,

@@ -527,8 +527,10 @@ async fn launch(
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
+        operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
+        operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
+        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
         operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
         endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
         denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
@@ -550,13 +552,14 @@ async fn launch(
             .0,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).0,
         selector: selector_controller.clone(),
+        execution_controller: execution_controller.clone(),
     };
 
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         &shared_storage,
-        execution_controller.clone(),
         pool_channels.clone(),
+        node_wallet.clone(),
     );
 
     // launch protocol controller
@@ -712,6 +715,7 @@ async fn launch(
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
         protocol_config.clone(),
+        selector_controller.clone(),
         consensus_controller.clone(),
         bootstrap_state.peers,
         pool_controller.clone(),

@@ -2946,6 +2946,7 @@ name = "massa_pool_exports"
 version = "0.23.0"
 dependencies = [
  "crossbeam-channel",
+ "massa_execution_exports",
  "massa_models",
  "massa_pos_exports",
  "massa_storage",
@@ -2967,8 +2968,8 @@ dependencies = [
  "massa_signature",
  "massa_storage",
  "massa_time",
+ "massa_wallet",
  "mockall",
- "num",
  "parking_lot",
  "tokio",
  "tracing",
@@ -3019,6 +3020,7 @@ dependencies = [
  "displaydoc",
  "massa_hash",
  "massa_models",
+ "massa_pos_exports",
  "massa_serialization",
  "massa_signature",
  "massa_storage",
@@ -3045,6 +3047,7 @@ dependencies = [
  "massa_metrics",
  "massa_models",
  "massa_pool_exports",
+ "massa_pos_exports",
  "massa_protocol_exports",
  "massa_serialization",
  "massa_signature",

@@ -28,7 +28,6 @@ use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -44,7 +43,7 @@ use massa_sc_runtime::{Interface, Response, VMError};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use parking_lot::{Mutex, RwLock};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
@@ -1616,45 +1615,6 @@ impl ExecutionState {
         }
     }
 
-    /// List which operations inside the provided list were not executed
-    pub fn unexecuted_ops_among(
-        &self,
-        ops: &PreHashSet<OperationId>,
-        thread: u8,
-    ) -> PreHashSet<OperationId> {
-        let mut ops = ops.clone();
-
-        if ops.is_empty() {
-            return ops;
-        }
-
-        {
-            // check active history
-            let history = self.active_history.read();
-            for hist_item in history.0.iter().rev() {
-                if hist_item.slot.thread != thread {
-                    continue;
-                }
-                ops.retain(|op_id| {
-                    !hist_item
-                        .state_changes
-                        .executed_ops_changes
-                        .contains_key(op_id)
-                });
-                if ops.is_empty() {
-                    return ops;
-                }
-            }
-        }
-
-        {
-            // check final state
-            let final_state = self.final_state.read();
-            ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
-        }
-        ops
-    }
-
     /// Check if a denunciation has been executed given a `DenunciationIndex`
     pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         // check active history
@@ -1684,18 +1644,30 @@ impl ExecutionState {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
     }
 
-    /// Get the execution statuses of both speculative and final executions
+    /// Get the execution status of a batch of operations.
     ///
-    /// # Return
-    ///
-    /// * A tuple of hashmaps with:
-    /// * first the statuses for speculative executions
-    /// * second the statuses for final executions
-    pub fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
-        (
-            self.active_history.read().get_op_exec_status(),
-            self.final_state.read().executed_ops.op_exec_status.clone(),
-        )
+    ///  Return value: vector of
+    ///  `(Option<speculative_status>, Option<final_status>)`
+    ///  If an Option is None it means that the op execution was not found.
+    ///  Note that old op executions are forgotten.
+    /// Otherwise, the status is a boolean indicating whether the execution was successful (true) or if there was an error (false.)
+    pub fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
+        let speculative_exec = self.active_history.read().get_ops_exec_status(batch);
+        let final_exec = self
+            .final_state
+            .read()
+            .executed_ops
+            .get_ops_exec_status(batch);
+        speculative_exec
+            .into_iter()
+            .zip(final_exec.into_iter())
+            .map(|(speculative_v, final_v)| {
+                match (speculative_v, final_v) {
+                    (None, Some(f)) => (Some(f), Some(f)), // special case: a final execution should also appear as speculative
+                    (s, f) => (s, f),
+                }
+            })
+            .collect()
     }
 
     /// Update MipStore with block header stats
