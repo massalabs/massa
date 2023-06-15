@@ -213,6 +213,16 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -233,11 +243,12 @@
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
 <span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>std::{io::Write, net::TcpStream, time::Duration};
+<span class="kw">use </span>stream_limiter::{Limiter, LimiterOptions};
 
 <span class="doccomment">/// Bootstrap client binder
 </span><span class="kw">pub struct </span>BootstrapClientBinder {
     remote_pubkey: PublicKey,
-    duplex: TcpStream,
+    duplex: Limiter&lt;TcpStream&gt;,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
@@ -257,7 +268,16 @@
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        duplex: TcpStream,
+        remote_pubkey: PublicKey,
+        cfg: BootstrapClientConfig,
+        limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="comment">// A 1s window breaks anything requiring a 1s window
+        </span><span class="kw">let </span>write_limit = limit
+            .map(|limit| LimiterOptions::new(limit / <span class="number">100</span>, Duration::from_millis(<span class="number">10</span>), limit / <span class="number">10</span>));
+        <span class="kw">let </span>duplex = Limiter::new(duplex, <span class="prelude-val">None</span>, write_limit);
         BootstrapClientBinder {
             remote_pubkey,
             duplex,
@@ -387,7 +407,7 @@
         }
 
         <span class="comment">// Provide the message length
-        </span><span class="self">self</span>.duplex.set_write_timeout(duration)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.duplex.stream.set_write_timeout(duration)<span class="question-mark">?</span>;
         <span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)<span class="question-mark">?</span>;
         write_buf.extend(<span class="kw-2">&amp;</span>msg_len_bytes);
 
@@ -419,7 +439,7 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingReadExact <span class="kw">for </span>BootstrapClientBinder {
     <span class="kw">fn </span>set_read_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.set_read_timeout(duration)
+        <span class="self">self</span>.duplex.stream.set_read_timeout(duration)
     }
 }
 
