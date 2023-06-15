@@ -5,11 +5,12 @@ use crate::{
     handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
     messages::MessagesHandler, tests::mock_network::MockNetworkController,
 };
-use crossbeam::channel::bounded;
+use massa_channel::MassaChannel;
 use massa_consensus_exports::{
     test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
     ConsensusController,
 };
+use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 //use crate::handlers::block_handler::BlockInfoReply;
 use massa_pool_exports::{
@@ -64,13 +65,22 @@ pub fn start_protocol_controller_with_mock_network(
     debug!("starting protocol controller with mock network");
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
-    let (sender_operations, receiver_operations) =
-        bounded(config.max_size_channel_network_to_operation_handler);
-    let (sender_endorsements, receiver_endorsements) =
-        bounded(config.max_size_channel_network_to_endorsement_handler);
-    let (sender_blocks, receiver_blocks) =
-        bounded(config.max_size_channel_network_to_block_handler);
-    let (sender_peers, receiver_peers) = bounded(config.max_size_channel_network_to_peer_handler);
+    let (sender_operations, receiver_operations) = MassaChannel::new(
+        "operations".to_string(),
+        Some(config.max_size_channel_network_to_operation_handler),
+    );
+    let (sender_endorsements, receiver_endorsements) = MassaChannel::new(
+        "endorsements".to_string(),
+        Some(config.max_size_channel_network_to_endorsement_handler),
+    );
+    let (sender_blocks, receiver_blocks) = MassaChannel::new(
+        "blocks".to_string(),
+        Some(config.max_size_channel_network_to_block_handler),
+    );
+    let (sender_peers, receiver_peers) = MassaChannel::new(
+        "peers".to_string(),
+        Some(config.max_size_channel_network_to_peer_handler),
+    );
 
     // Register channels for handlers
     let message_handlers: MessagesHandler = MessagesHandler {
@@ -114,6 +124,7 @@ pub fn start_protocol_controller_with_mock_network(
         },
         config,
         mip_store,
+        MassaMetrics::new(false, 32),
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

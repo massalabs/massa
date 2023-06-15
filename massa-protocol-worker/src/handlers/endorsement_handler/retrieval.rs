@@ -1,9 +1,7 @@
 use std::thread::JoinHandle;
 
-use crossbeam::{
-    channel::{Receiver, Sender},
-    select,
-};
+use crossbeam::select;
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
 use massa_models::{
     endorsement::SecureShareEndorsement,
@@ -35,14 +33,14 @@ use super::{
 };
 
 pub struct RetrievalThread {
-    receiver: Receiver<PeerMessageTuple>,
-    receiver_ext: Receiver<EndorsementHandlerRetrievalCommand>,
+    receiver: MassaReceiver<PeerMessageTuple>,
+    receiver_ext: MassaReceiver<EndorsementHandlerRetrievalCommand>,
     cache: SharedEndorsementCache,
-    internal_sender: Sender<EndorsementHandlerPropagationCommand>,
+    internal_sender: MassaSender<EndorsementHandlerPropagationCommand>,
     pool_controller: Box<dyn PoolController>,
     config: ProtocolConfig,
     storage: Storage,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
 }
 
 impl RetrievalThread {
@@ -56,6 +54,7 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver) -> msg => {
+                    self.receiver.inc_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match endorsement_message_deserializer
@@ -96,6 +95,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver_ext) -> msg => {
+                    self.receiver_ext.inc_metrics();
                     match msg {
                         Ok(msg) => {
                             match msg {
@@ -253,10 +253,10 @@ impl RetrievalThread {
 
 #[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
-    receiver: Receiver<PeerMessageTuple>,
-    receiver_ext: Receiver<EndorsementHandlerRetrievalCommand>,
-    internal_sender: Sender<EndorsementHandlerPropagationCommand>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    receiver: MassaReceiver<PeerMessageTuple>,
+    receiver_ext: MassaReceiver<EndorsementHandlerRetrievalCommand>,
+    internal_sender: MassaSender<EndorsementHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
     cache: SharedEndorsementCache,
     pool_controller: Box<dyn PoolController>,
     config: ProtocolConfig,

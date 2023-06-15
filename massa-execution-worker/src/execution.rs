@@ -22,6 +22,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -89,6 +90,8 @@ pub(crate) struct ExecutionState {
     selector: Box<dyn SelectorController>,
     // channels used by the execution worker
     channels: ExecutionChannels,
+    /// prometheus metrics
+    massa_metrics: MassaMetrics,
 }
 
 impl ExecutionState {
@@ -106,6 +109,7 @@ impl ExecutionState {
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
         channels: ExecutionChannels,
+        massa_metrics: MassaMetrics,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -178,6 +182,7 @@ impl ExecutionState {
             mip_store,
             selector,
             channels,
+            massa_metrics,
         }
     }
 
@@ -225,6 +230,12 @@ impl ExecutionState {
         exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
+
+        // update the prometheus metrics
+        self.massa_metrics
+            .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
+        self.massa_metrics
+            .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
     }
 
     /// Applies an execution output to the active (non-final) state
@@ -645,7 +656,7 @@ impl ExecutionState {
             )));
         }
 
-        // add rolls to the buyer withing the context
+        // add rolls to the buyer within the context
         context.add_rolls(&buyer_addr, *roll_count);
 
         Ok(())
@@ -684,9 +695,9 @@ impl ExecutionState {
             operation_datastore: None,
         }];
 
-        // send `roll_price` * `roll_count` coins from the sender to the recipient
+        // transfer coins from sender to destination
         if let Err(err) =
-            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, false)
+            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, true)
         {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
@@ -810,19 +821,21 @@ impl ExecutionState {
                 },
             ];
 
-            // Debit the sender's balance with the coins to transfer
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, coins, false) {
+            // Ensure that the target address is an SC address
+            if !matches!(target_addr, Address::SC(..)) {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation coins: {}",
-                    sender_addr, coins, err
+                    "cannot callSC towards non-SC address {}",
+                    target_addr
                 )));
             }
 
-            // Credit the operation target with coins.
-            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false) {
+            // Transfer coins from the sender to the target
+            if let Err(err) =
+                context.transfer_coins(Some(sender_addr), Some(target_addr), coins, false)
+            {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to credit operation target {} with {} operation coins: {}",
-                    target_addr, coins, err
+                    "failed to transfer {} operation coins from {} to {}: {}",
+                    coins, sender_addr, target_addr, err
                 )));
             }
 
@@ -896,18 +909,21 @@ impl ExecutionState {
                 },
             ];
 
-            // If there is no target bytecode or if message data is invalid,
-            // reimburse sender with coins and quit
+            // if the target address is not SC: fail
+            if !matches!(message.destination, Address::SC(..)) {
+                let err = ExecutionError::RuntimeError(
+                    "the target address is not a smart contract address".into(),
+                );
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(&message);
+                return Err(err);
+            }
+
+            // if there is no bytecode: fail
             let bytecode = match bytecode {
-                Some(bc) => bc,
-                bc => {
-                    let err = if bc.is_none() {
-                        ExecutionError::RuntimeError("no target bytecode found".into())
-                    } else {
-                        ExecutionError::RuntimeError(
-                            "message data does not convert to utf-8".into(),
-                        )
-                    };
+                Some(bytecode) => bytecode,
+                None => {
+                    let err = ExecutionError::RuntimeError("no target bytecode found".into());
                     context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(&message);
                     return Err(err);

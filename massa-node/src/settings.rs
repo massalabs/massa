@@ -133,6 +133,7 @@ pub struct Settings {
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
     pub grpc: GrpcSettings,
+    pub metrics: MetricsSettings,
 }
 
 /// Consensus configuration
@@ -166,6 +167,11 @@ pub struct ConsensusSettings {
 pub struct NetworkSettings {
     /// Ip seen by others. If none the bind ip is used
     pub routable_ip: Option<IpAddr>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MetricsSettings {
+    pub enabled: bool,
 }
 
 /// Protocol Configuration, read from toml user configuration file

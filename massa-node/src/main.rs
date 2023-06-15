@@ -6,9 +6,11 @@
 #![feature(ip)]
 extern crate massa_logging;
 
+#[cfg(feature = "op_spammer")]
+use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
-use crossbeam_channel::{Receiver, TryRecvError};
+use crossbeam_channel::TryRecvError;
 use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -19,6 +21,8 @@ use massa_bootstrap::{
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
     DefaultConnector,
 };
+use massa_channel::receiver::MassaReceiver;
+use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
@@ -37,6 +41,7 @@ use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::address::Address;
 use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -100,6 +105,8 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
+#[cfg(feature = "op_spammer")]
+mod operation_injector;
 mod settings;
 
 async fn launch(
@@ -107,7 +114,7 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
     sig_int_toggled: Arc<(Mutex<bool>, Condvar)>,
 ) -> (
-    Receiver<ConsensusEvent>,
+    MassaReceiver<ConsensusEvent>,
     Option<BootstrapManager>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
@@ -225,6 +232,9 @@ async fn launch(
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
+
+    // Start massa metrics
+    let metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -477,6 +487,7 @@ async fn launch(
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
+        metrics.clone(),
     );
 
     // launch pool controller
@@ -645,7 +656,7 @@ async fn launch(
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
+        MassaChannel::new("consensus_event".to_string(), Some(CHANNEL_SIZE));
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -668,6 +679,7 @@ async fn launch(
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
+        metrics.clone(),
     );
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
@@ -678,6 +690,7 @@ async fn launch(
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
+        metrics,
     )
     .expect("could not start protocol controller");
 
@@ -880,6 +893,16 @@ async fn launch(
         None
     };
 
+    #[cfg(feature = "op_spammer")]
+    start_operation_injector(
+        *GENESIS_TIMESTAMP,
+        shared_storage.clone_without_refs(),
+        node_wallet.read().clone(),
+        pool_controller.clone(),
+        protocol_controller.clone(),
+        args.nb_op,
+    );
+
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         protocol_controller.clone(),
@@ -976,7 +999,7 @@ struct Managers {
 }
 
 async fn stop(
-    _consensus_event_receiver: Receiver<ConsensusEvent>,
+    _consensus_event_receiver: MassaReceiver<ConsensusEvent>,
     Managers {
         bootstrap_manager,
         mut execution_manager,
@@ -1053,6 +1076,16 @@ struct Args {
     /// restart_from_snapshot_at_period
     #[structopt(long = "restart-from-snapshot-at-period")]
     restart_from_snapshot_at_period: Option<u64>,
+
+    #[cfg(feature = "op_spammer")]
+    /// number of operations
+    #[structopt(
+        name = "number of operations",
+        about = "Define the number of operations the node can spam.",
+        short = "nb-op",
+        long = "number-operations"
+    )]
+    nb_op: u64,
 
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector
