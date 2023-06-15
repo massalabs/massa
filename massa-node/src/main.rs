@@ -84,7 +84,8 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{MipComponent, MipInfo, MipState};
+use massa_versioning::test_helpers::versioning_helpers::advance_state_until;
+use massa_versioning::versioning::{ComponentState, MipComponent, MipInfo, MipState};
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -281,6 +282,19 @@ async fn launch(
     let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 15, 14, 25, 0).unwrap();
     let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 16, 14, 15, 0).unwrap();
     let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 15, 14, 10, 0).unwrap();
+
+    // Debug: set state to active
+    let mip_0002 = MipInfo {
+        name: "MIP-0002".to_string(),
+        version: 2,
+        components: BTreeMap::from([(MipComponent::FinalStateHashKind, 1)]),
+        start: mip_0002_start,
+        timeout: mip_0002_timeout,
+        activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(1)),
+    };
+    let _time = MassaTime::now().unwrap();
+    let mip_0002_state = advance_state_until(ComponentState::active(_time), &mip_0002);
+
     let mip_list_1: [(MipInfo, MipState); 2] = [
         (
             MipInfo {
@@ -296,17 +310,7 @@ async fn launch(
             },
             MipState::new(mip_0001_defined_start),
         ),
-        (
-            MipInfo {
-                name: "MIP-0002".to_string(),
-                version: 2,
-                components: BTreeMap::from([(MipComponent::FinalStateHashKind, 1)]),
-                start: mip_0002_start,
-                timeout: mip_0002_timeout,
-                activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(1)),
-            },
-            MipState::new(mip_0002_defined_start),
-        ),
+        (mip_0002, mip_0002_state),
     ];
     let mip_store =
         MipStore::try_from((mip_list_1, mip_stats_config)).expect("mip store creation failed");
