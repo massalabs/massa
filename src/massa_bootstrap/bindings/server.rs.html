@@ -316,16 +316,6 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -352,7 +342,6 @@
     thread,
     time::Duration,
 };
-<span class="kw">use </span>stream_limiter::{Limiter, LimiterOptions};
 <span class="kw">use </span>tracing::error;
 
 <span class="kw">const </span>KNOWN_PREFIX_LEN: usize = HASH_SIZE_BYTES + MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES;
@@ -369,7 +358,8 @@
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     local_keypair: KeyPair,
-    duplex: Limiter&lt;TcpStream&gt;,
+    <span class="comment">// TODO: Reintroduce bandwidth limits
+    </span>duplex: TcpStream,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -384,26 +374,16 @@
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(
-        duplex: TcpStream,
-        local_keypair: KeyPair,
-        cfg: BootstrapSrvBindCfg,
-        rw_limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    ) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>BootstrapSrvBindCfg {
-            max_bytes_read_write: _limit,
+            <span class="comment">// TODO: Reintroduce bandwidth limits
+            </span>max_bytes_read_write: _limit,
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-
-        <span class="comment">// A 1s window breaks anything requiring a 1s window
-        </span><span class="kw">let </span>limit_opts = rw_limit.map(|limit| -&gt; LimiterOptions {
-            LimiterOptions::new(limit / <span class="number">100</span>, Duration::from_millis(<span class="number">10</span>), limit / <span class="number">10</span>)
-        });
-        <span class="kw">let </span>duplex = Limiter::new(duplex, <span class="prelude-val">None</span>, limit_opts);
         BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,
@@ -430,7 +410,7 @@
             <span class="self">self</span>.version_serializer
                 .serialize(<span class="kw-2">&amp;</span>version, <span class="kw-2">&amp;mut </span>version_bytes)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; version_bytes.len() + <span class="self">self</span>.randomness_size_bytes];
-            <span class="self">self</span>.duplex.stream.set_read_timeout(duration)<span class="question-mark">?</span>;
+            <span class="self">self</span>.duplex.set_read_timeout(duration)<span class="question-mark">?</span>;
             <span class="self">self</span>.duplex.read_exact(<span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
             <span class="kw">let </span>(<span class="kw">_</span>, received_version) = <span class="self">self
                 </span>.version_deserializer
@@ -549,7 +529,7 @@
         </span><span class="kw">let </span>stream_data = [sig.to_bytes().as_slice(), <span class="kw-2">&amp;</span>msg_len_bytes, <span class="kw-2">&amp;</span>msg_bytes].concat();
 
         <span class="comment">// send the data
-        </span><span class="self">self</span>.duplex.stream.set_write_timeout(duration)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.duplex.set_write_timeout(duration)<span class="question-mark">?</span>;
         <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>stream_data)<span class="question-mark">?</span>;
 
         <span class="comment">// update prev sig
@@ -651,7 +631,7 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingReadExact <span class="kw">for </span>BootstrapServerBinder {
     <span class="kw">fn </span>set_read_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.stream.set_read_timeout(duration)
+        <span class="self">self</span>.duplex.set_read_timeout(duration)
     }
 }
 </code></pre></div></section></main></body></html>
