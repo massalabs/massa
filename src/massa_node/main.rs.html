@@ -1299,20 +1299,6 @@
 <a href="#1299" id="1299">1299</a>
 <a href="#1300" id="1300">1300</a>
 <a href="#1301" id="1301">1301</a>
-<a href="#1302" id="1302">1302</a>
-<a href="#1303" id="1303">1303</a>
-<a href="#1304" id="1304">1304</a>
-<a href="#1305" id="1305">1305</a>
-<a href="#1306" id="1306">1306</a>
-<a href="#1307" id="1307">1307</a>
-<a href="#1308" id="1308">1308</a>
-<a href="#1309" id="1309">1309</a>
-<a href="#1310" id="1310">1310</a>
-<a href="#1311" id="1311">1311</a>
-<a href="#1312" id="1312">1312</a>
-<a href="#1313" id="1313">1313</a>
-<a href="#1314" id="1314">1314</a>
-<a href="#1315" id="1315">1315</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1590,39 +1576,21 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    <span class="kw">let </span>mip_0001_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">15</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
-    <span class="kw">let </span>mip_0001_timeout = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">16</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="comment">// let mip_0001_start: u64 = std::env::var(&quot;MIP_0001_START&quot;).unwrap().parse().unwrap();
+    </span><span class="kw">let </span>mip_0001_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">15</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0001_end = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">16</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
     <span class="kw">let </span>mip_0001_defined_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">2</span>, <span class="number">14</span>, <span class="number">14</span>, <span class="number">30</span>, <span class="number">0</span>).unwrap();
-    <span class="kw">let </span>mip_0002_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">16</span>, <span class="number">13</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
-    <span class="kw">let </span>mip_0002_timeout = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">16</span>, <span class="number">16</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
-    <span class="kw">let </span>mip_0002_defined_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">2</span>, <span class="number">19</span>, <span class="number">12</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
-    <span class="kw">let </span>mip_list_1: [(MipInfo, MipState); <span class="number">2</span>] = [
-        (
-            MipInfo {
-                name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
-                version: <span class="number">1</span>,
-                components: BTreeMap::from([
-                    (MipComponent::Address, <span class="number">1</span>),
-                    (MipComponent::KeyPair, <span class="number">1</span>),
-                ]),
-                start: mip_0001_start,
-                timeout: mip_0001_timeout,
-                activation_delay: MassaTime::from_millis(<span class="number">100</span>),
-            },
-            MipState::new(mip_0001_defined_start),
-        ),
-        (
-            MipInfo {
-                name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
-                version: <span class="number">2</span>,
-                components: BTreeMap::from([(MipComponent::FinalStateHashKind, <span class="number">1</span>)]),
-                start: mip_0002_start,
-                timeout: mip_0002_timeout,
-                activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(<span class="number">1</span>)),
-            },
-            MipState::new(mip_0002_defined_start),
-        ),
-    ];
+    <span class="kw">let </span>mip_list_1: [(MipInfo, MipState); <span class="number">1</span>] = [(
+        MipInfo {
+            name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
+            version: <span class="number">1</span>,
+            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>), (MipComponent::KeyPair, <span class="number">1</span>)]),
+            start: mip_0001_start,
+            timeout: mip_0001_end,
+            activation_delay: MassaTime::from_millis(<span class="number">100</span>),
+        },
+        MipState::new(mip_0001_defined_start),
+    )];
     <span class="kw">let </span>mip_store =
         MipStore::try_from((mip_list_1, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
 
@@ -1842,8 +1810,10 @@
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
+        operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
+        operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
+        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
         operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
         endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
         denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
@@ -1865,13 +1835,14 @@
             .<span class="number">0</span>,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).<span class="number">0</span>,
         selector: selector_controller.clone(),
+        execution_controller: execution_controller.clone(),
     };
 
     <span class="kw">let </span>(pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         <span class="kw-2">&amp;</span>shared_storage,
-        execution_controller.clone(),
         pool_channels.clone(),
+        node_wallet.clone(),
     );
 
     <span class="comment">// launch protocol controller
@@ -2027,6 +1998,7 @@
 
     <span class="kw">let </span>(protocol_manager, keypair, node_id) = start_protocol_controller(
         protocol_config.clone(),
+        selector_controller.clone(),
         consensus_controller.clone(),
         bootstrap_state.peers,
         pool_controller.clone(),

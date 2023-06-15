@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["build_operation_cursor"],"struct":["OperationInfo","PoolOperationCursor"],"type":["OperationCursorInner"]};
+window.SIDEBAR_ITEMS = {"struct":["OperationInfo"]};

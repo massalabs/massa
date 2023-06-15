@@ -707,43 +707,6 @@
 <a href="#707" id="707">707</a>
 <a href="#708" id="708">708</a>
 <a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -765,13 +728,12 @@
 <span class="kw">use </span>massa_models::config::PERIODS_BETWEEN_BACKUPS;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
-<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rocksdb::IteratorMode;
 <span class="kw">use </span>tracing::{debug, info, warn};
 
-<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -871,12 +833,10 @@
         };
 
         <span class="kw">if </span>reset_final_state {
-            <span class="kw">let </span>only_use_xor = final_state.get_only_use_xor();
-
-            final_state.async_pool.reset(only_use_xor);
-            final_state.pos_state.reset(only_use_xor);
-            final_state.executed_ops.reset(only_use_xor);
-            final_state.executed_denunciations.reset(only_use_xor);
+            final_state.async_pool.reset();
+            final_state.pos_state.reset();
+            final_state.executed_ops.reset();
+            final_state.executed_denunciations.reset();
             final_state.db.read().set_initial_change_id(slot);
         }
 
@@ -920,12 +880,10 @@
         </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;testing&quot;</span>) {
             <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
-            final_state.db.write().write_batch(
-                batch,
-                Default::default(),
-                <span class="prelude-val">Some</span>(recovered_slot),
-                <span class="bool-val">false</span>,
-            );
+            final_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(recovered_slot));
         }
 
         final_state.last_slot_before_downtime = <span class="prelude-val">Some</span>(recovered_slot);
@@ -988,16 +946,14 @@
         <span class="comment">// We compute the draws here because we need to feed_cycles when interpolating
         </span>final_state.compute_initial_draws()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>only_use_xor = final_state.get_only_use_xor();
-
-        final_state.interpolate_downtime(only_use_xor)<span class="question-mark">?</span>;
+        final_state.interpolate_downtime()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(final_state)
     }
 
     <span class="doccomment">/// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
     /// This basically recreates the history of the final_state, without executing the slots.
-    </span><span class="kw">fn </span>interpolate_downtime(<span class="kw-2">&amp;mut </span><span class="self">self</span>, only_use_xor: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
+    </span><span class="kw">fn </span>interpolate_downtime(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span>current_slot =
             <span class="self">self</span>.db.read().get_change_id().map_err(|<span class="kw">_</span>| {
                 FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not get slot in db&quot;</span>))
@@ -1012,7 +968,7 @@
 
         <span class="kw">if </span>current_slot_cycle == end_slot_cycle {
             <span class="comment">// In that case, we just complete the gap in the same cycle
-            </span><span class="self">self</span>.interpolate_single_cycle(current_slot, end_slot, only_use_xor)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.interpolate_single_cycle(current_slot, end_slot)<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
             <span class="comment">// Here, we we also complete the cycle_infos in between
             </span><span class="self">self</span>.interpolate_multiple_cycles(
@@ -1020,7 +976,6 @@
                 end_slot,
                 current_slot_cycle,
                 end_slot_cycle,
-                only_use_xor,
             )<span class="question-mark">?</span>;
         }
 
@@ -1034,9 +989,8 @@
 
         <span class="comment">// feed final_state_hash to the last cycle
         </span><span class="kw">let </span>cycle = end_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
-
         <span class="self">self</span>.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -1046,7 +1000,6 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         current_slot: Slot,
         end_slot: Slot,
-        only_use_xor: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span>latest_snapshot_cycle =
             <span class="self">self</span>.pos_state
@@ -1063,12 +1016,10 @@
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
 
-        <span class="self">self</span>.pos_state.db.write().write_batch(
-            batch,
-            Default::default(),
-            <span class="prelude-val">Some</span>(end_slot),
-            only_use_xor,
-        );
+        <span class="self">self</span>.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
@@ -1083,12 +1034,10 @@
             )
             .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.pos_state.db.write().write_batch(
-            batch,
-            Default::default(),
-            <span class="prelude-val">Some</span>(end_slot),
-            only_use_xor,
-        );
+        <span class="self">self</span>.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -1100,7 +1049,6 @@
         end_slot: Slot,
         current_slot_cycle: u64,
         end_slot_cycle: u64,
-        only_use_xor: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span>latest_snapshot_cycle =
             <span class="self">self</span>.pos_state
@@ -1117,12 +1065,10 @@
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
 
-        <span class="self">self</span>.pos_state.db.write().write_batch(
-            batch,
-            Default::default(),
-            <span class="prelude-val">Some</span>(end_slot),
-            only_use_xor,
-        );
+        <span class="self">self</span>.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
 
         <span class="comment">// Firstly, complete the first cycle
         </span><span class="kw">let </span>last_slot = Slot::new_last_of_cycle(
@@ -1150,15 +1096,13 @@
             )
             .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.pos_state.db.write().write_batch(
-            batch,
-            Default::default(),
-            <span class="prelude-val">Some</span>(end_slot),
-            only_use_xor,
-        );
+        <span class="self">self</span>.pos_state
+            .db
+            .write()
+            .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
 
         <span class="comment">// Feed final_state_hash to the completed cycle
-        </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle, only_use_xor)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)<span class="question-mark">?</span>;
 
         <span class="comment">// TODO: Bring back the following optimisation (it fails because of selector)
         // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
@@ -1198,15 +1142,13 @@
                 )
                 .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
 
-            <span class="self">self</span>.pos_state.db.write().write_batch(
-                batch,
-                Default::default(),
-                <span class="prelude-val">Some</span>(end_slot),
-                only_use_xor,
-            );
+            <span class="self">self</span>.pos_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
 
             <span class="comment">// Feed final_state_hash to the completed cycle
-            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(cycle, only_use_xor)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(cycle)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// Then, build the last cycle
@@ -1232,7 +1174,7 @@
         <span class="comment">// If the end_slot_cycle is completed
         </span><span class="kw">if </span>end_slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count) {
             <span class="comment">// Feed final_state_hash to the completed cycle
-            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle, only_use_xor)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// We reduce the cycle_history len as needed
@@ -1245,7 +1187,7 @@
 
         <span class="self">self</span>.db
             .write()
-            .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot), only_use_xor);
+            .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(end_slot));
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -1254,12 +1196,11 @@
     </span><span class="kw">fn </span>feed_cycle_hash_and_selector_for_interpolation(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         cycle: u64,
-        only_use_xor: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_db_hash();
 
         <span class="self">self</span>.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         <span class="self">self</span>.pos_state
             .feed_selector(cycle.checked_add(<span class="number">2</span>).ok_or_else(|| {
@@ -1275,17 +1216,15 @@
     ///
     /// USED ONLY FOR BOOTSTRAP
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>only_use_xor = <span class="self">self</span>.get_only_use_xor();
-
         <span class="self">self</span>.db
             .write()
             .reset(Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>)));
-        <span class="self">self</span>.ledger.reset(only_use_xor);
-        <span class="self">self</span>.async_pool.reset(only_use_xor);
-        <span class="self">self</span>.pos_state.reset(only_use_xor);
-        <span class="self">self</span>.executed_ops.reset(only_use_xor);
-        <span class="self">self</span>.executed_denunciations.reset(only_use_xor);
-        <span class="self">self</span>.mip_store.reset_db(<span class="self">self</span>.db.clone(), only_use_xor);
+        <span class="self">self</span>.ledger.reset();
+        <span class="self">self</span>.async_pool.reset();
+        <span class="self">self</span>.pos_state.reset();
+        <span class="self">self</span>.executed_ops.reset();
+        <span class="self">self</span>.executed_denunciations.reset();
+        <span class="self">self</span>.mip_store.reset_db(<span class="self">self</span>.db.clone());
     }
 
     <span class="doccomment">/// Performs the initial draws.
@@ -1318,15 +1257,17 @@
 
         </span><span class="self">self</span>.async_pool
             .apply_changes_to_batch(<span class="kw-2">&amp;</span>changes.async_pool_changes, <span class="kw-2">&amp;mut </span>db_batch);
+
         <span class="self">self</span>.pos_state
             .apply_changes_to_batch(changes.pos_changes.clone(), slot, <span class="bool-val">true</span>, <span class="kw-2">&amp;mut </span>db_batch)
             .expect(<span class="string">&quot;could not settle slot in final state proof-of-stake&quot;</span>);
-
         <span class="comment">// TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
+
         </span><span class="self">self</span>.ledger
             .apply_changes_to_batch(changes.ledger_changes.clone(), <span class="kw-2">&amp;mut </span>db_batch);
+
         <span class="self">self</span>.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
             slot,
@@ -1339,11 +1280,9 @@
             <span class="kw-2">&amp;mut </span>db_batch,
         );
 
-        <span class="kw">let </span>only_use_xor = <span class="self">self</span>.get_only_use_xor();
-
         <span class="self">self</span>.db
             .write()
-            .write_batch(db_batch, Default::default(), <span class="prelude-val">Some</span>(slot), only_use_xor);
+            .write_batch(db_batch, Default::default(), <span class="prelude-val">Some</span>(slot));
 
         <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_db_hash();
 
@@ -1375,7 +1314,7 @@
         <span class="comment">// feed final_state_hash to the last cycle
         </span><span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
         <span class="self">self</span>.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
+            .feed_cycle_state_hash(cycle, final_state_hash);
     }
 
     <span class="doccomment">/// After bootstrap or load from disk, recompute all the caches.
@@ -1476,18 +1415,5 @@
 
         <span class="bool-val">true
     </span>}
-
-    <span class="doccomment">/// Temporary getter to know if we should compute the lsm tree during db writes
-    </span><span class="kw">pub fn </span>get_only_use_xor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.get_hash_kind_version() == <span class="number">1
-    </span>}
-
-    <span class="kw">fn </span>get_hash_kind_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
-        <span class="comment">// Temp code
-        // Return version for hash kind of final state: 0 -&gt; LSM, 1 -&gt; Xor
-        </span><span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;Cannot get current time&quot;</span>);
-        <span class="self">self</span>.mip_store
-            .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::FinalStateHashKind, now)
-    }
 }
 </code></pre></div></section></main></body></html>

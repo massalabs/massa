@@ -601,13 +601,6 @@
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -700,11 +693,7 @@
     <span class="doccomment">/// Loads the initial disk ledger
     ///
     /// # Arguments
-    </span><span class="kw">pub fn </span>load_initial_ledger(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        initial_ledger: HashMap&lt;Address, LedgerEntry&gt;,
-        only_use_xor: bool,
-    ) {
+    </span><span class="kw">pub fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>, initial_ledger: HashMap&lt;Address, LedgerEntry&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
         <span class="kw">for </span>(address, entry) <span class="kw">in </span>initial_ledger {
@@ -715,7 +704,6 @@
             batch,
             Default::default(),
             <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="self">self</span>.thread_count.saturating_sub(<span class="number">1</span>))),
-            only_use_xor,
         );
     }
 
@@ -805,10 +793,8 @@
         <span class="prelude-val">Some</span>(iter.collect())
     }
 
-    <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;</span><span class="self">self</span>, only_use_xor: bool) {
-        <span class="self">self</span>.db
-            .write()
-            .delete_prefix(LEDGER_PREFIX, STATE_CF, <span class="prelude-val">None</span>, only_use_xor);
+    <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.db.write().delete_prefix(LEDGER_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
     }
 
     <span class="doccomment">/// Deserializes the key and value, useful after bootstrap
@@ -1156,7 +1142,7 @@
         ledger_db
             .db
             .write()
-            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>, <span class="bool-val">false</span>);
+            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
 
         <span class="comment">// return db and initial data
         </span>(ledger_db, data)
@@ -1199,7 +1185,7 @@
         ledger_db
             .db
             .write()
-            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>, <span class="bool-val">false</span>);
+            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
 
         <span class="comment">// check deleted address and ledger hash
         </span><span class="macro">assert_eq!</span>(
