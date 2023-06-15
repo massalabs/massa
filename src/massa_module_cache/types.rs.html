@@ -122,6 +122,7 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_sc_runtime::RuntimeModule;
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -141,7 +142,8 @@
     ModuleAndDelta((RuntimeModule, u64)),
 }
 
-<span class="doccomment">/// Metadata type
+<span class="attr">#[derive(PartialEq, Eq)]
+</span><span class="doccomment">/// Metadata type
 </span><span class="kw">pub enum </span>ModuleMetadata {
     Invalid,
     NotExecuted,
