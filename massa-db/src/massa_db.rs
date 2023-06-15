@@ -1,7 +1,8 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
     LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, STATE_HASH_XOR_KEY, VERSIONING_CF,
+    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, STATE_HASH_KEY_IS_XOR_KEY,
+    STATE_HASH_XOR_KEY, VERSIONING_CF,
 };
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_hash::{Hash, SmtHasher};
@@ -541,6 +542,9 @@ where
                 STATE_HASH_KEY,
                 current_xor_hash.to_bytes(),
             );
+            self.current_batch
+                .lock()
+                .put_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY, [1]);
         } else {
             self.current_batch
                 .lock()
@@ -766,12 +770,23 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         );
 
         let handle_metadata = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
         let lsmtree = match db
-            .get_cf(handle_metadata, STATE_HASH_KEY)
+            .get_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY)
             .expect(CRUD_ERROR)
         {
-            Some(hash_bytes) => SparseMerkleTree::import(nodes_store, values_store, hash_bytes),
-            _ => SparseMerkleTree::new_with_stores(nodes_store, values_store),
+            Some(_value) => SparseMerkleTree::new_with_stores(nodes_store, values_store),
+            _ => {
+                match db
+                    .get_cf(handle_metadata, STATE_HASH_KEY)
+                    .expect(CRUD_ERROR)
+                {
+                    Some(hash_bytes) => {
+                        SparseMerkleTree::import(nodes_store, values_store, hash_bytes)
+                    }
+                    _ => SparseMerkleTree::new_with_stores(nodes_store, values_store),
+                }
+            }
         };
 
         let massa_db = Self {

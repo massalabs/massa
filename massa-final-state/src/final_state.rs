@@ -125,7 +125,6 @@ impl FinalState {
         };
 
         if reset_final_state {
-            // TO UPDATE
             let only_use_xor = final_state.get_only_use_xor();
 
             final_state.async_pool.reset(only_use_xor);
@@ -243,7 +242,6 @@ impl FinalState {
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 
-        // TO UPDATE
         let only_use_xor = final_state.get_only_use_xor();
 
         final_state.interpolate_downtime(only_use_xor)?;
@@ -531,7 +529,6 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        // TO UPDATE
         let only_use_xor = self.get_only_use_xor();
 
         self.db
@@ -647,7 +644,6 @@ impl FinalState {
             slot
         );
 
-        // TO UPDATE
         let only_use_xor = self.get_only_use_xor();
 
         self.db
