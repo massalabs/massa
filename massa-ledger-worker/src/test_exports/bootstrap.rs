@@ -1,16 +1,17 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_db_exports::ShareableMassaDBController;
+use massa_db::MassaDB;
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry};
 use massa_models::address::Address;
-use std::collections::HashMap;
+use parking_lot::RwLock;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{ledger_db::LedgerDB, FinalLedger};
 
 /// This file defines tools to test the ledger bootstrap
 
 pub fn create_final_ledger(
-    db: ShareableMassaDBController,
+    db: Arc<RwLock<MassaDB>>,
     config: LedgerConfig,
     initial_ledger: HashMap<Address, LedgerEntry>,
 ) -> FinalLedger {

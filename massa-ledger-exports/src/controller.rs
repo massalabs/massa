@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use crate::{LedgerChanges, LedgerError};
-use massa_db_exports::DBBatch;
+use ::massa_db::DBBatch;
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Loads ledger from file

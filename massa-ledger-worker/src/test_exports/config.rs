@@ -2,8 +2,7 @@
 
 use std::sync::Arc;
 
-use massa_db_exports::MassaDBConfig;
-use massa_db_worker::MassaDB;
+use massa_db::{MassaDB, MassaDBConfig};
 use parking_lot::RwLock;
 /// This file defines testing tools related to the configuration
 use tempfile::TempDir;
@@ -23,7 +22,7 @@ impl Default for FinalLedger {
         };
         let db = MassaDB::new(db_config);
         let db = LedgerDB::new(
-            Arc::new(RwLock::new(Box::new(db))),
+            Arc::new(RwLock::new(db)),
             THREAD_COUNT,
             MAX_DATASTORE_KEY_LENGTH,
             MAX_DATASTORE_VALUE_LENGTH,

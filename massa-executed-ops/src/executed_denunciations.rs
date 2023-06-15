@@ -3,9 +3,21 @@
 //! This file defines a structure to list and prune previously executed denunciations.
 //! Used to detect denunciation reuse.
 
+use std::collections::{BTreeMap, HashSet};
+use std::ops::Bound::{Excluded, Included};
+use std::sync::Arc;
+
+use nom::{
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
+};
+use parking_lot::RwLock;
+
 use crate::{ExecutedDenunciationsChanges, ExecutedDenunciationsConfig};
-use massa_db_exports::{
-    DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
+use massa_db::{
+    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR,
     EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR, EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF,
 };
 use massa_models::denunciation::Denunciation;
@@ -17,14 +29,6 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-use nom::{
-    error::{context, ContextError, ParseError},
-    multi::length_count,
-    sequence::tuple,
-    IResult, Parser,
-};
-use std::collections::{BTreeMap, HashSet};
-use std::ops::Bound::{Excluded, Included};
 
 /// Denunciation index key formatting macro
 #[macro_export]
@@ -40,7 +44,7 @@ pub struct ExecutedDenunciations {
     /// Executed denunciations configuration
     config: ExecutedDenunciationsConfig,
     /// Access to the RocksDB database
-    pub db: ShareableMassaDBController,
+    pub db: Arc<RwLock<MassaDB>>,
     /// for better pruning complexity
     pub sorted_denunciations: BTreeMap<Slot, HashSet<DenunciationIndex>>,
     /// for rocksdb serialization
@@ -51,7 +55,7 @@ pub struct ExecutedDenunciations {
 
 impl ExecutedDenunciations {
     /// Create a new `ExecutedDenunciations`
-    pub fn new(config: ExecutedDenunciationsConfig, db: ShareableMassaDBController) -> Self {
+    pub fn new(config: ExecutedDenunciationsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
         let denunciation_index_deserializer =
             DenunciationIndexDeserializer::new(config.thread_count, config.endorsement_count);
         Self {
@@ -68,9 +72,12 @@ impl ExecutedDenunciations {
         self.sorted_denunciations.clear();
 
         let db = self.db.read();
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        for (serialized_de_idx, _) in
-            db.prefix_iterator_cf(STATE_CF, EXECUTED_DENUNCIATIONS_PREFIX.as_bytes())
+        for (serialized_de_idx, _) in db
+            .db
+            .prefix_iterator_cf(handle, EXECUTED_DENUNCIATIONS_PREFIX)
+            .flatten()
         {
             if !serialized_de_idx.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes()) {
                 break;
@@ -110,13 +117,15 @@ impl ExecutedDenunciations {
     /// Check if a denunciation (e.g. a denunciation index) was executed
     pub fn contains(&self, de_idx: &DenunciationIndex) -> bool {
         let db = self.db.read();
+        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_de_idx = Vec::new();
         self.denunciation_index_serializer
             .serialize(de_idx, &mut serialized_de_idx)
             .expect(EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR);
 
-        db.get_cf(STATE_CF, denunciation_index_key!(serialized_de_idx))
+        db.db
+            .get_cf(handle, denunciation_index_key!(serialized_de_idx))
             .expect(CRUD_ERROR)
             .is_some()
     }

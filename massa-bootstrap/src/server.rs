@@ -29,7 +29,7 @@ mod white_black_list;
 use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-use massa_db_exports::CHANGE_ID_DESER_ERROR;
+use massa_db::CHANGE_ID_DESER_ERROR;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
 use massa_models::{
