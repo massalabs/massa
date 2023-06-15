@@ -53,10 +53,6 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -76,14 +72,10 @@
     </span><span class="kw">pub </span>roll_price: Amount,
     <span class="doccomment">/// operation validity periods
     </span><span class="kw">pub </span>operation_validity_periods: u64,
-    <span class="doccomment">/// operation pool refresh interval
-    </span><span class="kw">pub </span>operation_pool_refresh_interval: MassaTime,
-    <span class="doccomment">/// max delay in the future for operation validity start
-    </span><span class="kw">pub </span>operation_max_future_start_delay: MassaTime,
     <span class="doccomment">/// max operations per block
     </span><span class="kw">pub </span>max_operations_per_block: u32,
     <span class="doccomment">/// max operation pool size per thread (in number of operations)
-    </span><span class="kw">pub </span>max_operation_pool_size: usize,
+    </span><span class="kw">pub </span>max_operation_pool_size_per_thread: usize,
     <span class="doccomment">/// max endorsement pool size per thread (in number of endorsements)
     </span><span class="kw">pub </span>max_endorsements_pool_size_per_thread: usize,
     <span class="doccomment">/// max number of endorsements per block

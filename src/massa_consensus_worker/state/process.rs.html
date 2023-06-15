@@ -720,6 +720,8 @@
 <a href="#720" id="720">720</a>
 <a href="#721" id="721">721</a>
 <a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -1052,19 +1054,6 @@
             <span class="string">&quot;block_id&quot;</span>: add_block_id
         });
 
-        {
-            <span class="comment">// set metrics
-            </span><span class="kw">let </span>add_slot_timestamp = timeslots::get_block_slot_timestamp(
-                <span class="self">self</span>.config.thread_count,
-                <span class="self">self</span>.config.t0,
-                <span class="self">self</span>.config.genesis_timestamp,
-                add_block_slot,
-            )<span class="question-mark">?</span>;
-            <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
-            <span class="kw">let </span>diff = now.saturating_sub(add_slot_timestamp);
-            <span class="self">self</span>.massa_metrics.set_block_graph_diff_ms(diff.to_millis());
-        }
-
         <span class="comment">// Ensure block parents are claimed by the block&#39;s storage.
         // Note that operations and endorsements should already be there (claimed in Protocol).
         </span>storage.claim_block_refs(<span class="kw-2">&amp;</span>parents_hash_period.iter().map(|(p_id, <span class="kw">_</span>)| <span class="kw-2">*</span>p_id).collect());
@@ -1220,6 +1209,21 @@
         <span class="self">self</span>.mark_final_blocks(<span class="kw-2">&amp;</span>add_block_id, final_blocks)<span class="question-mark">?</span>;
 
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.add_block_to_graph.end&quot;</span>, {});
+
+        {
+            <span class="comment">// set metrics
+            </span><span class="kw">let </span>add_slot_timestamp = timeslots::get_block_slot_timestamp(
+                <span class="self">self</span>.config.thread_count,
+                <span class="self">self</span>.config.t0,
+                <span class="self">self</span>.config.genesis_timestamp,
+                add_block_slot,
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
+            <span class="kw">let </span>diff = now.saturating_sub(add_slot_timestamp);
+            <span class="self">self</span>.massa_metrics.inc_block_graph_counter();
+            <span class="self">self</span>.massa_metrics.inc_block_graph_ms(diff.to_millis());
+        }
+
         <span class="prelude-val">Ok</span>(())
     }
 
