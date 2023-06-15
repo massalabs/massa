@@ -5,6 +5,7 @@ use crate::{
     handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
     messages::MessagesHandler, tests::mock_network::MockNetworkController,
 };
+use crossbeam::channel::Receiver;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::{
     test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
@@ -17,7 +18,10 @@ use massa_pool_exports::{
     test_exports::{MockPoolController, PoolEventReceiver},
     PoolController,
 };
-use massa_pos_exports::{test_exports::MockSelectorController, SelectorController};
+use massa_pos_exports::{
+    test_exports::{MockSelectorController, MockSelectorControllerMessage},
+    SelectorController,
+};
 use massa_protocol_exports::{
     PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
 };
@@ -143,18 +147,20 @@ where
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
     ) -> (
         Box<MockNetworkController>,
         Box<dyn ProtocolController>,
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
     ),
 {
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
         ConsensusControllerImpl::new_with_receiver();
-    let (selector_controller, _selector_event_receiver) =
+    let (selector_controller, selector_event_receiver) =
         MockSelectorController::new_with_receiver();
     // start protocol controller
     let (network_controller, protocol_controller, protocol_manager) =
@@ -173,12 +179,14 @@ where
         mut protocol_manager,
         _consensus_event_receiver,
         _pool_event_receiver,
+        _selector_event_receiver,
     ) = test(
         network_controller,
         protocol_controller,
         protocol_manager,
         consensus_event_receiver,
         pool_event_receiver,
+        selector_event_receiver,
     );
 
     protocol_manager.stop()
@@ -192,6 +200,7 @@ where
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
         Storage,
     ) -> (
         Box<MockNetworkController>,
@@ -199,12 +208,13 @@ where
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
     ),
 {
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
         ConsensusControllerImpl::new_with_receiver();
-    let (selector_controller, _selector_event_receiver) =
+    let (selector_controller, selector_event_receiver) =
         MockSelectorController::new_with_receiver();
     let storage = Storage::create_root();
     // start protocol controller
@@ -224,12 +234,14 @@ where
         mut protocol_manager,
         _consensus_event_receiver,
         _pool_event_receiver,
+        _selector_event_receiver,
     ) = test(
         network_controller,
         protocol_controller,
         protocol_manager,
         consensus_event_receiver,
         pool_event_receiver,
+        selector_event_receiver,
         storage,
     );
 
