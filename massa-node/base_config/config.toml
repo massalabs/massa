@@ -277,7 +277,7 @@
     # refresh interval of the operation pool scoring (milliseconds)
     operation_pool_refresh_interval = 5000
     # if an operation is too much in the future it will be ignored (milliseconds)
-    operation_max_future_start_delay = 32000
+    operation_max_future_start_delay = 50000
     # max number of endorsements kept per thread
     max_endorsements_pool_size_per_thread = 25000
     # max number of items returned per query

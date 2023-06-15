@@ -261,7 +261,7 @@ impl OperationPool {
             // inclusion probability factor
             //    If we are selected to produce a block in a long time,
             //    there is exponential likelihood that someone includes the op before us.
-            let tau_inclusion = 1.0; // exponential decay factor
+            let tau_inclusion = 2.0; // exponential decay factor
             let earliest_inclusion_opportunity = pos_draws.iter().find_map(|s| {
                 if s.thread == op_info.thread
                     && op_info.validity_period_range.contains(&s.period)
