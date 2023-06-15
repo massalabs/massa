@@ -105,6 +105,7 @@ pub struct MassaMetrics {
 }
 
 impl MassaMetrics {
+    #[allow(unused_variables)]
     pub fn new(enabled: bool, addr: SocketAddr, nb_thread: u8) -> Self {
         // TODO unwrap
 
@@ -259,10 +260,8 @@ impl MassaMetrics {
             IntCounter::new("peernet_total_bytes_sent", "total byte sent by peernet").unwrap();
 
         if enabled {
-            // TODO addr from config
             #[cfg(not(feature = "testing"))]
             {
-                // let addr = "0.0.0.0:9898".parse().unwrap();
                 server::bind_metrics(addr);
 
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
