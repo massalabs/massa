@@ -113,7 +113,10 @@ impl OperationPool {
             .iter()
             .copied()
             .collect::<Vec<_>>();
-        debug!("AURELIEN: Op pool: add_operations start with {} ops", items.len());
+        debug!(
+            "AURELIEN: Op pool: add_operations start with {} ops",
+            items.len()
+        );
         let mut added = PreHashSet::with_capacity(items.len());
         let mut removed = PreHashSet::with_capacity(items.len());
 
@@ -199,7 +202,10 @@ impl OperationPool {
     /// - fit inside the block
     /// - is the most profitable for block producer
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
-        debug!("AURELIEN: Block prod {}: Op pool: get_block_operations start", slot);
+        debug!(
+            "AURELIEN: Block prod {}: Op pool: get_block_operations start",
+            slot
+        );
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
 
@@ -290,7 +296,10 @@ impl OperationPool {
             *creator_balance = creator_balance.saturating_sub(op_info.max_spending);
             debug!("AURELIEN: Block prod {}: LEVEL2: Op pool: get_block_operations end one iter on op id {}", slot, cursor.get_id());
         }
-        debug!("AURELIEN: Block prod {}: Op pool: get_block_operations end iterating", slot);
+        debug!(
+            "AURELIEN: Block prod {}: Op pool: get_block_operations end iterating",
+            slot
+        );
 
         // generate storage
         let mut res_storage = self.storage.clone_without_refs();
@@ -299,7 +308,10 @@ impl OperationPool {
         if claimed_ops.len() != claim_ops.len() {
             panic!("could not claim all operations from storage");
         }
-        debug!("AURELIEN: Block prod {}: Op pool: get_block_operations end function", slot);
+        debug!(
+            "AURELIEN: Block prod {}: Op pool: get_block_operations end function",
+            slot
+        );
 
         (op_ids, res_storage)
     }

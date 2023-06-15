@@ -96,9 +96,18 @@ impl ExecutionThread {
             let (req, resp_tx) = req_resp.into_request_sender_pair();
 
             // Acquire write access to the execution state (for cache updates) and execute the read-only request
-            debug!("AURELIEN: Execution: start execute_one_readonly_request {:?}", &req);
-            let outcome = self.execution_state.write().execute_readonly_request(req.clone());
-            debug!("AURELIEN: Execution: end execute_one_readonly_request {:?}", req);
+            debug!(
+                "AURELIEN: Execution: start execute_one_readonly_request {:?}",
+                &req
+            );
+            let outcome = self
+                .execution_state
+                .write()
+                .execute_readonly_request(req.clone());
+            debug!(
+                "AURELIEN: Execution: end execute_one_readonly_request {:?}",
+                req
+            );
 
             // Send the execution output through resp_tx.
             // Ignore errors because they just mean that the request emitter dropped the received
@@ -197,21 +206,33 @@ impl ExecutionThread {
             let run_result = self.slot_sequencer.run_task_with(
                 |is_final: bool, slot: &Slot, content: Option<&(BlockId, Storage)>| {
                     if is_final {
-                        debug!("AURELIEN: Execution: start execution final of slot {:?}", slot);
+                        debug!(
+                            "AURELIEN: Execution: start execution final of slot {:?}",
+                            slot
+                        );
                         self.execution_state.write().execute_final_slot(
                             slot,
                             content,
                             self.selector.clone(),
                         );
-                        debug!("AURELIEN: Execution: end execution final of slot {:?}", slot);
+                        debug!(
+                            "AURELIEN: Execution: end execution final of slot {:?}",
+                            slot
+                        );
                     } else {
-                        debug!("AURELIEN: Execution: start execution candidate of slot {:?}", slot);
+                        debug!(
+                            "AURELIEN: Execution: start execution candidate of slot {:?}",
+                            slot
+                        );
                         self.execution_state.write().execute_candidate_slot(
                             slot,
                             content,
                             self.selector.clone(),
                         );
-                        debug!("AURELIEN: Execution: end execution candidate of slot {:?}", slot);
+                        debug!(
+                            "AURELIEN: Execution: end execution candidate of slot {:?}",
+                            slot
+                        );
                     }
                 },
             );

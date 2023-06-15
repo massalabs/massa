@@ -1,7 +1,7 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
     LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
+    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, STATE_HASH_XOR_KEY, VERSIONING_CF,
 };
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_hash::{Hash, SmtHasher};
@@ -430,6 +430,7 @@ where
         versioning_changes: BTreeMap<Key, Option<Value>>,
         change_id: Option<ChangeID>,
         reset_history: bool,
+        only_use_xor: bool,
     ) -> Result<(), MassaDBError> {
         debug!("AURELIEN: MassaDB: start write changes");
         if let Some(change_id) = change_id.clone() {
@@ -445,6 +446,8 @@ where
         let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
         debug!("AURELIEN: MassaDB: after get handles");
 
+        let _current_xor_hash = self.get_db_hash_xor();
+
         *self.current_batch.lock() = WriteBatch::default();
 
         for (key, value) in changes.iter() {
@@ -453,16 +456,20 @@ where
                 self.current_batch.lock().put_cf(handle_state, key, value);
                 let key_hash = Hash::compute_from(key);
                 let value_hash = Hash::compute_from(value);
+                let _key_value_hash =
+                    Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
                 debug!("AURELIEN: MassaDB: after insert value");
 
-                debug!("AURELIEN: MassaDB: before tree update");
-                self.lsmtree
-                    .update(
-                        key_hash.to_bytes(),
-                        Bytes::from(value_hash.to_bytes().to_vec()),
-                    )
-                    .expect(LSMTREE_ERROR);
-                debug!("AURELIEN: MassaDB: after tree update");
+                if !only_use_xor {
+                    debug!("AURELIEN: MassaDB: before tree update");
+                    self.lsmtree
+                        .update(
+                            key_hash.to_bytes(),
+                            Bytes::from(value_hash.to_bytes().to_vec()),
+                        )
+                        .expect(LSMTREE_ERROR);
+                    debug!("AURELIEN: MassaDB: after tree update");
+                }
             } else {
                 debug!("AURELIEN: MassaDB: before delete");
                 self.current_batch.lock().delete_cf(handle_state, key);
@@ -528,7 +535,6 @@ where
             .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
             .or_insert(versioning_changes);
         debug!("AURELIEN: MassaDB: after changes history update");
-
 
         debug!("AURELIEN: MassaDB: before cleaning");
         if reset_history {
@@ -633,6 +639,7 @@ where
             versioning_changes,
             Some(stream_changes.change_id),
             true,
+            false,
         )?;
 
         Ok((new_cursor, new_cursor_versioning))
@@ -650,6 +657,25 @@ where
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         db.get_cf(handle, STATE_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+            .map(|state_hash_bytes| {
+                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
+            })
+    }
+
+    /// Get the current state hash xor of the database
+    pub fn get_db_hash_xor(&self) -> Hash {
+        self.get_db_hash_opt_xor()
+            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    }
+
+    /// Get the current state hash xor of the database
+    fn get_db_hash_opt_xor(&self) -> Option<Hash> {
+        let db = &self.db;
+        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        db.get_cf(handle, STATE_HASH_XOR_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
             .map(|state_hash_bytes| {
@@ -749,8 +775,9 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         batch: DBBatch,
         versioning_batch: DBBatch,
         change_id: Option<Slot>,
+        only_use_xor: bool,
     ) {
-        self.write_changes(batch, versioning_batch, change_id, false)
+        self.write_changes(batch, versioning_batch, change_id, false, only_use_xor)
             .expect(CRUD_ERROR);
     }
 
@@ -765,7 +792,13 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
+    pub fn delete_prefix(
+        &mut self,
+        prefix: &str,
+        handle_str: &str,
+        change_id: Option<Slot>,
+        only_use_xor: bool,
+    ) {
         let db = &self.db;
 
         let handle = db.cf_handle(handle_str).expect(CF_ERROR);
@@ -780,10 +813,10 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
         match handle_str {
             STATE_CF => {
-                self.write_batch(batch, DBBatch::new(), change_id);
+                self.write_batch(batch, DBBatch::new(), change_id, only_use_xor);
             }
             VERSIONING_CF => {
-                self.write_batch(DBBatch::new(), batch, change_id);
+                self.write_batch(DBBatch::new(), batch, change_id, only_use_xor);
             }
             _ => {}
         }

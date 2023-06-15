@@ -416,11 +416,13 @@ pub fn get_state(
         {
             let mut final_state_guard = final_state.write();
 
+            let only_use_xor = final_state_guard.get_only_use_xor();
+
             if !bootstrap_config.keep_ledger {
                 // load ledger from initial ledger file
                 final_state_guard
                     .ledger
-                    .load_initial_ledger()
+                    .load_initial_ledger(only_use_xor)
                     .map_err(|err| {
                         BootstrapError::GeneralError(format!(
                             "could not load initial ledger: {}",
@@ -439,10 +441,12 @@ pub fn get_state(
             );
 
             // TODO: should receive ver batch here?
-            final_state_guard
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(slot));
+            final_state_guard.db.write().write_batch(
+                batch,
+                Default::default(),
+                Some(slot),
+                only_use_xor,
+            );
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }

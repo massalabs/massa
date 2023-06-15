@@ -58,6 +58,15 @@ pub struct FinalState {
 }
 
 impl FinalState {
+    /// Temporary getter to know if we should compute the lsm tree during db writes
+    pub fn get_only_use_xor(&self) -> bool {
+        self.get_hash_kind_version() == 1
+    }
+
+    fn get_hash_kind_version(&self) -> u32 {
+        0
+    }
+
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
@@ -124,10 +133,13 @@ impl FinalState {
         };
 
         if reset_final_state {
-            final_state.async_pool.reset();
-            final_state.pos_state.reset();
-            final_state.executed_ops.reset();
-            final_state.executed_denunciations.reset();
+            // TO UPDATE
+            let only_use_xor = final_state.get_only_use_xor();
+
+            final_state.async_pool.reset(only_use_xor);
+            final_state.pos_state.reset(only_use_xor);
+            final_state.executed_ops.reset(only_use_xor);
+            final_state.executed_denunciations.reset(only_use_xor);
             final_state.db.read().set_initial_change_id(slot);
         }
 
@@ -171,10 +183,12 @@ impl FinalState {
         if cfg!(feature = "testing") {
             let mut batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(&mut batch);
-            final_state
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(recovered_slot));
+            final_state.db.write().write_batch(
+                batch,
+                Default::default(),
+                Some(recovered_slot),
+                false,
+            );
         }
 
         final_state.last_slot_before_downtime = Some(recovered_slot);
@@ -237,14 +251,17 @@ impl FinalState {
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 
-        final_state.interpolate_downtime()?;
+        // TO UPDATE
+        let only_use_xor = final_state.get_only_use_xor();
+
+        final_state.interpolate_downtime(only_use_xor)?;
 
         Ok(final_state)
     }
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
     /// This basically recreates the history of the final_state, without executing the slots.
-    fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
+    fn interpolate_downtime(&mut self, only_use_xor: bool) -> Result<(), FinalStateError> {
         let current_slot =
             self.db.read().get_change_id().map_err(|_| {
                 FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
@@ -259,7 +276,7 @@ impl FinalState {
 
         if current_slot_cycle == end_slot_cycle {
             // In that case, we just complete the gap in the same cycle
-            self.interpolate_single_cycle(current_slot, end_slot)?;
+            self.interpolate_single_cycle(current_slot, end_slot, only_use_xor)?;
         } else {
             // Here, we we also complete the cycle_infos in between
             self.interpolate_multiple_cycles(
@@ -267,6 +284,7 @@ impl FinalState {
                 end_slot,
                 current_slot_cycle,
                 end_slot_cycle,
+                only_use_xor,
             )?;
         }
 
@@ -280,8 +298,9 @@ impl FinalState {
 
         // feed final_state_hash to the last cycle
         let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
+
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
 
         Ok(())
     }
@@ -291,6 +310,7 @@ impl FinalState {
         &mut self,
         current_slot: Slot,
         end_slot: Slot,
+        only_use_xor: bool,
     ) -> Result<(), FinalStateError> {
         let latest_snapshot_cycle =
             self.pos_state
@@ -307,10 +327,12 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         let mut batch = DBBatch::new();
 
@@ -325,10 +347,12 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         Ok(())
     }
@@ -340,6 +364,7 @@ impl FinalState {
         end_slot: Slot,
         current_slot_cycle: u64,
         end_slot_cycle: u64,
+        only_use_xor: bool,
     ) -> Result<(), FinalStateError> {
         let latest_snapshot_cycle =
             self.pos_state
@@ -356,10 +381,12 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -387,13 +414,15 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         // Feed final_state_hash to the completed cycle
-        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
+        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle, only_use_xor)?;
 
         // TODO: Bring back the following optimisation (it fails because of selector)
         // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
@@ -433,13 +462,15 @@ impl FinalState {
                 )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-            self.pos_state
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(end_slot));
+            self.pos_state.db.write().write_batch(
+                batch,
+                Default::default(),
+                Some(end_slot),
+                only_use_xor,
+            );
 
             // Feed final_state_hash to the completed cycle
-            self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
+            self.feed_cycle_hash_and_selector_for_interpolation(cycle, only_use_xor)?;
         }
 
         // Then, build the last cycle
@@ -465,7 +496,7 @@ impl FinalState {
         // If the end_slot_cycle is completed
         if end_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
             // Feed final_state_hash to the completed cycle
-            self.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)?;
+            self.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle, only_use_xor)?;
         }
 
         // We reduce the cycle_history len as needed
@@ -478,7 +509,7 @@ impl FinalState {
 
         self.db
             .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+            .write_batch(batch, Default::default(), Some(end_slot), only_use_xor);
 
         Ok(())
     }
@@ -487,11 +518,12 @@ impl FinalState {
     fn feed_cycle_hash_and_selector_for_interpolation(
         &mut self,
         cycle: u64,
+        only_use_xor: bool,
     ) -> Result<(), FinalStateError> {
         let final_state_hash = self.db.read().get_db_hash();
 
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
 
         self.pos_state
             .feed_selector(cycle.checked_add(2).ok_or_else(|| {
@@ -507,15 +539,18 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
+        // TO UPDATE
+        let only_use_xor = self.get_only_use_xor();
+
         self.db
             .write()
             .reset(Slot::new(0, self.config.thread_count.saturating_sub(1)));
-        self.ledger.reset();
-        self.async_pool.reset();
-        self.pos_state.reset();
-        self.executed_ops.reset();
-        self.executed_denunciations.reset();
-        self.mip_store.reset_db(self.db.clone());
+        self.ledger.reset(only_use_xor);
+        self.async_pool.reset(only_use_xor);
+        self.pos_state.reset(only_use_xor);
+        self.executed_ops.reset(only_use_xor);
+        self.executed_denunciations.reset(only_use_xor);
+        self.mip_store.reset_db(self.db.clone(), only_use_xor);
     }
 
     /// Performs the initial draws.
@@ -530,7 +565,10 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        debug!("AURELIEN: Execution: finalize slot {}: start function", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: start function",
+            slot
+        );
         let cur_slot = self.db.read().get_change_id().expect(CHANGE_ID_DESER_ERROR);
         // check slot consistency
         let next_slot = cur_slot
@@ -547,46 +585,86 @@ impl FinalState {
 
         // apply the state changes to the batch
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply async pool", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply async pool",
+            slot
+        );
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
-        debug!("AURELIEN: Execution: finalize slot {}: after apply async pool", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply async pool",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply pos state", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply pos state",
+            slot
+        );
         self.pos_state
             .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
-        debug!("AURELIEN: Execution: finalize slot {}: after apply pos state", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply pos state",
+            slot
+        );
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply ledger changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply ledger changes",
+            slot
+        );
         self.ledger
             .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
-        debug!("AURELIEN: Execution: finalize slot {}: after apply ledger changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply ledger changes",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply executed ops changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply executed ops changes",
+            slot
+        );
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
             slot,
             &mut db_batch,
         );
-        debug!("AURELIEN: Execution: finalize slot {}: after apply executed ops changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply executed ops changes",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before apply executed denunciations changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before apply executed denunciations changes",
+            slot
+        );
         self.executed_denunciations.apply_changes_to_batch(
             changes.executed_denunciations_changes.clone(),
             slot,
             &mut db_batch,
         );
-        debug!("AURELIEN: Execution: finalize slot {}: after apply executed denunciations changes", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after apply executed denunciations changes",
+            slot
+        );
 
-        debug!("AURELIEN: Execution: finalize slot {}: before db write batch", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before db write batch",
+            slot
+        );
+
+        // TO UPDATE
+        let only_use_xor = self.get_only_use_xor();
+
         self.db
             .write()
-            .write_batch(db_batch, Default::default(), Some(slot));
-        debug!("AURELIEN: Execution: finalize slot {}: after db write batch", slot);
+            .write_batch(db_batch, Default::default(), Some(slot), only_use_xor);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after db write batch",
+            slot
+        );
 
         let final_state_hash = self.db.read().get_db_hash();
 
@@ -618,11 +696,17 @@ impl FinalState {
         debug!("AURELIEN: Execution: finalize slot {}: after backup", slot);
 
         // feed final_state_hash to the last cycle
-        debug!("AURELIEN: Execution: finalize slot {}: before feed_cycle_state_hash", slot);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: before feed_cycle_state_hash",
+            slot
+        );
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
-        debug!("AURELIEN: Execution: finalize slot {}: after feed_cycle_state_hash", slot);
+            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
+        debug!(
+            "AURELIEN: Execution: finalize slot {}: after feed_cycle_state_hash",
+            slot
+        );
         debug!("AURELIEN: Execution: finalize slot {}: end function", slot);
     }
 

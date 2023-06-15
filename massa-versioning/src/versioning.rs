@@ -613,12 +613,12 @@ impl MipStore {
         guard.extend_from_db(db)
     }
 
-    pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>) {
+    pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>, only_use_xor: bool) {
         {
             let mut guard = db.write();
-            guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None);
-            guard.delete_prefix(MIP_STORE_PREFIX, VERSIONING_CF, None);
-            guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, None);
+            guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None, only_use_xor);
+            guard.delete_prefix(MIP_STORE_PREFIX, VERSIONING_CF, None, only_use_xor);
+            guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, None, only_use_xor);
         }
     }
 }
@@ -2129,7 +2129,7 @@ mod test {
 
         let mut guard_db = db.write();
         // FIXME / TODO: no slot hardcoding?
-        guard_db.write_batch(db_batch, db_versioning_batch, Some(Slot::new(3, 0)));
+        guard_db.write_batch(db_batch, db_versioning_batch, Some(Slot::new(3, 0)), false);
         drop(guard_db);
 
         // Step 4
