@@ -161,7 +161,7 @@ fn test_final_state() {
         fs.write()
             .db
             .write()
-            .write_batch(batch, versioning_batch, Some(slot));
+            .write_batch(batch, versioning_batch, Some(slot), false);
 
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();

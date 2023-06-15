@@ -1239,7 +1239,6 @@ impl ExecutionState {
                 .get_prev_slot(self.config.thread_count)
                 .expect("overflow when iterating on slots");
         }
-
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to active state
@@ -1280,8 +1279,6 @@ impl ExecutionState {
                 // update versioning stats
                 self.update_versioning_stats(exec_target, slot);
 
-                debug!("execute_final_slot: found in cache, applied cache and updated versioning stats");
-
                 // Broadcast a final slot execution output to active channel subscribers.
                 if self.config.broadcast_enabled {
                     let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
@@ -1297,7 +1294,6 @@ impl ExecutionState {
                 );
                     }
                 }
-
                 return;
             } else {
                 // speculative cache mismatch
@@ -1723,10 +1719,13 @@ impl ExecutionState {
                             )
                         });
 
+                    let use_only_xor = self.final_state.read().get_only_use_xor(slot);
+
                     self.final_state.write().db.write().write_batch(
                         db_batch,
                         db_versioning_batch,
                         None,
+                        use_only_xor,
                     );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);

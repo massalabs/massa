@@ -1,4 +1,7 @@
-use std::{ops::Deref, time::Duration};
+use std::{
+    ops::Deref,
+    time::{Duration, Instant},
+};
 
 use crossbeam::channel::{SendError, SendTimeoutError, Sender, TrySendError};
 use prometheus::Gauge;
@@ -26,6 +29,16 @@ impl<T> MassaSender<T> {
 
     pub fn send_timeout(&self, msg: T, duration: Duration) -> Result<(), SendTimeoutError<T>> {
         match self.sender.send_timeout(msg, duration) {
+            Ok(()) => {
+                self.actual_len.inc();
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn send_deadline(&self, msg: T, deadline: Instant) -> Result<(), SendTimeoutError<T>> {
+        match self.sender.send_deadline(msg, deadline) {
             Ok(()) => {
                 self.actual_len.inc();
                 Ok(())

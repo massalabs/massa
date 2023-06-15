@@ -32,7 +32,9 @@ pub use messages::{
 };
 
 use super::{
-    endorsement_handler::cache::SharedEndorsementCache,
+    endorsement_handler::{
+        cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerPropagationCommand,
+    },
     operation_handler::{
         cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
     },
@@ -58,6 +60,7 @@ impl BlockHandler {
         internal_receiver: MassaReceiver<BlockHandlerPropagationCommand>,
         internal_sender: MassaSender<BlockHandlerPropagationCommand>,
         sender_propagations_ops: MassaSender<OperationHandlerPropagationCommand>,
+        sender_propagations_endorsements: MassaSender<EndorsementHandlerPropagationCommand>,
         peer_cmd_sender: MassaSender<PeerManagementCmd>,
         config: ProtocolConfig,
         endorsement_cache: SharedEndorsementCache,
@@ -76,6 +79,7 @@ impl BlockHandler {
             receiver_ext,
             internal_sender.clone(),
             sender_propagations_ops,
+            sender_propagations_endorsements,
             peer_cmd_sender.clone(),
             config.clone(),
             endorsement_cache,

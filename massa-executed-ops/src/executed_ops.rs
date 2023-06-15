@@ -136,10 +136,10 @@ impl ExecutedOps {
     /// Reset the executed operations
     ///
     /// USED FOR BOOTSTRAP ONLY
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, only_use_xor: bool) {
         self.db
             .write()
-            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None);
+            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None, only_use_xor);
 
         self.recompute_sorted_ops_and_op_exec_status();
     }
@@ -332,15 +332,18 @@ fn test_executed_ops_hash_computing() {
 
     let mut batch_a = DBBatch::new();
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
-    db_a.write().write_batch(batch_a, Default::default(), None);
+    db_a.write()
+        .write_batch(batch_a, Default::default(), None, false);
 
     let mut batch_b = DBBatch::new();
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_b);
-    db_a.write().write_batch(batch_b, Default::default(), None);
+    db_a.write()
+        .write_batch(batch_b, Default::default(), None, false);
 
     let mut batch_c = DBBatch::new();
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
-    db_c.write().write_batch(batch_c, Default::default(), None);
+    db_c.write()
+        .write_batch(batch_c, Default::default(), None, false);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_ne!(
@@ -360,7 +363,8 @@ fn test_executed_ops_hash_computing() {
     };
     let mut batch_a = DBBatch::new();
     a.prune_to_batch(prune_slot, &mut batch_a);
-    db_a.write().write_batch(batch_a, Default::default(), None);
+    db_a.write()
+        .write_batch(batch_a, Default::default(), None, false);
 
     // at this point the hash should have been reset to its original value
     assert_eq!(
