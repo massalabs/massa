@@ -700,13 +700,6 @@
 <a href="#700" id="700">700</a>
 <a href="#701" id="701">701</a>
 <a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -717,10 +710,10 @@
 </span><span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 <span class="kw">use </span>massa_async_pool::AsyncPool;
-<span class="kw">use </span>massa_db::{DBBatch, MassaDB, CHANGE_ID_DESER_ERROR, MIP_STORE_PREFIX};
-<span class="kw">use </span>massa_db::{
-    ASYNC_POOL_PREFIX, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
-    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, STATE_CF,
+<span class="kw">use </span>massa_db_exports::{
+    DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
+    CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
+    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 <span class="kw">use </span>massa_executed_ops::ExecutedDenunciations;
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
@@ -729,12 +722,7 @@
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
-
-<span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>rocksdb::IteratorMode;
 <span class="kw">use </span>tracing::{debug, info, warn};
-
-<span class="kw">use </span>std::sync::Arc;
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 </span><span class="kw">pub struct </span>FinalState {
@@ -763,7 +751,7 @@
     /// * If from bootstrap: set during bootstrap
     </span><span class="kw">pub </span>last_slot_before_downtime: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     <span class="doccomment">/// the rocksdb instance used to write every final_state struct on disk
-    </span><span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+    </span><span class="kw">pub </span>db: ShareableMassaDBController,
 }
 
 <span class="kw">impl </span>FinalState {
@@ -775,7 +763,7 @@
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `reset_final_state`: if true, we only keep the ledger, and we reset the other fields of the final state
     </span><span class="kw">pub fn </span>new(
-        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
@@ -859,7 +847,7 @@
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     </span><span class="kw">pub fn </span>new_derived_from_snapshot(
-        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
@@ -1328,10 +1316,8 @@
     <span class="doccomment">/// Deserialize the entire DB and check the data. Useful to check after bootstrap.
     </span><span class="kw">pub fn </span>is_db_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).unwrap();
 
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
-            </span>db.db.iterator_cf(handle, IteratorMode::Start).flatten()
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
         {
             <span class="kw">if </span>!serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
                 &amp;&amp; !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())

@@ -335,16 +335,6 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -359,13 +349,12 @@
 <span class="kw">use </span><span class="kw">crate</span>::operation::{Operation, OperationId, OperationType, SecureShareOperation};
 <span class="kw">use </span><span class="kw">crate</span>::output_event::{EventExecutionContext, SCOutputEvent};
 <span class="kw">use </span><span class="kw">crate</span>::slot::{IndexedSlot, Slot};
-<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
-<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
+<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 <span class="kw">use </span>massa_signature::{PublicKey, Signature};
 
-<span class="kw">impl </span>From&lt;Block&gt; <span class="kw">for </span>grpc_model::Block {
+<span class="kw">impl </span>From&lt;Block&gt; <span class="kw">for </span>grpc::Block {
     <span class="kw">fn </span>from(value: Block) -&gt; <span class="self">Self </span>{
-        grpc_model::Block {
+        grpc::Block {
             header: <span class="prelude-val">Some</span>(value.header.into()),
             operations: value
                 .operations
@@ -376,11 +365,11 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;BlockHeader&gt; <span class="kw">for </span>grpc_model::BlockHeader {
+<span class="kw">impl </span>From&lt;BlockHeader&gt; <span class="kw">for </span>grpc::BlockHeader {
     <span class="kw">fn </span>from(value: BlockHeader) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>res = value.endorsements.into_iter().map(|e| e.into()).collect();
 
-        grpc_model::BlockHeader {
+        grpc::BlockHeader {
             slot: <span class="prelude-val">Some</span>(value.slot.into()),
             parents: value
                 .parents
@@ -393,14 +382,14 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;FilledBlock&gt; <span class="kw">for </span>grpc_model::FilledBlock {
+<span class="kw">impl </span>From&lt;FilledBlock&gt; <span class="kw">for </span>grpc::FilledBlock {
     <span class="kw">fn </span>from(value: FilledBlock) -&gt; <span class="self">Self </span>{
-        grpc_model::FilledBlock {
+        grpc::FilledBlock {
             header: <span class="prelude-val">Some</span>(value.header.into()),
             operations: value
                 .operations
                 .into_iter()
-                .map(|tuple| grpc_model::FilledOperationTuple {
+                .map(|tuple| grpc::FilledOperationTuple {
                     operation_id: tuple.<span class="number">0</span>.to_string(),
                     operation: tuple.<span class="number">1</span>.map(|op| op.into()),
                 })
@@ -409,9 +398,9 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;SecureShareBlock&gt; <span class="kw">for </span>grpc_model::SignedBlock {
+<span class="kw">impl </span>From&lt;SecureShareBlock&gt; <span class="kw">for </span>grpc::SignedBlock {
     <span class="kw">fn </span>from(value: SecureShareBlock) -&gt; <span class="self">Self </span>{
-        grpc_model::SignedBlock {
+        grpc::SignedBlock {
             content: <span class="prelude-val">Some</span>(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
@@ -421,9 +410,9 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;SecuredHeader&gt; <span class="kw">for </span>grpc_model::SignedBlockHeader {
+<span class="kw">impl </span>From&lt;SecuredHeader&gt; <span class="kw">for </span>grpc::SignedBlockHeader {
     <span class="kw">fn </span>from(value: SecuredHeader) -&gt; <span class="self">Self </span>{
-        grpc_model::SignedBlockHeader {
+        grpc::SignedBlockHeader {
             content: <span class="prelude-val">Some</span>(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
@@ -433,9 +422,9 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;Endorsement&gt; <span class="kw">for </span>grpc_model::Endorsement {
+<span class="kw">impl </span>From&lt;Endorsement&gt; <span class="kw">for </span>grpc::Endorsement {
     <span class="kw">fn </span>from(value: Endorsement) -&gt; <span class="self">Self </span>{
-        grpc_model::Endorsement {
+        grpc::Endorsement {
             slot: <span class="prelude-val">Some</span>(value.slot.into()),
             index: value.index,
             endorsed_block: value.endorsed_block.to_string(),
@@ -443,9 +432,9 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;SecureShareEndorsement&gt; <span class="kw">for </span>grpc_model::SignedEndorsement {
+<span class="kw">impl </span>From&lt;SecureShareEndorsement&gt; <span class="kw">for </span>grpc::SignedEndorsement {
     <span class="kw">fn </span>from(value: SecureShareEndorsement) -&gt; <span class="self">Self </span>{
-        grpc_model::SignedEndorsement {
+        grpc::SignedEndorsement {
             content: <span class="prelude-val">Some</span>(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
@@ -455,30 +444,27 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;OperationType&gt; <span class="kw">for </span>grpc_model::OperationType {
-    <span class="kw">fn </span>from(operation_type: OperationType) -&gt; grpc_model::OperationType {
-        <span class="kw">let </span><span class="kw-2">mut </span>grpc_operation_type = grpc_model::OperationType::default();
+<span class="kw">impl </span>From&lt;OperationType&gt; <span class="kw">for </span>grpc::OperationType {
+    <span class="kw">fn </span>from(operation_type: OperationType) -&gt; grpc::OperationType {
+        <span class="kw">let </span><span class="kw-2">mut </span>grpc_operation_type = grpc::OperationType::default();
         <span class="kw">match </span>operation_type {
             OperationType::Transaction {
                 recipient_address,
                 amount,
             } =&gt; {
-                <span class="kw">let </span>transaction = grpc_model::Transaction {
+                <span class="kw">let </span>transaction = grpc::Transaction {
                     recipient_address: recipient_address.to_string(),
                     amount: amount.to_raw(),
                 };
-                grpc_operation_type.r#type =
-                    <span class="prelude-val">Some</span>(grpc_model::operation_type::Type::Transaction(transaction));
+                grpc_operation_type.transaction = <span class="prelude-val">Some</span>(transaction);
             }
             OperationType::RollBuy { roll_count } =&gt; {
-                <span class="kw">let </span>roll_buy = grpc_model::RollBuy { roll_count };
-                grpc_operation_type.r#type =
-                    <span class="prelude-val">Some</span>(grpc_model::operation_type::Type::RollBuy(roll_buy));
+                <span class="kw">let </span>roll_buy = grpc::RollBuy { roll_count };
+                grpc_operation_type.roll_buy = <span class="prelude-val">Some</span>(roll_buy);
             }
             OperationType::RollSell { roll_count } =&gt; {
-                <span class="kw">let </span>roll_sell = grpc_model::RollSell { roll_count };
-                grpc_operation_type.r#type =
-                    <span class="prelude-val">Some</span>(grpc_model::operation_type::Type::RollSell(roll_sell));
+                <span class="kw">let </span>roll_sell = grpc::RollSell { roll_count };
+                grpc_operation_type.roll_sell = <span class="prelude-val">Some</span>(roll_sell);
             }
             OperationType::ExecuteSC {
                 data,
@@ -486,17 +472,16 @@
                 max_coins,
                 datastore,
             } =&gt; {
-                <span class="kw">let </span>execute_sc = grpc_model::ExecuteSc {
+                <span class="kw">let </span>execute_sc = grpc::ExecuteSc {
                     data,
                     max_coins: max_coins.to_raw(),
                     max_gas,
                     datastore: datastore
                         .into_iter()
-                        .map(|(key, value)| grpc_model::BytesMapFieldEntry { key, value })
+                        .map(|(key, value)| grpc::BytesMapFieldEntry { key, value })
                         .collect(),
                 };
-                grpc_operation_type.r#type =
-                    <span class="prelude-val">Some</span>(grpc_model::operation_type::Type::ExecutSc(execute_sc));
+                grpc_operation_type.execut_sc = <span class="prelude-val">Some</span>(execute_sc);
             }
             OperationType::CallSC {
                 target_addr,
@@ -505,15 +490,14 @@
                 max_gas,
                 coins,
             } =&gt; {
-                <span class="kw">let </span>call_sc = grpc_model::CallSc {
+                <span class="kw">let </span>call_sc = grpc::CallSc {
                     target_addr: target_addr.to_string(),
                     target_func,
                     param,
                     max_gas,
                     coins: coins.to_raw(),
                 };
-                grpc_operation_type.r#type =
-                    <span class="prelude-val">Some</span>(grpc_model::operation_type::Type::CallSc(call_sc));
+                grpc_operation_type.call_sc = <span class="prelude-val">Some</span>(call_sc);
             }
         }
 
@@ -521,9 +505,9 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;Operation&gt; <span class="kw">for </span>grpc_model::Operation {
+<span class="kw">impl </span>From&lt;Operation&gt; <span class="kw">for </span>grpc::Operation {
     <span class="kw">fn </span>from(op: Operation) -&gt; <span class="self">Self </span>{
-        grpc_model::Operation {
+        grpc::Operation {
             fee: op.fee.to_raw(),
             expire_period: op.expire_period,
             op: <span class="prelude-val">Some</span>(op.op.into()),
@@ -531,21 +515,21 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;OperationType&gt; <span class="kw">for </span>grpc_api::OpType {
+<span class="kw">impl </span>From&lt;OperationType&gt; <span class="kw">for </span>grpc::OpType {
     <span class="kw">fn </span>from(value: OperationType) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
-            OperationType::Transaction { .. } =&gt; grpc_api::OpType::Transaction,
-            OperationType::RollBuy { .. } =&gt; grpc_api::OpType::RollBuy,
-            OperationType::RollSell { .. } =&gt; grpc_api::OpType::RollSell,
-            OperationType::ExecuteSC { .. } =&gt; grpc_api::OpType::ExecuteSc,
-            OperationType::CallSC { .. } =&gt; grpc_api::OpType::CallSc,
+            OperationType::Transaction { .. } =&gt; grpc::OpType::Transaction,
+            OperationType::RollBuy { .. } =&gt; grpc::OpType::RollBuy,
+            OperationType::RollSell { .. } =&gt; grpc::OpType::RollSell,
+            OperationType::ExecuteSC { .. } =&gt; grpc::OpType::ExecuteSc,
+            OperationType::CallSC { .. } =&gt; grpc::OpType::CallSc,
         }
     }
 }
 
-<span class="kw">impl </span>From&lt;SecureShareOperation&gt; <span class="kw">for </span>grpc_model::SignedOperation {
+<span class="kw">impl </span>From&lt;SecureShareOperation&gt; <span class="kw">for </span>grpc::SignedOperation {
     <span class="kw">fn </span>from(value: SecureShareOperation) -&gt; <span class="self">Self </span>{
-        grpc_model::SignedOperation {
+        grpc::SignedOperation {
             content: <span class="prelude-val">Some</span>(value.content.into()),
             signature: value.signature.to_bs58_check(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
@@ -555,26 +539,26 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;IndexedSlot&gt; <span class="kw">for </span>grpc_model::IndexedSlot {
+<span class="kw">impl </span>From&lt;IndexedSlot&gt; <span class="kw">for </span>grpc::IndexedSlot {
     <span class="kw">fn </span>from(s: IndexedSlot) -&gt; <span class="self">Self </span>{
-        grpc_model::IndexedSlot {
+        grpc::IndexedSlot {
             index: s.index <span class="kw">as </span>u64,
             slot: <span class="prelude-val">Some</span>(s.slot.into()),
         }
     }
 }
 
-<span class="kw">impl </span>From&lt;Slot&gt; <span class="kw">for </span>grpc_model::Slot {
+<span class="kw">impl </span>From&lt;Slot&gt; <span class="kw">for </span>grpc::Slot {
     <span class="kw">fn </span>from(s: Slot) -&gt; <span class="self">Self </span>{
-        grpc_model::Slot {
+        grpc::Slot {
             period: s.period,
             thread: s.thread <span class="kw">as </span>u32,
         }
     }
 }
 
-<span class="kw">impl </span>From&lt;grpc_model::Slot&gt; <span class="kw">for </span>Slot {
-    <span class="kw">fn </span>from(s: grpc_model::Slot) -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>From&lt;grpc::Slot&gt; <span class="kw">for </span>Slot {
+    <span class="kw">fn </span>from(s: grpc::Slot) -&gt; <span class="self">Self </span>{
         Slot {
             period: s.period,
             thread: s.thread <span class="kw">as </span>u8,
@@ -582,12 +566,12 @@
     }
 }
 
-<span class="kw">impl </span>TryFrom&lt;grpc_api::GetScExecutionEventsFilter&gt; <span class="kw">for </span>EventFilter {
+<span class="kw">impl </span>TryFrom&lt;grpc::GetScExecutionEventsFilter&gt; <span class="kw">for </span>EventFilter {
     <span class="kw">type </span>Error = <span class="kw">crate</span>::error::ModelsError;
 
-    <span class="kw">fn </span>try_from(filter: grpc_api::GetScExecutionEventsFilter) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">let </span>status_final = grpc_model::ScExecutionEventStatus::Final <span class="kw">as </span>i32;
-        <span class="kw">let </span>status_error = grpc_model::ScExecutionEventStatus::Failure <span class="kw">as </span>i32;
+    <span class="kw">fn </span>try_from(filter: grpc::GetScExecutionEventsFilter) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">let </span>status_final = grpc::ScExecutionEventStatus::Final <span class="kw">as </span>i32;
+        <span class="kw">let </span>status_error = grpc::ScExecutionEventStatus::Failure <span class="kw">as </span>i32;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             start: filter.start_slot.map(|slot| slot.into()),
             end: filter.end_slot.map(|slot| slot.into()),
@@ -609,16 +593,16 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;SCOutputEvent&gt; <span class="kw">for </span>grpc_model::ScExecutionEvent {
+<span class="kw">impl </span>From&lt;SCOutputEvent&gt; <span class="kw">for </span>grpc::ScExecutionEvent {
     <span class="kw">fn </span>from(value: SCOutputEvent) -&gt; <span class="self">Self </span>{
-        grpc_model::ScExecutionEvent {
+        grpc::ScExecutionEvent {
             context: <span class="prelude-val">Some</span>(value.context.into()),
             data: value.data,
         }
     }
 }
 
-<span class="kw">impl </span>From&lt;EventExecutionContext&gt; <span class="kw">for </span>grpc_model::ScExecutionEventContext {
+<span class="kw">impl </span>From&lt;EventExecutionContext&gt; <span class="kw">for </span>grpc::ScExecutionEventContext {
     <span class="kw">fn </span>from(value: EventExecutionContext) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>id_str = <span class="macro">format!</span>(
             <span class="string">&quot;{}{}{}&quot;</span>,
@@ -639,13 +623,13 @@
             status: {
                 <span class="kw">let </span><span class="kw-2">mut </span>status = Vec::new();
                 <span class="kw">if </span>value.read_only {
-                    status.push(grpc_model::ScExecutionEventStatus::ReadOnly <span class="kw">as </span>i32);
+                    status.push(grpc::ScExecutionEventStatus::ReadOnly <span class="kw">as </span>i32);
                 }
                 <span class="kw">if </span>value.is_error {
-                    status.push(grpc_model::ScExecutionEventStatus::Failure <span class="kw">as </span>i32);
+                    status.push(grpc::ScExecutionEventStatus::Failure <span class="kw">as </span>i32);
                 }
                 <span class="kw">if </span>value.is_final {
-                    status.push(grpc_model::ScExecutionEventStatus::Final <span class="kw">as </span>i32);
+                    status.push(grpc::ScExecutionEventStatus::Final <span class="kw">as </span>i32);
                 }
 
                 status
@@ -654,24 +638,20 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;DenunciationIndex&gt; <span class="kw">for </span>grpc_model::DenunciationIndex {
+<span class="kw">impl </span>From&lt;DenunciationIndex&gt; <span class="kw">for </span>grpc::DenunciationIndex {
     <span class="kw">fn </span>from(value: DenunciationIndex) -&gt; <span class="self">Self </span>{
-        grpc_model::DenunciationIndex {
+        grpc::DenunciationIndex {
             entry: <span class="prelude-val">Some</span>(<span class="kw">match </span>value {
                 DenunciationIndex::BlockHeader { slot } =&gt; {
-                    grpc_model::denunciation_index::Entry::BlockHeader(
-                        grpc_model::DenunciationBlockHeader {
-                            slot: <span class="prelude-val">Some</span>(slot.into()),
-                        },
-                    )
+                    grpc::denunciation_index::Entry::BlockHeader(grpc::DenunciationBlockHeader {
+                        slot: <span class="prelude-val">Some</span>(slot.into()),
+                    })
                 }
                 DenunciationIndex::Endorsement { slot, index } =&gt; {
-                    grpc_model::denunciation_index::Entry::Endorsement(
-                        grpc_model::DenunciationEndorsement {
-                            slot: <span class="prelude-val">Some</span>(slot.into()),
-                            index,
-                        },
-                    )
+                    grpc::denunciation_index::Entry::Endorsement(grpc::DenunciationEndorsement {
+                        slot: <span class="prelude-val">Some</span>(slot.into()),
+                        index,
+                    })
                 }
             }),
         }
@@ -679,7 +659,7 @@
 }
 
 <span class="doccomment">/// Converts a gRPC `SecureShare` into a byte vector
-</span><span class="kw">pub fn </span>secure_share_to_vec(value: grpc_model::SecureShare) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
+</span><span class="kw">pub fn </span>secure_share_to_vec(value: grpc::SecureShare) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ModelsError&gt; {
     <span class="kw">let </span>pub_key = PublicKey::from_str(<span class="kw-2">&amp;</span>value.content_creator_pub_key)<span class="question-mark">?</span>;
     <span class="kw">let </span>pub_key_b = pub_key.to_bytes();
     <span class="comment">// Concatenate signature, public key, and data into a single byte vector
