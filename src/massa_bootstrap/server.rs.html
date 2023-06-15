@@ -756,6 +756,8 @@
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -990,7 +992,8 @@
         </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
         <span class="comment">// TODO: Work out how to integration-test this
-        </span><span class="kw">loop </span>{
+        </span><span class="kw">let </span>limit = <span class="self">self</span>.bootstrap_config.max_bytes_read_write;
+        <span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
             </span><span class="kw">let </span>(dplx, remote_addr) = <span class="kw">match </span><span class="self">self</span>.ev_poller.poll() {
                 <span class="prelude-val">Ok</span>(PollEvent::NewConnection((dplx, remote_addr))) =&gt; (dplx, remote_addr),
@@ -1006,6 +1009,7 @@
                 dplx,
                 <span class="self">self</span>.keypair.clone(),
                 (<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config).into(),
+                <span class="prelude-val">Some</span>(limit),
             );
 
             <span class="comment">// check whether incoming peer IP is allowed.

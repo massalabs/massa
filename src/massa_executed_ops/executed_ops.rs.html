@@ -477,16 +477,6 @@
 <a href="#477" id="477">477</a>
 <a href="#478" id="478">478</a>
 <a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -563,16 +553,6 @@
             slot_deserializer,
             slot_serializer: SlotSerializer::new(),
         }
-    }
-
-    <span class="doccomment">/// Get the execution statuses of a set of operations.
-    /// Returns a list where each element is None if no execution was found for that op,
-    /// or a boolean indicating whether the execution was successful (true) or had an error (false).
-    </span><span class="kw">pub fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt; {
-        batch
-            .iter()
-            .map(|op_id| <span class="self">self</span>.op_exec_status.get(op_id).copied())
-            .collect()
     }
 
     <span class="doccomment">/// Recomputes the local caches after bootstrap or loading the state from disk
