@@ -197,19 +197,11 @@ impl ExecutionState {
     /// # Arguments
     /// * `exec_out`: execution output to apply
     pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
-        debug!(
-            "AURELIEN: Execution: start function cache for final slot {:?}",
-            exec_out.slot
-        );
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
 
         // count stats
-        debug!(
-            "AURELIEN: Execution: before stat counter {:?}",
-            exec_out.slot
-        );
         if exec_out.block_id.is_some() {
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
@@ -219,17 +211,11 @@ impl ExecutionState {
                 exec_out.state_changes.executed_denunciations_changes.len(),
             );
         }
-        debug!(
-            "AURELIEN: Execution: after stat counter {:?}",
-            exec_out.slot
-        );
 
-        debug!("AURELIEN: Execution: before finalize {:?}", exec_out.slot);
         // apply state changes to the final ledger
         self.final_state
             .write()
             .finalize(exec_out.slot, exec_out.state_changes);
-        debug!("AURELIEN: Execution: after finalize {:?}", exec_out.slot);
 
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
@@ -241,35 +227,15 @@ impl ExecutionState {
         }
 
         // append generated events to the final event store
-        debug!(
-            "AURELIEN: Execution: before finalize events for final slot {:?}",
-            exec_out.slot
-        );
         exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
-        debug!(
-            "AURELIEN: Execution: after finalize events for final slot {:?}",
-            exec_out.slot
-        );
 
         // update the prometheus metrics
-        debug!(
-            "AURELIEN: Execution: before metrics for final slot {:?}",
-            exec_out.slot
-        );
         self.massa_metrics
             .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
         self.massa_metrics
             .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
-        debug!(
-            "AURELIEN: Execution: after metrics for final slot {:?}",
-            exec_out.slot
-        );
-        debug!(
-            "AURELIEN: Execution: end function cache for final slot {:?}",
-            exec_out.slot
-        );
     }
 
     /// Applies an execution output to the active (non-final) state
@@ -1306,24 +1272,13 @@ impl ExecutionState {
         let first_exec_output = self.active_history.write().0.pop_front();
         if let Some(exec_out) = first_exec_output {
             if &exec_out.slot == slot && exec_out.block_id == target_id {
-                debug!("AURELIEN: Execution: start cache for final slot {:?}", slot);
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
 
-                debug!(
-                    "AURELIEN: Execution: end apply cache for final slot {:?}",
-                    slot
-                );
                 // update versioning stats
                 self.update_versioning_stats(exec_target, slot);
-                debug!(
-                    "AURELIEN: Execution: end versioning update for final slot {:?}",
-                    slot
-                );
-
-                debug!("execute_final_slot: found in cache, applied cache and updated versioning stats");
 
                 // Broadcast a final slot execution output to active channel subscribers.
                 if self.config.broadcast_enabled {
@@ -1340,7 +1295,6 @@ impl ExecutionState {
                 );
                     }
                 }
-                debug!("AURELIEN: Execution: end cache for final slot {:?}", slot);
                 return;
             } else {
                 // speculative cache mismatch
@@ -1357,10 +1311,6 @@ impl ExecutionState {
             );
         }
 
-        debug!(
-            "AURELIEN: Execution: start recompute for final slot {:?}",
-            slot
-        );
         // truncate the whole execution queue
         self.active_history.write().0.clear();
         self.active_cursor = self.final_cursor;
@@ -1672,7 +1622,6 @@ impl ExecutionState {
         ops: &PreHashSet<OperationId>,
         thread: u8,
     ) -> PreHashSet<OperationId> {
-        debug!("AURELIEN: Execution: {:?} start op check", ops);
         let mut ops = ops.clone();
 
         if ops.is_empty() {
@@ -1703,7 +1652,6 @@ impl ExecutionState {
             let final_state = self.final_state.read();
             ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
         }
-        debug!("AURELIEN: Execution: {:?} end op check", ops);
         ops
     }
 
@@ -1756,10 +1704,6 @@ impl ExecutionState {
         exec_target: Option<&(BlockId, Storage)>,
         slot: &Slot,
     ) {
-        debug!(
-            "AURELIEN: Execution: Start versioning update for {:?}",
-            slot
-        );
         // update versioning statistics
         if let Some((block_id, storage)) = exec_target {
             if let Some(block) = storage.read_blocks().get(block_id) {
@@ -1772,18 +1716,10 @@ impl ExecutionState {
 
                 let current_version = block.content.header.content.current_version;
                 let announced_version = block.content.header.content.announced_version;
-                debug!(
-                    "AURELIEN: Execution: before  update_network_version_stats update for {:?}",
-                    slot
-                );
                 if let Ok(slot_ts) = slot_ts_ {
                     self.mip_store.update_network_version_stats(
                         slot_ts,
                         Some((current_version, announced_version)),
-                    );
-                    debug!(
-                        "AURELIEN: Execution: after update_network_version_stats update for {:?}",
-                        slot
                     );
 
                     // Now write mip store changes to disk (if any)
@@ -1798,10 +1734,6 @@ impl ExecutionState {
                     )
                     .unwrap();
 
-                    debug!(
-                        "AURELIEN: Execution: before update_batches update for {:?}",
-                        slot
-                    );
                     self.mip_store
                         .update_batches(
                             &mut db_batch,
@@ -1814,15 +1746,6 @@ impl ExecutionState {
                                 slot_prev_ts, slot_ts, e
                             )
                         });
-                    debug!(
-                        "AURELIEN: Execution: after update_batches update for {:?}",
-                        slot
-                    );
-
-                    debug!(
-                        "AURELIEN: Execution: after update_batches update for {:?}",
-                        slot
-                    );
 
                     let use_only_xor = self.final_state.read().get_only_use_xor();
 
@@ -1831,10 +1754,6 @@ impl ExecutionState {
                         db_versioning_batch,
                         None,
                         use_only_xor,
-                    );
-                    debug!(
-                        "AURELIEN: Execution: after write_batch update for {:?}",
-                        slot
                     );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);

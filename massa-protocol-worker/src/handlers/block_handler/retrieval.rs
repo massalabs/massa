@@ -32,7 +32,6 @@ use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
     block_id::BlockId,
-    config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT},
     endorsement::SecureShareEndorsement,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
@@ -150,13 +149,11 @@ impl RetrievalThread {
                             }
                             match message {
                                 BlockMessage::AskForBlocks(block_infos) => {
-                                    debug!("AURELIEN: Received block message: AskForBlocks {:?} from {}", block_infos, peer_id);
                                     if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
-                                    debug!("AURELIEN: Received block message: ReplyForBlocks {:?} from {}", block_infos, peer_id);
                                     for (block_id, block_info) in block_infos.into_iter() {
                                         if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
@@ -167,7 +164,6 @@ impl RetrievalThread {
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
-                                    debug!("AURELIEN: Received block message: BlockHeader {:?} from {}", header, peer_id);
                                     massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
                                     if let Ok(Some((block_id, is_new))) =
                                         self.note_header_from_peer(&header, &peer_id)
@@ -205,7 +201,6 @@ impl RetrievalThread {
                         Ok(command) => {
                             match command {
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } => {
-                                    debug!("AURELIEN: Received block message: command WishlistDelta {:?} {:?}", new, remove);
                                     massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                                     for (block_id, header) in new.into_iter() {
                                         self.block_wishlist.insert(
@@ -1026,19 +1021,6 @@ impl RetrievalThread {
                         header: header.clone(),
                         operations: block_operation_ids.clone(),
                     };
-                    let latency = MassaTime::now().unwrap().saturating_sub(
-                        get_block_slot_timestamp(
-                            THREAD_COUNT,
-                            T0,
-                            *GENESIS_TIMESTAMP,
-                            header.content.slot,
-                        )
-                        .unwrap(),
-                    );
-                    println!(
-                        "AURELIEN: Finish receive block id {} from peer {} with a latency of {}",
-                        block_id, from_peer_id, latency
-                    );
 
                     let mut content_serialized = Vec::new();
                     BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it

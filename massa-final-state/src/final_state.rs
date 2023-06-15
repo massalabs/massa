@@ -554,10 +554,6 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: start function",
-            slot
-        );
         let cur_slot = self.db.read().get_change_id().expect(CHANGE_ID_DESER_ERROR);
         // check slot consistency
         let next_slot = cur_slot
@@ -574,74 +570,27 @@ impl FinalState {
 
         // apply the state changes to the batch
 
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: before apply async pool",
-            slot
-        );
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: after apply async pool",
-            slot
-        );
-
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: before apply pos state",
-            slot
-        );
         self.pos_state
             .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: after apply pos state",
-            slot
-        );
+
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
-
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: before apply ledger changes",
-            slot
-        );
         self.ledger
             .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: after apply ledger changes",
-            slot
-        );
-
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: before apply executed ops changes",
-            slot
-        );
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
             slot,
             &mut db_batch,
         );
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: after apply executed ops changes",
-            slot
-        );
 
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: before apply executed denunciations changes",
-            slot
-        );
         self.executed_denunciations.apply_changes_to_batch(
             changes.executed_denunciations_changes.clone(),
             slot,
             &mut db_batch,
-        );
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: after apply executed denunciations changes",
-            slot
-        );
-
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: before db write batch",
-            slot
         );
 
         let only_use_xor = self.get_only_use_xor();
@@ -649,10 +598,6 @@ impl FinalState {
         self.db
             .write()
             .write_batch(db_batch, Default::default(), Some(slot), only_use_xor);
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: after db write batch",
-            slot
-        );
 
         let final_state_hash = self.db.read().get_db_hash();
 
@@ -660,7 +605,6 @@ impl FinalState {
         info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
         // Backup DB if needed
-        debug!("AURELIEN: Execution: finalize slot {}: before backup", slot);
         if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {
             let state_slot = self.db.read().get_change_id();
             match state_slot {
@@ -681,21 +625,11 @@ impl FinalState {
 
             self.db.read().backup_db(slot);
         }
-        debug!("AURELIEN: Execution: finalize slot {}: after backup", slot);
 
         // feed final_state_hash to the last cycle
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: before feed_cycle_state_hash",
-            slot
-        );
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
-        debug!(
-            "AURELIEN: Execution: finalize slot {}: after feed_cycle_state_hash",
-            slot
-        );
-        debug!("AURELIEN: Execution: finalize slot {}: end function", slot);
     }
 
     /// After bootstrap or load from disk, recompute all the caches.

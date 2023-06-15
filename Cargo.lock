@@ -2629,7 +2629,6 @@ dependencies = [
  "parking_lot",
  "rocksdb",
  "thiserror",
- "tracing",
 ]
 
 [[package]]
