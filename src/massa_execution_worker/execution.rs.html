@@ -1739,7 +1739,6 @@
 <a href="#1739" id="1739">1739</a>
 <a href="#1740" id="1740">1740</a>
 <a href="#1741" id="1741">1741</a>
-<a href="#1742" id="1742">1742</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2981,7 +2980,6 @@
                 .get_prev_slot(<span class="self">self</span>.config.thread_count)
                 .expect(<span class="string">&quot;overflow when iterating on slots&quot;</span>);
         }
-
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
 
         <span class="comment">// apply execution output to active state
@@ -3022,8 +3020,6 @@
                 <span class="comment">// update versioning stats
                 </span><span class="self">self</span>.update_versioning_stats(exec_target, slot);
 
-                <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: found in cache, applied cache and updated versioning stats&quot;</span>);
-
                 <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
                     <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
@@ -3039,7 +3035,6 @@
                 );
                     }
                 }
-
                 <span class="kw">return</span>;
             } <span class="kw">else </span>{
                 <span class="comment">// speculative cache mismatch
@@ -3465,10 +3460,13 @@
                             )
                         });
 
+                    <span class="kw">let </span>use_only_xor = <span class="self">self</span>.final_state.read().get_only_use_xor(slot);
+
                     <span class="self">self</span>.final_state.write().db.write().write_batch(
                         db_batch,
                         db_versioning_batch,
                         <span class="prelude-val">None</span>,
+                        use_only_xor,
                     );
                 } <span class="kw">else </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Unable to get slot timestamp for slot: {} in order to update mip_store stats&quot;</span>, slot);

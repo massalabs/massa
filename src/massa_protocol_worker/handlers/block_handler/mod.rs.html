@@ -110,6 +110,10 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -144,7 +148,9 @@
 };
 
 <span class="kw">use super</span>::{
-    endorsement_handler::cache::SharedEndorsementCache,
+    endorsement_handler::{
+        cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerPropagationCommand,
+    },
     operation_handler::{
         cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
     },
@@ -170,6 +176,7 @@
         internal_receiver: MassaReceiver&lt;BlockHandlerPropagationCommand&gt;,
         internal_sender: MassaSender&lt;BlockHandlerPropagationCommand&gt;,
         sender_propagations_ops: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
+        sender_propagations_endorsements: MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
         peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
         config: ProtocolConfig,
         endorsement_cache: SharedEndorsementCache,
@@ -188,6 +195,7 @@
             receiver_ext,
             internal_sender.clone(),
             sender_propagations_ops,
+            sender_propagations_endorsements,
             peer_cmd_sender.clone(),
             config.clone(),
             endorsement_cache,
