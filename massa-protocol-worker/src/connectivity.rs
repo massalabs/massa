@@ -1,3 +1,4 @@
+use crossbeam::channel::tick;
 use crossbeam::select;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
@@ -176,6 +177,8 @@ pub(crate) fn start_connectivity_thread(
                 massa_metrics.clone(),
             );
 
+            let tick_metrics = tick(Duration::from_secs(5));
+
             //Try to connect to peers
             loop {
                 select! {
@@ -220,7 +223,16 @@ pub(crate) fn start_connectivity_thread(
                                     break;
                                 }
                             }
-                        }
+                        },
+                        recv(tick_metrics) -> _ => {
+                            if let Ok(count) = network_controller.get_total_bytes_received() {
+                                massa_metrics.inc_peernet_total_bytes_receive(count as u64);
+                            }
+
+                            if let Ok(count) = network_controller.get_total_bytes_sent() {
+                                massa_metrics.inc_peernet_total_bytes_sent(count as u64);
+                            }
+                        },
                     default(config.try_connection_timer.to_duration()) => {
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();

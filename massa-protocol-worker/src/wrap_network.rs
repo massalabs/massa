@@ -119,6 +119,8 @@ pub trait NetworkController: Send + Sync {
         addr: SocketAddr,
         timeout: std::time::Duration,
     ) -> Result<(), ProtocolError>;
+    fn get_total_bytes_received(&self) -> Result<u64, ProtocolError>;
+    fn get_total_bytes_sent(&self) -> Result<u64, ProtocolError>;
 }
 
 pub struct NetworkControllerImpl {
@@ -168,5 +170,20 @@ impl NetworkController for NetworkControllerImpl {
             .try_connect(TransportType::Tcp, addr, timeout)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         Ok(())
+    }
+
+    fn get_total_bytes_received(&self) -> Result<u64, ProtocolError> {
+        self.peernet_manager
+            .get_total_bytes_received()
+            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
+    }
+
+    fn get_total_bytes_sent(&self) -> Result<u64, ProtocolError> {
+        self.peernet_manager.get_total_bytes_sent().map_err(|err| {
+            ProtocolError::GeneralProtocolError(format!(
+                "Error while getting total bytes sent: {}",
+                err
+            ))
+        })
     }
 }

@@ -51,6 +51,9 @@ pub fn dec_operations_counter() {
 pub struct MassaMetrics {
     consensus_vec: Vec<Gauge>,
 
+    peernet_total_bytes_receive: IntCounter,
+    peernet_total_bytes_sent: IntCounter,
+
     block_graph_counter: IntCounter,
     block_graph_ms: IntCounter,
 
@@ -233,6 +236,15 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let peernet_total_bytes_receive = IntCounter::new(
+            "peernet_total_bytes_receive",
+            "total byte received by peernet",
+        )
+        .unwrap();
+
+        let peernet_total_bytes_sent =
+            IntCounter::new("peernet_total_bytes_sent", "total byte sent by peernet").unwrap();
+
         if enabled {
             // TODO addr from config
             #[cfg(not(feature = "testing"))]
@@ -267,6 +279,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
                 let _ = prometheus::register(Box::new(block_graph_counter.clone()));
                 let _ = prometheus::register(Box::new(block_graph_ms.clone()));
+                let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
+                let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
             }
 
             MassaSurvey::run(
@@ -277,6 +291,8 @@ impl MassaMetrics {
 
         MassaMetrics {
             consensus_vec,
+            peernet_total_bytes_receive,
+            peernet_total_bytes_sent,
             block_graph_counter,
             block_graph_ms,
             active_in_connections,
@@ -410,6 +426,14 @@ impl MassaMetrics {
 
     pub fn inc_block_graph_counter(&self) {
         self.block_graph_counter.inc();
+    }
+
+    pub fn inc_peernet_total_bytes_receive(&self, diff: u64) {
+        self.peernet_total_bytes_receive.inc_by(diff);
+    }
+
+    pub fn inc_peernet_total_bytes_sent(&self, diff: u64) {
+        self.peernet_total_bytes_sent.inc_by(diff);
     }
 }
 // mod test {
