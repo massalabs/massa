@@ -1056,6 +1056,14 @@
 <a href="#1056" id="1056">1056</a>
 <a href="#1057" id="1057">1057</a>
 <a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1572,22 +1580,30 @@
         <span class="comment">// ask pool whether it carries the operations
         </span><span class="kw">let </span>in_pool = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.contains_operations(<span class="kw-2">&amp;</span>ops);
 
-        <span class="kw">let </span>op_exec_statuses = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_ops_exec_status(<span class="kw-2">&amp;</span>ops);
+        <span class="kw">let </span>(speculative_op_exec_statuses, final_op_exec_statuses) =
+            <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_op_exec_status();
 
         <span class="comment">// compute operation finality and operation execution status from *_op_exec_statuses
-        </span><span class="kw">let </span>(is_operation_final, statuses): (Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;, Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;) =
-            op_exec_statuses
-                .into_iter()
-                .map(|(spec_exec, final_exec)| <span class="kw">match </span>(spec_exec, final_exec) {
-                    (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)),
-                    (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)),
-                    (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">None</span>) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)),
-                    (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">None</span>) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)),
-                    <span class="kw">_ </span>=&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
-                })
-                .collect::&lt;Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt;&gt;()
-                .into_iter()
-                .unzip();
+        </span><span class="kw">let </span>(is_operation_final, statuses): (Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;, Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;) = ops
+            .iter()
+            .map(|op| {
+                <span class="kw">match </span>(
+                    final_op_exec_statuses.get(op),
+                    speculative_op_exec_statuses.get(op),
+                ) {
+                    <span class="comment">// op status found in the final hashmap, so the op is &quot;final&quot;(first value of the tuple: Some(true))
+                    // and we keep its status (copied as the second value of the tuple)
+                    </span>(<span class="prelude-val">Some</span>(val), <span class="kw">_</span>) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>val)),
+                    <span class="comment">// op status NOT found in the final hashmap but in the speculative one, so the op is &quot;not final&quot;(first value of the tuple: Some(false))
+                    // and we keep its status (copied as the second value of the tuple)
+                    </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(val)) =&gt; (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>val)),
+                    <span class="comment">// op status not defined in any hashmap, finality and status are unknow hence (None, None)
+                    </span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
+                }
+            })
+            .collect::&lt;Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt;&gt;()
+            .into_iter()
+            .unzip();
 
         <span class="comment">// gather all values into a vector of OperationInfo instances
         </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;OperationInfo&gt; = Vec::with_capacity(ops.len());

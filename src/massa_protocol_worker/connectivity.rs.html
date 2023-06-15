@@ -306,18 +306,12 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::stats::NetworkStats;
 <span class="kw">use </span>massa_pool_exports::PoolController;
-<span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
@@ -359,7 +353,6 @@
 <span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>start_connectivity_thread(
     peer_id: PeerId,
-    selector_controller: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     <span class="kw-2">mut </span>network_controller: Box&lt;<span class="kw">dyn </span>NetworkController&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
@@ -459,7 +452,6 @@
             );
             <span class="kw">let </span><span class="kw-2">mut </span>endorsement_handler = EndorsementHandler::new(
                 pool_controller.clone(),
-                selector_controller.clone(),
                 endorsement_cache.clone(),
                 storage.clone_without_refs(),
                 config.clone(),
@@ -467,14 +459,13 @@
                 channel_endorsements.<span class="number">1</span>,
                 protocol_channels.endorsement_handler_retrieval.<span class="number">0</span>,
                 protocol_channels.endorsement_handler_retrieval.<span class="number">1</span>,
-                sender_endorsements_propagation_ext.clone(),
+                sender_endorsements_propagation_ext,
                 protocol_channels.endorsement_handler_propagation.<span class="number">1</span>.clone(),
                 peer_management_handler.sender.command_sender.clone(),
                 massa_metrics.clone(),
             );
             <span class="kw">let </span><span class="kw-2">mut </span>block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),
-                selector_controller,
                 consensus_controller,
                 pool_controller,
                 channel_blocks.<span class="number">1</span>,
@@ -483,7 +474,6 @@
                 protocol_channels.block_handler_propagation.<span class="number">1</span>.clone(),
                 sender_blocks_propagation_ext,
                 sender_operations_propagation_ext,
-                sender_endorsements_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
                 config.clone(),
                 endorsement_cache,

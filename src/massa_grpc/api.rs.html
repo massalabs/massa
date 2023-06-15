@@ -638,38 +638,6 @@
 <a href="#638" id="638">638</a>
 <a href="#639" id="639">639</a>
 <a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -811,33 +779,7 @@
         };
 
         <span class="kw">let </span>res = storage.read_blocks().get(<span class="kw-2">&amp;</span>block_id).map(|b| {
-            <span class="comment">// TODO rework ?
-            </span><span class="kw">let </span>header = b.clone().content.header;
-            <span class="comment">// transform to grpc struct
-            </span><span class="kw">let </span>parents = header
-                .content
-                .parents
-                .into_iter()
-                .map(|p| p.to_string())
-                .collect();
-
-            <span class="kw">let </span>endorsements = header
-                .content
-                .endorsements
-                .into_iter()
-                .map(|endorsement| endorsement.into())
-                .collect();
-
-            <span class="kw">let </span>block_header = grpc_model::BlockHeader {
-                slot: <span class="prelude-val">Some</span>(grpc_model::Slot {
-                    period: header.content.slot.period,
-                    thread: header.content.slot.thread <span class="kw">as </span>u32,
-                }),
-                parents,
-                operation_merkle_root: header.content.operation_merkle_root.to_string(),
-                endorsements,
-            };
-
+            <span class="kw">let </span>massa_header = b.clone().content.header;
             <span class="kw">let </span>operations: Vec&lt;String&gt; = b
                 .content
                 .operations
@@ -845,16 +787,7 @@
                 .map(|ope| ope.to_string())
                 .collect();
 
-            (
-                grpc_model::SignedBlockHeader {
-                    content: <span class="prelude-val">Some</span>(block_header),
-                    signature: header.signature.to_string(),
-                    content_creator_pub_key: header.content_creator_pub_key.to_string(),
-                    content_creator_address: header.content_creator_address.to_string(),
-                    id: header.id.to_string(),
-                },
-                operations,
-            )
+            (massa_header.into(), operations)
         });
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = res {
@@ -1124,50 +1057,53 @@
     <span class="comment">// Keep only the ops id (found in storage)
     </span><span class="kw">let </span>ops: Vec&lt;OperationId&gt; = storage_info.iter().map(|(op, <span class="kw">_</span>)| op.id).collect();
 
-    <span class="comment">// Get the speculative and final execution status of the operations
-    </span><span class="kw">let </span>exec_statuses: Vec&lt;<span class="kw">_</span>&gt; = grpc
-        .execution_controller
-        .get_ops_exec_status(<span class="kw-2">&amp;</span>ops)
-        .into_iter()
-        .map(|(spec_exec, final_exec)| <span class="kw">match </span>(spec_exec, final_exec) {
-            (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
-                <span class="macro">vec!</span>[
-                    grpc_model::OperationStatus::Success.into(),
-                    grpc_model::OperationStatus::Final.into(),
-                ]
-            }
-            (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
-                <span class="macro">vec!</span>[
-                    grpc_model::OperationStatus::Failure.into(),
-                    grpc_model::OperationStatus::Final.into(),
-                ]
-            }
-            (<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">None</span>) =&gt; {
-                <span class="macro">vec!</span>[
-                    grpc_model::OperationStatus::Success.into(),
-                    grpc_model::OperationStatus::Pending.into(),
-                ]
-            }
-            (<span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">None</span>) =&gt; {
-                <span class="macro">vec!</span>[
-                    grpc_model::OperationStatus::Failure.into(),
-                    grpc_model::OperationStatus::Pending.into(),
-                ]
-            }
-            <span class="kw">_ </span>=&gt; {
-                <span class="macro">vec!</span>[grpc_model::OperationStatus::Unknown.into()]
-            }
+    <span class="comment">// Ask pool whether it carries the operations
+    </span><span class="kw">let </span>in_pool = grpc.pool_command_sender.contains_operations(<span class="kw-2">&amp;</span>ops);
+
+    <span class="kw">let </span>(speculative_op_exec_statuses, final_op_exec_statuses) =
+        grpc.execution_controller.get_op_exec_status();
+
+    <span class="comment">// Compute operation finality and execution status
+    </span><span class="kw">let </span>(is_operation_final, statuses): (Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;, Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt;) = ops
+        .iter()
+        .map(|op| {
+            <span class="kw">let </span>final_status = final_op_exec_statuses.get(op);
+            <span class="kw">let </span>is_final = final_status.copied();
+            <span class="kw">let </span>status = final_status
+                .or(speculative_op_exec_statuses.get(op))
+                .copied();
+            (is_final, status)
         })
-        .collect();
+        .unzip();
 
     <span class="comment">// Gather all values into a vector of OperationWrapper instances
     </span><span class="kw">let </span><span class="kw-2">mut </span>operations: Vec&lt;grpc_model::OperationWrapper&gt; = Vec::with_capacity(ops.len());
     <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
         ops.into_iter(),
         storage_info.into_iter(),
-        exec_statuses.into_iter(),
+        in_pool.into_iter(),
+        is_operation_final.into_iter(),
+        statuses.into_iter(),
     );
-    <span class="kw">for </span>(id, (operation, in_blocks), exec_status) <span class="kw">in </span>zipped_iterator {
+    <span class="kw">for </span>(id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) <span class="kw">in </span>zipped_iterator
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>status: Vec&lt;i32&gt; = Vec::new();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(op_exec_status) = op_exec_status {
+            <span class="kw">if </span>op_exec_status {
+                status.push(grpc_model::OperationStatus::Success.into());
+            } <span class="kw">else </span>{
+                status.push(grpc_model::OperationStatus::Failure.into());
+            }
+        } <span class="kw">else </span>{
+            status.push(grpc_model::OperationStatus::Unknown.into());
+        }
+        <span class="kw">if </span>is_operation_final.unwrap_or_default() {
+            status.push(grpc_model::OperationStatus::Final.into());
+        }
+        <span class="kw">if </span>in_pool {
+            status.push(grpc_model::OperationStatus::Pending.into());
+        }
+
         operations.push(grpc_model::OperationWrapper {
             id: id.to_string(),
             thread: operation
@@ -1175,7 +1111,7 @@
                 .get_thread(grpc.grpc_config.thread_count) <span class="kw">as </span>u32,
             operation: <span class="prelude-val">Some</span>(operation.into()),
             block_ids: in_blocks.into_iter().map(|id| id.to_string()).collect(),
-            status: exec_status,
+            status,
         });
     }
 
