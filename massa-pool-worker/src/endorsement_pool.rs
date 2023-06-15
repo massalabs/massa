@@ -114,7 +114,7 @@ impl EndorsementPool {
 
                 // check endorsement expiry
                 if endo.content.slot.period
-                    < self.last_cs_final_periods[endo.content.slot.thread as usize]
+                    <= self.last_cs_final_periods[endo.content.slot.thread as usize]
                 {
                     continue;
                 }
