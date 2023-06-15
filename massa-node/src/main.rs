@@ -509,7 +509,7 @@ async fn launch(
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        max_operation_pool_size: SETTINGS.pool.max_pool_size,
+        max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
         operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
         operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
