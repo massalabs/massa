@@ -114,6 +114,7 @@ impl OperationPool {
     }
 
     /// Get the candidate balances of the addresses sending the ops.
+    /// Addresses that don't exist are not returned.
     fn get_sender_balances(&self) -> PreHashMap<Address, Amount> {
         let addrs: Vec<Address> = self
             .sorted_ops
@@ -128,7 +129,7 @@ impl OperationPool {
             .get_final_and_candidate_balance(&addrs);
         ret.into_iter()
             .zip(addrs.into_iter())
-            .map(|((_, c_balance), addr)| (addr, c_balance.unwrap_or_default()))
+            .filter_map(|((_, c_balance), addr)| c_balance.map(|v| (addr, v)))
             .collect()
     }
 
@@ -161,11 +162,10 @@ impl OperationPool {
 
             // filter out ops that spend more than the sender's balance
             if retain {
-                retain = sender_balances
-                    .get(&op_info.creator_address)
-                    .copied()
-                    .unwrap_or_default()
-                    >= op_info.max_spending;
+                match sender_balances.get(&op_info.creator_address) {
+                    Some(v) => &op_info.max_spending <= v,
+                    None => false, // filter out ops for which the sender does not exist
+                }
             }
 
             if !retain {
@@ -243,6 +243,10 @@ impl OperationPool {
 
         let mut scores = PreHashMap::with_capacity(self.sorted_ops.len());
         for op_info in &self.sorted_ops {
+            // fee factor
+            // (we add 1 to still sort zero-fee ops)
+            let fee_factor = op_info.fee.to_raw().saturating_add(1) as f32;
+
             // size score:
             //    0% of block size => score 1
             //    100% of block size => score 0
@@ -300,7 +304,7 @@ impl OperationPool {
             */
 
             // compute the score as being the product of all the factors and the fee
-            let score = (op_info.fee.to_raw() as f32) * resource_factor * inclusion_factor;
+            let score = fee_factor * resource_factor * inclusion_factor;
             //  * reexecution_factor; // TODO: re-execution followup
 
             // store the score
