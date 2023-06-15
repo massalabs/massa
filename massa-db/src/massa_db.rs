@@ -446,7 +446,7 @@ where
         let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
         debug!("AURELIEN: MassaDB: after get handles");
 
-        let _current_xor_hash = self.get_db_hash_xor();
+        let mut current_xor_hash = self.get_db_hash_xor();
 
         *self.current_batch.lock() = WriteBatch::default();
 
@@ -454,14 +454,14 @@ where
             if let Some(value) = value {
                 debug!("AURELIEN: MassaDB: before insert value");
                 self.current_batch.lock().put_cf(handle_state, key, value);
-                let key_hash = Hash::compute_from(key);
-                let value_hash = Hash::compute_from(value);
-                let _key_value_hash =
-                    Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
                 debug!("AURELIEN: MassaDB: after insert value");
 
+                // Compute LSM TREE if we need to
                 if !only_use_xor {
                     debug!("AURELIEN: MassaDB: before tree update");
+                    let key_hash = Hash::compute_from(key);
+                    let value_hash = Hash::compute_from(value);
+
                     self.lsmtree
                         .update(
                             key_hash.to_bytes(),
@@ -470,17 +470,37 @@ where
                         .expect(LSMTREE_ERROR);
                     debug!("AURELIEN: MassaDB: after tree update");
                 }
+
+                // Compute the XOR in all cases
+                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                    let prev_hash =
+                        Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
+                    current_xor_hash ^= prev_hash;
+                };
+
+                let new_hash = Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
+                current_xor_hash ^= new_hash;
             } else {
                 debug!("AURELIEN: MassaDB: before delete");
                 self.current_batch.lock().delete_cf(handle_state, key);
-                let key_hash = Hash::compute_from(key);
                 debug!("AURELIEN: MassaDB: after delete");
 
-                debug!("AURELIEN: MassaDB: before tree remove");
-                self.lsmtree
-                    .remove(key_hash.to_bytes())
-                    .expect(LSMTREE_ERROR);
-                debug!("AURELIEN: MassaDB: after tree remove");
+                // Compute LSM TREE if we need to
+                if !only_use_xor {
+                    debug!("AURELIEN: MassaDB: before tree remove");
+                    let key_hash = Hash::compute_from(key);
+                    self.lsmtree
+                        .remove(key_hash.to_bytes())
+                        .expect(LSMTREE_ERROR);
+                    debug!("AURELIEN: MassaDB: after tree remove");
+                }
+
+                // Compute the XOR in all cases
+                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                    let prev_hash =
+                        Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
+                    current_xor_hash ^= prev_hash;
+                };
             }
         }
 
@@ -505,9 +525,28 @@ where
         debug!("AURELIEN: MassaDB: after change id");
 
         debug!("AURELIEN: MassaDB: before state hash change");
-        self.current_batch
-            .lock()
-            .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
+
+        // Update the hash entries:
+        // - always update the STATE_HASH_XOR_KEY
+        // - if only_use_xor, we update the STATE_HASH_KEY with the xor hash
+        // - if not only_use_xor, we update the STATE_HASH_KEY with the lsm tree root
+        self.current_batch.lock().put_cf(
+            handle_metadata,
+            STATE_HASH_XOR_KEY,
+            current_xor_hash.to_bytes(),
+        );
+        if only_use_xor {
+            self.current_batch.lock().put_cf(
+                handle_metadata,
+                STATE_HASH_KEY,
+                current_xor_hash.to_bytes(),
+            );
+        } else {
+            self.current_batch
+                .lock()
+                .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
+        }
+
         debug!("AURELIEN: MassaDB: after state hash change");
 
         debug!("AURELIEN: MassaDB: before write rocks");

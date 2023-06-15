@@ -932,7 +932,7 @@ impl MipStoreRaw {
             .find_map(|(vi, vsh)| {
                 let res = vsh.state_at(ts, vi.start, vi.timeout);
                 match res {
-                    Ok(ComponentStateTypeId::Active) => vi.components.get(&component).copied(),
+                    Ok(ComponentStateTypeId::Active) => vi.components.get(component).copied(),
                     _ => None,
                 }
             })

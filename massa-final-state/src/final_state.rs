@@ -59,7 +59,6 @@ pub struct FinalState {
 }
 
 impl FinalState {
-
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
