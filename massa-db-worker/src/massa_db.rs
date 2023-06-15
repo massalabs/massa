@@ -45,21 +45,21 @@ pub struct RawMassaDB<
     /// The rocksdb instance
     pub db: Arc<DB>,
     /// configuration for the `RawMassaDB`
-    pub config: MassaDBConfig,
+    config: MassaDBConfig,
     /// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
     pub change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     /// same as change_history but for versioning
     pub change_history_versioning: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     /// A serializer for the ChangeID type
-    pub change_id_serializer: ChangeIDSerializer,
+    change_id_serializer: ChangeIDSerializer,
     /// A deserializer for the ChangeID type
-    pub change_id_deserializer: ChangeIDDeserializer,
+    change_id_deserializer: ChangeIDDeserializer,
     /// The Sparse Merkle Tree instance used to keep track of the global hash of the database
-    pub lsmtree: SparseMerkleTree<MassaDbLsmtree>,
+    lsmtree: SparseMerkleTree<MassaDbLsmtree>,
     /// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
-    pub current_batch: Arc<Mutex<WriteBatch>>,
+    current_batch: Arc<Mutex<WriteBatch>>,
     /// The current RocksDB cache for this batch, useful for lsmtree
-    pub current_hashmap: SharedSmtCache,
+    current_hashmap: SharedSmtCache,
 }
 
 pub type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
