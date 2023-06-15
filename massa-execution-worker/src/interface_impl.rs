@@ -817,7 +817,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Sets the bytecode of an arbitrary address.
-    /// Fails if the address does not exist of if the context doesn't have write access rights on it.
+    /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
     fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
         let address = massa_models::address::Address::from_str(address)?;
         let mut execution_context = context_guard!(self);
