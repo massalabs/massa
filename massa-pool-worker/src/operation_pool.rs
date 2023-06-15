@@ -153,9 +153,10 @@ impl OperationPool {
                 });
             }
 
-            // filter out ops that have been executed in final slots
+            // filter out ops that have been executed in final or candidate slots
+            // TODO: in the re-execution followup, we should only filter out final-executed ops here (exec_status == Some(true))
             if retain {
-                retain = exec_statuses.get(&op_info.id) != Some(&true);
+                retain = !exec_statuses.contains_key(&op_info.id);
             }
 
             // filter out ops that spend more than the sender's balance
@@ -227,7 +228,7 @@ impl OperationPool {
     /// Score the operations
     fn score_operations(
         &self,
-        exec_statuses: &PreHashMap<OperationId, bool>,
+        _exec_statuses: &PreHashMap<OperationId, bool>,
         pos_draws: &BTreeSet<Slot>,
     ) -> PreHashMap<OperationId, f32> {
         let now = MassaTime::now().expect("could not get current time");
@@ -253,7 +254,9 @@ impl OperationPool {
             let gas_score = 1.0 - (op_info.max_gas as f32) / (self.config.max_block_gas as f32);
 
             // general resource score (mean of gas and size scores)
-            let resource_factor = (size_score + gas_score) / 2.0;
+            let epsilon_resource_factor = 0.0001; // avoids zero score when gas and size are a perfect fit in the block
+            let resource_factor = (epsilon_resource_factor + size_score + gas_score)
+                / (2.0 + epsilon_resource_factor);
 
             // inclusion probability factor
             //    If we are selected to produce a block in a long time,
@@ -282,6 +285,7 @@ impl OperationPool {
                     0.0
                 };
 
+            /* TODO: re-execution followup
             // If the op was executed previously, there is still an exponentially decaying chance of its block being cancelled
             // so that it can be reincluded.
             // We approximate it with a constant factor for simplicity since we don't have the inclusion slot for now.
@@ -293,12 +297,11 @@ impl OperationPool {
                 // not executed previously => score 1
                 1.0
             };
+            */
 
-            // compute the score as being thre product of all the factors and the fee
-            let score = (op_info.fee.to_raw() as f32)
-                * resource_factor
-                * inclusion_factor
-                * reexecution_factor;
+            // compute the score as being the product of all the factors and the fee
+            let score = (op_info.fee.to_raw() as f32) * resource_factor * inclusion_factor;
+            //  * reexecution_factor; // TODO: re-execution followup
 
             // store the score
             scores.insert(op_info.id, score);
@@ -407,19 +410,17 @@ impl OperationPool {
         let mut remaining_gas = self.config.max_block_gas;
         // init remaining number of operations
         let mut remaining_ops = self.config.max_operations_per_block;
-        // cache of balances
-        let mut balance_cache: PreHashMap<Address, Amount> = Default::default();
 
         // iterate over pool operations in the right thread, from best to worst
         for op_info in &self.sorted_ops {
-            // check thread
-            if op_info.thread != slot.thread {
-                continue;
-            }
-
             // if we have reached the maximum number of operations, stop
             if remaining_ops == 0 {
                 break;
+            }
+
+            // check thread
+            if op_info.thread != slot.thread {
+                continue;
             }
 
             // exclude ops for which the block slot is outside of their validity range
@@ -437,43 +438,6 @@ impl OperationPool {
                 continue;
             }
 
-            // check if the op was already executed
-            // TODO batch this
-            let already_executed = self
-                .channels
-                .execution_controller
-                .get_ops_exec_status(&vec![op_info.id])
-                .get(0)
-                .map(|(c, _f)| c)
-                .is_some();
-            if already_executed {
-                continue;
-            }
-
-            // check balance
-            //TODO: It's a weird behaviour because if the address is created afterwards this operation will be executed
-            // and also it spams the pool maybe we should just try to put the operation if there is no balance and 0 gas price
-            // and the execution will throw an error
-            let creator_balance =
-                if let Some(amount) = balance_cache.get_mut(&op_info.creator_address) {
-                    amount
-                } else if let Some(balance) = self
-                    .channels
-                    .execution_controller
-                    .get_final_and_candidate_balance(&[op_info.creator_address])
-                    .get(0)
-                    .map(|balances| balances.1.or(balances.0))
-                    && let Some(final_amount) = balance {
-                        balance_cache
-                        .entry(op_info.creator_address)
-                        .or_insert(final_amount)
-                } else {
-                    continue;
-                };
-            if *creator_balance < op_info.fee {
-                continue;
-            }
-
             // here we consider the operation as accepted
             op_ids.push(op_info.id);
 
@@ -485,9 +449,6 @@ impl OperationPool {
 
             // update remaining number of operations
             remaining_ops -= 1;
-
-            // update balance cache
-            *creator_balance = creator_balance.saturating_sub(op_info.max_spending);
         }
 
         // generate storage
