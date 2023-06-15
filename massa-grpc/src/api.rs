@@ -460,30 +460,30 @@ pub(crate) fn get_operations(
         .map(|(spec_exec, final_exec)| match (spec_exec, final_exec) {
             (Some(true), Some(true)) => {
                 vec![
-                    grpc::OperationStatus::Success.into(),
-                    grpc::OperationStatus::Final.into(),
+                    grpc_model::OperationStatus::Success.into(),
+                    grpc_model::OperationStatus::Final.into(),
                 ]
             }
             (Some(false), Some(false)) => {
                 vec![
-                    grpc::OperationStatus::Failure.into(),
-                    grpc::OperationStatus::Final.into(),
+                    grpc_model::OperationStatus::Failure.into(),
+                    grpc_model::OperationStatus::Final.into(),
                 ]
             }
             (Some(true), None) => {
                 vec![
-                    grpc::OperationStatus::Success.into(),
-                    grpc::OperationStatus::Pending.into(),
+                    grpc_model::OperationStatus::Success.into(),
+                    grpc_model::OperationStatus::Pending.into(),
                 ]
             }
             (Some(false), None) => {
                 vec![
-                    grpc::OperationStatus::Failure.into(),
-                    grpc::OperationStatus::Pending.into(),
+                    grpc_model::OperationStatus::Failure.into(),
+                    grpc_model::OperationStatus::Pending.into(),
                 ]
             }
             _ => {
-                vec![grpc::OperationStatus::Unknown.into()]
+                vec![grpc_model::OperationStatus::Unknown.into()]
             }
         })
         .collect();
@@ -495,25 +495,7 @@ pub(crate) fn get_operations(
         storage_info.into_iter(),
         exec_statuses.into_iter(),
     );
-    for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in zipped_iterator
-    {
-        let mut status: Vec<i32> = Vec::new();
-        if let Some(op_exec_status) = op_exec_status {
-            if op_exec_status {
-                status.push(grpc_model::OperationStatus::Success.into());
-            } else {
-                status.push(grpc_model::OperationStatus::Failure.into());
-            }
-        } else {
-            status.push(grpc_model::OperationStatus::Unknown.into());
-        }
-        if is_operation_final.unwrap_or_default() {
-            status.push(grpc_model::OperationStatus::Final.into());
-        }
-        if in_pool {
-            status.push(grpc_model::OperationStatus::Pending.into());
-        }
-
+    for (id, (operation, in_blocks), exec_status) in zipped_iterator {
         operations.push(grpc_model::OperationWrapper {
             id: id.to_string(),
             thread: operation
