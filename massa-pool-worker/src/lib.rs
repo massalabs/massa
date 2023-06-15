@@ -20,4 +20,7 @@ mod worker;
 pub use worker::start_pool_controller;
 
 #[cfg(test)]
+use mockall as _;
+
+#[cfg(test)]
 mod tests;

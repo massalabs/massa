@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::{operation_pool::OperationPool, start_pool_controller};
+use crate::start_pool_controller;
 use crossbeam_channel as _;
 use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
@@ -132,34 +132,35 @@ impl PoolTestBoilerPlate {
     }
 }
 
-pub fn operation_pool_test<F>(cfg: PoolConfig, test: F)
-where
-    F: FnOnce(OperationPool, Storage),
+pub fn operation_pool_test<F>(
+    cfg: PoolConfig,
+    execution_controller: Box<MockExecutionController>,
+    selector: Box<AutoMockSelectorController>,
+    test: F,
+) where
+    F: FnOnce(Box<dyn PoolController>, Storage),
 {
     let endorsement_sender = broadcast::channel(2000).0;
     let operation_sender = broadcast::channel(5000).0;
-    let execution_controller = Box::new(MockExecutionController::new());
-    let selector_controller = Box::new(AutoMockSelectorController::new());
     let storage = Storage::create_root();
     let keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
     let mut addresses = PreHashMap::default();
     addresses.insert(address, keypair);
     let wallet = Arc::new(RwLock::new(create_test_wallet(Some(addresses))));
-    test(
-        OperationPool::init(
-            cfg,
-            &storage.clone_without_refs(),
-            PoolChannels {
-                execution_controller,
-                endorsement_sender,
-                operation_sender,
-                selector: selector_controller,
-            },
-            wallet,
-        ),
-        storage,
-    )
+    let (mut pool_manager, pool_controller) = start_pool_controller(
+        cfg,
+        &storage,
+        PoolChannels {
+            execution_controller,
+            endorsement_sender,
+            operation_sender,
+            selector,
+        },
+        wallet,
+    );
+    test(pool_controller, storage);
+    pool_manager.stop();
 }
 
 /// Creates an endorsement for use in pool tests.

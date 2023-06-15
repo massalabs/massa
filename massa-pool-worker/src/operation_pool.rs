@@ -162,10 +162,10 @@ impl OperationPool {
 
             // filter out ops that spend more than the sender's balance
             if retain {
-                match sender_balances.get(&op_info.creator_address) {
+                retain = match sender_balances.get(&op_info.creator_address) {
                     Some(v) => &op_info.max_spending <= v,
                     None => false, // filter out ops for which the sender does not exist
-                }
+                };
             }
 
             if !retain {

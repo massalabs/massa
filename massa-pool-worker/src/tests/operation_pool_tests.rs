@@ -28,14 +28,61 @@ use std::time::Duration;
 
 #[test]
 fn test_add_operation() {
-    operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
-        let op_gen = OpGenerator::default().expirery(2);
-        storage.store_operations(create_some_operations(10, &op_gen));
-        operation_pool.add_operations(storage);
-        // Allow some time for the pool to add the operations
-        std::thread::sleep(Duration::from_millis(100));
-        assert_eq!(operation_pool.storage.get_op_refs().len(), 10);
-    });
+    let execution_controller = {
+        let mut res = Box::new(MockExecutionController::new());
+        res.expect_clone_box().returning(|| {
+            let mut story = MockExecutionController::new();
+            story
+                .expect_get_ops_exec_status()
+                .returning(|ops| vec![(None, None); ops.len()]);
+            story
+                .expect_get_final_and_candidate_balance()
+                .returning(|addrs| {
+                    vec![
+                        (
+                            // Operations need to be paid for
+                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                        );
+                        addrs.len()
+                    ]
+                });
+
+            Box::new(story)
+        });
+        res
+    };
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().times(2).returning(|| {
+            //TODO: Add sequence
+            let mut story = MockSelectorController::new();
+            story.expect_get_address_selections().returning(|_, _, _| {
+                let mut all_slots = Vec::new();
+                for i in 0..15 {
+                    for j in 0..32 {
+                        all_slots.push(Slot::new(i, j));
+                    }
+                }
+                Ok((all_slots.clone(), vec![]))
+            });
+            Box::new(story)
+        });
+        res
+    };
+    operation_pool_test(
+        PoolConfig::default(),
+        execution_controller,
+        selector_controller,
+        |mut operation_pool, mut storage| {
+            let op_gen = OpGenerator::default().expirery(2);
+            storage.store_operations(create_some_operations(10, &op_gen));
+            operation_pool.add_operations(storage);
+            // Allow some time for the pool to add the operations
+            std::thread::sleep(Duration::from_secs(3));
+            assert_eq!(operation_pool.get_operation_count(), 10);
+        },
+    );
 }
 
 /// Test if adding irrelevant operations make simply skip the add.
@@ -44,15 +91,62 @@ fn test_add_operation() {
 fn test_add_irrelevant_operation() {
     let pool_config = PoolConfig::default();
     let thread_count = pool_config.thread_count;
-    operation_pool_test(PoolConfig::default(), |mut operation_pool, mut storage| {
-        let op_gen = OpGenerator::default().expirery(2);
-        storage.store_operations(create_some_operations(10, &op_gen));
-        operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
-        operation_pool.add_operations(storage);
-        // Allow some time for the pool to add the operations
-        std::thread::sleep(Duration::from_millis(100));
-        assert_eq!(operation_pool.storage.get_op_refs().len(), 0);
-    });
+    let execution_controller = {
+        let mut res = Box::new(MockExecutionController::new());
+        res.expect_clone_box().returning(|| {
+            let mut story = MockExecutionController::new();
+            story
+                .expect_get_ops_exec_status()
+                .returning(|ops| vec![(None, None); ops.len()]);
+            story
+                .expect_get_final_and_candidate_balance()
+                .returning(|addrs| {
+                    vec![
+                        (
+                            // Operations need to be paid for
+                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                        );
+                        addrs.len()
+                    ]
+                });
+
+            Box::new(story)
+        });
+        res
+    };
+    let selector_controller = {
+        let mut res = Box::new(MockSelectorController::new());
+        res.expect_clone_box().times(2).returning(|| {
+            //TODO: Add sequence
+            let mut story = MockSelectorController::new();
+            story.expect_get_address_selections().returning(|_, _, _| {
+                let mut all_slots = Vec::new();
+                for i in 0..15 {
+                    for j in 0..32 {
+                        all_slots.push(Slot::new(i, j));
+                    }
+                }
+                Ok((all_slots.clone(), vec![]))
+            });
+            Box::new(story)
+        });
+        res
+    };
+    operation_pool_test(
+        PoolConfig::default(),
+        execution_controller,
+        selector_controller,
+        |mut operation_pool, mut storage| {
+            let op_gen = OpGenerator::default().expirery(2);
+            storage.store_operations(create_some_operations(10, &op_gen));
+            operation_pool.notify_final_cs_periods(&vec![51; thread_count.into()]);
+            operation_pool.add_operations(storage);
+            // Allow some time for the pool to add the operations
+            std::thread::sleep(Duration::from_secs(3));
+            assert_eq!(operation_pool.get_operation_count(), 0);
+        },
+    );
 }
 
 /// TODO refactor old tests
@@ -64,18 +158,20 @@ fn test_pool() {
         let mut res = Box::new(MockExecutionController::new());
         res.expect_clone_box().returning(|| {
             let mut story = MockExecutionController::new();
-            story.expect_get_ops_exec_status().returning(|ops| {
-                println!("IN GET OPS EXEC STATUS {} ops", ops.len());
-                vec![(None, None); ops.len()]
-            });
+            story
+                .expect_get_ops_exec_status()
+                .returning(|ops| vec![(None, None); ops.len()]);
             story
                 .expect_get_final_and_candidate_balance()
-                .returning(|_| {
-                    vec![(
-                        // Operations need to be paid for
-                        Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
-                        Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
-                    )]
+                .returning(|addrs| {
+                    vec![
+                        (
+                            // Operations need to be paid for
+                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                        );
+                        addrs.len()
+                    ]
                 });
 
             Box::new(story)
@@ -85,12 +181,12 @@ fn test_pool() {
 
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
-        res.expect_clone_box().times(3).returning(|| {
+        res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
             let mut story = MockSelectorController::new();
             story.expect_get_address_selections().returning(|_, _, _| {
                 let mut all_slots = Vec::new();
-                for i in 0..100 {
+                for i in 0..15 {
                     for j in 0..32 {
                         all_slots.push(Slot::new(i, j));
                     }
@@ -144,7 +240,7 @@ fn test_pool() {
     }
 
     pool_controller.add_operations(storage);
-    std::thread::sleep(Duration::from_secs(6));
+    std::thread::sleep(Duration::from_secs(3));
     // // sort from bigger fee to smaller and truncate
     for lst in thread_tx_lists.iter_mut() {
         lst.reverse();
