@@ -86,9 +86,10 @@ pub struct FactorySettings {
 /// Pool configuration, read from a file configuration
 #[derive(Debug, Deserialize, Clone)]
 pub struct PoolSettings {
-    pub max_pool_size_per_thread: usize,
-    pub max_operation_future_validity_start_periods: u64,
-    pub max_endorsement_count: u64,
+    pub max_operation_pool_size: usize,
+    pub operation_max_future_start_delay: MassaTime,
+    pub operation_pool_refresh_interval: MassaTime,
+    pub max_endorsements_pool_size_per_thread: usize,
     pub max_item_return_count: usize,
     /// endorsements channel capacity
     pub broadcast_endorsements_channel_capacity: usize,

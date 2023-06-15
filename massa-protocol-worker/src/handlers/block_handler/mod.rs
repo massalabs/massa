@@ -4,6 +4,7 @@ use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_metrics::MassaMetrics;
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
@@ -48,6 +49,7 @@ impl BlockHandler {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         active_connections: Box<dyn ActiveConnectionsTrait>,
+        selector_controller: Box<dyn SelectorController>,
         consensus_controller: Box<dyn ConsensusController>,
         pool_controller: Box<dyn PoolController>,
         receiver_network: MassaReceiver<PeerMessageTuple>,
@@ -67,6 +69,7 @@ impl BlockHandler {
     ) -> Self {
         let block_retrieval_thread = start_retrieval_thread(
             active_connections.clone(),
+            selector_controller,
             consensus_controller,
             pool_controller,
             receiver_network,

@@ -78,6 +78,16 @@ impl ExecutedOps {
         }
     }
 
+    /// Get the execution statuses of a set of operations.
+    /// Returns a list where each element is None if no execution was found for that op,
+    /// or a boolean indicating whether the execution was successful (true) or had an error (false).
+    pub fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<Option<bool>> {
+        batch
+            .iter()
+            .map(|op_id| self.op_exec_status.get(op_id).copied())
+            .collect()
+    }
+
     /// Recomputes the local caches after bootstrap or loading the state from disk
     pub fn recompute_sorted_ops_and_op_exec_status(&mut self) {
         self.sorted_ops.clear();

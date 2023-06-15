@@ -3,6 +3,7 @@ use std::thread::JoinHandle;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_metrics::MassaMetrics;
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 
@@ -40,6 +41,7 @@ impl EndorsementHandler {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         pool_controller: Box<dyn PoolController>,
+        selector_controller: Box<dyn SelectorController>,
         cache: SharedEndorsementCache,
         storage: Storage,
         config: ProtocolConfig,
@@ -58,6 +60,7 @@ impl EndorsementHandler {
             local_sender.clone(),
             sender_peer_cmd,
             cache.clone(),
+            selector_controller,
             pool_controller,
             config.clone(),
             storage.clone_without_refs(),
