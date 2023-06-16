@@ -60,5 +60,5 @@ pub mod versioning_factory;
 pub mod versioning_ser_der;
 
 /// Test utils
-#[cfg(any(test, feature = "testing"))]
+// #[cfg(any(test, feature = "testing"))]
 pub mod test_helpers;
