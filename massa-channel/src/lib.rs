@@ -1,3 +1,19 @@
+//! Massa Channel is a crossbeam channel wrapper with prometheus metrics
+//! expose for each channel :
+//! - actual length of channel (can be inc() when sending msg or dec() when receive)
+//! - total received messages (inc() when receive)
+//!
+//! # Example
+//! ```
+//! use massa_channel::MassaChannel;
+//! let (sender, receiver) = MassaChannel::new::<String>("test".to_string(), None);
+//! ```
+//!
+//! # Warning
+//! care about use MassaReceiver with select! macro
+//! select! does not call recv() so metrics will not be updated
+//! you should call `your_receiver.inc_metrics()` manually
+
 use std::sync::Arc;
 
 use receiver::MassaReceiver;

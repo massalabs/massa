@@ -21,24 +21,16 @@ mod server;
 
 mod survey;
 
-// TODO load only if feature metrics is enabled
 lazy_static! {
-
-
-    static ref IN_CONNECTIONS: IntGauge = register_int_gauge!("in_connections", "active in connections").unwrap();
-
-    static ref OUT_CONNECTIONS: IntGauge = register_int_gauge!("out_connections", "active out connections").unwrap();
-
-    static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!("operations_storage_counter", "operations storage counter len").unwrap();
-    static ref BLOCKS_COUNTER: IntGauge = register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
-    static ref ENDORSEMENTS_COUNTER: IntGauge = register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
-
-    // static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
-}
-
-pub fn set_connections(in_connections: usize, out_connections: usize) {
-    IN_CONNECTIONS.set(in_connections as i64);
-    OUT_CONNECTIONS.set(out_connections as i64);
+    static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!(
+        "operations_storage_counter",
+        "operations storage counter len"
+    )
+    .unwrap();
+    static ref BLOCKS_COUNTER: IntGauge =
+        register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
+    static ref ENDORSEMENTS_COUNTER: IntGauge =
+        register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
 }
 
 pub fn set_blocks_counter(val: usize) {
@@ -63,21 +55,32 @@ pub fn dec_operations_counter() {
 
 #[derive(Clone)]
 pub struct MassaMetrics {
+    /// enable metrics
     enabled: bool,
 
+    /// consensus period for each thread
+    /// index 0 = thread 0 ...
     consensus_vec: Vec<Gauge>,
 
+    /// total bytes receive by peernet manager
     peernet_total_bytes_receive: IntCounter,
+    /// total bytes sent by peernet manager
     peernet_total_bytes_sent: IntCounter,
 
+    /// total block in graph
     block_graph_counter: IntCounter,
+    /// total time to add block to graph
     block_graph_ms: IntCounter,
 
+    /// active in connections peer
     active_in_connections: IntGauge,
+    /// active out connections peer
     active_out_connections: IntGauge,
 
+    /// sum of stored_operations
     retrieval_thread_stored_operations_sum: IntGauge,
 
+    /// counter of operations for final slot
     operations_final_counter: IntCounter,
 
     // block_cache
