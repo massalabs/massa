@@ -22,7 +22,7 @@ lazy_static! {
 
     static ref OUT_CONNECTIONS: IntGauge = register_int_gauge!("out_connections", "active out connections").unwrap();
 
-    static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!("operations_counter", "operations counter len").unwrap();
+    static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!("operations_storage_counter", "operations storage counter len").unwrap();
     static ref BLOCKS_COUNTER: IntGauge = register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge = register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
 
@@ -70,6 +70,8 @@ pub struct MassaMetrics {
     active_out_connections: IntGauge,
 
     retrieval_thread_stored_operations_sum: IntGauge,
+
+    operations_final_counter: IntCounter,
 
     // block_cache
     block_cache_checked_headers_size: IntGauge,
@@ -259,6 +261,9 @@ impl MassaMetrics {
         let peernet_total_bytes_sent =
             IntCounter::new("peernet_total_bytes_sent", "total byte sent by peernet").unwrap();
 
+        let operations_final_counter =
+            IntCounter::new("operations_final_counter", "total final operations").unwrap();
+
         if enabled {
             #[cfg(not(feature = "testing"))]
             {
@@ -293,6 +298,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(block_graph_ms.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
+                let _ = prometheus::register(Box::new(operations_final_counter.clone()));
             }
 
             MassaSurvey::run(
@@ -311,6 +317,7 @@ impl MassaMetrics {
             active_in_connections,
             active_out_connections,
             retrieval_thread_stored_operations_sum,
+            operations_final_counter,
             block_cache_checked_headers_size,
             block_cache_blocks_known_by_peer,
             operation_cache_checked_operations,
@@ -448,6 +455,10 @@ impl MassaMetrics {
 
     pub fn inc_peernet_total_bytes_sent(&self, diff: u64) {
         self.peernet_total_bytes_sent.inc_by(diff);
+    }
+
+    pub fn inc_operations_final_counter(&self, diff: u64) {
+        self.operations_final_counter.inc_by(diff);
     }
 
     /// Update the bandwidth metrics for all peers
