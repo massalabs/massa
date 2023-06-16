@@ -90,54 +90,6 @@ pub enum MockConsensusControllerMessage {
 #[derive(Clone)]
 pub struct ConsensusControllerImpl(Arc<Mutex<mpsc::Sender<MockConsensusControllerMessage>>>);
 
-#[cfg(any(test, feature = "testing"))]
-mockall::mock! {
-    pub ConsensusControllerImpl {}
-    impl Clone for ConsensusControllerImpl {
-        fn clone(&self) -> Self;
-    }
-    impl ConsensusController for ConsensusControllerImpl {
-        fn get_block_graph_status(
-            &self,
-            start_slot: Option<Slot>,
-            end_slot: Option<Slot>,
-        ) -> Result<BlockGraphExport, ConsensusError>;
-
-        fn get_block_statuses(&self, ids: &[BlockId]) -> Vec<BlockGraphStatus>;
-
-        fn get_cliques(&self) -> Vec<Clique>;
-
-        fn get_bootstrap_part(
-            &self,
-            cursor: StreamingStep<PreHashSet<BlockId>>,
-            execution_cursor: StreamingStep<Slot>,
-        ) -> Result<
-            (
-                BootstrapableGraph,
-                PreHashSet<BlockId>,
-                StreamingStep<PreHashSet<BlockId>>,
-            ),
-            ConsensusError,
-        >;
-
-        fn get_stats(&self) -> Result<ConsensusStats, ConsensusError>;
-
-        fn get_best_parents(&self) -> Vec<(BlockId, u64)>;
-
-        fn get_blockclique_block_at_slot(&self, slot: Slot) -> Option<BlockId>;
-
-        fn get_latest_blockclique_block_at_slot(&self, slot: Slot) -> BlockId;
-
-        fn register_block(&self, block_id: BlockId, slot: Slot, block_storage: Storage, created: bool);
-
-        fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>);
-
-        fn mark_invalid_block(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>);
-
-        fn clone_box(&self) -> Box<dyn ConsensusController>;
-    }
-}
-
 impl ConsensusControllerImpl {
     /// Create a new pair (mock graph controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used

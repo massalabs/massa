@@ -15,7 +15,7 @@ use crate::{
 use crate::{BootstrapConfig, BootstrapManager, BootstrapTcpListener};
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
-    bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
+    bootstrapable_graph::BootstrapableGraph, AutoMockConsensusController,
 };
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
@@ -150,9 +150,9 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         final_state_local_config.clone(),
         db.clone(),
     )));
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
-    let stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock1 = Box::new(AutoMockConsensusController::new());
+    let mut stream_mock2 = Box::new(AutoMockConsensusController::new());
+    let stream_mock3 = Box::new(AutoMockConsensusController::new());
     stream_mock2
         .expect_clone_box()
         .return_once(move || stream_mock3);
@@ -370,9 +370,9 @@ fn test_bootstrap_server() {
 
     mocked1.expect_clone_box().return_once(move || mocked2);
 
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock1 = Box::new(AutoMockConsensusController::new());
+    let mut stream_mock2 = Box::new(AutoMockConsensusController::new());
+    let mut stream_mock3 = Box::new(AutoMockConsensusController::new());
     let mut seq = mockall::Sequence::new();
 
     let sent_graph = get_boot_state();
