@@ -132,7 +132,7 @@
     # max number of blocks waiting for dependencies
     max_dependency_blocks = 2048
     # number of final periods that must be kept without operations (increase improve bootstrap process, high values will increase RAM usage.)
-    force_keep_final_periods_without_ops = 128
+    force_keep_final_periods_without_ops = 40
     # number of final periods that must be kept with operations (increase to more resilience to short network disconnections, high values will increase RAM usage.)
     force_keep_final_periods = 6
 
