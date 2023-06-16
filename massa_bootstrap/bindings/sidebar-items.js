@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["client","server"],"trait":["BindingReadExact","BindingWriteExact"]};
+window.SIDEBAR_ITEMS = {"mod":["client","server"],"trait":["BindingReadExact"]};
