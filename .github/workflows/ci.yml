@@ -60,10 +60,6 @@ jobs:
         with:
           shared-key: "check"
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -87,10 +83,6 @@ jobs:
         with:
           shared-key: "clippy"
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -107,7 +99,7 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-#          - windows-latest
+          # - windows-latest
     steps:
       - uses: ilammy/setup-nasm@v1
       - uses: actions/checkout@v3
@@ -122,10 +114,6 @@ jobs:
         with:
           shared-key: "massa"
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -198,10 +186,6 @@ jobs:
         with:
           shared-key: "doc"
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: arduino/setup-protoc@v1
-        with:
-          version: '3.x'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc

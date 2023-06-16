@@ -2,7 +2,7 @@
 
 use crate::{error::GrpcError, server::MassaGrpc};
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::{select, time};
@@ -19,8 +19,9 @@ const DEFAULT_THROUGHPUT_INTERVAL: u64 = 10;
 /// Type declaration for TransactionsThroughput
 pub type TransactionsThroughputStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::TransactionsThroughputResponse, tonic::Status>>
-            + Send
+        dyn futures_core::Stream<
+                Item = Result<grpc_api::TransactionsThroughputResponse, tonic::Status>,
+            > + Send
             + 'static,
     >,
 >;
@@ -28,7 +29,7 @@ pub type TransactionsThroughputStreamType = Pin<
 /// The function returns a stream of transaction throughput statistics
 pub(crate) async fn transactions_throughput(
     grpc: &MassaGrpc,
-    request: tonic::Request<tonic::Streaming<grpc::TransactionsThroughputRequest>>,
+    request: tonic::Request<tonic::Streaming<grpc_api::TransactionsThroughputRequest>>,
 ) -> Result<TransactionsThroughputStreamType, GrpcError> {
     let execution_controller = grpc.execution_controller.clone();
 
@@ -77,7 +78,7 @@ pub(crate) async fn transactions_throughput(
                         .unwrap_or_default() as u32;
                     // Send the throughput response back to the client
                     if let Err(e) = tx
-                        .send(Ok(grpc::TransactionsThroughputResponse {
+                        .send(Ok(grpc_api::TransactionsThroughputResponse {
                             id: request_id.clone(),
                             throughput,
                         }))

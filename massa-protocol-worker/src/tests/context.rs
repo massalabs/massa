@@ -5,6 +5,7 @@ use crate::{
     handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
     messages::MessagesHandler, tests::mock_network::MockNetworkController,
 };
+use crossbeam::channel::Receiver;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::{
     test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
@@ -16,6 +17,10 @@ use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COU
 use massa_pool_exports::{
     test_exports::{MockPoolController, PoolEventReceiver},
     PoolController,
+};
+use massa_pos_exports::{
+    test_exports::{MockSelectorController, MockSelectorControllerMessage},
+    SelectorController,
 };
 use massa_protocol_exports::{
     PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
@@ -36,6 +41,7 @@ use tracing::{debug, log::warn};
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub fn start_protocol_controller_with_mock_network(
     config: ProtocolConfig,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
@@ -103,6 +109,7 @@ pub fn start_protocol_controller_with_mock_network(
 
     let connectivity_thread_handle = start_connectivity_thread(
         PeerId::from_public_key(keypair.get_public_key()),
+        selector_controller,
         network_controller.clone(),
         consensus_controller,
         pool_controller,
@@ -124,7 +131,7 @@ pub fn start_protocol_controller_with_mock_network(
         },
         config,
         mip_store,
-        MassaMetrics::new(32),
+        MassaMetrics::new(false, 32),
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);
@@ -140,21 +147,26 @@ where
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
     ) -> (
         Box<MockNetworkController>,
         Box<dyn ProtocolController>,
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
     ),
 {
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
         ConsensusControllerImpl::new_with_receiver();
+    let (selector_controller, selector_event_receiver) =
+        MockSelectorController::new_with_receiver();
     // start protocol controller
     let (network_controller, protocol_controller, protocol_manager) =
         start_protocol_controller_with_mock_network(
             protocol_config.clone(),
+            selector_controller,
             consensus_controller,
             pool_controller,
             Storage::create_root(),
@@ -167,12 +179,14 @@ where
         mut protocol_manager,
         _consensus_event_receiver,
         _pool_event_receiver,
+        _selector_event_receiver,
     ) = test(
         network_controller,
         protocol_controller,
         protocol_manager,
         consensus_event_receiver,
         pool_event_receiver,
+        selector_event_receiver,
     );
 
     protocol_manager.stop()
@@ -186,6 +200,7 @@ where
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
         Storage,
     ) -> (
         Box<MockNetworkController>,
@@ -193,16 +208,20 @@ where
         Box<dyn ProtocolManager>,
         ConsensusEventReceiver,
         PoolEventReceiver,
+        Receiver<MockSelectorControllerMessage>,
     ),
 {
     let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
     let (consensus_controller, consensus_event_receiver) =
         ConsensusControllerImpl::new_with_receiver();
+    let (selector_controller, selector_event_receiver) =
+        MockSelectorController::new_with_receiver();
     let storage = Storage::create_root();
     // start protocol controller
     let (network_controller, protocol_controller, protocol_manager) =
         start_protocol_controller_with_mock_network(
             protocol_config.clone(),
+            selector_controller,
             consensus_controller,
             pool_controller,
             storage.clone_without_refs(),
@@ -215,12 +234,14 @@ where
         mut protocol_manager,
         _consensus_event_receiver,
         _pool_event_receiver,
+        _selector_event_receiver,
     ) = test(
         network_controller,
         protocol_controller,
         protocol_manager,
         consensus_event_receiver,
         pool_event_receiver,
+        selector_event_receiver,
         storage,
     );
 

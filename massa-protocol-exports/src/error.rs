@@ -2,6 +2,7 @@
 
 use displaydoc::Display;
 use massa_models::error::ModelsError;
+use massa_pos_exports::PosError;
 use massa_versioning::versioning_factory::FactoryError;
 use std::net::IpAddr;
 use thiserror::Error;
@@ -51,6 +52,8 @@ pub enum ProtocolError {
     },
     /// Versioned factory error: {0}
     FactoryError(#[from] FactoryError),
+    /// PoS error: {0}
+    PosError(#[from] PosError),
 }
 
 #[derive(Debug)]

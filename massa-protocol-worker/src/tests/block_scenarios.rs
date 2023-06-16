@@ -36,7 +36,8 @@ fn test_full_ask_block_workflow() {
               protocol_controller,
               protocol_manager,
               mut consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -184,6 +185,7 @@ fn test_full_ask_block_workflow() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -207,7 +209,8 @@ fn test_empty_block() {
               protocol_controller,
               protocol_manager,
               mut consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -295,6 +298,7 @@ fn test_empty_block() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -318,7 +322,8 @@ fn test_dont_want_it_anymore() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -394,6 +399,7 @@ fn test_dont_want_it_anymore() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -417,7 +423,8 @@ fn test_no_one_has_it() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 3 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -470,6 +477,7 @@ fn test_no_one_has_it() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -493,7 +501,8 @@ fn test_multiple_blocks_without_a_priori() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 3 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -561,6 +570,7 @@ fn test_multiple_blocks_without_a_priori() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -585,6 +595,7 @@ fn test_protocol_sends_blocks_when_asked_for() {
               protocol_manager,
               consensus_event_receiver,
               pool_event_receiver,
+              selector_event_receiver,
               mut storage| {
             //1. Create 3 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -645,6 +656,7 @@ fn test_protocol_sends_blocks_when_asked_for() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -669,6 +681,7 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
               protocol_manager,
               mut consensus_event_receiver,
               pool_event_receiver,
+              selector_event_receiver,
               mut storage| {
             //1. Create 3 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -770,6 +783,7 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )

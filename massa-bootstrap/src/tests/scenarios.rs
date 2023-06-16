@@ -322,13 +322,13 @@ fn test_bootstrap_server() {
         final_write
             .db
             .write()
-            .write_batch(batch, Default::default(), Some(next));
+            .write_batch(batch, Default::default(), Some(next), false);
 
         let final_state_hash = final_write.db.read().get_db_hash();
         let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, false);
 
         current_slot = next;
     }
@@ -462,13 +462,13 @@ fn test_bootstrap_server() {
                 final_write
                     .db
                     .write()
-                    .write_batch(batch, Default::default(), Some(next));
+                    .write_batch(batch, Default::default(), Some(next), false);
 
                 let final_state_hash = final_write.db.read().get_db_hash();
                 let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state
-                    .feed_cycle_state_hash(cycle, final_state_hash);
+                    .feed_cycle_state_hash(cycle, final_state_hash, false);
 
                 let mut list_changes_write = list_changes_clone.write();
                 list_changes_write.push((next, changes));
@@ -571,7 +571,7 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .expect_poll()
         .times(1)
         // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(PollEvent::NewConnection(conn_rx.recv().unwrap())))
+        .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
         .in_sequence(&mut seq);
     mock_bs_listener
         .expect_poll()

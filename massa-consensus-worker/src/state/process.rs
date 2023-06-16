@@ -16,6 +16,7 @@ use massa_models::{
     clique::Clique,
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
+    timeslots,
 };
 use massa_signature::PublicKey;
 use massa_storage::Storage;
@@ -484,6 +485,21 @@ impl ConsensusState {
         self.mark_final_blocks(&add_block_id, final_blocks)?;
 
         massa_trace!("consensus.block_graph.add_block_to_graph.end", {});
+
+        {
+            // set metrics
+            let add_slot_timestamp = timeslots::get_block_slot_timestamp(
+                self.config.thread_count,
+                self.config.t0,
+                self.config.genesis_timestamp,
+                add_block_slot,
+            )?;
+            let now = MassaTime::now()?;
+            let diff = now.saturating_sub(add_slot_timestamp);
+            self.massa_metrics.inc_block_graph_counter();
+            self.massa_metrics.inc_block_graph_ms(diff.to_millis());
+        }
+
         Ok(())
     }
 

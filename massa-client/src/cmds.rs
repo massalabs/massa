@@ -22,7 +22,8 @@ use massa_models::{
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_sdk::Client;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -773,13 +774,13 @@ impl Command {
 
                 // In order to generate a KeyPair we need to get the MIP statuses and use the latest
                 // active version
-                let req = grpc::GetMipStatusRequest { id: "".to_string() };
+                let req = grpc_api::GetMipStatusRequest { id: "".to_string() };
 
                 if let Some(ref mut grpc) = client.grpc {
                     let versioning_status = match grpc.get_mip_status(req).await {
                         Ok(resp_) => {
                             let resp = resp_.into_inner();
-                            resp.entry
+                            resp.entries
                         }
                         Err(e) => {
                             grpc_error!(e)
@@ -795,16 +796,16 @@ impl Command {
                             let is_about_keypair = match entry.mip_info {
                                 None => false,
                                 Some(mip_info) => mip_info.components.iter().any(|st_entry| {
-                                    grpc::MipComponent::from_i32(st_entry.kind)
-                                        .unwrap_or(grpc::MipComponent::Unspecified)
-                                        == grpc::MipComponent::Keypair
+                                    grpc_model::MipComponent::from_i32(st_entry.kind)
+                                        .unwrap_or(grpc_model::MipComponent::Unspecified)
+                                        == grpc_model::MipComponent::Keypair
                                 }),
                             };
 
-                            let state = grpc::ComponentStateId::from_i32(entry.state_id)
-                                .unwrap_or(grpc::ComponentStateId::Error);
+                            let state = grpc_model::ComponentStateId::from_i32(entry.state_id)
+                                .unwrap_or(grpc_model::ComponentStateId::Error);
 
-                            if is_about_keypair && state == grpc::ComponentStateId::Active {
+                            if is_about_keypair && state == grpc_model::ComponentStateId::Active {
                                 Some(entry.state_id)
                             } else {
                                 None

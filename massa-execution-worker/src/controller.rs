@@ -13,7 +13,7 @@ use massa_execution_exports::{
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::prehash::PreHashMap;
 use massa_models::stats::ExecutionStats;
 use massa_models::{address::Address, amount::Amount, operation::OperationId};
 use massa_models::{block_id::BlockId, slot::Slot};
@@ -216,17 +216,6 @@ impl ExecutionController for ExecutionControllerImpl {
         }
     }
 
-    /// List which operations inside the provided list were not executed
-    fn unexecuted_ops_among(
-        &self,
-        ops: &PreHashSet<OperationId>,
-        thread: u8,
-    ) -> PreHashSet<OperationId> {
-        self.execution_state
-            .read()
-            .unexecuted_ops_among(ops, thread)
-    }
-
     /// Check if a denunciation has been executed given a `DenunciationIndex`
     fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         self.execution_state
@@ -272,8 +261,8 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// See trait definition
-    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
-        self.execution_state.read().get_op_exec_status()
+    fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
+        self.execution_state.read().get_ops_exec_status(batch)
     }
 }
 

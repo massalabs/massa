@@ -79,7 +79,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         manager.stop();
     }
@@ -112,7 +112,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         controller.update_blockclique_status(
             Default::default(),
@@ -157,7 +157,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -261,7 +261,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -422,7 +422,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -576,7 +576,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -688,7 +688,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -728,23 +728,14 @@ mod tests {
         // sleep for 150ms to reach the message execution period
         std::thread::sleep(Duration::from_millis(150));
 
-        let ops = controller.get_op_exec_status();
-        dbg!(&ops);
+        let (op_candidate, op_final) = controller.get_ops_exec_status(&[tested_op_id])[0];
+
+        dbg!((op_candidate, op_final));
 
         // match the events
         assert!(
-            ops.1.contains_key(&tested_op_id),
-            "Expected operation not found"
-        );
-        let status = ops.1.get(&tested_op_id).unwrap(); // we can unwrap, thanks to assert above
-        assert!(
-            status == &true,
-            "Operation execution status expected to be Some(true)"
-        );
-
-        println!(
-            "Operation {:?} execution status: {:?}",
-            &tested_op_id, &status
+            op_candidate == Some(true) && op_final == Some(true),
+            "Expected operation not found or not successfully executed"
         );
 
         // stop the execution controller
@@ -799,7 +790,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -923,7 +914,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1037,7 +1028,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1190,7 +1181,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1289,7 +1280,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1403,7 +1394,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1500,7 +1491,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1599,7 +1590,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1631,7 +1622,7 @@ mod tests {
             .write()
             .db
             .write()
-            .write_batch(batch, Default::default(), None);
+            .write_batch(batch, Default::default(), None, false);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(
@@ -1804,7 +1795,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1966,7 +1957,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2135,7 +2126,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2224,7 +2215,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2310,7 +2301,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2396,7 +2387,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2539,7 +2530,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2650,7 +2641,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2797,7 +2788,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2892,7 +2883,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(32),
+            MassaMetrics::new(false, 32),
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
