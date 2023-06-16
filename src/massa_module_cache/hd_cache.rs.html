@@ -308,9 +308,6 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
@@ -463,14 +460,11 @@
             &amp;&amp; <span class="kw-2">*</span>key_1 == <span class="macro">module_key!</span>(hash)
             &amp;&amp; <span class="kw-2">*</span>key_2 == <span class="macro">metadata_key!</span>(hash)
         {
+            <span class="kw">let </span>module = RuntimeModule::deserialize(<span class="kw-2">&amp;</span>ser_module, limit, gas_costs).expect(MOD_DESER_ERROR);
             <span class="kw">let </span>(<span class="kw">_</span>, metadata) = <span class="self">self
                 </span>.meta_deser
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_metadata)
                 .expect(DATA_DESER_ERROR);
-            <span class="kw">if </span>metadata == ModuleMetadata::Invalid {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(ModuleInfo::Invalid);
-            }
-            <span class="kw">let </span>module = RuntimeModule::deserialize(<span class="kw-2">&amp;</span>ser_module, limit, gas_costs).expect(MOD_DESER_ERROR);
             <span class="kw">let </span>result = <span class="kw">match </span>metadata {
                 ModuleMetadata::Invalid =&gt; ModuleInfo::Invalid,
                 ModuleMetadata::NotExecuted =&gt; ModuleInfo::Module(module),

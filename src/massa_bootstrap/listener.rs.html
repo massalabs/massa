@@ -99,34 +99,12 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::{SocketAddr, TcpListener, TcpStream};
 
 <span class="kw">use </span>mio::net::TcpListener <span class="kw">as </span>MioTcpListener;
 
 <span class="kw">use </span>mio::{Events, Interest, Poll, Token, Waker};
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>tracing::info;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
 <span class="kw">use </span><span class="kw">crate</span>::server::BSEventPoller;
@@ -147,7 +125,7 @@
 <span class="kw">pub struct </span>BootstrapListenerStopHandle(Waker);
 
 <span class="kw">pub enum </span>PollEvent {
-    NewConnections(Vec&lt;(TcpStream, SocketAddr)&gt;),
+    NewConnection((TcpStream, SocketAddr)),
     Stop,
 }
 <span class="kw">impl </span>BootstrapTcpListener {
@@ -166,9 +144,6 @@
         <span class="kw">if </span>addr.is_ipv6() {
             socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
         }
-        <span class="comment">// This is needed for the mio-polling system, which depends on the socket being non-blocking.
-        // If we don&#39;t set non-blocking, then we can .accept() on the mio_server bellow, which is needed to ensure the polling triggers every time.
-        </span>socket.set_nonblocking(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
         socket.bind(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr).into())<span class="question-mark">?</span>;
 
         <span class="comment">// Number of connections to queue, set to the hardcoded value used by tokio
@@ -211,30 +186,11 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(PollEvent::Stop);
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::with_capacity(<span class="self">self</span>.events.iter().count());
-
-        <span class="comment">// Process each event.
-        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.iter() {
-            <span class="kw">match </span>event.token() {
-                NEW_CONNECTION =&gt; {
-                    results.push(<span class="self">self</span>.server.accept()<span class="question-mark">?</span>);
-                }
-                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
-            }
-        }
-
-        <span class="comment">// We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
-        // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
-        // However, we cannot add potential connections on the mio_server to the connections vec,
-        // as this yields mio::net::TcpStream instead of std::net::TcpStream
-        </span><span class="kw">while let </span><span class="prelude-val">Ok</span>((<span class="kw">_</span>, remote_addr)) = <span class="self">self</span>._mio_server.accept() {
-            <span class="macro">warn!</span>(
-                <span class="string">&quot;Mio server still had bootstrap connection data to read. Remote address: {}&quot;</span>,
-                remote_addr
-            );
-        }
-
-        <span class="prelude-val">Ok</span>(PollEvent::NewConnections(results))
+        <span class="comment">// Ther could be more than one connection ready, but we want to re-check for the stop
+        // signal after processing each connection.
+        </span><span class="prelude-val">Ok</span>(PollEvent::NewConnection(
+            <span class="self">self</span>.server.accept().map_err(BootstrapError::from)<span class="question-mark">?</span>,
+        ))
     }
 }
 

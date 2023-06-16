@@ -131,6 +131,7 @@
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     ops::{Deref, DerefMut},
     sync::Arc,
@@ -139,6 +140,7 @@
 
 <span class="kw">use </span>crossbeam::channel::{Receiver, RecvError, RecvTimeoutError, TryRecvError};
 <span class="kw">use </span>prometheus::{Counter, Gauge};
+<span class="kw">use </span>tracing::error;
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>MassaReceiver&lt;T&gt; {
@@ -157,12 +159,10 @@
 
 </span><span class="kw">impl</span>&lt;T&gt; Drop <span class="kw">for </span>MassaReceiver&lt;T&gt; {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// info!(&quot;MassaReceiver dropped {}&quot;, &amp;self.name);
-        </span><span class="kw">let </span>ref_count = Arc::strong_count(<span class="kw-2">&amp;</span><span class="self">self</span>.ref_counter);
+        <span class="kw">let </span>ref_count = Arc::strong_count(<span class="kw-2">&amp;</span><span class="self">self</span>.ref_counter);
         <span class="kw">if </span>ref_count == <span class="number">1 </span>{
             <span class="comment">// this is the last ref so we can unregister metrics
-            </span><span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.actual_len.clone()));
-            <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.received.clone()));
+            </span><span class="self">self</span>.unregister_metrics();
         }
     }
 }
@@ -179,6 +179,23 @@
         <span class="self">self</span>.received.inc();
     }
 
+    <span class="doccomment">/// unregister metrics
+    </span><span class="kw">fn </span>unregister_metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::unregister(Box::new(<span class="self">self</span>.actual_len.clone())) {
+            <span class="macro">error!</span>(
+                <span class="string">&quot;promethetus error unregister actual_len for {} : {}&quot;</span>,
+                <span class="self">self</span>.name, e
+            );
+        }
+
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::unregister(Box::new(<span class="self">self</span>.received.clone())) {
+            <span class="macro">error!</span>(
+                <span class="string">&quot;promethetus error unregister received for {} : {}&quot;</span>,
+                <span class="self">self</span>.name, e
+            );
+        }
+    }
+
     <span class="doccomment">/// attempt to receive a message from the channel
     </span><span class="kw">pub fn </span>try_recv(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;T, TryRecvError&gt; {
         <span class="kw">match </span><span class="self">self</span>.receiver.try_recv() {
@@ -189,8 +206,7 @@
             }
             <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Empty) =&gt; <span class="prelude-val">Err</span>(TryRecvError::Empty),
             <span class="prelude-val">Err</span>(crossbeam::channel::TryRecvError::Disconnected) =&gt; {
-                <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.actual_len.clone()));
-                <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.received.clone()));
+                <span class="self">self</span>.unregister_metrics();
 
                 <span class="prelude-val">Err</span>(TryRecvError::Disconnected)
             }
@@ -201,13 +217,10 @@
         <span class="kw">match </span><span class="self">self</span>.receiver.recv_deadline(deadline) {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
                 <span class="self">self</span>.inc_metrics();
-
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.actual_len.clone()));
-                <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.received.clone()));
-
+                <span class="self">self</span>.unregister_metrics();
                 <span class="prelude-val">Err</span>(e)
             }
         }
@@ -217,13 +230,10 @@
         <span class="kw">match </span><span class="self">self</span>.receiver.recv_timeout(timeout) {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
                 <span class="self">self</span>.inc_metrics();
-
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.actual_len.clone()));
-                <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.received.clone()));
-
+                <span class="self">self</span>.unregister_metrics();
                 <span class="prelude-val">Err</span>(e)
             }
         }
@@ -233,18 +243,10 @@
         <span class="kw">match </span><span class="self">self</span>.receiver.recv() {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
                 <span class="self">self</span>.inc_metrics();
-
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="kw">let _ </span>= prometheus::unregister(Box::new(<span class="self">self</span>.actual_len.clone()));
-                <span class="kw">match </span>prometheus::unregister(Box::new(<span class="self">self</span>.received.clone())) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
-                    <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">dbg!</span>(e);
-                    }
-                }
-
+                <span class="self">self</span>.unregister_metrics();
                 <span class="prelude-val">Err</span>(e)
             }
         }
