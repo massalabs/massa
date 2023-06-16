@@ -141,7 +141,7 @@
 };
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
-<span class="doccomment">/// Changes for ExecutedOps (was_successful, op_expiry_slot)
+<span class="doccomment">/// Speculative changes for ExecutedOps
 </span><span class="kw">pub type </span>ExecutedOpsChanges = PreHashMap&lt;OperationId, (bool, Slot)&gt;;
 
 <span class="doccomment">/// `ExecutedOps` Serializer

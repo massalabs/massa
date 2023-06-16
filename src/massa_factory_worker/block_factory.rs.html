@@ -268,6 +268,14 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -288,7 +296,7 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{sync::Arc, thread, time::Instant};
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="doccomment">/// Structure gathering all elements needed by the factory thread
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockFactoryWorker {
@@ -403,6 +411,11 @@
             }
         };
 
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;block factory selected block producer address for slot {}: {}&quot;</span>,
+            slot, block_producer_addr
+        );
+
         <span class="comment">// check if the block producer address is handled by the wallet
         </span><span class="kw">let </span>block_producer_keypair_ref = <span class="self">self</span>.wallet.read();
         <span class="kw">let </span>block_producer_keypair = <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) =
@@ -442,6 +455,7 @@
             </span>.channels
             .pool
             .get_block_endorsements(<span class="kw-2">&amp;</span>same_thread_parent_id, <span class="kw-2">&amp;</span>slot);
+
         <span class="comment">//TODO: Do we want ot populate only with endorsement id in the future ?
         </span><span class="kw">let </span>endorsements: Vec&lt;SecureShareEndorsement&gt; = {
             <span class="kw">let </span>endo_read = endo_storage.read_endorsements();
@@ -460,6 +474,7 @@
 
         <span class="comment">// gather operations and compute global operations hash
         </span><span class="kw">let </span>(op_ids, op_storage) = <span class="self">self</span>.channels.pool.get_block_operations(<span class="kw-2">&amp;</span>slot);
+
         <span class="kw">if </span>op_ids.len() &gt; <span class="self">self</span>.cfg.max_operations_per_block <span class="kw">as </span>usize {
             <span class="macro">warn!</span>(<span class="string">&quot;Too many operations returned&quot;</span>);
             <span class="kw">return</span>;
@@ -490,6 +505,7 @@
             </span>block_producer_keypair,
         )
         .expect(<span class="string">&quot;error while producing block header&quot;</span>);
+
         <span class="comment">// create block
         </span><span class="kw">let </span>block_ = Block {
             header,

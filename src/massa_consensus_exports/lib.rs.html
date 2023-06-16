@@ -20,6 +20,8 @@
 <a href="#20" id="20">20</a>
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Definition and exports of the graph types and errors.
 
@@ -42,4 +44,6 @@
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="doccomment">/// Exports related to tests as Mocks and configurations
 </span><span class="kw">pub mod </span>test_exports;
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">pub use </span>controller_trait::MockConsensusController <span class="kw">as </span>AutoMockConsensusController;
 </code></pre></div></section></main></body></html>
