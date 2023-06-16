@@ -165,32 +165,32 @@
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
     # max cache size for which blocks our node knows about
-    max_known_blocks_size = 1024
+    max_known_blocks_size = 700
     # max cache size for which blocks a foreign node knows about
-    max_node_known_blocks_size = 1024
+    max_node_known_blocks_size = 700
     # max cache size for which blocks a foreign node asked for
-    max_node_wanted_blocks_size = 1024
+    max_node_wanted_blocks_size = 700
     # max number of blocks we can ask simultaneously per node
-    max_simultaneous_ask_blocks_per_node = 128
+    max_simultaneous_ask_blocks_per_node = 70
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
     # max cache size for which operations your node knows about
-    max_known_ops_size = 2000000
+    max_known_ops_size = 1300000
     # max cache size for which operations a foreign node knows about
-    max_node_known_ops_size = 200000
+    max_node_known_ops_size = 130000
     # max cache size for which endorsements our node knows about
-    max_known_endorsements_size = 2048
+    max_known_endorsements_size = 1348
     # max cache size for which endorsements a foreign node knows about
-    max_node_known_endorsements_size = 2048
+    max_node_known_endorsements_size = 1348
     # maximum number of batches in the memory buffer.
     # dismiss the new batches if overflow
-    operation_batch_buffer_capacity = 10024
+    operation_batch_buffer_capacity = 7024
     # immediately announce ops if overflow
-    operation_announcement_buffer_capacity = 2000
+    operation_announcement_buffer_capacity = 1300
     # start processing batches in the buffer each `operation_batch_proc_period` in millisecond
-    operation_batch_proc_period = 500
+    operation_batch_proc_period = 300
     # all operations asked are prune each `operation_asked_pruning_period` millisecond
-    asked_operations_pruning_period = 100000
+    asked_operations_pruning_period = 70000
     # interval at which operations are announced in batches.
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
