@@ -224,7 +224,7 @@
 <span class="kw">use </span>massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 <span class="kw">use </span>massa_models::mapping_grpc::secure_share_to_vec;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
-<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
+<span class="kw">use </span>massa_proto::massa::api::v1 <span class="kw">as </span>grpc;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::io::ErrorKind;
@@ -235,7 +235,7 @@
 <span class="doccomment">/// Type declaration for SendEndorsements
 </span><span class="kw">pub type </span>SendEndorsementsStreamType = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc_api::SendEndorsementsResponse, tonic::Status&gt;&gt;
+        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc::SendEndorsementsResponse, tonic::Status&gt;&gt;
             + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,
@@ -246,7 +246,7 @@
 /// endorsements ids messages
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>send_endorsements(
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
-    request: tonic::Request&lt;tonic::Streaming&lt;grpc_api::SendEndorsementsRequest&gt;&gt;,
+    request: tonic::Request&lt;tonic::Streaming&lt;grpc::SendEndorsementsRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;SendEndorsementsStreamType, GrpcError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>pool_command_sender = grpc.pool_command_sender.clone();
     <span class="kw">let </span>protocol_command_sender = grpc.protocol_command_sender.clone();
@@ -345,15 +345,15 @@
                                     };
 
                                     <span class="comment">// Build the response message
-                                    </span><span class="kw">let </span>result = grpc_api::EndorsementResult {
+                                    </span><span class="kw">let </span>result = grpc::EndorsementResult {
                                         endorsements_ids: verified_eds.keys().cloned().collect(),
                                     };
                                     <span class="comment">// Send the response message back to the client
                                     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
-                                        .send(<span class="prelude-val">Ok</span>(grpc_api::SendEndorsementsResponse {
+                                        .send(<span class="prelude-val">Ok</span>(grpc::SendEndorsementsResponse {
                                             id: req_content.id.clone(),
                                             message: <span class="prelude-val">Some</span>(
-                                                grpc_api::send_endorsements_response::Message::Result(
+                                                grpc::send_endorsements_response::Message::Result(
                                                     result,
                                                 ),
                                             ),
@@ -408,17 +408,17 @@
 <span class="doccomment">/// This function reports an error to the sender by sending a gRPC response message to the client
 </span><span class="kw">async fn </span>report_error(
     id: String,
-    sender: tokio::sync::mpsc::Sender&lt;<span class="prelude-ty">Result</span>&lt;grpc_api::SendEndorsementsResponse, tonic::Status&gt;&gt;,
+    sender: tokio::sync::mpsc::Sender&lt;<span class="prelude-ty">Result</span>&lt;grpc::SendEndorsementsResponse, tonic::Status&gt;&gt;,
     code: tonic::Code,
     error: String,
 ) {
     <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, error);
     <span class="comment">// Attempt to send the error response message to the sender
     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = sender
-        .send(<span class="prelude-val">Ok</span>(grpc_api::SendEndorsementsResponse {
+        .send(<span class="prelude-val">Ok</span>(grpc::SendEndorsementsResponse {
             id,
-            message: <span class="prelude-val">Some</span>(grpc_api::send_endorsements_response::Message::Error(
-                massa_proto_rs::google::rpc::Status {
+            message: <span class="prelude-val">Some</span>(grpc::send_endorsements_response::Message::Error(
+                massa_proto::google::rpc::Status {
                     code: code.into(),
                     message: error,
                     details: Vec::new(),
