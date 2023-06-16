@@ -1,3 +1,9 @@
+//! this library is used to collect metrics from the node and expose them to the prometheus server
+//!
+//! the metrics are collected from the node and from the survey
+//! the survey is a separate thread that is used to collect metrics from the network (active connections)
+//!
+
 use std::{
     collections::HashMap,
     net::SocketAddr,
