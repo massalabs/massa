@@ -1622,7 +1622,7 @@
                 components: BTreeMap::from([(MipComponent::FinalStateHashKind, <span class="number">1</span>)]),
                 start: mip_0002_start,
                 timeout: mip_0002_timeout,
-                activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(<span class="number">1</span>)),
+                activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(<span class="number">1</span>)).saturating_mul(<span class="number">40</span>),
             },
             MipState::new(mip_0002_defined_start),
         ),
