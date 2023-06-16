@@ -190,10 +190,6 @@ fn test_bootstrap_server() {
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
-    // let (consensus_controller, mut consensus_event_receiver) =
-    //     MockConsensusController::new_with_receiver();
-    // let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
-
     // setup final state local config
     let temp_dir_server = TempDir::new().unwrap();
     let db_server_config = MassaDBConfig {

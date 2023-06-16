@@ -393,8 +393,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,
         per_ip_min_interval: MassaTime::from_millis(10000),
-        // close enough to infinate, but avoids the multiply with overflow inside the steram-limiter
-        max_bytes_read_write: std::u64::MAX / 200,
+        max_bytes_read_write: std::u64::MAX,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
