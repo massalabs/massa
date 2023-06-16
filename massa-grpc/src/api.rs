@@ -139,33 +139,7 @@ pub(crate) fn get_blocks_by_slots(
         };
 
         let res = storage.read_blocks().get(&block_id).map(|b| {
-            // TODO rework ?
-            let header = b.clone().content.header;
-            // transform to grpc struct
-            let parents = header
-                .content
-                .parents
-                .into_iter()
-                .map(|p| p.to_string())
-                .collect();
-
-            let endorsements = header
-                .content
-                .endorsements
-                .into_iter()
-                .map(|endorsement| endorsement.into())
-                .collect();
-
-            let block_header = grpc_model::BlockHeader {
-                slot: Some(grpc_model::Slot {
-                    period: header.content.slot.period,
-                    thread: header.content.slot.thread as u32,
-                }),
-                parents,
-                operation_merkle_root: header.content.operation_merkle_root.to_string(),
-                endorsements,
-            };
-
+            let massa_header = b.clone().content.header;
             let operations: Vec<String> = b
                 .content
                 .operations
@@ -173,16 +147,7 @@ pub(crate) fn get_blocks_by_slots(
                 .map(|ope| ope.to_string())
                 .collect();
 
-            (
-                grpc_model::SignedBlockHeader {
-                    content: Some(block_header),
-                    signature: header.signature.to_string(),
-                    content_creator_pub_key: header.content_creator_pub_key.to_string(),
-                    content_creator_address: header.content_creator_address.to_string(),
-                    id: header.id.to_string(),
-                },
-                operations,
-            )
+            (massa_header.into(), operations)
         });
 
         if let Some(block) = res {
