@@ -953,7 +953,7 @@
         execution_context.speculative_ledger.added_changes.<span class="number">0</span>.insert(
             sender_addr,
             SetUpdateOrDelete::Set(LedgerEntry {
-                balance: Amount::const_init(<span class="number">1_000_000_000</span>, <span class="number">0</span>),
+                balance: Amount::from_mantissa_scale(<span class="number">1_000_000_000</span>, <span class="number">0</span>),
                 ..Default::default()
             }),
         );
