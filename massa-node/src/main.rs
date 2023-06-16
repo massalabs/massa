@@ -303,7 +303,9 @@ async fn launch(
                 components: BTreeMap::from([(MipComponent::FinalStateHashKind, 1)]),
                 start: mip_0002_start,
                 timeout: mip_0002_timeout,
-                activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(1)),
+                activation_delay: T0
+                    .saturating_mul(PERIODS_PER_CYCLE.saturating_add(1))
+                    .saturating_mul(40), // ~23 hours after threshold reached
             },
             MipState::new(mip_0002_defined_start),
         ),
