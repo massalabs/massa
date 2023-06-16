@@ -7,8 +7,6 @@ use massa_models::{
 use massa_signature::KeyPair;
 use std::str::FromStr;
 
-// TODO: Currently errors out trying to get a command on the consensus-event-receiver.
-//       Once that is using mockall, revis these tests
 /// Creates a basic empty block with the factory.
 #[test]
 #[ignore]
