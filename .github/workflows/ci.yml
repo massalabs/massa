@@ -10,7 +10,11 @@ on:
     - reopened
     - synchronize
     - ready_for_review
-
+  workflow_dispatch:
+    inputs:
+      matrix-os:
+        description: 'Custom OS matrix'
+        required: false
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
@@ -93,7 +97,7 @@ jobs:
   full:
     name: full
     needs: sanity
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ github.event.inputs.matrix-os || matrix.os }}
     strategy:
       matrix:
         os:
