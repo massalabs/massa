@@ -41,6 +41,7 @@ impl ConsensusState {
                     {
                         self.active_index_without_ops.insert(*a_block);
                         storage.drop_operation_refs(&storage.get_op_refs().clone());
+                        storage.drop_endorsement_refs(&storage.get_endorsement_refs().clone());
                     }
                 } else {
                     self.active_index_without_ops.remove(a_block);
