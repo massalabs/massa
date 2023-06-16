@@ -431,6 +431,7 @@ where
         change_id: Option<ChangeID>,
         reset_history: bool,
         only_use_xor: bool,
+        compute_hash: bool,
     ) -> Result<(), MassaDBError> {
         if let Some(change_id) = change_id.clone() {
             if change_id < self.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
@@ -452,45 +453,49 @@ where
             if let Some(value) = value {
                 self.current_batch.lock().put_cf(handle_state, key, value);
 
-                // Compute LSM TREE if we need to
-                if !only_use_xor {
-                    let key_hash = Hash::compute_from(key);
-                    let value_hash = Hash::compute_from(value);
+                if compute_hash {
+                    // Compute LSM TREE if we need to
+                    if !only_use_xor {
+                        let key_hash = Hash::compute_from(key);
+                        let value_hash = Hash::compute_from(value);
 
-                    self.lsmtree
-                        .update(
-                            key_hash.to_bytes(),
-                            Bytes::from(value_hash.to_bytes().to_vec()),
-                        )
-                        .expect(LSMTREE_ERROR);
+                        self.lsmtree
+                            .update(
+                                key_hash.to_bytes(),
+                                Bytes::from(value_hash.to_bytes().to_vec()),
+                            )
+                            .expect(LSMTREE_ERROR);
+                    }
+
+                    // Compute the XOR in all cases
+                    if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                        let prev_hash =
+                            Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
+                        current_xor_hash ^= prev_hash;
+                    };
+
+                    let new_hash = Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
+                    current_xor_hash ^= new_hash;
                 }
-
-                // Compute the XOR in all cases
-                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash =
-                        Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
-                    current_xor_hash ^= prev_hash;
-                };
-
-                let new_hash = Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
-                current_xor_hash ^= new_hash;
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
 
-                // Compute LSM TREE if we need to
-                if !only_use_xor {
-                    let key_hash = Hash::compute_from(key);
-                    self.lsmtree
-                        .remove(key_hash.to_bytes())
-                        .expect(LSMTREE_ERROR);
-                }
+                if compute_hash {
+                    // Compute LSM TREE if we need to
+                    if !only_use_xor {
+                        let key_hash = Hash::compute_from(key);
+                        self.lsmtree
+                            .remove(key_hash.to_bytes())
+                            .expect(LSMTREE_ERROR);
+                    }
 
-                // Compute the XOR in all cases
-                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash =
-                        Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
-                    current_xor_hash ^= prev_hash;
-                };
+                    // Compute the XOR in all cases
+                    if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                        let prev_hash =
+                            Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
+                        current_xor_hash ^= prev_hash;
+                    };
+                }
             }
         }
 
@@ -514,24 +519,28 @@ where
         // - always update the STATE_HASH_XOR_KEY
         // - if only_use_xor, we update the STATE_HASH_KEY with the xor hash
         // - if not only_use_xor, we update the STATE_HASH_KEY with the lsm tree root
-        self.current_batch.lock().put_cf(
-            handle_metadata,
-            STATE_HASH_XOR_KEY,
-            current_xor_hash.to_bytes(),
-        );
-        if only_use_xor {
+        if compute_hash {
             self.current_batch.lock().put_cf(
                 handle_metadata,
-                STATE_HASH_KEY,
+                STATE_HASH_XOR_KEY,
                 current_xor_hash.to_bytes(),
             );
-            self.current_batch
-                .lock()
-                .put_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY, [1]);
-        } else {
-            self.current_batch
-                .lock()
-                .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
+            if only_use_xor {
+                self.current_batch.lock().put_cf(
+                    handle_metadata,
+                    STATE_HASH_KEY,
+                    current_xor_hash.to_bytes(),
+                );
+                self.current_batch
+                    .lock()
+                    .put_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY, [1]);
+            } else {
+                self.current_batch.lock().put_cf(
+                    handle_metadata,
+                    STATE_HASH_KEY,
+                    self.lsmtree.root(),
+                );
+            }
         }
 
         {
@@ -656,9 +665,79 @@ where
             Some(stream_changes.change_id),
             true,
             false,
+            false,
         )?;
 
         Ok((new_cursor, new_cursor_versioning))
+    }
+
+    /// To be called just after bootstrap
+    pub fn recompute_db_hash(&mut self, only_use_xor: bool) -> Result<(), MassaDBError> {
+        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
+        let mut current_xor_hash = self.get_db_hash_xor();
+        *self.current_batch.lock() = WriteBatch::default();
+
+        // Iterate over the whole db and compute the hash
+        for (key, value) in self
+            .db
+            .iterator_cf(handle_state, IteratorMode::Start)
+            .flatten()
+        {
+            if !only_use_xor {
+                let key_hash = Hash::compute_from(&key);
+                let value_hash = Hash::compute_from(&value);
+
+                self.lsmtree
+                    .update(
+                        key_hash.to_bytes(),
+                        Bytes::from(value_hash.to_bytes().to_vec()),
+                    )
+                    .expect(LSMTREE_ERROR);
+            }
+
+            // Compute the XOR in all cases
+            let new_hash =
+                Hash::compute_from(&[key.to_vec().as_slice(), value.to_vec().as_slice()].concat());
+            current_xor_hash ^= new_hash;
+        }
+
+        // Update the hash entries:
+        // - always update the STATE_HASH_XOR_KEY
+        // - if only_use_xor, we update the STATE_HASH_KEY with the xor hash
+        // - if not only_use_xor, we update the STATE_HASH_KEY with the lsm tree root
+        self.current_batch.lock().put_cf(
+            handle_metadata,
+            STATE_HASH_XOR_KEY,
+            current_xor_hash.to_bytes(),
+        );
+        if only_use_xor {
+            self.current_batch.lock().put_cf(
+                handle_metadata,
+                STATE_HASH_KEY,
+                current_xor_hash.to_bytes(),
+            );
+            self.current_batch
+                .lock()
+                .put_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY, [1]);
+        } else {
+            self.current_batch
+                .lock()
+                .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
+        }
+
+        {
+            let mut current_batch_guard = self.current_batch.lock();
+            let batch = WriteBatch::from_data(current_batch_guard.data());
+            current_batch_guard.clear();
+
+            self.db.write(batch).map_err(|e| {
+                MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
+            })?;
+        }
+
+        Ok(())
     }
 
     /// Get the current state hash of the database
@@ -804,8 +883,15 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         change_id: Option<Slot>,
         only_use_xor: bool,
     ) {
-        self.write_changes(batch, versioning_batch, change_id, false, only_use_xor)
-            .expect(CRUD_ERROR);
+        self.write_changes(
+            batch,
+            versioning_batch,
+            change_id,
+            false,
+            only_use_xor,
+            true,
+        )
+        .expect(CRUD_ERROR);
     }
 
     /// Utility function to put / update a key & value in the batch
