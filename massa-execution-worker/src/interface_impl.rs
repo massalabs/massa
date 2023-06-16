@@ -124,7 +124,7 @@ impl InterfaceImpl {
         execution_context.speculative_ledger.added_changes.0.insert(
             sender_addr,
             SetUpdateOrDelete::Set(LedgerEntry {
-                balance: Amount::from_mantissa_scale(1_000_000_000, 0),
+                balance: Amount::const_init(1_000_000_000, 0),
                 ..Default::default()
             }),
         );

@@ -2475,7 +2475,7 @@ mod tests {
             Amount::from_str("300000")
                 .unwrap()
                 // Gas fee
-                .saturating_sub(Amount::from_mantissa_scale(10, 0))
+                .saturating_sub(Amount::const_init(10, 0))
                 // Storage cost key
                 .saturating_sub(
                     exec_cfg
@@ -2655,10 +2655,10 @@ mod tests {
         // create the block containing the operation
         let operation = Operation::new_verifiable(
             Operation {
-                fee: Amount::from_mantissa_scale(10, 0),
+                fee: Amount::const_init(10, 0),
                 expire_period: 10,
                 op: OperationType::ExecuteSC {
-                    max_coins: Amount::from_mantissa_scale(0, 0),
+                    max_coins: Amount::const_init(0, 0),
                     data: bytecode.to_vec(),
                     max_gas: 0,
                     datastore: BTreeMap::default(),
@@ -2711,7 +2711,7 @@ mod tests {
         };
         let op = Operation::new_verifiable(
             Operation {
-                fee: Amount::from_mantissa_scale(10, 0),
+                fee: Amount::const_init(10, 0),
                 expire_period: 10,
                 op,
             },
@@ -2946,7 +2946,7 @@ mod tests {
             Amount::from_str("300000")
                 .unwrap()
                 // Gas fee
-                .saturating_sub(Amount::from_mantissa_scale(10, 0))
+                .saturating_sub(Amount::const_init(10, 0))
         );
 
         // stop the execution controller

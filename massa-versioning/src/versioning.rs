@@ -899,7 +899,7 @@ impl MipStoreRaw {
 
             let vote_ratio_ = 100.0 * network_version_count / block_count_considered;
 
-            let vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() as u64, 0);
+            let vote_ratio = Amount::const_init(vote_ratio_.round() as u64, 0);
 
             debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
 
