@@ -3151,7 +3151,7 @@
 
             <span class="kw">let </span>vote_ratio_ = <span class="number">100.0 </span>* network_version_count / block_count_considered;
 
-            <span class="kw">let </span>vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() <span class="kw">as </span>u64, <span class="number">0</span>);
+            <span class="kw">let </span>vote_ratio = Amount::const_init(vote_ratio_.round() <span class="kw">as </span>u64, <span class="number">0</span>);
 
             <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
 
