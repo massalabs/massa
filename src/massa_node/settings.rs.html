@@ -399,9 +399,10 @@
 <span class="doccomment">/// Pool configuration, read from a file configuration
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>PoolSettings {
-    <span class="kw">pub </span>max_pool_size_per_thread: usize,
-    <span class="kw">pub </span>max_operation_future_validity_start_periods: u64,
-    <span class="kw">pub </span>max_endorsement_count: u64,
+    <span class="kw">pub </span>max_operation_pool_size: usize,
+    <span class="kw">pub </span>operation_max_future_start_delay: MassaTime,
+    <span class="kw">pub </span>operation_pool_refresh_interval: MassaTime,
+    <span class="kw">pub </span>max_endorsements_pool_size_per_thread: usize,
     <span class="kw">pub </span>max_item_return_count: usize,
     <span class="doccomment">/// endorsements channel capacity
     </span><span class="kw">pub </span>broadcast_endorsements_channel_capacity: usize,
@@ -485,7 +486,6 @@
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>MetricsSettings {
     <span class="kw">pub </span>enabled: bool,
-    <span class="kw">pub </span>bind: SocketAddr,
 }
 
 <span class="doccomment">/// Protocol Configuration, read from toml user configuration file

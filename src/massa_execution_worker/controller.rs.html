@@ -293,17 +293,6 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -319,7 +308,7 @@
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
-<span class="kw">use </span>massa_models::prehash::{PreHashMap, PreHashSet};
+<span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount, operation::OperationId};
 <span class="kw">use </span>massa_models::{block_id::BlockId, slot::Slot};
@@ -522,17 +511,6 @@
         }
     }
 
-    <span class="doccomment">/// List which operations inside the provided list were not executed
-    </span><span class="kw">fn </span>unexecuted_ops_among(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        ops: <span class="kw-2">&amp;</span>PreHashSet&lt;OperationId&gt;,
-        thread: u8,
-    ) -&gt; PreHashSet&lt;OperationId&gt; {
-        <span class="self">self</span>.execution_state
-            .read()
-            .unexecuted_ops_among(ops, thread)
-    }
-
     <span class="doccomment">/// Check if a denunciation has been executed given a `DenunciationIndex`
     </span><span class="kw">fn </span>is_denunciation_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation_index: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
         <span class="self">self</span>.execution_state
@@ -578,8 +556,8 @@
     }
 
     <span class="doccomment">/// See trait definition
-    </span><span class="kw">fn </span>get_op_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (HashMap&lt;OperationId, bool&gt;, HashMap&lt;OperationId, bool&gt;) {
-        <span class="self">self</span>.execution_state.read().get_op_exec_status()
+    </span><span class="kw">fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt; {
+        <span class="self">self</span>.execution_state.read().get_ops_exec_status(batch)
     }
 }
 
