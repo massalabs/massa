@@ -170,34 +170,6 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
@@ -232,7 +204,6 @@
     <span class="kw">fn </span>get_nb_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>get_nb_in_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>shutdown_connection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId);
-    <span class="kw">fn </span>get_peers_connections_bandwidth(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;String, (u64, u64)&gt;;
 }
 
 <span class="kw">impl </span>Clone <span class="kw">for </span>Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt; {
@@ -301,16 +272,6 @@
             connection.shutdown();
         }
     }
-
-    <span class="kw">fn </span>get_peers_connections_bandwidth(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;String, (u64, u64)&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>map = HashMap::new();
-        <span class="kw">for </span>(peerid, conn) <span class="kw">in </span><span class="self">self</span>.read().connections.iter() {
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(tuple) = conn.endpoint.get_bandwidth() {
-                map.insert(peerid.to_string(), tuple);
-            }
-        }
-        map
-    }
 }
 
 <span class="kw">pub trait </span>NetworkController: Send + Sync {
@@ -330,8 +291,6 @@
         addr: SocketAddr,
         timeout: std::time::Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt;;
-    <span class="kw">fn </span>get_total_bytes_received(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ProtocolError&gt;;
-    <span class="kw">fn </span>get_total_bytes_sent(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ProtocolError&gt;;
 }
 
 <span class="kw">pub struct </span>NetworkControllerImpl {
@@ -381,21 +340,6 @@
             .try_connect(TransportType::Tcp, addr, timeout)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">fn </span>get_total_bytes_received(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ProtocolError&gt; {
-        <span class="self">self</span>.peernet_manager
-            .get_total_bytes_received()
-            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
-    }
-
-    <span class="kw">fn </span>get_total_bytes_sent(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ProtocolError&gt; {
-        <span class="self">self</span>.peernet_manager.get_total_bytes_sent().map_err(|err| {
-            ProtocolError::GeneralProtocolError(<span class="macro">format!</span>(
-                <span class="string">&quot;Error while getting total bytes sent: {}&quot;</span>,
-                err
-            ))
-        })
     }
 }
 </code></pre></div></section></main></body></html>
