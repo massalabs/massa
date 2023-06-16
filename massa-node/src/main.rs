@@ -238,6 +238,7 @@ async fn launch(
         SETTINGS.metrics.enabled,
         SETTINGS.metrics.bind,
         THREAD_COUNT,
+        SETTINGS.metrics.tick_delay.to_duration(),
     );
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot

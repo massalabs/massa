@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, VecDeque},
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use crossbeam::{channel::tick, select};
@@ -83,7 +83,7 @@ impl RetrievalThread {
             });
         let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
         let tick_clear_storage = tick(self.config.asked_operations_pruning_period.to_duration());
-        let tick_metrics = tick(Duration::from_secs(5));
+        let tick_metrics = tick(self.massa_metrics.tick_delay);
 
         loop {
             select! {

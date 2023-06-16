@@ -216,8 +216,13 @@
 [network]
 
 [metrics]
+    # enable prometheus metrics
     enabled = true
+    # port on which to listen for prometheus metrics
     bind = "[::]:31248"
+    # interval at which to update metrics
+    tick_delay = 5000
+
 
 [bootstrap]
     # list of bootstrap (ip, node id)

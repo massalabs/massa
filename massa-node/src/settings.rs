@@ -171,8 +171,12 @@ pub struct NetworkSettings {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MetricsSettings {
+    /// enable prometheus metrics
     pub enabled: bool,
+    /// port on which to listen for prometheus metrics
     pub bind: SocketAddr,
+    /// interval at which to update metrics
+    pub tick_delay: MassaTime,
 }
 
 /// Protocol Configuration, read from toml user configuration file

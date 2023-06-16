@@ -8,6 +8,7 @@ use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::{Arc, RwLock},
+    time::Duration,
 };
 
 use lazy_static::lazy_static;
@@ -110,11 +111,13 @@ pub struct MassaMetrics {
 
     // peer bandwidth (bytes sent, bytes received)
     peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
+
+    pub tick_delay: Duration,
 }
 
 impl MassaMetrics {
     #[allow(unused_variables)]
-    pub fn new(enabled: bool, addr: SocketAddr, nb_thread: u8) -> Self {
+    pub fn new(enabled: bool, addr: SocketAddr, nb_thread: u8, tick_delay: Duration) -> Self {
         // TODO unwrap
 
         let mut consensus_vec = vec![];
@@ -344,6 +347,7 @@ impl MassaMetrics {
             final_cursor_thread,
             final_cursor_period,
             peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
+            tick_delay,
         }
     }
 
@@ -559,7 +563,7 @@ impl MassaMetrics {
 //         }
 
 //         assert_eq!(receiver.len(), 80);
-//         std::thread::sleep(std::time::Duration::from_secs(5));
+//         std::thread::sleep(std::time::std::time::Duration::from_secs(5));
 //         drop(sender2);
 //         drop(receiver2);
 //         std::thread::sleep(std::time::Duration::from_secs(100));
@@ -589,7 +593,7 @@ impl MassaMetrics {
 //         });
 //         std::thread::sleep(std::time::Duration::from_secs(2));
 //         std::thread::spawn(move || {
-//             std::thread::sleep(std::time::Duration::from_secs(5));
+//             std::thread::sleep(std::time::std::time::Duration::from_secs(5));
 
 //             drop(sender);
 //         });

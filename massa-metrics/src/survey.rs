@@ -12,7 +12,7 @@ impl MassaSurvey {
         // removed for now and move to connectivity.rs
 
         // std::thread::spawn(move || loop {
-        //     std::thread::sleep(Duration::from_secs(5));
+        //     std::thread::sleep(std::time::Duration::from_secs(5));
 
         //     #[cfg(not(feature = "sandbox"))]
         //     {

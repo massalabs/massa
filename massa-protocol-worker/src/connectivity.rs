@@ -177,7 +177,7 @@ pub(crate) fn start_connectivity_thread(
                 massa_metrics.clone(),
             );
 
-            let tick_metrics = tick(Duration::from_secs(5));
+            let tick_metrics = tick(massa_metrics.tick_delay);
 
             //Try to connect to peers
             loop {
