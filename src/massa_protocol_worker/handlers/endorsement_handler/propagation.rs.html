@@ -216,14 +216,14 @@
                                     }
                                 }
                             }
-                            <span class="kw">let </span>endorsements_ids: PreHashSet&lt;EndorsementId&gt; = endorsements
+                            <span class="kw">let </span>ids: PreHashSet&lt;EndorsementId&gt; = endorsements
                                 .get_endorsement_refs()
                                 .iter()
                                 .copied()
                                 .collect();
                             {
                                 <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                                <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsements_ids.iter().copied() {
+                                <span class="kw">for </span>endorsement_id <span class="kw">in </span>ids.iter().copied() {
                                     cache_write.checked_endorsements.insert(endorsement_id, ());
                                 }
                                 <span class="comment">// Add peers that potentially don&#39;t exist in cache

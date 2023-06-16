@@ -2215,6 +2215,41 @@
 <a href="#2215" id="2215">2215</a>
 <a href="#2216" id="2216">2216</a>
 <a href="#2217" id="2217">2217</a>
+<a href="#2218" id="2218">2218</a>
+<a href="#2219" id="2219">2219</a>
+<a href="#2220" id="2220">2220</a>
+<a href="#2221" id="2221">2221</a>
+<a href="#2222" id="2222">2222</a>
+<a href="#2223" id="2223">2223</a>
+<a href="#2224" id="2224">2224</a>
+<a href="#2225" id="2225">2225</a>
+<a href="#2226" id="2226">2226</a>
+<a href="#2227" id="2227">2227</a>
+<a href="#2228" id="2228">2228</a>
+<a href="#2229" id="2229">2229</a>
+<a href="#2230" id="2230">2230</a>
+<a href="#2231" id="2231">2231</a>
+<a href="#2232" id="2232">2232</a>
+<a href="#2233" id="2233">2233</a>
+<a href="#2234" id="2234">2234</a>
+<a href="#2235" id="2235">2235</a>
+<a href="#2236" id="2236">2236</a>
+<a href="#2237" id="2237">2237</a>
+<a href="#2238" id="2238">2238</a>
+<a href="#2239" id="2239">2239</a>
+<a href="#2240" id="2240">2240</a>
+<a href="#2241" id="2241">2241</a>
+<a href="#2242" id="2242">2242</a>
+<a href="#2243" id="2243">2243</a>
+<a href="#2244" id="2244">2244</a>
+<a href="#2245" id="2245">2245</a>
+<a href="#2246" id="2246">2246</a>
+<a href="#2247" id="2247">2247</a>
+<a href="#2248" id="2248">2248</a>
+<a href="#2249" id="2249">2249</a>
+<a href="#2250" id="2250">2250</a>
+<a href="#2251" id="2251">2251</a>
+<a href="#2252" id="2252">2252</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -2252,6 +2287,7 @@
     KeyPair,
     Block,
     VM,
+    FinalStateHashKind,
     <span class="attr">#[doc(hidden)]
     #[num_enum(default)]
     </span>__Nonexhaustive,
@@ -2775,6 +2811,13 @@
         lock.update_with(lock_other.deref())
     }
 
+    <span class="comment">// Query
+
+    </span><span class="kw">pub fn </span>get_latest_component_version_at(<span class="kw-2">&amp;</span><span class="self">self</span>, component: <span class="kw-2">&amp;</span>MipComponent, ts: MassaTime) -&gt; u32 {
+        <span class="kw">let </span>lock = <span class="self">self</span>.<span class="number">0</span>.read();
+        lock.get_latest_component_version_at(component, ts)
+    }
+
     <span class="comment">// GRPC
 
     </span><span class="doccomment">/// Retrieve a list of MIP info with their corresponding state (as id) - used for grpc API
@@ -2830,12 +2873,12 @@
         guard.extend_from_db(db)
     }
 
-    <span class="kw">pub fn </span>reset_db(<span class="kw-2">&amp;</span><span class="self">self</span>, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) {
+    <span class="kw">pub fn </span>reset_db(<span class="kw-2">&amp;</span><span class="self">self</span>, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;, only_use_xor: bool) {
         {
             <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-            guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
-            guard.delete_prefix(MIP_STORE_PREFIX, VERSIONING_CF, <span class="prelude-val">None</span>);
-            guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, <span class="prelude-val">None</span>);
+            guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, <span class="prelude-val">None</span>, only_use_xor);
+            guard.delete_prefix(MIP_STORE_PREFIX, VERSIONING_CF, <span class="prelude-val">None</span>, only_use_xor);
+            guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, <span class="prelude-val">None</span>, only_use_xor);
         }
     }
 }
@@ -3108,9 +3151,9 @@
 
             <span class="kw">let </span>vote_ratio_ = <span class="number">100.0 </span>* network_version_count / block_count_considered;
 
-            <span class="kw">let </span>vote_ratio = Amount::from_mantissa_scale(vote_ratio_.round() <span class="kw">as </span>u64, <span class="number">0</span>);
+            <span class="kw">let </span>vote_ratio = Amount::const_init(vote_ratio_.round() <span class="kw">as </span>u64, <span class="number">0</span>);
 
-            <span class="macro">debug!</span>(<span class="string">&quot;(VERSIONING LOG) vote_ratio = {} (from version counter = {} and blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
+            <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
 
             <span class="kw">let </span>advance_msg = Advance {
                 start_timestamp: mi.start,
@@ -3125,7 +3168,34 @@
         }
     }
 
-    <span class="doccomment">/// Check if store is coherent with given last network shutdown
+    <span class="comment">// Query
+
+    </span><span class="kw">fn </span>get_latest_component_version_at(<span class="kw-2">&amp;</span><span class="self">self</span>, component: <span class="kw-2">&amp;</span>MipComponent, ts: MassaTime) -&gt; u32 {
+        <span class="comment">// TODO: duplicated code with the same function in versioning_factory - factorize
+
+        </span><span class="kw">let </span>version = <span class="self">self
+            </span>.store
+            .iter()
+            .rev()
+            .filter(|(vi, vsh)| {
+                vi.components.get(component).is_some()
+                    &amp;&amp; <span class="macro">matches!</span>(vsh.state, ComponentState::Active(<span class="kw">_</span>))
+            })
+            .find_map(|(vi, vsh)| {
+                <span class="kw">let </span>res = vsh.state_at(ts, vi.start, vi.timeout);
+                <span class="kw">match </span>res {
+                    <span class="prelude-val">Ok</span>(ComponentStateTypeId::Active) =&gt; vi.components.get(component).copied(),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                }
+            })
+            .unwrap_or(<span class="number">0</span>);
+
+        version
+    }
+
+    <span class="comment">// Network restart
+
+    </span><span class="doccomment">/// Check if store is coherent with given last network shutdown
     /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
     </span><span class="kw">fn </span>is_coherent_with_shutdown_period(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4346,7 +4416,7 @@
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>guard_db = db.write();
         <span class="comment">// FIXME / TODO: no slot hardcoding?
-        </span>guard_db.write_batch(db_batch, db_versioning_batch, <span class="prelude-val">Some</span>(Slot::new(<span class="number">3</span>, <span class="number">0</span>)));
+        </span>guard_db.write_batch(db_batch, db_versioning_batch, <span class="prelude-val">Some</span>(Slot::new(<span class="number">3</span>, <span class="number">0</span>)), <span class="bool-val">false</span>);
         drop(guard_db);
 
         <span class="comment">// Step 4
