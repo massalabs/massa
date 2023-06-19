@@ -555,7 +555,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     thread::JoinHandle,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -637,7 +637,7 @@
             });
         <span class="kw">let </span>tick_ask_operations = tick(<span class="self">self</span>.config.operation_batch_proc_period.to_duration());
         <span class="kw">let </span>tick_clear_storage = tick(<span class="self">self</span>.config.asked_operations_pruning_period.to_duration());
-        <span class="kw">let </span>tick_metrics = tick(<span class="self">self</span>.massa_metrics.tick_delay);
+        <span class="kw">let </span>tick_metrics = tick(Duration::from_secs(<span class="number">5</span>));
 
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
