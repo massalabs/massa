@@ -1097,9 +1097,17 @@ impl MipStoreRaw {
                     mip_state_ser.serialize(mip_state, &mut value)?;
                     match state_id {
                         ComponentStateTypeId::Active => {
+                            println!(
+                                "[V][update_batches] Adding to batch: {:?} - {:?}",
+                                mip_info, mip_state
+                            );
                             batch.insert(key.clone(), Some(value.clone()));
                         }
                         _ => {
+                            println!(
+                                "[V][update_batches] Adding to versioning_batch: {:?} - {:?}",
+                                mip_info, mip_state
+                            );
                             versioning_batch.insert(key.clone(), Some(value.clone()));
                         }
                     }
@@ -2049,6 +2057,90 @@ mod test {
                 ComponentStateTypeId::Defined
             );
         }
+    }
+
+    #[test]
+    fn test_mip_store_update_batches() {
+        // Test MIP store update_batches() method
+
+        let get_slot_ts = |slot| {
+            get_block_slot_timestamp(THREAD_COUNT, T0, MassaTime::from_millis(0), slot).unwrap()
+        };
+
+        let start_ts = get_slot_ts(Slot::new(2, 0));
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: start_ts,
+            timeout: get_slot_ts(Slot::new(4, 0)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+
+        let locked_in_ts = get_slot_ts(Slot::new(3, 6));
+        let ms_1 = advance_state_until(ComponentState::locked_in(locked_in_ts), &mi_1);
+
+        let mi_2 = MipInfo {
+            name: "MIP-0003".to_string(),
+            version: 3,
+            components: BTreeMap::from([(MipComponent::Address, 2)]),
+            start: get_slot_ts(Slot::new(7, 2)),
+            timeout: get_slot_ts(Slot::new(9, 2)),
+            activation_delay: MassaTime::from_millis(10),
+        };
+        let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        };
+        let mut mip_store = MipStore::try_from((
+            [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
+            mip_stats_config.clone(),
+        ))
+        .expect("Cannot create an empty MIP store");
+
+        let mut db_batch = DBBatch::new();
+        let mut versioning_batch = DBBatch::new();
+
+        let bounds_1 = (&start_ts, &locked_in_ts);
+        mip_store
+            .update_batches(&mut db_batch, &mut versioning_batch, bounds_1)
+            .unwrap();
+        println!("===");
+
+        assert_eq!(db_batch.len(), 0);
+        assert_eq!(versioning_batch.len(), 2); // MIP 0001 + stats
+
+        db_batch.clear();
+        versioning_batch.clear();
+
+        let bounds_2 = (&get_slot_ts(Slot::new(0, 0)), &get_slot_ts(Slot::new(9, 2)));
+        mip_store
+            .update_batches(&mut db_batch, &mut versioning_batch, bounds_2)
+            .unwrap();
+        println!("===");
+
+        assert_eq!(db_batch.len(), 0);
+        assert_eq!(versioning_batch.len(), 3); // MIP 0001 + MIP 0002 + stats
+
+        db_batch.clear();
+        versioning_batch.clear();
+
+        let ms_1 = advance_state_until(ComponentState::active(locked_in_ts), &mi_1);
+        let mut mip_store = MipStore::try_from((
+            [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
+            mip_stats_config.clone(),
+        ))
+        .expect("Cannot create an empty MIP store");
+
+        mip_store
+            .update_batches(&mut db_batch, &mut versioning_batch, bounds_2)
+            .unwrap();
+        println!("===");
+
+        assert_eq!(db_batch.len(), 1);
+        assert_eq!(versioning_batch.len(), 2); // MIP 002 + stats
     }
 
     #[test]

@@ -1254,13 +1254,13 @@ impl ExecutionState {
         selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
-        debug!(
+        info!(
             "execute_final_slot: executing slot={} target={:?}",
             slot, target_id
         );
 
         if slot <= &self.final_cursor {
-            debug!(
+            info!(
                 "execute_final_slot: final slot already executed (final_cursor = {})",
                 self.final_cursor
             );
@@ -1277,6 +1277,10 @@ impl ExecutionState {
                 self.apply_final_execution_output(exec_out.clone());
 
                 // update versioning stats
+                println!(
+                    "Calling update versioning stats for slot: {}, exec_out: {:?}",
+                    slot, exec_out
+                );
                 self.update_versioning_stats(exec_target, slot);
 
                 // Broadcast a final slot execution output to active channel subscribers.
@@ -1322,8 +1326,8 @@ impl ExecutionState {
         self.apply_final_execution_output(exec_out.clone());
 
         self.update_versioning_stats(exec_target, slot);
-        debug!(
-            "execute_final_slot: execution finished & result applied & versioning stats updated"
+        info!(
+            "[V] execute_final_slot: execution finished & result applied & versioning stats updated"
         );
 
         // Broadcast a final slot execution output to active channel subscribers.
@@ -1707,7 +1711,7 @@ impl ExecutionState {
                     .unwrap();
 
                     println!(
-                        "Fetching vers update between {} and {}",
+                        "Fetching versioning update between {} and {}",
                         slot_prev_ts, slot_ts
                     );
 
@@ -1724,11 +1728,10 @@ impl ExecutionState {
                             )
                         });
 
-                    println!("Fetched db_batch (len: {}): {:?}", db_batch.len(), db_batch);
+                    println!("Fetched db_batch (len: {})", db_batch.len());
                     println!(
-                        "Fetched db_versioning_batch (len: {}): {:?}",
-                        db_versioning_batch.len(),
-                        db_versioning_batch
+                        "Fetched db_versioning_batch (len: {})",
+                        db_versioning_batch.len()
                     );
 
                     let use_only_xor = self.final_state.read().get_only_use_xor(slot);
