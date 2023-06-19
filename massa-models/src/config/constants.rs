@@ -302,7 +302,7 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 /// Threshold to accept a new versioning
 pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::const_init(75, 0);
 /// Block count to process in MipStoreStats (for state change threshold)
-pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
+pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 10;
 /// Max number of stats counters
 pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 

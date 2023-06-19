@@ -904,7 +904,8 @@ impl MipStoreRaw {
 
             let vote_ratio = Amount::const_init(vote_ratio_.round() as u64, 0);
 
-            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            info!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            // info!("db dump", self.db.dump_versioning());
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,

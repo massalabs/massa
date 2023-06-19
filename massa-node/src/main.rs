@@ -278,9 +278,9 @@ async fn launch(
     // let mip_0001_start = MassaTime::from_utc_ymd_hms(2023, 6, 14, 15, 0, 0).unwrap();
     // let mip_0001_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 14, 16, 0, 0).unwrap();
     // let mip_0001_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 14, 14, 30, 0).unwrap();
-    let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 13, 49, 0).unwrap();
+    let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 14, 02, 0).unwrap();
     let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 19, 14, 59, 0).unwrap();
-    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 6, 19, 13, 48, 0).unwrap();
+    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 6, 19, 14, 01, 0).unwrap();
     let mip_list_1: [(MipInfo, MipState); 1] = [
         // (
         //     MipInfo {
@@ -305,7 +305,7 @@ async fn launch(
                 timeout: mip_0002_timeout,
                 activation_delay: T0
                     .saturating_mul(PERIODS_PER_CYCLE.saturating_add(1))
-                    .saturating_mul(40),
+                    .saturating_mul(1), // 40 cycles ~= 1 day
             },
             MipState::new(mip_0002_defined_start),
         ),
