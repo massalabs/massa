@@ -9,6 +9,7 @@ pub struct MassaSurvey {}
 impl MassaSurvey {
     #[allow(unused_variables)]
     pub fn run(
+        tick_delay: std::time::Duration,
         active_in_connections: IntGauge,
         active_out_connections: IntGauge,
         peernet_total_bytes_sent: IntCounter,
@@ -19,7 +20,7 @@ impl MassaSurvey {
             let mut data_sent = 0;
             let mut data_received = 0;
             std::thread::spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(5));
+                std::thread::sleep(tick_delay);
 
                 if active_in_connections.get() + active_out_connections.get() == 0 {
                     warn!("PEERNET | No active connections");

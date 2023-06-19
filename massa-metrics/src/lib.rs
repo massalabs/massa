@@ -314,6 +314,7 @@ impl MassaMetrics {
             }
 
             MassaSurvey::run(
+                tick_delay.clone(),
                 active_in_connections.clone(),
                 active_out_connections.clone(),
                 peernet_total_bytes_sent.clone(),
