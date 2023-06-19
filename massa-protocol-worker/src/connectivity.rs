@@ -230,12 +230,6 @@ pub(crate) fn start_connectivity_thread(
                             massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
 
                             let active_conn = network_controller.get_active_connections();
-                            #[cfg(not(feature = "sandbox"))]
-                            {
-                                if active_conn.get_nb_in_connections() == 0 && active_conn.get_nb_out_connections() == 0 {
-                                    warn!("No active connections");
-                                }
-                            }
                             let peers_map = active_conn.get_peers_connections_bandwidth();
                             massa_metrics.update_peers_tx_rx(peers_map);
                         },

@@ -316,6 +316,8 @@ impl MassaMetrics {
             MassaSurvey::run(
                 active_in_connections.clone(),
                 active_out_connections.clone(),
+                peernet_total_bytes_sent.clone(),
+                peernet_total_bytes_receive.clone(),
             );
         }
 
