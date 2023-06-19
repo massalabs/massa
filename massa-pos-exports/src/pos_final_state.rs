@@ -1448,192 +1448,305 @@ impl PoSFinalState {
     }
 }
 
-#[test]
-fn test_pos_final_state_hash_computation() {
-    use crate::test_exports::MockSelectorController;
-    use crate::DeferredCredits;
-    use crate::PoSFinalState;
-    use bitvec::prelude::*;
-    use massa_db_exports::{MassaDBConfig, MassaDBController};
-    use massa_db_worker::MassaDB;
-    use massa_models::config::constants::{
-        MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-        POS_SAVED_CYCLES,
-    };
-    use massa_signature::KeyPair;
-    use parking_lot::RwLock;
-    use std::collections::HashMap;
-    use std::sync::Arc;
-    use tempfile::TempDir;
+#[cfg(test)]
+mod tests {
 
-    let pos_config = PoSConfig {
-        periods_per_cycle: 2,
-        thread_count: 2,
-        cycle_history_length: POS_SAVED_CYCLES,
-        max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
-        max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
-        max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
-    };
+    use super::*;
 
-    // initialize the executed ops config
-    let tempdir = TempDir::new().expect("cannot create temp directory");
-    let db_config = MassaDBConfig {
-        path: tempdir.path().to_path_buf(),
-        max_history_length: 10,
-        max_new_elements: 100,
-        thread_count: 2,
-    };
-    let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
-    ));
-    let (selector_controller, _) = MockSelectorController::new_with_receiver();
-    let init_seed = Hash::compute_from(b"");
-    let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+    #[test]
+    fn test_pos_cache_recomputation() {
+        use crate::test_exports::MockSelectorController;
+        use crate::PoSFinalState;
+        use massa_db_exports::{MassaDBConfig, MassaDBController};
+        use massa_db_worker::MassaDB;
+        use massa_models::config::constants::{
+            MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+            POS_SAVED_CYCLES,
+        };
+        use parking_lot::RwLock;
+        use std::sync::Arc;
+        use tempfile::TempDir;
 
-    let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
-        pos_config.thread_count,
-        pos_config.max_credit_length,
-        true,
-    );
-    let cycle_info_deserializer = CycleHistoryDeserializer::new(
-        pos_config.cycle_history_length as u64,
-        pos_config.max_rolls_length,
-        pos_config.max_production_stats_length,
-    );
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+        };
 
-    let mut pos_state = PoSFinalState {
-        config: pos_config,
-        db: db.clone(),
-        cycle_history_cache: Default::default(),
-        rng_seed_cache: None,
-        selector: selector_controller,
-        initial_rolls: Default::default(),
-        initial_seeds,
-        deferred_credits_serializer: DeferredCreditsSerializer::new(),
-        deferred_credits_deserializer,
-        cycle_info_serializer: CycleHistorySerializer::new(),
-        cycle_info_deserializer,
-    };
+        // initialize the executed ops config
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_new_elements: 100,
+            thread_count: 2,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let (selector_controller, _) = MockSelectorController::new_with_receiver();
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-    pos_state.recompute_pos_state_caches();
+        let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
+            pos_config.thread_count,
+            pos_config.max_credit_length,
+            true,
+        );
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
 
-    let mut batch = DBBatch::new();
-    pos_state.create_initial_cycle(&mut batch);
-    db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
 
-    let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let mut cycle_infos = Vec::new();
+        for cycle in 509..516 {
+            cycle_infos.push(CycleInfo::new_with_hash(
+                cycle,
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            ));
+        }
 
-    // add changes
-    let mut roll_changes = PreHashMap::default();
-    roll_changes.insert(addr, 10);
-    let mut production_stats = PreHashMap::default();
-    production_stats.insert(
-        addr,
-        ProductionStats {
-            block_success_count: 4,
-            block_failure_count: 0,
-        },
-    );
-    let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 0, 1],
-        roll_changes: roll_changes.clone(),
-        production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::new_with_hash(),
-    };
+        let mut batch = DBBatch::new();
 
-    let mut batch = DBBatch::new();
-    pos_state
-        .apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
-        .unwrap();
-    db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
+        pos_state.put_new_cycle_info(&cycle_infos[0], &mut batch);
+        pos_state.put_new_cycle_info(&cycle_infos[1], &mut batch);
+        pos_state.put_new_cycle_info(&cycle_infos[2], &mut batch);
+        pos_state.put_new_cycle_info(&cycle_infos[3], &mut batch);
+        pos_state.put_new_cycle_info(&cycle_infos[4], &mut batch);
+        pos_state.put_new_cycle_info(&cycle_infos[5], &mut batch);
+        pos_state.put_new_cycle_info(&cycle_infos[6], &mut batch);
 
-    // update changes once
-    roll_changes.clear();
-    roll_changes.insert(addr, 20);
-    production_stats.clear();
-    production_stats.insert(
-        addr,
-        ProductionStats {
-            block_success_count: 4,
-            block_failure_count: 6,
-        },
-    );
-    let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 1, 0],
-        roll_changes: roll_changes.clone(),
-        production_stats: production_stats.clone(),
-        deferred_credits: DeferredCredits::new_with_hash(),
-    };
+        pos_state
+            .db
+            .write()
+            .write_batch(batch, DBBatch::new(), None);
 
-    let mut batch = DBBatch::new();
-    pos_state
-        .apply_changes_to_batch(changes, Slot::new(0, 1), false, &mut batch)
-        .unwrap();
-    db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
+        pos_state.recompute_pos_state_caches();
 
-    // update changes twice
-    roll_changes.clear();
-    roll_changes.insert(addr, 0);
-    production_stats.clear();
-    production_stats.insert(
-        addr,
-        ProductionStats {
-            block_success_count: 4,
-            block_failure_count: 12,
-        },
-    );
+        assert_eq!(
+            pos_state.cycle_history_cache.len(),
+            cycle_infos.len(),
+            "Cycle history len does not match"
+        );
 
-    let changes = PoSChanges {
-        seed_bits: bitvec![u8, Lsb0; 0, 1],
-        roll_changes,
-        production_stats,
-        deferred_credits: DeferredCredits::new_with_hash(),
-    };
+        for ((cycle_from_history, _), cycle) in
+            pos_state.cycle_history_cache.iter().zip(cycle_infos.iter())
+        {
+            assert_eq!(
+                *cycle_from_history, cycle.cycle,
+                "Cycle number does not match"
+            );
+        }
+    }
 
-    let mut batch = DBBatch::new();
-    pos_state
-        .apply_changes_to_batch(changes, Slot::new(1, 0), false, &mut batch)
-        .unwrap();
-    db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(1, 0)));
+    #[test]
+    fn test_pos_final_state_hash_computation() {
+        use crate::test_exports::MockSelectorController;
+        use crate::DeferredCredits;
+        use crate::PoSFinalState;
+        use bitvec::prelude::*;
+        use massa_db_exports::{MassaDBConfig, MassaDBController};
+        use massa_db_worker::MassaDB;
+        use massa_models::config::constants::{
+            MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+            POS_SAVED_CYCLES,
+        };
+        use massa_signature::KeyPair;
+        use parking_lot::RwLock;
+        use std::collections::HashMap;
+        use std::sync::Arc;
+        use tempfile::TempDir;
 
-    let cycles = pos_state.get_cycle_history_cycles();
-    assert_eq!(cycles.len(), 1, "wrong number of cycles");
-    assert_eq!(cycles[0].0, 0, "cycle should be the 1st one");
-    assert_eq!(cycles[0].1, false, "cycle should not be complete yet");
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+        };
 
-    let cycle_info_a = pos_state.get_cycle_info(0);
+        // initialize the executed ops config
+        let tempdir = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_new_elements: 100,
+            thread_count: 2,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let (selector_controller, _) = MockSelectorController::new_with_receiver();
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-    let mut prod_stats = HashMap::default();
-    prod_stats.insert(
-        addr,
-        ProductionStats {
-            block_success_count: 12,
-            block_failure_count: 18,
-        },
-    );
+        let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
+            pos_config.thread_count,
+            pos_config.max_credit_length,
+            true,
+        );
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
 
-    let cycle_info_b = CycleInfo::new_with_hash(
-        0,
-        false,
-        BTreeMap::default(),
-        bitvec![u8, Lsb0; 0, 0, 0, 1, 1, 0, 0, 1],
-        prod_stats,
-    );
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
 
-    assert_eq!(
-        cycle_info_a.roll_counts_hash, cycle_info_b.roll_counts_hash,
-        "roll_counts_hash mismatch"
-    );
-    assert_eq!(
-        cycle_info_a.production_stats_hash, cycle_info_b.production_stats_hash,
-        "production_stats_hash mismatch"
-    );
-    assert_eq!(
-        cycle_info_a.cycle_global_hash, cycle_info_b.cycle_global_hash,
-        "global_hash mismatch"
-    );
+        pos_state.recompute_pos_state_caches();
+
+        let mut batch = DBBatch::new();
+        pos_state.create_initial_cycle(&mut batch);
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
+
+        let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+
+        // add changes
+        let mut roll_changes = PreHashMap::default();
+        roll_changes.insert(addr, 10);
+        let mut production_stats = PreHashMap::default();
+        production_stats.insert(
+            addr,
+            ProductionStats {
+                block_success_count: 4,
+                block_failure_count: 0,
+            },
+        );
+        let changes = PoSChanges {
+            seed_bits: bitvec![u8, Lsb0; 0, 1],
+            roll_changes: roll_changes.clone(),
+            production_stats: production_stats.clone(),
+            deferred_credits: DeferredCredits::new_with_hash(),
+        };
+
+        let mut batch = DBBatch::new();
+        pos_state
+            .apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
+            .unwrap();
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
+
+        // update changes once
+        roll_changes.clear();
+        roll_changes.insert(addr, 20);
+        production_stats.clear();
+        production_stats.insert(
+            addr,
+            ProductionStats {
+                block_success_count: 4,
+                block_failure_count: 6,
+            },
+        );
+        let changes = PoSChanges {
+            seed_bits: bitvec![u8, Lsb0; 1, 0],
+            roll_changes: roll_changes.clone(),
+            production_stats: production_stats.clone(),
+            deferred_credits: DeferredCredits::new_with_hash(),
+        };
+
+        let mut batch = DBBatch::new();
+        pos_state
+            .apply_changes_to_batch(changes, Slot::new(0, 1), false, &mut batch)
+            .unwrap();
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
+
+        // update changes twice
+        roll_changes.clear();
+        roll_changes.insert(addr, 0);
+        production_stats.clear();
+        production_stats.insert(
+            addr,
+            ProductionStats {
+                block_success_count: 4,
+                block_failure_count: 12,
+            },
+        );
+
+        let changes = PoSChanges {
+            seed_bits: bitvec![u8, Lsb0; 0, 1],
+            roll_changes,
+            production_stats,
+            deferred_credits: DeferredCredits::new_with_hash(),
+        };
+
+        let mut batch = DBBatch::new();
+        pos_state
+            .apply_changes_to_batch(changes, Slot::new(1, 0), false, &mut batch)
+            .unwrap();
+        db.write()
+            .write_batch(batch, Default::default(), Some(Slot::new(1, 0)));
+
+        let cycles = pos_state.get_cycle_history_cycles();
+        assert_eq!(cycles.len(), 1, "wrong number of cycles");
+        assert_eq!(cycles[0].0, 0, "cycle should be the 1st one");
+        assert_eq!(cycles[0].1, false, "cycle should not be complete yet");
+
+        let cycle_info_a = pos_state.get_cycle_info(0);
+
+        let mut prod_stats = HashMap::default();
+        prod_stats.insert(
+            addr,
+            ProductionStats {
+                block_success_count: 12,
+                block_failure_count: 18,
+            },
+        );
+
+        let cycle_info_b = CycleInfo::new_with_hash(
+            0,
+            false,
+            BTreeMap::default(),
+            bitvec![u8, Lsb0; 0, 0, 0, 1, 1, 0, 0, 1],
+            prod_stats,
+        );
+
+        assert_eq!(
+            cycle_info_a.roll_counts_hash, cycle_info_b.roll_counts_hash,
+            "roll_counts_hash mismatch"
+        );
+        assert_eq!(
+            cycle_info_a.production_stats_hash, cycle_info_b.production_stats_hash,
+            "production_stats_hash mismatch"
+        );
+        assert_eq!(
+            cycle_info_a.cycle_global_hash, cycle_info_b.cycle_global_hash,
+            "global_hash mismatch"
+        );
+    }
 }
