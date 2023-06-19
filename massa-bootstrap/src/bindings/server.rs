@@ -77,7 +77,7 @@ impl BootstrapServerBinder {
         let limit_opts = rw_limit.map(|limit| -> LimiterOptions {
             LimiterOptions::new(limit / 100, Duration::from_millis(10), limit / 10)
         });
-        let duplex = Limiter::new(duplex, None, limit_opts);
+        let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,
