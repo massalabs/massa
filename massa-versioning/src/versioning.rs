@@ -218,7 +218,7 @@ impl LockedIn {
     /// Update state from state LockedIn ...
     pub fn on_advance(self, input: Advance) -> ComponentState {
         if input.now > self.at.saturating_add(input.activation_delay) {
-            debug!("(VERSIONING LOG) locked version has become active");
+            info!("(VERSIONING LOG) locked version has become active");
             ComponentState::active(input.now)
         } else {
             ComponentState::locked_in(self.at)

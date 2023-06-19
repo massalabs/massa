@@ -98,10 +98,9 @@ fn stream_final_state_and_consensus(
                         write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
 
-                    println!(
-                        "[Bootstrap - client] {:?} {:?}",
-                        state_part, versioning_part
-                    );
+                    println!("[Bootstrap - client] state_part {:?}", state_part);
+                    println!("[Bootstrap - client] versioning_part {:?}", versioning_part);
+
                     let (last_state_step, last_versioning_step) = write_final_state
                         .db
                         .write()
@@ -112,6 +111,12 @@ fn stream_final_state_and_consensus(
                                 e
                             ))
                         })?;
+
+                    println!("[Bootstrap - client] state step {:?}", last_state_step);
+                    println!(
+                        "[Bootstrap - client] versioning step {:?}",
+                        last_versioning_step
+                    );
 
                     // Set consensus blocks
                     if let Some(graph) = global_bootstrap_state.graph.as_mut() {
