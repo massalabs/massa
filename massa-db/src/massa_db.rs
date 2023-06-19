@@ -508,10 +508,18 @@ where
         // e.g everything that is not in 'Active' state (so hashes remain compatibles)
         for (key, value) in versioning_changes.iter() {
             if let Some(value) = value {
+                println!(
+                    "[Db] versioning inserting in current_batch -> {:?}: {:?}",
+                    key, value
+                );
                 self.current_batch
                     .lock()
                     .put_cf(handle_versioning, key, value);
             } else {
+                println!(
+                    "[Db] versioning Deleting in current_batch -> {:?}: {:?}",
+                    key, value
+                );
                 self.current_batch.lock().delete_cf(handle_versioning, key);
             }
         }
@@ -553,6 +561,7 @@ where
             let batch = WriteBatch::from_data(current_batch_guard.data());
             current_batch_guard.clear();
 
+            println!("Writing batch...");
             self.db.write(batch).map_err(|e| {
                 MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
             })?;
@@ -569,6 +578,11 @@ where
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
             .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
             .or_insert(versioning_changes);
+
+        println!(
+            "[Db] change_history_versioning {:?}",
+            self.change_history_versioning
+        );
 
         if reset_history {
             self.change_history.clear();
