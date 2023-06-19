@@ -326,31 +326,17 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
     Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
-<span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
 };
 <span class="kw">use </span>massa_pos_exports::DeferredCredits;
-<span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::collections::{HashMap, VecDeque};
 
 <span class="attr">#[derive(Default)]
 </span><span class="doccomment">/// History of the outputs of recently executed slots.
@@ -653,30 +639,18 @@
         }
     }
 
-    <span class="doccomment">/// Get the execution statuses of a set of operations.
-    /// Returns a list where each element is None if no execution was found for that op,
-    /// or a boolean indicating whether the execution was successful (true) or had an error (false).
-    </span><span class="kw">pub fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>to_find: PreHashSet&lt;OperationId&gt; = batch.iter().copied().collect();
-        <span class="kw">let </span><span class="kw-2">mut </span>found = PreHashMap::with_capacity(to_find.len());
-        <span class="kw">for </span>hist_item <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
-            to_find.retain(|op_id| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((success, _expiry_slot)) =
-                    hist_item.state_changes.executed_ops_changes.get(op_id)
-                {
-                    found.insert(<span class="kw-2">*</span>op_id, <span class="kw-2">*</span>success);
-                    <span class="bool-val">false
-                </span>} <span class="kw">else </span>{
-                    <span class="bool-val">true
-                </span>}
-            });
-            <span class="kw">if </span>to_find.is_empty() {
-                <span class="kw">break</span>;
-            }
-        }
-        batch
-            .iter()
-            .map(|op_id| found.get(op_id).copied())
+    <span class="doccomment">/// Get the execution statuses of operations
+    ///
+    /// # Return Value
+    ///
+    /// A hashmap with
+    /// * the operation id as the key
+    /// * and a bool as the value: true: execution succeeded, false: execution failed
+    </span><span class="kw">pub fn </span>get_op_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;OperationId, bool&gt; {
+        <span class="self">self</span>.<span class="number">0
+            </span>.iter()
+            .flat_map(|exec_output| exec_output.state_changes.executed_ops_changes.clone())
+            .map(|(op_id, (status, <span class="kw">_</span>))| (op_id, status))
             .collect()
     }
 }
