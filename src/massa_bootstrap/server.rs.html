@@ -754,6 +754,8 @@
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
 <a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -808,10 +810,6 @@
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 <span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
-<span class="attr">#[cfg(not(test))]
-</span><span class="kw">use </span><span class="kw">crate</span>::listener::BootstrapTcpListener;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">crate</span>::listener::MockBootstrapTcpListener <span class="kw">as </span>BootstrapTcpListener;
 <span class="kw">use crate</span>::{
     bindings::BootstrapServerBinder,
     error::BootstrapError,
@@ -819,6 +817,7 @@
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     BootstrapConfig,
 };
+
 <span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
 </span><span class="attr">#[cfg_attr(test, mockall::automock)]
 </span><span class="kw">pub trait </span>BSEventPoller {
@@ -833,7 +832,7 @@
     <span class="comment">// need to preserve the listener handle up to here to prevent it being destroyed
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span>main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
-    listener_stopper: BootstrapListenerStopHandle,
+    listener_stopper: <span class="prelude-ty">Option</span>&lt;BootstrapListenerStopHandle&gt;,
     update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
 }
 
@@ -844,22 +843,29 @@
         update_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
         main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
         update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
-        listener_stopper: BootstrapListenerStopHandle,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             update_handle,
             main_handle,
             update_stopper_tx,
-            listener_stopper,
+            listener_stopper: <span class="prelude-val">None</span>,
         }
+    }
+    <span class="doccomment">/// Sets an event-emmiter. `Self::stop`] will use this stopper to signal the listener that created this stopper.
+    </span><span class="kw">pub fn </span>set_listener_stopper(<span class="kw-2">&amp;mut </span><span class="self">self</span>, listener_stopper: BootstrapListenerStopHandle) {
+        <span class="self">self</span>.listener_stopper = <span class="prelude-val">Some</span>(listener_stopper);
     }
 
     <span class="doccomment">/// stop the bootstrap server
     </span><span class="kw">pub fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.stop&quot;</span>, {});
-        <span class="comment">// TODO: Refactor the waker so that its existance is tied to the life of the event-loop
-        </span><span class="kw">if </span><span class="self">self</span>.listener_stopper.stop().is_err() {
-            <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
+        <span class="comment">// `as_ref` is critical here, as the stopper has to be alive until the poll in the event
+        // loop acts on the stop-signal
+        // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(listen_stop_handle) = <span class="self">self</span>.listener_stopper.as_ref() {
+            <span class="kw">if </span>listen_stop_handle.stop().is_err() {
+                <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
+            }
         }
         <span class="kw">if </span><span class="self">self</span>.update_stopper_tx.send(()).is_err() {
             <span class="macro">warn!</span>(<span class="string">&quot;bootstrap ip-list-updater already dropped&quot;</span>);
@@ -880,9 +886,8 @@
 
 <span class="doccomment">/// See module level documentation for details
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">pub fn </span>start_bootstrap_server(
-    ev_poller: BootstrapTcpListener,
-    listener_stopper: BootstrapListenerStopHandle,
+</span><span class="kw">pub fn </span>start_bootstrap_server&lt;L: BSEventPoller + Send + <span class="lifetime">&#39;static</span>&gt;(
+    ev_poller: L,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
@@ -908,7 +913,7 @@
     <span class="kw">let </span>update_handle = thread::Builder::new()
         .name(<span class="string">&quot;wb_list_updater&quot;</span>.to_string())
         .spawn(<span class="kw">move </span>|| {
-            <span class="kw">let </span>res = BootstrapServer::run_updater(
+            <span class="kw">let </span>res = BootstrapServer::&lt;L&gt;::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -944,15 +949,14 @@
         update_handle,
         main_handle,
         update_stopper_tx,
-        listener_stopper,
     ))
 }
 
-<span class="kw">struct </span>BootstrapServer&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">struct </span>BootstrapServer&lt;<span class="lifetime">&#39;a</span>, L: BSEventPoller&gt; {
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
-    ev_poller: BootstrapTcpListener,
+    ev_poller: L,
     white_black_list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;a</span>&gt;,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -960,7 +964,7 @@
     ip_hist_map: HashMap&lt;IpAddr, Instant&gt;,
 }
 
-<span class="kw">impl </span>BootstrapServer&lt;<span class="lifetime">&#39;_</span>&gt; {
+<span class="kw">impl</span>&lt;L: BSEventPoller&gt; BootstrapServer&lt;<span class="lifetime">&#39;_</span>, L&gt; {
     <span class="kw">fn </span>run_updater(
         <span class="kw-2">mut </span>list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;_</span>&gt;,
         interval: Duration,
@@ -1034,7 +1038,7 @@
                 }
 
                 <span class="comment">// check IP&#39;s bootstrap attempt history
-                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(msg) = BootstrapServer::greedy_client_check(
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(msg) = BootstrapServer::&lt;L&gt;::greedy_client_check(
                     <span class="kw-2">&amp;mut </span><span class="self">self</span>.ip_hist_map,
                     remote_addr,
                     now,
