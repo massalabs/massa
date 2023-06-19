@@ -42,6 +42,7 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::address::Address;
+use massa_models::amount::Amount;
 use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
     DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
@@ -293,7 +294,7 @@ async fn launch(
         activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(1)),
     };
     let _time = MassaTime::now().unwrap();
-    let mip_0002_state = advance_state_until(ComponentState::active(_time), &mip_0002);
+    let mip_0002_state = advance_state_until(ComponentState::started(Amount::zero()), &mip_0002);
 
     let mip_list_1: [(MipInfo, MipState); 2] = [
         (
@@ -414,13 +415,20 @@ async fn launch(
         Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
+    println!("Bootstrap done, starting the node");
+
     if !final_state.read().is_db_valid() {
         // TODO: Bootstrap again instead of panicking
         panic!("critical: db is not valid after bootstrap");
     }
 
     if args.restart_from_snapshot_at_period.is_none() {
+        
+        println!("START RECOMPUTE CACHES");
+
         final_state.write().recompute_caches();
+
+        println!("RECOMPUTE CACHES DONE ");
 
         // give the controller to final state in order for it to feed the cycles
         final_state

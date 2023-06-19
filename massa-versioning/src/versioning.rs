@@ -1091,7 +1091,7 @@ impl MipStoreRaw {
 
         for (mip_info, mip_state) in self.store.iter() {
             if let Some((advance, state_id)) = mip_state.history.last_key_value() {
-                if bounds.contains(&advance.now) {
+                if /*bounds.contains(&advance.now)*/ true {
                     key.extend(MIP_STORE_PREFIX.as_bytes().to_vec());
                     mip_info_ser.serialize(mip_info, &mut key)?;
                     mip_state_ser.serialize(mip_state, &mut value)?;
@@ -1155,6 +1155,9 @@ impl MipStoreRaw {
                 .deserialize::<DeserializeError>(&ser_mip_state)
                 .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
 
+            println!("STATE mip_info {:?}", mip_info);
+            println!("STATE mip_state {:?}", mip_state);
+
             update_data.insert(mip_info, mip_state);
         }
 
@@ -1169,6 +1172,9 @@ impl MipStoreRaw {
                 network_version_counters: Default::default(),
             },
         };
+
+        println!("store_raw_ STATE {:?}", store_raw_);
+
         let (mut updated, mut added) = self.update_with(&store_raw_)?;
 
         let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
@@ -1197,12 +1203,17 @@ impl MipStoreRaw {
                         .deserialize::<DeserializeError>(&ser_mip_state)
                         .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
 
+                    println!("VERSIONING mip_info {:?}", mip_info);
+                    println!("VERSIONING mip_state {:?}", mip_state);
+
                     update_data.insert(mip_info, mip_state);
                 }
                 key if key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes()) => {
                     let (_, mip_store_stats) = mip_store_stats_deser
                         .deserialize::<DeserializeError>(&ser_mip_state)
                         .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+                    println!("VERSIONING mip_store_stats {:?}", mip_store_stats.clone());
 
                     self.stats = mip_store_stats;
                 }
@@ -1223,6 +1234,7 @@ impl MipStoreRaw {
                 network_version_counters: Default::default(),
             },
         };
+        println!("store_raw_ VERSIONING {:?}", store_raw_);
         let (updated_2, added_2) = self.update_with(&store_raw_)?;
         updated.extend(updated_2);
         added.extend(added_2);
