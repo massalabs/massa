@@ -294,7 +294,7 @@ async fn launch(
         activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(1)),
     };
     let _time = MassaTime::now().unwrap();
-    let mip_0002_state = advance_state_until(ComponentState::started(Amount::zero()), &mip_0002);
+    let mip_0002_state = advance_state_until(ComponentState::active(_time), &mip_0002);
 
     let mip_list_1: [(MipInfo, MipState); 2] = [
         (
