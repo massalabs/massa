@@ -12,7 +12,7 @@ use crate::{
     client::MockBSConnector, get_state, server::MockBSEventPoller, start_bootstrap_server,
     tests::tools::get_bootstrap_config,
 };
-use crate::{BootstrapConfig, BootstrapManager, BootstrapTcpListener};
+use crate::{BootstrapConfig, BootstrapError, BootstrapManager, BootstrapTcpListener};
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
@@ -555,6 +555,129 @@ fn test_bootstrap_server() {
     client_selector_manager.stop();
 }
 
+#[test]
+fn test_bootstrap_bad_accept() {
+    let thread_count = 2;
+    let periods_per_cycle = 2;
+    let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
+    let genesis_address = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+
+    // setup final state local config
+    let temp_dir_server = TempDir::new().unwrap();
+    let db_server_config = MassaDBConfig {
+        path: temp_dir_server.path().to_path_buf(),
+        max_history_length: 10,
+        max_new_elements: 100,
+        thread_count,
+    };
+    let db_server = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_server_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
+    let final_state_local_config = FinalStateConfig {
+        ledger_config: LedgerConfig {
+            thread_count,
+            initial_ledger_path: "".into(),
+            disk_ledger_path: temp_dir_server.path().to_path_buf(),
+            max_key_length: MAX_DATASTORE_KEY_LENGTH,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        },
+        async_pool_config: AsyncPoolConfig {
+            thread_count,
+            max_length: MAX_ASYNC_POOL_LENGTH,
+            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
+        },
+        pos_config: PoSConfig {
+            periods_per_cycle,
+            thread_count,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+        },
+        executed_ops_config: ExecutedOpsConfig { thread_count },
+        executed_denunciations_config: ExecutedDenunciationsConfig {
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            thread_count,
+            endorsement_count: ENDORSEMENT_COUNT,
+        },
+        final_history_length: 100,
+        initial_seed_string: "".into(),
+        initial_rolls_path: "".into(),
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_executed_denunciations_length: 1000,
+        thread_count,
+        periods_per_cycle,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+    };
+
+    // setup selector local config
+    let selector_local_config = SelectorConfig {
+        thread_count,
+        periods_per_cycle,
+        genesis_address,
+        ..Default::default()
+    };
+
+    // start proof-of-stake selectors
+    let (_, server_selector_controller) = start_selector_worker(selector_local_config.clone())
+        .expect("could not start server selector controller");
+
+    let pos_server = PoSFinalState::new(
+        final_state_local_config.pos_config.clone(),
+        "",
+        &rolls_path,
+        server_selector_controller.clone(),
+        db_server.clone(),
+    );
+
+    // // setup final states
+    let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
+        pos_server.unwrap(),
+        final_state_local_config.clone(),
+        db_server.clone(),
+    )));
+
+    // setup final state mocks.
+
+    let (mock_bs_listener, _mock_remote_connector) = accept_err_accept_stop_mocks();
+    // Setup network command mock-story: hard-code the result of getting bootstrap peers
+    let mut mocked_proto_ctrl = MockProtocolController::new();
+    mocked_proto_ctrl
+        .expect_clone_box()
+        .return_once(move || Box::new(MockProtocolController::new()));
+
+    let stream_mock1 = Box::new(MockConsensusControllerImpl::new());
+
+    // Start the bootstrap server thread
+    let bootstrap_manager_thread = std::thread::Builder::new()
+        .name("bootstrap_thread".to_string())
+        .spawn(move || {
+            start_bootstrap_server(
+                mock_bs_listener,
+                stream_mock1,
+                Box::new(mocked_proto_ctrl),
+                final_state_server,
+                bootstrap_config.clone(),
+                keypair.clone(),
+                Version::from_str("TEST.1.10").unwrap(),
+            )
+            .unwrap()
+        })
+        .unwrap();
+
+    // stop bootstrap server
+    bootstrap_manager_thread
+        .join()
+        .unwrap()
+        .stop()
+        .expect("could not stop bootstrap server");
+
+    // stop selector controllers
+}
 fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
     // Setup the server/client connection
     // Bind a TcpListener to localhost on a specific port
@@ -595,4 +718,30 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .returning(move |_, _| Ok(std::net::TcpStream::connect("127.0.0.1:8069").unwrap()))
         .in_sequence(&mut seq);
     (mock_bs_listener, mock_remote_connector)
+}
+
+fn accept_err_accept_stop_mocks() -> (MockBSEventPoller, MockBSConnector) {
+    // first an error...
+    let mut seq = Sequence::new();
+    let mut mock_bs_listener = MockBSEventPoller::new();
+    mock_bs_listener
+        .expect_poll()
+        .times(1)
+        // Mock the `accept` method here by receiving from the listen-loop thread
+        .returning(move || {
+            Err(BootstrapError::IoError(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "mocked error",
+            )))
+        })
+        .in_sequence(&mut seq);
+    // ... then a stop
+    mock_bs_listener
+        .expect_poll()
+        .times(1)
+        // Mock the `accept` method here by receiving from the listen-loop thread
+        .returning(move || Ok(PollEvent::Stop))
+        .in_sequence(&mut seq);
+
+    (mock_bs_listener, MockBSConnector::new())
 }
