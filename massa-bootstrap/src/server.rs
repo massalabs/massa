@@ -240,7 +240,8 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                 Err(e) => {
                     error!("bootstrap listener error: {}", e);
                     // Intuitively, there would be no connection at this point, However an `nc` that
-                    // leads to this scope doesn't exit client-side
+                    // leads to this scope doesn't exit client-side. This depends on a timeout error
+                    // client-side
                     continue;
                 }
             };
