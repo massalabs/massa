@@ -1711,10 +1711,10 @@ impl ExecutionState {
                     )
                     .unwrap();
 
-                    println!(
-                        "Fetching versioning update between {} and {}",
-                        slot_prev, slot
-                    );
+                    // println!(
+                    //     "Fetching versioning update between {} and {}",
+                    //     slot_prev, slot
+                    // );
 
                     self.mip_store
                         .update_batches(
@@ -1729,11 +1729,11 @@ impl ExecutionState {
                             )
                         });
 
-                    println!("Fetched db_batch (len: {})", db_batch.len());
-                    println!(
-                        "Fetched db_versioning_batch (len: {})",
-                        db_versioning_batch.len()
-                    );
+                    // println!("Fetched db_batch (len: {})", db_batch.len());
+                    // println!(
+                    //     "Fetched db_versioning_batch (len: {})",
+                    //     db_versioning_batch.len()
+                    // );
 
                     let use_only_xor = self.final_state.read().get_only_use_xor(slot);
 
