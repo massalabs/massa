@@ -275,27 +275,27 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mip_0001_start = MassaTime::from_utc_ymd_hms(2023, 6, 14, 15, 0, 0).unwrap();
-    let mip_0001_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 14, 16, 0, 0).unwrap();
-    let mip_0001_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 14, 14, 30, 0).unwrap();
-    let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 13, 0, 0).unwrap();
-    let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 19, 14, 0, 0).unwrap();
-    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 10, 0, 0).unwrap();
-    let mip_list_1: [(MipInfo, MipState); 2] = [
-        (
-            MipInfo {
-                name: "MIP-0001".to_string(),
-                version: 1,
-                components: BTreeMap::from([
-                    (MipComponent::Address, 1),
-                    (MipComponent::KeyPair, 1),
-                ]),
-                start: mip_0001_start,
-                timeout: mip_0001_timeout,
-                activation_delay: MassaTime::from_millis(100),
-            },
-            MipState::new(mip_0001_defined_start),
-        ),
+    // let mip_0001_start = MassaTime::from_utc_ymd_hms(2023, 6, 14, 15, 0, 0).unwrap();
+    // let mip_0001_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 14, 16, 0, 0).unwrap();
+    // let mip_0001_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 14, 14, 30, 0).unwrap();
+    let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 11, 50, 0).unwrap();
+    let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 19, 11, 59, 0).unwrap();
+    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 6, 19, 11, 40, 0).unwrap();
+    let mip_list_1: [(MipInfo, MipState); 1] = [
+        // (
+        //     MipInfo {
+        //         name: "MIP-0001".to_string(),
+        //         version: 1,
+        //         components: BTreeMap::from([
+        //             (MipComponent::Address, 1),
+        //             (MipComponent::KeyPair, 1),
+        //         ]),
+        //         start: mip_0001_start,
+        //         timeout: mip_0001_timeout,
+        //         activation_delay: MassaTime::from_millis(100),
+        //     },
+        //     MipState::new(mip_0001_defined_start),
+        // ),
         (
             MipInfo {
                 name: "MIP-0002".to_string(),
