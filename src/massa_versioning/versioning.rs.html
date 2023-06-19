@@ -2208,8 +2208,6 @@
 <a href="#2208" id="2208">2208</a>
 <a href="#2209" id="2209">2209</a>
 <a href="#2210" id="2210">2210</a>
-<a href="#2211" id="2211">2211</a>
-<a href="#2212" id="2212">2212</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -3276,8 +3274,6 @@
                     <span class="kw">match </span>state_id {
                         ComponentStateTypeId::Active =&gt; {
                             batch.insert(key.clone(), <span class="prelude-val">Some</span>(value.clone()));
-                            <span class="comment">// + &quot;Remove key&quot; in VERSIONING_CF
-                            </span>versioning_batch.insert(key.clone(), <span class="prelude-val">None</span>);
                         }
                         <span class="kw">_ </span>=&gt; {
                             versioning_batch.insert(key.clone(), <span class="prelude-val">Some</span>(value.clone()));

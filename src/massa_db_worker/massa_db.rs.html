@@ -1403,7 +1403,7 @@
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
         versioning_changes.extend(
-            stream_changes_versioning
+            stream_changes
                 .new_elements
                 .iter()
                 .map(|(k, v)| (k.clone(), <span class="prelude-val">Some</span>(v.clone()))),

@@ -756,6 +756,9 @@
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
 <a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -997,7 +1000,10 @@
                 <span class="prelude-val">Ok</span>(PollEvent::Stop) =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
                 <span class="prelude-val">Err</span>(e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;bootstrap listener error: {}&quot;</span>, e);
-                    <span class="kw">break </span><span class="prelude-val">Err</span>(e);
+                    <span class="comment">// Intuitively, there would be no connection at this point, However an `nc` that
+                    // leads to this scope doesn&#39;t exit client-side. This depends on a timeout error
+                    // client-side
+                    </span><span class="kw">continue</span>;
                 }
             };
 
