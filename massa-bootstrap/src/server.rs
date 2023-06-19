@@ -239,7 +239,9 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                 Ok(PollEvent::Stop) => break Ok(()),
                 Err(e) => {
                     error!("bootstrap listener error: {}", e);
-                    break Err(e);
+                    // Intuitively, there would be no connection at this point, However an `nc` that
+                    // leads to this scope doesn't exit client-side
+                    continue;
                 }
             };
 
