@@ -1,11 +1,12 @@
 use crate::{
     MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
-    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, STATE_HASH_KEY_IS_XOR_KEY,
-    STATE_HASH_XOR_KEY, VERSIONING_CF,
+    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, MIP_STORE_PREFIX, OPEN_ERROR,
+    STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
+    STATE_HASH_KEY_IS_XOR_KEY, STATE_HASH_XOR_KEY, VERSIONING_CF,
 };
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_hash::{Hash, SmtHasher};
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -672,7 +673,7 @@ where
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
         versioning_changes.extend(
-            stream_changes
+            stream_changes_versioning
                 .new_elements
                 .iter()
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
@@ -801,6 +802,42 @@ where
                 Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
             })
     }
+
+    /*
+    fn dump(&self) {
+        let mip_info_deser = MipInfoDeserializer::new();
+        let mip_state_deser = MipStateDeserializer::new();
+        let mip_store_stats_deser = MipStoreStatsDeserializer::new(
+            MIP_STORE_STATS_BLOCK_CONSIDERED,
+            MIP_STORE_STATS_COUNTERS_MAX,
+        );
+
+        // let db = db.read();
+        let handle = self.db.cf_handle(STATE_CF).unwrap();
+        // .ok_or(ExtendFromDbError::UnknownDbColumn(STATE_CF.to_string()))?;
+
+        // Get data from state cf handle
+        let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
+        for (ser_mip_info, ser_mip_state) in
+            db.db.prefix_iterator_cf(handle, MIP_STORE_PREFIX).flatten()
+        {
+            if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                break;
+            }
+
+            // deser
+            let (_, mip_info) = mip_info_deser
+                .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+            let (_, mip_state) = mip_state_deser
+                .deserialize::<DeserializeError>(&ser_mip_state)
+                .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))?;
+
+            update_data.insert(mip_info, mip_state);
+        }
+    }
+    */
 }
 
 impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
