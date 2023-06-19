@@ -555,8 +555,9 @@ fn test_bootstrap_server() {
     client_selector_manager.stop();
 }
 
+// Regression test for Issue #3932
 #[test]
-fn test_bootstrap_bad_accept() {
+fn test_bootstrap_accept_err() {
     let thread_count = 2;
     let periods_per_cycle = 2;
     let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
@@ -634,17 +635,16 @@ fn test_bootstrap_bad_accept() {
         db_server.clone(),
     );
 
-    // // setup final states
+    // setup final states
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
         pos_server.unwrap(),
         final_state_local_config.clone(),
         db_server.clone(),
     )));
 
-    // setup final state mocks.
-
+    // mock story: 1. accept() -> error. 2. accept() -> stop
     let (mock_bs_listener, _mock_remote_connector) = accept_err_accept_stop_mocks();
-    // Setup network command mock-story: hard-code the result of getting bootstrap peers
+
     let mut mocked_proto_ctrl = MockProtocolController::new();
     mocked_proto_ctrl
         .expect_clone_box()
@@ -652,7 +652,9 @@ fn test_bootstrap_bad_accept() {
 
     let stream_mock1 = Box::new(MockConsensusControllerImpl::new());
 
-    // Start the bootstrap server thread
+    // Start the bootstrap server thread. The expectation for an err then stop is the test.
+    // By ensuring that there is a call to poll following an accept err, it shows that the server
+    // will still listen following an accept err.
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
@@ -675,9 +677,8 @@ fn test_bootstrap_bad_accept() {
         .unwrap()
         .stop()
         .expect("could not stop bootstrap server");
-
-    // stop selector controllers
 }
+
 fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
     // Setup the server/client connection
     // Bind a TcpListener to localhost on a specific port
