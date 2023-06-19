@@ -664,6 +664,11 @@ where
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
 
+        println!(
+            "[Massa db] Writing versioning changes: {:?} - {:?}",
+            versioning_changes, stream_changes.change_id
+        );
+
         self.write_changes(
             changes,
             versioning_changes,
