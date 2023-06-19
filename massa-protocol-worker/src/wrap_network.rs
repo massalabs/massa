@@ -105,9 +105,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
     fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)> {
         let mut map = HashMap::new();
         for (peerid, conn) in self.read().connections.iter() {
-            if let Ok(tuple) = conn.endpoint.get_bandwidth() {
-                map.insert(peerid.to_string(), tuple);
-            }
+            map.insert(peerid.to_string(), conn.endpoint.get_bandwidth());
         }
         map
     }
@@ -130,8 +128,8 @@ pub trait NetworkController: Send + Sync {
         addr: SocketAddr,
         timeout: std::time::Duration,
     ) -> Result<(), ProtocolError>;
-    fn get_total_bytes_received(&self) -> Result<u64, ProtocolError>;
-    fn get_total_bytes_sent(&self) -> Result<u64, ProtocolError>;
+    fn get_total_bytes_received(&self) -> u64;
+    fn get_total_bytes_sent(&self) -> u64;
 }
 
 pub struct NetworkControllerImpl {
@@ -183,18 +181,11 @@ impl NetworkController for NetworkControllerImpl {
         Ok(())
     }
 
-    fn get_total_bytes_received(&self) -> Result<u64, ProtocolError> {
-        self.peernet_manager
-            .get_total_bytes_received()
-            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
+    fn get_total_bytes_received(&self) -> u64 {
+        self.peernet_manager.get_total_bytes_received()
     }
 
-    fn get_total_bytes_sent(&self) -> Result<u64, ProtocolError> {
-        self.peernet_manager.get_total_bytes_sent().map_err(|err| {
-            ProtocolError::GeneralProtocolError(format!(
-                "Error while getting total bytes sent: {}",
-                err
-            ))
-        })
+    fn get_total_bytes_sent(&self) -> u64 {
+        self.peernet_manager.get_total_bytes_sent()
     }
 }

@@ -210,11 +210,11 @@ impl NetworkController for MockNetworkController {
         Box::new(self.connections.clone())
     }
 
-    fn get_total_bytes_received(&self) -> Result<u64, ProtocolError> {
-        Ok(0)
+    fn get_total_bytes_received(&self) -> u64 {
+        0
     }
 
-    fn get_total_bytes_sent(&self) -> Result<u64, ProtocolError> {
-        Ok(0)
+    fn get_total_bytes_sent(&self) -> u64 {
+        0
     }
 }

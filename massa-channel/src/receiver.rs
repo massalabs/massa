@@ -6,7 +6,7 @@ use std::{
 
 use crossbeam::channel::{Receiver, RecvError, RecvTimeoutError, TryRecvError};
 use prometheus::{Counter, Gauge};
-use tracing::error;
+use tracing::trace;
 
 #[derive(Clone)]
 pub struct MassaReceiver<T> {
@@ -48,16 +48,18 @@ impl<T> MassaReceiver<T> {
     /// unregister metrics
     fn unregister_metrics(&self) {
         if let Err(e) = prometheus::unregister(Box::new(self.actual_len.clone())) {
-            error!(
+            trace!(
                 "promethetus error unregister actual_len for {} : {}",
-                self.name, e
+                self.name,
+                e
             );
         }
 
         if let Err(e) = prometheus::unregister(Box::new(self.received.clone())) {
-            error!(
+            trace!(
                 "promethetus error unregister received for {} : {}",
-                self.name, e
+                self.name,
+                e
             );
         }
     }

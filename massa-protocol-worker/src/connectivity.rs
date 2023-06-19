@@ -225,13 +225,9 @@ pub(crate) fn start_connectivity_thread(
                             }
                         },
                         recv(tick_metrics) -> _ => {
-                            if let Ok(count) = network_controller.get_total_bytes_received() {
-                                massa_metrics.inc_peernet_total_bytes_receive(count);
-                            }
+                            massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
 
-                            if let Ok(count) = network_controller.get_total_bytes_sent() {
-                                massa_metrics.inc_peernet_total_bytes_sent(count);
-                            }
+                            massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
 
                             let active_conn = network_controller.get_active_connections();
                             #[cfg(not(feature = "sandbox"))]
