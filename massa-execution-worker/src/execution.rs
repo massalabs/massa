@@ -1696,6 +1696,7 @@ impl ExecutionState {
                     self.mip_store.update_network_version_stats(
                         slot_ts,
                         Some((current_version, announced_version)),
+                        self.final_state.read().db.clone(),
                     );
 
                     // Now write mip store changes to disk (if any)

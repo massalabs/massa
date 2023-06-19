@@ -10,7 +10,7 @@ use thiserror::Error;
 use tracing::{debug, info, warn};
 
 use massa_db::{
-    DBBatch, MassaDB, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
+    DBBatch, MassaDB, CF_ERROR, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
 };
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_models::error::ModelsError;
@@ -547,9 +547,10 @@ impl MipStore {
         &mut self,
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, u32)>,
+        db: Arc<RwLock<MassaDB>>,
     ) {
         let mut lock = self.0.write();
-        lock.update_network_version_stats(slot_timestamp, network_versions);
+        lock.update_network_version_stats(slot_timestamp, network_versions, db);
     }
 
     #[allow(clippy::result_large_err)]
@@ -846,6 +847,7 @@ impl MipStoreRaw {
         &mut self,
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, u32)>,
+        db: Arc<RwLock<MassaDB>>,
     ) {
         if let Some((_current_network_version, announced_network_version)) = network_versions {
             let removed_version_ = match self.stats.latest_announcements.len() {
@@ -886,12 +888,16 @@ impl MipStoreRaw {
                 }
             }
 
-            self.advance_states_on_updated_stats(slot_timestamp);
+            self.advance_states_on_updated_stats(slot_timestamp, db);
         }
     }
 
     /// Used internally by `update_network_version_stats`
-    fn advance_states_on_updated_stats(&mut self, slot_timestamp: MassaTime) {
+    fn advance_states_on_updated_stats(
+        &mut self,
+        slot_timestamp: MassaTime,
+        db: Arc<RwLock<MassaDB>>,
+    ) {
         for (mi, state) in self.store.iter_mut() {
             let network_version_count = *self
                 .stats
@@ -906,6 +912,58 @@ impl MipStoreRaw {
 
             info!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
             // info!("db dump", self.db.dump_versioning());
+
+            let db = db.read();
+            let handle_state = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
+            let handle_versioning = db.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+
+            let mip_info_deser = MipInfoDeserializer::new();
+            let mip_state_deser = MipStateDeserializer::new();
+            for (ser_mip_info, ser_mip_state) in db
+                .db
+                .prefix_iterator_cf(handle_state, MIP_STORE_PREFIX)
+                .flatten()
+            {
+                if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                    break;
+                }
+
+                // deser
+                let (_, mip_info) = mip_info_deser
+                    .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                    .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))
+                    .unwrap();
+
+                let (_, mip_state) = mip_state_deser
+                    .deserialize::<DeserializeError>(&ser_mip_state)
+                    .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))
+                    .unwrap();
+
+                println!("[Dump][STATE_CF] {:?} {:?}", mip_info, mip_state);
+            }
+            println!("=====");
+            for (ser_mip_info, ser_mip_state) in db
+                .db
+                .prefix_iterator_cf(handle_versioning, MIP_STORE_PREFIX)
+                .flatten()
+            {
+                if !ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                    break;
+                }
+
+                // deser
+                let (_, mip_info) = mip_info_deser
+                    .deserialize::<DeserializeError>(&ser_mip_info[MIP_STORE_PREFIX.len()..])
+                    .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))
+                    .unwrap();
+
+                let (_, mip_state) = mip_state_deser
+                    .deserialize::<DeserializeError>(&ser_mip_state)
+                    .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))
+                    .unwrap();
+
+                println!("[Dump][STATE_CF] {:?} {:?}", mip_info, mip_state);
+            }
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,
