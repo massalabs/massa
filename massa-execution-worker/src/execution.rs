@@ -1277,10 +1277,10 @@ impl ExecutionState {
                 self.apply_final_execution_output(exec_out.clone());
 
                 // update versioning stats
-                println!(
-                    "[V 0] Calling update versioning stats for slot: {}, exec_out slot: {:?}",
-                    slot, exec_out.slot
-                );
+                // println!(
+                //     "[V 0] Calling update versioning stats for slot: {}, exec_out slot: {:?}",
+                //     slot, exec_out.slot
+                // );
                 self.update_versioning_stats(exec_target, slot);
 
                 // Broadcast a final slot execution output to active channel subscribers.

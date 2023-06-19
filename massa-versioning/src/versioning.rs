@@ -1100,17 +1100,19 @@ impl MipStoreRaw {
                     mip_state_ser.serialize(mip_state, &mut value)?;
                     match state_id {
                         ComponentStateTypeId::Active => {
-                            println!(
-                                "[V][update_batches] Adding to batch: {:?} - {:?}",
-                                mip_info, mip_state
-                            );
+                            // println!(
+                            //     "[V][update_batches] Adding to batch: {:?} - {:?}",
+                            //     mip_info, mip_state
+                            // );
                             batch.insert(key.clone(), Some(value.clone()));
+                            // "Remove key" in VERSIONING_CF
+                            versioning_batch.insert(key.clone(), None);
                         }
                         _ => {
-                            println!(
-                                "[V][update_batches] Adding to versioning_batch: {:?} - {:?}",
-                                mip_info, mip_state
-                            );
+                            // println!(
+                            //     "[V][update_batches] Adding to versioning_batch: {:?} - {:?}",
+                            //     mip_info, mip_state
+                            // );
                             versioning_batch.insert(key.clone(), Some(value.clone()));
                         }
                     }
