@@ -27,6 +27,7 @@ const RNG_SEED_IDENT: u8 = 1u8;
 const FINAL_STATE_HASH_SNAPSHOT_IDENT: u8 = 2u8;
 const ROLL_COUNT_IDENT: u8 = 3u8;
 const PROD_STATS_IDENT: u8 = 4u8;
+const UPPER_LIMIT: u8 = 255u8;
 
 // Production stats idents
 const PROD_STATS_FAIL_IDENT: u8 = 0u8;
@@ -82,6 +83,14 @@ macro_rules! roll_count_key {
 macro_rules! prod_stats_prefix {
     ($cycle_prefix:expr) => {
         [&$cycle_prefix[..], &[PROD_STATS_IDENT]].concat()
+    };
+}
+
+/// Upper limit prefix macro for a given cycle
+#[macro_export]
+macro_rules! upper_limit_prefix {
+    ($cycle_prefix:expr) => {
+        [&$cycle_prefix[..], &[UPPER_LIMIT]].concat()
     };
 }
 
@@ -873,15 +882,19 @@ impl PoSFinalState {
         let mut found_cycles: Vec<(u64, bool)> = Vec::new();
 
         while let Some((serialized_key, _)) = match found_cycles.last() {
-            Some((prev_cycle, _)) => db
-                .iterator_cf(
-                    STATE_CF,
-                    MassaIteratorMode::From(
-                        &self.cycle_history_cycle_prefix(prev_cycle.saturating_add(1)),
-                        MassaDirection::Forward,
-                    ),
-                )
-                .next(),
+            Some((prev_cycle, _)) => {
+                let cycle_prefix = self.cycle_history_cycle_prefix(*prev_cycle);
+
+                db
+                    .iterator_cf(
+                        STATE_CF,
+                        MassaIteratorMode::From(
+                            &upper_limit_prefix!(cycle_prefix),
+                            MassaDirection::Forward,
+                        ),
+                    )
+                    .next()
+                },
             None => db
                 .iterator_cf(
                     STATE_CF,
@@ -904,7 +917,10 @@ impl PoSFinalState {
 
             found_cycles.push((cycle, self.is_cycle_complete(cycle)));
         }
-
+    
+        // The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
+        found_cycles.sort_by_key(|(cycle, _)| *cycle);
+    
         found_cycles
     }
 
