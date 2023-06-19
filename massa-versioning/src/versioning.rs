@@ -7,7 +7,7 @@ use machine::{machine, transitions};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use massa_db::{
     DBBatch, MassaDB, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
@@ -189,7 +189,10 @@ impl Defined {
     pub fn on_advance(self, input: Advance) -> ComponentState {
         match input.now {
             n if n >= input.timeout => ComponentState::failed(),
-            n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
+            n if n >= input.start_timestamp => {
+                info!("(VERSIONING LOG) transition accepted, started");
+                ComponentState::started(Amount::zero())
+            }
             _ => ComponentState::Defined(Defined {}),
         }
     }
@@ -203,7 +206,7 @@ impl Started {
         }
 
         if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
-            debug!("(VERSIONING LOG) transition accepted, locking in");
+            info!("(VERSIONING LOG) transition accepted, locking in");
             ComponentState::locked_in(input.now)
         } else {
             ComponentState::started(input.threshold)

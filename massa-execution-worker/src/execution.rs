@@ -1278,8 +1278,8 @@ impl ExecutionState {
 
                 // update versioning stats
                 println!(
-                    "Calling update versioning stats for slot: {}, exec_out: {:?}",
-                    slot, exec_out
+                    "[V 0] Calling update versioning stats for slot: {}, exec_out slot: {:?}",
+                    slot, exec_out.slot
                 );
                 self.update_versioning_stats(exec_target, slot);
 
@@ -1702,17 +1702,18 @@ impl ExecutionState {
                     let mut db_batch = DBBatch::new();
                     let mut db_versioning_batch = DBBatch::new();
                     // Unwrap/Expect because if something fails we can only panic here
+                    let slot_prev = slot.get_prev_slot(self.config.thread_count).unwrap();
                     let slot_prev_ts = get_block_slot_timestamp(
                         self.config.thread_count,
                         self.config.t0,
                         self.config.genesis_timestamp,
-                        slot.get_prev_slot(self.config.thread_count).unwrap(),
+                        slot_prev,
                     )
                     .unwrap();
 
                     println!(
                         "Fetching versioning update between {} and {}",
-                        slot_prev_ts, slot_ts
+                        slot_prev, slot
                     );
 
                     self.mip_store
@@ -1724,7 +1725,7 @@ impl ExecutionState {
                         .unwrap_or_else(|e| {
                             panic!(
                                 "Unable to get MIP store changes between {} and {}: {}",
-                                slot_prev_ts, slot_ts, e
+                                slot_prev, slot, e
                             )
                         });
 
