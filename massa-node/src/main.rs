@@ -280,8 +280,8 @@ async fn launch(
     let mip_0001_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 14, 16, 0, 0).unwrap();
     let mip_0001_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 14, 14, 30, 0).unwrap();
     let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 15, 14, 25, 0).unwrap();
-    let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 16, 14, 15, 0).unwrap();
-    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 15, 14, 10, 0).unwrap();
+    let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 22, 14, 15, 0).unwrap();
+    let _mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 15, 14, 10, 0).unwrap();
 
     // Debug: set state to active
     let mip_0002 = MipInfo {
