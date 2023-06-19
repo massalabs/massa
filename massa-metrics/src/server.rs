@@ -28,10 +28,10 @@ pub(crate) fn bind_metrics(addr: SocketAddr) {
 async fn serve_req(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     if req.uri().path() != "/metrics" {
         // return hyper error
-        return Ok(Response::builder()
+        Ok(Response::builder()
             .status(404)
             .body(Body::from("Not Found"))
-            .unwrap());
+            .unwrap())
     } else {
         let encoder = TextEncoder::new();
         let mut buffer = vec![];
