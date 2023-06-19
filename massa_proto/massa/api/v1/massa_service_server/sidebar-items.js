@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["MassaServiceServer","_Inner"],"trait":["MassaService"]};
