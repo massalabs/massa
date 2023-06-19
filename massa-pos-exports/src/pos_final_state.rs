@@ -885,16 +885,15 @@ impl PoSFinalState {
             Some((prev_cycle, _)) => {
                 let cycle_prefix = self.cycle_history_cycle_prefix(*prev_cycle);
 
-                db
-                    .iterator_cf(
-                        STATE_CF,
-                        MassaIteratorMode::From(
-                            &upper_limit_prefix!(cycle_prefix),
-                            MassaDirection::Forward,
-                        ),
-                    )
-                    .next()
-                },
+                db.iterator_cf(
+                    STATE_CF,
+                    MassaIteratorMode::From(
+                        &upper_limit_prefix!(cycle_prefix),
+                        MassaDirection::Forward,
+                    ),
+                )
+                .next()
+            }
             None => db
                 .iterator_cf(
                     STATE_CF,
@@ -917,10 +916,10 @@ impl PoSFinalState {
 
             found_cycles.push((cycle, self.is_cycle_complete(cycle)));
         }
-    
+
         // The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
         found_cycles.sort_by_key(|(cycle, _)| *cycle);
-    
+
         found_cycles
     }
 
