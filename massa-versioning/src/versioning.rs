@@ -910,9 +910,10 @@ impl MipStoreRaw {
 
             let vote_ratio = Amount::const_init(vote_ratio_.round() as u64, 0);
 
-            info!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            // info!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
             // info!("db dump", self.db.dump_versioning());
 
+            /*
             let db = db.read();
             let handle_state = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
             let handle_versioning = db.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -962,8 +963,9 @@ impl MipStoreRaw {
                     .map_err(|e| ExtendFromDbError::Deserialize(e.to_string()))
                     .unwrap();
 
-                println!("[Dump][STATE_CF] {:?} {:?}", mip_info, mip_state);
+                println!("[Dump][VERSIONING_CF] {:?} {:?}", mip_info, mip_state);
             }
+            */
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,

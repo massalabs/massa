@@ -413,6 +413,11 @@ where
             }
         }
 
+        println!(
+            "[V][DB][get_versioning_batch_to_stream] new elements: {:?}",
+            new_elements
+        );
+
         Ok(StreamBatch {
             new_elements,
             updates_on_previous_elements,

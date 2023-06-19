@@ -535,6 +535,8 @@ pub fn stream_bootstrap_information(
                     ))
                 })?;
 
+            println!("[Bootstrap server] versioning part: {:?}", versioning_part);
+
             let new_versioning_step = match (&last_versioning_step, versioning_part.is_empty()) {
                 // We already finished streaming the versioning
                 (StreamingStep::Finished(_), _) => StreamingStep::Finished(None),
