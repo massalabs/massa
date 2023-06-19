@@ -1099,6 +1099,8 @@ impl MipStoreRaw {
                     match state_id {
                         ComponentStateTypeId::Active => {
                             batch.insert(key.clone(), Some(value.clone()));
+                            // + "Remove key" in VERSIONING_CF
+                            versioning_batch.insert(key.clone(), None);
                         }
                         _ => {
                             versioning_batch.insert(key.clone(), Some(value.clone()));
