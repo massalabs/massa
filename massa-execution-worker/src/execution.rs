@@ -1254,10 +1254,10 @@ impl ExecutionState {
         selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
-        info!(
-            "execute_final_slot: executing slot={} target={:?}",
-            slot, target_id
-        );
+        // info!(
+        //     "execute_final_slot: executing slot={} target={:?}",
+        //     slot, target_id
+        // );
 
         if slot <= &self.final_cursor {
             info!(
