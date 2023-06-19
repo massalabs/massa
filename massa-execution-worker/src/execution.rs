@@ -1706,6 +1706,11 @@ impl ExecutionState {
                     )
                     .unwrap();
 
+                    println!(
+                        "Fetching vers update between {} and {}",
+                        slot_prev_ts, slot_ts
+                    );
+
                     self.mip_store
                         .update_batches(
                             &mut db_batch,
@@ -1718,6 +1723,13 @@ impl ExecutionState {
                                 slot_prev_ts, slot_ts, e
                             )
                         });
+
+                    println!("Fetched db_batch (len: {}): {:?}", db_batch.len(), db_batch);
+                    println!(
+                        "Fetched db_versioning_batch (len: {}): {:?}",
+                        db_versioning_batch.len(),
+                        db_versioning_batch
+                    );
 
                     let use_only_xor = self.final_state.read().get_only_use_xor(slot);
 

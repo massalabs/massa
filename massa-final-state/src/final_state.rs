@@ -135,11 +135,11 @@ impl FinalState {
             final_state.db.read().set_initial_change_id(slot);
         }
 
-        info!(
-            "final_state hash at slot {}: {}",
-            slot,
-            final_state.db.read().get_db_hash()
-        );
+        // info!(
+        //     "final_state hash at slot {}: {}",
+        //     slot,
+        //     final_state.db.read().get_db_hash()
+        // );
 
         // create the final state
         Ok(final_state)
@@ -229,11 +229,11 @@ impl FinalState {
             recovered_slot
         );
 
-        info!(
-            "final_state hash at slot {}: {}",
-            recovered_slot,
-            final_state.db.read().get_db_hash()
-        );
+        // info!(
+        //     "final_state hash at slot {}: {}",
+        //     recovered_slot,
+        //     final_state.db.read().get_db_hash()
+        // );
 
         // Then, interpolate the downtime, to attach at end_slot;
         final_state.last_start_period = last_start_period;
@@ -282,10 +282,10 @@ impl FinalState {
         // Recompute the hash with the updated data and feed it to POS_state.
         let final_state_hash = self.db.read().get_db_hash();
 
-        info!(
-            "final_state hash at slot {}: {}",
-            end_slot, final_state_hash
-        );
+        // info!(
+        //     "final_state hash at slot {}: {}",
+        //     end_slot, final_state_hash
+        // );
 
         // feed final_state_hash to the last cycle
         let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
@@ -602,7 +602,7 @@ impl FinalState {
         let final_state_hash = self.db.read().get_db_hash();
 
         // compute the final state hash
-        info!("final_state hash at slot {}: {}", slot, final_state_hash);
+        // info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
         // Backup DB if needed
         if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {

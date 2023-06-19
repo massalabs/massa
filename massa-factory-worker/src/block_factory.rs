@@ -237,10 +237,10 @@ impl BlockFactoryWorker {
         block_storage.store_block(block);
 
         // log block creation
-        info!(
-            "block {} created at slot {} by address {}",
-            block_id, slot, block_producer_addr
-        );
+        // info!(
+        //     "block {} created at slot {} by address {}",
+        //     block_id, slot, block_producer_addr
+        // );
 
         // send full block to consensus
         self.channels
