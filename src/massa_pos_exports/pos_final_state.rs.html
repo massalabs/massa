@@ -1622,6 +1622,21 @@
 <a href="#1622" id="1622">1622</a>
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
+<a href="#1625" id="1625">1625</a>
+<a href="#1626" id="1626">1626</a>
+<a href="#1627" id="1627">1627</a>
+<a href="#1628" id="1628">1628</a>
+<a href="#1629" id="1629">1629</a>
+<a href="#1630" id="1630">1630</a>
+<a href="#1631" id="1631">1631</a>
+<a href="#1632" id="1632">1632</a>
+<a href="#1633" id="1633">1633</a>
+<a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -1651,6 +1666,7 @@
 <span class="kw">const </span>FINAL_STATE_HASH_SNAPSHOT_IDENT: u8 = <span class="number">2u8</span>;
 <span class="kw">const </span>ROLL_COUNT_IDENT: u8 = <span class="number">3u8</span>;
 <span class="kw">const </span>PROD_STATS_IDENT: u8 = <span class="number">4u8</span>;
+<span class="kw">const </span>UPPER_LIMIT: u8 = <span class="number">255u8</span>;
 
 <span class="comment">// Production stats idents
 </span><span class="kw">const </span>PROD_STATS_FAIL_IDENT: u8 = <span class="number">0u8</span>;
@@ -1706,6 +1722,14 @@
 </span><span class="macro">macro_rules! </span>prod_stats_prefix {
     (<span class="macro-nonterminal">$cycle_prefix</span>:expr) =&gt; {
         [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$cycle_prefix</span>[..], <span class="kw-2">&amp;</span>[PROD_STATS_IDENT]].concat()
+    };
+}
+
+<span class="doccomment">/// Upper limit prefix macro for a given cycle
+</span><span class="attr">#[macro_export]
+</span><span class="macro">macro_rules! </span>upper_limit_prefix {
+    (<span class="macro-nonterminal">$cycle_prefix</span>:expr) =&gt; {
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$cycle_prefix</span>[..], <span class="kw-2">&amp;</span>[UPPER_LIMIT]].concat()
     };
 }
 
@@ -2497,15 +2521,18 @@
         <span class="kw">let </span><span class="kw-2">mut </span>found_cycles: Vec&lt;(u64, bool)&gt; = Vec::new();
 
         <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_key, <span class="kw">_</span>)) = <span class="kw">match </span>found_cycles.last() {
-            <span class="prelude-val">Some</span>((prev_cycle, <span class="kw">_</span>)) =&gt; db
-                .iterator_cf(
+            <span class="prelude-val">Some</span>((prev_cycle, <span class="kw">_</span>)) =&gt; {
+                <span class="kw">let </span>cycle_prefix = <span class="self">self</span>.cycle_history_cycle_prefix(<span class="kw-2">*</span>prev_cycle);
+
+                db.iterator_cf(
                     STATE_CF,
                     MassaIteratorMode::From(
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.cycle_history_cycle_prefix(prev_cycle.saturating_add(<span class="number">1</span>)),
+                        <span class="kw-2">&amp;</span><span class="macro">upper_limit_prefix!</span>(cycle_prefix),
                         MassaDirection::Forward,
                     ),
                 )
-                .next(),
+                .next()
+            }
             <span class="prelude-val">None </span>=&gt; db
                 .iterator_cf(
                     STATE_CF,
@@ -2528,6 +2555,9 @@
 
             found_cycles.push((cycle, <span class="self">self</span>.is_cycle_complete(cycle)));
         }
+
+        <span class="comment">// The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
+        </span>found_cycles.sort_by_key(|(cycle, <span class="kw">_</span>)| <span class="kw-2">*</span>cycle);
 
         found_cycles
     }
