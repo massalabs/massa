@@ -98,6 +98,10 @@ fn stream_final_state_and_consensus(
                         write_final_state.last_slot_before_downtime = last_slot_before_downtime;
                     }
 
+                    println!(
+                        "[Bootstrap - client] {:?} {:?}",
+                        state_part, versioning_part
+                    );
                     let (last_state_step, last_versioning_step) = write_final_state
                         .db
                         .write()
@@ -159,6 +163,11 @@ fn stream_final_state_and_consensus(
                         .mip_store
                         .extend_from_db(db)
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
+
+                    println!(
+                        "[Bootstrap client] updated: {:?}, added: {:?}",
+                        updated, added
+                    );
 
                     warn_user_about_versioning_updates(updated, added);
 
