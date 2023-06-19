@@ -1,11 +1,11 @@
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
-use crate::BootstrapConfig;
 use crate::{
     bindings::{BootstrapClientBinder, BootstrapServerBinder},
     tests::tools::get_bootstrap_config,
     BootstrapPeers,
 };
+use crate::{BootstrapConfig, BootstrapError};
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
@@ -23,8 +23,10 @@ use massa_protocol_exports::{PeerId, TransportType};
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
 use std::collections::HashMap;
+use std::io::Write;
 use std::net::TcpStream;
 use std::str::FromStr;
+use std::time::Duration;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -76,6 +78,7 @@ fn test_binders() {
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
     let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
 
     let mut server = BootstrapServerBinder::new(
         server.0,
@@ -118,9 +121,7 @@ fn test_binders() {
                     peers: BootstrapPeers(vector_peers.clone()),
                 };
 
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-
-                server.handshake_timeout(version, None).unwrap();
+                server.handshake_timeout(version(), None).unwrap();
 
                 server
                     .send_timeout(test_peers_message.clone(), None)
@@ -172,9 +173,7 @@ fn test_binders() {
                 );
                 let vector_peers = vec![(peer_id1, listeners)];
 
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-
-                client.handshake(version).unwrap();
+                client.handshake(version()).unwrap();
                 let message = client.next_timeout(None).unwrap();
                 match message {
                     BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -226,6 +225,7 @@ fn test_binders_double_send_server_works() {
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let client = std::net::TcpStream::connect(server.local_addr().unwrap()).unwrap();
     let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
 
     let mut server = BootstrapServerBinder::new(
         server.0,
@@ -268,9 +268,7 @@ fn test_binders_double_send_server_works() {
                     peers: BootstrapPeers(vector_peers.clone()),
                 };
 
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
-
-                server.handshake_timeout(version, None).unwrap();
+                server.handshake_timeout(version(), None).unwrap();
                 server
                     .send_timeout(test_peers_message.clone(), None)
                     .unwrap();
@@ -312,9 +310,8 @@ fn test_binders_double_send_server_works() {
                     TransportType::Tcp,
                 );
                 let vector_peers = vec![(peer_id1, listeners.clone())];
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-                client.handshake(version).unwrap();
+                client.handshake(version()).unwrap();
                 let message = client.next_timeout(None).unwrap();
                 match message {
                     BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -374,6 +371,7 @@ fn test_binders_try_double_send_client_works() {
         client,
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
+    let version = || Version::from_str("TEST.1.10").unwrap();
 
     let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
 
@@ -392,9 +390,8 @@ fn test_binders_try_double_send_client_works() {
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                     peers: BootstrapPeers(vector_peers.clone()),
                 };
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-                server.handshake_timeout(version, None).unwrap();
+                server.handshake_timeout(version(), None).unwrap();
                 server
                     .send_timeout(test_peers_message.clone(), None)
                     .unwrap();
@@ -434,9 +431,8 @@ fn test_binders_try_double_send_client_works() {
                     TransportType::Tcp,
                 );
                 let vector_peers = vec![(peer_id1.clone(), listeners.clone())];
-                let version: Version = Version::from_str("TEST.1.10").unwrap();
 
-                client.handshake(version).unwrap();
+                client.handshake(version()).unwrap();
                 let message = client.next_timeout(None).unwrap();
                 match message {
                     BootstrapServerMessage::BootstrapPeers { peers } => {
@@ -482,5 +478,157 @@ fn test_binders_try_double_send_client_works() {
         .unwrap();
 
     server_thread.join().unwrap();
+    client_thread.join().unwrap();
+}
+
+#[test]
+fn test_partial_msg() {
+    let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = std::net::TcpStream::connect(addr).unwrap();
+    let mut client_clone = client.try_clone().unwrap();
+    let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
+
+    let mut server = BootstrapServerBinder::new(
+        server.0,
+        server_keypair.clone(),
+        BootstrapSrvBindCfg {
+            max_bytes_read_write: f64::INFINITY,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
+    );
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
+    let server_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn({
+            move || {
+                server.handshake_timeout(version(), None).unwrap();
+                let message = server.next_timeout(None).unwrap_err();
+                match message {
+                    BootstrapError::IoError(message) => {
+                        assert_eq!(message.kind(), std::io::ErrorKind::UnexpectedEof);
+                        assert_eq!(message.to_string(), "failed to fill whole buffer: 0/2");
+                    }
+                    _ => panic!("expected an io_error"),
+                }
+            }
+        })
+        .unwrap();
+
+    let client_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn({
+            move || {
+                client.handshake(version()).unwrap();
+
+                // write the signature.
+                // This test  assumes that the the signature is not checked until the message is read in
+                // its entirety. The signature here would cause the message exchange to fail on that basis
+                // if this assumption is broken.
+                client_clone
+                    .write_all(b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                    .unwrap();
+                // Give a non-zero message length, but never provide any msg-bytes
+                client_clone.write_all(&[0, 0, 0, 2]).unwrap();
+            }
+        })
+        .unwrap();
+
+    server_thread.join().unwrap();
+    client_thread.join().unwrap();
+}
+#[test]
+fn test_client_drip_feed() {
+    let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = std::net::TcpStream::connect(addr).unwrap();
+    let mut client_clone = client.try_clone().unwrap();
+    let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
+
+    let mut server = BootstrapServerBinder::new(
+        server.0,
+        server_keypair.clone(),
+        BootstrapSrvBindCfg {
+            max_bytes_read_write: f64::INFINITY,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
+    );
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
+
+    let start = std::time::Instant::now();
+    let server_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn({
+            move || {
+                server.handshake_timeout(version(), None).unwrap();
+
+                let message = server
+                    .next_timeout(Some(Duration::from_secs(1)))
+                    .unwrap_err();
+                match message {
+                    BootstrapError::TimedOut(message) => {
+                        assert_eq!(message.to_string(), "deadline has elapsed");
+                        assert_eq!(message.kind(), std::io::ErrorKind::TimedOut);
+                    }
+                    message => panic!("expected timeout error, got {:?}", message),
+                }
+                std::mem::forget(server);
+            }
+        })
+        .unwrap();
+
+    let client_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn({
+            move || {
+                client.handshake(version()).unwrap();
+
+                // write the signature.
+                // This test  assumes that the the signature is not checked until the message is read in
+                // its entirety. The signature here would cause the message exchange to fail on that basis
+                // if this assumption is broken.
+                client_clone
+                    .write_all(b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                    .unwrap();
+                // give a message size that we can drip-feed
+                client_clone.write_all(&[0, 0, 0, 120]).unwrap();
+                for i in 0..120 {
+                    client_clone.write(&[i]).unwrap();
+                    client_clone.flush().unwrap();
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+            }
+        })
+        .unwrap();
+
+    server_thread.join().unwrap();
+    assert!(
+        start.elapsed() > Duration::from_millis(1000),
+        "elapsed {:?}",
+        start.elapsed()
+    );
+    assert!(
+        start.elapsed() < Duration::from_millis(1100),
+        "elapsed {:?}",
+        start.elapsed()
+    );
     client_thread.join().unwrap();
 }
