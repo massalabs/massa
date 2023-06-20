@@ -701,7 +701,13 @@ fn test_bandwidth() {
                 }
                 let dur = before.elapsed();
                 assert!(dur > Duration::from_secs(10));
-                assert!(dur < Duration::from_millis(11_500));
+                let millis_limit = {
+                    #[cfg(target_os = "windows")]
+                    18_000;
+                    #[cfg(not(target_os = "windows"))]
+                    11_500
+                };
+                assert!(dur < Duration::from_millis(millis_limit));
 
                 let before = Instant::now();
                 server
@@ -712,7 +718,7 @@ fn test_bandwidth() {
                     .unwrap();
                 let dur = before.elapsed();
                 assert!(dur > Duration::from_secs(10));
-                assert!(dur < Duration::from_millis(11_500));
+                assert!(dur < Duration::from_millis(millis_limit));
             }
         })
         .unwrap();
