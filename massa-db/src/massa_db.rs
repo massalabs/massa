@@ -659,18 +659,13 @@ where
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
 
-        #[cfg(test)]
-        let compute_hash = true;
-        #[cfg(not(test))]
-        let compute_hash = false;
-
         self.write_changes(
             changes,
             versioning_changes,
             Some(stream_changes.change_id),
             true,
             false,
-            compute_hash,
+            false,
         )?;
 
         Ok((new_cursor, new_cursor_versioning))
