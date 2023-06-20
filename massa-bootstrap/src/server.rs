@@ -232,6 +232,7 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         // TODO: Work out how to integration-test this
+        let limit = self.bootstrap_config.max_bytes_read_write;
         loop {
             // block until we have a connection to work with, or break out of main-loop
             let (dplx, remote_addr) = match self.ev_poller.poll() {
@@ -251,6 +252,7 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                 dplx,
                 self.keypair.clone(),
                 (&self.bootstrap_config).into(),
+                Some(limit),
             );
 
             // check whether incoming peer IP is allowed.
