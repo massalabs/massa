@@ -707,7 +707,11 @@ fn test_bandwidth() {
                         18_000
                     }
 
-                    #[cfg(not(target_os = "windows"))]
+                    #[cfg(target_os = "macos")]
+                    {
+                        20_500
+                    }
+                    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
                     {
                         11_500
                     }
