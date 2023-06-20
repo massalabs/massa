@@ -683,6 +683,21 @@ fn test_bandwidth() {
     let err_str = ['A'; 1_000].into_iter().collect::<String>();
     let srv_err_str = err_str.clone();
 
+    let millis_limit = {
+        #[cfg(target_os = "windows")]
+        {
+            18_000
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            20_500
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        {
+            11_500
+        }
+    };
     let server_thread = std::thread::Builder::new()
         .name("test_binders::server_thread".to_string())
         .spawn({
@@ -701,21 +716,6 @@ fn test_bandwidth() {
                 }
                 let dur = before.elapsed();
                 assert!(dur > Duration::from_secs(10));
-                let millis_limit = {
-                    #[cfg(target_os = "windows")]
-                    {
-                        18_000
-                    }
-
-                    #[cfg(target_os = "macos")]
-                    {
-                        20_500
-                    }
-                    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-                    {
-                        11_500
-                    }
-                };
                 assert!(dur < Duration::from_millis(millis_limit));
 
                 let before = Instant::now();
@@ -751,7 +751,7 @@ fn test_bandwidth() {
                     .unwrap();
                 let dur = before.elapsed();
                 assert!(dbg!(dur) > Duration::from_secs(10));
-                assert!(dur < Duration::from_millis(11_500));
+                assert!(dur < Duration::from_millis(millis_limit));
 
                 let before = Instant::now();
                 let message = client.next_timeout(None).unwrap();
@@ -763,7 +763,7 @@ fn test_bandwidth() {
                 }
                 let dur = before.elapsed();
                 assert!(dur > Duration::from_secs(10));
-                assert!(dur < Duration::from_millis(11_500));
+                assert!(dur < Duration::from_millis(millis_limit));
             }
         })
         .unwrap();
