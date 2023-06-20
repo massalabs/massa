@@ -4,15 +4,31 @@ use crate::{
     handlers::{block_handler::BlockMessage, operation_handler::OperationMessage},
     messages::Message,
 };
-use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
-use massa_models::slot::Slot;
+use massa_consensus_exports::test_exports::{
+    ConsensusControllerImpl, ConsensusEventReceiver, MockConsensusControllerMessage,
+};
+use massa_hash::Hash;
+use massa_models::{
+    block::{Block, BlockSerializer},
+    block_header::{BlockHeader, BlockHeaderSerializer},
+    block_id::BlockId,
+    operation::OperationId,
+    secure_share::{Id, SecureShare, SecureShareContent},
+    slot::Slot,
+};
+use massa_pool_exports::test_exports::MockPoolController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 
-use super::{context::protocol_test, tools::send_and_propagate_block};
+use super::{
+    context::{protocol_test, start_protocol_controller_with_mock_network},
+    mock_network::MockNetworkController,
+    tools::send_and_propagate_block,
+};
 
 #[test]
 #[serial]
@@ -114,212 +130,223 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
     )
 }
 
-// Commented because fast release but the error seems to be that we try to send again block with node a but he is ban because of the first invalid hash of operations
-// #[test]
-// #[serial]
-// fn test_protocol_sends_blocks_with_operations_to_consensus() {
-//     let default_panic = std::panic::take_hook();
-//     std::panic::set_hook(Box::new(move |info| {
-//         default_panic(info);
-//         std::process::exit(1);
-//     }));
-//     let mut protocol_config = ProtocolConfig::default();
-//     protocol_config.thread_count = 2;
-//     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-//     protocol_test(
-//         &protocol_config,
-//         move |mut network_controller,
-//               protocol_controller,
-//               protocol_manager,
-//               mut consensus_event_receiver,
-//               pool_event_receiver| {
-//             //1. Create 2 nodes
-//             let node_a_keypair = KeyPair::generate(0).unwrap();
-//             let node_b_keypair = KeyPair::generate(0).unwrap();
-//             let (node_a_peer_id, _node_a) = network_controller
-//                 .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-//             println!("node_a_peer_id: {:?}", node_a_peer_id);
-//             let (_node_b_peer_id, _node_b) = network_controller
-//                 .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
+#[test]
+#[serial]
+fn test_protocol_sends_blocks_with_operations_to_consensus() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = &protocol_config;
+    let (pool_controller, _) = MockPoolController::new_with_receiver();
+    let (consensus_controller, consensus_event_receiver) =
+        ConsensusControllerImpl::new_with_receiver();
+    // start protocol controller
+    let (network_controller, protocol_controller, protocol_manager) =
+        start_protocol_controller_with_mock_network(
+            protocol_config.clone(),
+            consensus_controller,
+            pool_controller,
+            Storage::create_root(),
+        )
+        .expect("could not start protocol controller");
 
-//             //2. Create a block coming from node a.
-//             let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
-//             let op_thread = op_1
-//                 .content_creator_address
-//                 .get_thread(protocol_config.thread_count);
-//             let block = tools::create_block_with_operations(
-//                 &node_a_keypair,
-//                 Slot::new(1, op_thread),
-//                 vec![op_1.clone()],
-//             );
-//             //end setup
+    let (mut protocol_manager,) =
+        (move |mut network_controller: Box<MockNetworkController>,
+               protocol_controller,
+               protocol_manager,
+               mut consensus_event_receiver: ConsensusEventReceiver| {
+            //1. Create 2 nodes
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let node_b_keypair = KeyPair::generate(0).unwrap();
+            let (node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            println!("node_a_peer_id: {:?}", node_a_peer_id);
+            let (_node_b_peer_id, _node_b) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
 
-//             //3. Send the full block from node a
-//             send_and_propagate_block(
-//                 &mut network_controller,
-//                 block.clone(),
-//                 &node_a_peer_id,
-//                 &protocol_controller,
-//                 vec![op_1],
-//             );
+            //2. Create a block coming from node a.
+            let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
+            let op_thread = op_1
+                .content_creator_address
+                .get_thread(protocol_config.thread_count);
+            let block = tools::create_block_with_operations(
+                &node_a_keypair,
+                Slot::new(1, op_thread),
+                vec![op_1.clone()],
+            );
+            //end setup
 
-//             //4. Verify that we sent to consensus
-//             consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |cmd| match cmd {
-//                 MockConsensusControllerMessage::RegisterBlockHeader {
-//                     block_id,
-//                     header: _,
-//                 } => {
-//                     assert_eq!(block_id, block.id);
-//                     Some(())
-//                 }
-//                 _ => panic!("Unexpected command: {:?}", cmd),
-//             });
-//             consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |cmd| match cmd {
-//                 MockConsensusControllerMessage::RegisterBlock { block_id, .. } => {
-//                     assert_eq!(block_id, block.id);
-//                     Some(())
-//                 }
-//                 _ => panic!("Unexpected command: {:?}", cmd),
-//             });
+            //3. Send the full block from node a
+            send_and_propagate_block(
+                &mut network_controller,
+                block.clone(),
+                &node_a_peer_id,
+                &protocol_controller,
+                vec![op_1],
+            );
 
-//             // block with wrong merkle root
-//             {
-//                 let op = tools::create_operation_with_expire_period(&node_a_keypair, 5);
-//                 let op_thread = op
-//                     .content_creator_address
-//                     .get_thread(protocol_config.thread_count);
-//                 let block: SecureShare<Block, BlockId> = {
-//                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
+            //4. Verify that we sent to consensus
+            consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |cmd| match cmd {
+                MockConsensusControllerMessage::RegisterBlockHeader {
+                    block_id,
+                    header: _,
+                } => {
+                    assert_eq!(block_id, block.id);
+                    Some(())
+                }
+                _ => panic!("Unexpected command: {:?}", cmd),
+            });
+            consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |cmd| match cmd {
+                MockConsensusControllerMessage::RegisterBlock { block_id, .. } => {
+                    assert_eq!(block_id, block.id);
+                    Some(())
+                }
+                _ => panic!("Unexpected command: {:?}", cmd),
+            });
 
-//                     let header = BlockHeader::new_verifiable(
-//                         BlockHeader {
-//                             announced_version: 0,
-//                             current_version: 0,
-//                             slot: Slot::new(1, op_thread),
-//                             parents: vec![
-//                                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-//                                 BlockId(Hash::compute_from("Genesis 1".as_bytes())),
-//                             ],
-//                             denunciations: Vec::new(),
-//                             operation_merkle_root,
-//                             endorsements: Vec::new(),
-//                         },
-//                         BlockHeaderSerializer::new(),
-//                         &node_a_keypair,
-//                     )
-//                     .unwrap();
+            // block with wrong merkle root
+            {
+                let op = tools::create_operation_with_expire_period(&node_a_keypair, 5);
+                let op_thread = op
+                    .content_creator_address
+                    .get_thread(protocol_config.thread_count);
+                let block: SecureShare<Block, BlockId> = {
+                    let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
-//                     Block::new_verifiable(
-//                         Block {
-//                             header,
-//                             operations: vec![op.clone()].into_iter().map(|op| op.id).collect(),
-//                         },
-//                         BlockSerializer::new(),
-//                         &node_a_keypair,
-//                     )
-//                     .unwrap()
-//                 };
+                    let header = BlockHeader::new_verifiable(
+                        BlockHeader {
+                            announced_version: 0,
+                            current_version: 0,
+                            slot: Slot::new(1, op_thread),
+                            parents: vec![
+                                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
+                                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                            ],
+                            denunciations: Vec::new(),
+                            operation_merkle_root,
+                            endorsements: Vec::new(),
+                        },
+                        BlockHeaderSerializer::new(),
+                        &node_a_keypair,
+                    )
+                    .unwrap();
 
-//                 send_and_propagate_block(
-//                     &mut network_controller,
-//                     block.clone(),
-//                     &node_a_peer_id,
-//                     &protocol_controller,
-//                     vec![op],
-//                 );
+                    Block::new_verifiable(
+                        Block {
+                            header,
+                            operations: vec![op.clone()].into_iter().map(|op| op.id).collect(),
+                        },
+                        BlockSerializer::new(),
+                        &node_a_keypair,
+                    )
+                    .unwrap()
+                };
 
-//                 // Check protocol did send block header to consensus but not the full block.
-//                 assert_eq!(
-//                     consensus_event_receiver.wait_command(
-//                         MassaTime::from_millis(1000),
-//                         |command| {
-//                             match command {
-//                                 MockConsensusControllerMessage::RegisterBlockHeader {
-//                                     block_id,
-//                                     header: _,
-//                                 } => Some(block_id),
-//                                 _ => None,
-//                             }
-//                         }
-//                     ),
-//                     Some(block.id)
-//                 );
-//                 assert_eq!(
-//                     consensus_event_receiver.wait_command(
-//                         MassaTime::from_millis(1000),
-//                         |command| {
-//                             match command {
-//                                 MockConsensusControllerMessage::RegisterBlock {
-//                                     block_id, ..
-//                                 } => Some(block_id),
-//                                 _ => None,
-//                             }
-//                         }
-//                     ),
-//                     None
-//                 );
-//             }
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block.clone(),
+                    &node_a_peer_id,
+                    &protocol_controller,
+                    vec![op],
+                );
 
-//             //block with operation with wrong signature
-//             {
-//                 let mut op = tools::create_operation_with_expire_period(&node_a_keypair, 5);
-//                 let op_thread = op
-//                     .content_creator_address
-//                     .get_thread(protocol_config.thread_count);
-//                 op.id = OperationId::new(Hash::compute_from("wrong signature".as_bytes()));
-//                 let block = tools::create_block_with_operations(
-//                     &node_a_keypair,
-//                     Slot::new(1, op_thread),
-//                     vec![op.clone()],
-//                 );
+                // Check protocol did send block header to consensus but not the full block.
+                assert_eq!(
+                    consensus_event_receiver.wait_command(
+                        MassaTime::from_millis(1000),
+                        |command| {
+                            match command {
+                                MockConsensusControllerMessage::RegisterBlockHeader {
+                                    block_id,
+                                    header: _,
+                                } => Some(block_id),
+                                _ => None,
+                            }
+                        }
+                    ),
+                    Some(block.id)
+                );
+                assert_eq!(
+                    consensus_event_receiver.wait_command(
+                        MassaTime::from_millis(1000),
+                        |command| {
+                            match command {
+                                MockConsensusControllerMessage::RegisterBlock {
+                                    block_id, ..
+                                } => Some(block_id),
+                                _ => None,
+                            }
+                        }
+                    ),
+                    None
+                );
+            }
 
-//                 send_and_propagate_block(
-//                     &mut network_controller,
-//                     block.clone(),
-//                     &node_a_peer_id,
-//                     &protocol_controller,
-//                     vec![op],
-//                 );
+            //block with operation with wrong signature
+            {
+                let mut op = tools::create_operation_with_expire_period(&node_a_keypair, 5);
+                let op_thread = op
+                    .content_creator_address
+                    .get_thread(protocol_config.thread_count);
+                op.id = OperationId::new(Hash::compute_from("wrong signature".as_bytes()));
+                let block = tools::create_block_with_operations(
+                    &node_a_keypair,
+                    Slot::new(1, op_thread),
+                    vec![op.clone()],
+                );
 
-//                 // Check protocol did send block header to consensus but not the full block.
-//                 assert_eq!(
-//                     consensus_event_receiver.wait_command(
-//                         MassaTime::from_millis(1000),
-//                         |command| {
-//                             match command {
-//                                 MockConsensusControllerMessage::RegisterBlockHeader {
-//                                     block_id,
-//                                     header: _,
-//                                 } => Some(block_id),
-//                                 _ => None,
-//                             }
-//                         }
-//                     ),
-//                     Some(block.id)
-//                 );
-//                 assert_eq!(
-//                     consensus_event_receiver.wait_command(
-//                         MassaTime::from_millis(1000),
-//                         |command| {
-//                             match command {
-//                                 MockConsensusControllerMessage::RegisterBlock {
-//                                     block_id, ..
-//                                 } => Some(block_id),
-//                                 _ => None,
-//                             }
-//                         }
-//                     ),
-//                     None
-//                 );
-//             }
+                send_and_propagate_block(
+                    &mut network_controller,
+                    block.clone(),
+                    &node_a_peer_id,
+                    &protocol_controller,
+                    vec![op],
+                );
 
-//             (
-//                 network_controller,
-//                 protocol_controller,
-//                 protocol_manager,
-//                 consensus_event_receiver,
-//                 pool_event_receiver,
-//             )
-//         },
-//     )
-// }
+                // Check protocol did send block header to consensus but not the full block.
+                assert_eq!(
+                    consensus_event_receiver.wait_command(
+                        MassaTime::from_millis(1000),
+                        |command| {
+                            match command {
+                                MockConsensusControllerMessage::RegisterBlockHeader {
+                                    block_id,
+                                    header: _,
+                                } => Some(block_id),
+                                _ => None,
+                            }
+                        }
+                    ),
+                    Some(block.id)
+                );
+                assert_eq!(
+                    consensus_event_receiver.wait_command(
+                        MassaTime::from_millis(1000),
+                        |command| {
+                            match command {
+                                MockConsensusControllerMessage::RegisterBlock {
+                                    block_id, ..
+                                } => Some(block_id),
+                                _ => None,
+                            }
+                        }
+                    ),
+                    None
+                );
+            }
+
+            (protocol_manager,)
+        })(
+            network_controller,
+            protocol_controller,
+            protocol_manager,
+            consensus_event_receiver,
+        );
+
+    protocol_manager.stop()
+}
