@@ -1739,6 +1739,41 @@
 <a href="#1739" id="1739">1739</a>
 <a href="#1740" id="1740">1740</a>
 <a href="#1741" id="1741">1741</a>
+<a href="#1742" id="1742">1742</a>
+<a href="#1743" id="1743">1743</a>
+<a href="#1744" id="1744">1744</a>
+<a href="#1745" id="1745">1745</a>
+<a href="#1746" id="1746">1746</a>
+<a href="#1747" id="1747">1747</a>
+<a href="#1748" id="1748">1748</a>
+<a href="#1749" id="1749">1749</a>
+<a href="#1750" id="1750">1750</a>
+<a href="#1751" id="1751">1751</a>
+<a href="#1752" id="1752">1752</a>
+<a href="#1753" id="1753">1753</a>
+<a href="#1754" id="1754">1754</a>
+<a href="#1755" id="1755">1755</a>
+<a href="#1756" id="1756">1756</a>
+<a href="#1757" id="1757">1757</a>
+<a href="#1758" id="1758">1758</a>
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1755,7 +1790,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
-<span class="kw">use </span>massa_db::DBBatch;
+<span class="kw">use </span>massa_db_exports::DBBatch;
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -1769,6 +1804,7 @@
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
+<span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_models::{
@@ -1784,7 +1820,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
-<span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::{debug, info, trace, warn};
 
@@ -2396,7 +2432,7 @@
             )));
         }
 
-        <span class="comment">// add rolls to the buyer withing the context
+        <span class="comment">// add rolls to the buyer within the context
         </span>context.add_rolls(<span class="kw-2">&amp;</span>buyer_addr, <span class="kw-2">*</span>roll_count);
 
         <span class="prelude-val">Ok</span>(())
@@ -2435,9 +2471,9 @@
             operation_datastore: <span class="prelude-val">None</span>,
         }];
 
-        <span class="comment">// send `roll_price` * `roll_count` coins from the sender to the recipient
+        <span class="comment">// transfer coins from sender to destination
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-            context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>recipient_address), <span class="kw-2">*</span>amount, <span class="bool-val">false</span>)
+            context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>recipient_address), <span class="kw-2">*</span>amount, <span class="bool-val">true</span>)
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::TransactionError(<span class="macro">format!</span>(
                 <span class="string">&quot;transfer of {} coins from {} to {} failed: {}&quot;</span>,
@@ -2561,19 +2597,21 @@
                 },
             ];
 
-            <span class="comment">// Debit the sender&#39;s balance with the coins to transfer
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, coins, <span class="bool-val">false</span>) {
+            <span class="comment">// Ensure that the target address is an SC address
+            </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to debit operation sender {} with {} operation coins: {}&quot;</span>,
-                    sender_addr, coins, err
+                    <span class="string">&quot;cannot callSC towards non-SC address {}&quot;</span>,
+                    target_addr
                 )));
             }
 
-            <span class="comment">// Credit the operation target with coins.
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(target_addr), coins, <span class="bool-val">false</span>) {
+            <span class="comment">// Transfer coins from the sender to the target
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">Some</span>(target_addr), coins, <span class="bool-val">false</span>)
+            {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to credit operation target {} with {} operation coins: {}&quot;</span>,
-                    target_addr, coins, err
+                    <span class="string">&quot;failed to transfer {} operation coins from {} to {}: {}&quot;</span>,
+                    coins, sender_addr, target_addr, err
                 )));
             }
 
@@ -2647,18 +2685,21 @@
                 },
             ];
 
-            <span class="comment">// If there is no target bytecode or if message data is invalid,
-            // reimburse sender with coins and quit
+            <span class="comment">// if the target address is not SC: fail
+            </span><span class="kw">if </span>!<span class="macro">matches!</span>(message.destination, Address::SC(..)) {
+                <span class="kw">let </span>err = ExecutionError::RuntimeError(
+                    <span class="string">&quot;the target address is not a smart contract address&quot;</span>.into(),
+                );
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+            }
+
+            <span class="comment">// if there is no bytecode: fail
             </span><span class="kw">let </span>bytecode = <span class="kw">match </span>bytecode {
-                <span class="prelude-val">Some</span>(bc) =&gt; bc,
-                bc =&gt; {
-                    <span class="kw">let </span>err = <span class="kw">if </span>bc.is_none() {
-                        ExecutionError::RuntimeError(<span class="string">&quot;no target bytecode found&quot;</span>.into())
-                    } <span class="kw">else </span>{
-                        ExecutionError::RuntimeError(
-                            <span class="string">&quot;message data does not convert to utf-8&quot;</span>.into(),
-                        )
-                    };
+                <span class="prelude-val">Some</span>(bytecode) =&gt; bytecode,
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="string">&quot;no target bytecode found&quot;</span>.into());
                     context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(<span class="kw-2">&amp;</span>message);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(err);
@@ -2980,6 +3021,7 @@
                 .get_prev_slot(<span class="self">self</span>.config.thread_count)
                 .expect(<span class="string">&quot;overflow when iterating on slots&quot;</span>);
         }
+
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
 
         <span class="comment">// apply execution output to active state
@@ -3020,6 +3062,8 @@
                 <span class="comment">// update versioning stats
                 </span><span class="self">self</span>.update_versioning_stats(exec_target, slot);
 
+                <span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: found in cache, applied cache and updated versioning stats&quot;</span>);
+
                 <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
                     <span class="kw">let </span>slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
@@ -3035,6 +3079,7 @@
                 );
                     }
                 }
+
                 <span class="kw">return</span>;
             } <span class="kw">else </span>{
                 <span class="comment">// speculative cache mismatch
@@ -3356,6 +3401,46 @@
         }
     }
 
+    <span class="doccomment">/// List which operations inside the provided list were not executed
+    </span><span class="kw">pub fn </span>unexecuted_ops_among(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ops: <span class="kw-2">&amp;</span>PreHashSet&lt;OperationId&gt;,
+        thread: u8,
+    ) -&gt; PreHashSet&lt;OperationId&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>ops = ops.clone();
+
+        <span class="kw">if </span>ops.is_empty() {
+            <span class="kw">return </span>ops;
+        }
+
+        {
+            <span class="comment">// check active history
+            </span><span class="kw">let </span>history = <span class="self">self</span>.active_history.read();
+            <span class="kw">for </span>hist_item <span class="kw">in </span>history.<span class="number">0</span>.iter().rev() {
+                <span class="kw">if </span>hist_item.slot.thread != thread {
+                    <span class="kw">continue</span>;
+                }
+                ops.retain(|op_id| {
+                    !hist_item
+                        .state_changes
+                        .executed_ops_changes
+                        .contains_key(op_id)
+                });
+                <span class="kw">if </span>ops.is_empty() {
+                    <span class="kw">return </span>ops;
+                }
+            }
+        }
+
+        {
+            <span class="comment">// check final state
+            </span><span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
+            ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
+        }
+
+        ops
+    }
+
     <span class="doccomment">/// Check if a denunciation has been executed given a `DenunciationIndex`
     </span><span class="kw">pub fn </span>is_denunciation_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation_index: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool {
         <span class="comment">// check active history
@@ -3385,30 +3470,18 @@
         <span class="macro">context_guard!</span>(<span class="self">self</span>).get_address_future_deferred_credits(address, <span class="self">self</span>.config.thread_count)
     }
 
-    <span class="doccomment">/// Get the execution status of a batch of operations.
+    <span class="doccomment">/// Get the execution statuses of both speculative and final executions
     ///
-    ///  Return value: vector of
-    ///  `(Option&lt;speculative_status&gt;, Option&lt;final_status&gt;)`
-    ///  If an Option is None it means that the op execution was not found.
-    ///  Note that old op executions are forgotten.
-    /// Otherwise, the status is a boolean indicating whether the execution was successful (true) or if there was an error (false.)
-    </span><span class="kw">pub fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt; {
-        <span class="kw">let </span>speculative_exec = <span class="self">self</span>.active_history.read().get_ops_exec_status(batch);
-        <span class="kw">let </span>final_exec = <span class="self">self
-            </span>.final_state
-            .read()
-            .executed_ops
-            .get_ops_exec_status(batch);
-        speculative_exec
-            .into_iter()
-            .zip(final_exec.into_iter())
-            .map(|(speculative_v, final_v)| {
-                <span class="kw">match </span>(speculative_v, final_v) {
-                    (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(f)) =&gt; (<span class="prelude-val">Some</span>(f), <span class="prelude-val">Some</span>(f)), <span class="comment">// special case: a final execution should also appear as speculative
-                    </span>(s, f) =&gt; (s, f),
-                }
-            })
-            .collect()
+    /// # Return
+    ///
+    /// * A tuple of hashmaps with:
+    /// * first the statuses for speculative executions
+    /// * second the statuses for final executions
+    </span><span class="kw">pub fn </span>get_op_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (HashMap&lt;OperationId, bool&gt;, HashMap&lt;OperationId, bool&gt;) {
+        (
+            <span class="self">self</span>.active_history.read().get_op_exec_status(),
+            <span class="self">self</span>.final_state.read().executed_ops.op_exec_status.clone(),
+        )
     }
 
     <span class="doccomment">/// Update MipStore with block header stats
@@ -3460,13 +3533,10 @@
                             )
                         });
 
-                    <span class="kw">let </span>use_only_xor = <span class="self">self</span>.final_state.read().get_only_use_xor(slot);
-
                     <span class="self">self</span>.final_state.write().db.write().write_batch(
                         db_batch,
                         db_versioning_batch,
                         <span class="prelude-val">None</span>,
-                        use_only_xor,
                     );
                 } <span class="kw">else </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Unable to get slot timestamp for slot: {} in order to update mip_store stats&quot;</span>, slot);
