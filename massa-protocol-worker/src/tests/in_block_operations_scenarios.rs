@@ -298,16 +298,6 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
         let (_node_b_peer_id, _node_b) = network_controller
             .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
 
-        //2. Create a block coming from node a.
-        // let op_1 = tools::create_operation_with_expire_period(&node_a_keypair, 5);
-        // let op_thread = op_1
-        //     .content_creator_address
-        //     .get_thread(protocol_config.thread_count);
-        // let block = tools::create_block_with_operations(
-        //     &node_a_keypair,
-        //     Slot::new(1, op_thread),
-        //     vec![op_1.clone()],
-        // );
         //end setup
 
         //3. Send the full block from node a
@@ -368,31 +358,6 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 &protocol_controller,
                 vec![op],
             );
-
-            // // Check protocol did send block header to consensus but not the full block.
-            // assert_eq!(
-            //     consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-            //         match command {
-            //             MockConsensusControllerMessage::RegisterBlockHeader {
-            //                 block_id,
-            //                 header: _,
-            //             } => Some(block_id),
-            //             _ => None,
-            //         }
-            //     }),
-            //     Some(block.id)
-            // );
-            // assert_eq!(
-            //     consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-            //         match command {
-            //             MockConsensusControllerMessage::RegisterBlock { block_id, .. } => {
-            //                 Some(block_id)
-            //             }
-            //             _ => None,
-            //         }
-            //     }),
-            //     None
-            // );
         }
 
         //block with operation with wrong signature
@@ -415,31 +380,6 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 &protocol_controller,
                 vec![op],
             );
-
-            // // Check protocol did send block header to consensus but not the full block.
-            // assert_eq!(
-            //     consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-            //         match command {
-            //             MockConsensusControllerMessage::RegisterBlockHeader {
-            //                 block_id,
-            //                 header: _,
-            //             } => Some(block_id),
-            //             _ => None,
-            //         }
-            //     }),
-            //     Some(block.id)
-            // );
-            // assert_eq!(
-            //     consensus_event_receiver.wait_command(MassaTime::from_millis(1000), |command| {
-            //         match command {
-            //             MockConsensusControllerMessage::RegisterBlock { block_id, .. } => {
-            //                 Some(block_id)
-            //             }
-            //             _ => None,
-            //         }
-            //     }),
-            //     None
-            // );
         }
 
         (protocol_manager,)
