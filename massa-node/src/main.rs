@@ -91,7 +91,6 @@ use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -1157,19 +1156,11 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     )?)))
 }
 
-#[paw::main]
-fn main(args: Args) -> anyhow::Result<()> {
-    let tokio_rt = tokio::runtime::Builder::new_multi_thread()
-        .thread_name_fn(|| {
-            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-            format!("tokio-node-{}", id)
-        })
-        .enable_all()
-        .build()
-        .unwrap();
-
-    tokio_rt.block_on(run(args))
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let inputs: Vec<String> = std::env::args().collect();
+    let args = Args::from_iter(inputs);
+    run(args).await
 }
 
 async fn run(args: Args) -> anyhow::Result<()> {

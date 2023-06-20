@@ -14,7 +14,6 @@ use serde::Serialize;
 use std::env;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use structopt::StructOpt;
 
 mod cmds;
@@ -83,19 +82,11 @@ pub(crate) fn ask_password(wallet_path: &Path) -> String {
     }
 }
 
-#[paw::main]
-fn main(args: Args) -> anyhow::Result<()> {
-    let tokio_rt = tokio::runtime::Builder::new_multi_thread()
-        .thread_name_fn(|| {
-            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-            format!("tokio-client-{}", id)
-        })
-        .enable_all()
-        .build()
-        .unwrap();
-
-    tokio_rt.block_on(run(args))
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let inputs: Vec<String> = std::env::args().collect();
+    let args = Args::from_iter(inputs);
+    run(args).await
 }
 
 async fn run(args: Args) -> Result<()> {

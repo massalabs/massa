@@ -965,12 +965,14 @@ impl MassaRpcServer for API<Public> {
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());
 
-        tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_send))
-            .await
-            .map_err(|err| ApiError::InternalServerError(err.to_string()))?
-            .map_err(|err| {
-                ApiError::InternalServerError(format!("Failed to propagate operations: {}", err))
-            })?;
+        if let Err(err) = protocol_sender.propagate_operations(to_send) {
+            return Err(ApiError::InternalServerError(format!(
+                "Failed to propagate operations: {}",
+                err
+            ))
+            .into());
+        }
+
         Ok(ids)
     }
 
