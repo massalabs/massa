@@ -3060,6 +3060,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_versioning",
+ "mockall",
  "nom",
  "num_enum",
  "parking_lot",

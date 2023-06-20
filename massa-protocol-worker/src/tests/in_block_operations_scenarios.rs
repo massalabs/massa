@@ -32,6 +32,7 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use mockall::Sequence;
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::ops::Bound::Included;
@@ -153,8 +154,8 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
     let protocol_config = &protocol_config;
-    let mut pool_controller = Box::new(AutoMockPoolController::new());
-    pool_controller
+    let mut mock_pool_controller = Box::new(AutoMockPoolController::new());
+    mock_pool_controller
         .expect_clone_box()
         .returning(|| Box::new(AutoMockPoolController::new()));
     let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -170,18 +171,24 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
     );
     let block_id_reference = block.id.clone();
     let block_id_reference2 = block.id.clone();
+    let mut seq = Sequence::new();
     consensus_controller
         .expect_register_block_header()
+        .times(1)
         .returning(move |block_id, _| {
             assert_eq!(block_id, block_id_reference);
             ()
-        });
+        })
+        .in_sequence(&mut seq);
     consensus_controller
         .expect_register_block()
+        .times(1)
         .returning(move |block_id, _, _, _| {
             assert_eq!(block_id, block_id_reference2);
             ()
-        });
+        })
+        .in_sequence(&mut seq);
+
     // start protocol controller
     let (network_controller, protocol_controller, protocol_manager) = {
         let config = protocol_config.clone();
@@ -252,7 +259,7 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
             PeerId::from_public_key(keypair.get_public_key()),
             network_controller.clone(),
             consensus_controller,
-            pool_controller,
+            mock_pool_controller,
             (sender_blocks, receiver_blocks),
             (sender_endorsements, receiver_endorsements),
             (sender_operations, receiver_operations),
