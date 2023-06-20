@@ -659,11 +659,10 @@ where
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
 
-        let compute_hash = if cfg!(feature = "testing") {
-            true
-        } else {
-            false
-        };
+        #[cfg(test)]
+        let compute_hash = true;
+        #[cfg(not(test))]
+        let compute_hash = false;
 
         self.write_changes(
             changes,
