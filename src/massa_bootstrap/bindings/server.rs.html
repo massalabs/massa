@@ -336,15 +336,6 @@
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -371,7 +362,6 @@
     thread,
     time::Duration,
 };
-<span class="kw">use </span>stream_limiter::{Limiter, LimiterOptions};
 <span class="kw">use </span>tracing::error;
 
 <span class="kw">use </span><span class="kw">super</span>::BindingWriteExact;
@@ -390,7 +380,8 @@
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     local_keypair: KeyPair,
-    duplex: Limiter&lt;TcpStream&gt;,
+    <span class="comment">// TODO: Reintroduce bandwidth limits
+    </span>duplex: TcpStream,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -405,25 +396,16 @@
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(
-        duplex: TcpStream,
-        local_keypair: KeyPair,
-        cfg: BootstrapSrvBindCfg,
-        rw_limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    ) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>BootstrapSrvBindCfg {
-            max_bytes_read_write: _limit,
+            <span class="comment">// TODO: Reintroduce bandwidth limits
+            </span>max_bytes_read_write: _limit,
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
-
-        <span class="kw">let </span>limit_opts = rw_limit.map(|limit| -&gt; LimiterOptions {
-            LimiterOptions::new(limit, Duration::from_millis(<span class="number">1000</span>), limit.saturating_mul(<span class="number">2</span>))
-        });
-        <span class="kw">let </span>duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,
@@ -673,7 +655,7 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingReadExact <span class="kw">for </span>BootstrapServerBinder {
     <span class="kw">fn </span>set_read_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.stream.set_read_timeout(duration)
+        <span class="self">self</span>.duplex.set_read_timeout(duration)
     }
 }
 
@@ -689,7 +671,7 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingWriteExact <span class="kw">for </span>BootstrapServerBinder {
     <span class="kw">fn </span>set_write_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.stream.set_write_timeout(duration)
+        <span class="self">self</span>.duplex.set_write_timeout(duration)
     }
 }
 </code></pre></div></section></main></body></html>

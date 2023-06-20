@@ -279,11 +279,29 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
-<span class="kw">use </span>crossbeam::select;
+<span class="kw">use </span>crossbeam::{channel::tick, select};
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
     endorsement::SecureShareEndorsement,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
@@ -322,6 +340,7 @@
     config: ProtocolConfig,
     storage: Storage,
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>RetrievalThread {
@@ -332,6 +351,8 @@
                 max_length_endorsements: <span class="self">self</span>.config.max_endorsements_per_message,
                 endorsement_count: <span class="self">self</span>.config.endorsement_count,
             });
+        <span class="kw">let </span>tick_metrics = tick(<span class="self">self</span>.metrics.tick_delay);
+
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
@@ -391,6 +412,17 @@
                             <span class="kw">return</span>;
                         }
                     }
+                },
+                recv(tick_metrics) -&gt; <span class="kw">_ </span>=&gt; {
+                    <span class="comment">// update metrics
+                    </span><span class="kw">let </span>read = <span class="self">self</span>.cache.read();
+                    <span class="kw">let </span>count = read
+                        .endorsements_known_by_peer
+                        .iter()
+                        .map(|(_peer_id, map)| map.len())
+                        .sum();
+                    <span class="self">self</span>.metrics
+                        .set_endorsements_cache_metrics(read.checked_endorsements.len(), count);
                 }
             }
         }
@@ -542,6 +574,7 @@
     pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     config: ProtocolConfig,
     storage: Storage,
+    metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-endorsement-handler-retrieval&quot;</span>.to_string())
@@ -555,6 +588,7 @@
                 pool_controller,
                 config,
                 storage,
+                metrics,
             };
             retrieval_thread.run();
         })
