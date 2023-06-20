@@ -22,6 +22,7 @@ use massa_models::version::Version;
 use massa_protocol_exports::{PeerId, TransportType};
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
+use serial_test::serial;
 use std::collections::HashMap;
 use std::io::Write;
 use std::net::TcpStream;
@@ -555,7 +556,10 @@ fn test_partial_msg() {
     server_thread.join().unwrap();
     client_thread.join().unwrap();
 }
+
+// serial test for time-taken sensitive tests: reduces parallelism noise
 #[test]
+#[serial]
 fn test_client_drip_feed() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
@@ -642,10 +646,13 @@ fn test_client_drip_feed() {
     );
     client_thread.join().unwrap();
 }
+
+// serial test for time-taken sensitive tests: reduces parallelism noise
 /// Following a handshake, the server and client will exchange messages.
 ///
 /// We use the limiter te ensure that these message exchanges each take slightly more than 10s
 #[test]
+#[serial]
 fn test_bandwidth() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let server = std::net::TcpListener::bind("localhost:0").unwrap();

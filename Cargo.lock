@@ -2543,6 +2543,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
+ "serial_test 2.0.0",
  "socket2",
  "stream_limiter 3.0.1",
  "substruct",
