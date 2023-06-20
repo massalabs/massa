@@ -1284,7 +1284,6 @@
 <a href="#1284" id="1284">1284</a>
 <a href="#1285" id="1285">1285</a>
 <a href="#1286" id="1286">1286</a>
-<a href="#1287" id="1287">1287</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1368,7 +1367,7 @@
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 <span class="kw">use </span>massa_pos_worker::start_selector_worker;
-<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager};
+<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -1378,8 +1377,7 @@
 };
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>peernet::transports::TransportType;
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};

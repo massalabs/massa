@@ -305,6 +305,8 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
@@ -403,7 +405,7 @@
             </span>std::thread::sleep(Duration::from_millis(<span class="number">100</span>));
 
             <span class="comment">// Create cache outside of the op handler because it could be used by other handlers
-            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake + <span class="number">1</span>;
+            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections + <span class="number">1</span>;
             <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections + <span class="number">1</span>;
             <span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 config.max_known_ops_size.try_into().unwrap(),
@@ -565,15 +567,17 @@
                                     <span class="comment">//TODO: Adapt for multiple listeners
                                     </span><span class="kw">let </span>(addr, <span class="kw">_</span>) = peer_info.last_announce.listeners.iter().next().unwrap();
                                     <span class="kw">let </span>canonical_ip = addr.ip().to_canonical();
-                                    <span class="kw">if </span>!canonical_ip.is_global()  {
-                                        <span class="kw">continue</span>;
-                                    }
+                                    <span class="kw">let </span><span class="kw-2">mut </span>allowed_local_ips = <span class="bool-val">false</span>;
                                     <span class="comment">// Check if the peer is in a category and we didn&#39;t reached out target yet
                                     </span><span class="kw">let </span><span class="kw-2">mut </span>category_found = <span class="prelude-val">None</span>;
-                                    <span class="kw">for </span>(name, (ips, <span class="kw">_</span>)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
+                                    <span class="kw">for </span>(name, (ips, cat)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
                                         <span class="kw">if </span>ips.contains(<span class="kw-2">&amp;</span>canonical_ip) {
                                             category_found = <span class="prelude-val">Some</span>(name);
+                                            allowed_local_ips = cat.allow_local_peers;
                                         }
+                                    }
+                                    <span class="kw">if </span>!canonical_ip.is_global() &amp;&amp; !allowed_local_ips {
+                                        <span class="kw">continue</span>;
                                     }
 
                                     <span class="kw">if let </span><span class="prelude-val">Some</span>(category) = category_found {
