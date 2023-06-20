@@ -16,7 +16,7 @@ use massa_models::{
     secure_share::{Id, SecureShare, SecureShareContent},
     slot::Slot,
 };
-use massa_pool_exports::test_exports::MockPoolController;
+use massa_pool_exports::AutoMockPoolController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
@@ -142,7 +142,10 @@ fn test_protocol_sends_blocks_with_operations_to_consensus() {
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
     let protocol_config = &protocol_config;
-    let (pool_controller, _) = MockPoolController::new_with_receiver();
+    let mut pool_controller = Box::new(AutoMockPoolController::new());
+    pool_controller
+        .expect_clone_box()
+        .returning(|| Box::new(AutoMockPoolController::new()));
     let (consensus_controller, consensus_event_receiver) =
         ConsensusControllerImpl::new_with_receiver();
     // start protocol controller
