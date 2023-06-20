@@ -406,9 +406,9 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
-            <span class="string">&quot;SAND.23.2&quot;
+            <span class="string">&quot;SAND.24.0&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.23.2&quot;
+            <span class="string">&quot;TEST.24.0&quot;
         </span>}
         .parse()
         .unwrap()
@@ -431,15 +431,15 @@
 }
 
 <span class="doccomment">/// Price of a roll in the network
-</span><span class="kw">pub const </span>ROLL_PRICE: Amount = Amount::const_init(<span class="number">100</span>, <span class="number">0</span>);
+</span><span class="kw">pub const </span>ROLL_PRICE: Amount = Amount::from_mantissa_scale(<span class="number">100</span>, <span class="number">0</span>);
 <span class="doccomment">/// Block reward is given for each block creation
-</span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::const_init(<span class="number">3</span>, <span class="number">1</span>);
+</span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::from_mantissa_scale(<span class="number">3</span>, <span class="number">1</span>);
 <span class="doccomment">/// Cost to store one byte in the ledger
-</span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::const_init(<span class="number">25</span>, <span class="number">5</span>);
+</span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(<span class="number">25</span>, <span class="number">5</span>);
 <span class="doccomment">/// Address size in bytes
 </span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = <span class="number">32</span>;
 <span class="doccomment">/// Cost for a base entry default 0.01 MASSA
-</span><span class="kw">pub const </span>LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(<span class="number">1</span>, <span class="number">2</span>);
+</span><span class="kw">pub const </span>LEDGER_ENTRY_BASE_COST: Amount = Amount::from_mantissa_scale(<span class="number">1</span>, <span class="number">2</span>);
 <span class="doccomment">/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
 </span><span class="kw">pub const </span>LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = <span class="number">10</span>;
 <span class="doccomment">/// Time between the periods in the same thread.
@@ -628,7 +628,7 @@
 // Constants used in versioning
 //
 </span><span class="doccomment">/// Threshold to accept a new versioning
-</span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::const_init(<span class="number">75</span>, <span class="number">0</span>);
+</span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(<span class="number">75</span>, <span class="number">0</span>);
 <span class="doccomment">/// Block count to process in MipStoreStats (for state change threshold)
 </span><span class="kw">pub const </span>MIP_STORE_STATS_BLOCK_CONSIDERED: usize = <span class="number">1000</span>;
 <span class="doccomment">/// Max number of stats counters

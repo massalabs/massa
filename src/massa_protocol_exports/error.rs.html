@@ -60,14 +60,10 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>massa_models::error::ModelsError;
-<span class="kw">use </span>massa_pos_exports::PosError;
 <span class="kw">use </span>massa_versioning::versioning_factory::FactoryError;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>thiserror::Error;
@@ -117,8 +113,6 @@
     },
     <span class="doccomment">/// Versioned factory error: {0}
     </span>FactoryError(<span class="attr">#[from] </span>FactoryError),
-    <span class="doccomment">/// PoS error: {0}
-    </span>PosError(<span class="attr">#[from] </span>PosError),
 }
 
 <span class="attr">#[derive(Debug)]
