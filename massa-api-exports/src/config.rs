@@ -69,6 +69,6 @@ pub struct APIConfig {
     pub periods_per_cycle: u64,
     /// keypair file
     pub keypair: KeyPair,
-    /// last_start_period file
+    /// last_start_period value, used to know if we are during a restart or not
     pub last_start_period: u64,
 }

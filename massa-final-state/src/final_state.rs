@@ -290,18 +290,20 @@ impl FinalState {
         current_slot: Slot,
         end_slot: Slot,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle =
-            self.pos_state
-                .cycle_history_cache
-                .pop_back()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    "Invalid cycle_history",
-                )))?;
+        let latest_snapshot_cycle = self.pos_state.cycle_history_cache.back().cloned().ok_or(
+            FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
+        )?;
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
 
         let mut batch = DBBatch::new();
 
+        self.pos_state
+            .cycle_history_cache
+            .pop_back()
+            .ok_or(FinalStateError::SnapshotError(String::from(
+                "Invalid cycle_history",
+            )))?;
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
@@ -339,18 +341,20 @@ impl FinalState {
         current_slot_cycle: u64,
         end_slot_cycle: u64,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle =
-            self.pos_state
-                .cycle_history_cache
-                .pop_back()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    "Invalid cycle_history",
-                )))?;
+        let latest_snapshot_cycle = self.pos_state.cycle_history_cache.back().cloned().ok_or(
+            FinalStateError::SnapshotError(String::from("Invalid cycle_history")),
+        )?;
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
 
         let mut batch = DBBatch::new();
 
+        self.pos_state
+            .cycle_history_cache
+            .pop_back()
+            .ok_or(FinalStateError::SnapshotError(String::from(
+                "Invalid cycle_history",
+            )))?;
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
