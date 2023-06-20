@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use massa_db::{DBBatch, CHANGE_ID_DESER_ERROR};
+use massa_db::DBBatch;
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -28,6 +28,9 @@ use crate::{
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
 };
+
+#[cfg(not(test))]
+use massa_db::CHANGE_ID_DESER_ERROR;
 
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
@@ -162,24 +165,27 @@ fn stream_final_state_and_consensus(
 
                     warn_user_about_versioning_updates(updated, added);
 
-                    // Compute the db hash
-                    info!("Computing the db hash");
-                    let slot = guard
-                        .db
-                        .read()
-                        .get_change_id()
-                        .expect(CHANGE_ID_DESER_ERROR);
-                    let only_use_xor = guard.get_only_use_xor(&slot);
-                    guard
-                        .db
-                        .write()
-                        .recompute_db_hash(only_use_xor)
-                        .map_err(|e| {
-                            BootstrapError::from(FinalStateError::LedgerError(format!(
-                                "Can't recompute hashes: {}",
-                                e
-                            )))
-                        })?;
+                    #[cfg(not(test))]
+                    {
+                        // Compute the db hash
+                        info!("Computing the db hash");
+                        let slot = guard
+                            .db
+                            .read()
+                            .get_change_id()
+                            .expect(CHANGE_ID_DESER_ERROR);
+                        let only_use_xor = guard.get_only_use_xor(&slot);
+                        guard
+                            .db
+                            .write()
+                            .recompute_db_hash(only_use_xor)
+                            .map_err(|e| {
+                                BootstrapError::from(FinalStateError::LedgerError(format!(
+                                    "Can't recompute hashes: {}",
+                                    e
+                                )))
+                            })?;
+                    }
 
                     return Ok(());
                 }
