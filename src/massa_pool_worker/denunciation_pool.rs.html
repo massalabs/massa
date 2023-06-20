@@ -263,9 +263,16 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>std::collections::{btree_map::Entry, BTreeMap};
+</span><span class="kw">use </span>massa_execution_exports::ExecutionController;
+<span class="kw">use </span>std::collections::{btree_map::Entry, BTreeMap};
 <span class="kw">use </span>tracing::{debug, info};
 
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
@@ -275,15 +282,18 @@
     denunciation::{Denunciation, DenunciationPrecursor},
     timeslots::get_closest_slot_to_timestamp,
 };
-<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig};
+<span class="kw">use </span>massa_pool_exports::PoolConfig;
+<span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 
 <span class="kw">pub struct </span>DenunciationPool {
     <span class="doccomment">/// pool configuration
     </span>config: PoolConfig,
-    <span class="doccomment">/// pool channels
-    </span>channels: PoolChannels,
+    <span class="doccomment">/// selector controller to get draws
+    </span><span class="kw">pub </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+    <span class="doccomment">/// execution controller
+    </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     <span class="doccomment">/// last consensus final periods, per thread
     </span>last_cs_final_periods: Vec&lt;u64&gt;,
     <span class="doccomment">/// Internal cache for denunciations
@@ -291,10 +301,15 @@
 }
 
 <span class="kw">impl </span>DenunciationPool {
-    <span class="kw">pub fn </span>init(config: PoolConfig, channels: PoolChannels) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>init(
+        config: PoolConfig,
+        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+        execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             config,
-            channels,
+            selector,
+            execution_controller,
             last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count <span class="kw">as </span>usize],
             denunciations_cache: Default::default(),
         }
@@ -367,7 +382,7 @@
         </span><span class="kw">match </span><span class="kw-2">&amp;</span>denunciation_precursor {
             DenunciationPrecursor::Endorsement(de_p) =&gt; {
                 <span class="comment">// Get selected address from selector and check
-                </span><span class="kw">let </span>selected = <span class="self">self</span>.channels.selector.get_selection(de_p.slot);
+                </span><span class="kw">let </span>selected = <span class="self">self</span>.selector.get_selection(de_p.slot);
                 <span class="kw">match </span>selected {
                     <span class="prelude-val">Ok</span>(selection) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(address) = selection.endorsements.get(de_p.index <span class="kw">as </span>usize) {
@@ -388,7 +403,7 @@
                 }
             }
             DenunciationPrecursor::BlockHeader(de_p) =&gt; {
-                <span class="kw">let </span>selected_address = <span class="self">self</span>.channels.selector.get_producer(de_p.slot);
+                <span class="kw">let </span>selected_address = <span class="self">self</span>.selector.get_producer(de_p.slot);
                 <span class="kw">match </span>selected_address {
                     <span class="prelude-val">Ok</span>(address) =&gt; {
                         <span class="kw">if </span>address
@@ -468,10 +483,7 @@
                 // 2. Denounced item slot is equal or before target slot of block header
                 // 3. Denounced item slot is not too old
                 </span><span class="kw">let </span>de_slot = de.get_slot();
-                <span class="kw">if </span>!<span class="self">self
-                    </span>.channels
-                    .execution_controller
-                    .is_denunciation_executed(de_idx)
+                <span class="kw">if </span>!<span class="self">self</span>.execution_controller.is_denunciation_executed(de_idx)
                     &amp;&amp; de_slot &lt;= target_slot
                     &amp;&amp; !Denunciation::is_expired(
                         <span class="kw-2">&amp;</span>de_slot.period,

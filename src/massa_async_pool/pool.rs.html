@@ -962,17 +962,6 @@
 <a href="#962" id="962">962</a>
 <a href="#963" id="963">963</a>
 <a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -984,9 +973,9 @@
     AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
     AsyncMessageSerializer,
 };
-<span class="kw">use </span>massa_db::{
-    DBBatch, MassaDB, ASYNC_POOL_PREFIX, CF_ERROR, MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR,
-    MESSAGE_SER_ERROR, STATE_CF,
+<span class="kw">use </span>massa_db_exports::{
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
+    MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 <span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::Address;
@@ -1000,10 +989,8 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>parking_lot::RwLock;
-<span class="kw">use </span>rocksdb::{Direction, IteratorMode};
+<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::Included;
-<span class="kw">use </span>std::{collections::BTreeMap, sync::Arc};
 
 <span class="kw">const </span>EMISSION_SLOT_IDENT: u8 = <span class="number">0u8</span>;
 <span class="kw">const </span>EMISSION_INDEX_IDENT: u8 = <span class="number">1u8</span>;
@@ -1168,7 +1155,7 @@
 </span><span class="kw">pub struct </span>AsyncPool {
     <span class="doccomment">/// Asynchronous pool configuration
     </span><span class="kw">pub </span>config: AsyncPoolConfig,
-    <span class="kw">pub </span>db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
+    <span class="kw">pub </span>db: ShareableMassaDBController,
     <span class="kw">pub </span>message_info_cache: BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;,
     message_id_serializer: AsyncMessageIdSerializer,
     message_serializer: AsyncMessageSerializer,
@@ -1178,7 +1165,7 @@
 
 <span class="kw">impl </span>AsyncPool {
     <span class="doccomment">/// Creates an empty `AsyncPool`
-    </span><span class="kw">pub fn </span>new(config: AsyncPoolConfig, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;) -&gt; AsyncPool {
+    </span><span class="kw">pub fn </span>new(config: AsyncPoolConfig, db: ShareableMassaDBController) -&gt; AsyncPool {
         AsyncPool {
             config: config.clone(),
             db,
@@ -1200,25 +1187,19 @@
         <span class="self">self</span>.message_info_cache.clear();
 
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="comment">// Iterates over the whole database
         </span><span class="kw">let </span><span class="kw-2">mut </span>last_id: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; = <span class="prelude-val">None</span>;
 
-        <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((serialized_message_id, <span class="kw">_</span>))) = <span class="kw">match </span>last_id {
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_message_id, <span class="kw">_</span>)) = <span class="kw">match </span>last_id {
             <span class="prelude-val">Some</span>(id) =&gt; db
-                .db
                 .iterator_cf(
-                    handle,
-                    IteratorMode::From(<span class="kw-2">&amp;</span><span class="macro">can_be_executed_key!</span>(id), Direction::Forward),
+                    STATE_CF,
+                    MassaIteratorMode::From(<span class="kw-2">&amp;</span><span class="macro">can_be_executed_key!</span>(id), MassaDirection::Forward),
                 )
                 .nth(<span class="number">1</span>),
             <span class="prelude-val">None </span>=&gt; db
-                .db
-                .iterator_cf(
-                    handle,
-                    IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
-                )
+                .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
                 .next(),
         } {
             <span class="kw">if </span>!serialized_message_id.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
@@ -1244,10 +1225,10 @@
     <span class="doccomment">/// Resets the pool to its initial state
     ///
     /// USED ONLY FOR BOOTSTRAP
-    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, only_use_xor: bool) {
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.db
             .write()
-            .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, <span class="prelude-val">None</span>, only_use_xor);
+            .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
         <span class="self">self</span>.recompute_message_info_cache();
     }
 
@@ -1289,7 +1270,6 @@
     /// Otherwise, we should use the `message_info_cache`.
     </span><span class="kw">pub fn </span>fetch_message(<span class="kw-2">&amp;</span><span class="self">self</span>, message_id: <span class="kw-2">&amp;</span>AsyncMessageId) -&gt; <span class="prelude-ty">Option</span>&lt;AsyncMessage&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-        <span class="kw">let </span>handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_message_id = Vec::new();
         <span class="self">self</span>.message_id_serializer
@@ -1297,10 +1277,8 @@
             .expect(MESSAGE_ID_SER_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_message: Vec&lt;u8&gt; = Vec::new();
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db
-            .db
-            .prefix_iterator_cf(handle, <span class="kw-2">&amp;</span><span class="macro">message_id_prefix!</span>(serialized_message_id))
-            .flatten()
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
+            </span>db.prefix_iterator_cf(STATE_CF, <span class="kw-2">&amp;</span><span class="macro">message_id_prefix!</span>(serialized_message_id))
         {
             <span class="kw">if </span>!serialized_key.starts_with(<span class="kw-2">&amp;</span><span class="macro">message_id_prefix!</span>(serialized_message_id)) {
                 <span class="kw">break</span>;

@@ -11,17 +11,17 @@ Note: The structure can evolve and store more indexes.</p>
 </div><span id="structfield.index_by_slot" class="structfield small-section-header"><a href="#structfield.index_by_slot" class="anchor field">§</a><code>index_by_slot: <a class="struct" href="https://doc.rust-lang.org/nightly/std/collections/hash/map/struct.HashMap.html" title="struct std::collections::hash::map::HashMap">HashMap</a>&lt;Slot, PreHashSet&lt;BlockId&gt;&gt;</code></span><div class="docblock"><p>Structure mapping slot with their block id</p>
 </div><span id="structfield.index_by_op" class="structfield small-section-header"><a href="#structfield.index_by_op" class="anchor field">§</a><code>index_by_op: PreHashMap&lt;OperationId, PreHashSet&lt;BlockId&gt;&gt;</code></span><div class="docblock"><p>Structure mapping operation id with ids of blocks they are contained in</p>
 </div><span id="structfield.index_by_endorsement" class="structfield small-section-header"><a href="#structfield.index_by_endorsement" class="anchor field">§</a><code>index_by_endorsement: PreHashMap&lt;EndorsementId, PreHashSet&lt;BlockId&gt;&gt;</code></span><div class="docblock"><p>Structure mapping endorsement id with ids of blocks they are contained in</p>
-</div><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-BlockIndexes" class="impl"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#29-169">source</a><a href="#impl-BlockIndexes" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.BlockIndexes.html" title="struct massa_storage::block_indexes::BlockIndexes">BlockIndexes</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.insert" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#34-63">source</a><h4 class="code-header">pub(crate) fn <a href="#method.insert" class="fn">insert</a>(&amp;mut self, block: SecureShareBlock)</h4></section></summary><div class="docblock"><p>Insert a block and populate the indexes.
+</div><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-BlockIndexes" class="impl"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#29-170">source</a><a href="#impl-BlockIndexes" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.BlockIndexes.html" title="struct massa_storage::block_indexes::BlockIndexes">BlockIndexes</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.insert" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#34-63">source</a><h4 class="code-header">pub(crate) fn <a href="#method.insert" class="fn">insert</a>(&amp;mut self, block: SecureShareBlock)</h4></section></summary><div class="docblock"><p>Insert a block and populate the indexes.
 Arguments:</p>
 <ul>
 <li>block: the block to insert</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.remove" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#68-113">source</a><h4 class="code-header">pub(crate) fn <a href="#method.remove" class="fn">remove</a>(&amp;mut self, block_id: &amp;BlockId) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;SecureShareBlock&gt;</h4></section></summary><div class="docblock"><p>Remove a block, remove from the indexes and do some clean-up in indexes if necessary.
+</div></details><details class="toggle method-toggle" open><summary><section id="method.remove" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#68-114">source</a><h4 class="code-header">pub(crate) fn <a href="#method.remove" class="fn">remove</a>(&amp;mut self, block_id: &amp;BlockId) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;SecureShareBlock&gt;</h4></section></summary><div class="docblock"><p>Remove a block, remove from the indexes and do some clean-up in indexes if necessary.
 Arguments:</p>
 <ul>
 <li><code>block_id</code>: the block id to remove</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#121-123">source</a><h4 class="code-header">pub fn <a href="#method.get" class="fn">get</a>(&amp;self, id: &amp;BlockId) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;SecureShareBlock&gt;</h4></section></summary><div class="docblock"><p>Get a block reference by its ID
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#122-124">source</a><h4 class="code-header">pub fn <a href="#method.get" class="fn">get</a>(&amp;self, id: &amp;BlockId) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;SecureShareBlock&gt;</h4></section></summary><div class="docblock"><p>Get a block reference by its ID
 Arguments:</p>
 <ul>
 <li>id: ID of the block to retrieve</li>
@@ -30,8 +30,8 @@ Arguments:</p>
 <ul>
 <li>a reference to the block, or None if not found</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.contains" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#126-128">source</a><h4 class="code-header">pub fn <a href="#method.contains" class="fn">contains</a>(&amp;self, id: &amp;BlockId) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Checks whether a block exists in global storage.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_created_by" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#136-138">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_created_by" class="fn">get_blocks_created_by</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.contains" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#127-129">source</a><h4 class="code-header">pub fn <a href="#method.contains" class="fn">contains</a>(&amp;self, id: &amp;BlockId) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Checks whether a block exists in global storage.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_created_by" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#137-139">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_created_by" class="fn">get_blocks_created_by</a>(
     &amp;self,
     address: &amp;Address
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;PreHashSet&lt;BlockId&gt;&gt;</h4></section></summary><div class="docblock"><p>Get the block ids created by an address.
@@ -43,7 +43,7 @@ Arguments:</p>
 <ul>
 <li>a reference to the block ids created by the address</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_by_slot" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#146-148">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_by_slot" class="fn">get_blocks_by_slot</a>(&amp;self, slot: &amp;Slot) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;PreHashSet&lt;BlockId&gt;&gt;</h4></section></summary><div class="docblock"><p>Get the block ids of the blocks at a given slot.
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_by_slot" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#147-149">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_by_slot" class="fn">get_blocks_by_slot</a>(&amp;self, slot: &amp;Slot) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;PreHashSet&lt;BlockId&gt;&gt;</h4></section></summary><div class="docblock"><p>Get the block ids of the blocks at a given slot.
 Arguments:</p>
 <ul>
 <li>slot: the slot to get the block id of</li>
@@ -52,7 +52,7 @@ Arguments:</p>
 <ul>
 <li>the block ids of the blocks at the slot if any, None otherwise</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_by_operation" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#156-158">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_by_operation" class="fn">get_blocks_by_operation</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_by_operation" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#157-159">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_by_operation" class="fn">get_blocks_by_operation</a>(
     &amp;self,
     id: &amp;OperationId
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;PreHashSet&lt;BlockId&gt;&gt;</h4></section></summary><div class="docblock"><p>Get the block ids of the blocks containing a given operation.
@@ -64,7 +64,7 @@ Arguments:</p>
 <ul>
 <li>the block ids containing the operation if any, None otherwise</li>
 </ul>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_by_endorsement" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#166-168">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_by_endorsement" class="fn">get_blocks_by_endorsement</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_blocks_by_endorsement" class="method"><a class="srclink rightside" href="../../src/massa_storage/block_indexes.rs.html#167-169">source</a><h4 class="code-header">pub fn <a href="#method.get_blocks_by_endorsement" class="fn">get_blocks_by_endorsement</a>(
     &amp;self,
     id: &amp;EndorsementId
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;PreHashSet&lt;BlockId&gt;&gt;</h4></section></summary><div class="docblock"><p>Get the block ids of the blocks containing a given endorsement.
