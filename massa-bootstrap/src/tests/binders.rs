@@ -703,9 +703,14 @@ fn test_bandwidth() {
                 assert!(dur > Duration::from_secs(10));
                 let millis_limit = {
                     #[cfg(target_os = "windows")]
-                    18_000;
+                    {
+                        18_000
+                    }
+
                     #[cfg(not(target_os = "windows"))]
-                    11_500
+                    {
+                        11_500
+                    }
                 };
                 assert!(dur < Duration::from_millis(millis_limit));
 
