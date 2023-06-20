@@ -499,7 +499,11 @@ fn test_bootstrap_server() {
     {
         let mut final_state_client_write = final_state_client.write();
 
-        final_state_client_write.db.write().recompute_db_hash(false).unwrap();
+        final_state_client_write
+            .db
+            .write()
+            .recompute_db_hash(false)
+            .unwrap();
 
         assert!(
             final_state_client_write.is_db_valid(),
