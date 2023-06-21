@@ -1310,6 +1310,15 @@
 <a href="#1310" id="1310">1310</a>
 <a href="#1311" id="1311">1311</a>
 <a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1403,6 +1412,7 @@
 <span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
 <span class="kw">use </span>std::thread::sleep;
 <span class="kw">use </span>std::time::Duration;
@@ -2468,12 +2478,20 @@
     )<span class="question-mark">?</span>)))
 }
 
-<span class="attr">#[tokio::main]
-</span><span class="kw">async fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
-    <span class="kw">let </span>inputs: Vec&lt;String&gt; = std::env::args().collect();
-    <span class="kw">let </span>args = Args::from_iter(inputs);
-    run(args).<span class="kw">await
-</span>}
+<span class="attr">#[paw::main]
+</span><span class="kw">fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
+    <span class="kw">let </span>tokio_rt = tokio::runtime::Builder::new_multi_thread()
+        .thread_name_fn(|| {
+            <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
+            <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
+            <span class="macro">format!</span>(<span class="string">&quot;tokio-node-{}&quot;</span>, id)
+        })
+        .enable_all()
+        .build()
+        .unwrap();
+
+    tokio_rt.block_on(run(args))
+}
 
 <span class="kw">async fn </span>run(args: Args) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>cur_args = args;
