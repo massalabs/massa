@@ -85,7 +85,7 @@
             .insert(operation_id.prefix(), ());
     }
 
-    <span class="kw">pub fn </span>update_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peers_connected: HashSet&lt;PeerId&gt;) {
+    <span class="kw">pub fn </span>update_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peers_connected: HashSet&lt;PeerId&gt;, _max_known_ops_by_peer: u32) {
         <span class="kw">let </span>peers: Vec&lt;PeerId&gt; = <span class="self">self
             </span>.ops_known_by_peer
             .iter()

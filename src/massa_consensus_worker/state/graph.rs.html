@@ -308,6 +308,10 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -486,9 +490,13 @@
         <span class="comment">// short-circuiting intersection of cliques from smallest to largest
         </span><span class="kw">let </span><span class="kw-2">mut </span>indices: Vec&lt;usize&gt; = (<span class="number">0</span>..<span class="self">self</span>.max_cliques.len()).collect();
         indices.sort_unstable_by_key(|<span class="kw-2">&amp;</span>i| <span class="self">self</span>.max_cliques[i].block_ids.len());
-        <span class="kw">let </span><span class="kw-2">mut </span>final_candidates = <span class="self">self</span>.max_cliques[indices[<span class="number">0</span>]].block_ids.clone();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..indices.len() {
-            final_candidates.retain(|v| <span class="self">self</span>.max_cliques[i].block_ids.contains(v));
+        <span class="kw">let </span><span class="kw-2">mut </span>indices_iter = indices.iter();
+        <span class="kw">let </span><span class="kw-2">mut </span>final_candidates = <span class="self">self</span>.max_cliques
+            [<span class="kw-2">*</span>indices_iter.next().expect(<span class="string">&quot;expected at least one clique&quot;</span>)]
+        .block_ids
+        .clone();
+        <span class="kw">for </span>i <span class="kw">in </span>indices_iter {
+            final_candidates.retain(|v| <span class="self">self</span>.max_cliques[<span class="kw-2">*</span>i].block_ids.contains(v));
             <span class="kw">if </span>final_candidates.is_empty() {
                 <span class="kw">break</span>;
             }
