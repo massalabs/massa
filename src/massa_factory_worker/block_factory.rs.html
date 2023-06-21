@@ -268,6 +268,15 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -414,12 +423,21 @@
             <span class="comment">// the selected block producer is not managed locally =&gt; quit
             </span><span class="kw">return</span>;
         };
+        <span class="kw">let </span><span class="kw-2">mut </span>block_storage = <span class="self">self</span>.channels.storage.clone_without_refs();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = block_storage.read_blocks().get_blocks_by_slot(<span class="kw-2">&amp;</span>slot) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = block.iter().next() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = block_storage.read_blocks().get(id) {
+                    <span class="kw">if </span>block.content_creator_address == block_producer_addr {
+                        <span class="macro">panic!</span>(<span class="string">&quot;You already created a block for slot {} with address {}, node is stopping to prevent you from loosing all your stake due to double staking protection&quot;</span>, slot, block_producer_addr);
+                    }
+                }
+            }
+        }
         <span class="comment">// get best parents and their periods
         </span><span class="kw">let </span>parents: Vec&lt;(BlockId, u64)&gt; = <span class="self">self</span>.channels.consensus.get_best_parents(); <span class="comment">// Vec&lt;(parent_id, parent_period)&gt;
                                                                                        // generate the local storage object
-        </span><span class="kw">let </span><span class="kw-2">mut </span>block_storage = <span class="self">self</span>.channels.storage.clone_without_refs();
 
-        <span class="comment">// claim block parents in local storage
+        // claim block parents in local storage
         </span>{
             <span class="kw">let </span>claimed_parents = block_storage.claim_block_refs(
                 <span class="kw-2">&amp;</span>parents
