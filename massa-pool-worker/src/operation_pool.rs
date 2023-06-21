@@ -317,7 +317,8 @@ impl OperationPool {
         scores
     }
 
-    /// Refresh the pool
+    /// Refresh the pool.
+    /// Note that this function is very heavy and we call it only periodically, timer-based.
     pub(crate) fn refresh(&mut self) {
         // get PoS draws
         let pos_draws = self.get_pos_draws();
@@ -379,6 +380,7 @@ impl OperationPool {
 
         // If there are too many extra operations,
         // we don't want the container to fill up too much in-between refreshes so we drop any excess.
+        // This is because refreshing the container is very heavy and is only called periodically.
         let dropped_items = self
             .sorted_ops
             .len()
