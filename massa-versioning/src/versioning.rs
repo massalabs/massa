@@ -622,7 +622,7 @@ impl MipStore {
         guard.extend_from_db(db)
     }
 
-    pub fn reset_db(&self, db: Arc<RwLock<MassaDB>>, only_use_xor: bool) {
+    pub fn reset_db(&self, db: ShareableMassaDBController, only_use_xor: bool) {
         {
             let mut guard = db.write();
             guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, None, only_use_xor);

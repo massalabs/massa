@@ -20,14 +20,10 @@ use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::{MipComponent, MipStore};
-
-use parking_lot::RwLock;
-use rocksdb::IteratorMode;
 use tracing::{debug, info, warn};
 
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_time::MassaTime;
-use std::sync::Arc;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
