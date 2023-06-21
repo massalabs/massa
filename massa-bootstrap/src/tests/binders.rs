@@ -22,11 +22,12 @@ use massa_models::version::Version;
 use massa_protocol_exports::{PeerId, TransportType};
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
+use serial_test::serial;
 use std::collections::HashMap;
 use std::io::Write;
 use std::net::TcpStream;
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -37,8 +38,12 @@ lazy_static::lazy_static! {
 
 impl BootstrapClientBinder {
     pub fn test_default(client_duplex: TcpStream, remote_pubkey: PublicKey) -> Self {
-        let cfg = BootstrapClientConfig {
-            max_bytes_read_write: f64::INFINITY,
+        let cfg = Self::test_default_config();
+        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg, None)
+    }
+    pub(crate) fn test_default_config() -> BootstrapClientConfig {
+        BootstrapClientConfig {
+            max_bytes_read_write: std::u64::MAX,
             max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
             endorsement_count: ENDORSEMENT_COUNT,
             max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -65,8 +70,7 @@ impl BootstrapClientBinder {
             mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
-        };
-        BootstrapClientBinder::new(client_duplex, remote_pubkey, cfg)
+        }
     }
 }
 
@@ -84,18 +88,21 @@ fn test_binders() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        Some(u64::MAX),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
         bootstrap_config.bootstrap_list[0].1.get_public_key(),
     );
+    let err_str = ['A'; 100_000].iter().collect::<String>();
+    let srv_err_str = err_str.clone();
 
     let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
     let peer_id2 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
@@ -130,7 +137,7 @@ fn test_binders() {
                 let message = server.next_timeout(None).unwrap();
                 match message {
                     BootstrapClientMessage::BootstrapError { error } => {
-                        assert_eq!(error, "test error");
+                        assert_eq!(error, srv_err_str);
                     }
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
@@ -185,7 +192,7 @@ fn test_binders() {
                 client
                     .send_timeout(
                         &BootstrapClientMessage::BootstrapError {
-                            error: "test error".to_string(),
+                            error: err_str.clone(),
                         },
                         None,
                     )
@@ -231,13 +238,14 @@ fn test_binders_double_send_server_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        Some(u64::MAX),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -359,13 +367,14 @@ fn test_binders_try_double_send_client_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        Some(u64::MAX),
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -495,13 +504,14 @@ fn test_partial_msg() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        None,
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -546,7 +556,10 @@ fn test_partial_msg() {
     server_thread.join().unwrap();
     client_thread.join().unwrap();
 }
+
+// serial test for time-taken sensitive tests: reduces parallelism noise
 #[test]
+#[serial]
 fn test_client_drip_feed() {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
@@ -560,13 +573,14 @@ fn test_client_drip_feed() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: f64::INFINITY,
+            max_bytes_read_write: u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
             write_error_timeout: MassaTime::from_millis(1000),
         },
+        None,
     );
     let mut client = BootstrapClientBinder::test_default(
         client,
@@ -630,5 +644,130 @@ fn test_client_drip_feed() {
         "elapsed {:?}",
         start.elapsed()
     );
+    client_thread.join().unwrap();
+}
+
+// serial test for time-taken sensitive tests: reduces parallelism noise
+/// Following a handshake, the server and client will exchange messages.
+///
+/// We use the limiter te ensure that these message exchanges each take slightly more than 10s
+#[test]
+#[serial]
+fn test_bandwidth() {
+    let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = std::net::TcpStream::connect(addr).unwrap();
+    let server = server.accept().unwrap();
+
+    let mut server = BootstrapServerBinder::new(
+        server.0,
+        server_keypair.clone(),
+        BootstrapSrvBindCfg {
+            max_bytes_read_write: 100,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
+        Some(100),
+    );
+    let client_cfg = BootstrapClientBinder::test_default_config();
+    let mut client = BootstrapClientBinder::new(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+        client_cfg,
+        Some(100),
+    );
+    let err_str = ['A'; 1_000].into_iter().collect::<String>();
+    let srv_err_str = err_str.clone();
+
+    let millis_limit = {
+        #[cfg(target_os = "windows")]
+        {
+            18_000
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            20_500
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        {
+            11_500
+        }
+    };
+    let server_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn({
+            move || {
+                let version: Version = Version::from_str("TEST.1.10").unwrap();
+
+                server.handshake_timeout(version, None).unwrap();
+
+                let before = Instant::now();
+                let message = server.next_timeout(None).unwrap();
+                match message {
+                    BootstrapClientMessage::BootstrapError { error } => {
+                        assert_eq!(error, srv_err_str);
+                    }
+                    _ => panic!("Bad message receive: Expected a peers list message"),
+                }
+                let dur = before.elapsed();
+                assert!(dur > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(millis_limit));
+
+                let before = Instant::now();
+                server
+                    .send_timeout(
+                        BootstrapServerMessage::BootstrapError { error: srv_err_str },
+                        None,
+                    )
+                    .unwrap();
+                let dur = before.elapsed();
+                assert!(dur > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(millis_limit));
+            }
+        })
+        .unwrap();
+
+    let client_thread = std::thread::Builder::new()
+        .name("test_binders::server_thread".to_string())
+        .spawn({
+            move || {
+                let version: Version = Version::from_str("TEST.1.10").unwrap();
+
+                client.handshake(version).unwrap();
+
+                let before = Instant::now();
+                client
+                    .send_timeout(
+                        &BootstrapClientMessage::BootstrapError {
+                            error: err_str.clone(),
+                        },
+                        None,
+                    )
+                    .unwrap();
+                let dur = before.elapsed();
+                assert!(dbg!(dur) > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(millis_limit));
+
+                let before = Instant::now();
+                let message = client.next_timeout(None).unwrap();
+                match message {
+                    BootstrapServerMessage::BootstrapError { error } => {
+                        assert_eq!(error, err_str);
+                    }
+                    _ => panic!("Bad message receive: Expected a peers list message"),
+                }
+                let dur = before.elapsed();
+                assert!(dur > Duration::from_secs(10));
+                assert!(dur < Duration::from_millis(millis_limit));
+            }
+        })
+        .unwrap();
+
+    server_thread.join().unwrap();
     client_thread.join().unwrap();
 }

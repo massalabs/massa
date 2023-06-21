@@ -24,6 +24,7 @@ use std::{
     thread,
     time::Duration,
 };
+use stream_limiter::{Limiter, LimiterOptions};
 use tracing::error;
 
 use super::BindingWriteExact;
@@ -42,8 +43,7 @@ pub struct BootstrapServerBinder {
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     local_keypair: KeyPair,
-    // TODO: Reintroduce bandwidth limits
-    duplex: TcpStream,
+    duplex: Limiter<TcpStream>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
@@ -58,9 +58,13 @@ impl BootstrapServerBinder {
     /// * `local_keypair`: local node user keypair
     /// * `limit`: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: TcpStream, local_keypair: KeyPair, cfg: BootstrapSrvBindCfg) -> Self {
+    pub fn new(
+        duplex: TcpStream,
+        local_keypair: KeyPair,
+        cfg: BootstrapSrvBindCfg,
+        rw_limit: Option<u64>,
+    ) -> Self {
         let BootstrapSrvBindCfg {
-            // TODO: Reintroduce bandwidth limits
             max_bytes_read_write: _limit,
             thread_count,
             max_datastore_key_length,
@@ -68,6 +72,11 @@ impl BootstrapServerBinder {
             consensus_bootstrap_part_size,
             write_error_timeout,
         } = cfg;
+
+        let limit_opts = rw_limit.map(|limit| -> LimiterOptions {
+            LimiterOptions::new(limit, Duration::from_millis(1000), limit.saturating_mul(2))
+        });
+        let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,
@@ -317,7 +326,7 @@ impl io::Read for BootstrapServerBinder {
 
 impl crate::bindings::BindingReadExact for BootstrapServerBinder {
     fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.set_read_timeout(duration)
+        self.duplex.stream.set_read_timeout(duration)
     }
 }
 
@@ -333,6 +342,6 @@ impl io::Write for BootstrapServerBinder {
 
 impl crate::bindings::BindingWriteExact for BootstrapServerBinder {
     fn set_write_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.set_write_timeout(duration)
+        self.duplex.stream.set_write_timeout(duration)
     }
 }

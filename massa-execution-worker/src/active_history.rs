@@ -4,11 +4,12 @@ use massa_ledger_exports::{
     Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::denunciation::DenunciationIndex;
+use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
 use massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
 };
 use massa_pos_exports::DeferredCredits;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 #[derive(Default)]
 /// History of the outputs of recently executed slots.
@@ -311,18 +312,30 @@ impl ActiveHistory {
         }
     }
 
-    /// Get the execution statuses of operations
-    ///
-    /// # Return Value
-    ///
-    /// A hashmap with
-    /// * the operation id as the key
-    /// * and a bool as the value: true: execution succeeded, false: execution failed
-    pub fn get_op_exec_status(&self) -> HashMap<OperationId, bool> {
-        self.0
+    /// Get the execution statuses of a set of operations.
+    /// Returns a list where each element is None if no execution was found for that op,
+    /// or a boolean indicating whether the execution was successful (true) or had an error (false).
+    pub fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<Option<bool>> {
+        let mut to_find: PreHashSet<OperationId> = batch.iter().copied().collect();
+        let mut found = PreHashMap::with_capacity(to_find.len());
+        for hist_item in self.0.iter().rev() {
+            to_find.retain(|op_id| {
+                if let Some((success, _expiry_slot)) =
+                    hist_item.state_changes.executed_ops_changes.get(op_id)
+                {
+                    found.insert(*op_id, *success);
+                    false
+                } else {
+                    true
+                }
+            });
+            if to_find.is_empty() {
+                break;
+            }
+        }
+        batch
             .iter()
-            .flat_map(|exec_output| exec_output.state_changes.executed_ops_changes.clone())
-            .map(|(op_id, (status, _))| (op_id, status))
+            .map(|op_id| found.get(op_id).copied())
             .collect()
     }
 }

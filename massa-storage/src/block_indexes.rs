@@ -33,8 +33,6 @@ impl BlockIndexes {
 
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
         if let Ok(b) = self.blocks.try_insert(block.id, block) {
-            massa_metrics::inc_blocks_counter();
-
             // update creator index
             self.index_by_creator
                 .entry(b.content_creator_address)
@@ -59,6 +57,8 @@ impl BlockIndexes {
                     .or_default()
                     .insert(b.id);
             }
+
+            massa_metrics::set_blocks_counter(self.blocks.len());
         }
     }
 
@@ -67,8 +67,6 @@ impl BlockIndexes {
     /// * `block_id`: the block id to remove
     pub(crate) fn remove(&mut self, block_id: &BlockId) -> Option<SecureShareBlock> {
         if let Some(b) = self.blocks.remove(block_id) {
-            massa_metrics::dec_blocks_counter();
-
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =
                 self.index_by_creator.entry(b.content_creator_address)
@@ -108,6 +106,7 @@ impl BlockIndexes {
                     }
                 }
             }
+            massa_metrics::set_blocks_counter(self.blocks.len());
             return Some(b);
         }
         None

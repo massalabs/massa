@@ -728,23 +728,14 @@ mod tests {
         // sleep for 150ms to reach the message execution period
         std::thread::sleep(Duration::from_millis(150));
 
-        let ops = controller.get_op_exec_status();
-        dbg!(&ops);
+        let (op_candidate, op_final) = controller.get_ops_exec_status(&[tested_op_id])[0];
+
+        dbg!((op_candidate, op_final));
 
         // match the events
         assert!(
-            ops.1.contains_key(&tested_op_id),
-            "Expected operation not found"
-        );
-        let status = ops.1.get(&tested_op_id).unwrap(); // we can unwrap, thanks to assert above
-        assert!(
-            status == &true,
-            "Operation execution status expected to be Some(true)"
-        );
-
-        println!(
-            "Operation {:?} execution status: {:?}",
-            &tested_op_id, &status
+            op_candidate == Some(true) && op_final == Some(true),
+            "Expected operation not found or not successfully executed"
         );
 
         // stop the execution controller
@@ -1631,7 +1622,7 @@ mod tests {
             .write()
             .db
             .write()
-            .write_batch(batch, Default::default(), None);
+            .write_batch(batch, Default::default(), None, false);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(
@@ -2484,7 +2475,7 @@ mod tests {
             Amount::from_str("300000")
                 .unwrap()
                 // Gas fee
-                .saturating_sub(Amount::from_mantissa_scale(10, 0))
+                .saturating_sub(Amount::const_init(10, 0))
                 // Storage cost key
                 .saturating_sub(
                     exec_cfg
@@ -2664,10 +2655,10 @@ mod tests {
         // create the block containing the operation
         let operation = Operation::new_verifiable(
             Operation {
-                fee: Amount::from_mantissa_scale(10, 0),
+                fee: Amount::const_init(10, 0),
                 expire_period: 10,
                 op: OperationType::ExecuteSC {
-                    max_coins: Amount::from_mantissa_scale(0, 0),
+                    max_coins: Amount::const_init(0, 0),
                     data: bytecode.to_vec(),
                     max_gas: 0,
                     datastore: BTreeMap::default(),
@@ -2720,7 +2711,7 @@ mod tests {
         };
         let op = Operation::new_verifiable(
             Operation {
-                fee: Amount::from_mantissa_scale(10, 0),
+                fee: Amount::const_init(10, 0),
                 expire_period: 10,
                 op,
             },
@@ -2955,7 +2946,7 @@ mod tests {
             Amount::from_str("300000")
                 .unwrap()
                 // Gas fee
-                .saturating_sub(Amount::from_mantissa_scale(10, 0))
+                .saturating_sub(Amount::const_init(10, 0))
         );
 
         // stop the execution controller

@@ -32,7 +32,8 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
               protocol_controller,
               protocol_manager,
               mut consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -109,6 +110,7 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )

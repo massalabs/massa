@@ -3,7 +3,7 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use mio::net::TcpListener as MioTcpListener;
 
 use mio::{Events, Interest, Poll, Token, Waker};
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::error::BootstrapError;
 
@@ -23,7 +23,7 @@ pub struct BootstrapTcpListener {
 pub struct BootstrapListenerStopHandle(Waker);
 
 pub enum PollEvent {
-    NewConnection((TcpStream, SocketAddr)),
+    NewConnections(Vec<(TcpStream, SocketAddr)>),
     Stop,
 }
 
@@ -46,6 +46,9 @@ impl BootstrapTcpListener {
         if addr.is_ipv6() {
             socket.set_only_v6(false)?;
         }
+        // This is needed for the mio-polling system, which depends on the socket being non-blocking.
+        // If we don't set non-blocking, then we can .accept() on the mio_server bellow, which is needed to ensure the polling triggers every time.
+        socket.set_nonblocking(true)?;
         socket.bind(&(*addr).into())?;
 
         // Number of connections to queue, set to the hardcoded value used by tokio
@@ -85,11 +88,30 @@ impl BootstrapTcpListener {
             return Ok(PollEvent::Stop);
         }
 
-        // Ther could be more than one connection ready, but we want to re-check for the stop
-        // signal after processing each connection.
-        Ok(PollEvent::NewConnection(
-            self.server.accept().map_err(BootstrapError::from)?,
-        ))
+        let mut results = Vec::with_capacity(self.events.iter().count());
+
+        // Process each event.
+        for event in self.events.iter() {
+            match event.token() {
+                NEW_CONNECTION => {
+                    results.push(self.server.accept()?);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
+        // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
+        // However, we cannot add potential connections on the mio_server to the connections vec,
+        // as this yields mio::net::TcpStream instead of std::net::TcpStream
+        while let Ok((_, remote_addr)) = self._mio_server.accept() {
+            warn!(
+                "Mio server still had bootstrap connection data to read. Remote address: {}",
+                remote_addr
+            );
+        }
+
+        Ok(PollEvent::NewConnections(results))
     }
 }
 

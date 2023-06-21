@@ -8,6 +8,8 @@ pub const STATE_CF: &str = "state";
 pub const VERSIONING_CF: &str = "versioning";
 
 pub const STATE_HASH_KEY: &[u8; 1] = b"h";
+pub const STATE_HASH_XOR_KEY: &[u8; 1] = b"x";
+pub const STATE_HASH_KEY_IS_XOR_KEY: &[u8; 6] = b"is_xor";
 pub const STATE_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
 pub const CHANGE_ID_KEY: &[u8; 1] = b"c";
 

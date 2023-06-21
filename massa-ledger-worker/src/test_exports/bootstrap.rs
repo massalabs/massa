@@ -21,7 +21,7 @@ pub fn create_final_ledger(
         config.max_key_length,
         config.max_datastore_value_length,
     );
-    ledger_db.load_initial_ledger(initial_ledger);
+    ledger_db.load_initial_ledger(initial_ledger, false);
     FinalLedger {
         config,
         sorted_ledger: ledger_db,

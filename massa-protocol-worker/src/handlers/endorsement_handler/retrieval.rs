@@ -1,14 +1,16 @@
-use std::thread::JoinHandle;
+use std::{thread::JoinHandle, time::Duration};
 
-use crossbeam::select;
+use crossbeam::{channel::tick, select};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
     endorsement::SecureShareEndorsement,
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer};
@@ -37,10 +39,12 @@ pub struct RetrievalThread {
     receiver_ext: MassaReceiver<EndorsementHandlerRetrievalCommand>,
     cache: SharedEndorsementCache,
     internal_sender: MassaSender<EndorsementHandlerPropagationCommand>,
+    selector_controller: Box<dyn SelectorController>,
     pool_controller: Box<dyn PoolController>,
     config: ProtocolConfig,
     storage: Storage,
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    metrics: MassaMetrics,
 }
 
 impl RetrievalThread {
@@ -51,6 +55,8 @@ impl RetrievalThread {
                 max_length_endorsements: self.config.max_endorsements_per_message,
                 endorsement_count: self.config.endorsement_count,
             });
+        let tick_metrics = tick(Duration::from_secs(5));
+
         loop {
             select! {
                 recv(self.receiver) -> msg => {
@@ -110,6 +116,17 @@ impl RetrievalThread {
                             return;
                         }
                     }
+                },
+                recv(tick_metrics) -> _ => {
+                    // update metrics
+                    let read = self.cache.read();
+                    let count = read
+                        .endorsements_known_by_peer
+                        .iter()
+                        .map(|(_peer_id, map)| map.len())
+                        .sum();
+                    self.metrics
+                        .set_endorsements_cache_metrics(read.checked_endorsements.len(), count);
                 }
             }
         }
@@ -163,6 +180,28 @@ impl RetrievalThread {
                 })
                 .collect::<Vec<_>>(),
         )?;
+
+        // Check PoS draws
+        for endorsement in new_endorsements.values() {
+            let selection = self
+                .selector_controller
+                .get_selection(endorsement.content.slot)?;
+            let Some(address) = selection.endorsements.get(endorsement.content.index as usize) else {
+                        return Err(ProtocolError::GeneralProtocolError(
+                            format!(
+                                "No selection on slot {} for index {}",
+                                endorsement.content.slot, endorsement.content.index
+                            )
+                        ))
+                    };
+            if address != &endorsement.content_creator_address {
+                return Err(ProtocolError::GeneralProtocolError(format!(
+                    "Invalid endorsement: expected address {}, got {}",
+                    address, endorsement.content_creator_address
+                )));
+            }
+        }
+
         'write_cache: {
             let mut cache_write = self.cache.write();
             // add to verified signature cache
@@ -258,9 +297,11 @@ pub fn start_retrieval_thread(
     internal_sender: MassaSender<EndorsementHandlerPropagationCommand>,
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
     cache: SharedEndorsementCache,
+    selector_controller: Box<dyn SelectorController>,
     pool_controller: Box<dyn PoolController>,
     config: ProtocolConfig,
     storage: Storage,
+    metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
         .name("protocol-endorsement-handler-retrieval".to_string())
@@ -271,9 +312,11 @@ pub fn start_retrieval_thread(
                 peer_cmd_sender,
                 cache,
                 internal_sender,
+                selector_controller,
                 pool_controller,
                 config,
                 storage,
+                metrics,
             };
             retrieval_thread.run();
         })

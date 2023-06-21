@@ -57,11 +57,11 @@ pub fn start_operation_injector(
                 wallet
                     .create_operation(
                         Operation {
-                            fee: Amount::from_mantissa_scale(0, 0),
+                            fee: Amount::const_init(0, 0),
                             expire_period: final_slot.period + 8,
                             op: OperationType::Transaction {
                                 recipient_address: addr,
-                                amount: Amount::from_mantissa_scale(10000, 0),
+                                amount: Amount::const_init(10000, 0),
                             },
                         },
                         return_addr,
@@ -91,18 +91,17 @@ pub fn start_operation_injector(
                 genesis_timestamp,
                 MassaTime::now().unwrap(),
             );
-            println!("AURELIEN: Final slot: {}", final_slot);
             let mut ops = vec![];
 
             for i in 0..32 {
                 for _ in 0..txps {
                     let amount = rng.gen_range(1..=10000);
                     let content = Operation {
-                        fee: Amount::from_mantissa_scale(0, 0),
+                        fee: Amount::const_init(0, 0),
                         expire_period: final_slot.period + 8,
                         op: OperationType::Transaction {
                             recipient_address: return_addr,
-                            amount: Amount::from_mantissa_scale(amount, 8),
+                            amount: Amount::from_mantissa_scale(amount, 8).unwrap(),
                         },
                     };
                     let address = Address::from_public_key(&distant_wallets[i].get_public_key());

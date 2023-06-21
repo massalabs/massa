@@ -18,7 +18,7 @@ use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{sync::Arc, thread, time::Instant};
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
@@ -133,11 +133,6 @@ impl BlockFactoryWorker {
             }
         };
 
-        debug!(
-            "block factory selected block producer address for slot {}: {}",
-            slot, block_producer_addr
-        );
-
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();
         let block_producer_keypair = if let Some(kp) =
@@ -177,7 +172,6 @@ impl BlockFactoryWorker {
             .channels
             .pool
             .get_block_endorsements(&same_thread_parent_id, &slot);
-
         //TODO: Do we want ot populate only with endorsement id in the future ?
         let endorsements: Vec<SecureShareEndorsement> = {
             let endo_read = endo_storage.read_endorsements();
@@ -196,7 +190,6 @@ impl BlockFactoryWorker {
 
         // gather operations and compute global operations hash
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
-
         if op_ids.len() > self.cfg.max_operations_per_block as usize {
             warn!("Too many operations returned");
             return;
@@ -227,7 +220,6 @@ impl BlockFactoryWorker {
             block_producer_keypair,
         )
         .expect("error while producing block header");
-
         // create block
         let block_ = Block {
             header,

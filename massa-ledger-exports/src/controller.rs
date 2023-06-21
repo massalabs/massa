@@ -7,7 +7,7 @@ use massa_db_exports::DBBatch;
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Loads ledger from file
-    fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
+    fn load_initial_ledger(&mut self, only_use_xor: bool) -> Result<(), LedgerError>;
 
     /// Gets the balance of a ledger entry
     ///
@@ -46,7 +46,7 @@ pub trait LedgerController: Send + Sync + Debug {
     /// Reset the ledger
     ///
     /// USED FOR BOOTSTRAP ONLY
-    fn reset(&mut self);
+    fn reset(&mut self, only_use_xor: bool);
 
     fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch);
 
