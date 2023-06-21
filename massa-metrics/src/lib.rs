@@ -21,6 +21,7 @@ mod server;
 
 mod survey;
 
+/// use lazy_static for these metrics because they are used in storage wichc implement default
 lazy_static! {
     static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!(
         "operations_storage_counter",
@@ -37,20 +38,12 @@ pub fn set_blocks_counter(val: usize) {
     BLOCKS_COUNTER.set(val as i64);
 }
 
-pub fn inc_endorsements_counter() {
-    ENDORSEMENTS_COUNTER.inc();
+pub fn set_endorsements_counter(val: usize) {
+    ENDORSEMENTS_COUNTER.set(val as i64);
 }
 
-pub fn dec_endorsements_counter() {
-    ENDORSEMENTS_COUNTER.dec();
-}
-
-pub fn inc_operations_counter() {
-    OPERATIONS_COUNTER.inc();
-}
-
-pub fn dec_operations_counter() {
-    OPERATIONS_COUNTER.dec();
+pub fn set_operations_counter(val: usize) {
+    OPERATIONS_COUNTER.set(val as i64);
 }
 
 #[derive(Clone)]
@@ -103,9 +96,7 @@ pub struct MassaMetrics {
     endorsement_cache_checked_endorsements: IntGauge,
     endorsement_cache_known_by_peer: IntGauge,
 
-    // blocks_counter: IntGauge,
-    // endorsements_counter: IntGauge,
-    // operations_counter: IntGauge,
+    // cursor
     active_cursor_thread: IntGauge,
     active_cursor_period: IntGauge,
 
@@ -149,22 +140,6 @@ impl MassaMetrics {
             IntGauge::new("final_cursor_thread", "execution final cursor thread").unwrap();
         let final_cursor_period =
             IntGauge::new("final_cursor_period", "execution final cursor period").unwrap();
-
-        // // block counter
-        // let blocks_counter = IntGauge::new("blocks_counter", "block counter len").unwrap();
-        // let _ = prometheus::register(Box::new(blocks_counter.clone())).expect("Failed to register gauge");
-
-        // // endorsement counter
-        // let endorsements_counter =
-        //     IntGauge::new("endorsements_counter", "endorsements counter len").unwrap();
-        // let _ = prometheus::register(Box::new(endorsements_counter.clone()))
-        //     .expect("Failed to register gauge");
-
-        // operation counter
-        // let operations_counter =
-        //     IntGauge::new("operations_counter", "operations counter len").unwrap();
-        // let _ = prometheus::register(Box::new(operations_counter.clone()))
-        //     .expect("Failed to register gauge");
 
         // active connections IN
         let active_in_connections =
@@ -357,30 +332,6 @@ impl MassaMetrics {
         }
     }
 
-    // pub fn inc_blocks_counter(&self) {
-    //     self.blocks_counter.inc();
-    // }
-
-    // pub fn dec_blocks_counter(&self) {
-    //     self.blocks_counter.dec();
-    // }
-
-    // pub fn inc_endorsements_counter(&self) {
-    //     self.endorsements_counter.inc();
-    // }
-
-    // pub fn dec_endorsements_counter(&self) {
-    //     self.endorsements_counter.dec();
-    // }
-
-    // pub fn inc_operations_counter(&self) {
-    //     self.operations_counter.inc();
-    // }
-
-    // pub fn dec_operations_counter(&self) {
-    //     self.operations_counter.dec();
-    // }
-
     pub fn set_active_connections(&self, in_connections: usize, out_connections: usize) {
         self.active_in_connections.set(in_connections as i64);
         self.active_out_connections.set(out_connections as i64);
@@ -497,11 +448,11 @@ impl MassaMetrics {
                 // remove peer and unregister metrics
                 if let Some((tx, rx)) = write.remove(&key) {
                     if let Err(e) = prometheus::unregister(Box::new(tx)) {
-                        warn!("Failed to unregister tx metric: {}", e);
+                        warn!("Failed to unregister tx metricfor peer {} : {}", key, e);
                     }
 
                     if let Err(e) = prometheus::unregister(Box::new(rx)) {
-                        warn!("Failed to unregister rx metric: {}", e);
+                        warn!("Failed to unregister rx metric for peer {} : {}", key, e);
                     }
                 }
             }
@@ -536,8 +487,6 @@ impl MassaMetrics {
                     write.insert(k, (peer_total_bytes_sent, peer_total_bytes_receive));
                 }
             }
-
-            // }
         }
     }
 }

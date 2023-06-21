@@ -22,13 +22,13 @@ impl EndorsementIndexes {
     /// - endorsement: the endorsement to insert
     pub(crate) fn insert(&mut self, endorsement: SecureShareEndorsement) {
         if let Ok(e) = self.endorsements.try_insert(endorsement.id, endorsement) {
-            massa_metrics::inc_endorsements_counter();
-
             // update creator index
             self.index_by_creator
                 .entry(e.content_creator_address)
                 .or_default()
                 .insert(e.id);
+
+            massa_metrics::set_endorsements_counter(self.endorsements.len());
         }
     }
 
@@ -40,7 +40,7 @@ impl EndorsementIndexes {
         endorsement_id: &EndorsementId,
     ) -> Option<SecureShareEndorsement> {
         if let Some(e) = self.endorsements.remove(endorsement_id) {
-            massa_metrics::dec_endorsements_counter();
+            massa_metrics::set_endorsements_counter(self.endorsements.len());
 
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =
