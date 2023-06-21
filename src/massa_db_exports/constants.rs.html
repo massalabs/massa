@@ -58,20 +58,48 @@
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
-</pre></div><pre class="rust"><code><span class="comment">// Commons
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::HASH_SIZE_BYTES;
+
+<span class="comment">// Commons
 </span><span class="kw">pub const </span>LSMTREE_NODES_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;lsmtree_nodes&quot;</span>;
 <span class="kw">pub const </span>LSMTREE_VALUES_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;lsmtree_values&quot;</span>;
 <span class="kw">pub const </span>METADATA_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;metadata&quot;</span>;
 <span class="kw">pub const </span>STATE_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;state&quot;</span>;
 <span class="kw">pub const </span>VERSIONING_CF: <span class="kw-2">&amp;</span>str = <span class="string">&quot;versioning&quot;</span>;
 
-<span class="comment">// Hash
-</span><span class="kw">pub const </span>STATE_HASH_BYTES_LEN: usize = <span class="number">32</span>;
 <span class="kw">pub const </span>STATE_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">1</span>] = <span class="string">b&quot;h&quot;</span>;
-<span class="kw">pub const </span>STATE_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; STATE_HASH_BYTES_LEN] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; STATE_HASH_BYTES_LEN];
+<span class="kw">pub const </span>STATE_HASH_XOR_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">1</span>] = <span class="string">b&quot;x&quot;</span>;
+<span class="kw">pub const </span>STATE_HASH_KEY_IS_XOR_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">6</span>] = <span class="string">b&quot;is_xor&quot;</span>;
+<span class="kw">pub const </span>STATE_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+<span class="kw">pub const </span>CHANGE_ID_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">1</span>] = <span class="string">b&quot;c&quot;</span>;
 
-<span class="comment">// Change_id
-</span><span class="kw">pub const </span>CHANGE_ID_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">1</span>] = <span class="string">b&quot;c&quot;</span>;
 <span class="kw">pub const </span>CHANGE_ID_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: change_id deserialization failed&quot;</span>;
 <span class="kw">pub const </span>CHANGE_ID_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: change_id serialization failed&quot;</span>;
 
@@ -93,29 +121,55 @@
 <span class="kw">pub const </span>MIP_STORE_STATS_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">&quot;versioning_stats/&quot;</span>;
 
 <span class="comment">// Async Pool
-</span><span class="kw">pub const </span>MESSAGE_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: message deserialization failed&quot;</span>;
+</span><span class="kw">pub const </span>ASYNC_POOL_HASH_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: saved async pool hash is corrupted&quot;</span>;
+<span class="kw">pub const </span>ASYNC_POOL_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">4</span>] = <span class="string">b&quot;ap_h&quot;</span>;
+<span class="kw">pub const </span>ASYNC_POOL_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+
+<span class="kw">pub const </span>MESSAGE_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: message deserialization failed&quot;</span>;
 <span class="kw">pub const </span>MESSAGE_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: message serialization failed&quot;</span>;
 <span class="kw">pub const </span>MESSAGE_ID_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: message_id deserialization failed&quot;</span>;
 <span class="kw">pub const </span>MESSAGE_ID_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: message_id serialization failed&quot;</span>;
 
 <span class="comment">// PosState
-</span><span class="kw">pub const </span>CYCLE_HISTORY_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: cycle_history deserialization failed&quot;</span>;
+</span><span class="kw">pub const </span>CYCLE_HISTORY_HASH_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: saved cycle_history hash is corrupted&quot;</span>;
+<span class="kw">pub const </span>CYCLE_HISTORY_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">4</span>] = <span class="string">b&quot;ch_h&quot;</span>;
+<span class="kw">pub const </span>CYCLE_HISTORY_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+
+<span class="kw">pub const </span>CYCLE_HISTORY_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: cycle_history deserialization failed&quot;</span>;
 <span class="kw">pub const </span>CYCLE_HISTORY_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: cycle_history serialization failed&quot;</span>;
+
+<span class="kw">pub const </span>DEFERRED_CREDITS_HASH_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: saved deferred_credits hash is corrupted&quot;</span>;
+<span class="kw">pub const </span>DEFERRED_CREDITS_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">4</span>] = <span class="string">b&quot;dc_h&quot;</span>;
+<span class="kw">pub const </span>DEFERRED_CREDITS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+
 <span class="kw">pub const </span>DEFERRED_CREDITS_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: deferred_credits deserialization failed&quot;</span>;
 <span class="kw">pub const </span>DEFERRED_CREDITS_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: deferred_credits serialization failed&quot;</span>;
 
 <span class="comment">// Executed Ops
-</span><span class="kw">pub const </span>EXECUTED_OPS_ID_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: executed_ops_id deserialization failed&quot;</span>;
+</span><span class="kw">pub const </span>EXECUTED_OPS_HASH_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: saved executed_ops hash is corrupted&quot;</span>;
+<span class="kw">pub const </span>EXECUTED_OPS_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">4</span>] = <span class="string">b&quot;eo_h&quot;</span>;
+<span class="kw">pub const </span>EXECUTED_OPS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+
+<span class="kw">pub const </span>EXECUTED_OPS_ID_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: executed_ops_id deserialization failed&quot;</span>;
 <span class="kw">pub const </span>EXECUTED_OPS_ID_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: executed_ops_id serialization failed&quot;</span>;
 
 <span class="comment">// Executed Denunciations
-</span><span class="kw">pub const </span>EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR: <span class="kw-2">&amp;</span>str =
+</span><span class="kw">pub const </span>EXECUTED_DENUNCIATIONS_HASH_ERROR: <span class="kw-2">&amp;</span>str =
+    <span class="string">&quot;critical: saved executed_denunciations hash is corrupted&quot;</span>;
+<span class="kw">pub const </span>EXECUTED_DENUNCIATIONS_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">4</span>] = <span class="string">b&quot;ed_h&quot;</span>;
+<span class="kw">pub const </span>EXECUTED_DENUNCIATIONS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+
+<span class="kw">pub const </span>EXECUTED_DENUNCIATIONS_INDEX_DESER_ERROR: <span class="kw-2">&amp;</span>str =
     <span class="string">&quot;critical: executed_denunciations_index deserialization failed&quot;</span>;
 <span class="kw">pub const </span>EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR: <span class="kw-2">&amp;</span>str =
     <span class="string">&quot;critical: executed_denunciations_index serialization failed&quot;</span>;
 
 <span class="comment">// Ledger
-</span><span class="kw">pub const </span>KEY_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: key deserialization failed&quot;</span>;
+</span><span class="kw">pub const </span>LEDGER_HASH_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: saved ledger hash is corrupted&quot;</span>;
+<span class="kw">pub const </span>LEDGER_HASH_KEY: <span class="kw-2">&amp;</span>[u8; <span class="number">3</span>] = <span class="string">b&quot;l_h&quot;</span>;
+<span class="kw">pub const </span>LEDGER_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
+
+<span class="kw">pub const </span>KEY_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: key deserialization failed&quot;</span>;
 <span class="kw">pub const </span>KEY_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: key serialization failed&quot;</span>;
 <span class="kw">pub const </span>KEY_LEN_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;critical: key length serialization failed&quot;</span>;
 </code></pre></div></section></main></body></html>

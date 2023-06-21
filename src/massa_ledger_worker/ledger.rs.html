@@ -183,6 +183,7 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
@@ -234,7 +235,7 @@
 
 <span class="kw">impl </span>LedgerController <span class="kw">for </span>FinalLedger {
     <span class="doccomment">/// Loads ledger from file
-    </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
+    </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>, only_use_xor: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt; {
         <span class="comment">// load the ledger tree from file
         </span><span class="kw">let </span>initial_ledger: HashMap&lt;Address, LedgerEntry&gt; = serde_json::from_str(
             <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_ledger_path).map_err(|err| {
@@ -258,7 +259,8 @@
                 err
             ))
         })<span class="question-mark">?</span>;
-        <span class="self">self</span>.sorted_ledger.load_initial_ledger(initial_ledger);
+        <span class="self">self</span>.sorted_ledger
+            .load_initial_ledger(initial_ledger, only_use_xor);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -330,8 +332,8 @@
     <span class="doccomment">/// Reset the disk ledger.
     ///
     /// USED FOR BOOTSTRAP ONLY
-    </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.sorted_ledger.reset();
+    </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, only_use_xor: bool) {
+        <span class="self">self</span>.sorted_ledger.reset(only_use_xor);
     }
 
     <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger

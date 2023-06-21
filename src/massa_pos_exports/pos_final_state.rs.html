@@ -1622,6 +1622,8 @@
 <a href="#1622" id="1622">1622</a>
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
+<a href="#1625" id="1625">1625</a>
+<a href="#1626" id="1626">1626</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -1832,10 +1834,10 @@
     <span class="doccomment">/// Reset the state of the PoS final state
     ///
     /// USED ONLY FOR BOOTSTRAP
-    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, only_use_xor: bool) {
         <span class="kw">let </span><span class="kw-2">mut </span>db = <span class="self">self</span>.db.write();
-        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
-        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
+        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, <span class="prelude-val">None</span>, only_use_xor);
+        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, <span class="prelude-val">None</span>, only_use_xor);
         <span class="self">self</span>.cycle_history_cache = Default::default();
         <span class="self">self</span>.rng_seed_cache = <span class="prelude-val">None</span>;
     }
@@ -2168,7 +2170,7 @@
     }
 
     <span class="doccomment">/// Feeds the selector targeting a given draw cycle
-    </span><span class="kw">pub fn </span>feed_cycle_state_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64, final_state_hash: Hash) {
+    </span><span class="kw">pub fn </span>feed_cycle_state_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64, final_state_hash: Hash, only_use_xor: bool) {
         <span class="kw">if </span><span class="self">self</span>.get_cycle_index(cycle).is_some() {
             <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
             <span class="self">self</span>.put_cycle_history_final_state_hash_snapshot(
@@ -2177,7 +2179,9 @@
                 <span class="kw-2">&amp;mut </span>batch,
             );
 
-            <span class="self">self</span>.db.write().write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
+            <span class="self">self</span>.db
+                .write()
+                .write_batch(batch, Default::default(), <span class="prelude-val">None</span>, only_use_xor);
         } <span class="kw">else </span>{
             <span class="macro">panic!</span>(<span class="string">&quot;cycle {} should be contained here&quot;</span>, cycle);
         }
@@ -3129,7 +3133,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
     pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
     db.write()
-        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">0</span>)));
+        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">0</span>)), <span class="bool-val">false</span>);
 
     <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
 
@@ -3156,7 +3160,7 @@
         .apply_changes_to_batch(changes, Slot::new(<span class="number">0</span>, <span class="number">0</span>), <span class="bool-val">false</span>, <span class="kw-2">&amp;mut </span>batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">0</span>)));
+        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">0</span>)), <span class="bool-val">false</span>);
 
     <span class="comment">// update changes once
     </span>roll_changes.clear();
@@ -3181,7 +3185,7 @@
         .apply_changes_to_batch(changes, Slot::new(<span class="number">0</span>, <span class="number">1</span>), <span class="bool-val">false</span>, <span class="kw-2">&amp;mut </span>batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">1</span>)));
+        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">1</span>)), <span class="bool-val">false</span>);
 
     <span class="comment">// update changes twice
     </span>roll_changes.clear();
@@ -3207,7 +3211,7 @@
         .apply_changes_to_batch(changes, Slot::new(<span class="number">1</span>, <span class="number">0</span>), <span class="bool-val">false</span>, <span class="kw-2">&amp;mut </span>batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">1</span>, <span class="number">0</span>)));
+        .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="bool-val">false</span>);
 
     <span class="kw">let </span>cycles = pos_state.get_cycle_history_cycles();
     <span class="macro">assert_eq!</span>(cycles.len(), <span class="number">1</span>, <span class="string">&quot;wrong number of cycles&quot;</span>);
