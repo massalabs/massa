@@ -101,7 +101,7 @@ pub fn start_operation_injector(
                         expire_period: final_slot.period + 8,
                         op: OperationType::Transaction {
                             recipient_address: return_addr,
-                            amount: Amount::from_mantissa_scale(amount, 8),
+                            amount: Amount::from_mantissa_scale(amount, 8).unwrap(),
                         },
                     };
                     let address = Address::from_public_key(&distant_wallets[i].get_public_key());
