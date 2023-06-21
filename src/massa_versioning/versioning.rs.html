@@ -2243,6 +2243,13 @@
 <a href="#2243" id="2243">2243</a>
 <a href="#2244" id="2244">2244</a>
 <a href="#2245" id="2245">2245</a>
+<a href="#2246" id="2246">2246</a>
+<a href="#2247" id="2247">2247</a>
+<a href="#2248" id="2248">2248</a>
+<a href="#2249" id="2249">2249</a>
+<a href="#2250" id="2250">2250</a>
+<a href="#2251" id="2251">2251</a>
+<a href="#2252" id="2252">2252</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -2254,9 +2261,8 @@
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tracing::{debug, warn};
 
-<span class="kw">use </span>massa_db_exports::{
-    DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
-    VERSIONING_CF,
+<span class="kw">use </span>massa_db::{
+    DBBatch, MassaDB, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF, VERSIONING_CF,
 };
 <span class="kw">use </span>massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 <span class="kw">use </span>massa_models::error::ModelsError;
@@ -2861,13 +2867,13 @@
 
     <span class="kw">pub fn </span>extend_from_db(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        db: ShareableMassaDBController,
+        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, BTreeMap&lt;MipInfo, MipState&gt;), ExtendFromDbError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>guard = <span class="self">self</span>.<span class="number">0</span>.write();
         guard.extend_from_db(db)
     }
 
-    <span class="kw">pub fn </span>reset_db(<span class="kw-2">&amp;</span><span class="self">self</span>, db: ShareableMassaDBController, only_use_xor: bool) {
+    <span class="kw">pub fn </span>reset_db(<span class="kw-2">&amp;</span><span class="self">self</span>, db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;, only_use_xor: bool) {
         {
             <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
             guard.delete_prefix(MIP_STORE_PREFIX, STATE_CF, <span class="prelude-val">None</span>, only_use_xor);
@@ -3368,7 +3374,7 @@
     <span class="doccomment">/// Extend MIP store with what is written on the disk
     </span><span class="kw">fn </span>extend_from_db(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        db: ShareableMassaDBController,
+        db: Arc&lt;RwLock&lt;MassaDB&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, BTreeMap&lt;MipInfo, MipState&gt;), ExtendFromDbError&gt; {
         <span class="kw">let </span>mip_info_deser = MipInfoDeserializer::new();
         <span class="kw">let </span>mip_state_deser = MipStateDeserializer::new();
@@ -3378,11 +3384,15 @@
         );
 
         <span class="kw">let </span>db = db.read();
+        <span class="kw">let </span>handle = db
+            .db
+            .cf_handle(STATE_CF)
+            .ok_or(ExtendFromDbError::UnknownDbColumn(STATE_CF.to_string()))<span class="question-mark">?</span>;
 
         <span class="comment">// Get data from state cf handle
         </span><span class="kw">let </span><span class="kw-2">mut </span>update_data: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
         <span class="kw">for </span>(ser_mip_info, ser_mip_state) <span class="kw">in
-            </span>db.prefix_iterator_cf(STATE_CF, MIP_STORE_PREFIX.as_bytes())
+            </span>db.db.prefix_iterator_cf(handle, MIP_STORE_PREFIX).flatten()
         {
             <span class="kw">if </span>!ser_mip_info.starts_with(MIP_STORE_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
@@ -3414,14 +3424,22 @@
         <span class="kw">let </span>(<span class="kw-2">mut </span>updated, <span class="kw-2">mut </span>added) = <span class="self">self</span>.update_with(<span class="kw-2">&amp;</span>store_raw_)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>update_data: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
+        <span class="kw">let </span>versioning_handle =
+            db.db
+                .cf_handle(VERSIONING_CF)
+                .ok_or(ExtendFromDbError::UnknownDbColumn(
+                    VERSIONING_CF.to_string(),
+                ))<span class="question-mark">?</span>;
 
         <span class="comment">// Get data from state cf handle
-        </span><span class="kw">for </span>(ser_mip_info, ser_mip_state) <span class="kw">in
-            </span>db.prefix_iterator_cf(VERSIONING_CF, MIP_STORE_PREFIX.as_bytes())
+        </span><span class="kw">for </span>(ser_mip_info, ser_mip_state) <span class="kw">in </span>db
+            .db
+            .prefix_iterator_cf(versioning_handle, MIP_STORE_PREFIX)
+            .flatten()
         {
             <span class="comment">// deser
 
-            </span><span class="kw">match </span><span class="kw-2">&amp;</span>ser_mip_info {
+            </span><span class="kw">match </span>ser_mip_info.as_ref() {
                 key <span class="kw">if </span>key.starts_with(MIP_STORE_PREFIX.as_bytes()) =&gt; {
                     <span class="kw">let </span>(<span class="kw">_</span>, mip_info) = mip_info_deser
                         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_mip_info[MIP_STORE_PREFIX.len()..])
@@ -3500,13 +3518,11 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
-    <span class="kw">use </span>massa_db_worker::MassaDB;
-    <span class="kw">use </span>more_asserts::assert_le;
-    <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>std::assert_matches::assert_matches;
     <span class="kw">use </span>std::str::FromStr;
-    <span class="kw">use </span>std::sync::Arc;
+
+    <span class="kw">use </span>massa_db::MassaDBConfig;
+    <span class="kw">use </span>more_asserts::assert_le;
     <span class="kw">use </span>tempfile::tempdir;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
@@ -4311,9 +4327,7 @@
             max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
-        <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
-        ));
+        <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
         <span class="comment">// MIP info / store init
 
