@@ -1322,6 +1322,11 @@
 <a href="#1322" id="1322">1322</a>
 <a href="#1323" id="1323">1323</a>
 <a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1556,7 +1561,12 @@
     };
 
     <span class="comment">// Start massa metrics
-    </span><span class="kw">let </span>metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
+    </span><span class="kw">let </span>metrics = MassaMetrics::new(
+        SETTINGS.metrics.enabled,
+        SETTINGS.metrics.bind,
+        THREAD_COUNT,
+        SETTINGS.metrics.tick_delay.to_duration(),
+    );
 
     <span class="comment">// Remove current disk ledger if there is one and we don&#39;t want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger

@@ -1744,6 +1744,10 @@
 <a href="#1744" id="1744">1744</a>
 <a href="#1745" id="1745">1745</a>
 <a href="#1746" id="1746">1746</a>
+<a href="#1747" id="1747">1747</a>
+<a href="#1748" id="1748">1748</a>
+<a href="#1749" id="1749">1749</a>
+<a href="#1750" id="1750">1750</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3076,6 +3080,10 @@
         <span class="macro">debug!</span>(
             <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
         </span>);
+
+        <span class="comment">// update prometheus metrics
+        </span><span class="self">self</span>.massa_metrics
+            .inc_operations_final_counter(exec_out.state_changes.executed_ops_changes.len() <span class="kw">as </span>u64);
 
         <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
         </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
