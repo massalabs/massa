@@ -18,6 +18,7 @@ impl Default for PoolConfig {
             roll_price: ROLL_PRICE,
             max_block_size: MAX_BLOCK_SIZE,
             max_operation_pool_size: 32000,
+            max_operation_pool_excess_items: 10000,
             max_endorsements_pool_size_per_thread: 1000,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             max_block_endorsement_count: ENDORSEMENT_COUNT,
