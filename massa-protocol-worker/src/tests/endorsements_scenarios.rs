@@ -3,11 +3,13 @@ use std::time::Duration;
 use massa_hash::Hash;
 use massa_models::{
     block_id::BlockId,
+    config::ENDORSEMENT_COUNT,
     endorsement::{Endorsement, EndorsementSerializer},
     secure_share::SecureShareContent,
     slot::Slot,
 };
 use massa_pool_exports::test_exports::MockPoolControllerMessage;
+use massa_pos_exports::{test_exports::MockSelectorControllerMessage, Selection};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
@@ -39,7 +41,8 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              mut pool_event_receiver| {
+              mut pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 1 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller
@@ -57,6 +60,23 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                 )
                 .unwrap();
 
+            if let Ok(MockSelectorControllerMessage::GetSelection {
+                slot: _,
+                response_tx,
+            }) = selector_event_receiver.recv_timeout(Duration::from_secs(2))
+            {
+                response_tx
+                    .send(Ok(Selection {
+                        endorsements: vec![
+                            endorsement.content_creator_address;
+                            ENDORSEMENT_COUNT as usize
+                        ],
+                        producer: endorsement.content_creator_address,
+                    }))
+                    .unwrap();
+            } else {
+                panic!("Unexpected or no selector selector event.");
+            }
             //3. Check protocol sends endorsements to pool.
             let received_endorsements = match pool_event_receiver.wait_command(
                 MassaTime::from_millis(1500),
@@ -80,6 +100,7 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -103,7 +124,8 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              mut pool_event_receiver| {
+              mut pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 1 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller
@@ -118,7 +140,9 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement])),
+                    Message::Endorsement(EndorsementMessage::Endorsements(vec![
+                        endorsement.clone()
+                    ])),
                 )
                 .unwrap();
 
@@ -135,6 +159,7 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -158,7 +183,8 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              mut pool_event_receiver| {
+              mut pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -178,7 +204,23 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
                     ])),
                 )
                 .unwrap();
-
+            if let Ok(MockSelectorControllerMessage::GetSelection {
+                slot: _,
+                response_tx,
+            }) = selector_event_receiver.recv_timeout(Duration::from_secs(2))
+            {
+                response_tx
+                    .send(Ok(Selection {
+                        endorsements: vec![
+                            endorsement.content_creator_address;
+                            ENDORSEMENT_COUNT as usize
+                        ],
+                        producer: endorsement.content_creator_address,
+                    }))
+                    .unwrap();
+            } else {
+                panic!("Unexpected or no selector selector event.");
+            }
             //3. Check protocol sends endorsements to pool.
             pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
                 MockPoolControllerMessage::AddEndorsements { .. } => {
@@ -207,6 +249,7 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -231,6 +274,7 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
               protocol_manager,
               consensus_event_receiver,
               mut pool_event_receiver,
+              selector_event_receiver,
               mut storage| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -261,6 +305,24 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
                     Message::Block(Box::new(BlockMessage::BlockHeader(block.content.header))),
                 )
                 .unwrap();
+
+            if let Ok(MockSelectorControllerMessage::GetSelection {
+                slot: _,
+                response_tx,
+            }) = selector_event_receiver.recv_timeout(Duration::from_secs(2))
+            {
+                response_tx
+                    .send(Ok(Selection {
+                        endorsements: vec![
+                            endorsement.content_creator_address;
+                            ENDORSEMENT_COUNT as usize
+                        ],
+                        producer: endorsement.content_creator_address,
+                    }))
+                    .unwrap();
+            } else {
+                panic!("Unexpected or no selector selector event.");
+            }
 
             std::thread::sleep(Duration::from_millis(300));
             // Send the endorsement to protocol
@@ -297,6 +359,7 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )

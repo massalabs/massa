@@ -49,7 +49,7 @@ impl FinalLedger {
 
 impl LedgerController for FinalLedger {
     /// Loads ledger from file
-    fn load_initial_ledger(&mut self) -> Result<(), LedgerError> {
+    fn load_initial_ledger(&mut self, only_use_xor: bool) -> Result<(), LedgerError> {
         // load the ledger tree from file
         let initial_ledger: HashMap<Address, LedgerEntry> = serde_json::from_str(
             &std::fs::read_to_string(&self.config.initial_ledger_path).map_err(|err| {
@@ -73,7 +73,8 @@ impl LedgerController for FinalLedger {
                 err
             ))
         })?;
-        self.sorted_ledger.load_initial_ledger(initial_ledger);
+        self.sorted_ledger
+            .load_initial_ledger(initial_ledger, only_use_xor);
         Ok(())
     }
 
@@ -145,8 +146,8 @@ impl LedgerController for FinalLedger {
     /// Reset the disk ledger.
     ///
     /// USED FOR BOOTSTRAP ONLY
-    fn reset(&mut self) {
-        self.sorted_ledger.reset();
+    fn reset(&mut self, only_use_xor: bool) {
+        self.sorted_ledger.reset(only_use_xor);
     }
 
     /// Allows applying `LedgerChanges` to the final ledger

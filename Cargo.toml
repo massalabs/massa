@@ -41,7 +41,6 @@ members = [
   "massa-pos-worker",
   "massa-versioning",
   "massa-grpc",
-  "massa-proto",
   "massa-xtask",
 ]
 resolver = "2"

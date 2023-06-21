@@ -17,6 +17,7 @@ pub enum ModuleInfo {
     ModuleAndDelta((RuntimeModule, u64)),
 }
 
+#[derive(PartialEq, Eq)]
 /// Metadata type
 pub enum ModuleMetadata {
     Invalid,

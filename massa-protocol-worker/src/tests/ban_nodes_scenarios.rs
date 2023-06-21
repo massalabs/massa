@@ -39,7 +39,8 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
               protocol_controller,
               protocol_manager,
               mut consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller
@@ -82,6 +83,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -105,7 +107,8 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              mut pool_event_receiver| {
+              mut pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller
@@ -147,6 +150,7 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -170,7 +174,8 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
               protocol_controller,
               protocol_manager,
               consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller
@@ -254,6 +259,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -277,7 +283,8 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
               protocol_controller,
               protocol_manager,
               mut consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, node_a) = network_controller
@@ -358,6 +365,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
@@ -381,7 +389,8 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
               protocol_controller,
               protocol_manager,
               mut consensus_event_receiver,
-              pool_event_receiver| {
+              pool_event_receiver,
+              selector_event_receiver| {
             //1. Create 2 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -466,6 +475,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 protocol_manager,
                 consensus_event_receiver,
                 pool_event_receiver,
+                selector_event_receiver,
             )
         },
     )
