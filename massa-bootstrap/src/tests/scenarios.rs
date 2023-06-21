@@ -335,13 +335,13 @@ fn test_bootstrap_server() {
         final_write
             .db
             .write()
-            .write_batch(batch, Default::default(), Some(next), false);
+            .write_batch(batch, Default::default(), Some(next));
 
         let final_state_hash = final_write.db.read().get_db_hash();
         let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash, false);
+            .feed_cycle_state_hash(cycle, final_state_hash);
 
         current_slot = next;
     }
@@ -478,13 +478,13 @@ fn test_bootstrap_server() {
                 final_write
                     .db
                     .write()
-                    .write_batch(batch, Default::default(), Some(next), false);
+                    .write_batch(batch, Default::default(), Some(next));
 
                 let final_state_hash = final_write.db.read().get_db_hash();
                 let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state
-                    .feed_cycle_state_hash(cycle, final_state_hash, false);
+                    .feed_cycle_state_hash(cycle, final_state_hash);
 
                 let mut list_changes_write = list_changes_clone.write();
                 list_changes_write.push((next, changes));
@@ -514,12 +514,6 @@ fn test_bootstrap_server() {
 
     {
         let mut final_state_client_write = final_state_client.write();
-
-        final_state_client_write
-            .db
-            .write()
-            .recompute_db_hash(false)
-            .unwrap();
 
         assert!(
             final_state_client_write.is_db_valid(),

@@ -98,10 +98,10 @@ impl ExecutedDenunciations {
     /// Reset the executed denunciations
     ///
     /// USED FOR BOOTSTRAP ONLY
-    pub fn reset(&mut self, only_use_xor: bool) {
+    pub fn reset(&mut self) {
         {
             let mut db = self.db.write();
-            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF, None, only_use_xor);
+            db.delete_prefix(EXECUTED_DENUNCIATIONS_PREFIX, STATE_CF, None);
         }
 
         self.recompute_sorted_denunciations();
