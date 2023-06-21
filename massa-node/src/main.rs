@@ -759,14 +759,16 @@ async fn launch(
     );
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
-            panic!(
-                "{}",
-                format!("Could not bind to address: {}", addr).as_str()
-            )
-        });
-        let mut manager = start_bootstrap_server(
+        let (listener_stopper, listener) =
+            BootstrapTcpListener::create(&addr).unwrap_or_else(|_| {
+                panic!(
+                    "{}",
+                    format!("Could not bind to address: {}", addr).as_str()
+                )
+            });
+        start_bootstrap_server(
             listener,
+            listener_stopper,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -774,9 +776,7 @@ async fn launch(
             keypair.clone(),
             *VERSION,
         )
-        .expect("Could not start bootstrap server");
-        manager.set_listener_stopper(waker);
-        manager
+        .expect("Could not start bootstrap server")
     });
 
     let api_config: APIConfig = APIConfig {
