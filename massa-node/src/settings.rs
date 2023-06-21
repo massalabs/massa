@@ -87,6 +87,7 @@ pub struct FactorySettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct PoolSettings {
     pub max_operation_pool_size: usize,
+    pub max_operation_pool_excess_items: usize,
     pub operation_max_future_start_delay: MassaTime,
     pub operation_pool_refresh_interval: MassaTime,
     pub max_endorsements_pool_size_per_thread: usize,
@@ -188,6 +189,8 @@ pub struct ProtocolSettings {
     pub max_node_wanted_blocks_size: usize,
     /// max known operations current node kept in memory
     pub max_known_ops_size: usize,
+    /// size of the buffer of asked operations
+    pub asked_operations_buffer_capacity: usize,
     /// max known operations of foreign nodes we keep in memory (by node)
     pub max_node_known_ops_size: usize,
     /// max known endorsements by our node that we kept in memory

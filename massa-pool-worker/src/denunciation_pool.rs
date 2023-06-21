@@ -236,21 +236,22 @@ impl DenunciationPool {
 
     /// Add endorsements, turn them in DenunciationPrecursor then process
     pub(crate) fn add_endorsements(&mut self, endorsement_storage: Storage) {
-        let items = endorsement_storage
-            .get_endorsement_refs()
-            .iter()
-            .copied()
-            .collect::<Vec<_>>();
-
-        let endo_store = endorsement_storage.read_endorsements();
-
-        for endo_id in items {
-            let endo = endo_store.get(&endo_id).expect(
-                "Attempting to add endorsement to denunciation pool, but it is absent from storage",
-            );
-
-            let de_p = DenunciationPrecursor::from(endo);
-            self.add_denunciation_precursor(de_p);
+        let precursors: Vec<DenunciationPrecursor> = {
+            let endorsement_store = endorsement_storage.read_endorsements();
+            endorsement_storage
+                .get_endorsement_refs()
+                .iter()
+                .map(|id| {
+                    DenunciationPrecursor::from(
+                        endorsement_store
+                            .get(id)
+                            .expect("could not get endorsement owned by storage"),
+                    )
+                })
+                .collect()
+        };
+        for precursor in precursors {
+            self.add_denunciation_precursor(precursor);
         }
     }
 }

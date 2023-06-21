@@ -87,13 +87,7 @@ impl PropagationThread {
         {
             let mut cache_write = self.cache.write();
             let peers_connected = self.active_connections.get_peer_ids_connected();
-            cache_write.update_cache(
-                peers_connected,
-                self.config
-                    .max_node_known_ops_size
-                    .try_into()
-                    .expect("max_node_known_ops_size is too big"),
-            );
+            cache_write.update_cache(peers_connected);
 
             // Propagate to peers
             let all_keys: Vec<PeerId> = cache_write
