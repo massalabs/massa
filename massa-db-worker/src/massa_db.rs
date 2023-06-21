@@ -1,7 +1,8 @@
 use massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
-    CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
+    CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
+    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
 use massa_hash::Hash;
 use massa_models::{
@@ -334,8 +335,7 @@ where
                         Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
                     current_xor_hash ^= prev_hash;
                 };
-                let new_hash =
-                    Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
+                let new_hash = Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
                 current_xor_hash ^= new_hash;
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
@@ -538,8 +538,7 @@ where
 
     /// Get the current state hash of the database
     pub fn get_db_hash(&self) -> Hash {
-        self
-            .get_db_hash_opt()
+        self.get_db_hash_opt()
             .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
     }
 
@@ -550,7 +549,9 @@ where
         db.get_cf(handle, STATE_HASH_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
-            .map(|state_hash_bytes| Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR)))
+            .map(|state_hash_bytes| {
+                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
+            })
     }
 }
 
@@ -615,12 +616,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Writes the batch to the DB
-    fn write_batch(
-        &mut self,
-        batch: DBBatch,
-        versioning_batch: DBBatch,
-        change_id: Option<Slot>,
-    ) {
+    fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>) {
         self.write_changes(batch, versioning_batch, change_id, false)
             .expect(CRUD_ERROR);
     }

@@ -18,12 +18,7 @@ pub trait MassaDBController: Send + Sync + Debug {
     fn set_initial_change_id(&self, change_id: Slot);
 
     /// Writes the batch to the DB
-    fn write_batch(
-        &mut self,
-        batch: DBBatch,
-        versioning_batch: DBBatch,
-        change_id: Option<Slot>
-    );
+    fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>);
 
     /// Utility function to put / update a key & value in the batch
     fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]);
@@ -32,12 +27,7 @@ pub trait MassaDBController: Send + Sync + Debug {
     fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>);
 
     /// Utility function to delete all keys in a prefix
-    fn delete_prefix(
-        &mut self,
-        prefix: &str,
-        handle_str: &str,
-        change_id: Option<Slot>
-    );
+    fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>);
 
     /// Reset the database, and attach it to the given slot.
     fn reset(&mut self, slot: Slot);

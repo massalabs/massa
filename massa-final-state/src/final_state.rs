@@ -19,8 +19,8 @@ use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
-use tracing::{debug, info, warn};
 use massa_versioning::versioning::MipStore;
+use tracing::{debug, info, warn};
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
