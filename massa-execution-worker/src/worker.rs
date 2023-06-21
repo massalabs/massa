@@ -199,13 +199,13 @@ impl ExecutionThread {
                             slot,
                             content,
                             self.selector.clone(),
-                        )
+                        );
                     } else {
                         self.execution_state.write().execute_candidate_slot(
                             slot,
                             content,
                             self.selector.clone(),
-                        )
+                        );
                     }
                 },
             );

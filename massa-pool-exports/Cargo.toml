@@ -13,6 +13,7 @@ massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time"}
 massa_pos_exports = { path = "../massa-pos-exports" }
+massa_execution_exports = { path = "../massa-execution-exports" }
 
 [dev-dependencies]
 

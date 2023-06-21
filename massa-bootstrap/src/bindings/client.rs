@@ -18,11 +18,12 @@ use massa_signature::{PublicKey, Signature};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::time::Instant;
 use std::{net::TcpStream, time::Duration};
+use stream_limiter::{Limiter, LimiterOptions};
 
 /// Bootstrap client binder
 pub struct BootstrapClientBinder {
     remote_pubkey: PublicKey,
-    duplex: TcpStream,
+    duplex: Limiter<TcpStream>,
     prev_message: Option<Hash>,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
@@ -42,7 +43,16 @@ impl BootstrapClientBinder {
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     #[allow(clippy::too_many_arguments)]
-    pub fn new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -> Self {
+    pub fn new(
+        duplex: TcpStream,
+        remote_pubkey: PublicKey,
+        cfg: BootstrapClientConfig,
+        limit: Option<u64>,
+    ) -> Self {
+        let limit_opts = limit.map(|limit| {
+            LimiterOptions::new(limit, Duration::from_millis(1000), limit.saturating_mul(2))
+        });
+        let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapClientBinder {
             remote_pubkey,
             duplex,
@@ -206,7 +216,7 @@ impl BootstrapClientBinder {
 
 impl crate::bindings::BindingReadExact for BootstrapClientBinder {
     fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.set_read_timeout(duration)
+        self.duplex.stream.set_read_timeout(duration)
     }
 }
 
@@ -218,7 +228,7 @@ impl std::io::Read for BootstrapClientBinder {
 
 impl crate::bindings::BindingWriteExact for BootstrapClientBinder {
     fn set_write_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.set_write_timeout(duration)
+        self.duplex.stream.set_write_timeout(duration)
     }
 }
 

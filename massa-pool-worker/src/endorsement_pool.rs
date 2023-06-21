@@ -8,8 +8,13 @@ use massa_models::{
 };
 use massa_pool_exports::{PoolChannels, PoolConfig};
 use massa_storage::Storage;
-use std::collections::{BTreeMap, HashMap};
-use tracing::trace;
+use massa_wallet::Wallet;
+use parking_lot::RwLock;
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
+use tracing::{trace, warn};
 
 pub struct EndorsementPool {
     /// configuration
@@ -30,10 +35,18 @@ pub struct EndorsementPool {
 
     /// channels used by the pool worker
     channels: PoolChannels,
+
+    /// staking wallet, to know which addresses we are using to stake
+    wallet: Arc<RwLock<Wallet>>,
 }
 
 impl EndorsementPool {
-    pub fn init(config: PoolConfig, storage: &Storage, channels: PoolChannels) -> Self {
+    pub fn init(
+        config: PoolConfig,
+        storage: &Storage,
+        channels: PoolChannels,
+        wallet: Arc<RwLock<Wallet>>,
+    ) -> Self {
         EndorsementPool {
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             endorsements_indexed: Default::default(),
@@ -41,6 +54,7 @@ impl EndorsementPool {
             config,
             storage: storage.clone_without_refs(),
             channels,
+            wallet,
         }
     }
 
@@ -98,21 +112,50 @@ impl EndorsementPool {
                     .get(&endo_id)
                     .expect("attempting to add endorsement to pool, but it is absent from storage");
 
+                // check endorsement expiry
+                if endo.content.slot.period
+                    <= self.last_cs_final_periods[endo.content.slot.thread as usize]
+                {
+                    continue;
+                }
+
+                // check PoS draw
+                let pos_draws = match self.channels.selector.get_selection(endo.content.slot) {
+                    Ok(draw) => draw,
+                    Err(err) => {
+                        warn!(
+                            "error, failed to get PoS draw for endorsement with id {} at slot {}: {}",
+                            endo.id.clone(), endo.content.slot, err
+                        );
+                        continue;
+                    }
+                };
+                if !pos_draws
+                    .endorsements
+                    .get(endo.content.index as usize)
+                    .map_or(false, |a| a == &endo.content_creator_address)
+                {
+                    warn!(
+                        "error, endorsement with id {} at slot {} is not selected for PoS draw",
+                        endo.id.clone(),
+                        endo.content.slot
+                    );
+                    continue;
+                }
+
                 // Broadcast endorsement to active channel subscribers.
                 if self.config.broadcast_enabled {
                     if let Err(err) = self.channels.endorsement_sender.send(endo.clone()) {
                         trace!(
-                            "error, failed to broadcast endorsement with id {} due to: {}",
+                            "error, failed to broadcast endorsement {}: {}",
                             endo.id.clone(),
                             err
                         );
                     }
                 }
 
-                if endo.content.slot.period
-                    < self.last_cs_final_periods[endo.content.slot.thread as usize]
-                {
-                    // endorsement expired: ignore
+                // Only keep endorsements that one of our addresses can include
+                if !self.wallet.read().keys.contains_key(&pos_draws.producer) {
                     continue;
                 }
 

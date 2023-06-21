@@ -4,6 +4,7 @@ use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_pool_exports::test_exports::MockPoolController;
+use massa_pos_exports::test_exports::MockSelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -40,6 +41,9 @@ fn basic() {
 
     let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
     let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+
+    let (selector_controller1, _) = MockSelectorController::new_with_receiver();
+    let (selector_controller2, _) = MockSelectorController::new_with_receiver();
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
@@ -143,6 +147,7 @@ fn basic() {
     // Setup the protocols
     let (mut manager1, _, _) = start_protocol_controller(
         config1,
+        selector_controller1,
         consensus_controller1,
         None,
         pool_controller1,
@@ -154,6 +159,7 @@ fn basic() {
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
         config2,
+        selector_controller2,
         consensus_controller2,
         None,
         pool_controller2,
@@ -185,6 +191,9 @@ fn stop_with_controller_still_exists() {
 
     let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
     let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+
+    let (selector_controller1, _) = MockSelectorController::new_with_receiver();
+    let (selector_controller2, _) = MockSelectorController::new_with_receiver();
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
@@ -286,6 +295,7 @@ fn stop_with_controller_still_exists() {
     let (mut sender_manager2, channels2) = create_protocol_controller(config2.clone());
     let (mut manager1, _, _) = start_protocol_controller(
         config1,
+        selector_controller1,
         consensus_controller1,
         None,
         pool_controller1,
@@ -297,6 +307,7 @@ fn stop_with_controller_still_exists() {
     .expect("Failed to start protocol 1");
     let (mut manager2, _, _) = start_protocol_controller(
         config2,
+        selector_controller2,
         consensus_controller2,
         None,
         pool_controller2,

@@ -5,6 +5,7 @@ use massa_consensus_exports::ConsensusController;
 use massa_metrics::MassaMetrics;
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
@@ -46,6 +47,7 @@ pub enum ConnectivityCommand {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn start_connectivity_thread(
     peer_id: PeerId,
+    selector_controller: Box<dyn SelectorController>,
     mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
@@ -145,6 +147,7 @@ pub(crate) fn start_connectivity_thread(
             );
             let mut endorsement_handler = EndorsementHandler::new(
                 pool_controller.clone(),
+                selector_controller.clone(),
                 endorsement_cache.clone(),
                 storage.clone_without_refs(),
                 config.clone(),
@@ -152,13 +155,14 @@ pub(crate) fn start_connectivity_thread(
                 channel_endorsements.1,
                 protocol_channels.endorsement_handler_retrieval.0,
                 protocol_channels.endorsement_handler_retrieval.1,
-                sender_endorsements_propagation_ext,
+                sender_endorsements_propagation_ext.clone(),
                 protocol_channels.endorsement_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
                 massa_metrics.clone(),
             );
             let mut block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),
+                selector_controller,
                 consensus_controller,
                 pool_controller,
                 channel_blocks.1,
@@ -167,6 +171,7 @@ pub(crate) fn start_connectivity_thread(
                 protocol_channels.block_handler_propagation.1.clone(),
                 sender_blocks_propagation_ext,
                 sender_operations_propagation_ext,
+                sender_endorsements_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
                 config.clone(),
                 endorsement_cache,

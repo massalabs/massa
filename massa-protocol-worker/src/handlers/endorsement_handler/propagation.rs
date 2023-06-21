@@ -48,14 +48,14 @@ impl PropagationThread {
                                     }
                                 }
                             }
-                            let endorsements_ids: PreHashSet<EndorsementId> = endorsements
+                            let ids: PreHashSet<EndorsementId> = endorsements
                                 .get_endorsement_refs()
                                 .iter()
                                 .copied()
                                 .collect();
                             {
                                 let mut cache_write = self.cache.write();
-                                for endorsement_id in endorsements_ids.iter().copied() {
+                                for endorsement_id in ids.iter().copied() {
                                     cache_write.checked_endorsements.insert(endorsement_id, ());
                                 }
                                 // Add peers that potentially don't exist in cache

@@ -132,7 +132,7 @@
     # max number of blocks waiting for dependencies
     max_dependency_blocks = 2048
     # number of final periods that must be kept without operations (increase improve bootstrap process, high values will increase RAM usage.)
-    force_keep_final_periods_without_ops = 128
+    force_keep_final_periods_without_ops = 32
     # number of final periods that must be kept with operations (increase to more resilience to short network disconnections, high values will increase RAM usage.)
     force_keep_final_periods = 10
 
@@ -275,15 +275,17 @@
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
     per_ip_min_interval = 180000
     # read-write limitation for a connection in bytes per seconds (about the bootstrap specifically)
-    max_bytes_read_write = 20_000_000.0
+    max_bytes_read_write = 20_000_000
 
 [pool]
-    # max number of operations kept per thread
-    max_pool_size_per_thread = 25000
-    # if an operation is too much in the future it will be ignored
-    max_operation_future_validity_start_periods = 100
-    # max number of endorsements kept
-    max_endorsement_count = 10000
+    # max number of operations kept in the pool
+    max_operation_pool_size = 800000
+    # refresh interval of the operation pool scoring (milliseconds)
+    operation_pool_refresh_interval = 5000
+    # if an operation is too much in the future it will be ignored (milliseconds)
+    operation_max_future_start_delay = 50000
+    # max number of endorsements kept per thread
+    max_endorsements_pool_size_per_thread = 25000
     # max number of items returned per query
     max_item_return_count = 100
     # endorsements channel capacity

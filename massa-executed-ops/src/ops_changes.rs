@@ -17,7 +17,7 @@ use nom::{
 };
 use std::ops::Bound::{Excluded, Included};
 
-/// Speculative changes for ExecutedOps
+/// Changes for ExecutedOps (was_successful, op_expiry_slot)
 pub type ExecutedOpsChanges = PreHashMap<OperationId, (bool, Slot)>;
 
 /// `ExecutedOps` Serializer

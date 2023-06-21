@@ -176,9 +176,13 @@ impl ConsensusState {
         // short-circuiting intersection of cliques from smallest to largest
         let mut indices: Vec<usize> = (0..self.max_cliques.len()).collect();
         indices.sort_unstable_by_key(|&i| self.max_cliques[i].block_ids.len());
-        let mut final_candidates = self.max_cliques[indices[0]].block_ids.clone();
-        for i in 1..indices.len() {
-            final_candidates.retain(|v| self.max_cliques[i].block_ids.contains(v));
+        let mut indices_iter = indices.iter();
+        let mut final_candidates = self.max_cliques
+            [*indices_iter.next().expect("expected at least one clique")]
+        .block_ids
+        .clone();
+        for i in indices_iter {
+            final_candidates.retain(|v| self.max_cliques[*i].block_ids.contains(v));
             if final_candidates.is_empty() {
                 break;
             }

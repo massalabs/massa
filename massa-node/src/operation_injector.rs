@@ -57,11 +57,11 @@ pub fn start_operation_injector(
                 wallet
                     .create_operation(
                         Operation {
-                            fee: Amount::from_mantissa_scale(0, 0),
+                            fee: Amount::const_init(0, 0),
                             expire_period: final_slot.period + 8,
                             op: OperationType::Transaction {
                                 recipient_address: addr,
-                                amount: Amount::from_mantissa_scale(10000, 0),
+                                amount: Amount::const_init(10000, 0),
                             },
                         },
                         return_addr,
@@ -97,7 +97,7 @@ pub fn start_operation_injector(
                 for _ in 0..txps {
                     let amount = rng.gen_range(1..=10000);
                     let content = Operation {
-                        fee: Amount::from_mantissa_scale(0, 0),
+                        fee: Amount::const_init(0, 0),
                         expire_period: final_slot.period + 8,
                         op: OperationType::Transaction {
                             recipient_address: return_addr,

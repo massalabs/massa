@@ -232,111 +232,123 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         // TODO: Work out how to integration-test this
+        let limit = self.bootstrap_config.max_bytes_read_write;
         loop {
             // block until we have a connection to work with, or break out of main-loop
-            let (dplx, remote_addr) = match self.ev_poller.poll() {
-                Ok(PollEvent::NewConnection((dplx, remote_addr))) => (dplx, remote_addr),
-                Ok(PollEvent::Stop) => break Ok(()),
+
+            let connections = match self.ev_poller.poll() {
+                Ok(PollEvent::Stop) => return Ok(()),
+                Ok(PollEvent::NewConnections(connections)) => connections,
                 Err(e) => {
                     error!("bootstrap listener error: {}", e);
-                    break Err(e);
+                    // Intuitively, there would be no connection at this point, However an `nc` that
+                    // leads to this scope doesn't exit client-side. This depends on a timeout error
+                    // client-side
+                    continue;
                 }
             };
 
-            // claim a slot in the max_bootstrap_sessions
-            let server_binding = BootstrapServerBinder::new(
-                dplx,
-                self.keypair.clone(),
-                (&self.bootstrap_config).into(),
-            );
+            for (dplx, remote_addr) in connections {
+                // claim a slot in the max_bootstrap_sessions
+                let server_binding = BootstrapServerBinder::new(
+                    dplx,
+                    self.keypair.clone(),
+                    (&self.bootstrap_config).into(),
+                    Some(limit),
+                );
 
-            // check whether incoming peer IP is allowed.
-            if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                server_binding.close_and_send_error(error_msg.to_string(), remote_addr, move || {});
-                continue;
-            };
-
-            // the `- 1` is to account for the top-level Arc that is created at the top
-            // of this method. subsequent counts correspond to each `clone` that is passed
-            // into a thread
-            // TODO: If we don't find a way to handle the counting automagically, make
-            //       a dedicated wrapper-type with doc-comments, manual drop impl that
-            //       integrates logging, etc...
-            if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
-                massa_trace!("bootstrap.lib.run.select.accept", {
-                    "remote_addr": remote_addr
-                });
-                let now = Instant::now();
-
-                // clear IP history if necessary
-                if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                    self.ip_hist_map
-                        .retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
-                    if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                        // too many IPs are spamming us: clear cache
-                        warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
-                        self.ip_hist_map.clear();
-                    }
-                }
-
-                // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::<L>::greedy_client_check(
-                    &mut self.ip_hist_map,
-                    remote_addr,
-                    now,
-                    per_ip_min_interval,
-                ) {
-                    // Client has been too greedy: send out the bad-news :(
-                    let msg = format!(
-                        "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
-                        format_duration(msg),
-                        format_duration(per_ip_min_interval.saturating_sub(msg))
+                // check whether incoming peer IP is allowed.
+                if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
+                    server_binding.close_and_send_error(
+                        error_msg.to_string(),
+                        remote_addr,
+                        move || {},
                     );
-                    let tracer = move || {
-                        massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
-                            "remote_addr": remote_addr
-                        })
-                    };
-                    server_binding.close_and_send_error(msg, remote_addr, tracer);
                     continue;
                 };
 
-                // Clients Option<last-attempt> is good, and has been updated
-                massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
-
-                // launch bootstrap
-                let version = self.version;
-                let data_execution = self.final_state.clone();
-                let consensus_command_sender = self.consensus_controller.clone();
-                let protocol_controller = self.protocol_controller.clone();
-                let config = self.bootstrap_config.clone();
-
-                let bootstrap_count_token = bootstrap_sessions_counter.clone();
-
-                let _ = thread::Builder::new()
-                    .name(format!("bootstrap thread, peer: {}", remote_addr))
-                    .spawn(move || {
-                        run_bootstrap_session(
-                            server_binding,
-                            bootstrap_count_token,
-                            config,
-                            remote_addr,
-                            data_execution,
-                            version,
-                            consensus_command_sender,
-                            protocol_controller,
-                        )
+                // the `- 1` is to account for the top-level Arc that is created at the top
+                // of this method. subsequent counts correspond to each `clone` that is passed
+                // into a thread
+                // TODO: If we don't find a way to handle the counting automagically, make
+                //       a dedicated wrapper-type with doc-comments, manual drop impl that
+                //       integrates logging, etc...
+                if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
+                    massa_trace!("bootstrap.lib.run.select.accept", {
+                        "remote_addr": remote_addr
                     });
+                    let now = Instant::now();
 
-                massa_trace!("bootstrap.session.started", {
-                    "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
-                });
-            } else {
-                server_binding.close_and_send_error(
-                    "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
-                    remote_addr,
-                    move || debug!("did not bootstrap {}: no available slots", remote_addr),
-                );
+                    // clear IP history if necessary
+                    if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
+                        self.ip_hist_map
+                            .retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
+                        if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
+                            // too many IPs are spamming us: clear cache
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
+                            self.ip_hist_map.clear();
+                        }
+                    }
+
+                    // check IP's bootstrap attempt history
+                    if let Err(msg) = BootstrapServer::<L>::greedy_client_check(
+                        &mut self.ip_hist_map,
+                        remote_addr,
+                        now,
+                        per_ip_min_interval,
+                    ) {
+                        // Client has been too greedy: send out the bad-news :(
+                        let msg = format!(
+                            "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
+                            format_duration(msg),
+                            format_duration(per_ip_min_interval.saturating_sub(msg))
+                        );
+                        let tracer = move || {
+                            massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
+                                "remote_addr": remote_addr
+                            })
+                        };
+                        server_binding.close_and_send_error(msg, remote_addr, tracer);
+                        continue;
+                    };
+
+                    // Clients Option<last-attempt> is good, and has been updated
+                    massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+
+                    // launch bootstrap
+                    let version = self.version;
+                    let data_execution = self.final_state.clone();
+                    let consensus_command_sender = self.consensus_controller.clone();
+                    let protocol_controller = self.protocol_controller.clone();
+                    let config = self.bootstrap_config.clone();
+
+                    let bootstrap_count_token = bootstrap_sessions_counter.clone();
+
+                    let _ = thread::Builder::new()
+                        .name(format!("bootstrap thread, peer: {}", remote_addr))
+                        .spawn(move || {
+                            run_bootstrap_session(
+                                server_binding,
+                                bootstrap_count_token,
+                                config,
+                                remote_addr,
+                                data_execution,
+                                version,
+                                consensus_command_sender,
+                                protocol_controller,
+                            )
+                        });
+
+                    massa_trace!("bootstrap.session.started", {
+                        "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
+                    });
+                } else {
+                    server_binding.close_and_send_error(
+                        "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
+                        remote_addr,
+                        move || debug!("did not bootstrap {}: no available slots", remote_addr),
+                    );
+                }
             }
         }
     }

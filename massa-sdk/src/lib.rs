@@ -42,7 +42,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
-use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
+use massa_proto_rs::massa::api::v1::massa_service_client::MassaServiceClient;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 use thiserror::Error;

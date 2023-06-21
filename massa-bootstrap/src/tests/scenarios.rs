@@ -190,10 +190,6 @@ fn test_bootstrap_server() {
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
-    // let (consensus_controller, mut consensus_event_receiver) =
-    //     MockConsensusController::new_with_receiver();
-    // let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
-
     // setup final state local config
     let temp_dir_server = TempDir::new().unwrap();
     let db_server_config = MassaDBConfig {
@@ -329,13 +325,13 @@ fn test_bootstrap_server() {
         final_write
             .db
             .write()
-            .write_batch(batch, Default::default(), Some(next));
+            .write_batch(batch, Default::default(), Some(next), false);
 
         let final_state_hash = final_write.db.read().get_db_hash();
         let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, false);
 
         current_slot = next;
     }
@@ -469,13 +465,13 @@ fn test_bootstrap_server() {
                 final_write
                     .db
                     .write()
-                    .write_batch(batch, Default::default(), Some(next));
+                    .write_batch(batch, Default::default(), Some(next), false);
 
                 let final_state_hash = final_write.db.read().get_db_hash();
                 let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state
-                    .feed_cycle_state_hash(cycle, final_state_hash);
+                    .feed_cycle_state_hash(cycle, final_state_hash, false);
 
                 let mut list_changes_write = list_changes_clone.write();
                 list_changes_write.push((next, changes));
@@ -505,6 +501,12 @@ fn test_bootstrap_server() {
 
     {
         let mut final_state_client_write = final_state_client.write();
+
+        final_state_client_write
+            .db
+            .write()
+            .recompute_db_hash(false)
+            .unwrap();
 
         assert!(
             final_state_client_write.is_db_valid(),
@@ -578,7 +580,7 @@ fn conn_establishment_mocks() -> (MockBSEventPoller, MockBSConnector) {
         .expect_poll()
         .times(1)
         // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(PollEvent::NewConnection(conn_rx.recv().unwrap())))
+        .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
         .in_sequence(&mut seq);
     mock_bs_listener
         .expect_poll()
