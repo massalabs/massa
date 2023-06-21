@@ -1790,6 +1790,7 @@
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
+        max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
         operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
         operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
@@ -1866,7 +1867,7 @@
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
         max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
-        asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
+        asked_operations_buffer_capacity: SETTINGS.protocol.asked_operations_buffer_capacity,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
         max_operation_storage_time: MAX_OPERATION_STORAGE_TIME,
         max_size_channel_commands_propagation_blocks: MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
@@ -2066,7 +2067,6 @@
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
-        last_start_period: final_state.read().last_start_period,
     };
 
     <span class="comment">// spawn Massa API
