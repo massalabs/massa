@@ -303,7 +303,9 @@ async fn launch(
                 components: BTreeMap::from([(MipComponent::FinalStateHashKind, 1)]),
                 start: mip_0002_start,
                 timeout: mip_0002_timeout,
-                activation_delay: T0.saturating_mul(PERIODS_PER_CYCLE.saturating_add(1)).saturating_mul(40),
+                activation_delay: T0
+                    .saturating_mul(PERIODS_PER_CYCLE.saturating_add(1))
+                    .saturating_mul(40),
             },
             MipState::new(mip_0002_defined_start),
         ),
@@ -528,6 +530,7 @@ async fn launch(
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
+        max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
         operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
         operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
@@ -604,7 +607,7 @@ async fn launch(
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
         max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
-        asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
+        asked_operations_buffer_capacity: SETTINGS.protocol.asked_operations_buffer_capacity,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
         max_operation_storage_time: MAX_OPERATION_STORAGE_TIME,
         max_size_channel_commands_propagation_blocks: MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,

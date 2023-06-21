@@ -14,7 +14,7 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{cmp::max, cmp::Ordering, cmp::PartialOrd, collections::BTreeSet, sync::Arc};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::types::OperationInfo;
 
@@ -46,7 +46,11 @@ impl OperationPool {
         wallet: Arc<RwLock<Wallet>>,
     ) -> Self {
         OperationPool {
-            sorted_ops: Default::default(),
+            sorted_ops: Vec::with_capacity(
+                config
+                    .max_operation_pool_size
+                    .saturating_add(config.max_operation_pool_excess_items),
+            ),
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             config,
             storage: storage.clone_without_refs(),
@@ -370,7 +374,35 @@ impl OperationPool {
     /// Add a list of operations to the end of the pool.
     /// They will be cleaned up at the next refresh.
     pub(crate) fn add_operations(&mut self, mut ops_storage: Storage) {
-        let new_op_ids = ops_storage.get_op_refs() - self.storage.get_op_refs();
+        // List all the new operations
+        let mut new_op_ids = ops_storage.get_op_refs() - self.storage.get_op_refs();
+
+        // If there are too many extra operations,
+        // we don't want the container to fill up too much in-between refreshes so we drop any excess.
+        let dropped_items = self
+            .sorted_ops
+            .len()
+            .saturating_add(new_op_ids.len())
+            .saturating_sub(self.config.max_operation_pool_size)
+            .saturating_sub(self.config.max_operation_pool_excess_items);
+        for _ in 0..dropped_items {
+            if let Some(id) = new_op_ids.iter().next().copied() {
+                new_op_ids.remove(&id);
+            } else {
+                break;
+            }
+        }
+        if dropped_items > 0 {
+            warn!(
+                "Operation pool excess limit reached. Dropping {} non-scored operations.",
+                dropped_items
+            );
+        }
+
+        // Add the new ops to the container.
+        // Note that the added items are put at the end of the sorted ops
+        // so that they can still be picked for block production before refresh but with low priority
+        // because in that case we don't know anything about their quality.
         {
             let ops = ops_storage.read_operations();
             for new_op_id in &new_op_ids {
