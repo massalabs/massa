@@ -91,11 +91,7 @@ impl LedgerDB {
     /// Loads the initial disk ledger
     ///
     /// # Arguments
-    pub fn load_initial_ledger(
-        &mut self,
-        initial_ledger: HashMap<Address, LedgerEntry>,
-        only_use_xor: bool,
-    ) {
+    pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
         let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
@@ -106,7 +102,6 @@ impl LedgerDB {
             batch,
             Default::default(),
             Some(Slot::new(0, self.thread_count.saturating_sub(1))),
-            only_use_xor,
         );
     }
 
@@ -193,10 +188,8 @@ impl LedgerDB {
         Some(iter.collect())
     }
 
-    pub fn reset(&self, only_use_xor: bool) {
-        self.db
-            .write()
-            .delete_prefix(LEDGER_PREFIX, STATE_CF, None, only_use_xor);
+    pub fn reset(&self) {
+        self.db.write().delete_prefix(LEDGER_PREFIX, STATE_CF, None);
     }
 
     /// Deserializes the key and value, useful after bootstrap
@@ -529,7 +522,7 @@ mod tests {
         ledger_db
             .db
             .write()
-            .write_batch(batch, Default::default(), None, false);
+            .write_batch(batch, Default::default(), None);
 
         // return db and initial data
         (ledger_db, data)
@@ -572,7 +565,7 @@ mod tests {
         ledger_db
             .db
             .write()
-            .write_batch(batch, Default::default(), None, false);
+            .write_batch(batch, Default::default(), None);
 
         // check deleted address and ledger hash
         assert_eq!(

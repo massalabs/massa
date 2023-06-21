@@ -261,10 +261,10 @@ impl AsyncPool {
     /// Resets the pool to its initial state
     ///
     /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&mut self, only_use_xor: bool) {
+    pub fn reset(&mut self) {
         self.db
             .write()
-            .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, None, only_use_xor);
+            .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, None);
         self.recompute_message_info_cache();
     }
 

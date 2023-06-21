@@ -22,8 +22,7 @@ pub trait MassaDBController: Send + Sync + Debug {
         &mut self,
         batch: DBBatch,
         versioning_batch: DBBatch,
-        change_id: Option<Slot>,
-        only_use_xor: bool,
+        change_id: Option<Slot>
     );
 
     /// Utility function to put / update a key & value in the batch
@@ -37,8 +36,7 @@ pub trait MassaDBController: Send + Sync + Debug {
         &mut self,
         prefix: &str,
         handle_str: &str,
-        change_id: Option<Slot>,
-        only_use_xor: bool,
+        change_id: Option<Slot>
     );
 
     /// Reset the database, and attach it to the given slot.
@@ -96,7 +94,7 @@ pub trait MassaDBController: Send + Sync + Debug {
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
 
     /// To be called just after bootstrap
-    fn recompute_db_hash(&mut self, only_use_xor: bool) -> Result<(), MassaDBError>;
+    fn recompute_db_hash(&mut self) -> Result<(), MassaDBError>;
 }
 
 /// Similar to RocksDB's IteratorMode

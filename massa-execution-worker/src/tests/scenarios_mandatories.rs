@@ -1622,7 +1622,7 @@ mod tests {
             .write()
             .db
             .write()
-            .write_batch(batch, Default::default(), None, false);
+            .write_batch(batch, Default::default(), None);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(

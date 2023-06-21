@@ -1724,13 +1724,10 @@ impl ExecutionState {
                             )
                         });
 
-                    let use_only_xor = self.final_state.read().get_only_use_xor(slot);
-
                     self.final_state.write().db.write().write_batch(
                         db_batch,
                         db_versioning_batch,
                         None,
-                        use_only_xor,
                     );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);

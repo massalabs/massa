@@ -208,10 +208,10 @@ impl PoSFinalState {
     /// Reset the state of the PoS final state
     ///
     /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&mut self, only_use_xor: bool) {
+    pub fn reset(&mut self) {
         let mut db = self.db.write();
-        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, None, only_use_xor);
-        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, None, only_use_xor);
+        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, None);
+        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, None);
         self.cycle_history_cache = Default::default();
         self.rng_seed_cache = None;
     }
@@ -544,7 +544,7 @@ impl PoSFinalState {
     }
 
     /// Feeds the selector targeting a given draw cycle
-    pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash, only_use_xor: bool) {
+    pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash) {
         if self.get_cycle_index(cycle).is_some() {
             let mut batch = DBBatch::new();
             self.put_cycle_history_final_state_hash_snapshot(
@@ -553,9 +553,7 @@ impl PoSFinalState {
                 &mut batch,
             );
 
-            self.db
-                .write()
-                .write_batch(batch, Default::default(), None, only_use_xor);
+            self.db.write().write_batch(batch, Default::default(), None);
         } else {
             panic!("cycle {} should be contained here", cycle);
         }
@@ -1507,7 +1505,7 @@ fn test_pos_final_state_hash_computation() {
     let mut batch = DBBatch::new();
     pos_state.create_initial_cycle(&mut batch);
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)), false);
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
 
     let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
@@ -1534,7 +1532,7 @@ fn test_pos_final_state_hash_computation() {
         .apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)), false);
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
 
     // update changes once
     roll_changes.clear();
@@ -1559,7 +1557,7 @@ fn test_pos_final_state_hash_computation() {
         .apply_changes_to_batch(changes, Slot::new(0, 1), false, &mut batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 1)), false);
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
 
     // update changes twice
     roll_changes.clear();
@@ -1585,7 +1583,7 @@ fn test_pos_final_state_hash_computation() {
         .apply_changes_to_batch(changes, Slot::new(1, 0), false, &mut batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(1, 0)), false);
+        .write_batch(batch, Default::default(), Some(Slot::new(1, 0)));
 
     let cycles = pos_state.get_cycle_history_cycles();
     assert_eq!(cycles.len(), 1, "wrong number of cycles");
