@@ -698,6 +698,10 @@
 <a href="#698" id="698">698</a>
 <a href="#699" id="699">699</a>
 <a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -988,18 +992,20 @@
         current_slot: Slot,
         end_slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="kw">let </span>latest_snapshot_cycle =
-            <span class="self">self</span>.pos_state
-                .cycle_history_cache
-                .pop_back()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    <span class="string">&quot;Invalid cycle_history&quot;</span>,
-                )))<span class="question-mark">?</span>;
+        <span class="kw">let </span>latest_snapshot_cycle = <span class="self">self</span>.pos_state.cycle_history_cache.back().cloned().ok_or(
+            FinalStateError::SnapshotError(String::from(<span class="string">&quot;Invalid cycle_history&quot;</span>)),
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self</span>.pos_state.get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
+        <span class="self">self</span>.pos_state
+            .cycle_history_cache
+            .pop_back()
+            .ok_or(FinalStateError::SnapshotError(String::from(
+                <span class="string">&quot;Invalid cycle_history&quot;</span>,
+            )))<span class="question-mark">?</span>;
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
 
@@ -1037,18 +1043,20 @@
         current_slot_cycle: u64,
         end_slot_cycle: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="kw">let </span>latest_snapshot_cycle =
-            <span class="self">self</span>.pos_state
-                .cycle_history_cache
-                .pop_back()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    <span class="string">&quot;Invalid cycle_history&quot;</span>,
-                )))<span class="question-mark">?</span>;
+        <span class="kw">let </span>latest_snapshot_cycle = <span class="self">self</span>.pos_state.cycle_history_cache.back().cloned().ok_or(
+            FinalStateError::SnapshotError(String::from(<span class="string">&quot;Invalid cycle_history&quot;</span>)),
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self</span>.pos_state.get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
+        <span class="self">self</span>.pos_state
+            .cycle_history_cache
+            .pop_back()
+            .ok_or(FinalStateError::SnapshotError(String::from(
+                <span class="string">&quot;Invalid cycle_history&quot;</span>,
+            )))<span class="question-mark">?</span>;
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
 

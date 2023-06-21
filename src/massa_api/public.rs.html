@@ -1056,6 +1056,8 @@
 <a href="#1056" id="1056">1056</a>
 <a href="#1057" id="1057">1057</a>
 <a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1522,9 +1524,11 @@
         );
 
         <span class="kw">let </span>curr_cycle = <span class="kw">match </span>latest_block_slot_at_timestamp_result {
-            <span class="prelude-val">Ok</span>(curr_cycle) =&gt; curr_cycle
-                .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
-                .get_cycle(cfg.periods_per_cycle),
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) <span class="kw">if </span>cur_slot.period &lt;= <span class="self">self</span>.<span class="number">0</span>.api_settings.last_start_period =&gt; {
+                Slot::new(<span class="self">self</span>.<span class="number">0</span>.api_settings.last_start_period, <span class="number">0</span>).get_cycle(cfg.periods_per_cycle)
+            }
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) =&gt; cur_slot.get_cycle(cfg.periods_per_cycle),
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="number">0</span>,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
