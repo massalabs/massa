@@ -144,10 +144,19 @@ impl BlockFactoryWorker {
             // the selected block producer is not managed locally => quit
             return;
         };
+        let mut block_storage = self.channels.storage.clone_without_refs();
+        if let Some(block) = block_storage.read_blocks().get_blocks_by_slot(&slot) {
+            if let Some(id) = block.iter().next() {
+                if let Some(block) = block_storage.read_blocks().get(id) {
+                    if block.content_creator_address == block_producer_addr {
+                        panic!("You already created a block for slot {} with address {}, node is stopping to prevent you from loosing all your stake due to double staking protection", slot, block_producer_addr);
+                    }
+                }
+            }
+        }
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
-        let mut block_storage = self.channels.storage.clone_without_refs();
 
         // claim block parents in local storage
         {

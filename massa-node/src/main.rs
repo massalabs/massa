@@ -520,6 +520,7 @@ async fn launch(
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
+        node_wallet.clone(),
         metrics.clone(),
     );
 

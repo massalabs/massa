@@ -39,6 +39,7 @@ massa_final_state = { path = "../massa-final-state" }
 massa_versioning = { path = "../massa-versioning" }
 massa_db_exports = { path = "../massa-db-exports" }
 massa_db_worker = { path = "../massa-db-worker", optional = true }
+massa_wallet = { path = "../massa-wallet" }
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }
