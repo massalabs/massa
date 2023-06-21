@@ -99,8 +99,11 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
-<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_hash::{Hash, HashXof};
 <span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{fmt::Debug, sync::Arc};
@@ -155,6 +158,9 @@
 
     <span class="doccomment">/// Get the current state hash of the database
     </span><span class="kw">fn </span>get_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash;
+
+    <span class="doccomment">/// Get the current extended state hash of the database
+    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof;
 
     <span class="doccomment">/// Flushes the underlying db.
     </span><span class="kw">fn </span>flush(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt;;

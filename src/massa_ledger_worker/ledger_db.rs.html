@@ -1053,7 +1053,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     <span class="kw">use </span>massa_db_worker::MassaDB;
-    <span class="kw">use </span>massa_hash::Hash;
+    <span class="kw">use </span>massa_hash::HashXof;
     <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     <span class="kw">use </span>massa_models::{
         address::Address,
@@ -1141,8 +1141,8 @@
         <span class="macro">assert_eq!</span>(data, ledger_db.get_entire_datastore(<span class="kw-2">&amp;</span>addr));
 
         <span class="macro">assert_ne!</span>(
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
-            ledger_db.db.read().get_db_hash()
+            HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_xof_db_hash()
         );
 
         <span class="comment">// delete entry
@@ -1155,8 +1155,8 @@
 
         <span class="comment">// check deleted address and ledger hash
         </span><span class="macro">assert_eq!</span>(
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
-            ledger_db.db.read().get_db_hash()
+            HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_xof_db_hash()
         );
         <span class="macro">assert!</span>(ledger_db
             .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Balance)
