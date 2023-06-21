@@ -467,7 +467,7 @@ mod tests {
     use super::*;
     use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
-    use massa_hash::Hash;
+    use massa_hash::HashXof;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
         address::Address,
@@ -555,8 +555,8 @@ mod tests {
         assert_eq!(data, ledger_db.get_entire_datastore(&addr));
 
         assert_ne!(
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
-            ledger_db.db.read().get_db_hash()
+            HashXof(*STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_xof_db_hash()
         );
 
         // delete entry
@@ -569,8 +569,8 @@ mod tests {
 
         // check deleted address and ledger hash
         assert_eq!(
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
-            ledger_db.db.read().get_db_hash()
+            HashXof(*STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_xof_db_hash()
         );
         assert!(ledger_db
             .get_sub_entry(&addr, LedgerSubEntry::Balance)

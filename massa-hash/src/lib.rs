@@ -9,5 +9,7 @@ pub use settings::XOF_HASH_SIZE_BYTES;
 
 mod error;
 mod hash;
+mod hash_xof;
 pub use hash::*;
+pub use hash_xof::*;
 mod settings;
