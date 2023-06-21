@@ -157,6 +157,12 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{mem, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::channel::RecvTimeoutError;
@@ -246,7 +252,13 @@
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
             <span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
-            cache_write.update_cache(peers_connected);
+            cache_write.update_cache(
+                peers_connected,
+                <span class="self">self</span>.config
+                    .max_node_known_ops_size
+                    .try_into()
+                    .expect(<span class="string">&quot;max_node_known_ops_size is too big&quot;</span>),
+            );
 
             <span class="comment">// Propagate to peers
             </span><span class="kw">let </span>all_keys: Vec&lt;PeerId&gt; = cache_write
