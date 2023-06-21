@@ -25,6 +25,8 @@ pub struct PoolConfig {
     pub max_operations_per_block: u32,
     /// max operation pool size per thread (in number of operations)
     pub max_operation_pool_size: usize,
+    /// max excess on pool size (in-between refreshes)
+    pub max_operation_pool_excess_items: usize,
     /// max endorsement pool size per thread (in number of endorsements)
     pub max_endorsements_pool_size_per_thread: usize,
     /// max number of endorsements per block

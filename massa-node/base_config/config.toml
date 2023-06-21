@@ -175,7 +175,9 @@
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
     # max cache size for which operations your node knows about
-    max_known_ops_size = 2000000
+    max_known_ops_size = 1000000
+    # max size of the cache of asked operations
+    asked_operations_buffer_capacity = 600000
     # max cache size for which operations a foreign node knows about
     max_node_known_ops_size = 200000
     # max cache size for which endorsements our node knows about
@@ -273,7 +275,9 @@
 
 [pool]
     # max number of operations kept in the pool
-    max_operation_pool_size = 800000
+    max_operation_pool_size = 500000
+    # max excess number of operations kept in pool in-between refreshes
+    max_operation_pool_excess_items = 100000
     # refresh interval of the operation pool scoring (milliseconds)
     operation_pool_refresh_interval = 5000
     # if an operation is too much in the future it will be ignored (milliseconds)
