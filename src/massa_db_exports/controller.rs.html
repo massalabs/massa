@@ -99,18 +99,6 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
@@ -131,13 +119,7 @@
     </span><span class="kw">fn </span>set_initial_change_id(<span class="kw-2">&amp;</span><span class="self">self</span>, change_id: Slot);
 
     <span class="doccomment">/// Writes the batch to the DB
-    </span><span class="kw">fn </span>write_batch(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        batch: DBBatch,
-        versioning_batch: DBBatch,
-        change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-        only_use_xor: bool,
-    );
+    </span><span class="kw">fn </span>write_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: DBBatch, versioning_batch: DBBatch, change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;);
 
     <span class="doccomment">/// Utility function to put / update a key &amp; value in the batch
     </span><span class="kw">fn </span>put_or_update_entry_value(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: Vec&lt;u8&gt;, value: <span class="kw-2">&amp;</span>[u8]);
@@ -146,13 +128,7 @@
     </span><span class="kw">fn </span>delete_key(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch, key: Vec&lt;u8&gt;);
 
     <span class="doccomment">/// Utility function to delete all keys in a prefix
-    </span><span class="kw">fn </span>delete_prefix(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        prefix: <span class="kw-2">&amp;</span>str,
-        handle_str: <span class="kw-2">&amp;</span>str,
-        change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
-        only_use_xor: bool,
-    );
+    </span><span class="kw">fn </span>delete_prefix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, prefix: <span class="kw-2">&amp;</span>str, handle_str: <span class="kw-2">&amp;</span>str, change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;);
 
     <span class="doccomment">/// Reset the database, and attach it to the given slot.
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot);
@@ -209,7 +185,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
 
     <span class="doccomment">/// To be called just after bootstrap
-    </span><span class="kw">fn </span>recompute_db_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, only_use_xor: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt;;
+    </span><span class="kw">fn </span>recompute_db_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt;;
 }
 
 <span class="doccomment">/// Similar to RocksDB&#39;s IteratorMode
