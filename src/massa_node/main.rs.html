@@ -1319,6 +1319,9 @@
 <a href="#1319" id="1319">1319</a>
 <a href="#1320" id="1320">1320</a>
 <a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1347,7 +1350,8 @@
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
-<span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig};
+<span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
+<span class="kw">use </span>massa_db_worker::MassaDB;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -1575,7 +1579,9 @@
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS <span class="kw">as </span>usize,
         thread_count: THREAD_COUNT,
     };
-    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    <span class="kw">let </span>db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+    ));
 
     <span class="comment">// Create final ledger
     </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), db.clone());

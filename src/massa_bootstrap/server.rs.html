@@ -763,6 +763,11 @@
 <a href="#763" id="763">763</a>
 <a href="#764" id="764">764</a>
 <a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -794,7 +799,7 @@
 <span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-<span class="kw">use </span>massa_db::CHANGE_ID_DESER_ERROR;
+<span class="kw">use </span>massa_db_exports::CHANGE_ID_DESER_ERROR;
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
@@ -997,7 +1002,8 @@
         </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
         <span class="comment">// TODO: Work out how to integration-test this
-        </span><span class="kw">loop </span>{
+        </span><span class="kw">let </span>limit = <span class="self">self</span>.bootstrap_config.max_bytes_read_write;
+        <span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
 
             </span><span class="kw">let </span>connections = <span class="kw">match </span><span class="self">self</span>.ev_poller.poll() {
@@ -1005,7 +1011,10 @@
                 <span class="prelude-val">Ok</span>(PollEvent::NewConnections(connections)) =&gt; connections,
                 <span class="prelude-val">Err</span>(e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;bootstrap listener error: {}&quot;</span>, e);
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(e);
+                    <span class="comment">// Intuitively, there would be no connection at this point, However an `nc` that
+                    // leads to this scope doesn&#39;t exit client-side. This depends on a timeout error
+                    // client-side
+                    </span><span class="kw">continue</span>;
                 }
             };
 
@@ -1015,6 +1024,7 @@
                     dplx,
                     <span class="self">self</span>.keypair.clone(),
                     (<span class="kw-2">&amp;</span><span class="self">self</span>.bootstrap_config).into(),
+                    <span class="prelude-val">Some</span>(limit),
                 );
 
                 <span class="comment">// check whether incoming peer IP is allowed.
