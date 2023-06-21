@@ -331,8 +331,7 @@ where
 
                 // Compute the XOR in all cases
                 if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash =
-                        HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    let prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
                     current_xor_hash ^= prev_hash;
                 };
                 let new_hash = HashXof::compute_from_kv(key.as_slice(), value.as_slice());
@@ -342,8 +341,7 @@ where
 
                 // Compute the XOR in all cases
                 if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash =
-                        HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    let prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
                     current_xor_hash ^= prev_hash;
                 };
             }
@@ -366,11 +364,9 @@ where
         }
 
         // Update the hash entry
-        self.current_batch.lock().put_cf(
-            handle_metadata,
-            STATE_HASH_KEY,
-            current_xor_hash.0,
-        );
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
 
         {
             let mut current_batch_guard = self.current_batch.lock();
@@ -517,11 +513,9 @@ where
         }
 
         // Update the hash entry
-        self.current_batch.lock().put_cf(
-            handle_metadata,
-            STATE_HASH_KEY,
-            current_xor_hash.0,
-        );
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
 
         {
             let mut current_batch_guard = self.current_batch.lock();
