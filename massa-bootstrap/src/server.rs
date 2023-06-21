@@ -248,13 +248,14 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
                 }
             };
 
-            // claim a slot in the max_bootstrap_sessions
-            let server_binding = BootstrapServerBinder::new(
-                dplx,
-                self.keypair.clone(),
-                (&self.bootstrap_config).into(),
-                Some(limit),
-            );
+            for (dplx, remote_addr) in connections {
+                // claim a slot in the max_bootstrap_sessions
+                let server_binding = BootstrapServerBinder::new(
+                    dplx,
+                    self.keypair.clone(),
+                    (&self.bootstrap_config).into(),
+                    Some(limit),
+                );
 
                 // check whether incoming peer IP is allowed.
                 if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {

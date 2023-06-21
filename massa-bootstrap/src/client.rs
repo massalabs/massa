@@ -30,7 +30,7 @@ use crate::{
 };
 
 #[cfg(not(test))]
-use massa_db::CHANGE_ID_DESER_ERROR;
+use massa_db_exports::CHANGE_ID_DESER_ERROR;
 
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]

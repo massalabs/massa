@@ -1,16 +1,10 @@
-use crate::{
-    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
-    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, STATE_HASH_KEY_IS_XOR_KEY,
-    STATE_HASH_XOR_KEY, VERSIONING_CF,
-};
 use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
 use massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
     CHANGE_ID_SER_ERROR, CRUD_ERROR, LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF,
     METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY,
-    VERSIONING_CF,
+    STATE_HASH_KEY_IS_XOR_KEY, STATE_HASH_XOR_KEY, VERSIONING_CF,
 };
 use massa_hash::{Hash, SmtHasher};
 use massa_models::{
@@ -838,7 +832,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Writes the batch to the DB
-    pub fn write_batch(
+    fn write_batch(
         &mut self,
         batch: DBBatch,
         versioning_batch: DBBatch,
@@ -867,7 +861,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(
+    fn delete_prefix(
         &mut self,
         prefix: &str,
         handle_str: &str,
@@ -1022,5 +1016,10 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
+    }
+
+    /// To be called just after bootstrap
+    fn recompute_db_hash(&mut self, only_use_xor: bool) -> Result<(), MassaDBError> {
+        self.recompute_db_hash(only_use_xor)
     }
 }

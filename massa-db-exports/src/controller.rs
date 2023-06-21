@@ -18,7 +18,13 @@ pub trait MassaDBController: Send + Sync + Debug {
     fn set_initial_change_id(&self, change_id: Slot);
 
     /// Writes the batch to the DB
-    fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>, only_use_xor: bool);
+    fn write_batch(
+        &mut self,
+        batch: DBBatch,
+        versioning_batch: DBBatch,
+        change_id: Option<Slot>,
+        only_use_xor: bool,
+    );
 
     /// Utility function to put / update a key & value in the batch
     fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]);
@@ -27,7 +33,13 @@ pub trait MassaDBController: Send + Sync + Debug {
     fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>);
 
     /// Utility function to delete all keys in a prefix
-    fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>, only_use_xor: bool);
+    fn delete_prefix(
+        &mut self,
+        prefix: &str,
+        handle_str: &str,
+        change_id: Option<Slot>,
+        only_use_xor: bool,
+    );
 
     /// Reset the database, and attach it to the given slot.
     fn reset(&mut self, slot: Slot);
@@ -82,6 +94,9 @@ pub trait MassaDBController: Send + Sync + Debug {
         last_versioning_step: &StreamingStep<Vec<u8>>,
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
+
+    /// To be called just after bootstrap
+    fn recompute_db_hash(&mut self, only_use_xor: bool) -> Result<(), MassaDBError>;
 }
 
 /// Similar to RocksDB's IteratorMode
