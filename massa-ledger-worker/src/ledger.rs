@@ -3,7 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use massa_db::{DBBatch, MassaDB};
+use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
@@ -13,12 +13,8 @@ use massa_models::{
     bytecode::{Bytecode, BytecodeDeserializer},
 };
 use massa_serialization::{DeserializeError, Deserializer};
-use parking_lot::RwLock;
+use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound::Included;
-use std::{
-    collections::{BTreeSet, HashMap},
-    sync::Arc,
-};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -34,7 +30,7 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+    pub fn new(config: LedgerConfig, db: ShareableMassaDBController) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             db,
@@ -53,7 +49,7 @@ impl FinalLedger {
 
 impl LedgerController for FinalLedger {
     /// Loads ledger from file
-    fn load_initial_ledger(&mut self) -> Result<(), LedgerError> {
+    fn load_initial_ledger(&mut self, only_use_xor: bool) -> Result<(), LedgerError> {
         // load the ledger tree from file
         let initial_ledger: HashMap<Address, LedgerEntry> = serde_json::from_str(
             &std::fs::read_to_string(&self.config.initial_ledger_path).map_err(|err| {
@@ -77,7 +73,8 @@ impl LedgerController for FinalLedger {
                 err
             ))
         })?;
-        self.sorted_ledger.load_initial_ledger(initial_ledger);
+        self.sorted_ledger
+            .load_initial_ledger(initial_ledger, only_use_xor);
         Ok(())
     }
 
@@ -149,8 +146,8 @@ impl LedgerController for FinalLedger {
     /// Reset the disk ledger.
     ///
     /// USED FOR BOOTSTRAP ONLY
-    fn reset(&mut self) {
-        self.sorted_ledger.reset();
+    fn reset(&mut self, only_use_xor: bool) {
+        self.sorted_ledger.reset(only_use_xor);
     }
 
     /// Allows applying `LedgerChanges` to the final ledger

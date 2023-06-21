@@ -2,7 +2,10 @@
 
 //! Module to interact with the disk ledger
 
-use massa_db::{DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF};
+use massa_db_exports::{
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, CRUD_ERROR,
+    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+};
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
@@ -10,10 +13,8 @@ use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use parking_lot::RwLock;
-use rocksdb::{Direction, IteratorMode, ReadOptions};
 use std::collections::{BTreeSet, HashMap};
-use std::{fmt::Debug, sync::Arc};
+use std::fmt::Debug;
 
 use massa_models::amount::Amount;
 use std::ops::Bound;
@@ -42,7 +43,7 @@ impl LedgerSubEntry {
 ///
 /// Contains a `RocksDB` DB instance
 pub struct LedgerDB {
-    db: Arc<RwLock<MassaDB>>,
+    db: ShareableMassaDBController,
     thread_count: u8,
     key_serializer_db: KeySerializer,
     key_deserializer_db: KeyDeserializer,
@@ -66,7 +67,7 @@ impl LedgerDB {
     /// # Arguments
     /// * path: path to the desired disk ledger db directory
     pub fn new(
-        db: Arc<RwLock<MassaDB>>,
+        db: ShareableMassaDBController,
         thread_count: u8,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -90,7 +91,11 @@ impl LedgerDB {
     /// Loads the initial disk ledger
     ///
     /// # Arguments
-    pub fn load_initial_ledger(&mut self, initial_ledger: HashMap<Address, LedgerEntry>) {
+    pub fn load_initial_ledger(
+        &mut self,
+        initial_ledger: HashMap<Address, LedgerEntry>,
+        only_use_xor: bool,
+    ) {
         let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
@@ -101,6 +106,7 @@ impl LedgerDB {
             batch,
             Default::default(),
             Some(Slot::new(0, self.thread_count.saturating_sub(1))),
+            only_use_xor,
         );
     }
 
@@ -143,13 +149,12 @@ impl LedgerDB {
     /// An Option of the sub-entry value as bytes
     pub fn get_sub_entry(&self, addr: &Address, ty: LedgerSubEntry) -> Option<Vec<u8>> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let key = ty.derive_key(addr);
         let mut serialized_key = Vec::new();
         self.key_serializer_db
             .serialize(&key, &mut serialized_key)
             .expect(KEY_SER_ERROR);
-        db.db.get_cf(handle, serialized_key).expect(CRUD_ERROR)
+        db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)
     }
 
     /// Get every key of the datastore for a given address.
@@ -158,17 +163,15 @@ impl LedgerDB {
     /// A `BTreeSet` of the datastore keys
     pub fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        let mut opt = ReadOptions::default();
         let key_prefix = datastore_prefix_from_address(addr);
 
-        opt.set_iterate_range(key_prefix.clone()..end_prefix(&key_prefix).unwrap());
-
         let mut iter = db
-            .db
-            .iterator_cf_opt(handle, opt, IteratorMode::Start)
-            .flatten()
+            .iterator_cf(
+                STATE_CF,
+                MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+            )
+            .take_while(|(key, _)| key <= &end_prefix(&key_prefix).unwrap())
             .map(|(key, _)| {
                 let (_rest, key) = self
                     .key_deserializer_db
@@ -190,8 +193,10 @@ impl LedgerDB {
         Some(iter.collect())
     }
 
-    pub fn reset(&self) {
-        self.db.write().delete_prefix(LEDGER_PREFIX, STATE_CF, None);
+    pub fn reset(&self, only_use_xor: bool) {
+        self.db
+            .write()
+            .delete_prefix(LEDGER_PREFIX, STATE_CF, None, only_use_xor);
     }
 
     /// Deserializes the key and value, useful after bootstrap
@@ -346,7 +351,6 @@ impl LedgerDB {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         // balance
         let mut serialized_key = Vec::new();
@@ -363,17 +367,14 @@ impl LedgerDB {
         db.delete_key(batch, serialized_key);
 
         // datastore
-        let mut opt = ReadOptions::default();
         let key_prefix = datastore_prefix_from_address(addr);
-        opt.set_iterate_upper_bound(end_prefix(&key_prefix).unwrap());
+
         for (serialized_key, _) in db
-            .db
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(&key_prefix, Direction::Forward),
+            .iterator_cf(
+                STATE_CF,
+                MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
             )
-            .flatten()
+            .take_while(|(key, _)| key <= &end_prefix(&key_prefix).unwrap())
         {
             db.delete_key(batch, serialized_key.to_vec());
         }
@@ -395,22 +396,14 @@ impl LedgerDB {
         use massa_models::address::AddressDeserializer;
         let db = self.db.write();
 
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
-
         let ledger = db
-            .db
-            .prefix_iterator_cf(handle, LEDGER_PREFIX)
-            .take_while(|kv| {
-                kv.clone()
-                    .unwrap_or_default()
-                    .0
-                    .starts_with(LEDGER_PREFIX.as_bytes())
-            })
+            .prefix_iterator_cf(STATE_CF, LEDGER_PREFIX.as_bytes())
+            .take_while(|(key, _)| key.starts_with(LEDGER_PREFIX.as_bytes()))
             .collect::<Vec<_>>();
 
         let mut addresses = std::collections::BTreeMap::new();
         let address_deserializer = AddressDeserializer::new();
-        for (key, entry) in ledger.iter().flatten() {
+        for (key, entry) in ledger.iter() {
             let (rest, address) = address_deserializer
                 .deserialize::<DeserializeError>(&key[LEDGER_PREFIX.len()..])
                 .unwrap();
@@ -439,29 +432,23 @@ impl LedgerDB {
         let db = self.db.read();
 
         let key_prefix = datastore_prefix_from_address(addr);
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        let mut opt = ReadOptions::default();
-        opt.set_iterate_upper_bound(end_prefix(&key_prefix).unwrap());
-
-        db.db
-            .iterator_cf_opt(
-                handle,
-                opt,
-                IteratorMode::From(&key_prefix, Direction::Forward),
-            )
-            .flatten()
-            .map(|(key, data)| {
-                let (_rest, key) = self
-                    .key_deserializer_db
-                    .deserialize::<DeserializeError>(&key)
-                    .unwrap();
-                match key.key_type {
-                    KeyType::DATASTORE(datastore_vec) => (datastore_vec, data.to_vec()),
-                    _ => (vec![], vec![]),
-                }
-            })
-            .collect()
+        db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(k, _)| k <= &end_prefix(&key_prefix).unwrap())
+        .map(|(key, data)| {
+            let (_rest, key) = self
+                .key_deserializer_db
+                .deserialize::<DeserializeError>(&key)
+                .unwrap();
+            match key.key_type {
+                KeyType::DATASTORE(datastore_vec) => (datastore_vec, data.to_vec()),
+                _ => (vec![], vec![]),
+            }
+        })
+        .collect()
     }
 }
 
@@ -485,7 +472,8 @@ fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_db::{MassaDB, STATE_HASH_INITIAL_BYTES};
+    use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
+    use massa_db_worker::MassaDB;
     use massa_hash::Hash;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
@@ -494,15 +482,15 @@ mod tests {
     };
     use massa_serialization::{DeserializeError, Deserializer};
     use massa_signature::KeyPair;
+    use parking_lot::RwLock;
     use std::collections::BTreeMap;
     use std::ops::Bound::Included;
     use std::str::FromStr;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
-    #[cfg(test)]
     fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
-        use massa_db::MassaDBConfig;
 
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
@@ -529,7 +517,9 @@ mod tests {
             thread_count: 32,
         };
 
-        let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
 
         let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();
@@ -539,7 +529,7 @@ mod tests {
         ledger_db
             .db
             .write()
-            .write_batch(batch, Default::default(), None);
+            .write_batch(batch, Default::default(), None, false);
 
         // return db and initial data
         (ledger_db, data)
@@ -582,7 +572,7 @@ mod tests {
         ledger_db
             .db
             .write()
-            .write_batch(batch, Default::default(), None);
+            .write_batch(batch, Default::default(), None, false);
 
         // check deleted address and ledger hash
         assert_eq!(

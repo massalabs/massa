@@ -6,9 +6,11 @@
 #![feature(ip)]
 extern crate massa_logging;
 
+#[cfg(feature = "op_spammer")]
+use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
-use crossbeam_channel::{Receiver, TryRecvError};
+use crossbeam_channel::TryRecvError;
 use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -19,10 +21,13 @@ use massa_bootstrap::{
     get_state, start_bootstrap_server, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
     DefaultConnector,
 };
+use massa_channel::receiver::MassaReceiver;
+use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_db::{MassaDB, MassaDBConfig};
+use massa_db_exports::{MassaDBConfig, MassaDBController};
+use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -36,6 +41,7 @@ use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::address::Address;
 use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -79,14 +85,12 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::{
-    mips::MIP_LIST,
-    versioning::{MipStatsConfig, MipStore},
-};
+use massa_versioning::versioning::{MipComponent, MipInfo, MipState};
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
@@ -97,6 +101,8 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
+#[cfg(feature = "op_spammer")]
+mod operation_injector;
 mod settings;
 
 async fn launch(
@@ -104,7 +110,7 @@ async fn launch(
     node_wallet: Arc<RwLock<Wallet>>,
     sig_int_toggled: Arc<(Mutex<bool>, Condvar)>,
 ) -> (
-    Receiver<ConsensusEvent>,
+    MassaReceiver<ConsensusEvent>,
     Option<BootstrapManager>,
     Box<dyn ConsensusManager>,
     Box<dyn ExecutionManager>,
@@ -223,6 +229,9 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
 
+    // Start massa metrics
+    let metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
+
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     if args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
@@ -244,7 +253,9 @@ async fn launch(
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
         thread_count: THREAD_COUNT,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
 
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
@@ -265,8 +276,43 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
+    let mip_0001_start = MassaTime::from_utc_ymd_hms(2023, 6, 14, 15, 0, 0).unwrap();
+    let mip_0001_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 14, 16, 0, 0).unwrap();
+    let mip_0001_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 14, 14, 30, 0).unwrap();
+    let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 13, 0, 0).unwrap();
+    let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 19, 14, 0, 0).unwrap();
+    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 10, 0, 0).unwrap();
+    let mip_list_1: [(MipInfo, MipState); 2] = [
+        (
+            MipInfo {
+                name: "MIP-0001".to_string(),
+                version: 1,
+                components: BTreeMap::from([
+                    (MipComponent::Address, 1),
+                    (MipComponent::KeyPair, 1),
+                ]),
+                start: mip_0001_start,
+                timeout: mip_0001_timeout,
+                activation_delay: MassaTime::from_millis(100),
+            },
+            MipState::new(mip_0001_defined_start),
+        ),
+        (
+            MipInfo {
+                name: "MIP-0002".to_string(),
+                version: 2,
+                components: BTreeMap::from([(MipComponent::FinalStateHashKind, 1)]),
+                start: mip_0002_start,
+                timeout: mip_0002_timeout,
+                activation_delay: T0
+                    .saturating_mul(PERIODS_PER_CYCLE.saturating_add(1))
+                    .saturating_mul(40),
+            },
+            MipState::new(mip_0002_defined_start),
+        ),
+    ];
     let mip_store =
-        MipStore::try_from((MIP_LIST, mip_stats_config)).expect("mip store creation failed");
+        MipStore::try_from((mip_list_1, mip_stats_config)).expect("mip store creation failed");
 
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
@@ -472,6 +518,7 @@ async fn launch(
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
+        metrics.clone(),
     );
 
     // launch pool controller
@@ -483,8 +530,10 @@ async fn launch(
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        max_operation_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
-        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_pool_size_per_thread,
+        max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
+        operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
+        operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
+        max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
         operations_channel_size: POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
         endorsements_channel_size: POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
         denunciations_channel_size: POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
@@ -506,13 +555,14 @@ async fn launch(
             .0,
         operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).0,
         selector: selector_controller.clone(),
+        execution_controller: execution_controller.clone(),
     };
 
     let (pool_manager, pool_controller) = start_pool_controller(
         pool_config,
         &shared_storage,
-        execution_controller.clone(),
         pool_channels.clone(),
+        node_wallet.clone(),
     );
 
     // launch protocol controller
@@ -640,7 +690,7 @@ async fn launch(
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
-        crossbeam_channel::bounded(CHANNEL_SIZE);
+        MassaChannel::new("consensus_event".to_string(), Some(CHANNEL_SIZE));
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -663,16 +713,19 @@ async fn launch(
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
+        metrics.clone(),
     );
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
         protocol_config.clone(),
+        selector_controller.clone(),
         consensus_controller.clone(),
         bootstrap_state.peers,
         pool_controller.clone(),
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
+        metrics,
     )
     .expect("could not start protocol controller");
 
@@ -704,14 +757,16 @@ async fn launch(
     );
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
-            panic!(
-                "{}",
-                format!("Could not bind to address: {}", addr).as_str()
-            )
-        });
-        let mut manager = start_bootstrap_server(
+        let (listener_stopper, listener) =
+            BootstrapTcpListener::create(&addr).unwrap_or_else(|_| {
+                panic!(
+                    "{}",
+                    format!("Could not bind to address: {}", addr).as_str()
+                )
+            });
+        start_bootstrap_server(
             listener,
+            listener_stopper,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -719,9 +774,7 @@ async fn launch(
             keypair.clone(),
             *VERSION,
         )
-        .expect("Could not start bootstrap server");
-        manager.set_listener_stopper(waker);
-        manager
+        .expect("Could not start bootstrap server")
     });
 
     let api_config: APIConfig = APIConfig {
@@ -875,6 +928,16 @@ async fn launch(
         None
     };
 
+    #[cfg(feature = "op_spammer")]
+    start_operation_injector(
+        *GENESIS_TIMESTAMP,
+        shared_storage.clone_without_refs(),
+        node_wallet.read().clone(),
+        pool_controller.clone(),
+        protocol_controller.clone(),
+        args.nb_op,
+    );
+
     // spawn private API
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         protocol_controller.clone(),
@@ -971,7 +1034,7 @@ struct Managers {
 }
 
 async fn stop(
-    _consensus_event_receiver: Receiver<ConsensusEvent>,
+    _consensus_event_receiver: MassaReceiver<ConsensusEvent>,
     Managers {
         bootstrap_manager,
         mut execution_manager,
@@ -1048,6 +1111,16 @@ struct Args {
     /// restart_from_snapshot_at_period
     #[structopt(long = "restart-from-snapshot-at-period")]
     restart_from_snapshot_at_period: Option<u64>,
+
+    #[cfg(feature = "op_spammer")]
+    /// number of operations
+    #[structopt(
+        name = "number of operations",
+        about = "Define the number of operations the node can spam.",
+        short = "nb-op",
+        long = "number-operations"
+    )]
+    nb_op: u64,
 
     #[cfg(feature = "deadlock_detection")]
     /// Deadlocks detector

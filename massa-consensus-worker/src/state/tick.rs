@@ -74,6 +74,20 @@ impl ConsensusState {
             );
         }
 
+        for i in 0..self.latest_final_blocks_periods.len() {
+            if let Some((_blockid, period)) = self.latest_final_blocks_periods.get(i) {
+                self.massa_metrics.set_consensus_period(i, *period);
+            }
+        }
+
+        self.massa_metrics.set_consensus_state(
+            self.active_index.len(),
+            self.incoming_index.len(),
+            self.discarded_index.len(),
+            self.block_statuses.len(),
+            self.active_index_without_ops.len(),
+        );
+
         Ok(())
     }
 }

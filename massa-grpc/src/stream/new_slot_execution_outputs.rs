@@ -4,7 +4,8 @@ use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
 use massa_execution_exports::SlotExecutionOutput;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -16,7 +17,7 @@ use tracing::log::{error, warn};
 pub type NewSlotExecutionOutputsStreamType = Pin<
     Box<
         dyn futures_core::Stream<
-                Item = Result<grpc::NewSlotExecutionOutputsResponse, tonic::Status>,
+                Item = Result<grpc_api::NewSlotExecutionOutputsResponse, tonic::Status>,
             > + Send
             + 'static,
     >,
@@ -25,7 +26,7 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
 /// Creates a new stream of new produced and received slot execution outputs
 pub(crate) async fn new_slot_execution_outputs(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewSlotExecutionOutputsRequest>>,
+    request: Request<Streaming<grpc_api::NewSlotExecutionOutputsRequest>>,
 ) -> Result<NewSlotExecutionOutputsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -53,7 +54,7 @@ pub(crate) async fn new_slot_execution_outputs(
                                   continue;
                                 }
                                 // Send the new slot execution output through the channel
-                                if let Err(e) = tx.send(Ok(grpc::NewSlotExecutionOutputsResponse {
+                                if let Err(e) = tx.send(Ok(grpc_api::NewSlotExecutionOutputsResponse {
                                         id: request_id.clone(),
                                         output: Some(massa_slot_execution_output.into())
                                 })).await {
@@ -117,17 +118,17 @@ pub(crate) async fn new_slot_execution_outputs(
 
 /// Return if the execution outputs should be send to client
 fn should_send(
-    filter_opt: &Option<grpc::NewSlotExecutionOutputsFilter>,
+    filter_opt: &Option<grpc_api::NewSlotExecutionOutputsFilter>,
     exec_out_status: &SlotExecutionOutput,
 ) -> bool {
     match filter_opt {
         Some(filter) => match exec_out_status {
             SlotExecutionOutput::ExecutedSlot(_) => {
-                let id = grpc::ExecutionOutputStatus::Candidate as i32;
+                let id = grpc_model::ExecutionOutputStatus::Candidate as i32;
                 filter.status.contains(&id)
             }
             SlotExecutionOutput::FinalizedSlot(_) => {
-                let id = grpc::ExecutionOutputStatus::Final as i32;
+                let id = grpc_model::ExecutionOutputStatus::Final as i32;
                 filter.status.contains(&id)
             }
         },

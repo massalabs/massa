@@ -30,6 +30,7 @@ impl BlockIndexes {
     /// Insert a block and populate the indexes.
     /// Arguments:
     /// - block: the block to insert
+
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
         if let Ok(b) = self.blocks.try_insert(block.id, block) {
             // update creator index
@@ -56,6 +57,8 @@ impl BlockIndexes {
                     .or_default()
                     .insert(b.id);
             }
+
+            massa_metrics::set_blocks_counter(self.blocks.len());
         }
     }
 
@@ -103,6 +106,7 @@ impl BlockIndexes {
                     }
                 }
             }
+            massa_metrics::set_blocks_counter(self.blocks.len());
             return Some(b);
         }
         None

@@ -5,22 +5,19 @@ use crate::{
 };
 use crate::{DeferredCredits, PoSConfig};
 use bitvec::vec::BitVec;
-use massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX,
-    CYCLE_HISTORY_SER_ERROR, DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX,
-    DEFERRED_CREDITS_SER_ERROR, STATE_CF,
+use massa_db_exports::{
+    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
+    CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX, CYCLE_HISTORY_SER_ERROR,
+    DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
 use massa_hash::Hash;
 use massa_models::amount::Amount;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use nom::AsBytes;
-use parking_lot::RwLock;
-use rocksdb::{Direction, IteratorMode};
 use std::collections::VecDeque;
 use std::ops::Bound::{Excluded, Included};
 use std::ops::RangeBounds;
-use std::sync::Arc;
 use std::{collections::BTreeMap, path::PathBuf};
 use tracing::debug;
 
@@ -130,7 +127,7 @@ pub struct PoSFinalState {
     /// proof-of-stake configuration
     pub config: PoSConfig,
     /// Access to the RocksDB database
-    pub db: Arc<RwLock<MassaDB>>,
+    pub db: ShareableMassaDBController,
     /// contiguous cycle history, back = newest
     pub cycle_history_cache: VecDeque<(u64, bool)>,
     /// rng_seed cache to get rng_seed for the current cycle
@@ -158,7 +155,7 @@ impl PoSFinalState {
         initial_seed_string: &str,
         initial_rolls_path: &PathBuf,
         selector: Box<dyn SelectorController>,
-        db: Arc<RwLock<MassaDB>>,
+        db: ShareableMassaDBController,
     ) -> Result<Self, PosError> {
         // load get initial rolls from file
         let initial_rolls = serde_json::from_str::<BTreeMap<Address, u64>>(
@@ -211,10 +208,10 @@ impl PoSFinalState {
     /// Reset the state of the PoS final state
     ///
     /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, only_use_xor: bool) {
         let mut db = self.db.write();
-        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, None);
-        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, None);
+        db.delete_prefix(CYCLE_HISTORY_PREFIX, STATE_CF, None, only_use_xor);
+        db.delete_prefix(DEFERRED_CREDITS_PREFIX, STATE_CF, None, only_use_xor);
         self.cycle_history_cache = Default::default();
         self.rng_seed_cache = None;
     }
@@ -295,11 +292,10 @@ impl PoSFinalState {
     /// Deletes a given cycle from RocksDB
     pub fn delete_cycle_info(&mut self, cycle: u64, batch: &mut DBBatch) {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
-        for (serialized_key, _) in db.db.prefix_iterator_cf(handle, &prefix).flatten() {
+        for (serialized_key, _) in db.prefix_iterator_cf(STATE_CF, &prefix) {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
@@ -548,7 +544,7 @@ impl PoSFinalState {
     }
 
     /// Feeds the selector targeting a given draw cycle
-    pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash) {
+    pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash, only_use_xor: bool) {
         if self.get_cycle_index(cycle).is_some() {
             let mut batch = DBBatch::new();
             self.put_cycle_history_final_state_hash_snapshot(
@@ -557,7 +553,9 @@ impl PoSFinalState {
                 &mut batch,
             );
 
-            self.db.write().write_batch(batch, Default::default(), None);
+            self.db
+                .write()
+                .write_batch(batch, Default::default(), None, only_use_xor);
         } else {
             panic!("cycle {} should be contained here", cycle);
         }
@@ -573,12 +571,11 @@ impl PoSFinalState {
             .and_then(|info| {
                 let cycle = info.0;
                 let db = self.db.read();
-                let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
                 let key = roll_count_key!(self.cycle_history_cycle_prefix(cycle), addr);
 
                 if let Some(serialized_value) =
-                    db.db.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
+                    db.get_cf(STATE_CF, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
                     let (_, amount) = self
                         .cycle_info_deserializer
@@ -601,12 +598,11 @@ impl PoSFinalState {
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
                 let db = self.db.read();
-                let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
                 let key = roll_count_key!(self.cycle_history_cycle_prefix(lookback_cycle), addr);
 
                 if let Some(serialized_value) =
-                    db.db.get_cf(handle, key).expect(CYCLE_HISTORY_DESER_ERROR)
+                    db.get_cf(STATE_CF, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
                     let (_, amount) = self
                         .cycle_info_deserializer
@@ -631,7 +627,6 @@ impl PoSFinalState {
         R: RangeBounds<Slot>,
     {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut deferred_credits = DeferredCredits::new_without_hash();
 
@@ -659,14 +654,10 @@ impl PoSFinalState {
             _ => {}
         };
 
-        for (serialized_key, serialized_value) in db
-            .db
-            .iterator_cf(
-                handle,
-                IteratorMode::From(&start_key_buffer, Direction::Forward),
-            )
-            .flatten()
-        {
+        for (serialized_key, serialized_value) in db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
+        ) {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
             }
@@ -721,14 +712,11 @@ impl PoSFinalState {
     /// Get all the roll counts for a given cycle
     pub fn get_all_roll_counts(&self, cycle: u64) -> BTreeMap<Address, u64> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut roll_counts: BTreeMap<Address, u64> = BTreeMap::new();
 
         let prefix = roll_count_prefix!(self.cycle_history_cycle_prefix(cycle));
-        for (serialized_key, serialized_value) in
-            db.db.prefix_iterator_cf(handle, &prefix).flatten()
-        {
+        for (serialized_key, serialized_value) in db.prefix_iterator_cf(STATE_CF, &prefix) {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
@@ -777,16 +765,13 @@ impl PoSFinalState {
         cycle: u64,
     ) -> PreHashMap<Address, ProductionStats> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut production_stats: PreHashMap<Address, ProductionStats> = PreHashMap::default();
         let mut cur_production_stat = ProductionStats::default();
         let mut cur_address = None;
 
         let prefix = prod_stats_prefix!(self.cycle_history_cycle_prefix(cycle));
-        for (serialized_key, serialized_value) in
-            db.db.prefix_iterator_cf(handle, &prefix).flatten()
-        {
+        for (serialized_key, serialized_value) in db.prefix_iterator_cf(STATE_CF, &prefix) {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
@@ -837,16 +822,14 @@ impl PoSFinalState {
     /// Panics if the cycle is not in the history.
     fn get_cycle_history_rng_seed(&self, cycle: u64) -> BitVec<u8> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         if let Some((cached_cycle, rng_seed)) = &self.rng_seed_cache && *cached_cycle == cycle {
             return rng_seed.clone();
         }
 
         let serialized_rng_seed = db
-            .db
             .get_cf(
-                handle,
+                STATE_CF,
                 rng_seed_key!(self.cycle_history_cycle_prefix(cycle)),
             )
             .expect(CYCLE_HISTORY_DESER_ERROR)
@@ -867,12 +850,10 @@ impl PoSFinalState {
     /// Panics if the cycle is not in the history.
     fn get_cycle_history_final_state_hash_snapshot(&self, cycle: u64) -> Option<Hash> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let serialized_state_hash = db
-            .db
             .get_cf(
-                handle,
+                STATE_CF,
                 final_state_hash_snapshot_key!(self.cycle_history_cycle_prefix(cycle)),
             )
             .expect(CYCLE_HISTORY_DESER_ERROR)
@@ -890,26 +871,26 @@ impl PoSFinalState {
     ///
     fn get_cycle_history_cycles(&self) -> Vec<(u64, bool)> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut found_cycles: Vec<(u64, bool)> = Vec::new();
 
-        while let Some(Ok((serialized_key, _))) = match found_cycles.last() {
+        while let Some((serialized_key, _)) = match found_cycles.last() {
             Some((prev_cycle, _)) => db
-                .db
                 .iterator_cf(
-                    handle,
-                    IteratorMode::From(
+                    STATE_CF,
+                    MassaIteratorMode::From(
                         &self.cycle_history_cycle_prefix(prev_cycle.saturating_add(1)),
-                        Direction::Forward,
+                        MassaDirection::Forward,
                     ),
                 )
                 .next(),
             None => db
-                .db
                 .iterator_cf(
-                    handle,
-                    IteratorMode::From(CYCLE_HISTORY_PREFIX.as_bytes(), Direction::Forward),
+                    STATE_CF,
+                    MassaIteratorMode::From(
+                        CYCLE_HISTORY_PREFIX.as_bytes(),
+                        MassaDirection::Forward,
+                    ),
                 )
                 .next(),
         } {
@@ -950,7 +931,6 @@ impl PoSFinalState {
     /// Gets the deferred credits for a given address that will be credited at a given slot
     pub fn get_address_credits_for_slot(&self, addr: &Address, slot: &Slot) -> Option<Amount> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_key = Vec::new();
         self.deferred_credits_serializer
@@ -963,7 +943,7 @@ impl PoSFinalState {
             .serialize(addr, &mut serialized_key)
             .expect(DEFERRED_CREDITS_SER_ERROR);
 
-        match db.db.get_cf(handle, deferred_credits_key!(serialized_key)) {
+        match db.get_cf(STATE_CF, deferred_credits_key!(serialized_key)) {
             Ok(Some(serialized_amount)) => {
                 let (_, amount) = self
                     .deferred_credits_deserializer
@@ -984,16 +964,15 @@ impl PoSFinalState {
         address: Address,
     ) -> Option<ProductionStats> {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
         let query = vec![
-            (handle, prod_stats_fail_key!(prefix, address)),
-            (handle, prod_stats_success_key!(prefix, address)),
+            (STATE_CF, prod_stats_fail_key!(prefix, address)),
+            (STATE_CF, prod_stats_success_key!(prefix, address)),
         ];
 
-        let results = db.db.multi_get_cf(query);
+        let results = db.multi_get_cf(query);
 
         match (results.get(0), results.get(1)) {
             (Some(Ok(Some(serialized_fail))), Some(Ok(Some(serialized_success)))) => {
@@ -1023,11 +1002,10 @@ impl PoSFinalState {
 
     fn is_cycle_complete(&self, cycle: u64) -> bool {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
-        if let Ok(Some(complete_value)) = db.db.get_cf(handle, complete_key!(prefix)) {
+        if let Ok(Some(complete_value)) = db.get_cf(STATE_CF, complete_key!(prefix)) {
             complete_value.len() == 1 && complete_value[0] == 1
         } else {
             false
@@ -1423,14 +1401,11 @@ impl PoSFinalState {
     /// Queries all the deferred credits in the database
     pub fn get_deferred_credits(&self) -> DeferredCredits {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut deferred_credits = DeferredCredits::new_with_hash();
 
-        for (serialized_key, serialized_value) in db
-            .db
-            .prefix_iterator_cf(handle, DEFERRED_CREDITS_PREFIX)
-            .flatten()
+        for (serialized_key, serialized_value) in
+            db.prefix_iterator_cf(STATE_CF, DEFERRED_CREDITS_PREFIX.as_bytes())
         {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
@@ -1466,13 +1441,16 @@ fn test_pos_final_state_hash_computation() {
     use crate::DeferredCredits;
     use crate::PoSFinalState;
     use bitvec::prelude::*;
-    use massa_db::{MassaDB, MassaDBConfig};
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_worker::MassaDB;
     use massa_models::config::constants::{
         MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
         POS_SAVED_CYCLES,
     };
     use massa_signature::KeyPair;
+    use parking_lot::RwLock;
     use std::collections::HashMap;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     let pos_config = PoSConfig {
@@ -1492,7 +1470,9 @@ fn test_pos_final_state_hash_computation() {
         max_new_elements: 100,
         thread_count: 2,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
     let (selector_controller, _) = MockSelectorController::new_with_receiver();
     let init_seed = Hash::compute_from(b"");
     let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
@@ -1527,7 +1507,7 @@ fn test_pos_final_state_hash_computation() {
     let mut batch = DBBatch::new();
     pos_state.create_initial_cycle(&mut batch);
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)), false);
 
     let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
@@ -1554,7 +1534,7 @@ fn test_pos_final_state_hash_computation() {
         .apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 0)), false);
 
     // update changes once
     roll_changes.clear();
@@ -1579,7 +1559,7 @@ fn test_pos_final_state_hash_computation() {
         .apply_changes_to_batch(changes, Slot::new(0, 1), false, &mut batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(0, 1)));
+        .write_batch(batch, Default::default(), Some(Slot::new(0, 1)), false);
 
     // update changes twice
     roll_changes.clear();
@@ -1605,7 +1585,7 @@ fn test_pos_final_state_hash_computation() {
         .apply_changes_to_batch(changes, Slot::new(1, 0), false, &mut batch)
         .unwrap();
     db.write()
-        .write_batch(batch, Default::default(), Some(Slot::new(1, 0)));
+        .write_batch(batch, Default::default(), Some(Slot::new(1, 0)), false);
 
     let cycles = pos_state.get_cycle_history_cycles();
     assert_eq!(cycles.len(), 1, "wrong number of cycles");

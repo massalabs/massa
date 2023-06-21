@@ -1,5 +1,5 @@
 use humantime::format_duration;
-use massa_db::DBBatch;
+use massa_db_exports::DBBatch;
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -28,6 +28,9 @@ use crate::{
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
 };
+
+#[cfg(not(test))]
+use massa_db_exports::CHANGE_ID_DESER_ERROR;
 
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
@@ -161,6 +164,28 @@ fn stream_final_state_and_consensus(
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
 
                     warn_user_about_versioning_updates(updated, added);
+
+                    #[cfg(not(test))]
+                    {
+                        // Compute the db hash
+                        info!("Computing the db hash");
+                        let slot = guard
+                            .db
+                            .read()
+                            .get_change_id()
+                            .expect(CHANGE_ID_DESER_ERROR);
+                        let only_use_xor = guard.get_only_use_xor(&slot);
+                        guard
+                            .db
+                            .write()
+                            .recompute_db_hash(only_use_xor)
+                            .map_err(|e| {
+                                BootstrapError::from(FinalStateError::LedgerError(format!(
+                                    "Can't recompute hashes: {}",
+                                    e
+                                )))
+                            })?;
+                    }
 
                     return Ok(());
                 }
@@ -351,6 +376,7 @@ fn connect_to_server(
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
     pub_key: &PublicKey,
+    rw_limit: Option<u64>,
 ) -> Result<BootstrapClientBinder, BootstrapError> {
     let socket = connector.connect_timeout(*addr, Some(bootstrap_config.connect_timeout))?;
     socket.set_nonblocking(false)?;
@@ -358,6 +384,7 @@ fn connect_to_server(
         socket,
         *pub_key,
         bootstrap_config.into(),
+        rw_limit,
     ))
 }
 
@@ -416,11 +443,13 @@ pub fn get_state(
         {
             let mut final_state_guard = final_state.write();
 
+            let only_use_xor = final_state_guard.get_only_use_xor(&Slot::new(0, 31));
+
             if !bootstrap_config.keep_ledger {
                 // load ledger from initial ledger file
                 final_state_guard
                     .ledger
-                    .load_initial_ledger()
+                    .load_initial_ledger(only_use_xor)
                     .map_err(|err| {
                         BootstrapError::GeneralError(format!(
                             "could not load initial ledger: {}",
@@ -439,10 +468,12 @@ pub fn get_state(
             );
 
             // TODO: should receive ver batch here?
-            final_state_guard
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(slot));
+            final_state_guard.db.write().write_batch(
+                batch,
+                Default::default(),
+                Some(slot),
+                only_use_xor,
+            );
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
@@ -461,6 +492,7 @@ pub fn get_state(
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
+    let limit = bootstrap_config.max_bytes_read_write;
     loop {
         // check for interuption
         if *interupted.0.lock().expect("double-lock on interupt-mutex") {
@@ -475,25 +507,38 @@ pub fn get_state(
                 }
             }
             info!("Start bootstrapping from {}", addr);
-            match connect_to_server(
+            let conn = connect_to_server(
                 &mut connector,
                 bootstrap_config,
                 addr,
                 &node_id.get_public_key(),
-            ) {
+                Some(limit),
+            );
+            match conn {
                 Ok(mut client) => {
-                    match bootstrap_from_server(bootstrap_config, &mut client, &mut next_bootstrap_message, &mut global_bootstrap_state,version)
-                      // cancellable
-                    {
-                        Err(BootstrapError::ReceivedError(error)) => warn!("Error received from bootstrap server: {}", error),
+                    let bs = bootstrap_from_server(
+                        bootstrap_config,
+                        &mut client,
+                        &mut next_bootstrap_message,
+                        &mut global_bootstrap_state,
+                        version,
+                    );
+                    // cancellable
+                    match bs {
+                        Err(BootstrapError::ReceivedError(error)) => {
+                            warn!("Error received from bootstrap server: {}", error)
+                        }
                         Err(e) => {
-                            warn!("Error while bootstrapping: {}", e);
+                            warn!("Error while bootstrapping: {}", &e);
                             // We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            let _ = client.send_timeout(&BootstrapClientMessage::BootstrapError { error: e.to_string() }, Some(bootstrap_config.write_error_timeout.into()));
+                            let _ = client.send_timeout(
+                                &BootstrapClientMessage::BootstrapError {
+                                    error: e.to_string(),
+                                },
+                                Some(bootstrap_config.write_error_timeout.into()),
+                            );
                         }
-                        Ok(()) => {
-                            return Ok(global_bootstrap_state)
-                        }
+                        Ok(()) => return Ok(global_bootstrap_state),
                     }
                 }
                 Err(e) => {

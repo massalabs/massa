@@ -29,7 +29,7 @@ mod white_black_list;
 use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-use massa_db::CHANGE_ID_DESER_ERROR;
+use massa_db_exports::CHANGE_ID_DESER_ERROR;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
 use massa_models::{
@@ -52,6 +52,10 @@ use std::{
 use tracing::{debug, error, info, warn};
 use white_black_list::*;
 
+#[cfg(not(test))]
+use crate::listener::BootstrapTcpListener;
+#[cfg(test)]
+use crate::listener::MockBootstrapTcpListener as BootstrapTcpListener;
 use crate::{
     bindings::BootstrapServerBinder,
     error::BootstrapError,
@@ -59,7 +63,6 @@ use crate::{
     messages::{BootstrapClientMessage, BootstrapServerMessage},
     BootstrapConfig,
 };
-
 /// Specifies a common interface that can be used by standard, or mockers
 #[cfg_attr(test, mockall::automock)]
 pub trait BSEventPoller {
@@ -74,7 +77,7 @@ pub struct BootstrapManager {
     // need to preserve the listener handle up to here to prevent it being destroyed
     #[allow(clippy::type_complexity)]
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
-    listener_stopper: Option<BootstrapListenerStopHandle>,
+    listener_stopper: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender<()>,
 }
 
@@ -85,29 +88,22 @@ impl BootstrapManager {
         update_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         update_stopper_tx: crossbeam::channel::Sender<()>,
+        listener_stopper: BootstrapListenerStopHandle,
     ) -> Self {
         Self {
             update_handle,
             main_handle,
             update_stopper_tx,
-            listener_stopper: None,
+            listener_stopper,
         }
-    }
-    /// Sets an event-emmiter. `Self::stop`] will use this stopper to signal the listener that created this stopper.
-    pub fn set_listener_stopper(&mut self, listener_stopper: BootstrapListenerStopHandle) {
-        self.listener_stopper = Some(listener_stopper);
     }
 
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        // `as_ref` is critical here, as the stopper has to be alive until the poll in the event
-        // loop acts on the stop-signal
         // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
-        if let Some(listen_stop_handle) = self.listener_stopper.as_ref() {
-            if listen_stop_handle.stop().is_err() {
-                warn!("bootstrap server already dropped");
-            }
+        if self.listener_stopper.stop().is_err() {
+            warn!("bootstrap server already dropped");
         }
         if self.update_stopper_tx.send(()).is_err() {
             warn!("bootstrap ip-list-updater already dropped");
@@ -128,8 +124,9 @@ impl BootstrapManager {
 
 /// See module level documentation for details
 #[allow(clippy::too_many_arguments)]
-pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
-    ev_poller: L,
+pub fn start_bootstrap_server(
+    ev_poller: BootstrapTcpListener,
+    listener_stopper: BootstrapListenerStopHandle,
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
@@ -155,7 +152,7 @@ pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
     let update_handle = thread::Builder::new()
         .name("wb_list_updater".to_string())
         .spawn(move || {
-            let res = BootstrapServer::<L>::run_updater(
+            let res = BootstrapServer::run_updater(
                 updater_lists,
                 config.cache_duration.into(),
                 update_stopper_rx,
@@ -191,14 +188,15 @@ pub fn start_bootstrap_server<L: BSEventPoller + Send + 'static>(
         update_handle,
         main_handle,
         update_stopper_tx,
+        listener_stopper,
     ))
 }
 
-struct BootstrapServer<'a, L: BSEventPoller> {
+struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
     final_state: Arc<RwLock<FinalState>>,
-    ev_poller: L,
+    ev_poller: BootstrapTcpListener,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
     bootstrap_config: BootstrapConfig,
@@ -206,7 +204,7 @@ struct BootstrapServer<'a, L: BSEventPoller> {
     ip_hist_map: HashMap<IpAddr, Instant>,
 }
 
-impl<L: BSEventPoller> BootstrapServer<'_, L> {
+impl BootstrapServer<'_> {
     fn run_updater(
         mut list: SharedWhiteBlackList<'_>,
         interval: Duration,
@@ -232,111 +230,123 @@ impl<L: BSEventPoller> BootstrapServer<'_, L> {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         // TODO: Work out how to integration-test this
+        let limit = self.bootstrap_config.max_bytes_read_write;
         loop {
             // block until we have a connection to work with, or break out of main-loop
-            let (dplx, remote_addr) = match self.ev_poller.poll() {
-                Ok(PollEvent::NewConnection((dplx, remote_addr))) => (dplx, remote_addr),
-                Ok(PollEvent::Stop) => break Ok(()),
+
+            let connections = match self.ev_poller.poll() {
+                Ok(PollEvent::Stop) => return Ok(()),
+                Ok(PollEvent::NewConnections(connections)) => connections,
                 Err(e) => {
                     error!("bootstrap listener error: {}", e);
-                    break Err(e);
+                    // Intuitively, there would be no connection at this point, However an `nc` that
+                    // leads to this scope doesn't exit client-side. This depends on a timeout error
+                    // client-side
+                    continue;
                 }
             };
 
-            // claim a slot in the max_bootstrap_sessions
-            let server_binding = BootstrapServerBinder::new(
-                dplx,
-                self.keypair.clone(),
-                (&self.bootstrap_config).into(),
-            );
+            for (dplx, remote_addr) in connections {
+                // claim a slot in the max_bootstrap_sessions
+                let server_binding = BootstrapServerBinder::new(
+                    dplx,
+                    self.keypair.clone(),
+                    (&self.bootstrap_config).into(),
+                    Some(limit),
+                );
 
-            // check whether incoming peer IP is allowed.
-            if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                server_binding.close_and_send_error(error_msg.to_string(), remote_addr, move || {});
-                continue;
-            };
-
-            // the `- 1` is to account for the top-level Arc that is created at the top
-            // of this method. subsequent counts correspond to each `clone` that is passed
-            // into a thread
-            // TODO: If we don't find a way to handle the counting automagically, make
-            //       a dedicated wrapper-type with doc-comments, manual drop impl that
-            //       integrates logging, etc...
-            if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
-                massa_trace!("bootstrap.lib.run.select.accept", {
-                    "remote_addr": remote_addr
-                });
-                let now = Instant::now();
-
-                // clear IP history if necessary
-                if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                    self.ip_hist_map
-                        .retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
-                    if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
-                        // too many IPs are spamming us: clear cache
-                        warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
-                        self.ip_hist_map.clear();
-                    }
-                }
-
-                // check IP's bootstrap attempt history
-                if let Err(msg) = BootstrapServer::<L>::greedy_client_check(
-                    &mut self.ip_hist_map,
-                    remote_addr,
-                    now,
-                    per_ip_min_interval,
-                ) {
-                    // Client has been too greedy: send out the bad-news :(
-                    let msg = format!(
-                        "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
-                        format_duration(msg),
-                        format_duration(per_ip_min_interval.saturating_sub(msg))
+                // check whether incoming peer IP is allowed.
+                if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
+                    server_binding.close_and_send_error(
+                        error_msg.to_string(),
+                        remote_addr,
+                        move || {},
                     );
-                    let tracer = move || {
-                        massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
-                            "remote_addr": remote_addr
-                        })
-                    };
-                    server_binding.close_and_send_error(msg, remote_addr, tracer);
                     continue;
                 };
 
-                // Clients Option<last-attempt> is good, and has been updated
-                massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
-
-                // launch bootstrap
-                let version = self.version;
-                let data_execution = self.final_state.clone();
-                let consensus_command_sender = self.consensus_controller.clone();
-                let protocol_controller = self.protocol_controller.clone();
-                let config = self.bootstrap_config.clone();
-
-                let bootstrap_count_token = bootstrap_sessions_counter.clone();
-
-                let _ = thread::Builder::new()
-                    .name(format!("bootstrap thread, peer: {}", remote_addr))
-                    .spawn(move || {
-                        run_bootstrap_session(
-                            server_binding,
-                            bootstrap_count_token,
-                            config,
-                            remote_addr,
-                            data_execution,
-                            version,
-                            consensus_command_sender,
-                            protocol_controller,
-                        )
+                // the `- 1` is to account for the top-level Arc that is created at the top
+                // of this method. subsequent counts correspond to each `clone` that is passed
+                // into a thread
+                // TODO: If we don't find a way to handle the counting automagically, make
+                //       a dedicated wrapper-type with doc-comments, manual drop impl that
+                //       integrates logging, etc...
+                if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
+                    massa_trace!("bootstrap.lib.run.select.accept", {
+                        "remote_addr": remote_addr
                     });
+                    let now = Instant::now();
 
-                massa_trace!("bootstrap.session.started", {
-                    "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
-                });
-            } else {
-                server_binding.close_and_send_error(
-                    "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
-                    remote_addr,
-                    move || debug!("did not bootstrap {}: no available slots", remote_addr),
-                );
+                    // clear IP history if necessary
+                    if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
+                        self.ip_hist_map
+                            .retain(|_k, v| now.duration_since(*v) <= per_ip_min_interval);
+                        if self.ip_hist_map.len() > self.bootstrap_config.ip_list_max_size {
+                            // too many IPs are spamming us: clear cache
+                            warn!("high bootstrap load: at least {} different IPs attempted bootstrap in the last {}", self.ip_hist_map.len(),format_duration(self.bootstrap_config.per_ip_min_interval.to_duration()).to_string());
+                            self.ip_hist_map.clear();
+                        }
+                    }
+
+                    // check IP's bootstrap attempt history
+                    if let Err(msg) = BootstrapServer::greedy_client_check(
+                        &mut self.ip_hist_map,
+                        remote_addr,
+                        now,
+                        per_ip_min_interval,
+                    ) {
+                        // Client has been too greedy: send out the bad-news :(
+                        let msg = format!(
+                            "Your last bootstrap on this server was {} ago and you have to wait {} before retrying.",
+                            format_duration(msg),
+                            format_duration(per_ip_min_interval.saturating_sub(msg))
+                        );
+                        let tracer = move || {
+                            massa_trace!("bootstrap.lib.run.select.accept.refuse_limit", {
+                                "remote_addr": remote_addr
+                            })
+                        };
+                        server_binding.close_and_send_error(msg, remote_addr, tracer);
+                        continue;
+                    };
+
+                    // Clients Option<last-attempt> is good, and has been updated
+                    massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
+
+                    // launch bootstrap
+                    let version = self.version;
+                    let data_execution = self.final_state.clone();
+                    let consensus_command_sender = self.consensus_controller.clone();
+                    let protocol_controller = self.protocol_controller.clone();
+                    let config = self.bootstrap_config.clone();
+
+                    let bootstrap_count_token = bootstrap_sessions_counter.clone();
+
+                    let _ = thread::Builder::new()
+                        .name(format!("bootstrap thread, peer: {}", remote_addr))
+                        .spawn(move || {
+                            run_bootstrap_session(
+                                server_binding,
+                                bootstrap_count_token,
+                                config,
+                                remote_addr,
+                                data_execution,
+                                version,
+                                consensus_command_sender,
+                                protocol_controller,
+                            )
+                        });
+
+                    massa_trace!("bootstrap.session.started", {
+                        "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
+                    });
+                } else {
+                    server_binding.close_and_send_error(
+                        "Bootstrap failed because the bootstrap server currently has no slots available.".to_string(),
+                        remote_addr,
+                        move || debug!("did not bootstrap {}: no available slots", remote_addr),
+                    );
+                }
             }
         }
     }
@@ -476,89 +486,51 @@ pub fn stream_bootstrap_information(
                 None
             };
 
-            let last_obtained = match &last_state_step {
-                StreamingStep::Started => None,
-                StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(Some(last_key)) => {
-                    Some((last_key.clone(), last_slot.unwrap()))
-                }
-                StreamingStep::Finished(None) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
-                    None
-                }
-            };
-
             state_part = final_state_read
                 .db
                 .read()
-                .get_batch_to_stream(last_obtained)
+                .get_batch_to_stream(&last_state_step, last_slot)
                 .map_err(|e| {
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
                 })?;
 
-            // TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            let new_state_step = match (
-                &last_state_step,
-                state_part.is_empty(),
-                state_part.new_elements.last_key_value(),
-            ) {
-                // We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
-                (StreamingStep::Finished(Some(_last_key)), false, Some((key, _))) => {
-                    StreamingStep::Finished(Some(key.clone()))
-                }
-                // We finished streaming the state already, and we received nothing new (or only updates)
-                (StreamingStep::Finished(Some(last_key)), _, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
+            let new_state_step = match (&last_state_step, state_part.is_empty()) {
+                // We already finished streaming the state
+                (StreamingStep::Finished(_), _) => StreamingStep::Finished(None),
+
                 // We receive our first empty state batch
-                (StreamingStep::Ongoing(last_key), true, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
-                // We still need to stream the state - no new elements
-                (StreamingStep::Ongoing(last_key), false, None) => {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                // We receive an empty batch, but we've just started streaming
-                (StreamingStep::Started, true, _) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
+                (StreamingStep::Ongoing(_), true) => StreamingStep::Finished(None),
+
+                // We receive our first empty state batch, but we've just started streaming: warn the user
+                (StreamingStep::Started, true) => {
+                    warn!("State bootstrap is finished but nothing has been streamed yet");
                     StreamingStep::Finished(None)
                 }
-                // We still need to stream the state - new elements
-                (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
-                // We finished streaming the (empty) state already, but we received new elements while streaming the versioning
-                (StreamingStep::Finished(None), true, _) => StreamingStep::Finished(None),
-                // Else, we are in an inconsistent state
-                _ => {
-                    if state_part.is_empty() && state_part.new_elements.last_key_value().is_some() {
-                        // If is_empty() has a correct implementation, this should never happen
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap state_part is_empty() but it also contains new elements",
-                        )));
-                    } else {
-                        // StreamingStep::Started, false, None
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap started but we have no new elements to stream",
-                        )));
+
+                // We still need to stream the state, we update the current reference to the last_key if needed
+                (StreamingStep::Ongoing(last_key), false) => {
+                    match state_part.new_elements.last_key_value() {
+                        Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                        None => StreamingStep::Ongoing(last_key.clone()), // We only received changes
                     }
                 }
-            };
 
-            let last_obtained_versioning = match &last_versioning_step {
-                StreamingStep::Started => None,
-                StreamingStep::Ongoing(last_key) => Some((last_key.clone(), last_slot.unwrap())),
-                StreamingStep::Finished(Some(last_key)) => {
-                    Some((last_key.clone(), last_slot.unwrap()))
-                }
-                StreamingStep::Finished(None) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
-                    None
-                }
+                // We still need to stream the state
+                (StreamingStep::Started, false) => match state_part.new_elements.last_key_value() {
+                    Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                    None => {
+                        // We only received changes
+                        return Err(BootstrapError::GeneralError(String::from(
+                            "State bootstrap started but we have no new elements to stream",
+                        )));
+                    }
+                },
             };
 
             versioning_part = final_state_read
                 .db
                 .read()
-                .get_versioning_batch_to_stream(last_obtained_versioning)
+                .get_versioning_batch_to_stream(&last_versioning_step, last_slot)
                 .map_err(|e| {
                     BootstrapError::GeneralError(format!(
                         "Error get_versioning_batch_to_stream: {}",
@@ -566,48 +538,37 @@ pub fn stream_bootstrap_information(
                     ))
                 })?;
 
-            // TODO: Re-design the cursors states (e.g. in a state machine we can test independently)
-            let new_versioning_step = match (
-                &last_versioning_step,
-                versioning_part.is_empty(),
-                versioning_part.new_elements.last_key_value(),
-            ) {
-                // We finished streaming the state already, but we received new elements while streaming consensus: we stay sync
-                (StreamingStep::Finished(Some(_last_key)), false, Some((key, _))) => {
-                    StreamingStep::Finished(Some(key.clone()))
-                }
-                // We finished streaming the state already, and we received nothing new (or only updates)
-                (StreamingStep::Finished(Some(last_key)), _, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
-                // We receive our first empty state batch
-                (StreamingStep::Ongoing(last_key), true, _) => {
-                    StreamingStep::Finished(Some(last_key.clone()))
-                }
-                // We still need to stream the state - no new elements
-                (StreamingStep::Ongoing(last_key), false, None) => {
-                    StreamingStep::Ongoing(last_key.clone())
-                }
-                // We receive an empty batch, but we've just started streaming
-                (StreamingStep::Started, true, _) => {
-                    warn!("Bootstrap is finished but nothing has been streamed yet");
+            let new_versioning_step = match (&last_versioning_step, versioning_part.is_empty()) {
+                // We already finished streaming the versioning
+                (StreamingStep::Finished(_), _) => StreamingStep::Finished(None),
+
+                // We receive our first empty versioning batch
+                (StreamingStep::Ongoing(_), true) => StreamingStep::Finished(None),
+
+                // We receive our first empty versioning batch, but we've just started streaming: warn the user
+                (StreamingStep::Started, true) => {
+                    warn!("Versioning bootstrap is finished but nothing has been streamed yet");
                     StreamingStep::Finished(None)
                 }
-                // We still need to stream the state - new elements
-                (_, false, Some((new_last_key, _))) => StreamingStep::Ongoing(new_last_key.clone()),
-                // We finished streaming the (empty) versioning already, but we received new elements while streaming the state
-                (StreamingStep::Finished(None), true, _) => StreamingStep::Finished(None),
-                _ => {
-                    if state_part.is_empty() && state_part.new_elements.last_key_value().is_some() {
-                        // If is_empty() has a correct implementation, this should never happen
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap state_part is_empty() but it also contains new elements",
-                        )));
-                    } else {
-                        // StreamingStep::Started, false, None
-                        return Err(BootstrapError::GeneralError(String::from(
-                            "Bootstrap started but we have no new elements to stream",
-                        )));
+
+                // We still need to stream the versioning, we update the current reference to the last_key if needed
+                (StreamingStep::Ongoing(last_key), false) => {
+                    match versioning_part.new_elements.last_key_value() {
+                        Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                        None => StreamingStep::Ongoing(last_key.clone()), // We only received changes
+                    }
+                }
+
+                // We still need to stream the versioning
+                (StreamingStep::Started, false) => {
+                    match versioning_part.new_elements.last_key_value() {
+                        Some((new_last_key, _)) => StreamingStep::Ongoing(new_last_key.clone()), // We received new elements
+                        None => {
+                            // We only received changes
+                            return Err(BootstrapError::GeneralError(String::from(
+                                "Versioning bootstrap started but we have no new elements to stream",
+                            )));
+                        }
                     }
                 }
             };

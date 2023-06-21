@@ -3,7 +3,7 @@
 use crate::{
     AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer, AsyncPool,
 };
-use massa_db::{ASYNC_POOL_PREFIX, STATE_CF};
+use massa_db_exports::{ASYNC_POOL_PREFIX, STATE_CF};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -13,7 +13,6 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_signature::KeyPair;
 use rand::Rng;
-use rocksdb::{Direction, IteratorMode};
 use std::str::FromStr;
 
 /// This file defines tools to test the asynchronous pool bootstrap
@@ -74,24 +73,12 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     );
     let db1 = v1.db.read();
     let db2 = v2.db.read();
-    let handle1 = db1.db.cf_handle(STATE_CF).unwrap();
-    let handle2 = db2.db.cf_handle(STATE_CF).unwrap();
 
     let iter_1 = db1
-        .db
-        .iterator_cf(
-            handle1,
-            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
-        )
-        .flatten()
+        .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
         .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
     let iter_2 = db2
-        .db
-        .iterator_cf(
-            handle2,
-            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
-        )
-        .flatten()
+        .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
         .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
 
     assert_eq!(
@@ -108,20 +95,10 @@ pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPool, v2: &AsyncPool) {
     const TOTAL_FIELDS_COUNT: u8 = 13;
 
     let iter_1 = db1
-        .db
-        .iterator_cf(
-            handle1,
-            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
-        )
-        .flatten()
+        .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
         .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
     let iter_2 = db2
-        .db
-        .iterator_cf(
-            handle2,
-            IteratorMode::From(ASYNC_POOL_PREFIX.as_bytes(), Direction::Forward),
-        )
-        .flatten()
+        .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
         .take_while(|(k, _v)| k.starts_with(ASYNC_POOL_PREFIX.as_bytes()));
 
     for (val1, val2) in iter_1.zip(iter_2) {

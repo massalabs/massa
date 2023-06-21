@@ -2,6 +2,7 @@
 
 use crate::config::GrpcConfig;
 use crate::server::MassaGrpc;
+use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
@@ -16,7 +17,7 @@ use massa_models::config::{
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
-use massa_proto::massa::api::v1::massa_service_client::MassaServiceClient;
+use massa_proto_rs::massa::api::v1::massa_service_client::MassaServiceClient;
 use massa_protocol_exports::MockProtocolController;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use std::{
@@ -31,7 +32,8 @@ async fn test_start_grpc_server() {
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
     let pool_ctrl = MockPoolController::new_with_receiver();
-    let (consensus_event_sender, _consensus_event_receiver) = crossbeam::channel::bounded(1024);
+    let (consensus_event_sender, _consensus_event_receiver) =
+        MassaChannel::new("consensus_event".to_string(), Some(1024));
 
     let consensus_channels = ConsensusChannels {
         execution_controller: execution_ctrl.0.clone(),
@@ -106,7 +108,7 @@ async fn test_start_grpc_server() {
     let service = MassaGrpc {
         consensus_controller: Box::new(consensus_controller),
         consensus_channels,
-        execution_controller: execution_ctrl.0,
+        execution_controller: execution_ctrl.0.clone(),
         execution_channels: ExecutionChannels {
             slot_execution_output_sender,
         },
@@ -114,6 +116,7 @@ async fn test_start_grpc_server() {
             endorsement_sender,
             operation_sender,
             selector: selector_ctrl.0.clone(),
+            execution_controller: execution_ctrl.0.clone(),
         },
         pool_command_sender: pool_ctrl.0,
         protocol_command_sender: Box::new(MockProtocolController::new()),

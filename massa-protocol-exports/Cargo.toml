@@ -20,6 +20,7 @@ massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
 massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization" }
+massa_pos_exports = { path = "../massa-pos-exports" }
 massa_signature = { path = "../massa-signature"}
 massa_versioning = { path = "../massa-versioning" }
 massa_hash = { path = "../massa-hash"}

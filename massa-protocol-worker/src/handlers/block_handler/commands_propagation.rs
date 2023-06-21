@@ -2,7 +2,7 @@ use massa_models::block_id::BlockId;
 use massa_storage::Storage;
 
 /// Commands that the block handler can process
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BlockHandlerPropagationCommand {
     Stop,
     /// Notify block integration of a given block.

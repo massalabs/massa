@@ -1,6 +1,6 @@
 use std::thread::JoinHandle;
 
-use crossbeam::channel::Receiver;
+use massa_channel::receiver::MassaReceiver;
 use massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
@@ -17,7 +17,7 @@ use super::{
 };
 
 struct PropagationThread {
-    receiver: Receiver<EndorsementHandlerPropagationCommand>,
+    receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedEndorsementCache,
     active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -48,14 +48,14 @@ impl PropagationThread {
                                     }
                                 }
                             }
-                            let endorsements_ids: PreHashSet<EndorsementId> = endorsements
+                            let ids: PreHashSet<EndorsementId> = endorsements
                                 .get_endorsement_refs()
                                 .iter()
                                 .copied()
                                 .collect();
                             {
                                 let mut cache_write = self.cache.write();
-                                for endorsement_id in endorsements_ids.iter().copied() {
+                                for endorsement_id in ids.iter().copied() {
                                     cache_write.checked_endorsements.insert(endorsement_id, ());
                                 }
                                 // Add peers that potentially don't exist in cache
@@ -145,7 +145,7 @@ impl PropagationThread {
 }
 
 pub fn start_propagation_thread(
-    receiver: Receiver<EndorsementHandlerPropagationCommand>,
+    receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
     active_connections: Box<dyn ActiveConnectionsTrait>,

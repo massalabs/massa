@@ -14,7 +14,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
-use massa_db::DBBatch;
+use massa_db_exports::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -22,12 +22,12 @@ use massa_execution_exports::{
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
+use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -43,7 +43,7 @@ use massa_sc_runtime::{Interface, Response, VMError};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use parking_lot::{Mutex, RwLock};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
@@ -89,6 +89,8 @@ pub(crate) struct ExecutionState {
     selector: Box<dyn SelectorController>,
     // channels used by the execution worker
     channels: ExecutionChannels,
+    /// prometheus metrics
+    massa_metrics: MassaMetrics,
 }
 
 impl ExecutionState {
@@ -106,6 +108,7 @@ impl ExecutionState {
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
         channels: ExecutionChannels,
+        massa_metrics: MassaMetrics,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -178,6 +181,7 @@ impl ExecutionState {
             mip_store,
             selector,
             channels,
+            massa_metrics,
         }
     }
 
@@ -225,6 +229,12 @@ impl ExecutionState {
         exec_out.events.finalize();
         self.final_events.extend(exec_out.events);
         self.final_events.prune(self.config.max_final_events);
+
+        // update the prometheus metrics
+        self.massa_metrics
+            .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
+        self.massa_metrics
+            .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
     }
 
     /// Applies an execution output to the active (non-final) state
@@ -645,7 +655,7 @@ impl ExecutionState {
             )));
         }
 
-        // add rolls to the buyer withing the context
+        // add rolls to the buyer within the context
         context.add_rolls(&buyer_addr, *roll_count);
 
         Ok(())
@@ -684,9 +694,9 @@ impl ExecutionState {
             operation_datastore: None,
         }];
 
-        // send `roll_price` * `roll_count` coins from the sender to the recipient
+        // transfer coins from sender to destination
         if let Err(err) =
-            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, false)
+            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, true)
         {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
@@ -810,19 +820,21 @@ impl ExecutionState {
                 },
             ];
 
-            // Debit the sender's balance with the coins to transfer
-            if let Err(err) = context.transfer_coins(Some(sender_addr), None, coins, false) {
+            // Ensure that the target address is an SC address
+            if !matches!(target_addr, Address::SC(..)) {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to debit operation sender {} with {} operation coins: {}",
-                    sender_addr, coins, err
+                    "cannot callSC towards non-SC address {}",
+                    target_addr
                 )));
             }
 
-            // Credit the operation target with coins.
-            if let Err(err) = context.transfer_coins(None, Some(target_addr), coins, false) {
+            // Transfer coins from the sender to the target
+            if let Err(err) =
+                context.transfer_coins(Some(sender_addr), Some(target_addr), coins, false)
+            {
                 return Err(ExecutionError::RuntimeError(format!(
-                    "failed to credit operation target {} with {} operation coins: {}",
-                    target_addr, coins, err
+                    "failed to transfer {} operation coins from {} to {}: {}",
+                    coins, sender_addr, target_addr, err
                 )));
             }
 
@@ -896,18 +908,21 @@ impl ExecutionState {
                 },
             ];
 
-            // If there is no target bytecode or if message data is invalid,
-            // reimburse sender with coins and quit
+            // if the target address is not SC: fail
+            if !matches!(message.destination, Address::SC(..)) {
+                let err = ExecutionError::RuntimeError(
+                    "the target address is not a smart contract address".into(),
+                );
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(&message);
+                return Err(err);
+            }
+
+            // if there is no bytecode: fail
             let bytecode = match bytecode {
-                Some(bc) => bc,
-                bc => {
-                    let err = if bc.is_none() {
-                        ExecutionError::RuntimeError("no target bytecode found".into())
-                    } else {
-                        ExecutionError::RuntimeError(
-                            "message data does not convert to utf-8".into(),
-                        )
-                    };
+                Some(bytecode) => bytecode,
+                None => {
+                    let err = ExecutionError::RuntimeError("no target bytecode found".into());
                     context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(&message);
                     return Err(err);
@@ -1229,7 +1244,6 @@ impl ExecutionState {
                 .get_prev_slot(self.config.thread_count)
                 .expect("overflow when iterating on slots");
         }
-
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to active state
@@ -1270,8 +1284,6 @@ impl ExecutionState {
                 // update versioning stats
                 self.update_versioning_stats(exec_target, slot);
 
-                debug!("execute_final_slot: found in cache, applied cache and updated versioning stats");
-
                 // Broadcast a final slot execution output to active channel subscribers.
                 if self.config.broadcast_enabled {
                     let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
@@ -1287,7 +1299,6 @@ impl ExecutionState {
                 );
                     }
                 }
-
                 return;
             } else {
                 // speculative cache mismatch
@@ -1609,46 +1620,6 @@ impl ExecutionState {
         }
     }
 
-    /// List which operations inside the provided list were not executed
-    pub fn unexecuted_ops_among(
-        &self,
-        ops: &PreHashSet<OperationId>,
-        thread: u8,
-    ) -> PreHashSet<OperationId> {
-        let mut ops = ops.clone();
-
-        if ops.is_empty() {
-            return ops;
-        }
-
-        {
-            // check active history
-            let history = self.active_history.read();
-            for hist_item in history.0.iter().rev() {
-                if hist_item.slot.thread != thread {
-                    continue;
-                }
-                ops.retain(|op_id| {
-                    !hist_item
-                        .state_changes
-                        .executed_ops_changes
-                        .contains_key(op_id)
-                });
-                if ops.is_empty() {
-                    return ops;
-                }
-            }
-        }
-
-        {
-            // check final state
-            let final_state = self.final_state.read();
-            ops.retain(|op_id| !final_state.executed_ops.contains(op_id));
-        }
-
-        ops
-    }
-
     /// Check if a denunciation has been executed given a `DenunciationIndex`
     pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         // check active history
@@ -1678,18 +1649,30 @@ impl ExecutionState {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
     }
 
-    /// Get the execution statuses of both speculative and final executions
+    /// Get the execution status of a batch of operations.
     ///
-    /// # Return
-    ///
-    /// * A tuple of hashmaps with:
-    /// * first the statuses for speculative executions
-    /// * second the statuses for final executions
-    pub fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
-        (
-            self.active_history.read().get_op_exec_status(),
-            self.final_state.read().executed_ops.op_exec_status.clone(),
-        )
+    ///  Return value: vector of
+    ///  `(Option<speculative_status>, Option<final_status>)`
+    ///  If an Option is None it means that the op execution was not found.
+    ///  Note that old op executions are forgotten.
+    /// Otherwise, the status is a boolean indicating whether the execution was successful (true) or if there was an error (false.)
+    pub fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
+        let speculative_exec = self.active_history.read().get_ops_exec_status(batch);
+        let final_exec = self
+            .final_state
+            .read()
+            .executed_ops
+            .get_ops_exec_status(batch);
+        speculative_exec
+            .into_iter()
+            .zip(final_exec.into_iter())
+            .map(|(speculative_v, final_v)| {
+                match (speculative_v, final_v) {
+                    (None, Some(f)) => (Some(f), Some(f)), // special case: a final execution should also appear as speculative
+                    (s, f) => (s, f),
+                }
+            })
+            .collect()
     }
 
     /// Update MipStore with block header stats
@@ -1741,10 +1724,13 @@ impl ExecutionState {
                             )
                         });
 
+                    let use_only_xor = self.final_state.read().get_only_use_xor(slot);
+
                     self.final_state.write().db.write().write_batch(
                         db_batch,
                         db_versioning_batch,
                         None,
+                        use_only_xor,
                     );
                 } else {
                     warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);

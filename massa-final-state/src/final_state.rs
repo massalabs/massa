@@ -8,10 +8,10 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use massa_async_pool::AsyncPool;
-use massa_db::{DBBatch, MassaDB, CHANGE_ID_DESER_ERROR, MIP_STORE_PREFIX};
-use massa_db::{
-    ASYNC_POOL_PREFIX, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
-    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, STATE_CF,
+use massa_db_exports::{
+    DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
+    CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
+    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
@@ -19,13 +19,11 @@ use massa_ledger_exports::LedgerController;
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
-use massa_versioning::versioning::MipStore;
-
-use parking_lot::RwLock;
-use rocksdb::IteratorMode;
+use massa_versioning::versioning::{MipComponent, MipStore};
 use tracing::{debug, info, warn};
 
-use std::sync::Arc;
+use massa_models::timeslots::get_block_slot_timestamp;
+use massa_time::MassaTime;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -54,7 +52,7 @@ pub struct FinalState {
     /// * If from bootstrap: set during bootstrap
     pub last_slot_before_downtime: Option<Slot>,
     /// the rocksdb instance used to write every final_state struct on disk
-    pub db: Arc<RwLock<MassaDB>>,
+    pub db: ShareableMassaDBController,
 }
 
 impl FinalState {
@@ -66,7 +64,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `reset_final_state`: if true, we only keep the ledger, and we reset the other fields of the final state
     pub fn new(
-        db: Arc<RwLock<MassaDB>>,
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -124,10 +122,12 @@ impl FinalState {
         };
 
         if reset_final_state {
-            final_state.async_pool.reset();
-            final_state.pos_state.reset();
-            final_state.executed_ops.reset();
-            final_state.executed_denunciations.reset();
+            let only_use_xor = final_state.get_only_use_xor(&slot);
+
+            final_state.async_pool.reset(only_use_xor);
+            final_state.pos_state.reset(only_use_xor);
+            final_state.executed_ops.reset(only_use_xor);
+            final_state.executed_denunciations.reset(only_use_xor);
             final_state.db.read().set_initial_change_id(slot);
         }
 
@@ -150,7 +150,7 @@ impl FinalState {
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
     /// * `last_start_period`: at what period we should attach the final_state
     pub fn new_derived_from_snapshot(
-        db: Arc<RwLock<MassaDB>>,
+        db: ShareableMassaDBController,
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
@@ -171,10 +171,12 @@ impl FinalState {
         if cfg!(feature = "testing") {
             let mut batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(&mut batch);
-            final_state
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(recovered_slot));
+            final_state.db.write().write_batch(
+                batch,
+                Default::default(),
+                Some(recovered_slot),
+                false,
+            );
         }
 
         final_state.last_slot_before_downtime = Some(recovered_slot);
@@ -237,14 +239,16 @@ impl FinalState {
         // We compute the draws here because we need to feed_cycles when interpolating
         final_state.compute_initial_draws()?;
 
-        final_state.interpolate_downtime()?;
+        let only_use_xor = final_state.get_only_use_xor(&recovered_slot);
+
+        final_state.interpolate_downtime(only_use_xor)?;
 
         Ok(final_state)
     }
 
     /// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
     /// This basically recreates the history of the final_state, without executing the slots.
-    fn interpolate_downtime(&mut self) -> Result<(), FinalStateError> {
+    fn interpolate_downtime(&mut self, only_use_xor: bool) -> Result<(), FinalStateError> {
         let current_slot =
             self.db.read().get_change_id().map_err(|_| {
                 FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
@@ -259,7 +263,7 @@ impl FinalState {
 
         if current_slot_cycle == end_slot_cycle {
             // In that case, we just complete the gap in the same cycle
-            self.interpolate_single_cycle(current_slot, end_slot)?;
+            self.interpolate_single_cycle(current_slot, end_slot, only_use_xor)?;
         } else {
             // Here, we we also complete the cycle_infos in between
             self.interpolate_multiple_cycles(
@@ -267,6 +271,7 @@ impl FinalState {
                 end_slot,
                 current_slot_cycle,
                 end_slot_cycle,
+                only_use_xor,
             )?;
         }
 
@@ -280,8 +285,9 @@ impl FinalState {
 
         // feed final_state_hash to the last cycle
         let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
+
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
 
         Ok(())
     }
@@ -291,6 +297,7 @@ impl FinalState {
         &mut self,
         current_slot: Slot,
         end_slot: Slot,
+        only_use_xor: bool,
     ) -> Result<(), FinalStateError> {
         let latest_snapshot_cycle =
             self.pos_state
@@ -307,10 +314,12 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         let mut batch = DBBatch::new();
 
@@ -325,10 +334,12 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         Ok(())
     }
@@ -340,6 +351,7 @@ impl FinalState {
         end_slot: Slot,
         current_slot_cycle: u64,
         end_slot_cycle: u64,
+        only_use_xor: bool,
     ) -> Result<(), FinalStateError> {
         let latest_snapshot_cycle =
             self.pos_state
@@ -356,10 +368,12 @@ impl FinalState {
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         // Firstly, complete the first cycle
         let last_slot = Slot::new_last_of_cycle(
@@ -387,13 +401,15 @@ impl FinalState {
             )
             .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-        self.pos_state
-            .db
-            .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+        self.pos_state.db.write().write_batch(
+            batch,
+            Default::default(),
+            Some(end_slot),
+            only_use_xor,
+        );
 
         // Feed final_state_hash to the completed cycle
-        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
+        self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle, only_use_xor)?;
 
         // TODO: Bring back the following optimisation (it fails because of selector)
         // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
@@ -433,13 +449,15 @@ impl FinalState {
                 )
                 .map_err(|err| FinalStateError::PosError(format!("{}", err)))?;
 
-            self.pos_state
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(end_slot));
+            self.pos_state.db.write().write_batch(
+                batch,
+                Default::default(),
+                Some(end_slot),
+                only_use_xor,
+            );
 
             // Feed final_state_hash to the completed cycle
-            self.feed_cycle_hash_and_selector_for_interpolation(cycle)?;
+            self.feed_cycle_hash_and_selector_for_interpolation(cycle, only_use_xor)?;
         }
 
         // Then, build the last cycle
@@ -465,7 +483,7 @@ impl FinalState {
         // If the end_slot_cycle is completed
         if end_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count) {
             // Feed final_state_hash to the completed cycle
-            self.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle)?;
+            self.feed_cycle_hash_and_selector_for_interpolation(end_slot_cycle, only_use_xor)?;
         }
 
         // We reduce the cycle_history len as needed
@@ -478,7 +496,7 @@ impl FinalState {
 
         self.db
             .write()
-            .write_batch(batch, Default::default(), Some(end_slot));
+            .write_batch(batch, Default::default(), Some(end_slot), only_use_xor);
 
         Ok(())
     }
@@ -487,11 +505,12 @@ impl FinalState {
     fn feed_cycle_hash_and_selector_for_interpolation(
         &mut self,
         cycle: u64,
+        only_use_xor: bool,
     ) -> Result<(), FinalStateError> {
         let final_state_hash = self.db.read().get_db_hash();
 
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
 
         self.pos_state
             .feed_selector(cycle.checked_add(2).ok_or_else(|| {
@@ -507,15 +526,16 @@ impl FinalState {
     ///
     /// USED ONLY FOR BOOTSTRAP
     pub fn reset(&mut self) {
-        self.db
-            .write()
-            .reset(Slot::new(0, self.config.thread_count.saturating_sub(1)));
-        self.ledger.reset();
-        self.async_pool.reset();
-        self.pos_state.reset();
-        self.executed_ops.reset();
-        self.executed_denunciations.reset();
-        self.mip_store.reset_db(self.db.clone());
+        let slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        let only_use_xor = self.get_only_use_xor(&slot);
+
+        self.db.write().reset(slot);
+        self.ledger.reset(only_use_xor);
+        self.async_pool.reset(only_use_xor);
+        self.pos_state.reset(only_use_xor);
+        self.executed_ops.reset(only_use_xor);
+        self.executed_denunciations.reset(only_use_xor);
+        self.mip_store.reset_db(self.db.clone(), only_use_xor);
     }
 
     /// Performs the initial draws.
@@ -548,17 +568,15 @@ impl FinalState {
 
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
-
         self.pos_state
             .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
+
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
-
         self.ledger
             .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
-
         self.executed_ops.apply_changes_to_batch(
             changes.executed_ops_changes.clone(),
             slot,
@@ -571,9 +589,11 @@ impl FinalState {
             &mut db_batch,
         );
 
+        let only_use_xor = self.get_only_use_xor(&slot);
+
         self.db
             .write()
-            .write_batch(db_batch, Default::default(), Some(slot));
+            .write_batch(db_batch, Default::default(), Some(slot), only_use_xor);
 
         let final_state_hash = self.db.read().get_db_hash();
 
@@ -605,7 +625,7 @@ impl FinalState {
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, only_use_xor);
     }
 
     /// After bootstrap or load from disk, recompute all the caches.
@@ -619,10 +639,8 @@ impl FinalState {
     /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
     pub fn is_db_valid(&self) -> bool {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).unwrap();
 
-        for (serialized_key, serialized_value) in
-            db.db.iterator_cf(handle, IteratorMode::Start).flatten()
+        for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
         {
             if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
                 && !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())
@@ -705,5 +723,25 @@ impl FinalState {
         }
 
         true
+    }
+
+    /// Temporary getter to know if we should compute the lsm tree during db writes
+    pub fn get_only_use_xor(&self, slot: &Slot) -> bool {
+        let ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            *slot,
+        )
+        .unwrap();
+        self.get_hash_kind_version(ts) == 1
+    }
+
+    fn get_hash_kind_version(&self, ts: MassaTime) -> u32 {
+        // Temp code
+        // Return version for hash kind of final state: 0 -> LSM, 1 -> Xor
+        // let now = MassaTime::now().expect("Cannot get current time");
+        self.mip_store
+            .get_latest_component_version_at(&MipComponent::FinalStateHashKind, ts)
     }
 }

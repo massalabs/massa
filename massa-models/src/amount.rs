@@ -33,21 +33,53 @@ impl Amount {
         Self(0)
     }
 
-    /// Create an Amount from the form `mantissa / (10^scale)`
-    /// Panics on any error.
-    /// Used for constant initialization.
+    /// Convert to decimal
+    fn to_decimal(self) -> Decimal {
+        Decimal::from_u64(self.0)
+            .unwrap() // will never panic
+            .checked_div(AMOUNT_DECIMAL_FACTOR.into()) // will never panic
+            .unwrap() // will never panic
+    }
+
+    /// Create an Amount from a Decimal
+    fn from_decimal(dec: Decimal) -> Result<Self, ModelsError> {
+        let res = dec
+            .checked_mul(AMOUNT_DECIMAL_FACTOR.into())
+            .ok_or_else(|| ModelsError::AmountParseError("amount is too large".to_string()))?;
+        if res.is_sign_negative() {
+            return Err(ModelsError::AmountParseError(
+                "amounts cannot be strictly negative".to_string(),
+            ));
+        }
+        if !res.fract().is_zero() {
+            return Err(ModelsError::AmountParseError(format!(
+                "amounts cannot be more precise than 1/{}",
+                AMOUNT_DECIMAL_FACTOR
+            )));
+        }
+        let res = res.to_u64().ok_or_else(|| {
+            ModelsError::AmountParseError(
+                "amount is too large to be represented as u64".to_string(),
+            )
+        })?;
+        Ok(Amount(res))
+    }
+
+    /// Create an Amount from the form `mantissa / (10^scale)` in a const way.
+    /// WARNING: Panics on any error.
+    /// Used only for constant initialization.
     ///
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let amount_1: Amount = Amount::from_str("0.042").unwrap();
-    /// let amount_2: Amount = Amount::from_mantissa_scale(42, 3);
+    /// let amount_2: Amount = Amount::const_init(42, 3);
     /// assert_eq!(amount_1, amount_2);
     /// let amount_1: Amount = Amount::from_str("1000").unwrap();
-    /// let amount_2: Amount = Amount::from_mantissa_scale(1000, 0);
+    /// let amount_2: Amount = Amount::const_init(1000, 0);
     /// assert_eq!(amount_1, amount_2);
     /// ```
-    pub const fn from_mantissa_scale(mantissa: u64, scale: u32) -> Self {
+    pub const fn const_init(mantissa: u64, scale: u32) -> Self {
         let raw_mantissa = (mantissa as u128) * (AMOUNT_DECIMAL_FACTOR as u128);
         let scale_factor = match 10u128.checked_pow(scale) {
             Some(v) => v,
@@ -57,6 +89,21 @@ impl Amount {
         let res = raw_mantissa / scale_factor;
         assert!(res <= (u64::MAX as u128));
         Self(res as u64)
+    }
+
+    /// Creates an amount in the format mantissa*10^(-scale).
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use std::str::FromStr;
+    /// let a = Amount::from_mantissa_scale(123, 2).unwrap();
+    /// assert_eq!(a.to_string(), "1.23");
+    /// let a = Amount::from_mantissa_scale(123, 100);
+    /// assert!(a.is_err());
+    /// ```
+    pub fn from_mantissa_scale(mantissa: u64, scale: u32) -> Result<Self, ModelsError> {
+        let res = Decimal::try_from_i128_with_scale(mantissa as i128, scale)
+            .map_err(|err| ModelsError::AmountParseError(err.to_string()))?;
+        Amount::from_decimal(res)
     }
 
     /// Obtains the underlying raw `u64` representation
@@ -165,12 +212,7 @@ impl Amount {
 /// ```
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let res_string = Decimal::from_u64(self.0)
-            .unwrap() // will never panic
-            .checked_div(AMOUNT_DECIMAL_FACTOR.into()) // will never panic
-            .unwrap() // will never panic
-            .to_string();
-        write!(f, "{}", res_string)
+        write!(f, "{}", self.to_decimal())
     }
 }
 
@@ -198,27 +240,9 @@ impl FromStr for Amount {
     type Err = ModelsError;
 
     fn from_str(str_amount: &str) -> Result<Self, Self::Err> {
-        let res = Decimal::from_str(str_amount)
-            .map_err(|err| ModelsError::AmountParseError(err.to_string()))?
-            .checked_mul(AMOUNT_DECIMAL_FACTOR.into())
-            .ok_or_else(|| ModelsError::AmountParseError("amount is too large".to_string()))?;
-        if res.is_sign_negative() {
-            return Err(ModelsError::AmountParseError(
-                "amounts cannot be strictly negative".to_string(),
-            ));
-        }
-        if !res.fract().is_zero() {
-            return Err(ModelsError::AmountParseError(format!(
-                "amounts cannot be more precise than 1/{}",
-                AMOUNT_DECIMAL_FACTOR
-            )));
-        }
-        let res = res.to_u64().ok_or_else(|| {
-            ModelsError::AmountParseError(
-                "amount is too large to be represented as u64".to_string(),
-            )
-        })?;
-        Ok(Amount(res))
+        let res = Decimal::from_str_exact(str_amount)
+            .map_err(|err| ModelsError::AmountParseError(err.to_string()))?;
+        Amount::from_decimal(res)
     }
 }
 
