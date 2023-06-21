@@ -57,6 +57,8 @@
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -84,6 +86,8 @@
     </span><span class="kw">pub </span>max_operations_per_block: u32,
     <span class="doccomment">/// max operation pool size per thread (in number of operations)
     </span><span class="kw">pub </span>max_operation_pool_size: usize,
+    <span class="doccomment">/// max excess on pool size (in-between refreshes)
+    </span><span class="kw">pub </span>max_operation_pool_excess_items: usize,
     <span class="doccomment">/// max endorsement pool size per thread (in number of endorsements)
     </span><span class="kw">pub </span>max_endorsements_pool_size_per_thread: usize,
     <span class="doccomment">/// max number of endorsements per block
