@@ -21,8 +21,8 @@ mod server;
 
 mod survey;
 
-/// use lazy_static for these metrics because they are used in storage wichc implement default
 lazy_static! {
+    // use lazy_static for these metrics because they are used in storage which implement default
     static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!(
         "operations_storage_counter",
         "operations storage counter len"

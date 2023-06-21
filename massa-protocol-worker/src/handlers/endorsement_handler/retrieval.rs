@@ -1,4 +1,4 @@
-use std::{thread::JoinHandle, time::Duration};
+use std::thread::JoinHandle;
 
 use crossbeam::{channel::tick, select};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
