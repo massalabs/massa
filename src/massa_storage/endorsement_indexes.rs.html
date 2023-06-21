@@ -103,13 +103,13 @@
     /// - endorsement: the endorsement to insert
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsement: SecureShareEndorsement) {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(e) = <span class="self">self</span>.endorsements.try_insert(endorsement.id, endorsement) {
+            massa_metrics::inc_endorsements_counter();
+
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(e.content_creator_address)
                 .or_default()
                 .insert(e.id);
-
-            massa_metrics::set_endorsements_counter(<span class="self">self</span>.endorsements.len());
         }
     }
 
@@ -121,7 +121,7 @@
         endorsement_id: <span class="kw-2">&amp;</span>EndorsementId,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareEndorsement&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = <span class="self">self</span>.endorsements.remove(endorsement_id) {
-            massa_metrics::set_endorsements_counter(<span class="self">self</span>.endorsements.len());
+            massa_metrics::dec_endorsements_counter();
 
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =

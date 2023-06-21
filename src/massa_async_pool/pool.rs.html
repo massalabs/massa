@@ -1225,10 +1225,10 @@
     <span class="doccomment">/// Resets the pool to its initial state
     ///
     /// USED ONLY FOR BOOTSTRAP
-    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, only_use_xor: bool) {
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.db
             .write()
-            .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, <span class="prelude-val">None</span>, only_use_xor);
+            .delete_prefix(ASYNC_POOL_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
         <span class="self">self</span>.recompute_message_info_cache();
     }
 
