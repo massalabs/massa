@@ -1744,20 +1744,6 @@
 <a href="#1744" id="1744">1744</a>
 <a href="#1745" id="1745">1745</a>
 <a href="#1746" id="1746">1746</a>
-<a href="#1747" id="1747">1747</a>
-<a href="#1748" id="1748">1748</a>
-<a href="#1749" id="1749">1749</a>
-<a href="#1750" id="1750">1750</a>
-<a href="#1751" id="1751">1751</a>
-<a href="#1752" id="1752">1752</a>
-<a href="#1753" id="1753">1753</a>
-<a href="#1754" id="1754">1754</a>
-<a href="#1755" id="1755">1755</a>
-<a href="#1756" id="1756">1756</a>
-<a href="#1757" id="1757">1757</a>
-<a href="#1758" id="1758">1758</a>
-<a href="#1759" id="1759">1759</a>
-<a href="#1760" id="1760">1760</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1802,7 +1788,6 @@
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
-<span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::sync::Arc;
@@ -1846,8 +1831,6 @@
     </span>vesting_manager: Arc&lt;VestingManager&gt;,
     <span class="comment">// MipStore (Versioning)
     </span>mip_store: MipStore,
-    <span class="comment">// wallet used to verify double staking on local addresses
-    </span>wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     <span class="comment">// selector controller to get draws
     </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     <span class="comment">// channels used by the execution worker
@@ -1871,7 +1854,6 @@
         mip_store: MipStore,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         channels: ExecutionChannels,
-        wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
         massa_metrics: MassaMetrics,
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
@@ -1945,7 +1927,6 @@
             mip_store,
             selector,
             channels,
-            wallet,
             massa_metrics,
         }
     }
@@ -2318,15 +2299,6 @@
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">warn!</span>(<span class="string">&quot;Unable to slash rolls or deferred credits: {}&quot;</span>, e);
             }
-        }
-
-        <span class="kw">if </span><span class="self">self
-            </span>.wallet
-            .read()
-            .get_wallet_address_list()
-            .contains(<span class="kw-2">&amp;</span>addr_denounced)
-        {
-            <span class="macro">panic!</span>(<span class="string">&quot;You created two blocks or endorsements for slot {} with address {}, node is stopping to prevent you from loosing all your stake due to double staking protection&quot;</span>, block_slot, addr_denounced);
         }
 
         <span class="prelude-val">Ok</span>(())
