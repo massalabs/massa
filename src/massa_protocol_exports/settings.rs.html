@@ -176,9 +176,9 @@
 
 <span class="attr">#[derive(Debug, Deserialize, Clone, Copy)]
 </span><span class="kw">pub struct </span>PeerCategoryInfo {
+    <span class="kw">pub </span>allow_local_peers: bool,
     <span class="kw">pub </span>target_out_connections: usize,
-    <span class="kw">pub </span>max_in_connections_pre_handshake: usize,
-    <span class="kw">pub </span>max_in_connections_post_handshake: usize,
+    <span class="kw">pub </span>max_in_connections: usize,
     <span class="kw">pub </span>max_in_connections_per_ip: usize,
 }
 
