@@ -575,7 +575,7 @@
     </span><span class="kw">fn </span>cleanup_caches(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         cleanup_cache(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.denunciations_cache,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
+            <span class="self">self</span>.last_cs_final_periods.iter().min().unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>),
             <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
         );
     }
@@ -653,10 +653,10 @@
     </span><span class="kw">let </span>idx_ = cache.iter().find_map(|(de_idx, <span class="kw">_</span>)| {
         <span class="kw">let </span>slot = de_idx.get_slot();
         <span class="kw">if </span>!Denunciation::is_expired(<span class="kw-2">&amp;</span>slot.period, slot_period, denunciation_expire_periods) {
-            <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="kw-2">*</span>de_idx);
+            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>de_idx)
         } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
+            <span class="prelude-val">None
+        </span>}
     });
     <span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = idx_ {
         <span class="comment">// Keep only non expired items
