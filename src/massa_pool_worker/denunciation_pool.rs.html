@@ -403,6 +403,13 @@
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{btree_map::Entry, BTreeMap};
@@ -693,11 +700,12 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>std::time::Instant;
+    <span class="kw">use </span>std::collections::Bound::Included;
+    <span class="kw">use </span>std::ops::Bound::Unbounded;
 
     <span class="kw">use </span>massa_hash::Hash;
-    <span class="kw">use </span>massa_models::block_header::{BlockHeader, BlockHeaderSerializer}; <span class="comment">// , SecuredHeader};
-    </span><span class="kw">use </span>massa_models::block_id::BlockId;
+    <span class="kw">use </span>massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
+    <span class="kw">use </span>massa_models::block_id::BlockId;
     <span class="kw">use </span>massa_models::config::ENDORSEMENT_COUNT;
     <span class="kw">use </span>massa_models::endorsement::{Endorsement, EndorsementSerializer};
     <span class="kw">use </span>massa_models::secure_share::SecureShareContent;
@@ -705,7 +713,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_cache_cleanup() {
-        <span class="comment">// Test cleanup_cache() function against the old way of doing it (retain)
+        <span class="comment">// Test cleanup_cache() function
         // Note that removing comment about function timings shows a huge diff (ms versus µs)
 
         </span><span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
@@ -773,8 +781,13 @@
         </span><span class="kw">let </span>last_slot_period = <span class="number">100</span>;
         <span class="kw">let </span>denunciation_expire_periods = <span class="number">10</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>de_cache_cleanup_1 = de_cache.clone();
-        <span class="comment">// let bench_time_start_1 = Instant::now();
+        <span class="comment">// Keep this old and slow method for
+        // * benchmarking
+        // * more readable and explicit code (compared to cleanup_cache impl)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>de_cache_cleanup_1 = de_cache.clone();
+
+        <span class="comment">// use std::time::Instant;
+        // let bench_time_start_1 = Instant::now();
         </span>de_cache_cleanup_1.retain(|de_idx, <span class="kw">_</span>| {
             <span class="kw">let </span>slot = de_idx.get_slot();
             !Denunciation::is_expired(
@@ -794,18 +807,19 @@
         );
         <span class="comment">// println!(&quot;Elapsed time: {:.6?}&quot;, bench_time_start_2.elapsed());
 
-        // println!(&quot;de_cache_cleanup_1 len: {}&quot;, de_cache_cleanup_1.len());
-        // println!(&quot;de_cache_cleanup_2 len: {}&quot;, de_cache_cleanup_2.len());
-        // println!(
-        //     &quot;de_cache_cleanup_1 f: {:?}&quot;,
-        //     de_cache_cleanup_1.first_key_value()
-        // );
-        // println!(
-        //     &quot;de_cache_cleanup_2 f: {:?}&quot;,
-        //     de_cache_cleanup_2.first_key_value()
-        // );
-
         </span><span class="macro">assert_eq!</span>(de_cache_cleanup_1, de_cache_cleanup_2);
+
+        <span class="comment">// Compared to expected result so we do not depend on DenunciationIndex PartialEq impl here
+        </span><span class="kw">let </span>bound = Included(DenunciationIndex::BlockHeader {
+            slot: Slot::new(<span class="number">90</span>, <span class="number">0</span>),
+        });
+        <span class="macro">assert_eq!</span>(
+            de_cache_cleanup_2,
+            de_cache
+                .range((bound, Unbounded))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::&lt;BTreeMap&lt;DenunciationIndex, DenunciationStatus&gt;&gt;()
+        );
     }
 }
 </code></pre></div></section></main></body></html>
