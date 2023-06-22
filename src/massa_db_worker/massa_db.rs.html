@@ -787,18 +787,13 @@
 <a href="#787" id="787">787</a>
 <a href="#788" id="788">788</a>
 <a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
     CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
     STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
-<span class="kw">use </span>massa_hash::{Hash, HashXof};
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -1115,7 +1110,7 @@
         <span class="kw">let </span>handle_metadata = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         <span class="kw">let </span>handle_versioning = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>current_xor_hash = <span class="self">self</span>.get_xof_db_hash();
+        <span class="kw">let </span><span class="kw-2">mut </span>current_xor_hash = <span class="self">self</span>.get_db_hash();
 
         <span class="kw-2">*</span><span class="self">self</span>.current_batch.lock() = WriteBatch::default();
 
@@ -1125,17 +1120,19 @@
 
                 <span class="comment">// Compute the XOR in all cases
                 </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(prev_value)) = <span class="self">self</span>.db.get_cf(handle_state, key) {
-                    <span class="kw">let </span>prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    <span class="kw">let </span>prev_hash =
+                        Hash::compute_from(<span class="kw-2">&amp;</span>[key.as_slice(), prev_value.as_slice()].concat());
                     current_xor_hash ^= prev_hash;
                 };
-                <span class="kw">let </span>new_hash = HashXof::compute_from_kv(key.as_slice(), value.as_slice());
+                <span class="kw">let </span>new_hash = Hash::compute_from(<span class="kw-2">&amp;</span>[key.as_slice(), value.as_slice()].concat());
                 current_xor_hash ^= new_hash;
             } <span class="kw">else </span>{
                 <span class="self">self</span>.current_batch.lock().delete_cf(handle_state, key);
 
                 <span class="comment">// Compute the XOR in all cases
                 </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(prev_value)) = <span class="self">self</span>.db.get_cf(handle_state, key) {
-                    <span class="kw">let </span>prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    <span class="kw">let </span>prev_hash =
+                        Hash::compute_from(<span class="kw-2">&amp;</span>[key.as_slice(), prev_value.as_slice()].concat());
                     current_xor_hash ^= prev_hash;
                 };
             }
@@ -1158,9 +1155,11 @@
         }
 
         <span class="comment">// Update the hash entry
-        </span><span class="self">self</span>.current_batch
-            .lock()
-            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.<span class="number">0</span>);
+        </span><span class="self">self</span>.current_batch.lock().put_cf(
+            handle_metadata,
+            STATE_HASH_KEY,
+            current_xor_hash.to_bytes(),
+        );
 
         {
             <span class="kw">let </span><span class="kw-2">mut </span>current_batch_guard = <span class="self">self</span>.current_batch.lock();
@@ -1270,7 +1269,7 @@
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
         versioning_changes.extend(
-            stream_changes
+            stream_changes_versioning
                 .new_elements
                 .iter()
                 .map(|(k, v)| (k.clone(), <span class="prelude-val">Some</span>(v.clone()))),
@@ -1291,7 +1290,7 @@
         <span class="kw">let </span>handle_state = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
         <span class="kw">let </span>handle_metadata = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>current_xor_hash = <span class="self">self</span>.get_xof_db_hash();
+        <span class="kw">let </span><span class="kw-2">mut </span>current_xor_hash = <span class="self">self</span>.get_db_hash();
         <span class="kw-2">*</span><span class="self">self</span>.current_batch.lock() = WriteBatch::default();
 
         <span class="comment">// Iterate over the whole db and compute the hash
@@ -1302,14 +1301,16 @@
         {
             <span class="comment">// Compute the XOR in all cases
             </span><span class="kw">let </span>new_hash =
-                HashXof::compute_from_kv(key.to_vec().as_slice(), value.to_vec().as_slice());
+                Hash::compute_from(<span class="kw-2">&amp;</span>[key.to_vec().as_slice(), value.to_vec().as_slice()].concat());
             current_xor_hash ^= new_hash;
         }
 
         <span class="comment">// Update the hash entry
-        </span><span class="self">self</span>.current_batch
-            .lock()
-            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.<span class="number">0</span>);
+        </span><span class="self">self</span>.current_batch.lock().put_cf(
+            handle_metadata,
+            STATE_HASH_KEY,
+            current_xor_hash.to_bytes(),
+        );
 
         {
             <span class="kw">let </span><span class="kw-2">mut </span>current_batch_guard = <span class="self">self</span>.current_batch.lock();
@@ -1324,29 +1325,22 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Get the current XOF state hash of the database
-    </span><span class="kw">pub fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof {
-        <span class="self">self</span>.get_xof_db_hash_opt()
-            .unwrap_or(HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES))
-    }
-
-    <span class="doccomment">/// Get the current XOF state hash of the database
-    </span><span class="kw">fn </span>get_xof_db_hash_opt(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;HashXof&gt; {
-        <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
-        <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        db.get_cf(handle, STATE_HASH_KEY)
-            .expect(CRUD_ERROR)
-            .as_deref()
-            .map(|state_hash_bytes| HashXof(state_hash_bytes.try_into().expect(STATE_HASH_ERROR)))
+    <span class="doccomment">/// Get the current state hash of the database
+    </span><span class="kw">pub fn </span>get_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
+        <span class="self">self</span>.get_db_hash_opt()
+            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
     }
 
     <span class="doccomment">/// Get the current state hash of the database
-    </span><span class="kw">pub fn </span>get_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
-        <span class="kw">let </span>hash_xof = <span class="self">self
-            </span>.get_xof_db_hash_opt()
-            .unwrap_or(HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES));
-        Hash::compute_from(<span class="kw-2">&amp;</span>hash_xof.<span class="number">0</span>)
+    </span><span class="kw">fn </span>get_db_hash_opt(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Hash&gt; {
+        <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
+        <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        db.get_cf(handle, STATE_HASH_KEY)
+            .expect(CRUD_ERROR)
+            .as_deref()
+            .map(|state_hash_bytes| {
+                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
+            })
     }
 }
 
@@ -1523,14 +1517,10 @@
         )
     }
 
-    <span class="doccomment">/// Get the current extended state hash of the database
+    <span class="doccomment">/// Get the current state hash of the database
     </span><span class="kw">fn </span>get_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
-        <span class="self">self</span>.get_db_hash()
-    }
-
-    <span class="doccomment">/// Get the current extended state hash of the database
-    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof {
-        <span class="self">self</span>.get_xof_db_hash()
+        <span class="self">self</span>.get_db_hash_opt()
+            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
     }
 
     <span class="doccomment">/// Get the current change_id attached to the database.
