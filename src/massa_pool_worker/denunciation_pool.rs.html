@@ -389,6 +389,20 @@
 <a href="#389" id="389">389</a>
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{btree_map::Entry, BTreeMap};
@@ -568,8 +582,12 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(denunciation) = denunciation_ {
             <span class="macro">info!</span>(<span class="string">&quot;Created a new denunciation : {:?}&quot;</span>, denunciation);
         }
-        <span class="self">self</span>.cleanup_caches();
-    }
+
+        <span class="comment">// Because at the start of the function, we have already checked that DE precursor is not
+        // expired, there is no need to cleanup the cache here
+        // This is only needed when we are notified of new cs final periods and thus calling the
+        // cleanup function only when it is needed
+    </span>}
 
     <span class="doccomment">/// cleanup internal cache, removing too old denunciation
     </span><span class="kw">fn </span>cleanup_caches(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -649,19 +667,18 @@
     slot_period: <span class="kw-2">&amp;</span>u64,
     denunciation_expire_periods: <span class="kw-2">&amp;</span>u64,
 ) {
-    <span class="comment">// Find the first key which is not expired
-    </span><span class="kw">let </span>idx_ = cache.iter().find_map(|(de_idx, <span class="kw">_</span>)| {
-        <span class="kw">let </span>slot = de_idx.get_slot();
-        <span class="kw">if </span>!Denunciation::is_expired(<span class="kw-2">&amp;</span>slot.period, slot_period, denunciation_expire_periods) {
-            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>de_idx)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>}
-    });
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = idx_ {
-        <span class="comment">// Keep only non expired items
-        </span><span class="kw-2">*</span>cache = cache.split_off(<span class="kw-2">&amp;</span>idx);
-    }
+    <span class="comment">// Compute the first key which is not expired
+    // Note 1: that in order to use split_off, there is no need for the key to exist in the BTreeMap
+    // Note 2: earliest_allowed_period is compat with DenunciationIndex::is_expired(..) method
+    </span><span class="kw">let </span>earliest_allowed_period = slot_period.saturating_sub(<span class="kw-2">*</span>denunciation_expire_periods);
+    <span class="comment">// Use DenunciationIndex::BlockHeader here as the PartialEq impl use DenunciationIndexTypeId
+    // and BlockHeader is the one with the lowest value
+    </span><span class="kw">let </span>de_idx = DenunciationIndex::BlockHeader {
+        slot: Slot::new(earliest_allowed_period, <span class="number">0</span>),
+    };
+
+    <span class="comment">// Keep only non expired items
+    </span><span class="kw-2">*</span>cache = cache.split_off(<span class="kw-2">&amp;</span>de_idx);
 }
 
 <span class="doccomment">/// A Value (as in Key/Value) for denunciation pool internal cache
@@ -776,6 +793,17 @@
             <span class="kw-2">&amp;</span>denunciation_expire_periods,
         );
         <span class="comment">// println!(&quot;Elapsed time: {:.6?}&quot;, bench_time_start_2.elapsed());
+
+        // println!(&quot;de_cache_cleanup_1 len: {}&quot;, de_cache_cleanup_1.len());
+        // println!(&quot;de_cache_cleanup_2 len: {}&quot;, de_cache_cleanup_2.len());
+        // println!(
+        //     &quot;de_cache_cleanup_1 f: {:?}&quot;,
+        //     de_cache_cleanup_1.first_key_value()
+        // );
+        // println!(
+        //     &quot;de_cache_cleanup_2 f: {:?}&quot;,
+        //     de_cache_cleanup_2.first_key_value()
+        // );
 
         </span><span class="macro">assert_eq!</span>(de_cache_cleanup_1, de_cache_cleanup_2);
     }

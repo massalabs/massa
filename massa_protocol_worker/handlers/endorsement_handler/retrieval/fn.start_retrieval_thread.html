@@ -5,7 +5,7 @@
     peer_cmd_sender: MassaSender&lt;<a class="enum" href="../../peer_handler/models/enum.PeerManagementCmd.html" title="enum massa_protocol_worker::handlers::peer_handler::models::PeerManagementCmd">PeerManagementCmd</a>&gt;,
     cache: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../cache/struct.EndorsementCache.html" title="struct massa_protocol_worker::handlers::endorsement_handler::cache::EndorsementCache">EndorsementCache</a>&gt;&gt;,
     selector_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn SelectorController&gt;,
-    pool_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="../../../../massa_pool_exports/controller_traits/trait.PoolController.html" title="trait massa_pool_exports::controller_traits::PoolController">PoolController</a>&gt;,
+    pool_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn PoolController&gt;,
     config: <a class="struct" href="../../../../massa_protocol_exports/settings/struct.ProtocolConfig.html" title="struct massa_protocol_exports::settings::ProtocolConfig">ProtocolConfig</a>,
     storage: Storage,
     metrics: MassaMetrics
