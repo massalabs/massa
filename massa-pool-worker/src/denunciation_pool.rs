@@ -177,7 +177,11 @@ impl DenunciationPool {
         if let Some(denunciation) = denunciation_ {
             info!("Created a new denunciation : {:?}", denunciation);
         }
-        self.cleanup_caches();
+
+        // Because at the start of the function, we have already checked that DE precursor is not
+        // expired, there is no need to cleanup the cache here
+        // This is only needed when we are notified of new cs final periods and thus calling the
+        // cleanup function only when it is needed
     }
 
     /// cleanup internal cache, removing too old denunciation
@@ -258,19 +262,18 @@ fn cleanup_cache(
     slot_period: &u64,
     denunciation_expire_periods: &u64,
 ) {
-    // Find the first key which is not expired
-    let idx_ = cache.iter().find_map(|(de_idx, _)| {
-        let slot = de_idx.get_slot();
-        if !Denunciation::is_expired(&slot.period, slot_period, denunciation_expire_periods) {
-            Some(*de_idx)
-        } else {
-            None
-        }
-    });
-    if let Some(idx) = idx_ {
-        // Keep only non expired items
-        *cache = cache.split_off(&idx);
-    }
+    // Compute the first key which is not expired
+    // Note 1: that in order to use split_off, there is no need for the key to exist in the BTreeMap
+    // Note 2: earliest_allowed_period is compat with DenunciationIndex::is_expired(..) method
+    let earliest_allowed_period = slot_period.saturating_sub(*denunciation_expire_periods);
+    // Use DenunciationIndex::BlockHeader here as the PartialEq impl use DenunciationIndexTypeId
+    // and BlockHeader is the one with the lowest value
+    let de_idx = DenunciationIndex::BlockHeader {
+        slot: Slot::new(earliest_allowed_period, 0),
+    };
+
+    // Keep only non expired items
+    *cache = cache.split_off(&de_idx);
 }
 
 /// A Value (as in Key/Value) for denunciation pool internal cache
@@ -385,6 +388,17 @@ mod tests {
             &denunciation_expire_periods,
         );
         // println!("Elapsed time: {:.6?}", bench_time_start_2.elapsed());
+
+        // println!("de_cache_cleanup_1 len: {}", de_cache_cleanup_1.len());
+        // println!("de_cache_cleanup_2 len: {}", de_cache_cleanup_2.len());
+        // println!(
+        //     "de_cache_cleanup_1 f: {:?}",
+        //     de_cache_cleanup_1.first_key_value()
+        // );
+        // println!(
+        //     "de_cache_cleanup_2 f: {:?}",
+        //     de_cache_cleanup_2.first_key_value()
+        // );
 
         assert_eq!(de_cache_cleanup_1, de_cache_cleanup_2);
     }
