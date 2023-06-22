@@ -566,7 +566,7 @@ impl ExecutionState {
             .get_wallet_address_list()
             .contains(&addr_denounced)
         {
-            panic!("You created two blocks or endorsements for slot {} with address {}, node is stopping to prevent you from loosing all your stake due to double staking protection", block_slot, addr_denounced);
+            panic!("You are being slashed at slot {} for double-staking using address {}. The node is stopping to prevent any further loss", block_slot, addr_denounced);
         }
 
         Ok(())
