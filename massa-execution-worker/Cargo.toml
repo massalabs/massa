@@ -74,6 +74,7 @@ testing = [
     "massa_pos_exports/testing",
     "massa_final_state/testing",
     "massa-sc-runtime/testing",
+    "massa_wallet/testing",
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
