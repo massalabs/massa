@@ -43,8 +43,7 @@ use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use serde_json::Value;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
-use tokio::sync::mpsc;
+use std::sync::{Arc, Condvar, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
@@ -87,8 +86,8 @@ pub struct Private {
     pub execution_controller: Box<dyn ExecutionController>,
     /// API settings
     pub api_settings: APIConfig,
-    /// stop channel
-    pub stop_node_channel: mpsc::Sender<()>,
+    /// Condition-variable pair to stop the system
+    pub stop_cv: Arc<(Mutex<bool>, Condvar)>,
     /// User wallet
     pub node_wallet: Arc<RwLock<Wallet>>,
 }
@@ -215,7 +214,7 @@ impl StopHandle {
 pub trait MassaRpc {
     /// Gracefully stop the node.
     #[method(name = "stop_node")]
-    async fn stop_node(&self) -> RpcResult<()>;
+    fn stop_node(&self) -> RpcResult<()>;
 
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.

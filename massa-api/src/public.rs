@@ -106,7 +106,7 @@ impl RpcServer for API<Public> {
 #[doc(hidden)]
 #[async_trait]
 impl MassaRpcServer for API<Public> {
-    async fn stop_node(&self) -> RpcResult<()> {
+    fn stop_node(&self) -> RpcResult<()> {
         crate::wrong_api::<()>()
     }
 
