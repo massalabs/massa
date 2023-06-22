@@ -11,7 +11,7 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::TryRecvError;
-use ctrlc as _;
+// use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
@@ -1182,18 +1182,23 @@ async fn run(args: Args) -> anyhow::Result<()> {
     // interrupt signal listener
     let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
 
-    // TODO: re-enable and fix this (remove use ctrlc as _; when done)
-    // let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
-    // ctrlc::set_handler(move || {
-    //     *sig_int_toggled_clone
-    //         .0
-    //         .lock()
-    //         .expect("double-lock on interupt bool in ctrl-c handler") = true;
-    //     sig_int_toggled_clone.1.notify_all();
-    // })
-    // .expect("Error setting Ctrl-C handler");
+    let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
+    ctrlc::set_handler(move || {
+        tx.send(()).unwrap();
+        *sig_int_toggled_clone
+            .0
+            .lock()
+            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+        sig_int_toggled_clone.1.notify_all();
+    })
+    .expect("Error setting Ctrl-C handler");
 
+    // // interrupt signal listener
+    // let (tx, rx) = crossbeam_channel::bounded(1);
+    // let interrupt_signal_listener = tokio::spawn(async move {
+    //     signal::ctrl_c().await.unwrap();
+    //     tx.send(()).unwrap();
+    // });
     loop {
         let (
             consensus_event_receiver,
@@ -1210,13 +1215,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_handle,
             grpc_handle,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
-
-        // interrupt signal listener
-        let (tx, rx) = crossbeam_channel::bounded(1);
-        let interrupt_signal_listener = tokio::spawn(async move {
-            signal::ctrl_c().await.unwrap();
-            tx.send(()).unwrap();
-        });
 
         // loop over messages
         let restart = loop {
