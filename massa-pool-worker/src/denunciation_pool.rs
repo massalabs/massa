@@ -184,7 +184,7 @@ impl DenunciationPool {
     fn cleanup_caches(&mut self) {
         cleanup_cache(
             &mut self.denunciations_cache,
-            &self.last_cs_final_periods.iter().min().unwrap_or(&0),
+            self.last_cs_final_periods.iter().min().unwrap_or(&0),
             &self.config.denunciation_expire_periods,
         );
     }
@@ -262,9 +262,9 @@ fn cleanup_cache(
     let idx_ = cache.iter().find_map(|(de_idx, _)| {
         let slot = de_idx.get_slot();
         if !Denunciation::is_expired(&slot.period, slot_period, denunciation_expire_periods) {
-            return Some(*de_idx);
+            Some(*de_idx)
         } else {
-            return None;
+            None
         }
     });
     if let Some(idx) = idx_ {
