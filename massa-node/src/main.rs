@@ -98,7 +98,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
-use tokio::signal;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
@@ -1183,6 +1182,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
 
     let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
+    let (tx, rx) = crossbeam_channel::bounded(1);
     ctrlc::set_handler(move || {
         tx.send(()).unwrap();
         *sig_int_toggled_clone
@@ -1194,7 +1194,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
     .expect("Error setting Ctrl-C handler");
 
     // // interrupt signal listener
-    // let (tx, rx) = crossbeam_channel::bounded(1);
     // let interrupt_signal_listener = tokio::spawn(async move {
     //     signal::ctrl_c().await.unwrap();
     //     tx.send(()).unwrap();
@@ -1283,7 +1282,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
         }
         // If we restart because of a desync, then we do not want to restart from a snapshot
         cur_args.restart_from_snapshot_at_period = None;
-        interrupt_signal_listener.abort();
     }
     Ok(())
 }
