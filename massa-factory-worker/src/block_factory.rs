@@ -145,11 +145,12 @@ impl BlockFactoryWorker {
             return;
         };
         let mut block_storage = self.channels.storage.clone_without_refs();
-        if let Some(block) = block_storage.read_blocks().get_blocks_by_slot(&slot) {
-            if let Some(id) = block.iter().next() {
-                if let Some(block) = block_storage.read_blocks().get(id) {
-                    if block.content_creator_address == block_producer_addr {
-                        panic!("You already created a block for slot {} with address {}, node is stopping to prevent you from loosing all your stake due to double staking protection", slot, block_producer_addr);
+        {
+            let block_lock = block_storage.read_blocks();
+            if let Some(block_ids) = block_lock.get_blocks_by_slot(&slot) {
+                for block_id in block_ids {
+                    if let Some(block) = block_lock.get(block_id) && block.content_creator_address == block_producer_addr {
+                        panic!("You already created a block for slot {} with address {}, node is stopping to prevent you from losing all your stake due to double staking protection", slot, block_producer_addr);
                     }
                 }
             }
