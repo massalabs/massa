@@ -288,10 +288,11 @@ enum DenunciationStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Instant;
+    use std::collections::Bound::Included;
+    use std::ops::Bound::Unbounded;
 
     use massa_hash::Hash;
-    use massa_models::block_header::{BlockHeader, BlockHeaderSerializer}; // , SecuredHeader};
+    use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     use massa_models::block_id::BlockId;
     use massa_models::config::ENDORSEMENT_COUNT;
     use massa_models::endorsement::{Endorsement, EndorsementSerializer};
@@ -300,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_cache_cleanup() {
-        // Test cleanup_cache() function against the old way of doing it (retain)
+        // Test cleanup_cache() function
         // Note that removing comment about function timings shows a huge diff (ms versus µs)
 
         let keypair = KeyPair::generate(0).unwrap();
@@ -368,7 +369,12 @@ mod tests {
         let last_slot_period = 100;
         let denunciation_expire_periods = 10;
 
+        // Keep this old and slow method for
+        // * benchmarking
+        // * more readable and explicit code (compared to cleanup_cache impl)
         let mut de_cache_cleanup_1 = de_cache.clone();
+
+        // use std::time::Instant;
         // let bench_time_start_1 = Instant::now();
         de_cache_cleanup_1.retain(|de_idx, _| {
             let slot = de_idx.get_slot();
@@ -389,17 +395,18 @@ mod tests {
         );
         // println!("Elapsed time: {:.6?}", bench_time_start_2.elapsed());
 
-        // println!("de_cache_cleanup_1 len: {}", de_cache_cleanup_1.len());
-        // println!("de_cache_cleanup_2 len: {}", de_cache_cleanup_2.len());
-        // println!(
-        //     "de_cache_cleanup_1 f: {:?}",
-        //     de_cache_cleanup_1.first_key_value()
-        // );
-        // println!(
-        //     "de_cache_cleanup_2 f: {:?}",
-        //     de_cache_cleanup_2.first_key_value()
-        // );
-
         assert_eq!(de_cache_cleanup_1, de_cache_cleanup_2);
+
+        // Compared to expected result so we do not depend on DenunciationIndex PartialEq impl here
+        let bound = Included(DenunciationIndex::BlockHeader {
+            slot: Slot::new(90, 0),
+        });
+        assert_eq!(
+            de_cache_cleanup_2,
+            de_cache
+                .range((bound, Unbounded))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<BTreeMap<DenunciationIndex, DenunciationStatus>>()
+        );
     }
 }
