@@ -202,9 +202,9 @@
     # Number of millis seconds that create a timeout for out connections
     timeout_connection = 1000
     # time threshold after which operation are not propagated
-    max_operations_propagation_time = 32000
+    max_operations_propagation_time = 16000
     # time threshold after which endorsement are not propagated
-    max_endorsements_propagation_time = 48000
+    max_endorsements_propagation_time = 16000
     # number of thread tester
     thread_tester_count = 25
     # Nb max in connections that we accept

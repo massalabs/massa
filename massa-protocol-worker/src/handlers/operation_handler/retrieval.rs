@@ -24,7 +24,9 @@ use massa_time::{MassaTime, TimeError};
 use schnellru::{ByLength, LruMap};
 
 use crate::{
-    handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
+    handlers::{
+        peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
+    },
     messages::MessagesSerializer,
     sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
@@ -187,32 +189,49 @@ impl RetrievalThread {
         source_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
-        let length = operations.len();
-        let mut new_operations = PreHashMap::with_capacity(length);
-        let mut received_ids = PreHashSet::with_capacity(length);
+        let now = MassaTime::now().expect("could not get current time");
+
+        let mut new_operations = PreHashMap::with_capacity(operations.len());
         for operation in operations {
-            let operation_id = operation.id;
+            // ignore if op is too old
+            let expire_period_timestamp = get_block_slot_timestamp(
+                self.config.thread_count,
+                self.config.t0,
+                self.config.genesis_timestamp,
+                Slot::new(operation.content.expire_period, 0),
+            );
+            match expire_period_timestamp {
+                Ok(slot_timestamp) => {
+                    if slot_timestamp.saturating_add(self.config.max_operations_propagation_time)
+                        > now
+                    {
+                        continue;
+                    }
+                }
+                Err(_) => continue,
+            }
+
+            // quit if op is too big
             if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
                 return Err(ProtocolError::InvalidOperationError(format!(
                     "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
-                    operation_id,
+                    operation.id,
                     operation.serialized_size(),
                     self.config.max_serialized_operations_size_per_block
                 )));
             };
-            received_ids.insert(operation_id);
 
-            // Check operation signature only if not already checked.
-            if self
-                .cache
-                .read()
-                .checked_operations
-                .peek(&operation_id)
-                .is_none()
-            {
-                // check signature if the operation wasn't in `checked_operation`
-                new_operations.insert(operation_id, operation);
-            };
+            // add to new operations
+            new_operations.insert(operation.id, operation);
+        }
+
+        // all valid received ids (not only new ones) for knowledge marking
+        let all_received_ids: PreHashSet<_> = new_operations.keys().copied().collect();
+
+        // retain only new ops that are not already known
+        {
+            let cache_read = self.cache.read();
+            new_operations.retain(|op_id, _| cache_read.checked_operations.peek(op_id).is_none());
         }
 
         // optimized signature verification
@@ -245,56 +264,27 @@ impl RetrievalThread {
                     warn!("ops_known_by_peer limitation reached");
                     break 'write_cache;
                 };
-            for id in received_ids {
+            for id in all_received_ids {
                 known_ops.insert(id.prefix(), ());
             }
         }
 
         if !new_operations.is_empty() {
-            // Store operation, claim locally
+            // Store new operations, claim locally
             let mut ops = self.storage.clone_without_refs("protocol".into());
             ops.store_operations(new_operations.into_values().collect());
 
             // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
-            let mut ops_to_propagate = ops.clone("protocol".into());
-            let operations_to_not_propagate = {
-                let now = MassaTime::now()?;
-                let read_operations = ops_to_propagate.read_operations();
-                ops_to_propagate
-                    .get_op_refs()
-                    .iter()
-                    .filter(|op_id| {
-                        let expire_period =
-                            read_operations.get(op_id).unwrap().content.expire_period;
-                        let expire_period_timestamp = get_block_slot_timestamp(
-                            self.config.thread_count,
-                            self.config.t0,
-                            self.config.genesis_timestamp,
-                            Slot::new(expire_period, 0),
-                        );
-                        match expire_period_timestamp {
-                            Ok(slot_timestamp) => {
-                                slot_timestamp
-                                    .saturating_add(self.config.max_operations_propagation_time)
-                                    < now
-                            }
-                            Err(_) => true,
-                        }
-                    })
-                    .copied()
-                    .collect()
-            };
-            ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
-            let to_announce: PreHashSet<OperationId> =
-                ops_to_propagate.get_op_refs().iter().copied().collect();
             self.stored_operations
-                .insert(Instant::now(), to_announce.clone());
-            self.storage.extend(ops_to_propagate);
+                .insert(Instant::now(), ops.get_op_refs().clone());
+            self.storage.claim_operation_refs(ops.get_op_refs());
+
             self.internal_sender
                 .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
-                    to_announce,
+                    ops.get_op_refs().clone(),
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
+
             // Add to pool
             ops.rename("protocol_to_pool".into());
             self.pool_controller.add_operations(ops);
