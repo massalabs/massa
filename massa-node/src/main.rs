@@ -11,7 +11,6 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::TryRecvError;
-// use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
