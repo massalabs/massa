@@ -268,7 +268,6 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -418,7 +417,7 @@
         <span class="comment">// get best parents and their periods
         </span><span class="kw">let </span>parents: Vec&lt;(BlockId, u64)&gt; = <span class="self">self</span>.channels.consensus.get_best_parents(); <span class="comment">// Vec&lt;(parent_id, parent_period)&gt;
                                                                                        // generate the local storage object
-        </span><span class="kw">let </span><span class="kw-2">mut </span>block_storage = <span class="self">self</span>.channels.storage.clone_without_refs(<span class="string">&quot;factory&quot;</span>.into());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>block_storage = <span class="self">self</span>.channels.storage.clone_without_refs();
 
         <span class="comment">// claim block parents in local storage
         </span>{
@@ -514,8 +513,7 @@
         );
 
         <span class="comment">// send full block to consensus
-        </span>block_storage.rename(<span class="string">&quot;factory_to_consensus&quot;</span>.into());
-        <span class="self">self</span>.channels
+        </span><span class="self">self</span>.channels
             .consensus
             .register_block(block_id, slot, block_storage, <span class="bool-val">true</span>);
     }

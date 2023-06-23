@@ -340,7 +340,7 @@
         thread_count: u8,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(ActiveBlock, Storage), ConsensusError&gt; {
         <span class="comment">// create resulting storage
-        </span><span class="kw">let </span><span class="kw-2">mut </span>storage = ref_storage.clone_without_refs(<span class="string">&quot;consensus&quot;</span>.into());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>storage = ref_storage.clone_without_refs();
 
         <span class="comment">// add endorsements to storage and claim refs
         // TODO change if we decide that endorsements are stored separately
