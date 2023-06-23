@@ -29,9 +29,9 @@ lazy_static! {
     )
     .unwrap();
     static ref BLOCKS_COUNTER: IntGauge =
-        register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
+        register_int_gauge!("blocks_storage_counter", "blocks storage counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge =
-        register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
+        register_int_gauge!("endorsements_storage_counter", "endorsements storage counter len").unwrap();
 }
 
 pub fn set_blocks_counter(val: usize) {
