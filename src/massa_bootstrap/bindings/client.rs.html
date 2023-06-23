@@ -213,37 +213,9 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::bindings::{BindingReadExact, BindingWriteExact};
+</span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
 <span class="kw">use </span><span class="kw">crate</span>::messages::{
     BootstrapClientMessage, BootstrapClientMessageSerializer, BootstrapServerMessage,
@@ -260,13 +232,12 @@
 <span class="kw">use </span>massa_signature::{PublicKey, Signature};
 <span class="kw">use </span>rand::{rngs::StdRng, RngCore, SeedableRng};
 <span class="kw">use </span>std::time::Instant;
-<span class="kw">use </span>std::{net::TcpStream, time::Duration};
-<span class="kw">use </span>stream_limiter::{Limiter, LimiterOptions};
+<span class="kw">use </span>std::{io::Write, net::TcpStream, time::Duration};
 
 <span class="doccomment">/// Bootstrap client binder
 </span><span class="kw">pub struct </span>BootstrapClientBinder {
     remote_pubkey: PublicKey,
-    duplex: Limiter&lt;TcpStream&gt;,
+    duplex: TcpStream,
     prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     cfg: BootstrapClientConfig,
@@ -286,16 +257,7 @@
     /// * duplex: duplex stream.
     /// * limit: limit max bytes per second (up and down)
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>new(
-        duplex: TcpStream,
-        remote_pubkey: PublicKey,
-        cfg: BootstrapClientConfig,
-        limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>limit_opts = limit.map(|limit| {
-            LimiterOptions::new(limit, Duration::from_millis(<span class="number">1000</span>), limit.saturating_mul(<span class="number">2</span>))
-        });
-        <span class="kw">let </span>duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
+    </span><span class="kw">pub fn </span>new(duplex: TcpStream, remote_pubkey: PublicKey, cfg: BootstrapClientConfig) -&gt; <span class="self">Self </span>{
         BootstrapClientBinder {
             remote_pubkey,
             duplex,
@@ -317,8 +279,7 @@
                 <span class="macro">vec!</span>[<span class="number">0u8</span>; version_ser.len() + <span class="self">self</span>.cfg.randomness_size_bytes];
             version_random_bytes[..version_ser.len()].clone_from_slice(<span class="kw-2">&amp;</span>version_ser);
             StdRng::from_entropy().fill_bytes(<span class="kw-2">&amp;mut </span>version_random_bytes[version_ser.len()..]);
-            <span class="self">self</span>.write_all_timeout(<span class="kw-2">&amp;</span>version_random_bytes, <span class="prelude-val">None</span>)
-                .map_err(|(e, <span class="kw">_</span>)| e)<span class="question-mark">?</span>;
+            <span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>version_random_bytes)<span class="question-mark">?</span>;
             Hash::compute_from(<span class="kw-2">&amp;</span>version_random_bytes)
         };
 
@@ -399,7 +360,6 @@
         msg: <span class="kw-2">&amp;</span>BootstrapClientMessage,
         duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-        <span class="kw">let </span>deadline = duration.map(|d| Instant::now() + d);
         <span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = Vec::new();
         <span class="kw">let </span>message_serializer = BootstrapClientMessageSerializer::new();
         message_serializer.serialize(msg, <span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
@@ -427,15 +387,15 @@
         }
 
         <span class="comment">// Provide the message length
-        </span><span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.duplex.set_write_timeout(duration)<span class="question-mark">?</span>;
+        <span class="kw">let </span>msg_len_bytes = msg_len.to_be_bytes_min(MAX_BOOTSTRAP_MESSAGE_SIZE)<span class="question-mark">?</span>;
         write_buf.extend(<span class="kw-2">&amp;</span>msg_len_bytes);
 
         <span class="comment">// Provide the message
         </span>write_buf.extend(<span class="kw-2">&amp;</span>msg_bytes);
 
         <span class="comment">// And send it off
-        </span><span class="self">self</span>.write_all_timeout(<span class="kw-2">&amp;</span>write_buf, deadline)
-            .map_err(|(e, <span class="kw">_</span>)| e)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.duplex.write_all(<span class="kw-2">&amp;</span>write_buf)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -459,29 +419,13 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingReadExact <span class="kw">for </span>BootstrapClientBinder {
     <span class="kw">fn </span>set_read_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.stream.set_read_timeout(duration)
+        <span class="self">self</span>.duplex.set_read_timeout(duration)
     }
 }
 
 <span class="kw">impl </span>std::io::Read <span class="kw">for </span>BootstrapClientBinder {
     <span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, std::io::Error&gt; {
         <span class="self">self</span>.duplex.read(buf)
-    }
-}
-
-<span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingWriteExact <span class="kw">for </span>BootstrapClientBinder {
-    <span class="kw">fn </span>set_write_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.stream.set_write_timeout(duration)
-    }
-}
-
-<span class="kw">impl </span>std::io::Write <span class="kw">for </span>BootstrapClientBinder {
-    <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, std::io::Error&gt; {
-        <span class="self">self</span>.duplex.write(buf)
-    }
-
-    <span class="kw">fn </span>flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.flush()
     }
 }
 </code></pre></div></section></main></body></html>

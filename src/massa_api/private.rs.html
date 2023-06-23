@@ -475,6 +475,9 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -505,15 +508,13 @@
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::fs::{remove_file, OpenOptions};
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>std::{collections::BTreeSet, sync::Mutex};
-<span class="kw">use </span>std::{
-    fs::{remove_file, OpenOptions},
-    sync::Condvar,
-};
+<span class="kw">use </span>tokio::sync::mpsc;
 
 <span class="kw">impl </span>API&lt;Private&gt; {
     <span class="doccomment">/// generate a new private API
@@ -521,16 +522,19 @@
         protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
         execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
         api_settings: APIConfig,
-        stop_cv: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
         node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
-    ) -&gt; <span class="self">Self </span>{
-        API(Private {
-            protocol_controller,
-            execution_controller,
-            api_settings,
-            stop_cv,
-            node_wallet,
-        })
+    ) -&gt; (<span class="self">Self</span>, mpsc::Receiver&lt;()&gt;) {
+        <span class="kw">let </span>(stop_node_channel, rx) = mpsc::channel(<span class="number">1</span>);
+        (
+            API(Private {
+                protocol_controller,
+                execution_controller,
+                api_settings,
+                stop_node_channel,
+                node_wallet,
+            }),
+            rx,
+        )
     }
 }
 
@@ -548,9 +552,11 @@
 <span class="attr">#[doc(hidden)]
 #[async_trait]
 </span><span class="kw">impl </span>MassaRpcServer <span class="kw">for </span>API&lt;Private&gt; {
-    <span class="kw">fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.stop_cv.<span class="number">0</span>.lock().expect(<span class="string">&quot;twice-locked in-thread&quot;</span>) = <span class="bool-val">true</span>;
-        <span class="self">self</span>.<span class="number">0</span>.stop_cv.<span class="number">1</span>.notify_all();
+    <span class="kw">async fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
+        <span class="kw">let </span>stop = <span class="self">self</span>.<span class="number">0</span>.stop_node_channel.clone();
+        stop.send(())
+            .<span class="kw">await
+            </span>.map_err(|e| ApiError::SendChannelError(<span class="macro">format!</span>(<span class="string">&quot;error sending stop signal {}&quot;</span>, e)))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 

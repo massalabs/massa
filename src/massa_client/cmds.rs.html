@@ -1486,24 +1486,6 @@
 <a href="#1486" id="1486">1486</a>
 <a href="#1487" id="1487">1487</a>
 <a href="#1488" id="1488">1488</a>
-<a href="#1489" id="1489">1489</a>
-<a href="#1490" id="1490">1490</a>
-<a href="#1491" id="1491">1491</a>
-<a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
-<a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
-<a href="#1496" id="1496">1496</a>
-<a href="#1497" id="1497">1497</a>
-<a href="#1498" id="1498">1498</a>
-<a href="#1499" id="1499">1499</a>
-<a href="#1500" id="1500">1500</a>
-<a href="#1501" id="1501">1501</a>
-<a href="#1502" id="1502">1502</a>
-<a href="#1503" id="1503">1503</a>
-<a href="#1504" id="1504">1504</a>
-<a href="#1505" id="1505">1505</a>
-<a href="#1506" id="1506">1506</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -2192,9 +2174,6 @@
             }
 
             Command::wallet_get_public_key =&gt; {
-                <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
-                }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
@@ -2216,9 +2195,6 @@
             }
 
             Command::wallet_get_secret_key =&gt; {
-                <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
-                }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>!json {
@@ -2244,9 +2220,6 @@
             }
 
             Command::node_start_staking =&gt; {
-                <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
-                }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
@@ -2272,9 +2245,6 @@
             }
 
             Command::node_stop_staking =&gt; {
-                <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
-                }
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">match </span>client.private.remove_staking_addresses(addresses).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
@@ -2349,9 +2319,6 @@
             }
 
             Command::wallet_add_secret_keys =&gt; {
-                <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
-                }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">let </span>keypairs = parse_vec::&lt;KeyPair&gt;(parameters)<span class="question-mark">?</span>;
@@ -2368,9 +2335,6 @@
             }
 
             Command::wallet_remove_addresses =&gt; {
-                <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
-                }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
