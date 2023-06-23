@@ -322,6 +322,7 @@
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -553,12 +554,12 @@
         }
 
         <span class="kw">if </span>!new_endorsements.is_empty() {
-            <span class="kw">let </span><span class="kw-2">mut </span>endorsements = <span class="self">self</span>.storage.clone_without_refs();
+            <span class="kw">let </span><span class="kw-2">mut </span>endorsements = <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;protocol&quot;</span>.into());
             endorsements.store_endorsements(new_endorsements.into_values().collect());
 
             <span class="comment">// Propagate endorsements
             // Propagate endorsements when the slot of the block they endorse isn&#39;t `max_endorsements_propagation_time` old.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements_to_propagate = endorsements.clone();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements_to_propagate = endorsements.clone(<span class="string">&quot;protocol&quot;</span>.into());
             <span class="kw">let </span>endorsements_to_not_propagate = {
                 <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
                 <span class="kw">let </span>read_endorsements = endorsements_to_propagate.read_endorsements();
@@ -599,7 +600,8 @@
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send from retrieval thread of endorsement handler to propagation: {:?}&quot;</span>, err);
             }
             <span class="comment">// Add to pool
-            </span><span class="self">self</span>.pool_controller.add_endorsements(endorsements);
+            </span>endorsements.rename(<span class="string">&quot;protocol_to_pool&quot;</span>.into());
+            <span class="self">self</span>.pool_controller.add_endorsements(endorsements);
         }
 
         <span class="prelude-val">Ok</span>(())

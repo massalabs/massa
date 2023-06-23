@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["block_indexes","endorsement_indexes","operation_indexes"],"struct":["Storage"]};
+window.SIDEBAR_ITEMS = {"mod":["block_indexes","endorsement_indexes","operation_indexes"],"struct":["CLOB_CNT","GLOB_BLOCK_CNT","GLOB_ENDO_CNT","GLOB_OP_CNT","Storage"]};

@@ -141,7 +141,7 @@
         <span class="kw">let </span>operation_retrieval_thread = start_retrieval_thread(
             receiver_network,
             pool_controller,
-            storage.clone_without_refs(),
+            storage.clone_without_refs(<span class="string">&quot;protocol&quot;</span>.into()),
             config.clone(),
             cache.clone(),
             active_connections.clone(),

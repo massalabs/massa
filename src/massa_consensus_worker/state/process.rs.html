@@ -722,6 +722,11 @@
 <a href="#722" id="722">722</a>
 <a href="#723" id="723">723</a>
 <a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -968,7 +973,8 @@
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.is_active&quot;</span>, {
                 <span class="string">&quot;block_id&quot;</span>: block_id
             });
-            <span class="self">self</span>.to_propagate.insert(block_id, storage.clone());
+            <span class="self">self</span>.to_propagate
+                .insert(block_id, storage.clone(<span class="string">&quot;consensus&quot;</span>.into()));
             <span class="kw">for </span>itm_block_id <span class="kw">in </span><span class="self">self</span>.waiting_for_dependencies_index.iter() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -1261,7 +1267,7 @@
                     }) =&gt; storage,
                     <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;final block not found in active blocks&quot;</span>),
                 };
-                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, storage.clone()))
+                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, storage.clone(<span class="string">&quot;consensus&quot;</span>.into())))
             })
             .collect();
 
@@ -1284,7 +1290,7 @@
                         <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =&gt; (a_block.slot, storage),
                         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;blockclique block not found in active blocks&quot;</span>),
                     };
-                    new_blocks_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
+                    new_blocks_storage.insert(<span class="kw-2">*</span>b_id, storage.clone(<span class="string">&quot;consensus&quot;</span>.into()));
                     (<span class="kw-2">*</span>b_id, slot)
                 }
             })
@@ -1305,7 +1311,10 @@
         }
 
         <span class="comment">// Notify execution of block finalizations and blockclique changes
-        </span><span class="self">self</span>.channels
+        </span>new_blocks_storage.iter_mut().for_each(|(_k, v)| {
+            v.rename(<span class="string">&quot;consensus_to_execution&quot;</span>.into());
+        });
+        <span class="self">self</span>.channels
             .execution_controller
             .update_blockclique_status(
                 finalized_blocks,
@@ -1337,10 +1346,11 @@
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed&quot;</span>, {});
 
             <span class="comment">// Propagate new blocks
-            </span><span class="kw">for </span>(block_id, storage) <span class="kw">in </span>mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.to_propagate).into_iter() {
+            </span><span class="kw">for </span>(block_id, <span class="kw-2">mut </span>storage) <span class="kw">in </span>mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.to_propagate).into_iter() {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.integrated&quot;</span>, {
                     <span class="string">&quot;block_id&quot;</span>: block_id
                 });
+                storage.rename(<span class="string">&quot;consensus_to_protocol&quot;</span>.into());
                 <span class="self">self</span>.channels
                     .protocol_controller
                     .integrated_block(block_id, storage)<span class="question-mark">?</span>;

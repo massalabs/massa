@@ -552,6 +552,7 @@
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
 <a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     thread::JoinHandle,
@@ -806,11 +807,11 @@
 
         <span class="kw">if </span>!new_operations.is_empty() {
             <span class="comment">// Store operation, claim locally
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;protocol&quot;</span>.into());
             ops.store_operations(new_operations.into_values().collect());
 
             <span class="comment">// Propagate operations when their expire period isn&#39;t `max_operations_propagation_time` old.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ops_to_propagate = ops.clone();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ops_to_propagate = ops.clone(<span class="string">&quot;protocol&quot;</span>.into());
             <span class="kw">let </span>operations_to_not_propagate = {
                 <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
                 <span class="kw">let </span>read_operations = ops_to_propagate.read_operations();
@@ -850,7 +851,8 @@
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))<span class="question-mark">?</span>;
             <span class="comment">// Add to pool
-            </span><span class="self">self</span>.pool_controller.add_operations(ops);
+            </span>ops.rename(<span class="string">&quot;protocol_to_pool&quot;</span>.into());
+            <span class="self">self</span>.pool_controller.add_operations(ops);
         }
 
         <span class="prelude-val">Ok</span>(())

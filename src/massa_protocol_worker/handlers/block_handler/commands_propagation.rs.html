@@ -15,11 +15,28 @@
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="doccomment">/// Commands that the block handler can process
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>BlockHandlerPropagationCommand {
     Stop,
     <span class="doccomment">/// Notify block integration of a given block.
@@ -31,5 +48,22 @@
     },
     <span class="doccomment">/// A block, or it&#39;s header, amounted to an attempted attack.
     </span>AttackBlockDetected(BlockId),
+}
+
+<span class="kw">impl </span>Clone <span class="kw">for </span>BlockHandlerPropagationCommand {
+    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span><span class="self">self </span>{
+            BlockHandlerPropagationCommand::Stop =&gt; BlockHandlerPropagationCommand::Stop,
+            BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } =&gt; {
+                BlockHandlerPropagationCommand::IntegratedBlock {
+                    block_id: block_id.clone(),
+                    storage: storage.clone(<span class="string">&quot;protocol&quot;</span>.into()),
+                }
+            }
+            BlockHandlerPropagationCommand::AttackBlockDetected(block_id) =&gt; {
+                BlockHandlerPropagationCommand::AttackBlockDetected(block_id.clone())
+            }
+        }
+    }
 }
 </code></pre></div></section></main></body></html>
