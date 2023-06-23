@@ -1507,19 +1507,6 @@
 <a href="#1507" id="1507">1507</a>
 <a href="#1508" id="1508">1508</a>
 <a href="#1509" id="1509">1509</a>
-<a href="#1510" id="1510">1510</a>
-<a href="#1511" id="1511">1511</a>
-<a href="#1512" id="1512">1512</a>
-<a href="#1513" id="1513">1513</a>
-<a href="#1514" id="1514">1514</a>
-<a href="#1515" id="1515">1515</a>
-<a href="#1516" id="1516">1516</a>
-<a href="#1517" id="1517">1517</a>
-<a href="#1518" id="1518">1518</a>
-<a href="#1519" id="1519">1519</a>
-<a href="#1520" id="1520">1520</a>
-<a href="#1521" id="1521">1521</a>
-<a href="#1522" id="1522">1522</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
@@ -1586,7 +1573,7 @@
 <span class="kw">static </span>BLOCK_HEADER: <span class="kw-2">&amp;</span>str = <span class="string">&quot;protocol.protocol_worker.on_network_event.received_block_header&quot;</span>;
 
 <span class="doccomment">/// Info about a block we&#39;ve seen
-</span><span class="attr">#[derive(Debug)]
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockInfo {
     <span class="doccomment">/// The header of the block.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) header: <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;,
@@ -1597,17 +1584,6 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) storage: Storage,
     <span class="doccomment">/// Full operations size in bytes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) operations_size: usize,
-}
-
-<span class="kw">impl </span>Clone <span class="kw">for </span>BlockInfo {
-    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        BlockInfo {
-            header: <span class="self">self</span>.header.clone(),
-            operation_ids: <span class="self">self</span>.operation_ids.clone(),
-            storage: <span class="self">self</span>.storage.clone(<span class="string">&quot;consensus&quot;</span>.into()),
-            operations_size: <span class="self">self</span>.operations_size,
-        }
-    }
 }
 
 <span class="kw">impl </span>BlockInfo {
@@ -1740,7 +1716,7 @@
                                     <span class="kw">for </span>(block_id, header) <span class="kw">in </span>new.into_iter() {
                                         <span class="self">self</span>.block_wishlist.insert(
                                             block_id,
-                                            BlockInfo::new(header, <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;protocol&quot;</span>.into())),
+                                            BlockInfo::new(header, <span class="self">self</span>.storage.clone_without_refs()),
                                         );
                                     }
                                     <span class="comment">// Remove the knowledge that we asked this block to nodes.
@@ -2256,12 +2232,12 @@
         }
 
         <span class="kw">if </span>!new_endorsements.is_empty() {
-            <span class="kw">let </span><span class="kw-2">mut </span>endorsements = <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;protocol&quot;</span>.into());
+            <span class="kw">let </span><span class="kw-2">mut </span>endorsements = <span class="self">self</span>.storage.clone_without_refs();
             endorsements.store_endorsements(new_endorsements.into_values().collect());
 
             <span class="comment">// Propagate endorsements
             // Propagate endorsements when the slot of the block they endorse isn&#39;t `max_endorsements_propagation_time` old.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements_to_propagate = endorsements.clone(<span class="string">&quot;protocol&quot;</span>.into());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements_to_propagate = endorsements.clone();
             <span class="kw">let </span>endorsements_to_not_propagate = {
                 <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
                 <span class="kw">let </span>read_endorsements = endorsements_to_propagate.read_endorsements();
@@ -2606,8 +2582,7 @@
                     </span>block_storage.store_block(signed_block);
 
                     <span class="comment">// Send to consensus
-                    </span>block_storage.rename(<span class="string">&quot;protocol_to_consensus&quot;</span>.into());
-                    <span class="self">self</span>.consensus_controller
+                    </span><span class="self">self</span>.consensus_controller
                         .register_block(block_id, slot, block_storage, <span class="bool-val">false</span>);
                 }
             }
@@ -2701,11 +2676,11 @@
 
         <span class="kw">if </span>!new_operations.is_empty() {
             <span class="comment">// Store operation, claim locally
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;protocol&quot;</span>.into());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
             <span class="comment">// Propagate operations when their expire period isn&#39;t `max_operations_propagation_time` old.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ops_to_propagate = ops.clone(<span class="string">&quot;protocol&quot;</span>.into());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ops_to_propagate = ops.clone();
             <span class="kw">let </span>operations_to_not_propagate = {
                 <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
                 <span class="kw">let </span>read_operations = ops_to_propagate.read_operations();
@@ -2743,8 +2718,7 @@
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))<span class="question-mark">?</span>;
             <span class="comment">// Add to pool
-            </span>ops.rename(<span class="string">&quot;protocol_to_pool&quot;</span>.into());
-            <span class="self">self</span>.pool_controller.add_operations(ops);
+            </span><span class="self">self</span>.pool_controller.add_operations(ops);
         }
 
         <span class="prelude-val">Ok</span>(())

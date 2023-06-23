@@ -193,7 +193,7 @@
     <span class="kw">let </span>stats_desync_detection_timespan =
         config.t0.checked_mul(config.periods_per_cycle * <span class="number">2</span>).unwrap();
     <span class="kw">let </span>shared_state = Arc::new(RwLock::new(ConsensusState {
-        storage: storage.clone(<span class="string">&quot;consensus&quot;</span>.into()),
+        storage: storage.clone(),
         config: config.clone(),
         channels: channels.clone(),
         max_cliques: <span class="macro">vec!</span>[Clique {

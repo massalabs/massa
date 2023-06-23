@@ -23,18 +23,6 @@
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
 <a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_models::block::Block;
 <span class="kw">use </span>massa_pool_exports::PoolController;
@@ -47,6 +35,7 @@
 </span><span class="kw">pub type </span>ProductionHistory = Vec&lt;Block&gt;;
 
 <span class="doccomment">/// List of channels the factory will send commands to
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>FactoryChannels {
     <span class="doccomment">/// selector controller to get draws
     </span><span class="kw">pub </span>selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
@@ -58,18 +47,5 @@
     </span><span class="kw">pub </span>protocol: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     <span class="doccomment">/// storage instance
     </span><span class="kw">pub </span>storage: Storage,
-}
-
-<span class="kw">impl </span>Clone <span class="kw">for </span>FactoryChannels {
-    <span class="doccomment">///
-    </span><span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            selector: <span class="self">self</span>.selector.clone(),
-            consensus: <span class="self">self</span>.consensus.clone(),
-            pool: <span class="self">self</span>.pool.clone(),
-            protocol: <span class="self">self</span>.protocol.clone(),
-            storage: <span class="self">self</span>.storage.clone(<span class="string">&quot;factory&quot;</span>.into()),
-        }
-    }
 }
 </code></pre></div></section></main></body></html>

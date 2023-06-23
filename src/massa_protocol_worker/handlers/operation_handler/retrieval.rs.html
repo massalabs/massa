@@ -540,9 +540,6 @@
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
 <a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     thread::JoinHandle,
@@ -569,9 +566,7 @@
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
 
 <span class="kw">use crate</span>::{
-    handlers::{
-        peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
-    },
+    handlers::peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     messages::MessagesSerializer,
     sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
@@ -816,7 +811,7 @@
 
         <span class="kw">if </span>!new_operations.is_empty() {
             <span class="comment">// Store new operations, claim locally
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;protocol&quot;</span>.into());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
             <span class="comment">// Propagate operations when their expire period isn&#39;t `max_operations_propagation_time` old.
@@ -831,8 +826,7 @@
                 .map_err(|err| ProtocolError::SendError(err.to_string()))<span class="question-mark">?</span>;
 
             <span class="comment">// Add to pool
-            </span>ops.rename(<span class="string">&quot;protocol_to_pool&quot;</span>.into());
-            <span class="self">self</span>.pool_controller.add_operations(ops);
+            </span><span class="self">self</span>.pool_controller.add_operations(ops);
         }
 
         <span class="prelude-val">Ok</span>(())

@@ -171,7 +171,6 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::time::Instant;
 
 <span class="kw">use </span>massa_consensus_exports::{error::ConsensusError, events::ConsensusEvent};
@@ -207,8 +206,7 @@
                 write_shared_state.register_block_header(block_id, header, <span class="self">self</span>.previous_slot)<span class="question-mark">?</span>;
                 write_shared_state.block_db_changed()
             }
-            ConsensusCommand::RegisterBlock(block_id, slot, <span class="kw-2">mut </span>block_storage, created) =&gt; {
-                block_storage.rename(<span class="string">&quot;consensus&quot;</span>.into());
+            ConsensusCommand::RegisterBlock(block_id, slot, block_storage, created) =&gt; {
                 write_shared_state.register_block(
                     block_id,
                     slot,

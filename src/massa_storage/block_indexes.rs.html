@@ -288,7 +288,7 @@
     /// Returns:
     /// - a reference to the block, or None if not found
     </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SecureShareBlock&gt; {
-        <span class="self">self</span>.blocks.get(id).map(|b| b.as_ref())
+        <span class="self">self</span>.blocks.get(id).map(|v| v.as_ref())
     }
 
     <span class="doccomment">/// Checks whether a block exists in global storage.
