@@ -587,9 +587,9 @@
     </span>)
     .unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>BLOCKS_COUNTER: IntGauge =
-        <span class="macro">register_int_gauge!</span>(<span class="string">&quot;blocks_counter&quot;</span>, <span class="string">&quot;blocks counter len&quot;</span>).unwrap();
+        <span class="macro">register_int_gauge!</span>(<span class="string">&quot;blocks_storage_counter&quot;</span>, <span class="string">&quot;blocks storage counter len&quot;</span>).unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>ENDORSEMENTS_COUNTER: IntGauge =
-        <span class="macro">register_int_gauge!</span>(<span class="string">&quot;endorsements_counter&quot;</span>, <span class="string">&quot;endorsements counter len&quot;</span>).unwrap();
+        <span class="macro">register_int_gauge!</span>(<span class="string">&quot;endorsements_storage_counter&quot;</span>, <span class="string">&quot;endorsements storage counter len&quot;</span>).unwrap();
 }
 
 <span class="kw">pub fn </span>set_blocks_counter(val: usize) {
