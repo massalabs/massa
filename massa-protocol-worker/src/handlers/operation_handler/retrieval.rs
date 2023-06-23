@@ -1,15 +1,11 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    thread::JoinHandle,
-    time::{Duration, Instant},
-};
+use std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 use crossbeam::{channel::tick, select};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::{
-    operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
+    operation::{OperationPrefixId, OperationPrefixIds, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::Id,
     slot::Slot,
@@ -58,14 +54,13 @@ pub struct RetrievalThread {
     asked_operations: LruMap<OperationPrefixId, (Instant, Vec<PeerId>)>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     op_batch_buffer: VecDeque<OperationBatchItem>,
-    stored_operations: HashMap<Instant, PreHashSet<OperationId>>,
     storage: Storage,
     config: ProtocolConfig,
     internal_sender: MassaSender<OperationHandlerPropagationCommand>,
     receiver_ext: MassaReceiver<OperationHandlerRetrievalCommand>,
     operation_message_serializer: MessagesSerializer,
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
-    massa_metrics: MassaMetrics,
+    _massa_metrics: MassaMetrics,
 }
 
 impl RetrievalThread {
@@ -82,8 +77,6 @@ impl RetrievalThread {
                 max_op_datastore_value_length: self.config.max_op_datastore_value_length,
             });
         let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
-        let tick_clear_storage = tick(self.config.asked_operations_pruning_period.to_duration());
-        let tick_metrics = tick(Duration::from_secs(5));
 
         loop {
             select! {
@@ -155,30 +148,9 @@ impl RetrievalThread {
                     if let Err(err) = self.update_ask_operation() {
                         warn!("Error in update_ask_operation: {}", err);
                     };
-                },
-                recv(tick_clear_storage) -> _ => {
-                    self.clear_storage();
-                },
-                recv(tick_metrics) -> _ => {
-                    // update metrics
-                    let count: usize = self.stored_operations.values().map(|set| set.len()).sum();
-
-                    self.massa_metrics
-                        .set_retrieval_thread_stored_operations_sum(count);
                 }
             }
         }
-    }
-
-    fn clear_storage(&mut self) {
-        self.stored_operations.retain(|instant, operations| {
-            if instant.elapsed() > self.config.asked_operations_pruning_period.to_duration() {
-                self.storage.drop_operation_refs(operations);
-                false
-            } else {
-                true
-            }
-        });
     }
 
     fn note_operations_from_peer(
@@ -277,14 +249,9 @@ impl RetrievalThread {
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
-            self.stored_operations
-                .insert(Instant::now(), ops.get_op_refs().clone());
-            self.storage.claim_operation_refs(ops.get_op_refs());
-
             self.internal_sender
-                .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
-                    ops.get_op_refs().clone(),
+                .try_send(OperationHandlerPropagationCommand::PropagateOperations(
+                    ops.clone(),
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
 
@@ -522,7 +489,6 @@ pub fn start_retrieval_thread(
             let mut retrieval_thread = RetrievalThread {
                 receiver,
                 pool_controller,
-                stored_operations: HashMap::new(),
                 storage,
                 internal_sender,
                 receiver_ext,
@@ -539,7 +505,7 @@ pub fn start_retrieval_thread(
                     .with_operation_message_serializer(OperationMessageSerializer::new()),
                 op_batch_buffer: VecDeque::new(),
                 peer_cmd_sender,
-                massa_metrics,
+                _massa_metrics: massa_metrics,
             };
             retrieval_thread.run();
         })

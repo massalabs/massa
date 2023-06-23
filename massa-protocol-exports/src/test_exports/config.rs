@@ -28,7 +28,6 @@ impl Default for ProtocolConfig {
             max_operation_storage_time: MassaTime::from_millis(60000),
             operation_batch_proc_period: MassaTime::from_millis(200),
             asked_operations_buffer_capacity: 10000,
-            asked_operations_pruning_period: MassaTime::from_millis(500),
             operation_announcement_interval: MassaTime::from_millis(150),
             max_operations_per_message: 1024,
             max_operations_per_block: 5000,
