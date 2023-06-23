@@ -192,7 +192,7 @@
     # start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     operation_batch_proc_period = 500
     # all operations asked are prune each `operation_asked_pruning_period` millisecond
-    asked_operations_pruning_period = 16000
+    asked_operations_pruning_period = 32000
     # interval at which operations are announced in batches.
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
@@ -202,9 +202,9 @@
     # Number of millis seconds that create a timeout for out connections
     timeout_connection = 1000
     # time threshold after which operation are not propagated
-    max_operations_propagation_time = 16000
+    max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
-    max_endorsements_propagation_time = 16000
+    max_endorsements_propagation_time = 32000
     # number of thread tester
     thread_tester_count = 25
     # Nb max in connections that we accept

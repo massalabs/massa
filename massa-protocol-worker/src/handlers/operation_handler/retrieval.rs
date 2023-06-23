@@ -196,12 +196,17 @@ impl RetrievalThread {
                 self.config.thread_count,
                 self.config.t0,
                 self.config.genesis_timestamp,
-                Slot::new(operation.content.expire_period, 0),
+                Slot::new(
+                    operation.content.expire_period,
+                    operation
+                        .content_creator_address
+                        .get_thread(self.config.thread_count),
+                ),
             );
             match expire_period_timestamp {
                 Ok(slot_timestamp) => {
                     if slot_timestamp.saturating_add(self.config.max_operations_propagation_time)
-                        > now
+                        < now
                     {
                         continue;
                     }
