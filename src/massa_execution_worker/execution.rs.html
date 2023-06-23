@@ -1739,6 +1739,7 @@
 <a href="#1739" id="1739">1739</a>
 <a href="#1740" id="1740">1740</a>
 <a href="#1741" id="1741">1741</a>
+<a href="#1742" id="1742">1742</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1928,7 +1929,8 @@
 
     <span class="doccomment">/// Get execution statistics
     </span><span class="kw">pub fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats {
-        <span class="self">self</span>.stats_counter.get_stats(<span class="self">self</span>.active_cursor)
+        <span class="self">self</span>.stats_counter
+            .get_stats(<span class="self">self</span>.active_cursor, <span class="self">self</span>.final_cursor)
     }
 
     <span class="doccomment">/// Applies the output of an execution to the final execution state.
