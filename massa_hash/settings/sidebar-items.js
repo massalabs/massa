@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["HASH_SIZE_BYTES"]};
+window.SIDEBAR_ITEMS = {"constant":["HASH_SIZE_BYTES","XOF_HASH_SIZE_BYTES"]};

@@ -11,10 +11,10 @@
     messages_handler: <a class="struct" href="../../../messages/struct.MessagesHandler.html" title="struct massa_protocol_worker::messages::MessagesHandler">MessagesHandler</a>,
     peer_db: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../models/struct.PeerDB.html" title="struct massa_protocol_worker::handlers::peer_handler::models::PeerDB">PeerDB</a>&gt;&gt;,
     announcement_deserializer: <a class="struct" href="../announcement/struct.AnnouncementDeserializer.html" title="struct massa_protocol_worker::handlers::peer_handler::announcement::AnnouncementDeserializer">AnnouncementDeserializer</a>,
-    version_deserializer: <a class="struct" href="../../../../massa_models/version/struct.VersionDeserializer.html" title="struct massa_models::version::VersionDeserializer">VersionDeserializer</a>,
+    version_deserializer: VersionDeserializer,
     peer_id_deserializer: PeerIdDeserializer,
     addr: <a class="enum" href="https://doc.rust-lang.org/nightly/core/net/socket_addr/enum.SocketAddr.html" title="enum core::net::socket_addr::SocketAddr">SocketAddr</a>,
-    our_version: <a class="struct" href="../../../../massa_models/version/struct.Version.html" title="struct massa_models::version::Version">Version</a>
+    our_version: Version
 ) -&gt; PeerNetResult&lt;PeerId&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.new" class="method"><a class="srclink rightside" href="../../../../src/massa_protocol_worker/handlers/peer_handler/tester.rs.html#238-431">source</a><h4 class="code-header">pub fn <a href="#method.new" class="fn">new</a>(
     peer_db: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../models/struct.PeerDB.html" title="struct massa_protocol_worker::handlers::peer_handler::models::PeerDB">PeerDB</a>&gt;&gt;,
     active_connections: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="../../../wrap_network/trait.ActiveConnectionsTrait.html" title="trait massa_protocol_worker::wrap_network::ActiveConnectionsTrait">ActiveConnectionsTrait</a>&gt;,

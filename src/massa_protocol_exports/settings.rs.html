@@ -176,9 +176,9 @@
 
 <span class="attr">#[derive(Debug, Deserialize, Clone, Copy)]
 </span><span class="kw">pub struct </span>PeerCategoryInfo {
+    <span class="kw">pub </span>allow_local_peers: bool,
     <span class="kw">pub </span>target_out_connections: usize,
-    <span class="kw">pub </span>max_in_connections_pre_handshake: usize,
-    <span class="kw">pub </span>max_in_connections_post_handshake: usize,
+    <span class="kw">pub </span>max_in_connections: usize,
     <span class="kw">pub </span>max_in_connections_per_ip: usize,
 }
 
@@ -223,6 +223,8 @@
     </span><span class="kw">pub </span>operation_batch_proc_period: MassaTime,
     <span class="doccomment">/// Maximum number of asked operations in the memory buffer.
     </span><span class="kw">pub </span>asked_operations_buffer_capacity: usize,
+    <span class="doccomment">/// All operations asked are prune each `operation_asked_pruning_period` millisecond
+    </span><span class="kw">pub </span>asked_operations_pruning_period: MassaTime,
     <span class="doccomment">/// Interval at which operations are announced in batches.
     </span><span class="kw">pub </span>operation_announcement_interval: MassaTime,
     <span class="doccomment">/// Maximum time we keep an operation in the storage
@@ -241,8 +243,6 @@
     </span><span class="kw">pub </span>t0: MassaTime,
     <span class="doccomment">/// Genesis timestamp
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
-    <span class="doccomment">/// max number of operations kept in memory for propagation
-    </span><span class="kw">pub </span>max_ops_kept_for_propagation: usize,
     <span class="doccomment">/// max time we propagate operations
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// max time we propagate endorsements
