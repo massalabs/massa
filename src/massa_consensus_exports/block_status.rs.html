@@ -115,6 +115,19 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     active_block::ActiveBlock, address::Address, block::Block, block_header::SecuredHeader,
     block_id::BlockId, prehash::PreHashSet, slot::Slot,
@@ -122,7 +135,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="attr">#[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>HeaderOrBlock {
     Header(SecuredHeader),
@@ -131,6 +144,19 @@
         slot: Slot,
         storage: Storage,
     },
+}
+
+<span class="kw">impl </span>Clone <span class="kw">for </span>HeaderOrBlock {
+    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span><span class="self">self </span>{
+            HeaderOrBlock::Header(header) =&gt; HeaderOrBlock::Header(header.clone()),
+            HeaderOrBlock::Block { id, slot, storage } =&gt; HeaderOrBlock::Block {
+                id: id.clone(),
+                slot: <span class="kw-2">*</span>slot,
+                storage: storage.clone(<span class="string">&quot;consensus&quot;</span>.into()),
+            },
+        }
+    }
 }
 
 <span class="kw">impl </span>HeaderOrBlock {
@@ -155,7 +181,7 @@
 }
 
 <span class="doccomment">/// Enum used in `BlockGraph`&#39;s state machine
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>BlockStatus {
     <span class="doccomment">/// The block/header has reached consensus but no consensus-level check has been performed.
     /// It will be processed during the next iteration

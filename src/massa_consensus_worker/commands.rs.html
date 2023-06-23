@@ -10,16 +10,56 @@
 <a href="#10" id="10">10</a>
 <a href="#11" id="11">11</a>
 <a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::BlockHeader, block_id::BlockId, secure_share::SecureShare, slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="attr">#[allow(clippy::large_enum_variant)]
-#[derive(Clone)]
 </span><span class="kw">pub enum </span>ConsensusCommand {
     RegisterBlock(BlockId, Slot, Storage, bool),
     RegisterBlockHeader(BlockId, SecureShare&lt;BlockHeader, BlockId&gt;),
     MarkInvalidBlock(BlockId, SecureShare&lt;BlockHeader, BlockId&gt;),
+}
+
+<span class="kw">impl </span>Clone <span class="kw">for </span>ConsensusCommand {
+    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span><span class="self">self </span>{
+            ConsensusCommand::RegisterBlock(block_id, slot, storage, is_new) =&gt; {
+                ConsensusCommand::RegisterBlock(
+                    block_id.clone(),
+                    <span class="kw-2">*</span>slot,
+                    storage.clone(<span class="string">&quot;consensus&quot;</span>.into()),
+                    <span class="kw-2">*</span>is_new,
+                )
+            }
+            ConsensusCommand::RegisterBlockHeader(block_id, share) =&gt; {
+                ConsensusCommand::RegisterBlockHeader(block_id.clone(), share.clone())
+            }
+            ConsensusCommand::MarkInvalidBlock(block_id, share) =&gt; {
+                ConsensusCommand::MarkInvalidBlock(block_id.clone(), share.clone())
+            }
+        }
+    }
 }
 </code></pre></div></section></main></body></html>

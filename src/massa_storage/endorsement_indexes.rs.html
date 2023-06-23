@@ -145,7 +145,7 @@
 
     <span class="doccomment">/// Gets a reference to a stored endorsement, if any.
     </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>EndorsementId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SecureShareEndorsement&gt; {
-        <span class="self">self</span>.endorsements.get(id).map(|v| v.as_ref())
+        <span class="self">self</span>.endorsements.get(id).map(|e| e.as_ref())
     }
 
     <span class="doccomment">/// Checks whether an endorsement exists in global storage.

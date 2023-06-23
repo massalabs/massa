@@ -260,7 +260,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;SendBlocksStreamType, GrpcError&gt; {
     <span class="kw">let </span>consensus_controller = grpc.consensus_controller.clone();
     <span class="kw">let </span>protocol_command_sender = grpc.protocol_command_sender.clone();
-    <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>storage = grpc.storage.clone_without_refs(<span class="string">&quot;api&quot;</span>.into());
     <span class="kw">let </span>config = grpc.grpc_config.clone();
 
     <span class="comment">// Create a channel to handle communication with the client
@@ -344,14 +344,14 @@
 
                             <span class="kw">let </span>block_id = res_block.id;
                             <span class="kw">let </span>slot = res_block.content.header.content.slot;
-                            <span class="kw">let </span><span class="kw-2">mut </span>block_storage = storage.clone_without_refs();
+                            <span class="kw">let </span><span class="kw-2">mut </span>block_storage = storage.clone_without_refs(<span class="string">&quot;api&quot;</span>.into());
 
                             <span class="comment">// Add the received block to the graph
                             </span>block_storage.store_block(res_block.clone());
                             consensus_controller.register_block(
                                 block_id,
                                 slot,
-                                block_storage.clone(),
+                                block_storage.clone(<span class="string">&quot;api_to_consensus&quot;</span>.into()),
                                 <span class="bool-val">false</span>,
                             );
 

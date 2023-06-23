@@ -216,6 +216,7 @@
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -251,7 +252,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>pool_command_sender = grpc.pool_command_sender.clone();
     <span class="kw">let </span>protocol_command_sender = grpc.protocol_command_sender.clone();
     <span class="kw">let </span>config = grpc.grpc_config.clone();
-    <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>storage = grpc.storage.clone_without_refs(<span class="string">&quot;api&quot;</span>.into());
 
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -320,13 +321,14 @@
                             <span class="kw">match </span>verified_eds_res {
                                 <span class="comment">// If all endorsements in the incoming message are valid, store and propagate them
                                 </span><span class="prelude-val">Ok</span>(verified_eds) =&gt; {
-                                    <span class="kw">let </span><span class="kw-2">mut </span>endorsement_storage = storage.clone_without_refs();
+                                    <span class="kw">let </span><span class="kw-2">mut </span>endorsement_storage =
+                                        storage.clone_without_refs(<span class="string">&quot;api&quot;</span>.into());
                                     endorsement_storage.store_endorsements(
                                         verified_eds.values().cloned().collect(),
                                     );
                                     <span class="comment">// Add the received endorsements to the endorsements pool
                                     </span>pool_command_sender
-                                        .add_endorsements(endorsement_storage.clone());
+                                        .add_endorsements(endorsement_storage.clone(<span class="string">&quot;api&quot;</span>.into()));
 
                                     <span class="comment">// Propagate the endorsements to the network
                                     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = protocol_command_sender

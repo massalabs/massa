@@ -706,7 +706,7 @@
         slot: <span class="prelude-val">Some</span>(current_slot.into()),
     });
 
-    <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>storage = grpc.storage.clone_without_refs(<span class="string">&quot;api&quot;</span>.into());
     <span class="kw">let </span>blocks = blocks_ids
         .into_iter()
         .filter_map(|id| {
@@ -763,7 +763,7 @@
     request: tonic::Request&lt;grpc_api::GetBlocksBySlotsRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetBlocksBySlotsResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
-    <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>storage = grpc.storage.clone_without_refs(<span class="string">&quot;api&quot;</span>.into());
 
     <span class="kw">let </span><span class="kw-2">mut </span>blocks = Vec::new();
 
@@ -992,7 +992,7 @@
     grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: tonic::Request&lt;grpc_api::GetOperationsRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetOperationsResponse, GrpcError&gt; {
-    <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>storage = grpc.storage.clone_without_refs(<span class="string">&quot;api&quot;</span>.into());
     <span class="kw">let </span>inner_req: grpc_api::GetOperationsRequest = request.into_inner();
     <span class="kw">let </span>id = inner_req.id;
 

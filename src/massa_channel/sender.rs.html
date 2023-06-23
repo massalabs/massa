@@ -73,13 +73,13 @@
 <span class="kw">use </span>crossbeam::channel::{SendError, SendTimeoutError, Sender, TrySendError};
 <span class="kw">use </span>prometheus::Gauge;
 
-<span class="attr">#[derive(Clone, Debug)]
+<span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>MassaSender&lt;T&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) sender: Sender&lt;T&gt;,
+    <span class="kw">pub </span>sender: Sender&lt;T&gt;,
     <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) name: String,
+    </span><span class="kw">pub </span>name: String,
     <span class="doccomment">/// channel size
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) actual_len: Gauge,
+    </span><span class="kw">pub </span>actual_len: Gauge,
 }
 
 <span class="kw">impl</span>&lt;T&gt; MassaSender&lt;T&gt; {

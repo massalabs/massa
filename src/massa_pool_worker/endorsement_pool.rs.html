@@ -234,6 +234,7 @@
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -288,7 +289,7 @@
             endorsements_indexed: Default::default(),
             endorsements_sorted: <span class="macro">vec!</span>[Default::default(); config.thread_count <span class="kw">as </span>usize],
             config,
-            storage: storage.clone_without_refs(),
+            storage: storage.clone_without_refs(<span class="string">&quot;pool&quot;</span>.into()),
             channels,
             wallet,
         }
@@ -434,6 +435,7 @@
             <span class="kw-2">&amp;</span>Default::default(),
             <span class="kw-2">&amp;</span>Default::default(),
             <span class="kw-2">&amp;</span>added,
+            <span class="string">&quot;pool&quot;</span>.into(),
         ));
 
         <span class="comment">// drop removed endorsements from storage
@@ -459,7 +461,7 @@
         }
 
         <span class="comment">// setup endorsement storage
-        </span><span class="kw">let </span><span class="kw-2">mut </span>endo_storage = <span class="self">self</span>.storage.clone_without_refs();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>endo_storage = <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;pool&quot;</span>.into());
         <span class="kw">let </span>claim_endos: PreHashSet&lt;EndorsementId&gt; =
             endo_ids.iter().filter_map(|<span class="kw-2">&amp;</span>opt| opt).collect();
         <span class="kw">let </span>claimed_endos = endo_storage.claim_endorsement_refs(<span class="kw-2">&amp;</span>claim_endos);

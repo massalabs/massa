@@ -500,6 +500,7 @@
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -555,7 +556,7 @@
             ),
             last_cs_final_periods: <span class="macro">vec!</span>[<span class="number">0u64</span>; config.thread_count <span class="kw">as </span>usize],
             config,
-            storage: storage.clone_without_refs(),
+            storage: storage.clone_without_refs(<span class="string">&quot;pool&quot;</span>.into()),
             channels,
             wallet,
         }
@@ -932,6 +933,7 @@
             <span class="kw-2">&amp;</span>Default::default(),
             <span class="kw-2">&amp;</span>new_op_ids,
             <span class="kw-2">&amp;</span>Default::default(),
+            <span class="string">&quot;pool&quot;</span>.into(),
         ));
     }
 
@@ -992,7 +994,7 @@
         }
 
         <span class="comment">// generate storage
-        </span><span class="kw">let </span><span class="kw-2">mut </span>res_storage = <span class="self">self</span>.storage.clone_without_refs();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res_storage = <span class="self">self</span>.storage.clone_without_refs(<span class="string">&quot;pool&quot;</span>.into());
         <span class="kw">let </span>claim_ops: PreHashSet&lt;OperationId&gt; = op_ids.iter().copied().collect();
         <span class="kw">let </span>claimed_ops = res_storage.claim_operation_refs(<span class="kw-2">&amp;</span>claim_ops);
         <span class="kw">if </span>claimed_ops.len() != claim_ops.len() {
