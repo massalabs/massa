@@ -229,12 +229,12 @@ impl RetrievalThread {
         }
 
         if !new_endorsements.is_empty() {
-            let mut endorsements = self.storage.clone_without_refs();
+            let mut endorsements = self.storage.clone_without_refs("protocol".into());
             endorsements.store_endorsements(new_endorsements.into_values().collect());
 
             // Propagate endorsements
             // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
-            let mut endorsements_to_propagate = endorsements.clone();
+            let mut endorsements_to_propagate = endorsements.clone("protocol".into());
             let endorsements_to_not_propagate = {
                 let now = MassaTime::now()?;
                 let read_endorsements = endorsements_to_propagate.read_endorsements();
@@ -275,6 +275,7 @@ impl RetrievalThread {
                 warn!("Failed to send from retrieval thread of endorsement handler to propagation: {:?}", err);
             }
             // Add to pool
+            endorsements.rename("protocol_to_pool".into());
             self.pool_controller.add_endorsements(endorsements);
         }
 

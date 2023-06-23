@@ -643,7 +643,7 @@ impl MassaRpcServer for API<Public> {
     /// only active blocks are returned
     async fn get_blocks(&self, ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
         let consensus_controller = self.0.consensus_controller.clone();
-        let storage = self.0.storage.clone_without_refs();
+        let storage = self.0.storage.clone_without_refs("api".into());
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
@@ -685,7 +685,7 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
         let consensus_controller = self.0.consensus_controller.clone();
-        let storage = self.0.storage.clone_without_refs();
+        let storage = self.0.storage.clone_without_refs("api".into());
 
         let block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
 
@@ -916,7 +916,7 @@ impl MassaRpcServer for API<Public> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let protocol_sender = self.0.protocol_controller.clone();
         let api_cfg = self.0.api_settings.clone();
-        let mut to_send = self.0.storage.clone_without_refs();
+        let mut to_send = self.0.storage.clone_without_refs("api".into());
 
         if ops.len() as u64 > api_cfg.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
@@ -963,7 +963,7 @@ impl MassaRpcServer for API<Public> {
             .collect::<RpcResult<Vec<SecureShareOperation>>>()?;
         to_send.store_operations(verified_ops.clone());
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
-        cmd_sender.add_operations(to_send.clone());
+        cmd_sender.add_operations(to_send.clone("api".into()));
 
         tokio::task::spawn_blocking(move || protocol_sender.propagate_operations(to_send))
             .await

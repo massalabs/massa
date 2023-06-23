@@ -102,7 +102,7 @@ impl ConsensusWorker {
             let block = create_genesis_block(&config, thread).map_err(|err| {
                 ConsensusError::GenesisCreationError(format!("genesis error {}", err))
             })?;
-            let mut storage = storage.clone_without_refs();
+            let mut storage = storage.clone_without_refs("consensus".into());
             storage.store_block(block.clone());
             genesis_block_ids.push(block.id);
             block_statuses.insert(
@@ -275,12 +275,15 @@ impl ConsensusWorker {
                         .get_full_active_block(b_id)
                         .expect("active block missing from block_db");
                     let slot = a_block.slot;
-                    block_storage.insert(*b_id, storage.clone());
+                    block_storage.insert(*b_id, storage.clone("consensus".into()));
                     (slot, *b_id)
                 })
                 .collect();
             write_shared_state.prev_blockclique =
                 notify_blockclique.iter().map(|(k, v)| (*v, *k)).collect();
+            block_storage.iter_mut().for_each(|(_k, v)| {
+                v.rename("consensus_to_execution".into());
+            });
             write_shared_state
                 .channels
                 .execution_controller

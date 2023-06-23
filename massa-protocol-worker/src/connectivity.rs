@@ -132,7 +132,7 @@ pub(crate) fn start_connectivity_thread(
 
             let mut operation_handler = OperationHandler::new(
                 pool_controller.clone(),
-                storage.clone_without_refs(),
+                storage.clone_without_refs("protocol".into()),
                 config.clone(),
                 operation_cache.clone(),
                 network_controller.get_active_connections(),
@@ -148,7 +148,7 @@ pub(crate) fn start_connectivity_thread(
                 pool_controller.clone(),
                 selector_controller.clone(),
                 endorsement_cache.clone(),
-                storage.clone_without_refs(),
+                storage.clone_without_refs("protocol".into()),
                 config.clone(),
                 network_controller.get_active_connections(),
                 channel_endorsements.1,
@@ -176,7 +176,7 @@ pub(crate) fn start_connectivity_thread(
                 endorsement_cache,
                 operation_cache,
                 block_cache,
-                storage.clone_without_refs(),
+                storage.clone_without_refs("protocol".into()),
                 mip_store,
                 massa_metrics.clone(),
             );

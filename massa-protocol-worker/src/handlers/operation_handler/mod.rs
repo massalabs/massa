@@ -55,7 +55,7 @@ impl OperationHandler {
         let operation_retrieval_thread = start_retrieval_thread(
             receiver_network,
             pool_controller,
-            storage.clone_without_refs(),
+            storage.clone_without_refs("protocol".into()),
             config.clone(),
             cache.clone(),
             active_connections.clone(),

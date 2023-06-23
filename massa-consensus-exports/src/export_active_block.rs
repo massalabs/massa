@@ -60,7 +60,7 @@ impl ExportActiveBlock {
         thread_count: u8,
     ) -> Result<(ActiveBlock, Storage), ConsensusError> {
         // create resulting storage
-        let mut storage = ref_storage.clone_without_refs();
+        let mut storage = ref_storage.clone_without_refs("consensus".into());
 
         // add endorsements to storage and claim refs
         // TODO change if we decide that endorsements are stored separately

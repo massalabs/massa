@@ -5,7 +5,7 @@ use massa_models::{
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum HeaderOrBlock {
     Header(SecuredHeader),
@@ -14,6 +14,19 @@ pub enum HeaderOrBlock {
         slot: Slot,
         storage: Storage,
     },
+}
+
+impl Clone for HeaderOrBlock {
+    fn clone(&self) -> Self {
+        match self {
+            HeaderOrBlock::Header(header) => HeaderOrBlock::Header(header.clone()),
+            HeaderOrBlock::Block { id, slot, storage } => HeaderOrBlock::Block {
+                id: id.clone(),
+                slot: *slot,
+                storage: storage.clone("consensus".into()),
+            },
+        }
+    }
 }
 
 impl HeaderOrBlock {
@@ -38,7 +51,7 @@ pub enum DiscardReason {
 }
 
 /// Enum used in `BlockGraph`'s state machine
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum BlockStatus {
     /// The block/header has reached consensus but no consensus-level check has been performed.
     /// It will be processed during the next iteration

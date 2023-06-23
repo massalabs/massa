@@ -252,11 +252,11 @@ impl RetrievalThread {
 
         if !new_operations.is_empty() {
             // Store operation, claim locally
-            let mut ops = self.storage.clone_without_refs();
+            let mut ops = self.storage.clone_without_refs("protocol".into());
             ops.store_operations(new_operations.into_values().collect());
 
             // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
-            let mut ops_to_propagate = ops.clone();
+            let mut ops_to_propagate = ops.clone("protocol".into());
             let operations_to_not_propagate = {
                 let now = MassaTime::now()?;
                 let read_operations = ops_to_propagate.read_operations();
@@ -296,6 +296,7 @@ impl RetrievalThread {
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
             // Add to pool
+            ops.rename("protocol_to_pool".into());
             self.pool_controller.add_operations(ops);
         }
 

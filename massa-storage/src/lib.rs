@@ -9,6 +9,7 @@
 #![warn(missing_docs)]
 #![feature(hash_drain_filter)]
 #![feature(map_try_insert)]
+#![feature(box_into_inner)]
 
 mod block_indexes;
 mod endorsement_indexes;
@@ -19,6 +20,7 @@ mod tests;
 
 use block_indexes::BlockIndexes;
 use endorsement_indexes::EndorsementIndexes;
+use lazy_static::lazy_static;
 use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet, PreHashed};
 use massa_models::secure_share::Id;
 use massa_models::{
@@ -29,12 +31,24 @@ use massa_models::{
 };
 use operation_indexes::OperationIndexes;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::Mutex;
 use std::{collections::hash_map, sync::Arc};
+use tracing::error;
+
+lazy_static! {
+    static ref GLOB_OP_CNT: Mutex<HashMap<String, usize>> = Mutex::new(HashMap::new());
+    static ref GLOB_BLOCK_CNT: Mutex<HashMap<String, usize>> = Mutex::new(HashMap::new());
+    static ref GLOB_ENDO_CNT: Mutex<HashMap<String, usize>> = Mutex::new(HashMap::new());
+    static ref CLOB_CNT: Mutex<usize> = Mutex::new(0);
+}
 
 /// A storage system for objects (blocks, operations...), shared by various components.
 pub struct Storage {
+    name: String,
+
     /// global block storage
     blocks: Arc<RwLock<BlockIndexes>>,
     /// global operation storage
@@ -64,42 +78,110 @@ impl Debug for Storage {
     }
 }
 
-impl Clone for Storage {
-    fn clone(&self) -> Self {
-        let mut res = Self::clone_without_refs(self);
-
-        // claim one more user of the op refs
-        Storage::internal_claim_refs(
-            &self.local_used_ops.clone(),
-            &mut res.operation_owners.write(),
-            &mut res.local_used_ops,
-        );
-
-        // claim one more user of the block refs
-        Storage::internal_claim_refs(
-            &self.local_used_blocks.clone(),
-            &mut res.block_owners.write(),
-            &mut res.local_used_blocks,
-        );
-
-        // claim one more user of the endorsement refs
-        Storage::internal_claim_refs(
-            &self.local_used_endorsements.clone(),
-            &mut res.endorsement_owners.write(),
-            &mut res.local_used_endorsements,
-        );
-
-        res
-    }
-}
-
 impl Storage {
+    ///
+    pub fn mayprint(&self) {
+        {
+            let mut lck = CLOB_CNT.lock().unwrap();
+            *lck += 1;
+            if *lck < 100 {
+                return;
+            }
+            *lck = 0;
+        }
+
+        error!(
+            "blocks: {:?}",
+            GLOB_BLOCK_CNT
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(n, v)| (v.clone(), n.clone()))
+                .collect::<BTreeMap<_, _>>()
+        );
+        error!(
+            "endos: {:?}",
+            GLOB_ENDO_CNT
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(n, v)| (v.clone(), n.clone()))
+                .collect::<BTreeMap<_, _>>()
+        );
+        error!(
+            "ops: {:?}",
+            GLOB_OP_CNT
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(n, v)| (v.clone(), n.clone()))
+                .collect::<BTreeMap<_, _>>()
+        );
+    }
+
+    ///
+    pub fn rename(&mut self, name: String) {
+        {
+            let mut lck = GLOB_OP_CNT.lock().unwrap();
+            let cnt = self.local_used_ops.len();
+            let remove = if let Some(v) = lck.get_mut(&self.name) {
+                *v -= cnt;
+                *v == 0
+            } else {
+                false
+            };
+            if remove {
+                lck.remove(&self.name);
+            }
+            lck.entry(name.clone())
+                .and_modify(|v| *v += cnt)
+                .or_insert(cnt);
+        }
+
+        {
+            let mut lck = GLOB_BLOCK_CNT.lock().unwrap();
+            let cnt = self.local_used_blocks.len();
+            let remove = if let Some(v) = lck.get_mut(&self.name) {
+                *v -= cnt;
+                *v == 0
+            } else {
+                false
+            };
+            if remove {
+                lck.remove(&self.name);
+            }
+            lck.entry(name.clone())
+                .and_modify(|v| *v += cnt)
+                .or_insert(cnt);
+        }
+
+        {
+            let mut lck = GLOB_ENDO_CNT.lock().unwrap();
+            let cnt = self.local_used_endorsements.len();
+            let remove = if let Some(v) = lck.get_mut(&self.name) {
+                *v -= cnt;
+                *v == 0
+            } else {
+                false
+            };
+            if remove {
+                lck.remove(&self.name);
+            }
+            lck.entry(name.clone())
+                .and_modify(|v| *v += cnt)
+                .or_insert(cnt);
+        }
+
+        self.name = name;
+    }
+
     /// Creates a new `Storage` instance. Must be called only one time in the execution:
     /// - In the main for the node
     /// - At the top of the test in tests
     /// All others instances of Storage must be cloned from this one using `clone()` or `clone_without_refs()`.
     pub fn create_root() -> Storage {
         Storage {
+            name: "root".to_string(),
             blocks: Default::default(),
             operations: Default::default(),
             endorsements: Default::default(),
@@ -112,9 +194,52 @@ impl Storage {
         }
     }
 
+    ///
+    pub fn clone(&self, name: String) -> Self {
+        let mut res = Self::clone_without_refs(self, name.clone());
+
+        // claim one more user of the op refs
+        Storage::internal_claim_refs(
+            &self.local_used_ops.clone(),
+            &mut res.operation_owners.write(),
+            &mut res.local_used_ops,
+            GLOB_OP_CNT.lock().unwrap().entry(name.clone()).or_insert(0),
+        );
+
+        // claim one more user of the block refs
+        Storage::internal_claim_refs(
+            &self.local_used_blocks.clone(),
+            &mut res.block_owners.write(),
+            &mut res.local_used_blocks,
+            GLOB_BLOCK_CNT
+                .lock()
+                .unwrap()
+                .entry(name.clone())
+                .or_insert(0),
+        );
+
+        // claim one more user of the endorsement refs
+        Storage::internal_claim_refs(
+            &self.local_used_endorsements.clone(),
+            &mut res.endorsement_owners.write(),
+            &mut res.local_used_endorsements,
+            GLOB_ENDO_CNT
+                .lock()
+                .unwrap()
+                .entry(name.clone())
+                .or_insert(0),
+        );
+
+        self.mayprint();
+
+        res
+    }
+
     /// Clones the object to a new one that has no references
-    pub fn clone_without_refs(&self) -> Self {
+    pub fn clone_without_refs(&self, name: String) -> Self {
         Self {
+            name,
+
             blocks: self.blocks.clone(),
             operations: self.operations.clone(),
             endorsements: self.endorsements.clone(),
@@ -130,30 +255,81 @@ impl Storage {
         }
     }
 
+    ///
+    fn transfer_named_ops(&mut self, name_from: String, name_to: String, cnt: usize) {
+        let mut lck = GLOB_OP_CNT.lock().unwrap();
+        {
+            let remove = if let Some(from_mut) = lck.get_mut(&name_from) {
+                *from_mut -= cnt;
+                *from_mut == 0
+            } else {
+                false
+            };
+            if remove {
+                lck.remove(&name_from);
+            }
+        }
+        lck.entry(name_to).and_modify(|v| *v += cnt).or_insert(cnt);
+    }
+
+    ///
+    fn transfer_named_blocks(&mut self, name_from: String, name_to: String, cnt: usize) {
+        let mut lck = GLOB_BLOCK_CNT.lock().unwrap();
+        {
+            let remove = if let Some(from_mut) = lck.get_mut(&name_from) {
+                *from_mut -= cnt;
+                *from_mut == 0
+            } else {
+                false
+            };
+            if remove {
+                lck.remove(&name_from);
+            }
+        }
+        lck.entry(name_to).and_modify(|v| *v += cnt).or_insert(cnt);
+    }
+
+    ///
+    fn transfer_named_endos(&mut self, name_from: String, name_to: String, cnt: usize) {
+        let mut lck = GLOB_ENDO_CNT.lock().unwrap();
+        {
+            let remove = if let Some(from_mut) = lck.get_mut(&name_from) {
+                *from_mut -= cnt;
+                *from_mut == 0
+            } else {
+                false
+            };
+            if remove {
+                lck.remove(&name_from);
+            }
+        }
+        lck.entry(name_to).and_modify(|v| *v += cnt).or_insert(cnt);
+    }
+
     /// Efficiently extends the current Storage by consuming the refs of another storage.
     pub fn extend(&mut self, mut other: Storage) {
         // Take ownership ot `other`'s references.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
-        self.local_used_ops.extend(
-            &other
-                .local_used_ops
-                .drain_filter(|id| !self.local_used_ops.contains(id))
-                .collect::<Vec<_>>(),
-        );
+        let transferred = &other
+            .local_used_ops
+            .drain_filter(|id| !self.local_used_ops.contains(id))
+            .collect::<Vec<_>>();
+        self.transfer_named_ops(other.name.clone(), self.name.clone(), transferred.len());
+        self.local_used_ops.extend(transferred);
 
-        self.local_used_blocks.extend(
-            &other
-                .local_used_blocks
-                .drain_filter(|id| !self.local_used_blocks.contains(id))
-                .collect::<Vec<_>>(),
-        );
+        let transferred = &other
+            .local_used_blocks
+            .drain_filter(|id| !self.local_used_blocks.contains(id))
+            .collect::<Vec<_>>();
+        self.transfer_named_blocks(other.name.clone(), self.name.clone(), transferred.len());
+        self.local_used_blocks.extend(transferred);
 
-        self.local_used_endorsements.extend(
-            &other
-                .local_used_endorsements
-                .drain_filter(|id| !self.local_used_endorsements.contains(id))
-                .collect::<Vec<_>>(),
-        );
+        let transferred = &other
+            .local_used_endorsements
+            .drain_filter(|id| !self.local_used_endorsements.contains(id))
+            .collect::<Vec<_>>();
+        self.transfer_named_endos(other.name.clone(), self.name.clone(), transferred.len());
+        self.local_used_endorsements.extend(transferred);
     }
 
     /// Efficiently splits off a subset of the reference ownership into a new Storage object.
@@ -163,9 +339,10 @@ impl Storage {
         blocks: &PreHashSet<BlockId>,
         operations: &PreHashSet<OperationId>,
         endorsements: &PreHashSet<EndorsementId>,
+        name: String,
     ) -> Storage {
         // Make a clone of self, which has no ref ownership.
-        let mut res = self.clone_without_refs();
+        let mut res = self.clone_without_refs(name);
 
         // Define the ref ownership of the new Storage as all the listed objects that we managed to remove from `self`.
         // Note that this does not require updating counters.
@@ -178,6 +355,11 @@ impl Storage {
                     .expect("split block ref not owned by source")
             })
             .collect();
+        self.transfer_named_blocks(
+            self.name.clone(),
+            res.name.clone(),
+            res.local_used_blocks.len(),
+        );
 
         res.local_used_ops = operations
             .iter()
@@ -187,6 +369,11 @@ impl Storage {
                     .expect("split op ref not owned by source")
             })
             .collect();
+        self.transfer_named_ops(
+            self.name.clone(),
+            res.name.clone(),
+            res.local_used_ops.len(),
+        );
 
         res.local_used_endorsements = endorsements
             .iter()
@@ -196,6 +383,11 @@ impl Storage {
                     .expect("split endorsement ref not owned by source")
             })
             .collect();
+        self.transfer_named_endos(
+            self.name.clone(),
+            res.name.clone(),
+            res.local_used_endorsements.len(),
+        );
 
         res
     }
@@ -205,10 +397,12 @@ impl Storage {
         ids: &PreHashSet<IdT>,
         owners: &mut RwLockWriteGuard<PreHashMap<IdT, usize>>,
         local_used_ids: &mut PreHashSet<IdT>,
+        cnt: &mut usize,
     ) {
         for &id in ids {
             if local_used_ids.insert(id) {
                 owners.entry(id).and_modify(|v| *v += 1).or_insert(1);
+                *cnt += 1;
             }
         }
     }
@@ -233,7 +427,17 @@ impl Storage {
         claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
 
         // effectively add local ownership on the refs
-        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_blocks);
+        Storage::internal_claim_refs(
+            &claimed,
+            owners,
+            &mut self.local_used_blocks,
+            GLOB_BLOCK_CNT
+                .lock()
+                .unwrap()
+                .entry(self.name.clone())
+                .or_insert(0),
+        );
+        self.mayprint();
 
         claimed
     }
@@ -243,6 +447,20 @@ impl Storage {
         if ids.is_empty() {
             return;
         }
+
+        {
+            let mut l = GLOB_BLOCK_CNT.lock().unwrap();
+            let remove = if let Some(v) = l.get_mut(&self.name) {
+                *v -= 1;
+                *v == 0
+            } else {
+                false
+            };
+            if remove {
+                l.remove(&self.name);
+            }
+        }
+
         let mut owners = self.block_owners.write();
         let mut orphaned_ids = Vec::new();
         for id in ids {
@@ -290,7 +508,13 @@ impl Storage {
             &vec![id].into_iter().collect(),
             &mut owners,
             &mut self.local_used_blocks,
+            GLOB_BLOCK_CNT
+                .lock()
+                .unwrap()
+                .entry(self.name.clone())
+                .or_insert(0),
         );
+        self.mayprint();
     }
 
     /// Claim operation references.
@@ -311,7 +535,17 @@ impl Storage {
         claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
 
         // effectively add local ownership on the refs
-        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_ops);
+        Storage::internal_claim_refs(
+            &claimed,
+            owners,
+            &mut self.local_used_ops,
+            GLOB_OP_CNT
+                .lock()
+                .unwrap()
+                .entry(self.name.clone())
+                .or_insert(0),
+        );
+        self.mayprint();
 
         claimed
     }
@@ -334,6 +568,20 @@ impl Storage {
                 // the object was already not referenced locally
                 continue;
             }
+
+            {
+                let mut l = GLOB_OP_CNT.lock().unwrap();
+                let remove = if let Some(v) = l.get_mut(&self.name) {
+                    *v -= 1;
+                    *v == 0
+                } else {
+                    false
+                };
+                if remove {
+                    l.remove(&self.name);
+                }
+            }
+
             match owners.entry(*id) {
                 hash_map::Entry::Occupied(mut occ) => {
                     let res_count = {
@@ -374,7 +622,17 @@ impl Storage {
         for op in operations {
             op_store.insert(op);
         }
-        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_ops);
+        Storage::internal_claim_refs(
+            &ids,
+            &mut owners,
+            &mut self.local_used_ops,
+            GLOB_OP_CNT
+                .lock()
+                .unwrap()
+                .entry(self.name.clone())
+                .or_insert(0),
+        );
+        self.mayprint();
     }
 
     /// Gets a read reference to the operations index
@@ -410,7 +668,17 @@ impl Storage {
         claimed.extend(ids.iter().filter(|id| owners.contains_key(id)));
 
         // effectively add local ownership on the refs
-        Storage::internal_claim_refs(&claimed, owners, &mut self.local_used_endorsements);
+        Storage::internal_claim_refs(
+            &claimed,
+            owners,
+            &mut self.local_used_endorsements,
+            GLOB_ENDO_CNT
+                .lock()
+                .unwrap()
+                .entry(self.name.clone())
+                .or_insert(0),
+        );
+        self.mayprint();
         claimed
     }
 
@@ -432,6 +700,21 @@ impl Storage {
                 // the object was already not referenced locally
                 continue;
             }
+
+            {
+                let mut l: std::sync::MutexGuard<'_, HashMap<String, usize>> =
+                    GLOB_ENDO_CNT.lock().unwrap();
+                let remove = if let Some(v) = l.get_mut(&self.name) {
+                    *v -= 1;
+                    *v == 0
+                } else {
+                    false
+                };
+                if remove {
+                    l.remove(&self.name);
+                }
+            }
+
             match owners.entry(*id) {
                 hash_map::Entry::Occupied(mut occ) => {
                     let res_count = {
@@ -472,7 +755,17 @@ impl Storage {
         for endorsement in endorsements {
             endo_store.insert(endorsement);
         }
-        Storage::internal_claim_refs(&ids, &mut owners, &mut self.local_used_endorsements);
+        Storage::internal_claim_refs(
+            &ids,
+            &mut owners,
+            &mut self.local_used_endorsements,
+            GLOB_ENDO_CNT
+                .lock()
+                .unwrap()
+                .entry(self.name.clone())
+                .or_insert(0),
+        );
+        self.mayprint();
     }
 }
 

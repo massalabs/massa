@@ -712,7 +712,7 @@ async fn launch(
         consensus_config,
         consensus_channels.clone(),
         bootstrap_state.graph,
-        shared_storage.clone(),
+        shared_storage.clone("consensus".into()),
         metrics.clone(),
     );
 
@@ -722,7 +722,7 @@ async fn launch(
         consensus_controller.clone(),
         bootstrap_state.peers,
         pool_controller.clone(),
-        shared_storage.clone(),
+        shared_storage.clone("protocol".into()),
         protocol_channels,
         mip_store.clone(),
         metrics,
@@ -747,7 +747,7 @@ async fn launch(
         consensus: consensus_controller.clone(),
         pool: pool_controller.clone(),
         protocol: protocol_controller.clone(),
-        storage: shared_storage.clone(),
+        storage: shared_storage.clone("factory".into()),
     };
     let factory_manager = start_factory(
         factory_config,
@@ -900,7 +900,7 @@ async fn launch(
             pool_command_sender: pool_controller.clone(),
             protocol_command_sender: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),
-            storage: shared_storage.clone(),
+            storage: shared_storage.clone("api".into()),
             grpc_config: grpc_config.clone(),
             version: *VERSION,
             mip_store: mip_store.clone(),
@@ -965,7 +965,7 @@ async fn launch(
         protocol_config.clone(),
         *VERSION,
         node_id,
-        shared_storage.clone(),
+        shared_storage.clone("api".into()),
         mip_store.clone(),
     );
     let api_public_handle = api_public

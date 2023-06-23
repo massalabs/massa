@@ -85,7 +85,7 @@ impl BlockHandler {
             endorsement_cache,
             operation_cache,
             cache.clone(),
-            storage.clone_without_refs(),
+            storage.clone_without_refs("protocol".into()),
             mip_store,
             massa_metrics,
         );

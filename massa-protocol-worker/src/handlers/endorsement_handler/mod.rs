@@ -63,7 +63,7 @@ impl EndorsementHandler {
             selector_controller,
             pool_controller,
             config.clone(),
-            storage.clone_without_refs(),
+            storage.clone_without_refs("protocol".into()),
             massa_metrics,
         );
 

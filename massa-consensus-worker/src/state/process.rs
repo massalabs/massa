@@ -244,7 +244,8 @@ impl ConsensusState {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
-            self.to_propagate.insert(block_id, storage.clone());
+            self.to_propagate
+                .insert(block_id, storage.clone("consensus".into()));
             for itm_block_id in self.waiting_for_dependencies_index.iter() {
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
@@ -537,7 +538,7 @@ impl ConsensusState {
                     }) => storage,
                     _ => panic!("final block not found in active blocks"),
                 };
-                Some((*b_id, storage.clone()))
+                Some((*b_id, storage.clone("consensus".into())))
             })
             .collect();
 
@@ -560,7 +561,7 @@ impl ConsensusState {
                         Some(BlockStatus::Active { a_block, storage }) => (a_block.slot, storage),
                         _ => panic!("blockclique block not found in active blocks"),
                     };
-                    new_blocks_storage.insert(*b_id, storage.clone());
+                    new_blocks_storage.insert(*b_id, storage.clone("consensus".into()));
                     (*b_id, slot)
                 }
             })
@@ -581,6 +582,9 @@ impl ConsensusState {
         }
 
         // Notify execution of block finalizations and blockclique changes
+        new_blocks_storage.iter_mut().for_each(|(_k, v)| {
+            v.rename("consensus_to_execution".into());
+        });
         self.channels
             .execution_controller
             .update_blockclique_status(
@@ -613,10 +617,11 @@ impl ConsensusState {
             massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
             // Propagate new blocks
-            for (block_id, storage) in mem::take(&mut self.to_propagate).into_iter() {
+            for (block_id, mut storage) in mem::take(&mut self.to_propagate).into_iter() {
                 massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
                     "block_id": block_id
                 });
+                storage.rename("consensus_to_protocol".into());
                 self.channels
                     .protocol_controller
                     .integrated_block(block_id, storage)?;

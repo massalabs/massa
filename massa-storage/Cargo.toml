@@ -8,6 +8,8 @@ edition = "2021"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 massa_models = { path = "../massa-models" }
 massa_metrics = { path = "../massa-metrics" }
+tracing = "0.1"
+lazy_static = "1.4"
 
 [dev-dependencies]
 massa_factory_exports = { path = "../massa-factory-exports", features=["testing"] }

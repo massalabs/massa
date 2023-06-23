@@ -33,7 +33,7 @@ pub(crate) async fn send_endorsements(
     let mut pool_command_sender = grpc.pool_command_sender.clone();
     let protocol_command_sender = grpc.protocol_command_sender.clone();
     let config = grpc.grpc_config.clone();
-    let storage = grpc.storage.clone_without_refs();
+    let storage = grpc.storage.clone_without_refs("api".into());
 
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -102,13 +102,14 @@ pub(crate) async fn send_endorsements(
                             match verified_eds_res {
                                 // If all endorsements in the incoming message are valid, store and propagate them
                                 Ok(verified_eds) => {
-                                    let mut endorsement_storage = storage.clone_without_refs();
+                                    let mut endorsement_storage =
+                                        storage.clone_without_refs("api".into());
                                     endorsement_storage.store_endorsements(
                                         verified_eds.values().cloned().collect(),
                                     );
                                     // Add the received endorsements to the endorsements pool
                                     pool_command_sender
-                                        .add_endorsements(endorsement_storage.clone());
+                                        .add_endorsements(endorsement_storage.clone("api".into()));
 
                                     // Propagate the endorsements to the network
                                     if let Err(e) = protocol_command_sender

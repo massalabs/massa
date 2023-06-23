@@ -69,7 +69,7 @@ pub(crate) fn get_blocks(
         slot: Some(current_slot.into()),
     });
 
-    let storage = grpc.storage.clone_without_refs();
+    let storage = grpc.storage.clone_without_refs("api".into());
     let blocks = blocks_ids
         .into_iter()
         .filter_map(|id| {
@@ -126,7 +126,7 @@ pub(crate) fn get_blocks_by_slots(
     request: tonic::Request<grpc_api::GetBlocksBySlotsRequest>,
 ) -> Result<grpc_api::GetBlocksBySlotsResponse, GrpcError> {
     let inner_req = request.into_inner();
-    let storage = grpc.storage.clone_without_refs();
+    let storage = grpc.storage.clone_without_refs("api".into());
 
     let mut blocks = Vec::new();
 
@@ -355,7 +355,7 @@ pub(crate) fn get_operations(
     grpc: &MassaGrpc,
     request: tonic::Request<grpc_api::GetOperationsRequest>,
 ) -> Result<grpc_api::GetOperationsResponse, GrpcError> {
-    let storage = grpc.storage.clone_without_refs();
+    let storage = grpc.storage.clone_without_refs("api".into());
     let inner_req: grpc_api::GetOperationsRequest = request.into_inner();
     let id = inner_req.id;
 

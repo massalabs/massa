@@ -52,7 +52,7 @@ impl EndorsementPool {
             endorsements_indexed: Default::default(),
             endorsements_sorted: vec![Default::default(); config.thread_count as usize],
             config,
-            storage: storage.clone_without_refs(),
+            storage: storage.clone_without_refs("pool".into()),
             channels,
             wallet,
         }
@@ -198,6 +198,7 @@ impl EndorsementPool {
             &Default::default(),
             &Default::default(),
             &added,
+            "pool".into(),
         ));
 
         // drop removed endorsements from storage
@@ -223,7 +224,7 @@ impl EndorsementPool {
         }
 
         // setup endorsement storage
-        let mut endo_storage = self.storage.clone_without_refs();
+        let mut endo_storage = self.storage.clone_without_refs("pool".into());
         let claim_endos: PreHashSet<EndorsementId> =
             endo_ids.iter().filter_map(|&opt| opt).collect();
         let claimed_endos = endo_storage.claim_endorsement_refs(&claim_endos);

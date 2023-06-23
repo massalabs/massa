@@ -33,7 +33,6 @@ mod stats;
 mod tick;
 mod verifications;
 
-#[derive(Clone)]
 pub struct ConsensusState {
     /// Configuration
     pub config: ConsensusConfig,
@@ -464,7 +463,7 @@ impl ConsensusState {
             .map(|b_id| {
                 let block_infos = match self.block_statuses.get(b_id) {
                     Some(BlockStatus::Active { a_block, storage }) => {
-                        (a_block.slot, storage.clone())
+                        (a_block.slot, storage.clone("consensus".into()))
                     }
                     _ => panic!("active block missing"),
                 };

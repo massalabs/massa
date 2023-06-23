@@ -35,7 +35,7 @@ pub(crate) async fn send_blocks(
 ) -> Result<SendBlocksStreamType, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
     let protocol_command_sender = grpc.protocol_command_sender.clone();
-    let storage = grpc.storage.clone_without_refs();
+    let storage = grpc.storage.clone_without_refs("api".into());
     let config = grpc.grpc_config.clone();
 
     // Create a channel to handle communication with the client
@@ -119,14 +119,14 @@ pub(crate) async fn send_blocks(
 
                             let block_id = res_block.id;
                             let slot = res_block.content.header.content.slot;
-                            let mut block_storage = storage.clone_without_refs();
+                            let mut block_storage = storage.clone_without_refs("api".into());
 
                             // Add the received block to the graph
                             block_storage.store_block(res_block.clone());
                             consensus_controller.register_block(
                                 block_id,
                                 slot,
-                                block_storage.clone(),
+                                block_storage.clone("api_to_consensus".into()),
                                 false,
                             );
 

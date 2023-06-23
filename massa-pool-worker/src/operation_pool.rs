@@ -53,7 +53,7 @@ impl OperationPool {
             ),
             last_cs_final_periods: vec![0u64; config.thread_count as usize],
             config,
-            storage: storage.clone_without_refs(),
+            storage: storage.clone_without_refs("pool".into()),
             channels,
             wallet,
         }
@@ -430,6 +430,7 @@ impl OperationPool {
             &Default::default(),
             &new_op_ids,
             &Default::default(),
+            "pool".into(),
         ));
     }
 
@@ -490,7 +491,7 @@ impl OperationPool {
         }
 
         // generate storage
-        let mut res_storage = self.storage.clone_without_refs();
+        let mut res_storage = self.storage.clone_without_refs("pool".into());
         let claim_ops: PreHashSet<OperationId> = op_ids.iter().copied().collect();
         let claimed_ops = res_storage.claim_operation_refs(&claim_ops);
         if claimed_ops.len() != claim_ops.len() {

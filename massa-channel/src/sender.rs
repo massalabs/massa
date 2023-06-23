@@ -6,13 +6,13 @@ use std::{
 use crossbeam::channel::{SendError, SendTimeoutError, Sender, TrySendError};
 use prometheus::Gauge;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct MassaSender<T> {
-    pub(crate) sender: Sender<T>,
+    pub sender: Sender<T>,
     #[allow(dead_code)]
-    pub(crate) name: String,
+    pub name: String,
     /// channel size
-    pub(crate) actual_len: Gauge,
+    pub actual_len: Gauge,
 }
 
 impl<T> MassaSender<T> {

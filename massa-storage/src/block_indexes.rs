@@ -15,7 +15,7 @@ use massa_models::{
 #[derive(Default)]
 pub struct BlockIndexes {
     /// Blocks structure container
-    blocks: PreHashMap<BlockId, SecureShareBlock>,
+    blocks: PreHashMap<BlockId, Box<SecureShareBlock>>,
     /// Structure mapping creators with the created blocks
     index_by_creator: PreHashMap<Address, PreHashSet<BlockId>>,
     /// Structure mapping slot with their block id
@@ -32,7 +32,7 @@ impl BlockIndexes {
     /// - block: the block to insert
 
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
-        if let Ok(b) = self.blocks.try_insert(block.id, block) {
+        if let Ok(b) = self.blocks.try_insert(block.id, Box::new(block)) {
             // update creator index
             self.index_by_creator
                 .entry(b.content_creator_address)
@@ -65,7 +65,7 @@ impl BlockIndexes {
     /// Remove a block, remove from the indexes and do some clean-up in indexes if necessary.
     /// Arguments:
     /// * `block_id`: the block id to remove
-    pub(crate) fn remove(&mut self, block_id: &BlockId) -> Option<SecureShareBlock> {
+    pub(crate) fn remove(&mut self, block_id: &BlockId) -> Option<Box<SecureShareBlock>> {
         if let Some(b) = self.blocks.remove(block_id) {
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =
@@ -119,7 +119,7 @@ impl BlockIndexes {
     /// Returns:
     /// - a reference to the block, or None if not found
     pub fn get(&self, id: &BlockId) -> Option<&SecureShareBlock> {
-        self.blocks.get(id)
+        self.blocks.get(id).map(|b| b.as_ref())
     }
 
     /// Checks whether a block exists in global storage.

@@ -33,6 +33,7 @@ impl PropagationThread {
                         EndorsementHandlerPropagationCommand::PropagateEndorsements(
                             mut endorsements,
                         ) => {
+                            endorsements.rename("protocol".into());
                             // IMPORTANT: This is there to batch all "waiting to propagate endorsements" but will not work anymore if there is
                             // other variants in EndorsementHandlerPropagationCommand
                             while let Ok(msg) = self.receiver.try_recv() {

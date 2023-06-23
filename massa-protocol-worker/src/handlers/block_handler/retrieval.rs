@@ -64,7 +64,7 @@ use super::{
 static BLOCK_HEADER: &str = "protocol.protocol_worker.on_network_event.received_block_header";
 
 /// Info about a block we've seen
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct BlockInfo {
     /// The header of the block.
     pub(crate) header: Option<SecuredHeader>,
@@ -75,6 +75,17 @@ pub(crate) struct BlockInfo {
     pub(crate) storage: Storage,
     /// Full operations size in bytes
     pub(crate) operations_size: usize,
+}
+
+impl Clone for BlockInfo {
+    fn clone(&self) -> Self {
+        BlockInfo {
+            header: self.header.clone(),
+            operation_ids: self.operation_ids.clone(),
+            storage: self.storage.clone("consensus".into()),
+            operations_size: self.operations_size,
+        }
+    }
 }
 
 impl BlockInfo {
@@ -207,7 +218,7 @@ impl RetrievalThread {
                                     for (block_id, header) in new.into_iter() {
                                         self.block_wishlist.insert(
                                             block_id,
-                                            BlockInfo::new(header, self.storage.clone_without_refs()),
+                                            BlockInfo::new(header, self.storage.clone_without_refs("protocol".into())),
                                         );
                                     }
                                     // Remove the knowledge that we asked this block to nodes.
@@ -723,12 +734,12 @@ impl RetrievalThread {
         }
 
         if !new_endorsements.is_empty() {
-            let mut endorsements = self.storage.clone_without_refs();
+            let mut endorsements = self.storage.clone_without_refs("protocol".into());
             endorsements.store_endorsements(new_endorsements.into_values().collect());
 
             // Propagate endorsements
             // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
-            let mut endorsements_to_propagate = endorsements.clone();
+            let mut endorsements_to_propagate = endorsements.clone("protocol".into());
             let endorsements_to_not_propagate = {
                 let now = MassaTime::now()?;
                 let read_endorsements = endorsements_to_propagate.read_endorsements();
@@ -1073,6 +1084,7 @@ impl RetrievalThread {
                     block_storage.store_block(signed_block);
 
                     // Send to consensus
+                    block_storage.rename("protocol_to_consensus".into());
                     self.consensus_controller
                         .register_block(block_id, slot, block_storage, false);
                 }
@@ -1167,11 +1179,11 @@ impl RetrievalThread {
 
         if !new_operations.is_empty() {
             // Store operation, claim locally
-            let mut ops = self.storage.clone_without_refs();
+            let mut ops = self.storage.clone_without_refs("protocol".into());
             ops.store_operations(new_operations.into_values().collect());
 
             // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
-            let mut ops_to_propagate = ops.clone();
+            let mut ops_to_propagate = ops.clone("protocol".into());
             let operations_to_not_propagate = {
                 let now = MassaTime::now()?;
                 let read_operations = ops_to_propagate.read_operations();
@@ -1209,6 +1221,7 @@ impl RetrievalThread {
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
             // Add to pool
+            ops.rename("protocol_to_pool".into());
             self.pool_controller.add_operations(ops);
         }
 

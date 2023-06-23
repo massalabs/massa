@@ -3116,11 +3116,13 @@ dependencies = [
 name = "massa_storage"
 version = "0.23.0"
 dependencies = [
+ "lazy_static",
  "massa_factory_exports",
  "massa_metrics",
  "massa_models",
  "massa_signature",
  "parking_lot",
+ "tracing",
 ]
 
 [[package]]

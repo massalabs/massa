@@ -147,7 +147,7 @@ impl BlockFactoryWorker {
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
-        let mut block_storage = self.channels.storage.clone_without_refs();
+        let mut block_storage = self.channels.storage.clone_without_refs("factory".into());
 
         // claim block parents in local storage
         {
@@ -243,6 +243,7 @@ impl BlockFactoryWorker {
         );
 
         // send full block to consensus
+        block_storage.rename("factory_to_consensus".into());
         self.channels
             .consensus
             .register_block(block_id, slot, block_storage, true);

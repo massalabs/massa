@@ -31,13 +31,24 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 /// - still be able to read the current state of the graph as processed so far (for this we need a shared state)
 ///
 /// Note that sending commands and reading the state is done from different, mutually-asynchronous tasks and they can have data that are not sync yet.
-#[derive(Clone)]
 pub struct ConsensusControllerImpl {
     command_sender: MassaSender<ConsensusCommand>,
     channels: ConsensusChannels,
     shared_state: Arc<RwLock<ConsensusState>>,
     bootstrap_part_size: u64,
     broadcast_enabled: bool,
+}
+
+impl Clone for ConsensusControllerImpl {
+    fn clone(&self) -> Self {
+        Self {
+            command_sender: self.command_sender.clone(),
+            channels: self.channels.clone(),
+            shared_state: self.shared_state.clone(),
+            bootstrap_part_size: self.bootstrap_part_size,
+            broadcast_enabled: self.broadcast_enabled,
+        }
+    }
 }
 
 impl ConsensusControllerImpl {

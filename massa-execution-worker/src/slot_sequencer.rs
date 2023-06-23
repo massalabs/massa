@@ -15,7 +15,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 
 /// Information about a slot in the execution sequence
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SlotInfo {
     /// Slot
     slot: Slot,

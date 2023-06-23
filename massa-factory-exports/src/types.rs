@@ -10,7 +10,6 @@ use massa_storage::Storage;
 pub type ProductionHistory = Vec<Block>;
 
 /// List of channels the factory will send commands to
-#[derive(Clone)]
 pub struct FactoryChannels {
     /// selector controller to get draws
     pub selector: Box<dyn SelectorController>,
@@ -22,4 +21,17 @@ pub struct FactoryChannels {
     pub protocol: Box<dyn ProtocolController>,
     /// storage instance
     pub storage: Storage,
+}
+
+impl Clone for FactoryChannels {
+    ///
+    fn clone(&self) -> Self {
+        Self {
+            selector: self.selector.clone(),
+            consensus: self.consensus.clone(),
+            pool: self.pool.clone(),
+            protocol: self.protocol.clone(),
+            storage: self.storage.clone("factory".into()),
+        }
+    }
 }

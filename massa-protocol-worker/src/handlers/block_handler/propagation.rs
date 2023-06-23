@@ -36,11 +36,15 @@ impl PropagationThread {
             match self.receiver.recv() {
                 Ok(command) => {
                     match command {
-                        BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } => {
+                        BlockHandlerPropagationCommand::IntegratedBlock {
+                            block_id,
+                            mut storage,
+                        } => {
                             massa_trace!(
                                 "protocol.protocol_worker.process_command.integrated_block.begin",
                                 { "block_id": block_id }
                             );
+                            storage.rename("protocol".into());
                             let header = {
                                 let block = {
                                     let blocks = storage.read_blocks();

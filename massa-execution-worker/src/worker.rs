@@ -119,7 +119,11 @@ impl ExecutionThread {
             let mut input_data_lock = self.input_data.1.lock();
 
             // take current input data, resetting it
-            let input_data: ExecutionInputData = input_data_lock.take();
+            let mut input_data: ExecutionInputData = input_data_lock.take();
+
+            for (_, s) in input_data.block_storage.iter_mut() {
+                s.rename("execution".into());
+            }
 
             // if we need to stop, return None
             if input_data.stop {

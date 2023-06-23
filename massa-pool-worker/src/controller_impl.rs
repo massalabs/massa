@@ -54,7 +54,8 @@ pub struct PoolControllerImpl {
 
 impl PoolController for PoolControllerImpl {
     /// Asynchronously add operations to pool. Simply print a warning on failure.
-    fn add_operations(&mut self, ops: Storage) {
+    fn add_operations(&mut self, mut ops: Storage) {
+        ops.rename("pool".into());
         match self
             .operations_input_sender
             .try_send(Command::AddItems(ops))
@@ -70,12 +71,13 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// Asynchronously add endorsements to pool. Simply print a warning on failure.
-    fn add_endorsements(&mut self, endorsements: Storage) {
+    fn add_endorsements(&mut self, mut endorsements: Storage) {
+        endorsements.rename("pool".into());
         // Send endorsements to the denunciation pool - so we got unfiltered endorsements
         // from protocol & endorsement factory
         match self
             .denunciations_input_sender
-            .try_send(Command::AddItems(endorsements.clone()))
+            .try_send(Command::AddItems(endorsements.clone("pool".into())))
         {
             Err(TrySendError::Disconnected(_)) => {
                 warn!("Could not add endorsements to pool: worker is unreachable.");
