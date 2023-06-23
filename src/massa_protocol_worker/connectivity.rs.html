@@ -311,19 +311,7 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
-<span class="kw">use </span>crossbeam::select;
+</pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
@@ -423,7 +411,7 @@
             </span>std::thread::sleep(Duration::from_millis(<span class="number">100</span>));
 
             <span class="comment">// Create cache outside of the op handler because it could be used by other handlers
-            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake +<span class="number">1 </span>;
+            </span><span class="kw">let </span>total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::&lt;usize&gt;() + config.default_category_info.max_in_connections_post_handshake + <span class="number">1</span>;
             <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections + <span class="number">1</span>;
             <span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 config.max_known_ops_size.try_into().unwrap(),
@@ -506,67 +494,57 @@
                 massa_metrics.clone(),
             );
 
-            <span class="kw">let </span>tick_metrics = tick(massa_metrics.tick_delay);
-            <span class="kw">let </span>tick_try_connect = tick(config.try_connection_timer.to_duration());
-
             <span class="comment">//Try to connect to peers
             </span><span class="kw">loop </span>{
                 <span class="macro">select! </span>{
-                    recv(protocol_channels.connectivity_thread.<span class="number">1</span>) -&gt; msg =&gt; {
-                        <span class="kw">match </span>msg {
-                            <span class="prelude-val">Ok</span>(ConnectivityCommand::Stop) =&gt; {
-                                <span class="macro">println!</span>(<span class="string">&quot;Stopping protocol&quot;</span>);
-                                drop(network_controller);
-                                <span class="macro">println!</span>(<span class="string">&quot;Stoppeed network controller&quot;</span>);
-                                operation_handler.stop();
-                                <span class="macro">println!</span>(<span class="string">&quot;Stopped operation handler&quot;</span>);
-                                endorsement_handler.stop();
-                                <span class="macro">println!</span>(<span class="string">&quot;Stopped endorsement handler&quot;</span>);
-                                block_handler.stop();
-                                <span class="macro">println!</span>(<span class="string">&quot;Stopped block handler&quot;</span>);
-                                peer_management_handler.stop();
-                                <span class="macro">println!</span>(<span class="string">&quot;Stopped peer handler&quot;</span>);
-                                <span class="kw">break</span>;
-                            },
-                            <span class="prelude-val">Ok</span>(ConnectivityCommand::GetStats { responder }) =&gt; {
-                                <span class="kw">let </span>active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() <span class="kw">as </span>u64;
-                                <span class="kw">let </span>in_connection_count = network_controller.get_active_connections().get_nb_in_connections() <span class="kw">as </span>u64;
-                                <span class="kw">let </span>out_connection_count = network_controller.get_active_connections().get_nb_out_connections() <span class="kw">as </span>u64;
-                                <span class="kw">let </span>(banned_peer_count, known_peer_count) = {
-                                    <span class="kw">let </span>peer_db_read = peer_db.read();
-                                    (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() <span class="kw">as </span>u64)
-                                };
-                                <span class="kw">let </span>stats = NetworkStats {
-                                    active_node_count,
-                                    in_connection_count,
-                                    out_connection_count,
-                                    banned_peer_count,
-                                    known_peer_count,
-                                };
-                                <span class="kw">let </span>peers: HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt; = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
-                                    (peer_id, (peer.<span class="number">0</span>, peer.<span class="number">1</span>))
-                                }).collect();
-                                responder.try_send((stats, peers)).unwrap_or_else(|<span class="kw">_</span>| <span class="macro">warn!</span>(<span class="string">&quot;Failed to send stats to responder&quot;</span>));
-                            }
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                                <span class="macro">warn!</span>(<span class="string">&quot;Channel to connectivity thread is closed. Stopping the protocol&quot;</span>);
-                                <span class="kw">break</span>;
+                        recv(protocol_channels.connectivity_thread.<span class="number">1</span>) -&gt; msg =&gt; {
+                            <span class="kw">match </span>msg {
+                                <span class="prelude-val">Ok</span>(ConnectivityCommand::Stop) =&gt; {
+                                    <span class="macro">println!</span>(<span class="string">&quot;Stopping protocol&quot;</span>);
+                                    drop(network_controller);
+                                    <span class="macro">println!</span>(<span class="string">&quot;Stoppeed network controller&quot;</span>);
+                                    operation_handler.stop();
+                                    <span class="macro">println!</span>(<span class="string">&quot;Stopped operation handler&quot;</span>);
+                                    endorsement_handler.stop();
+                                    <span class="macro">println!</span>(<span class="string">&quot;Stopped endorsement handler&quot;</span>);
+                                    block_handler.stop();
+                                    <span class="macro">println!</span>(<span class="string">&quot;Stopped block handler&quot;</span>);
+                                    peer_management_handler.stop();
+                                    <span class="macro">println!</span>(<span class="string">&quot;Stopped peer handler&quot;</span>);
+                                    <span class="kw">break</span>;
+                                },
+                                <span class="prelude-val">Ok</span>(ConnectivityCommand::GetStats { responder }) =&gt; {
+                                    <span class="kw">let </span>active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() <span class="kw">as </span>u64;
+                                    <span class="kw">let </span>in_connection_count = network_controller.get_active_connections().get_nb_in_connections() <span class="kw">as </span>u64;
+                                    <span class="kw">let </span>out_connection_count = network_controller.get_active_connections().get_nb_out_connections() <span class="kw">as </span>u64;
+                                    <span class="kw">let </span>(banned_peer_count, known_peer_count) = {
+                                        <span class="kw">let </span>peer_db_read = peer_db.read();
+                                        (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() <span class="kw">as </span>u64)
+                                    };
+                                    <span class="kw">let </span>stats = NetworkStats {
+                                        active_node_count,
+                                        in_connection_count,
+                                        out_connection_count,
+                                        banned_peer_count,
+                                        known_peer_count,
+                                    };
+                                    <span class="kw">let </span>peers: HashMap&lt;PeerId, (SocketAddr, PeerConnectionType)&gt; = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
+                                        (peer_id, (peer.<span class="number">0</span>, peer.<span class="number">1</span>))
+                                    }).collect();
+                                    responder.try_send((stats, peers)).unwrap_or_else(|<span class="kw">_</span>| <span class="macro">warn!</span>(<span class="string">&quot;Failed to send stats to responder&quot;</span>));
+                                }
+                                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                                    <span class="macro">warn!</span>(<span class="string">&quot;Channel to connectivity thread is closed. Stopping the protocol&quot;</span>);
+                                    <span class="kw">break</span>;
+                                }
                             }
                         }
-                    },
-                    recv(tick_metrics) -&gt; <span class="kw">_ </span>=&gt; {
-                        massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
-
-                        massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
-
-                        <span class="kw">let </span>active_conn = network_controller.get_active_connections();
-                        massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
-                        <span class="kw">let </span>peers_map = active_conn.get_peers_connections_bandwidth();
-                        massa_metrics.update_peers_tx_rx(peers_map);
-                    },
-                    recv(tick_try_connect) -&gt; <span class="kw">_ </span>=&gt; {
+                    default(config.try_connection_timer.to_duration()) =&gt; {
                         <span class="kw">let </span>active_conn = network_controller.get_active_connections();
                         <span class="kw">let </span>peers_connected = active_conn.get_peers_connected();
+                        <span class="comment">// update massa metrics
+                        </span>massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
+
                         <span class="kw">let </span><span class="kw-2">mut </span>slots_per_category: Vec&lt;(String, usize)&gt; = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.<span class="number">1</span>.target_out_connections.saturating_sub(peers_connected.iter().filter(|(<span class="kw">_</span>, peer)| {
                                 <span class="kw">if </span>peer.<span class="number">1 </span>== PeerConnectionType::OUT &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(peer_category) = <span class="kw-2">&amp;</span>peer.<span class="number">2 </span>{

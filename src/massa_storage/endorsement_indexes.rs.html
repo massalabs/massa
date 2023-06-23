@@ -79,6 +79,9 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map;
 
 <span class="kw">use </span>massa_models::{
@@ -92,7 +95,7 @@
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>EndorsementIndexes {
     <span class="doccomment">/// Endorsements structure container
-    </span>endorsements: PreHashMap&lt;EndorsementId, SecureShareEndorsement&gt;,
+    </span>endorsements: PreHashMap&lt;EndorsementId, Box&lt;SecureShareEndorsement&gt;&gt;,
     <span class="doccomment">/// Structure mapping creators with the created endorsements
     </span>index_by_creator: PreHashMap&lt;Address, PreHashSet&lt;EndorsementId&gt;&gt;,
 }
@@ -102,14 +105,17 @@
     /// Arguments:
     /// - endorsement: the endorsement to insert
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsement: SecureShareEndorsement) {
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(e) = <span class="self">self</span>.endorsements.try_insert(endorsement.id, endorsement) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(e) = <span class="self">self
+            </span>.endorsements
+            .try_insert(endorsement.id, Box::new(endorsement))
+        {
+            massa_metrics::inc_endorsements_counter();
+
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(e.content_creator_address)
                 .or_default()
                 .insert(e.id);
-
-            massa_metrics::set_endorsements_counter(<span class="self">self</span>.endorsements.len());
         }
     }
 
@@ -119,9 +125,9 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         endorsement_id: <span class="kw-2">&amp;</span>EndorsementId,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareEndorsement&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;SecureShareEndorsement&gt;&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = <span class="self">self</span>.endorsements.remove(endorsement_id) {
-            massa_metrics::set_endorsements_counter(<span class="self">self</span>.endorsements.len());
+            massa_metrics::dec_endorsements_counter();
 
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
@@ -139,7 +145,7 @@
 
     <span class="doccomment">/// Gets a reference to a stored endorsement, if any.
     </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>EndorsementId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SecureShareEndorsement&gt; {
-        <span class="self">self</span>.endorsements.get(id)
+        <span class="self">self</span>.endorsements.get(id).map(|v| v.as_ref())
     }
 
     <span class="doccomment">/// Checks whether an endorsement exists in global storage.
