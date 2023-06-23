@@ -1225,6 +1225,8 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 _ => {}
             };
 
+            // every 100ms/or when alerted, check if sigint toggled
+            // if toggled, break loop
             let int_sig = sig_int_toggled
                 .0
                 .lock()

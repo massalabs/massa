@@ -86,7 +86,8 @@ pub struct Private {
     pub execution_controller: Box<dyn ExecutionController>,
     /// API settings
     pub api_settings: APIConfig,
-    /// Condition-variable pair to stop the system
+    /// Mechanism by which to gracefully shut down.
+    /// To be a clone of the same pair provided to the ctrlc handler.
     pub stop_cv: Arc<(Mutex<bool>, Condvar)>,
     /// User wallet
     pub node_wallet: Arc<RwLock<Wallet>>,
