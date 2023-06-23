@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 use receiver::MassaReceiver;
 use sender::MassaSender;
+use tracing::debug;
 
 pub mod receiver;
 pub mod sender;
@@ -29,7 +30,6 @@ impl MassaChannel {
     #[allow(clippy::new_ret_no_self)]
     pub fn new<T>(name: String, capacity: Option<usize>) -> (MassaSender<T>, MassaReceiver<T>) {
         use prometheus::{Counter, Gauge};
-        use tracing::error;
 
         let (s, r) = if let Some(capacity) = capacity {
             crossbeam::channel::bounded::<T>(capacity)
@@ -55,11 +55,11 @@ impl MassaChannel {
         // Register metrics in prometheus
         // error here if metrics already registered (ex : ProtocolController>::get_stats )
         if let Err(e) = prometheus::register(Box::new(actual_len.clone())) {
-            error!("Failed to register actual_len gauge for {} : {}", name, e);
+            debug!("Failed to register actual_len gauge for {} : {}", name, e);
         }
 
         if let Err(e) = prometheus::register(Box::new(received.clone())) {
-            error!("Failed to register received counter for {} : {}", name, e);
+            debug!("Failed to register received counter for {} : {}", name, e);
         }
 
         let sender = MassaSender {
