@@ -853,8 +853,8 @@ mod tests {
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
         assert!(
             // start (299_000) - fee (1000) - storage cost
-            Amount::from_str("299_979").unwrap() < amount
-                && amount < Amount::from_str("299_980").unwrap()
+            Amount::from_str("299_976").unwrap() < amount
+                && amount < Amount::from_str("299_977").unwrap()
         );
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
