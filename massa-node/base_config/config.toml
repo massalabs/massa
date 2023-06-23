@@ -192,7 +192,7 @@
     # start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     operation_batch_proc_period = 500
     # all operations asked are prune each `operation_asked_pruning_period` millisecond
-    asked_operations_pruning_period = 100000
+    asked_operations_pruning_period = 16000
     # interval at which operations are announced in batches.
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
