@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"massa_db_worker":[["impl MassaDBController for <a class=\"struct\" href=\"massa_db_worker/massa_db/struct.RawMassaDB.html\" title=\"struct massa_db_worker::massa_db::RawMassaDB\">RawMassaDB</a>&lt;Slot, SlotSerializer, SlotDeserializer&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

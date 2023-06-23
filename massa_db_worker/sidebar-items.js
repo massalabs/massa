@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["massa_db"],"struct":["RawMassaDB"],"type":["MassaDB"]};
