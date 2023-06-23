@@ -1265,29 +1265,6 @@
 <a href="#1265" id="1265">1265</a>
 <a href="#1266" id="1266">1266</a>
 <a href="#1267" id="1267">1267</a>
-<a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
-<a href="#1283" id="1283">1283</a>
-<a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
-<a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
-<a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1301,7 +1278,6 @@
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 
 <span class="kw">use </span>crossbeam_channel::TryRecvError;
-<span class="kw">use </span>ctrlc <span class="kw">as _</span>;
 <span class="kw">use </span>dialoguer::Password;
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
@@ -1371,7 +1347,7 @@
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 <span class="kw">use </span>massa_pos_worker::start_selector_worker;
-<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
+<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -1379,16 +1355,15 @@
 <span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>peernet::transports::TransportType;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
-<span class="kw">use </span>std::thread::sleep;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
-<span class="kw">use </span>tokio::signal;
-<span class="kw">use </span>tokio::sync::{broadcast, mpsc};
+<span class="kw">use </span>tokio::sync::broadcast;
 <span class="kw">use </span>tracing::{error, info, warn};
 <span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
 
@@ -1409,7 +1384,6 @@
     Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;,
     Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
-    mpsc::Receiver&lt;()&gt;,
     StopHandle,
     StopHandle,
     StopHandle,
@@ -1660,7 +1634,7 @@
         <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         <span class="kw-2">*</span>END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        sig_int_toggled,
+        sig_int_toggled.clone(),
     ) {
         <span class="prelude-val">Ok</span>(vals) =&gt; vals,
         <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
@@ -2197,10 +2171,11 @@
     );
 
     <span class="comment">// spawn private API
-    </span><span class="kw">let </span>(api_private, api_private_stop_rx) = API::&lt;Private&gt;::new(
+    </span><span class="kw">let </span>api_private = API::&lt;Private&gt;::new(
         protocol_controller.clone(),
         execution_controller.clone(),
         api_config.clone(),
+        sig_int_toggled,
         node_wallet,
     );
     <span class="kw">let </span>api_private_handle = api_private
@@ -2273,7 +2248,6 @@
         pool_manager,
         protocol_manager,
         factory_manager,
-        api_private_stop_rx,
         api_private_handle,
         api_public_handle,
         api_handle,
@@ -2471,19 +2445,17 @@
     <span class="comment">// interrupt signal listener
     </span><span class="kw">let </span>sig_int_toggled = Arc::new((Mutex::new(<span class="bool-val">false</span>), Condvar::new()));
 
-    <span class="comment">// TODO: re-enable and fix this (remove use ctrlc as _; when done)
-    // let sig_int_toggled_clone = Arc::clone(&amp;sig_int_toggled);
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
-    // ctrlc::set_handler(move || {
-    //     *sig_int_toggled_clone
-    //         .0
-    //         .lock()
-    //         .expect(&quot;double-lock on interupt bool in ctrl-c handler&quot;) = true;
-    //     sig_int_toggled_clone.1.notify_all();
-    // })
-    // .expect(&quot;Error setting Ctrl-C handler&quot;);
+    <span class="kw">let </span>sig_int_toggled_clone = Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled);
+    ctrlc::set_handler(<span class="kw">move </span>|| {
+        <span class="kw-2">*</span>sig_int_toggled_clone
+            .<span class="number">0
+            </span>.lock()
+            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
+        sig_int_toggled_clone.<span class="number">1</span>.notify_all();
+    })
+    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
 
-    </span><span class="kw">loop </span>{
+    <span class="kw">loop </span>{
         <span class="kw">let </span>(
             consensus_event_receiver,
             bootstrap_manager,
@@ -2493,19 +2465,11 @@
             pool_manager,
             protocol_manager,
             factory_manager,
-            <span class="kw-2">mut </span>api_private_stop_rx,
             api_private_handle,
             api_public_handle,
             api_handle,
             grpc_handle,
         ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone(), Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled)).<span class="kw">await</span>;
-
-        <span class="comment">// interrupt signal listener
-        </span><span class="kw">let </span>(tx, rx) = crossbeam_channel::bounded(<span class="number">1</span>);
-        <span class="kw">let </span>interrupt_signal_listener = tokio::spawn(<span class="kw">async move </span>{
-            signal::ctrl_c().<span class="kw">await</span>.unwrap();
-            tx.send(()).unwrap();
-        });
 
         <span class="comment">// loop over messages
         </span><span class="kw">let </span>restart = <span class="kw">loop </span>{
@@ -2527,29 +2491,20 @@
                 <span class="kw">_ </span>=&gt; {}
             };
 
-            <span class="kw">match </span>api_private_stop_rx.try_recv() {
-                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;stop command received from private API&quot;</span>);
-                    <span class="kw">break </span><span class="bool-val">false</span>;
-                }
-                <span class="prelude-val">Err</span>(tokio::sync::mpsc::error::TryRecvError::Disconnected) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;api_private_stop_rx disconnected&quot;</span>);
-                    <span class="kw">break </span><span class="bool-val">false</span>;
-                }
-                <span class="kw">_ </span>=&gt; {}
+            <span class="comment">// every 100ms/or when alerted, check if sigint toggled
+            // if toggled, break loop
+            </span><span class="kw">let </span>int_sig = sig_int_toggled
+                .<span class="number">0
+                </span>.lock()
+                .expect(<span class="string">&quot;double-lock() on interupted signal mutex&quot;</span>);
+            <span class="kw">let </span>wake = sig_int_toggled
+                .<span class="number">1
+                </span>.wait_timeout(int_sig, Duration::from_millis(<span class="number">100</span>))
+                .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
+            <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
+                <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received&quot;</span>);
+                <span class="kw">break </span><span class="bool-val">false</span>;
             }
-            <span class="kw">match </span>rx.try_recv() {
-                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received&quot;</span>);
-                    <span class="kw">break </span><span class="bool-val">false</span>;
-                }
-                <span class="prelude-val">Err</span>(crossbeam_channel::TryRecvError::Disconnected) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;interrupt_signal_listener disconnected&quot;</span>);
-                    <span class="kw">break </span><span class="bool-val">false</span>;
-                }
-                <span class="kw">_ </span>=&gt; {}
-            }
-            sleep(Duration::from_millis(<span class="number">100</span>));
         };
         stop(
             consensus_event_receiver,
@@ -2574,7 +2529,6 @@
         }
         <span class="comment">// If we restart because of a desync, then we do not want to restart from a snapshot
         </span>cur_args.restart_from_snapshot_at_period = <span class="prelude-val">None</span>;
-        interrupt_signal_listener.abort();
     }
     <span class="prelude-val">Ok</span>(())
 }
