@@ -6,7 +6,7 @@
     data_execution: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;FinalState&gt;&gt;,
     version: Version,
     consensus_command_sender: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn ConsensusController&gt;,
-    protocol_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="../../massa_protocol_exports/controller_trait/trait.ProtocolController.html" title="trait massa_protocol_exports::controller_trait::ProtocolController">ProtocolController</a>&gt;
+    protocol_controller: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn ProtocolController&gt;
 )</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>To be called from a <code>thread::spawn</code> invocation</p>
 <p>Runs the bootstrap management in a dedicated thread, handling the async by using
 a multi-thread-aware tokio runtime (the bs-main-loop runtime, to be exact). When this
