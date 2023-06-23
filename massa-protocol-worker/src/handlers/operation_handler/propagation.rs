@@ -111,8 +111,12 @@ impl PropagationThread {
 
         // remove expired
         let max_op_prop_time = self.config.max_operations_propagation_time.to_duration();
-        while let Some((t, op_ids)) = self.stored_for_propagation.front() {
+        while let Some((t, _)) = self.stored_for_propagation.front() {
             if t.elapsed() > max_op_prop_time {
+                let (_, op_ids) = self
+                    .stored_for_propagation
+                    .pop_front()
+                    .expect("there should be at least one element, checked above");
                 removed.extend(op_ids);
             } else {
                 break;

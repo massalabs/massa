@@ -134,7 +134,7 @@
     # number of final periods that must be kept without operations (increase improve bootstrap process, high values will increase RAM usage.)
     force_keep_final_periods_without_ops = 32
     # number of final periods that must be kept with operations (increase to more resilience to short network disconnections, high values will increase RAM usage.)
-    force_keep_final_periods = 10
+    force_keep_final_periods = 5
 
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
