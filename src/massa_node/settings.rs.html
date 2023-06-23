@@ -314,6 +314,11 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -385,7 +390,7 @@
     <span class="kw">pub </span>max_simultaneous_bootstraps: u32,
     <span class="kw">pub </span>per_ip_min_interval: MassaTime,
     <span class="kw">pub </span>ip_list_max_size: usize,
-    <span class="kw">pub </span>max_bytes_read_write: f64,
+    <span class="kw">pub </span>max_bytes_read_write: u64,
     <span class="doccomment">/// Allocated time with which to manage the bootstrap process
     </span><span class="kw">pub </span>bootstrap_timeout: MassaTime,
 }
@@ -489,7 +494,12 @@
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>MetricsSettings {
-    <span class="kw">pub </span>enabled: bool,
+    <span class="doccomment">/// enable prometheus metrics
+    </span><span class="kw">pub </span>enabled: bool,
+    <span class="doccomment">/// port on which to listen for prometheus metrics
+    </span><span class="kw">pub </span>bind: SocketAddr,
+    <span class="doccomment">/// interval at which to update metrics
+    </span><span class="kw">pub </span>tick_delay: MassaTime,
 }
 
 <span class="doccomment">/// Protocol Configuration, read from toml user configuration file

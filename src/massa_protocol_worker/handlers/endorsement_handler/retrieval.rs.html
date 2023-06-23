@@ -322,7 +322,7 @@
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -379,7 +379,7 @@
                 max_length_endorsements: <span class="self">self</span>.config.max_endorsements_per_message,
                 endorsement_count: <span class="self">self</span>.config.endorsement_count,
             });
-        <span class="kw">let </span>tick_metrics = tick(Duration::from_secs(<span class="number">5</span>));
+        <span class="kw">let </span>tick_metrics = tick(<span class="self">self</span>.metrics.tick_delay);
 
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
