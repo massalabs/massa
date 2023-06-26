@@ -57,47 +57,47 @@
 <a href="#57" id="57">57</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{BitXor, BitXorAssign};
 
-<span class="kw">use crate</span>::{Hash, XOF_HASH_SIZE_BYTES};
+<span class="kw">use </span><span class="kw">crate</span>::Hash;
 
 <span class="doccomment">/// Extended Hash
 </span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-</span><span class="kw">pub struct </span>HashXof(<span class="kw">pub </span>[u8; XOF_HASH_SIZE_BYTES]);
+</span><span class="kw">pub struct </span>HashXof&lt;<span class="kw">const </span>SIZE: usize&gt;(<span class="kw">pub </span>[u8; SIZE]);
 
-<span class="kw">impl </span>HashXof {
+<span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; HashXof&lt;SIZE&gt; {
     <span class="doccomment">/// Truncate the extended hash to a regular hash
     </span><span class="kw">pub fn </span>clip_to_massa_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
         Hash::from_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[..<span class="number">32</span>].try_into().unwrap())
     }
 
     <span class="doccomment">/// Compute from raw data
-    </span><span class="kw">pub fn </span>compute_from(data: <span class="kw-2">&amp;</span>[u8]) -&gt; HashXof {
+    </span><span class="kw">pub fn </span>compute_from(data: <span class="kw-2">&amp;</span>[u8]) -&gt; HashXof&lt;SIZE&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>hasher = blake3::Hasher::new();
         hasher.update(data);
-        <span class="kw">let </span><span class="kw-2">mut </span>hash = [<span class="number">0u8</span>; XOF_HASH_SIZE_BYTES];
+        <span class="kw">let </span><span class="kw-2">mut </span>hash = [<span class="number">0u8</span>; SIZE];
         <span class="kw">let </span><span class="kw-2">mut </span>output_reader = hasher.finalize_xof();
         output_reader.fill(<span class="kw-2">&amp;mut </span>hash);
         HashXof(hash)
     }
 
     <span class="doccomment">/// Compute from key and value
-    </span><span class="kw">pub fn </span>compute_from_kv(key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; HashXof {
+    </span><span class="kw">pub fn </span>compute_from_kv(key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; HashXof&lt;SIZE&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>hasher = blake3::Hasher::new();
         hasher.update(key);
         hasher.update(value);
-        <span class="kw">let </span><span class="kw-2">mut </span>hash = [<span class="number">0u8</span>; XOF_HASH_SIZE_BYTES];
+        <span class="kw">let </span><span class="kw-2">mut </span>hash = [<span class="number">0u8</span>; SIZE];
         <span class="kw">let </span><span class="kw-2">mut </span>output_reader = hasher.finalize_xof();
         output_reader.fill(<span class="kw-2">&amp;mut </span>hash);
         HashXof(hash)
     }
 }
 
-<span class="kw">impl </span>BitXorAssign <span class="kw">for </span>HashXof {
+<span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXorAssign <span class="kw">for </span>HashXof&lt;SIZE&gt; {
     <span class="kw">fn </span>bitxor_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: <span class="self">Self</span>) {
         <span class="kw-2">*</span><span class="self">self </span>= <span class="kw-2">*</span><span class="self">self </span>^ rhs;
     }
 }
 
-<span class="kw">impl </span>BitXor <span class="kw">for </span>HashXof {
+<span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXor <span class="kw">for </span>HashXof&lt;SIZE&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>bitxor(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{

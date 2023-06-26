@@ -798,7 +798,7 @@
     CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
     STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
-<span class="kw">use </span>massa_hash::{Hash, HashXof};
+<span class="kw">use </span>massa_hash::{Hash, HashXof, XOF_HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -1325,13 +1325,13 @@
     }
 
     <span class="doccomment">/// Get the current XOF state hash of the database
-    </span><span class="kw">pub fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof {
+    </span><span class="kw">pub fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof&lt;XOF_HASH_SIZE_BYTES&gt; {
         <span class="self">self</span>.get_xof_db_hash_opt()
             .unwrap_or(HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES))
     }
 
     <span class="doccomment">/// Get the current XOF state hash of the database
-    </span><span class="kw">fn </span>get_xof_db_hash_opt(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;HashXof&gt; {
+    </span><span class="kw">fn </span>get_xof_db_hash_opt(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;HashXof&lt;XOF_HASH_SIZE_BYTES&gt;&gt; {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
         <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
@@ -1529,7 +1529,7 @@
     }
 
     <span class="doccomment">/// Get the current extended state hash of the database
-    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof {
+    </span><span class="kw">fn </span>get_xof_db_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashXof&lt;XOF_HASH_SIZE_BYTES&gt; {
         <span class="self">self</span>.get_xof_db_hash()
     }
 
