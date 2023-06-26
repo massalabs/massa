@@ -385,7 +385,7 @@
     <span class="kw">pub </span>max_simultaneous_bootstraps: u32,
     <span class="kw">pub </span>per_ip_min_interval: MassaTime,
     <span class="kw">pub </span>ip_list_max_size: usize,
-    <span class="kw">pub </span>max_bytes_read_write: u64,
+    <span class="kw">pub </span>max_bytes_read_write: f64,
     <span class="doccomment">/// Allocated time with which to manage the bootstrap process
     </span><span class="kw">pub </span>bootstrap_timeout: MassaTime,
 }
@@ -525,12 +525,12 @@
     </span><span class="kw">pub </span>operation_announcement_buffer_capacity: usize,
     <span class="doccomment">/// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     </span><span class="kw">pub </span>operation_batch_proc_period: MassaTime,
-    <span class="doccomment">/// All operations asked are prune each `operation_asked_pruning_period` millisecond
-    </span><span class="kw">pub </span>asked_operations_pruning_period: MassaTime,
     <span class="doccomment">/// Interval at which operations are announced in batches.
     </span><span class="kw">pub </span>operation_announcement_interval: MassaTime,
     <span class="doccomment">/// Maximum of operations sent in one message.
     </span><span class="kw">pub </span>max_operations_per_message: u64,
+    <span class="doccomment">/// MAx number of operations kept for propagation
+    </span><span class="kw">pub </span>max_ops_kept_for_propagation: usize,
     <span class="doccomment">/// Time threshold after which operation are not propagated
     </span><span class="kw">pub </span>max_operations_propagation_time: MassaTime,
     <span class="doccomment">/// Time threshold after which operation are not propagated

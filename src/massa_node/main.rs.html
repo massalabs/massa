@@ -1302,6 +1302,24 @@
 <a href="#1302" id="1302">1302</a>
 <a href="#1303" id="1303">1303</a>
 <a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1330,8 +1348,7 @@
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
-<span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
-<span class="kw">use </span>massa_db_worker::MassaDB;
+<span class="kw">use </span>massa_db::{MassaDB, MassaDBConfig};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -1389,12 +1406,12 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::mips::MIP_LIST;
+<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipInfo, MipState};
 <span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
@@ -1559,9 +1576,7 @@
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS <span class="kw">as </span>usize,
         thread_count: THREAD_COUNT,
     };
-    <span class="kw">let </span>db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
-    ));
+    <span class="kw">let </span>db = Arc::new(RwLock::new(MassaDB::new(db_config)));
 
     <span class="comment">// Create final ledger
     </span><span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), db.clone());
@@ -1582,9 +1597,43 @@
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-
+    <span class="kw">let </span>mip_0001_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">15</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0001_timeout = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">14</span>, <span class="number">16</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0001_defined_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">2</span>, <span class="number">14</span>, <span class="number">14</span>, <span class="number">30</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0002_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">16</span>, <span class="number">13</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0002_timeout = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">19</span>, <span class="number">14</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_0002_defined_start = MassaTime::from_utc_ymd_hms(<span class="number">2023</span>, <span class="number">6</span>, <span class="number">16</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap();
+    <span class="kw">let </span>mip_list_1: [(MipInfo, MipState); <span class="number">2</span>] = [
+        (
+            MipInfo {
+                name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
+                version: <span class="number">1</span>,
+                components: BTreeMap::from([
+                    (MipComponent::Address, <span class="number">1</span>),
+                    (MipComponent::KeyPair, <span class="number">1</span>),
+                ]),
+                start: mip_0001_start,
+                timeout: mip_0001_timeout,
+                activation_delay: MassaTime::from_millis(<span class="number">100</span>),
+            },
+            MipState::new(mip_0001_defined_start),
+        ),
+        (
+            MipInfo {
+                name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+                version: <span class="number">2</span>,
+                components: BTreeMap::from([(MipComponent::FinalStateHashKind, <span class="number">1</span>)]),
+                start: mip_0002_start,
+                timeout: mip_0002_timeout,
+                activation_delay: T0
+                    .saturating_mul(PERIODS_PER_CYCLE.saturating_add(<span class="number">1</span>))
+                    .saturating_mul(<span class="number">40</span>),
+            },
+            MipState::new(mip_0002_defined_start),
+        ),
+    ];
     <span class="kw">let </span>mip_store =
-        MipStore::try_from((MIP_LIST, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+        MipStore::try_from((mip_list_1, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
 
     <span class="comment">// Create final state, either from a snapshot, or from scratch
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
@@ -1790,7 +1839,6 @@
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
-        node_wallet.clone(),
         metrics.clone(),
     );
 
@@ -1861,7 +1909,6 @@
             .protocol
             .operation_announcement_buffer_capacity,
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
-        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
         operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE <span class="kw">as </span>usize,
@@ -1872,6 +1919,7 @@
         t0: T0,
         endorsement_count: ENDORSEMENT_COUNT,
         max_message_size: MAX_MESSAGE_SIZE <span class="kw">as </span>usize,
+        max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().last_start_period,
@@ -2031,16 +2079,14 @@
     );
 
     <span class="kw">let </span>bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        <span class="kw">let </span>(listener_stopper, listener) =
-            BootstrapTcpListener::create(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
-                <span class="macro">panic!</span>(
-                    <span class="string">&quot;{}&quot;</span>,
-                    <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
-                )
-            });
-        start_bootstrap_server(
+        <span class="kw">let </span>(waker, listener) = BootstrapTcpListener::new(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;{}&quot;</span>,
+                <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
+            )
+        });
+        <span class="kw">let </span><span class="kw-2">mut </span>manager = start_bootstrap_server(
             listener,
-            listener_stopper,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -2048,7 +2094,9 @@
             keypair.clone(),
             <span class="kw-2">*</span>VERSION,
         )
-        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>)
+        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>);
+        manager.set_listener_stopper(waker);
+        manager
     });
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
@@ -2499,10 +2547,7 @@
     // })
     // .expect(&quot;Error setting Ctrl-C handler&quot;);
 
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;resync_check&quot;</span>)]
-    </span><span class="kw">let </span><span class="kw-2">mut </span>resync_check = <span class="prelude-val">Some</span>(std::time::Instant::now() + std::time::Duration::from_secs(<span class="number">10</span>));
-
-    <span class="kw">loop </span>{
+    </span><span class="kw">loop </span>{
         <span class="kw">let </span>(
             consensus_event_receiver,
             bootstrap_manager,
@@ -2568,15 +2613,6 @@
                 }
                 <span class="kw">_ </span>=&gt; {}
             }
-            <span class="attr">#[cfg(feature = <span class="string">&quot;resync_check&quot;</span>)]
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(resync_moment) = resync_check {
-                <span class="kw">if </span>resync_moment &lt; std::time::Instant::now() {
-                    <span class="macro">warn!</span>(<span class="string">&quot;resync check triggered&quot;</span>);
-                    resync_check = <span class="prelude-val">None</span>;
-                    <span class="kw">break </span><span class="bool-val">true</span>;
-                }
-            }
-
             sleep(Duration::from_millis(<span class="number">100</span>));
         };
         stop(

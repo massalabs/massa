@@ -511,59 +511,14 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
-<a href="#552" id="552">552</a>
-<a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
-    collections::{HashMap, VecDeque},
-    thread::JoinHandle,
-    time::{Duration, Instant},
-};
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
-    operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
+    operation::{OperationPrefixId, OperationPrefixIds, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::Id,
     slot::Slot,
@@ -612,14 +567,13 @@
     asked_operations: LruMap&lt;OperationPrefixId, (Instant, Vec&lt;PeerId&gt;)&gt;,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     op_batch_buffer: VecDeque&lt;OperationBatchItem&gt;,
-    stored_operations: HashMap&lt;Instant, PreHashSet&lt;OperationId&gt;&gt;,
     storage: Storage,
     config: ProtocolConfig,
     internal_sender: MassaSender&lt;OperationHandlerPropagationCommand&gt;,
     receiver_ext: MassaReceiver&lt;OperationHandlerRetrievalCommand&gt;,
     operation_message_serializer: MessagesSerializer,
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
-    massa_metrics: MassaMetrics,
+    _massa_metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>RetrievalThread {
@@ -636,8 +590,6 @@
                 max_op_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
             });
         <span class="kw">let </span>tick_ask_operations = tick(<span class="self">self</span>.config.operation_batch_proc_period.to_duration());
-        <span class="kw">let </span>tick_clear_storage = tick(<span class="self">self</span>.config.asked_operations_pruning_period.to_duration());
-        <span class="kw">let </span>tick_metrics = tick(Duration::from_secs(<span class="number">5</span>));
 
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
@@ -709,30 +661,9 @@
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.update_ask_operation() {
                         <span class="macro">warn!</span>(<span class="string">&quot;Error in update_ask_operation: {}&quot;</span>, err);
                     };
-                },
-                recv(tick_clear_storage) -&gt; <span class="kw">_ </span>=&gt; {
-                    <span class="self">self</span>.clear_storage();
-                },
-                recv(tick_metrics) -&gt; <span class="kw">_ </span>=&gt; {
-                    <span class="comment">// update metrics
-                    </span><span class="kw">let </span>count: usize = <span class="self">self</span>.stored_operations.values().map(|set| set.len()).sum();
-
-                    <span class="self">self</span>.massa_metrics
-                        .set_retrieval_thread_stored_operations_sum(count);
                 }
             }
         }
-    }
-
-    <span class="kw">fn </span>clear_storage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.stored_operations.retain(|instant, operations| {
-            <span class="kw">if </span>instant.elapsed() &gt; <span class="self">self</span>.config.asked_operations_pruning_period.to_duration() {
-                <span class="self">self</span>.storage.drop_operation_refs(operations);
-                <span class="bool-val">false
-            </span>} <span class="kw">else </span>{
-                <span class="bool-val">true
-            </span>}
-        });
     }
 
     <span class="kw">fn </span>note_operations_from_peer(
@@ -741,32 +672,54 @@
         source_peer_id: <span class="kw-2">&amp;</span>PeerId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_peer&quot;</span>, { <span class="string">&quot;peer&quot;</span>: source_peer_id, <span class="string">&quot;operations&quot;</span>: operations });
-        <span class="kw">let </span>length = operations.len();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_operations = PreHashMap::with_capacity(length);
-        <span class="kw">let </span><span class="kw-2">mut </span>received_ids = PreHashSet::with_capacity(length);
+        <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>new_operations = PreHashMap::with_capacity(operations.len());
         <span class="kw">for </span>operation <span class="kw">in </span>operations {
-            <span class="kw">let </span>operation_id = operation.id;
-            <span class="kw">if </span>operation.serialized_size() &gt; <span class="self">self</span>.config.max_serialized_operations_size_per_block {
+            <span class="comment">// ignore if op is too old
+            </span><span class="kw">let </span>expire_period_timestamp = get_block_slot_timestamp(
+                <span class="self">self</span>.config.thread_count,
+                <span class="self">self</span>.config.t0,
+                <span class="self">self</span>.config.genesis_timestamp,
+                Slot::new(
+                    operation.content.expire_period,
+                    operation
+                        .content_creator_address
+                        .get_thread(<span class="self">self</span>.config.thread_count),
+                ),
+            );
+            <span class="kw">match </span>expire_period_timestamp {
+                <span class="prelude-val">Ok</span>(slot_timestamp) =&gt; {
+                    <span class="kw">if </span>slot_timestamp.saturating_add(<span class="self">self</span>.config.max_operations_propagation_time)
+                        &lt; now
+                    {
+                        <span class="kw">continue</span>;
+                    }
+                }
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
+            }
+
+            <span class="comment">// quit if op is too big
+            </span><span class="kw">if </span>operation.serialized_size() &gt; <span class="self">self</span>.config.max_serialized_operations_size_per_block {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidOperationError(<span class="macro">format!</span>(
                     <span class="string">&quot;Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes&quot;</span>,
-                    operation_id,
+                    operation.id,
                     operation.serialized_size(),
                     <span class="self">self</span>.config.max_serialized_operations_size_per_block
                 )));
             };
-            received_ids.insert(operation_id);
 
-            <span class="comment">// Check operation signature only if not already checked.
-            </span><span class="kw">if </span><span class="self">self
-                </span>.cache
-                .read()
-                .checked_operations
-                .peek(<span class="kw-2">&amp;</span>operation_id)
-                .is_none()
-            {
-                <span class="comment">// check signature if the operation wasn&#39;t in `checked_operation`
-                </span>new_operations.insert(operation_id, operation);
-            };
+            <span class="comment">// add to new operations
+            </span>new_operations.insert(operation.id, operation);
+        }
+
+        <span class="comment">// all valid received ids (not only new ones) for knowledge marking
+        </span><span class="kw">let </span>all_received_ids: PreHashSet&lt;<span class="kw">_</span>&gt; = new_operations.keys().copied().collect();
+
+        <span class="comment">// retain only new ops that are not already known
+        </span>{
+            <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
+            new_operations.retain(|op_id, <span class="kw">_</span>| cache_read.checked_operations.peek(op_id).is_none());
         }
 
         <span class="comment">// optimized signature verification
@@ -799,56 +752,22 @@
                     <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
                     <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
                 };
-            <span class="kw">for </span>id <span class="kw">in </span>received_ids {
+            <span class="kw">for </span>id <span class="kw">in </span>all_received_ids {
                 known_ops.insert(id.prefix(), ());
             }
         }
 
         <span class="kw">if </span>!new_operations.is_empty() {
-            <span class="comment">// Store operation, claim locally
+            <span class="comment">// Store new operations, claim locally
             </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            <span class="comment">// Propagate operations when their expire period isn&#39;t `max_operations_propagation_time` old.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ops_to_propagate = ops.clone();
-            <span class="kw">let </span>operations_to_not_propagate = {
-                <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
-                <span class="kw">let </span>read_operations = ops_to_propagate.read_operations();
-                ops_to_propagate
-                    .get_op_refs()
-                    .iter()
-                    .filter(|op_id| {
-                        <span class="kw">let </span>expire_period =
-                            read_operations.get(op_id).unwrap().content.expire_period;
-                        <span class="kw">let </span>expire_period_timestamp = get_block_slot_timestamp(
-                            <span class="self">self</span>.config.thread_count,
-                            <span class="self">self</span>.config.t0,
-                            <span class="self">self</span>.config.genesis_timestamp,
-                            Slot::new(expire_period, <span class="number">0</span>),
-                        );
-                        <span class="kw">match </span>expire_period_timestamp {
-                            <span class="prelude-val">Ok</span>(slot_timestamp) =&gt; {
-                                slot_timestamp
-                                    .saturating_add(<span class="self">self</span>.config.max_operations_propagation_time)
-                                    &lt; now
-                            }
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-                        }
-                    })
-                    .copied()
-                    .collect()
-            };
-            ops_to_propagate.drop_operation_refs(<span class="kw-2">&amp;</span>operations_to_not_propagate);
-            <span class="kw">let </span>to_announce: PreHashSet&lt;OperationId&gt; =
-                ops_to_propagate.get_op_refs().iter().copied().collect();
-            <span class="self">self</span>.stored_operations
-                .insert(Instant::now(), to_announce.clone());
-            <span class="self">self</span>.storage.extend(ops_to_propagate);
             <span class="self">self</span>.internal_sender
-                .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
-                    to_announce,
+                .try_send(OperationHandlerPropagationCommand::PropagateOperations(
+                    ops.clone(),
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))<span class="question-mark">?</span>;
+
             <span class="comment">// Add to pool
             </span><span class="self">self</span>.pool_controller.add_operations(ops);
         }
@@ -1083,7 +1002,6 @@
             <span class="kw">let </span><span class="kw-2">mut </span>retrieval_thread = RetrievalThread {
                 receiver,
                 pool_controller,
-                stored_operations: HashMap::new(),
                 storage,
                 internal_sender,
                 receiver_ext,
@@ -1100,7 +1018,7 @@
                     .with_operation_message_serializer(OperationMessageSerializer::new()),
                 op_batch_buffer: VecDeque::new(),
                 peer_cmd_sender,
-                massa_metrics,
+                _massa_metrics: massa_metrics,
             };
             retrieval_thread.run();
         })
