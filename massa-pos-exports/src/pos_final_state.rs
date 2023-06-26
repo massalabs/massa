@@ -10,7 +10,7 @@ use massa_db_exports::{
     CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX, CYCLE_HISTORY_SER_ERROR,
     DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
-use massa_hash::Hash;
+use massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::amount::Amount;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
@@ -544,7 +544,11 @@ impl PoSFinalState {
     }
 
     /// Feeds the selector targeting a given draw cycle
-    pub fn feed_cycle_state_hash(&self, cycle: u64, final_state_hash: Hash) {
+    pub fn feed_cycle_state_hash(
+        &self,
+        cycle: u64,
+        final_state_hash: HashXof<HASH_XOF_SIZE_BYTES>,
+    ) {
         if self.get_cycle_index(cycle).is_some() {
             let mut batch = DBBatch::new();
             self.put_cycle_history_final_state_hash_snapshot(
@@ -846,7 +850,10 @@ impl PoSFinalState {
     /// Getter for the final_state_hash_snapshot of a given cycle.
     ///
     /// Panics if the cycle is not in the history.
-    fn get_cycle_history_final_state_hash_snapshot(&self, cycle: u64) -> Option<Hash> {
+    fn get_cycle_history_final_state_hash_snapshot(
+        &self,
+        cycle: u64,
+    ) -> Option<HashXof<HASH_XOF_SIZE_BYTES>> {
         let db = self.db.read();
 
         let serialized_state_hash = db
@@ -1063,7 +1070,7 @@ impl PoSFinalState {
     fn put_cycle_history_final_state_hash_snapshot(
         &self,
         cycle: u64,
-        value: Option<Hash>,
+        value: Option<HashXof<HASH_XOF_SIZE_BYTES>>,
         batch: &mut DBBatch,
     ) {
         let db = self.db.read();
