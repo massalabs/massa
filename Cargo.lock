@@ -374,6 +374,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bn254"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7694a2df5ffc5f2e385503b2987d281abeb80e02f3c30acd7de0d3db18794e73"
+dependencies = [
+ "byteorder",
+ "rand 0.8.5",
+ "sha2 0.10.6",
+ "substrate-bn",
+ "thiserror",
+]
+
+[[package]]
 name = "borsh"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -911,6 +924,12 @@ checksum = "5a22b2d63d4d1dc0b7f1b6b2747dd0088008a9be28b6ddf0b1e7d335e3037294"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "crypto-common"
@@ -2167,6 +2186,9 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+dependencies = [
+ "spin",
+]
 
 [[package]]
 name = "lazycell"
@@ -2407,7 +2429,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=18ec02f#18ec02ff5bccedc64b3788964e9d78ccb9559567"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1#a1afa1ece8933cd717ff14f2562162b10873aa46"
 dependencies = [
  "glob",
  "prost",
@@ -2420,7 +2442,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#45b3cc115fc3c610a4bba24ea9c3a4a375fc515b"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1_thomas2#2a0a0c0f958bfb97fb5bbfa486f86aa56c8c6a92"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2428,13 +2450,12 @@ dependencies = [
  "chrono",
  "displaydoc",
  "function_name",
- "glob",
  "loupe",
+ "massa-proto-rs",
  "more-asserts 0.3.1",
- "num_enum",
+ "num_enum 0.6.1",
  "parking_lot",
  "prost",
- "prost-build",
  "prost-types",
  "rand 0.8.5",
  "regex",
@@ -2558,7 +2579,7 @@ dependencies = [
  "mio",
  "mockall",
  "nom",
- "num_enum",
+ "num_enum 0.5.11",
  "parking_lot",
  "rand 0.8.5",
  "serde",
@@ -2708,8 +2729,10 @@ name = "massa_execution_worker"
 version = "0.23.0"
 dependencies = [
  "anyhow",
+ "bn254",
  "criterion",
  "hex-literal",
+ "massa-proto-rs",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_channel",
@@ -2872,7 +2895,7 @@ dependencies = [
  "massa_models",
  "massa_serialization",
  "nom",
- "num_enum",
+ "num_enum 0.5.11",
  "serde",
  "serde_json",
  "tempfile",
@@ -2932,7 +2955,7 @@ dependencies = [
  "massa_time",
  "nom",
  "num",
- "num_enum",
+ "num_enum 0.5.11",
  "rust_decimal",
  "serde",
  "serde_with",
@@ -2952,7 +2975,7 @@ dependencies = [
  "massa_models",
  "massa_serialization",
  "nom",
- "num_enum",
+ "num_enum 0.5.11",
  "rand 0.8.5",
  "rocksdb",
  "schnellru",
@@ -3076,7 +3099,7 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "nom",
- "num_enum",
+ "num_enum 0.5.11",
  "parking_lot",
  "peernet",
  "rand 0.8.5",
@@ -3122,6 +3145,7 @@ dependencies = [
  "bs58",
  "displaydoc",
  "ed25519-dalek",
+ "massa-proto-rs",
  "massa_hash",
  "massa_serialization",
  "nom",
@@ -3171,7 +3195,7 @@ dependencies = [
  "massa_time",
  "more-asserts 0.3.1",
  "nom",
- "num_enum",
+ "num_enum 0.5.11",
  "parking_lot",
  "tempfile",
  "thiserror",
@@ -3496,7 +3520,16 @@ version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f646caf906c20226733ed5b1374287eb97e3c2a5c227ce668c1f2ce20ae57c9"
 dependencies = [
- "num_enum_derive",
+ "num_enum_derive 0.5.11",
+]
+
+[[package]]
+name = "num_enum"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a015b430d3c108a207fd776d2e2196aaf8b1cf8cf93253e3a097ff3085076a1"
+dependencies = [
+ "num_enum_derive 0.6.1",
 ]
 
 [[package]]
@@ -3509,6 +3542,18 @@ dependencies = [
  "proc-macro2 1.0.60",
  "quote 1.0.28",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96667db765a921f7b295ffee8b60472b686a51d4f21c2ee4ffdb94c7013b65a6"
+dependencies = [
+ "proc-macro-crate 1.3.1",
+ "proc-macro2 1.0.60",
+ "quote 1.0.28",
+ "syn 2.0.18",
 ]
 
 [[package]]
@@ -4397,6 +4442,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
+name = "rustc-hex"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e75f6a532d0fd9f7f13144f392b6ad56a32696bfcd9c78f797f16bbb6f072d6"
+
+[[package]]
 name = "rustix"
 version = "0.36.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4943,6 +4994,19 @@ dependencies = [
  "quote 1.0.28",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "substrate-bn"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b5bbfa79abbae15dd642ea8176a21a635ff3c00059961d1ea27ad04e5b441c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "lazy_static",
+ "rand 0.8.5",
+ "rustc-hex",
 ]
 
 [[package]]

@@ -15,6 +15,8 @@ use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
+use massa_proto_rs::massa::model::v1::NativePubKey;
+use massa_proto_rs::massa::model::v1::NativeSig;
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
@@ -601,6 +603,54 @@ impl Interface for InterfaceImpl {
         };
         let h = massa_hash::Hash::compute_from(data);
         Ok(public_key.verify_signature(&h, &signature).is_ok())
+    }
+
+    /// Verify a massa native signature
+    fn verify_native_signature(
+        &self,
+        signature: NativeSig,
+        message: &[u8],
+        public_key: NativePubKey,
+    ) -> Result<bool> {
+        let signature = match massa_signature::Signature::from_native_sig(&signature) {
+            Ok(sig) => sig,
+            Err(_) => return Ok(false),
+        };
+        let public_key = match massa_signature::PublicKey::from_native_public_key(&public_key) {
+            Ok(pubk) => pubk,
+            Err(_) => return Ok(false),
+        };
+        let h = massa_hash::Hash::compute_from(message);
+        Ok(public_key.verify_signature(&h, &signature).is_ok())
+    }
+
+    /// TODO
+    fn verify_evm_signature(
+        &self,
+        _signature: &[u8],
+        _message: &[u8],
+        _public_key: &[u8],
+    ) -> Result<bool> {
+        Ok(false)
+    }
+
+    /// Verify a bn254 signature
+    ///
+    /// Important information:
+    /// * Provided signature and public key must be in compressed format
+    /// * Signature can be the result of a multi signature aggregation
+    /// * If there is a multi signature, public key must be the result of public key pairing
+    fn verify_bn254_signature(
+        &self,
+        signature: &[u8],
+        message: &[u8],
+        public_key: &[u8],
+    ) -> Result<bool> {
+        let sig = bn254::Signature::from_compressed(signature)?;
+        let pk = bn254::PublicKey::from_compressed(public_key)?;
+        Ok(bn254::ECDSA::verify(message, &sig, &pk)
+            .map_err(|_| anyhow!("Signature verification failed"))
+            .is_ok())
     }
 
     /// Transfer coins from the current address (top of the call stack) towards a target address.

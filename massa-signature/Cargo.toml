@@ -16,6 +16,7 @@ nom = "=7.1"
 rand = "0.7"
 # TODO tag transition crate with a version number
 transition = { git = "https://github.com/massalabs/transition.git", rev = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "feature/Improve_ABI_types_in_wasmv1", features = ["tonic"] }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
