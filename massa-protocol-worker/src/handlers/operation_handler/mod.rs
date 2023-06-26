@@ -62,11 +62,17 @@ impl OperationHandler {
             receiver_retrieval_ext,
             local_sender.clone(),
             peer_cmd_sender,
-            massa_metrics,
+            massa_metrics.clone(),
         );
 
-        let operation_propagation_thread =
-            start_propagation_thread(local_receiver, active_connections, config, cache);
+        let operation_propagation_thread = start_propagation_thread(
+            local_receiver,
+            active_connections,
+            config,
+            cache,
+            storage.clone_without_refs(),
+            massa_metrics,
+        );
         Self {
             operation_retrieval_thread: Some((sender_retrieval_ext, operation_retrieval_thread)),
             operation_propagation_thread: Some((local_sender, operation_propagation_thread)),
