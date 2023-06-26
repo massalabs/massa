@@ -1164,7 +1164,7 @@
 <span class="attr">#[doc(hidden)]
 #[async_trait]
 </span><span class="kw">impl </span>MassaRpcServer <span class="kw">for </span>API&lt;Public&gt; {
-    <span class="kw">async fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
+    <span class="kw">fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 

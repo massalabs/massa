@@ -430,8 +430,7 @@
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>serde_json::Value;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
-<span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>tokio::sync::mpsc;
+<span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 <span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 <span class="kw">use </span>tracing::{info, warn};
 
@@ -474,8 +473,9 @@
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,
-    <span class="doccomment">/// stop channel
-    </span><span class="kw">pub </span>stop_node_channel: mpsc::Sender&lt;()&gt;,
+    <span class="doccomment">/// Mechanism by which to gracefully shut down.
+    /// To be a clone of the same pair provided to the ctrlc handler.
+    </span><span class="kw">pub </span>stop_cv: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
     <span class="doccomment">/// User wallet
     </span><span class="kw">pub </span>node_wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
 }
@@ -602,7 +602,7 @@
 </span><span class="kw">pub trait </span>MassaRpc {
     <span class="doccomment">/// Gracefully stop the node.
     </span><span class="attr">#[method(name = <span class="string">&quot;stop_node&quot;</span>)]
-    </span><span class="kw">async fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt;;
+    </span><span class="kw">fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Sign message with node&#39;s key.
     /// Returns the public key that signed the message and the signature.

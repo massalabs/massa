@@ -127,6 +127,9 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::slot::Slot;
@@ -147,6 +150,8 @@
     </span><span class="kw">pub </span>final_executed_operations_count: usize,
     <span class="doccomment">/// active execution cursor slot
     </span><span class="kw">pub </span>active_cursor: Slot,
+    <span class="doccomment">/// final execution cursor slot
+    </span><span class="kw">pub </span>final_cursor: Slot,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>ExecutionStats {
@@ -173,6 +178,7 @@
             <span class="self">self</span>.final_executed_operations_count
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(f, <span class="string">&quot;\tActive cursor: {}&quot;</span>, <span class="self">self</span>.active_cursor)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tFinal cursor: {}&quot;</span>, <span class="self">self</span>.final_cursor)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
