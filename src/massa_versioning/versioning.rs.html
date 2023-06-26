@@ -2243,6 +2243,8 @@
 <a href="#2243" id="2243">2243</a>
 <a href="#2244" id="2244">2244</a>
 <a href="#2245" id="2245">2245</a>
+<a href="#2246" id="2246">2246</a>
+<a href="#2247" id="2247">2247</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -3344,6 +3346,8 @@
                     <span class="kw">match </span>state_id {
                         ComponentStateTypeId::Active =&gt; {
                             batch.insert(key.clone(), <span class="prelude-val">Some</span>(value.clone()));
+                            <span class="comment">// + &quot;Remove key&quot; in VERSIONING_CF
+                            </span>versioning_batch.insert(key.clone(), <span class="prelude-val">None</span>);
                         }
                         <span class="kw">_ </span>=&gt; {
                             versioning_batch.insert(key.clone(), <span class="prelude-val">Some</span>(value.clone()));
@@ -4397,8 +4401,8 @@
             .update_batches(<span class="kw-2">&amp;mut </span>db_batch, <span class="kw-2">&amp;mut </span>db_versioning_batch, between)
             .unwrap();
 
-        <span class="macro">assert_eq!</span>(db_batch.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(db_versioning_batch.len(), <span class="number">2</span>); <span class="comment">// + stats
+        <span class="macro">assert_eq!</span>(db_batch.len(), <span class="number">1</span>); <span class="comment">// mi_1
+        </span><span class="macro">assert_eq!</span>(db_versioning_batch.len(), <span class="number">3</span>); <span class="comment">// mi_2 + mi_1 removal + stats
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>guard_db = db.write();
         <span class="comment">// FIXME / TODO: no slot hardcoding?

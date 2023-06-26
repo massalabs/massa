@@ -135,6 +135,8 @@
             </span>.operations
             .try_insert(operation.id, Box::new(operation))
         {
+            massa_metrics::inc_operations_counter();
+
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(o.content_creator_address)
@@ -145,8 +147,6 @@
                 .entry(o.id.prefix())
                 .or_default()
                 .insert(o.id);
-
-            massa_metrics::set_operations_counter(<span class="self">self</span>.operations.len());
         }
     }
 
@@ -158,7 +158,7 @@
         operation_id: <span class="kw-2">&amp;</span>OperationId,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;SecureShareOperation&gt;&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(o) = <span class="self">self</span>.operations.remove(operation_id) {
-            massa_metrics::set_operations_counter(<span class="self">self</span>.operations.len());
+            massa_metrics::dec_operations_counter();
 
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
