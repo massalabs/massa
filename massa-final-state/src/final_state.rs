@@ -129,7 +129,7 @@ impl FinalState {
         info!(
             "final_state hash at slot {}: {}",
             slot,
-            final_state.db.read().get_db_hash()
+            final_state.db.read().get_xof_db_hash()
         );
 
         // create the final state
@@ -221,7 +221,7 @@ impl FinalState {
         info!(
             "final_state hash at slot {}: {}",
             recovered_slot,
-            final_state.db.read().get_db_hash()
+            final_state.db.read().get_xof_db_hash()
         );
 
         // Then, interpolate the downtime, to attach at end_slot;
@@ -266,7 +266,7 @@ impl FinalState {
         }
 
         // Recompute the hash with the updated data and feed it to POS_state.
-        let final_state_hash = self.db.read().get_db_hash();
+        let final_state_hash = self.db.read().get_xof_db_hash();
 
         info!(
             "final_state hash at slot {}: {}",
@@ -484,7 +484,7 @@ impl FinalState {
         &mut self,
         cycle: u64,
     ) -> Result<(), FinalStateError> {
-        let final_state_hash = self.db.read().get_db_hash();
+        let final_state_hash = self.db.read().get_xof_db_hash();
 
         self.pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
@@ -568,7 +568,7 @@ impl FinalState {
             .write()
             .write_batch(db_batch, Default::default(), Some(slot));
 
-        let final_state_hash = self.db.read().get_db_hash();
+        let final_state_hash = self.db.read().get_xof_db_hash();
 
         // compute the final state hash
         info!("final_state hash at slot {}: {}", slot, final_state_hash);

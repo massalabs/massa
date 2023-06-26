@@ -339,7 +339,7 @@ fn test_bootstrap_server() {
             .write()
             .write_batch(batch, Default::default(), Some(next));
 
-        let final_state_hash = final_write.db.read().get_db_hash();
+        let final_state_hash = final_write.db.read().get_xof_db_hash();
         let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
@@ -482,7 +482,7 @@ fn test_bootstrap_server() {
                     .write()
                     .write_batch(batch, Default::default(), Some(next));
 
-                let final_state_hash = final_write.db.read().get_db_hash();
+                let final_state_hash = final_write.db.read().get_xof_db_hash();
                 let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state

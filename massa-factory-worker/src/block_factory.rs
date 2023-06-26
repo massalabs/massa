@@ -144,10 +144,34 @@ impl BlockFactoryWorker {
             // the selected block producer is not managed locally => quit
             return;
         };
+        let mut block_storage = self.channels.storage.clone_without_refs();
+        {
+            let block_lock = block_storage.read_blocks();
+            if let Some(block_ids) = block_lock.get_blocks_by_slot(&slot) {
+                for block_id in block_ids {
+                    if let Some(block) = block_lock.get(block_id) {
+                        if block.content_creator_address == block_producer_addr {
+                            panic!("You already created a block for slot {} with address {}, node is stopping to prevent you from losing all your stake due to double staking protection", slot, block_producer_addr);
+                        }
+                    }
+                }
+            }
+        }
+
+        // check if we need to have connections to produce a block and in this case, check if we have enough.
+        #[cfg(not(feature = "sandbox"))]
+        if self.cfg.stop_production_when_zero_connections {
+            if let Ok(stats) = self.channels.protocol.get_stats() {
+                if stats.1.is_empty() {
+                    warn!("block factory could not produce block for slot {} because there are no connections", slot);
+                    return;
+                }
+            }
+        }
+
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
-        let mut block_storage = self.channels.storage.clone_without_refs();
 
         // claim block parents in local storage
         {

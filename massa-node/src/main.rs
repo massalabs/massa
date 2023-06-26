@@ -11,7 +11,6 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::TryRecvError;
-// use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
@@ -483,6 +482,7 @@ async fn launch(
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
+        node_wallet.clone(),
         metrics.clone(),
     );
 
@@ -553,7 +553,6 @@ async fn launch(
             .protocol
             .operation_announcement_buffer_capacity,
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
-        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
         operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
@@ -564,6 +563,7 @@ async fn launch(
         t0: T0,
         endorsement_count: ENDORSEMENT_COUNT,
         max_message_size: MAX_MESSAGE_SIZE as usize,
+        max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().last_start_period,
@@ -707,6 +707,9 @@ async fn launch(
         last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        stop_production_when_zero_connections: SETTINGS
+            .factory
+            .stop_production_when_zero_connections,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

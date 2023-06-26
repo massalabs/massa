@@ -116,9 +116,12 @@ impl BootstrapManager {
             .join()
             .expect("in BootstrapManager::stop() joining on updater thread")?;
 
-        self.main_handle
+        let res = self
+            .main_handle
             .join()
-            .expect("in BootstrapManager::stop() joining on bootstrap main-loop thread")
+            .expect("in BootstrapManager::stop() joining on bootstrap main-loop thread");
+        info!("bootstrap server stopped");
+        res
     }
 }
 
