@@ -284,8 +284,8 @@
     Balance = <span class="number">0</span>,
     Bytecode = <span class="number">1</span>,
     Datastore = <span class="number">2</span>,
-    Version = <span class="number">3
-</span>}
+    Version = <span class="number">3</span>,
+}
 
 <span class="attr">#[derive(PartialEq, Eq, Clone, Debug)]
 </span><span class="kw">pub enum </span>KeyType {
@@ -375,7 +375,7 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>[], KeyType::DATASTORE(rest.to_vec())))
                 }
-            },
+            }
             <span class="prelude-val">Ok</span>(KeyTypeId::Version) =&gt; <span class="prelude-val">Ok</span>((rest, KeyType::VERSION)),
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(
                 rest,
