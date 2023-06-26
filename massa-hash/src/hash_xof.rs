@@ -6,6 +6,8 @@ use nom::{
     IResult,
 };
 
+use crate::Hash;
+
 /// Extended Hash
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct HashXof<const SIZE: usize>(pub [u8; SIZE]);
@@ -85,7 +87,7 @@ impl<const SIZE: usize> BitXor for HashXof<SIZE> {
 
 impl<const SIZE: usize> std::fmt::Display for HashXof<SIZE> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        write!(f, "{}", Hash::compute_from(self.to_bytes()).to_bs58_check())
     }
 }
 
