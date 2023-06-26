@@ -117,7 +117,7 @@ impl LedgerController for FinalLedger {
     /// true if it exists, false otherwise.
     fn entry_exists(&self, addr: &Address) -> bool {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::Version)
             .is_some()
     }
 

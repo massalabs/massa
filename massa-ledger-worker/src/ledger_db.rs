@@ -12,7 +12,7 @@ use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer, U64VarIntDeserializer};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -27,6 +27,8 @@ pub enum LedgerSubEntry {
     Bytecode,
     /// Datastore entry
     Datastore(Vec<u8>),
+    /// Version
+    Version,
 }
 
 impl LedgerSubEntry {
@@ -35,6 +37,7 @@ impl LedgerSubEntry {
             LedgerSubEntry::Balance => Key::new(addr, KeyType::BALANCE),
             LedgerSubEntry::Bytecode => Key::new(addr, KeyType::BYTECODE),
             LedgerSubEntry::Datastore(hash) => Key::new(addr, KeyType::DATASTORE(hash.to_vec())),
+            LedgerSubEntry::Version => Key::new(addr, KeyType::VERSION),
         }
     }
 }
@@ -48,6 +51,8 @@ pub struct LedgerDB {
     key_serializer_db: KeySerializer,
     key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
+    version_serializer: U64VarIntSerializer,
+    version_deserializer: U64VarIntDeserializer,
     bytecode_serializer: BytecodeSerializer,
     amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
@@ -84,6 +89,8 @@ impl LedgerDB {
                 Bound::Included(Amount::MAX),
             ),
             bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
+            version_serializer: U64VarIntSerializer::new(),
+            version_deserializer: U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX)),
             max_datastore_value_length,
         }
     }
@@ -227,6 +234,14 @@ impl LedgerDB {
                     return false;
                 }
             }
+            KeyType::VERSION => {
+                let Ok((rest, _version)) = self.version_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
         }
 
         true
@@ -244,6 +259,18 @@ impl LedgerDB {
     fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
         let db = self.db.read();
 
+        // Version
+        //TODO: Get version number from parameters
+        let mut bytes_version = Vec::new();
+        self.version_serializer
+            .serialize(&0, &mut bytes_version)
+            .unwrap();
+        let mut serialized_key = Vec::new();
+        self.key_serializer_db
+            .serialize(&Key::new(addr, KeyType::VERSION), &mut serialized_key)
+            .expect(KEY_SER_ERROR);
+        db.put_or_update_entry_value(batch, serialized_key, &bytes_version);
+    
         // Amount serialization never fails
         let mut bytes_balance = Vec::new();
         self.amount_serializer
@@ -344,6 +371,13 @@ impl LedgerDB {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
         let db = self.db.read();
+
+        // version
+        let mut serialized_key = Vec::new();
+        self.key_serializer_db
+            .serialize(&Key::new(addr, KeyType::VERSION), &mut serialized_key)
+            .expect(KEY_SER_ERROR);
+        db.delete_key(batch, serialized_key);
 
         // balance
         let mut serialized_key = Vec::new();
@@ -540,6 +574,9 @@ mod tests {
         // check initial state and entry update
         assert!(ledger_db
             .get_sub_entry(&addr, LedgerSubEntry::Balance)
+            .is_some());
+        assert!(ledger_db
+            .get_sub_entry(&addr, LedgerSubEntry::Version)
             .is_some());
         assert_eq!(
             amount_deserializer

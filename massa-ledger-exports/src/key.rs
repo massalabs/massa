@@ -21,6 +21,7 @@ enum KeyTypeId {
     Balance = 0,
     Bytecode = 1,
     Datastore = 2,
+    Version = 3
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -28,6 +29,7 @@ pub enum KeyType {
     BALANCE,
     BYTECODE,
     DATASTORE(Vec<u8>),
+    VERSION,
 }
 
 #[derive(Default, Clone)]
@@ -66,6 +68,7 @@ impl Serializer<KeyType> for KeyTypeSerializer {
                     buffer.extend(data);
                 }
             }
+            KeyType::VERSION => buffer.extend(&[u8::from(KeyTypeId::Version)]),
         }
         Ok(())
     }
@@ -109,7 +112,8 @@ impl Deserializer<KeyType> for KeyTypeDeserializer {
                 } else {
                     Ok((&[], KeyType::DATASTORE(rest.to_vec())))
                 }
-            }
+            },
+            Ok(KeyTypeId::Version) => Ok((rest, KeyType::VERSION)),
             Err(_) => Err(nom::Err::Error(E::from_error_kind(
                 rest,
                 nom::error::ErrorKind::Tag,
