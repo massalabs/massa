@@ -219,6 +219,17 @@
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -376,6 +387,17 @@
         <span class="comment">// quit if there is nothing to produce
         </span><span class="kw">if </span>producers_indices.is_empty() {
             <span class="kw">return</span>;
+        }
+
+        <span class="comment">// check if we need to have connections to produce a block and in this case, check if we have enough.
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
+        </span><span class="kw">if </span><span class="self">self</span>.cfg.stop_production_when_zero_connections {
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(stats) = <span class="self">self</span>.channels.protocol.get_stats() {
+                <span class="kw">if </span>stats.<span class="number">1</span>.is_empty() {
+                    <span class="macro">warn!</span>(<span class="string">&quot;endorsement factory could not produce endorsement for slot {} because there are no connections&quot;</span>, slot);
+                    <span class="kw">return</span>;
+                }
+            }
         }
 
         <span class="comment">// get consensus block ID for that slot

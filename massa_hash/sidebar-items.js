@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["HASH_SIZE_BYTES"],"enum":["MassaHashError"],"mod":["error","hash","settings"],"struct":["Hash","HashDeserializer","HashSerializer","SmtHasher"]};
+window.SIDEBAR_ITEMS = {"constant":["HASH_SIZE_BYTES","XOF_HASH_SIZE_BYTES"],"enum":["MassaHashError"],"mod":["error","hash","settings"],"struct":["Hash","HashDeserializer","HashSerializer","SmtHasher"]};

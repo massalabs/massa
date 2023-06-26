@@ -30,13 +30,6 @@
 <a href="#30" id="30">30</a>
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the factory settings
@@ -48,32 +41,25 @@
 </span><span class="kw">pub struct </span>FactoryConfig {
     <span class="doccomment">/// number of threads
     </span><span class="kw">pub </span>thread_count: u8,
-
     <span class="doccomment">/// genesis timestamp
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
-
     <span class="doccomment">/// period duration
     </span><span class="kw">pub </span>t0: MassaTime,
-
     <span class="doccomment">/// initial delay before starting production, to avoid double-production on node restart
     </span><span class="kw">pub </span>initial_delay: MassaTime,
-
     <span class="doccomment">/// maximal block size in bytes
     </span><span class="kw">pub </span>max_block_size: u64,
-
     <span class="doccomment">/// maximal block gas
     </span><span class="kw">pub </span>max_block_gas: u64,
-
     <span class="doccomment">/// maximum number of operation ids in block
     </span><span class="kw">pub </span>max_operations_per_block: u32,
-
     <span class="doccomment">/// last start period, to deduce genesis blocks
     </span><span class="kw">pub </span>last_start_period: u64,
-
     <span class="doccomment">/// cycle duration in periods
     </span><span class="kw">pub </span>periods_per_cycle: u64,
-
     <span class="doccomment">/// denunciation expiration as periods
     </span><span class="kw">pub </span>denunciation_expire_periods: u64,
+    <span class="doccomment">/// choose whether to stop production when zero connections on protocol
+    </span><span class="kw">pub </span>stop_production_when_zero_connections: bool,
 }
 </code></pre></div></section></main></body></html>

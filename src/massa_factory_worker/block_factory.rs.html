@@ -268,6 +268,30 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -414,12 +438,36 @@
             <span class="comment">// the selected block producer is not managed locally =&gt; quit
             </span><span class="kw">return</span>;
         };
+        <span class="kw">let </span><span class="kw-2">mut </span>block_storage = <span class="self">self</span>.channels.storage.clone_without_refs();
+        {
+            <span class="kw">let </span>block_lock = block_storage.read_blocks();
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(block_ids) = block_lock.get_blocks_by_slot(<span class="kw-2">&amp;</span>slot) {
+                <span class="kw">for </span>block_id <span class="kw">in </span>block_ids {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = block_lock.get(block_id) {
+                        <span class="kw">if </span>block.content_creator_address == block_producer_addr {
+                            <span class="macro">panic!</span>(<span class="string">&quot;You already created a block for slot {} with address {}, node is stopping to prevent you from losing all your stake due to double staking protection&quot;</span>, slot, block_producer_addr);
+                        }
+                    }
+                }
+            }
+        }
+
+        <span class="comment">// check if we need to have connections to produce a block and in this case, check if we have enough.
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
+        </span><span class="kw">if </span><span class="self">self</span>.cfg.stop_production_when_zero_connections {
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(stats) = <span class="self">self</span>.channels.protocol.get_stats() {
+                <span class="kw">if </span>stats.<span class="number">1</span>.is_empty() {
+                    <span class="macro">warn!</span>(<span class="string">&quot;block factory could not produce block for slot {} because there are no connections&quot;</span>, slot);
+                    <span class="kw">return</span>;
+                }
+            }
+        }
+
         <span class="comment">// get best parents and their periods
         </span><span class="kw">let </span>parents: Vec&lt;(BlockId, u64)&gt; = <span class="self">self</span>.channels.consensus.get_best_parents(); <span class="comment">// Vec&lt;(parent_id, parent_period)&gt;
                                                                                        // generate the local storage object
-        </span><span class="kw">let </span><span class="kw-2">mut </span>block_storage = <span class="self">self</span>.channels.storage.clone_without_refs();
 
-        <span class="comment">// claim block parents in local storage
+        // claim block parents in local storage
         </span>{
             <span class="kw">let </span>claimed_parents = block_storage.claim_block_refs(
                 <span class="kw-2">&amp;</span>parents

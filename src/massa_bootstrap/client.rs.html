@@ -650,21 +650,8 @@
 <a href="#650" id="650">650</a>
 <a href="#651" id="651">651</a>
 <a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
-<span class="kw">use </span>massa_db::DBBatch;
+<span class="kw">use </span>massa_db_exports::DBBatch;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -693,9 +680,6 @@
     settings::IpType,
     BootstrapConfig, GlobalBootstrapState,
 };
-
-<span class="attr">#[cfg(not(test))]
-</span><span class="kw">use </span>massa_db::CHANGE_ID_DESER_ERROR;
 
 <span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
 </span><span class="attr">#[cfg_attr(test, mockall::automock)]
@@ -829,28 +813,6 @@
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))<span class="question-mark">?</span>;
 
                     warn_user_about_versioning_updates(updated, added);
-
-                    <span class="attr">#[cfg(not(test))]
-                    </span>{
-                        <span class="comment">// Compute the db hash
-                        </span><span class="macro">info!</span>(<span class="string">&quot;Computing the db hash&quot;</span>);
-                        <span class="kw">let </span>slot = guard
-                            .db
-                            .read()
-                            .get_change_id()
-                            .expect(CHANGE_ID_DESER_ERROR);
-                        <span class="kw">let </span>only_use_xor = guard.get_only_use_xor(<span class="kw-2">&amp;</span>slot);
-                        guard
-                            .db
-                            .write()
-                            .recompute_db_hash(only_use_xor)
-                            .map_err(|e| {
-                                BootstrapError::from(FinalStateError::LedgerError(<span class="macro">format!</span>(
-                                    <span class="string">&quot;Can&#39;t recompute hashes: {}&quot;</span>,
-                                    e
-                                )))
-                            })<span class="question-mark">?</span>;
-                    }
 
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
@@ -1041,6 +1003,7 @@
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
     pub_key: <span class="kw-2">&amp;</span>PublicKey,
+    rw_limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapClientBinder, BootstrapError&gt; {
     <span class="kw">let </span>socket = connector.connect_timeout(<span class="kw-2">*</span>addr, <span class="prelude-val">Some</span>(bootstrap_config.connect_timeout))<span class="question-mark">?</span>;
     socket.set_nonblocking(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
@@ -1048,6 +1011,7 @@
         socket,
         <span class="kw-2">*</span>pub_key,
         bootstrap_config.into(),
+        rw_limit,
     ))
 }
 
@@ -1106,13 +1070,11 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
 
-            <span class="kw">let </span>only_use_xor = final_state_guard.get_only_use_xor(<span class="kw-2">&amp;</span>Slot::new(<span class="number">0</span>, <span class="number">31</span>));
-
             <span class="kw">if </span>!bootstrap_config.keep_ledger {
                 <span class="comment">// load ledger from initial ledger file
                 </span>final_state_guard
                     .ledger
-                    .load_initial_ledger(only_use_xor)
+                    .load_initial_ledger()
                     .map_err(|err| {
                         BootstrapError::GeneralError(<span class="macro">format!</span>(
                             <span class="string">&quot;could not load initial ledger: {}&quot;</span>,
@@ -1131,12 +1093,10 @@
             );
 
             <span class="comment">// TODO: should receive ver batch here?
-            </span>final_state_guard.db.write().write_batch(
-                batch,
-                Default::default(),
-                <span class="prelude-val">Some</span>(slot),
-                only_use_xor,
-            );
+            </span>final_state_guard
+                .db
+                .write()
+                .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(slot));
         }
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
@@ -1155,6 +1115,7 @@
         };
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
+    <span class="kw">let </span>limit = bootstrap_config.max_bytes_read_write;
     <span class="kw">loop </span>{
         <span class="comment">// check for interuption
         </span><span class="kw">if </span><span class="kw-2">*</span>interupted.<span class="number">0</span>.lock().expect(<span class="string">&quot;double-lock on interupt-mutex&quot;</span>) {
@@ -1169,25 +1130,38 @@
                 }
             }
             <span class="macro">info!</span>(<span class="string">&quot;Start bootstrapping from {}&quot;</span>, addr);
-            <span class="kw">match </span>connect_to_server(
+            <span class="kw">let </span>conn = connect_to_server(
                 <span class="kw-2">&amp;mut </span>connector,
                 bootstrap_config,
                 addr,
                 <span class="kw-2">&amp;</span>node_id.get_public_key(),
-            ) {
+                <span class="prelude-val">Some</span>(limit),
+            );
+            <span class="kw">match </span>conn {
                 <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>client) =&gt; {
-                    <span class="kw">match </span>bootstrap_from_server(bootstrap_config, <span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;mut </span>next_bootstrap_message, <span class="kw-2">&amp;mut </span>global_bootstrap_state,version)
-                      <span class="comment">// cancellable
-                    </span>{
-                        <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, error),
+                    <span class="kw">let </span>bs = bootstrap_from_server(
+                        bootstrap_config,
+                        <span class="kw-2">&amp;mut </span>client,
+                        <span class="kw-2">&amp;mut </span>next_bootstrap_message,
+                        <span class="kw-2">&amp;mut </span>global_bootstrap_state,
+                        version,
+                    );
+                    <span class="comment">// cancellable
+                    </span><span class="kw">match </span>bs {
+                        <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; {
+                            <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, error)
+                        }
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">warn!</span>(<span class="string">&quot;Error while bootstrapping: {}&quot;</span>, e);
+                            <span class="macro">warn!</span>(<span class="string">&quot;Error while bootstrapping: {}&quot;</span>, <span class="kw-2">&amp;</span>e);
                             <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
-                            </span><span class="kw">let _ </span>= client.send_timeout(<span class="kw-2">&amp;</span>BootstrapClientMessage::BootstrapError { error: e.to_string() }, <span class="prelude-val">Some</span>(bootstrap_config.write_error_timeout.into()));
+                            </span><span class="kw">let _ </span>= client.send_timeout(
+                                <span class="kw-2">&amp;</span>BootstrapClientMessage::BootstrapError {
+                                    error: e.to_string(),
+                                },
+                                <span class="prelude-val">Some</span>(bootstrap_config.write_error_timeout.into()),
+                            );
                         }
-                        <span class="prelude-val">Ok</span>(()) =&gt; {
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(global_bootstrap_state)
-                        }
+                        <span class="prelude-val">Ok</span>(()) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(global_bootstrap_state),
                     }
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; {
