@@ -155,6 +155,10 @@
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{BitXor, BitXorAssign};
 
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
@@ -214,13 +218,17 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXorAssign <span class="kw">for </span>HashXof&lt;SIZE&gt; {
+<span class="comment">// To use this xor operator you must ensure that you have all the criteria listed here : 
+// https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXorAssign <span class="kw">for </span>HashXof&lt;SIZE&gt; {
     <span class="kw">fn </span>bitxor_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: <span class="self">Self</span>) {
         <span class="kw-2">*</span><span class="self">self </span>= <span class="kw-2">*</span><span class="self">self </span>^ rhs;
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXor <span class="kw">for </span>HashXof&lt;SIZE&gt; {
+<span class="comment">// To use this xor operator you must ensure that you have all the criteria listed here : 
+// https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXor <span class="kw">for </span>HashXof&lt;SIZE&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>bitxor(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
