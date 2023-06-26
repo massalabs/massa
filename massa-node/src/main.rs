@@ -1195,6 +1195,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
     // })
     // .expect("Error setting Ctrl-C handler");
 
+    #[cfg(feature = "resync_check")]
+    let mut resync_check = Some(std::time::Instant::now() + std::time::Duration::from_secs(10));
+
     loop {
         let (
             consensus_event_receiver,
@@ -1261,6 +1264,15 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 }
                 _ => {}
             }
+            #[cfg(feature = "resync_check")]
+            if let Some(resync_moment) = resync_check {
+                if resync_moment < std::time::Instant::now() {
+                    warn!("resync check triggered");
+                    resync_check = None;
+                    break true;
+                }
+            }
+
             sleep(Duration::from_millis(100));
         };
         stop(

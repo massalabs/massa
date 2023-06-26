@@ -61,6 +61,8 @@ massa_signature = { path = "../massa-signature", optional = true }
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 beta = []
+# 10s after initiating the first launch, will re-launch as if the node was signalled with `NeedsResync`
+resync_check = []
 deadlock_detection = []
 op_spammer = ["rand", "massa_signature"]
 bootstrap_server = ["massa_consensus_worker/bootstrap_server"]
