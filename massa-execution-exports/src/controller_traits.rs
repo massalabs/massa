@@ -2,7 +2,7 @@
 
 //! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-use crate::types::ReadOnlyExecutionRequest;
+use crate::types::{ReadOnlyExecutionRequest, ExecutionQueryRequest, ExecutionQueryResponse};
 use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
@@ -34,6 +34,9 @@ pub trait ExecutionController: Send + Sync {
         new_blockclique: Option<HashMap<Slot, BlockId>>,
         block_storage: PreHashMap<BlockId, Storage>,
     );
+
+    /// Atomically query the execution state with multiple requests
+    fn query_state(&self, req: ExecutionQueryRequest) -> ExecutionQueryResponse;
 
     /// Get execution events optionally filtered by:
     /// * start slot

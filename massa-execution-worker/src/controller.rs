@@ -8,7 +8,7 @@ use crate::request_queue::{RequestQueue, RequestWithResponseSender};
 use massa_channel::MassaChannel;
 use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ExecutionQueryRequest, ExecutionQueryResponse,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
@@ -125,6 +125,12 @@ impl ExecutionController for ExecutionControllerImpl {
 
         // wake up VM loop
         self.input_data.0.notify_one();
+    }
+
+    /// Atomically query the execution state with multiple requests
+    fn query_state(&self, _req: ExecutionQueryRequest) -> ExecutionQueryResponse {
+        unimplemented!("query_state");
+        //TODO
     }
 
     /// Get the generated execution events, optionally filtered by:

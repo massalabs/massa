@@ -2,6 +2,7 @@
 
 //! This file defines utilities to mock the crate for testing purposes
 
+use crate::types::{ExecutionQueryRequest, ExecutionQueryResponse};
 use crate::{
     ExecutionAddressInfo, ExecutionController, ExecutionError, ReadOnlyExecutionOutput,
     ReadOnlyExecutionRequest,
@@ -146,6 +147,11 @@ impl ExecutionController for MockExecutionController {
                 block_storage,
             })
             .unwrap();
+    }
+
+    fn query_state(&self, _req: ExecutionQueryRequest) -> ExecutionQueryResponse {
+        unimplemented!("mocked execution controller does not support query_state for now");
+        //TODO
     }
 
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {

@@ -3,13 +3,157 @@
 //! This file exports useful types used to interact with the execution worker
 
 use crate::event_store::EventStore;
+use crate::error::ExecutionError;
 use massa_final_state::StateChanges;
 use massa_models::datastore::Datastore;
+use massa_models::denunciation::DenunciationIndex;
+use massa_models::execution::EventFilter;
+use massa_models::operation::OperationId;
+use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::{PreHashSet, PreHashMap};
 use massa_models::{
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
     slot::Slot,
 };
 use std::collections::{BTreeMap, BTreeSet};
+
+/// Request to atomically execute a batch of execution state queries
+pub struct ExecutionQueryRequest {
+    requests: Vec<ExecutionQueryRequestItem>,
+}
+
+/// Response to a list of execution queries
+pub struct ExecutionQueryResponse {
+    pub responses: Vec<Result<ExecutionQueryResponseItem, ExecutionError>>,
+    pub final_cursor: Slot,
+    pub candidate_cursor: Slot
+}
+
+/// Execution state query item
+pub enum ExecutionQueryRequestItem {
+    /// checks if address exists (candidate) returns ExecutionQueryResponseItem::Boolean(true) if it does
+    AddressExistsCandidate(Address),
+    /// checks if address exists (finak) returns ExecutionQueryResponseItem::Boolean(true) if it does
+    AddressExistsFinal(Address),
+    /// gets the balance (candidate) of an address, returns ExecutionQueryResponseItem::Amount(balance) or an error if the address is not found
+    AddressBalanceCandidate(Address),
+    /// gets the balance (final) of an address, returns ExecutionQueryResponseItem::Amount(balance) or an error if the address is not found
+    AddressBalanceFinal(Address),
+    /// gets the bytecode (candidate) of an address, returns ExecutionQueryResponseItem::Bytes(bytecode) or an error if the address is not found
+    AddressBytecodeCandidate(Address),
+    /// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytes(bytecode) or an error if the address is not found
+    AddressBytecodeFinal(Address),
+    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::VecBytes(keys) or an error if the address is not found
+    AddressDatastoreKeysCandidate {
+        addr: Address,
+        prefix: Vec<u8>,
+    },
+    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::VecBytes(keys) or an error if the address is not found
+    AddressDatastoreKeysFinal {
+        addr: Address,
+        prefix: Vec<u8>,
+    },
+    /// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::Bytes(keys) or an error if the address or key is not found
+    AddressDatastoreValueCandidate {
+        addr: Address,
+        key: Vec<u8>,
+    },
+    /// gets a datastore value (final) for an address, returns ExecutionQueryResponseItem::Bytes(keys) or an error if the address or key is not found
+    AddressDatastoreValueFinal {
+        addr: Address,
+        key: Vec<u8>,
+    },
+
+    /// gets the execution status (candidate) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    OpExecutionStatusCandidate(OperationId),
+    /// gets the execution status (final) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    OpExecutionStatusFinal(OperationId),
+    /// gets the execution status (candidate) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    DenunciationExecutionStatusCandidate(DenunciationIndex),
+    /// gets the execution status (final) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    DenunciationExecutionStatusFinal(DenunciationIndex),
+
+    /// gets the roll count (candidate) of an address, returns ExecutionQueryResponseItem::RollCount(rolls) or an error if the address is not found
+    AddressRollsCandidate(Address),
+    /// gets the roll count (final) of an address, returns ExecutionQueryResponseItem::RollCount(rolls) or an error if the address is not found
+    AddressRollsFinal(Address),
+    /// gets the deferred credits (candidate) of an address, returns ExecutionQueryResponseItem::DeferredCredits(deferred_credits) or an error if the address is not found
+    AddressDeferredCreditsCandidate(Address),
+    /// gets the deferred credits (final) of an address, returns ExecutionQueryResponseItem::DeferredCredits(deferred_credits) or an error if the address is not found
+    AddressDeferredCreditsFinal(Address),
+
+    // get all information for a given cycle, returns ExecutionQueryResponseItem::CycleInfos(cycle_infos) or an error if the cycle is not found
+    CycleInfos {
+        /// cycle to query
+        cycle: u64,
+        /// optionally restrict the query to a set of addresses. If None, the info for all addresses will be returned.
+        restrict_to_addresses: Option<PreHashSet<Address>>,
+    },
+
+    /// get filtered events. Returns ExecutionQueryResponseItem::Events
+    Events(EventFilter)
+}
+
+/// Execution state query response item
+ pub enum ExecutionQueryResponseItem {
+    /// boolean value
+    Boolean(bool),
+    /// roll counts value
+    RollCount(u64),
+    /// amount value
+    Amount(Amount),
+    /// bytes value
+    Bytes(Vec<u8>),
+    /// vector of bytes value
+    VecBytes(Vec<Vec<u8>>),
+    /// deferred credits value
+    DeferredCredits(BTreeMap<Slot, Amount>),
+    /// execution status value
+    ExecutionStatus(ExecutionQueryExecutionStatus),
+    /// cycle infos value
+    CycleInfos(ExecutionQueryCycleInfos),
+    /// Events
+    Events(Vec<SCOutputEvent>)
+ }
+
+/// Execution status of an operation or denunciation
+ pub enum ExecutionQueryExecutionStatus {
+    /// The operation or denunciation was executed recently with success
+    AlreadyExecutedWithSuccess,
+    /// The operation or denunciation was executed recently with failure
+    AlreadyExecutedWithFailure,
+    /// The operation or denunciation was not executed recently,
+    /// but might have been executed a longer time ago and forgotten.
+    /// Technically it means that the operation or denunciation
+    /// can still be executed unless it has expired.
+    ExecutableOrExpired,
+ }
+
+ pub struct ExecutionQueryCycleInfos {
+    /// cycle number
+    pub cycle: u64,
+    /// whether the cycle is final
+    pub is_final: bool,
+    /// infos for each PoS-participating address among the ones that were asked
+    pub staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>,
+ }
+
+ pub struct ExecutionQueryStakerInfo {
+    /// active roll count
+    pub active_rolls: u64,
+    /// production stats
+    pub production_stats: PreHashMap<Address, ExecutionQueryStakerInfoProductionStats>
+ }
+
+ pub struct ExecutionQueryStakerInfoProductionStats {
+    /// producetion successes
+    pub block_success_count: u64,
+    /// producetion failures
+    pub block_failure_count: u64,
+ }
+
+
+
 
 /// Execution info about an address
 #[derive(Clone, Debug)]
