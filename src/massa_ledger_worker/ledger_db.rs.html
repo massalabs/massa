@@ -584,48 +584,6 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a>
-<a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
-<a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
-<a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
-<a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
-<a href="#625" id="625">625</a>
-<a href="#626" id="626">626</a>
-<a href="#627" id="627">627</a>
-<a href="#628" id="628">628</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -640,9 +598,7 @@
 <span class="kw">use </span>massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
-<span class="kw">use </span>massa_serialization::{
-    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>std::collections::{BTreeSet, HashMap};
 <span class="kw">use </span>std::fmt::Debug;
 
@@ -657,8 +613,6 @@
     </span>Bytecode,
     <span class="doccomment">/// Datastore entry
     </span>Datastore(Vec&lt;u8&gt;),
-    <span class="doccomment">/// Version
-    </span>Version,
 }
 
 <span class="kw">impl </span>LedgerSubEntry {
@@ -667,7 +621,6 @@
             LedgerSubEntry::Balance =&gt; Key::new(addr, KeyType::BALANCE),
             LedgerSubEntry::Bytecode =&gt; Key::new(addr, KeyType::BYTECODE),
             LedgerSubEntry::Datastore(hash) =&gt; Key::new(addr, KeyType::DATASTORE(hash.to_vec())),
-            LedgerSubEntry::Version =&gt; Key::new(addr, KeyType::VERSION),
         }
     }
 }
@@ -681,8 +634,6 @@
     key_serializer_db: KeySerializer,
     key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
-    version_serializer: U64VarIntSerializer,
-    version_deserializer: U64VarIntDeserializer,
     bytecode_serializer: BytecodeSerializer,
     amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
@@ -719,11 +670,6 @@
                 Bound::Included(Amount::MAX),
             ),
             bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
-            version_serializer: U64VarIntSerializer::new(),
-            version_deserializer: U64VarIntDeserializer::new(
-                Bound::Included(<span class="number">0</span>),
-                Bound::Included(u64::MAX),
-            ),
             max_datastore_value_length,
         }
     }
@@ -867,14 +813,6 @@
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
             }
-            KeyType::VERSION =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _version)) = <span class="self">self</span>.version_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="bool-val">false</span>;
-                };
-                <span class="kw">if </span>!rest.is_empty() {
-                    <span class="kw">return </span><span class="bool-val">false</span>;
-                }
-            }
         }
 
         <span class="bool-val">true
@@ -891,18 +829,6 @@
     /// * `batch`: the given operation batch to update
     </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ledger_entry: LedgerEntry, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-
-        <span class="comment">// Version
-        //TODO: Get version number from parameters
-        </span><span class="kw">let </span><span class="kw-2">mut </span>bytes_version = Vec::new();
-        <span class="self">self</span>.version_serializer
-            .serialize(<span class="kw-2">&amp;</span><span class="number">0</span>, <span class="kw-2">&amp;mut </span>bytes_version)
-            .unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
-        <span class="self">self</span>.key_serializer_db
-            .serialize(<span class="kw-2">&amp;</span>Key::new(addr, KeyType::VERSION), <span class="kw-2">&amp;mut </span>serialized_key)
-            .expect(KEY_SER_ERROR);
-        db.put_or_update_entry_value(batch, serialized_key, <span class="kw-2">&amp;</span>bytes_version);
 
         <span class="comment">// Amount serialization never fails
         </span><span class="kw">let </span><span class="kw-2">mut </span>bytes_balance = Vec::new();
@@ -1004,13 +930,6 @@
     /// * batch: the given operation batch to update
     </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-
-        <span class="comment">// version
-        </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
-        <span class="self">self</span>.key_serializer_db
-            .serialize(<span class="kw-2">&amp;</span>Key::new(addr, KeyType::VERSION), <span class="kw-2">&amp;mut </span>serialized_key)
-            .expect(KEY_SER_ERROR);
-        db.delete_key(batch, serialized_key);
 
         <span class="comment">// balance
         </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
@@ -1207,9 +1126,6 @@
         <span class="comment">// check initial state and entry update
         </span><span class="macro">assert!</span>(ledger_db
             .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Balance)
-            .is_some());
-        <span class="macro">assert!</span>(ledger_db
-            .get_sub_entry(<span class="kw-2">&amp;</span>addr, LedgerSubEntry::Version)
             .is_some());
         <span class="macro">assert_eq!</span>(
             amount_deserializer

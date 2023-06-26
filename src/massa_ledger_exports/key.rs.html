@@ -257,10 +257,6 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::LEDGER_PREFIX;
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
@@ -284,7 +280,6 @@
     Balance = <span class="number">0</span>,
     Bytecode = <span class="number">1</span>,
     Datastore = <span class="number">2</span>,
-    Version = <span class="number">3</span>,
 }
 
 <span class="attr">#[derive(PartialEq, Eq, Clone, Debug)]
@@ -292,7 +287,6 @@
     BALANCE,
     BYTECODE,
     DATASTORE(Vec&lt;u8&gt;),
-    VERSION,
 }
 
 <span class="attr">#[derive(Default, Clone)]
@@ -331,7 +325,6 @@
                     buffer.extend(data);
                 }
             }
-            KeyType::VERSION =&gt; buffer.extend(<span class="kw-2">&amp;</span>[u8::from(KeyTypeId::Version)]),
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -376,7 +369,6 @@
                     <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>[], KeyType::DATASTORE(rest.to_vec())))
                 }
             }
-            <span class="prelude-val">Ok</span>(KeyTypeId::Version) =&gt; <span class="prelude-val">Ok</span>((rest, KeyType::VERSION)),
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(
                 rest,
                 nom::error::ErrorKind::Tag,
