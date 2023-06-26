@@ -74,7 +74,7 @@ impl ExecutionStatsCounter {
     }
 
     /// get statistics
-    pub fn get_stats(&self, active_cursor: Slot) -> ExecutionStats {
+    pub fn get_stats(&self, active_cursor: Slot, final_cursor: Slot) -> ExecutionStats {
         let current_time = MassaTime::now().expect("could not get current time");
         let start_time = current_time.saturating_sub(self.time_window_duration);
         let map_func = |pair: &(usize, MassaTime)| -> usize {
@@ -91,6 +91,7 @@ impl ExecutionStatsCounter {
             time_window_start: start_time,
             time_window_end: current_time,
             active_cursor,
+            final_cursor,
         }
     }
 }
