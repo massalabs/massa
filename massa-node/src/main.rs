@@ -11,7 +11,6 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::TryRecvError;
-use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
@@ -94,12 +93,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
-use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
-use tokio::signal;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 use tracing::{error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
@@ -120,7 +117,6 @@ async fn launch(
     Box<dyn PoolManager>,
     Box<dyn ProtocolManager>,
     Box<dyn FactoryManager>,
-    mpsc::Receiver<()>,
     StopHandle,
     StopHandle,
     StopHandle,
@@ -371,7 +367,7 @@ async fn launch(
         *GENESIS_TIMESTAMP,
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        sig_int_toggled,
+        sig_int_toggled.clone(),
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {
@@ -912,10 +908,11 @@ async fn launch(
     );
 
     // spawn private API
-    let (api_private, api_private_stop_rx) = API::<Private>::new(
+    let api_private = API::<Private>::new(
         protocol_controller.clone(),
         execution_controller.clone(),
         api_config.clone(),
+        sig_int_toggled,
         node_wallet,
     );
     let api_private_handle = api_private
@@ -988,7 +985,6 @@ async fn launch(
         pool_manager,
         protocol_manager,
         factory_manager,
-        api_private_stop_rx,
         api_private_handle,
         api_public_handle,
         api_handle,
@@ -1186,17 +1182,15 @@ async fn run(args: Args) -> anyhow::Result<()> {
     // interrupt signal listener
     let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
 
-    // TODO: re-enable and fix this (remove use ctrlc as _; when done)
-    // let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
-    // ctrlc::set_handler(move || {
-    //     *sig_int_toggled_clone
-    //         .0
-    //         .lock()
-    //         .expect("double-lock on interupt bool in ctrl-c handler") = true;
-    //     sig_int_toggled_clone.1.notify_all();
-    // })
-    // .expect("Error setting Ctrl-C handler");
+    let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
+    ctrlc::set_handler(move || {
+        *sig_int_toggled_clone
+            .0
+            .lock()
+            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+        sig_int_toggled_clone.1.notify_all();
+    })
+    .expect("Error setting Ctrl-C handler");
 
     loop {
         let (
@@ -1208,19 +1202,11 @@ async fn run(args: Args) -> anyhow::Result<()> {
             pool_manager,
             protocol_manager,
             factory_manager,
-            mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
             api_handle,
             grpc_handle,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
-
-        // interrupt signal listener
-        let (tx, rx) = crossbeam_channel::bounded(1);
-        let interrupt_signal_listener = tokio::spawn(async move {
-            signal::ctrl_c().await.unwrap();
-            tx.send(()).unwrap();
-        });
 
         // loop over messages
         let restart = loop {
@@ -1242,29 +1228,20 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 _ => {}
             };
 
-            match api_private_stop_rx.try_recv() {
-                Ok(_) => {
-                    info!("stop command received from private API");
-                    break false;
-                }
-                Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
-                    error!("api_private_stop_rx disconnected");
-                    break false;
-                }
-                _ => {}
+            // every 100ms/or when alerted, check if sigint toggled
+            // if toggled, break loop
+            let int_sig = sig_int_toggled
+                .0
+                .lock()
+                .expect("double-lock() on interupted signal mutex");
+            let wake = sig_int_toggled
+                .1
+                .wait_timeout(int_sig, Duration::from_millis(100))
+                .expect("interupt signal mutex poisoned");
+            if *wake.0 {
+                info!("interrupt signal received");
+                break false;
             }
-            match rx.try_recv() {
-                Ok(_) => {
-                    info!("interrupt signal received");
-                    break false;
-                }
-                Err(crossbeam_channel::TryRecvError::Disconnected) => {
-                    error!("interrupt_signal_listener disconnected");
-                    break false;
-                }
-                _ => {}
-            }
-            sleep(Duration::from_millis(100));
         };
         stop(
             consensus_event_receiver,
@@ -1289,7 +1266,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
         }
         // If we restart because of a desync, then we do not want to restart from a snapshot
         cur_args.restart_from_snapshot_at_period = None;
-        interrupt_signal_listener.abort();
     }
     Ok(())
 }
