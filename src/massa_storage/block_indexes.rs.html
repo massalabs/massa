@@ -184,7 +184,7 @@
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>BlockIndexes {
     <span class="doccomment">/// Blocks structure container
-    </span>blocks: PreHashMap&lt;BlockId, Box&lt;SecureShareBlock&gt;&gt;,
+    </span>blocks: PreHashMap&lt;BlockId, SecureShareBlock&gt;,
     <span class="doccomment">/// Structure mapping creators with the created blocks
     </span>index_by_creator: PreHashMap&lt;Address, PreHashSet&lt;BlockId&gt;&gt;,
     <span class="doccomment">/// Structure mapping slot with their block id
@@ -201,7 +201,7 @@
     /// - block: the block to insert
 
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: SecureShareBlock) {
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(b) = <span class="self">self</span>.blocks.try_insert(block.id, Box::new(block)) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(b) = <span class="self">self</span>.blocks.try_insert(block.id, block) {
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(b.content_creator_address)
@@ -234,7 +234,7 @@
     <span class="doccomment">/// Remove a block, remove from the indexes and do some clean-up in indexes if necessary.
     /// Arguments:
     /// * `block_id`: the block id to remove
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;SecureShareBlock&gt;&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareBlock&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = <span class="self">self</span>.blocks.remove(block_id) {
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
@@ -288,7 +288,7 @@
     /// Returns:
     /// - a reference to the block, or None if not found
     </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SecureShareBlock&gt; {
-        <span class="self">self</span>.blocks.get(id).map(|v| v.as_ref())
+        <span class="self">self</span>.blocks.get(id)
     }
 
     <span class="doccomment">/// Checks whether a block exists in global storage.
