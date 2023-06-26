@@ -8,7 +8,8 @@ var sourcesIndex = JSON.parse('{\
 "massa_client":["",[],["cmds.rs","display.rs","main.rs","repl.rs","settings.rs"]],\
 "massa_consensus_exports":["",[],["block_graph_export.rs","block_status.rs","bootstrapable_graph.rs","channels.rs","controller_trait.rs","error.rs","events.rs","export_active_block.rs","lib.rs","settings.rs"]],\
 "massa_consensus_worker":["",[["state",[],["clique_computation.rs","graph.rs","mod.rs","process.rs","process_commands.rs","prune.rs","stats.rs","tick.rs","verifications.rs"]],["worker",[],["init.rs","main_loop.rs","mod.rs"]]],["commands.rs","controller.rs","lib.rs","manager.rs"]],\
-"massa_db":["",[],["constants.rs","error.rs","lib.rs","massa_db.rs"]],\
+"massa_db_exports":["",[],["constants.rs","controller.rs","db_batch.rs","error.rs","lib.rs","settings.rs"]],\
+"massa_db_worker":["",[],["lib.rs","massa_db.rs"]],\
 "massa_executed_ops":["",[],["config.rs","denunciations_changes.rs","executed_denunciations.rs","executed_ops.rs","lib.rs","ops_changes.rs"]],\
 "massa_execution_exports":["",[],["channels.rs","controller_traits.rs","error.rs","event_store.rs","lib.rs","mapping_grpc.rs","settings.rs","types.rs"]],\
 "massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","vesting_manager.rs","worker.rs"]],\
@@ -16,7 +17,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
 "massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","mapping_grpc.rs","state_changes.rs"]],\
 "massa_grpc":["",[["stream",[],["mod.rs","new_blocks.rs","new_blocks_headers.rs","new_endorsements.rs","new_filled_blocks.rs","new_operations.rs","new_slot_execution_outputs.rs","send_blocks.rs","send_endorsements.rs","send_operations.rs","tx_throughput.rs"]]],["api.rs","config.rs","error.rs","handler.rs","lib.rs","server.rs"]],\
-"massa_hash":["",[],["error.rs","hash.rs","lib.rs","settings.rs"]],\
+"massa_hash":["",[],["error.rs","hash.rs","hash_xof.rs","lib.rs","settings.rs"]],\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","mapping_grpc.rs","types.rs"]],\
 "massa_ledger_worker":["",[],["ledger.rs","ledger_db.rs","lib.rs"]],\
 "massa_logging":["",[],["lib.rs"]],\

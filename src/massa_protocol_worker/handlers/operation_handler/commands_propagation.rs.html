@@ -6,12 +6,12 @@
 <a href="#6" id="6">6</a>
 <a href="#7" id="7">7</a>
 <a href="#8" id="8">8</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_storage::Storage;
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{operation::OperationId, prehash::PreHashSet};
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub enum </span>OperationHandlerPropagationCommand {
     Stop,
     <span class="doccomment">/// operations ids
-    </span>PropagateOperations(Storage),
+    </span>AnnounceOperations(PreHashSet&lt;OperationId&gt;),
 }
 </code></pre></div></section></main></body></html>
