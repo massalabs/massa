@@ -100,6 +100,12 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map;
 
 <span class="kw">use </span>massa_models::{
@@ -113,7 +119,7 @@
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>OperationIndexes {
     <span class="doccomment">/// Operations structure container
-    </span>operations: PreHashMap&lt;OperationId, SecureShareOperation&gt;,
+    </span>operations: PreHashMap&lt;OperationId, Box&lt;SecureShareOperation&gt;&gt;,
     <span class="doccomment">/// Structure mapping creators with the created operations
     </span>index_by_creator: PreHashMap&lt;Address, PreHashSet&lt;OperationId&gt;&gt;,
     <span class="doccomment">/// Structure indexing operations by ID prefix
@@ -125,7 +131,10 @@
     /// Arguments:
     /// * `operation`: the operation to insert
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operation: SecureShareOperation) {
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(o) = <span class="self">self</span>.operations.try_insert(operation.id, operation) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(o) = <span class="self">self
+            </span>.operations
+            .try_insert(operation.id, Box::new(operation))
+        {
             massa_metrics::inc_operations_counter();
 
             <span class="comment">// update creator index
@@ -144,7 +153,10 @@
     <span class="doccomment">/// Remove a operation, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
     /// * `operation_id`: the operation id to remove
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operation_id: <span class="kw-2">&amp;</span>OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;SecureShareOperation&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        operation_id: <span class="kw-2">&amp;</span>OperationId,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;SecureShareOperation&gt;&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(o) = <span class="self">self</span>.operations.remove(operation_id) {
             massa_metrics::dec_operations_counter();
 
@@ -171,7 +183,7 @@
 
     <span class="doccomment">/// Gets a reference to a stored operation, if any.
     </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SecureShareOperation&gt; {
-        <span class="self">self</span>.operations.get(id)
+        <span class="self">self</span>.operations.get(id).map(|v| v.as_ref())
     }
 
     <span class="doccomment">/// Checks whether an operation exists in global storage.

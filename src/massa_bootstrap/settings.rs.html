@@ -289,7 +289,7 @@
     <span class="doccomment">/// Max size of the IP list
     </span><span class="kw">pub </span>ip_list_max_size: usize,
     <span class="doccomment">/// Read-Write limitation for a connection in bytes per seconds
-    </span><span class="kw">pub </span>max_bytes_read_write: u64,
+    </span><span class="kw">pub </span>max_bytes_read_write: f64,
     <span class="doccomment">/// thread count
     </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// period per cycle
@@ -365,7 +365,7 @@
 #[derive(Debug, Deserialize, Clone, SubStruct)]
 #[parent(<span class="kw">type </span>= <span class="string">&quot;BootstrapConfig&quot;</span>)]
 </span><span class="kw">pub struct </span>BootstrapSrvBindCfg {
-    <span class="kw">pub </span>max_bytes_read_write: u64,
+    <span class="kw">pub </span>max_bytes_read_write: f64,
     <span class="kw">pub </span>thread_count: u8,
     <span class="kw">pub </span>max_datastore_key_length: u8,
     <span class="kw">pub </span>randomness_size_bytes: usize,
@@ -378,7 +378,7 @@
 #[derive(Debug, Deserialize, Clone, SubStruct)]
 #[parent(<span class="kw">type </span>= <span class="string">&quot;BootstrapConfig&quot;</span>)]
 </span><span class="kw">pub struct </span>BootstrapClientConfig {
-    <span class="kw">pub </span>max_bytes_read_write: u64,
+    <span class="kw">pub </span>max_bytes_read_write: f64,
     <span class="kw">pub </span>endorsement_count: u32,
     <span class="kw">pub </span>max_listeners_per_peer: u32,
     <span class="kw">pub </span>max_advertise_length: u32,
