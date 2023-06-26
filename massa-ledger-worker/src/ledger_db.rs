@@ -12,7 +12,9 @@ use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer, U64VarIntDeserializer};
+use massa_serialization::{
+    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -90,7 +92,10 @@ impl LedgerDB {
             ),
             bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
             version_serializer: U64VarIntSerializer::new(),
-            version_deserializer: U64VarIntDeserializer::new(Bound::Included(0), Bound::Included(u64::MAX)),
+            version_deserializer: U64VarIntDeserializer::new(
+                Bound::Included(0),
+                Bound::Included(u64::MAX),
+            ),
             max_datastore_value_length,
         }
     }
@@ -270,7 +275,7 @@ impl LedgerDB {
             .serialize(&Key::new(addr, KeyType::VERSION), &mut serialized_key)
             .expect(KEY_SER_ERROR);
         db.put_or_update_entry_value(batch, serialized_key, &bytes_version);
-    
+
         // Amount serialization never fails
         let mut bytes_balance = Vec::new();
         self.amount_serializer
