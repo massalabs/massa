@@ -21,6 +21,7 @@ use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
+use massa_wallet::Wallet;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
 use std::thread;
@@ -249,6 +250,7 @@ pub fn start_execution_worker(
     selector: Box<dyn SelectorController>,
     mip_store: MipStore,
     channels: ExecutionChannels,
+    wallet: Arc<RwLock<Wallet>>,
     massa_metrics: MassaMetrics,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
@@ -258,6 +260,7 @@ pub fn start_execution_worker(
         mip_store,
         selector.clone(),
         channels,
+        wallet,
         massa_metrics,
     )));
 
