@@ -158,6 +158,7 @@ impl EndorsementFactoryWorker {
         }
 
         // check if we need to have connections to produce a block and in this case, check if we have enough.
+        #[cfg(not(feature = "sandbox"))]
         if self.cfg.stop_production_when_zero_connections {
             if let Ok(stats) = self.channels.protocol.get_stats() {
                 if stats.1.is_empty() {
