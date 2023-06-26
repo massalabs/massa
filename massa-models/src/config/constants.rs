@@ -105,11 +105,9 @@ pub fn get_period_from_args() -> u64 {
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::const_init(100, 0);
 /// Block reward is given for each block creation
-pub const BLOCK_REWARD: Amount = Amount::const_init(3, 1);
+pub const BLOCK_REWARD: Amount = Amount::const_init(102, 2);
 /// Cost to store one byte in the ledger
-pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(25, 5);
-/// Address size in bytes
-pub const ADDRESS_SIZE_BYTES: usize = 32;
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 3);
 /// Cost for a base entry default 0.01 MASSA
 pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(1, 2);
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys

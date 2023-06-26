@@ -42,6 +42,7 @@ use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, VMError};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
+use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -85,6 +86,8 @@ pub(crate) struct ExecutionState {
     vesting_manager: Arc<VestingManager>,
     // MipStore (Versioning)
     mip_store: MipStore,
+    // wallet used to verify double staking on local addresses
+    wallet: Arc<RwLock<Wallet>>,
     // selector controller to get draws
     selector: Box<dyn SelectorController>,
     // channels used by the execution worker
@@ -108,6 +111,7 @@ impl ExecutionState {
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
         channels: ExecutionChannels,
+        wallet: Arc<RwLock<Wallet>>,
         massa_metrics: MassaMetrics,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
@@ -181,6 +185,7 @@ impl ExecutionState {
             mip_store,
             selector,
             channels,
+            wallet,
             massa_metrics,
         }
     }
@@ -553,6 +558,15 @@ impl ExecutionState {
             Err(e) => {
                 warn!("Unable to slash rolls or deferred credits: {}", e);
             }
+        }
+
+        if self
+            .wallet
+            .read()
+            .get_wallet_address_list()
+            .contains(&addr_denounced)
+        {
+            panic!("You are being slashed at slot {} for double-staking using address {}. The node is stopping to prevent any further loss", block_slot, addr_denounced);
         }
 
         Ok(())
