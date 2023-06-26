@@ -81,6 +81,8 @@ pub struct FactorySettings {
     pub initial_delay: MassaTime,
     /// Staking wallet file
     pub staking_wallet_path: PathBuf,
+    /// stop the production in case we are not connected to anyone
+    pub stop_production_when_zero_connections: bool,
 }
 
 /// Pool configuration, read from a file configuration
