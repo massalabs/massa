@@ -57,12 +57,16 @@ impl<const SIZE: usize> HashXof<SIZE> {
     }
 }
 
+// To use this xor operator you must ensure that you have all the criteria listed here : 
+// https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
 impl<const SIZE: usize> BitXorAssign for HashXof<SIZE> {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = *self ^ rhs;
     }
 }
 
+// To use this xor operator you must ensure that you have all the criteria listed here : 
+// https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
 impl<const SIZE: usize> BitXor for HashXof<SIZE> {
     type Output = Self;
 
