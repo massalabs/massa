@@ -21,7 +21,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_ledger_exports":["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","mapping_grpc.rs","types.rs"]],\
 "massa_ledger_worker":["",[],["ledger.rs","ledger_db.rs","lib.rs"]],\
 "massa_logging":["",[],["lib.rs"]],\
-"massa_metrics":["",[],["lib.rs","server.rs","survey.rs"]],\
+"massa_metrics":["",[],["lib.rs","server.rs"]],\
 "massa_models":["",[["config",[],["compact_config.rs","constants.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","block.rs","block_header.rs","block_id.rs","bytecode.rs","clique.rs","composite.rs","datastore.rs","denunciation.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","mapping_grpc.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","version.rs"]],\
 "massa_module_cache":["",[],["config.rs","controller.rs","error.rs","hd_cache.rs","lib.rs","lru_cache.rs","types.rs"]],\
 "massa_node":["",[],["main.rs","settings.rs"]],\

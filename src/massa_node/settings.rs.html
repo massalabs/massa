@@ -316,11 +316,6 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -498,12 +493,7 @@
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>MetricsSettings {
-    <span class="doccomment">/// enable prometheus metrics
-    </span><span class="kw">pub </span>enabled: bool,
-    <span class="doccomment">/// port on which to listen for prometheus metrics
-    </span><span class="kw">pub </span>bind: SocketAddr,
-    <span class="doccomment">/// interval at which to update metrics
-    </span><span class="kw">pub </span>tick_delay: MassaTime,
+    <span class="kw">pub </span>enabled: bool,
 }
 
 <span class="doccomment">/// Protocol Configuration, read from toml user configuration file
