@@ -2730,6 +2730,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "massa_versioning",
+ "massa_wallet",
  "num",
  "parking_lot",
  "rand 0.8.5",

@@ -177,18 +177,14 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
 
     pos.create_initial_cycle(&mut batch);
 
-    pos.db
-        .write()
-        .write_batch(batch, Default::default(), None, false);
+    pos.db.write().write_batch(batch, Default::default(), None);
 
     let mut batch = DBBatch::new();
 
     pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .expect("Critical: Error while applying changes to pos_state");
 
-    pos.db
-        .write()
-        .write_batch(batch, Default::default(), None, false);
+    pos.db.write().write_batch(batch, Default::default(), None);
 
     pos
 }
@@ -232,8 +228,7 @@ pub fn get_random_executed_ops(
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
     let mut batch = DBBatch::new();
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
-    db.write()
-        .write_batch(batch, Default::default(), None, false);
+    db.write().write_batch(batch, Default::default(), None);
     executed_ops
 }
 
@@ -267,7 +262,7 @@ pub fn get_random_executed_de(
     executed_de
         .db
         .write()
-        .write_batch(batch, Default::default(), None, false);
+        .write_batch(batch, Default::default(), None);
 
     executed_de
 }
@@ -321,7 +316,7 @@ pub fn get_random_final_state_bootstrap(
     async_pool
         .db
         .write()
-        .write_batch(batch, versioning_batch, None, false);
+        .write_batch(batch, versioning_batch, None);
 
     let executed_ops = get_random_executed_ops(
         r_limit,

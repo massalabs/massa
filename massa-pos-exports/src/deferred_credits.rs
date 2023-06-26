@@ -1,4 +1,4 @@
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -21,7 +21,7 @@ use std::{
     ops::Bound::{Excluded, Included},
 };
 
-const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; HASH_XOF_SIZE_BYTES] = &[0; HASH_XOF_SIZE_BYTES];
 
 #[derive(Clone, Serialize, Deserialize)]
 /// Structure containing all the PoS deferred credits information
@@ -44,7 +44,7 @@ struct DeferredCreditsHashTracker {
     slot_ser: SlotSerializer,
     address_ser: AddressSerializer,
     amount_ser: AmountSerializer,
-    hash: Hash,
+    hash: HashXof<HASH_XOF_SIZE_BYTES>,
 }
 
 impl DeferredCreditsHashTracker {
@@ -54,12 +54,12 @@ impl DeferredCreditsHashTracker {
             slot_ser: SlotSerializer::new(),
             address_ser: AddressSerializer::new(),
             amount_ser: AmountSerializer::new(),
-            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+            hash: HashXof::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
         }
     }
 
     /// Get resulting hash from the tracker
-    pub fn get_hash(&self) -> &Hash {
+    pub fn get_hash(&self) -> &HashXof<HASH_XOF_SIZE_BYTES> {
         &self.hash
     }
 
@@ -69,13 +69,18 @@ impl DeferredCreditsHashTracker {
     }
 
     /// Compute the hash for a specific entry
-    fn compute_hash(&self, slot: &Slot, address: &Address, amount: &Amount) -> Hash {
+    fn compute_hash(
+        &self,
+        slot: &Slot,
+        address: &Address,
+        amount: &Amount,
+    ) -> HashXof<HASH_XOF_SIZE_BYTES> {
         // serialization can never fail in the following computations, unwrap is justified
         let mut buffer = Vec::new();
         self.slot_ser.serialize(slot, &mut buffer).unwrap();
         self.address_ser.serialize(address, &mut buffer).unwrap();
         self.amount_ser.serialize(amount, &mut buffer).unwrap();
-        Hash::compute_from(&buffer)
+        HashXof::compute_from(&buffer)
     }
 }
 
@@ -102,7 +107,7 @@ impl DeferredCredits {
     }
 
     /// Get hash from tracker, if any
-    pub fn get_hash(&self) -> Option<&Hash> {
+    pub fn get_hash(&self) -> Option<&HashXof<HASH_XOF_SIZE_BYTES>> {
         self.hash_tracker.as_ref().map(|ht| ht.get_hash())
     }
 
@@ -119,7 +124,7 @@ impl DeferredCredits {
     }
 
     /// Enables the hash tracker (and compute the hash if absent)
-    pub fn enable_hash_tracker_and_compute_hash(&mut self) -> &Hash {
+    pub fn enable_hash_tracker_and_compute_hash(&mut self) -> &HashXof<HASH_XOF_SIZE_BYTES> {
         if self.hash_tracker.is_none() {
             let mut hash_tracker = DeferredCreditsHashTracker::new();
             self.for_each(|slot, address, amount| {

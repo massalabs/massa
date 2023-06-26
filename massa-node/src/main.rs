@@ -85,12 +85,12 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{MipComponent, MipInfo, MipState};
+use massa_versioning::mips::MIP_LIST;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
@@ -284,43 +284,9 @@ async fn launch(
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
-    let mip_0001_start = MassaTime::from_utc_ymd_hms(2023, 6, 14, 15, 0, 0).unwrap();
-    let mip_0001_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 14, 16, 0, 0).unwrap();
-    let mip_0001_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 14, 14, 30, 0).unwrap();
-    let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 13, 0, 0).unwrap();
-    let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 19, 14, 0, 0).unwrap();
-    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 10, 0, 0).unwrap();
-    let mip_list_1: [(MipInfo, MipState); 2] = [
-        (
-            MipInfo {
-                name: "MIP-0001".to_string(),
-                version: 1,
-                components: BTreeMap::from([
-                    (MipComponent::Address, 1),
-                    (MipComponent::KeyPair, 1),
-                ]),
-                start: mip_0001_start,
-                timeout: mip_0001_timeout,
-                activation_delay: MassaTime::from_millis(100),
-            },
-            MipState::new(mip_0001_defined_start),
-        ),
-        (
-            MipInfo {
-                name: "MIP-0002".to_string(),
-                version: 2,
-                components: BTreeMap::from([(MipComponent::FinalStateHashKind, 1)]),
-                start: mip_0002_start,
-                timeout: mip_0002_timeout,
-                activation_delay: T0
-                    .saturating_mul(PERIODS_PER_CYCLE.saturating_add(1))
-                    .saturating_mul(40),
-            },
-            MipState::new(mip_0002_defined_start),
-        ),
-    ];
+
     let mip_store =
-        MipStore::try_from((mip_list_1, mip_stats_config)).expect("mip store creation failed");
+        MipStore::try_from((MIP_LIST, mip_stats_config)).expect("mip store creation failed");
 
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
@@ -526,6 +492,7 @@ async fn launch(
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
+        node_wallet.clone(),
         massa_metrics.clone(),
     );
 
@@ -539,6 +506,7 @@ async fn launch(
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_operation_pool_size: SETTINGS.pool.max_operation_pool_size,
+        max_operation_pool_excess_items: SETTINGS.pool.max_operation_pool_excess_items,
         operation_pool_refresh_interval: SETTINGS.pool.operation_pool_refresh_interval,
         operation_max_future_start_delay: SETTINGS.pool.operation_max_future_start_delay,
         max_endorsements_pool_size_per_thread: SETTINGS.pool.max_endorsements_pool_size_per_thread,
@@ -595,7 +563,6 @@ async fn launch(
             .protocol
             .operation_announcement_buffer_capacity,
         operation_batch_proc_period: SETTINGS.protocol.operation_batch_proc_period,
-        asked_operations_pruning_period: SETTINGS.protocol.asked_operations_pruning_period,
         operation_announcement_interval: SETTINGS.protocol.operation_announcement_interval,
         max_operations_per_message: SETTINGS.protocol.max_operations_per_message,
         max_serialized_operations_size_per_block: MAX_BLOCK_SIZE as usize,
@@ -606,6 +573,7 @@ async fn launch(
         t0: T0,
         endorsement_count: ENDORSEMENT_COUNT,
         max_message_size: MAX_MESSAGE_SIZE as usize,
+        max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
         last_start_period: final_state.read().last_start_period,
@@ -615,7 +583,7 @@ async fn launch(
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
         max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
-        asked_operations_buffer_capacity: SETTINGS.protocol.max_known_ops_size,
+        asked_operations_buffer_capacity: SETTINGS.protocol.asked_operations_buffer_capacity,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
         max_operation_storage_time: MAX_OPERATION_STORAGE_TIME,
         max_size_channel_commands_propagation_blocks: MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
@@ -749,6 +717,9 @@ async fn launch(
         last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        stop_production_when_zero_connections: SETTINGS
+            .factory
+            .stop_production_when_zero_connections,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -765,14 +736,16 @@ async fn launch(
     );
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
-            panic!(
-                "{}",
-                format!("Could not bind to address: {}", addr).as_str()
-            )
-        });
-        let mut manager = start_bootstrap_server(
+        let (listener_stopper, listener) =
+            BootstrapTcpListener::create(&addr).unwrap_or_else(|_| {
+                panic!(
+                    "{}",
+                    format!("Could not bind to address: {}", addr).as_str()
+                )
+            });
+        start_bootstrap_server(
             listener,
+            listener_stopper,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -780,9 +753,7 @@ async fn launch(
             keypair.clone(),
             *VERSION,
         )
-        .expect("Could not start bootstrap server");
-        manager.set_listener_stopper(waker);
-        manager
+        .expect("Could not start bootstrap server")
     });
 
     let api_config: APIConfig = APIConfig {

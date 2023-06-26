@@ -94,9 +94,6 @@ pub struct MassaMetrics {
     /// active out connections peer
     active_out_connections: IntGauge,
 
-    /// sum of stored_operations
-    retrieval_thread_stored_operations_sum: IntGauge,
-
     /// counter of operations for final slot
     operations_final_counter: IntCounter,
 
@@ -211,13 +208,6 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        // from retrieval thread of operation_handler
-        let retrieval_thread_stored_operations_sum = IntGauge::new(
-            "retrieval_thread_stored_operations_sum_size",
-            "sum of retrieval_thread_stored_operations",
-        )
-        .unwrap();
-
         // consensus state from tick.rs
         let consensus_state_active_index = IntGauge::new(
             "consensus_state_active_index",
@@ -298,8 +288,6 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(operation_cache_checked_operations.clone()));
                 let _ = prometheus::register(Box::new(active_in_connections.clone()));
                 let _ = prometheus::register(Box::new(operation_cache_ops_know_by_peer.clone()));
-                let _ =
-                    prometheus::register(Box::new(retrieval_thread_stored_operations_sum.clone()));
                 let _ = prometheus::register(Box::new(consensus_state_active_index.clone()));
                 let _ = prometheus::register(Box::new(
                     consensus_state_active_index_without_ops.clone(),
@@ -341,7 +329,6 @@ impl MassaMetrics {
                 block_graph_ms,
                 active_in_connections,
                 active_out_connections,
-                retrieval_thread_stored_operations_sum,
                 operations_final_counter,
                 block_cache_checked_headers_size,
                 block_cache_blocks_known_by_peer,
@@ -414,10 +401,6 @@ impl MassaMetrics {
             .set(checked_header_size as i64);
         self.block_cache_blocks_known_by_peer
             .set(blocks_known_by_peer as i64);
-    }
-
-    pub fn set_retrieval_thread_stored_operations_sum(&self, sum: usize) {
-        self.retrieval_thread_stored_operations_sum.set(sum as i64);
     }
 
     pub fn set_operations_cache_metrics(

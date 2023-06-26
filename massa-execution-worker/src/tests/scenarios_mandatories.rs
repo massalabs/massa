@@ -38,6 +38,7 @@ mod tests {
     use massa_storage::Storage;
     use massa_time::MassaTime;
     use massa_versioning::versioning::{MipStatsConfig, MipStore};
+    use massa_wallet::test_exports::create_test_wallet;
     use num::rational::Ratio;
     use parking_lot::RwLock;
     use serial_test::serial;
@@ -79,6 +80,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -118,6 +120,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -169,6 +172,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -279,6 +283,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -446,6 +451,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -606,6 +612,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -724,6 +731,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -832,6 +840,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -901,8 +910,8 @@ mod tests {
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
         assert!(
             // start (299_000) - fee (1000) - storage cost
-            Amount::from_str("299_979").unwrap() < amount
-                && amount < Amount::from_str("299_980").unwrap()
+            Amount::from_str("299_976").unwrap() < amount
+                && amount < Amount::from_str("299_977").unwrap()
         );
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
@@ -962,6 +971,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -1082,6 +1092,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -1241,6 +1252,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -1346,6 +1358,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -1466,6 +1479,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -1569,6 +1583,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -1674,6 +1689,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -1712,7 +1728,7 @@ mod tests {
             .write()
             .db
             .write()
-            .write_batch(batch, Default::default(), None, false);
+            .write_batch(batch, Default::default(), None);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(
@@ -1885,6 +1901,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2053,6 +2070,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2228,6 +2246,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2323,6 +2342,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2415,6 +2435,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2507,6 +2528,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2656,6 +2678,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2773,6 +2796,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -2926,6 +2950,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),
@@ -3027,6 +3052,7 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
                 "0.0.0.0:9898".parse().unwrap(),

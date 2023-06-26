@@ -92,7 +92,7 @@ pub fn get_sample_state(
     ));
 
     let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
-    ledger.load_initial_ledger(false).unwrap();
+    ledger.load_initial_ledger().unwrap();
     let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {
         ledger_config,
@@ -148,7 +148,7 @@ pub fn get_sample_state(
     final_state
         .db
         .write()
-        .write_batch(batch, Default::default(), None, false);
+        .write_batch(batch, Default::default(), None);
     final_state.compute_initial_draws().unwrap();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }

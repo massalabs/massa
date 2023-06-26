@@ -131,10 +131,10 @@ impl ExecutedOps {
     /// Reset the executed operations
     ///
     /// USED FOR BOOTSTRAP ONLY
-    pub fn reset(&mut self, only_use_xor: bool) {
+    pub fn reset(&mut self) {
         self.db
             .write()
-            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None, only_use_xor);
+            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None);
 
         self.recompute_sorted_ops_and_op_exec_status();
     }
@@ -266,6 +266,7 @@ fn test_executed_ops_hash_computing() {
     use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
     use massa_hash::Hash;
+    use massa_hash::HashXof;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
     use parking_lot::RwLock;
@@ -334,27 +335,24 @@ fn test_executed_ops_hash_computing() {
 
     let mut batch_a = DBBatch::new();
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
-    db_a.write()
-        .write_batch(batch_a, Default::default(), None, false);
+    db_a.write().write_batch(batch_a, Default::default(), None);
 
     let mut batch_b = DBBatch::new();
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_b);
-    db_a.write()
-        .write_batch(batch_b, Default::default(), None, false);
+    db_a.write().write_batch(batch_b, Default::default(), None);
 
     let mut batch_c = DBBatch::new();
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
-    db_c.write()
-        .write_batch(batch_c, Default::default(), None, false);
+    db_c.write().write_batch(batch_c, Default::default(), None);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_ne!(
-        db_a.read().get_db_hash(),
-        Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
+        db_a.read().get_xof_db_hash(),
+        HashXof(*STATE_HASH_INITIAL_BYTES)
     );
     assert_eq!(
-        db_a.read().get_db_hash(),
-        db_c.read().get_db_hash(),
+        db_a.read().get_xof_db_hash(),
+        db_c.read().get_xof_db_hash(),
         "'a' and 'c' hashes are not equal"
     );
 
@@ -365,13 +363,12 @@ fn test_executed_ops_hash_computing() {
     };
     let mut batch_a = DBBatch::new();
     a.prune_to_batch(prune_slot, &mut batch_a);
-    db_a.write()
-        .write_batch(batch_a, Default::default(), None, false);
+    db_a.write().write_batch(batch_a, Default::default(), None);
 
     // at this point the hash should have been reset to its original value
     assert_eq!(
-        db_a.read().get_db_hash(),
-        Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
+        db_a.read().get_xof_db_hash(),
+        HashXof(*STATE_HASH_INITIAL_BYTES),
         "'a' was not reset to its initial value"
     );
 }

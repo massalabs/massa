@@ -164,7 +164,7 @@ fn test_final_state() {
         fs.write()
             .db
             .write()
-            .write_batch(batch, versioning_batch, Some(slot), false);
+            .write_batch(batch, versioning_batch, Some(slot));
 
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();
@@ -207,7 +207,7 @@ fn test_final_state() {
 
         fs.write().finalize(slot, state_changes);
 
-        hash = fs.read().db.read().get_db_hash();
+        hash = fs.read().db.read().get_xof_db_hash();
 
         fs.write().db.write().flush().unwrap();
     }
@@ -215,7 +215,7 @@ fn test_final_state() {
     copy_dir_all(temp_dir.path(), &temp_dir2.path()).unwrap();
 
     let fs2 = create_final_state(&temp_dir2, false);
-    let hash2 = fs2.read().db.read().get_db_hash();
+    let hash2 = fs2.read().db.read().get_xof_db_hash();
 
     assert_eq!(hash, hash2);
 }
