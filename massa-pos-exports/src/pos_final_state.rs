@@ -27,7 +27,7 @@ const RNG_SEED_IDENT: u8 = 1u8;
 const FINAL_STATE_HASH_SNAPSHOT_IDENT: u8 = 2u8;
 const ROLL_COUNT_IDENT: u8 = 3u8;
 const PROD_STATS_IDENT: u8 = 4u8;
-const UPPER_LIMIT: u8 = 255u8;
+const UPPER_LIMIT: u8 = u8::MAX;
 
 // Production stats idents
 const PROD_STATS_FAIL_IDENT: u8 = 0u8;
@@ -1453,6 +1453,9 @@ mod tests {
 
     use super::*;
 
+    // This test checks that the recompute_pos_cache function recovers every cycle and does return correctly.
+    // The test example is chosen so that the keys for the cycles are not in the same order than the cycles.
+    // If this is not handled properly, the node hangs as explained here: https://github.com/massalabs/massa/issues/4101
     #[test]
     fn test_pos_cache_recomputation() {
         use crate::test_exports::MockSelectorController;
@@ -1476,7 +1479,7 @@ mod tests {
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
         };
 
-        // initialize the executed ops config
+        // initialize the database and pos_state
         let tempdir = TempDir::new().expect("cannot create temp directory");
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
@@ -1516,6 +1519,7 @@ mod tests {
             cycle_info_deserializer,
         };
 
+        // Populate the disk with some cycle infos
         let mut cycle_infos = Vec::new();
         for cycle in 509..516 {
             cycle_infos.push(CycleInfo::new_with_hash(
@@ -1528,7 +1532,6 @@ mod tests {
         }
 
         let mut batch = DBBatch::new();
-
         pos_state.put_new_cycle_info(&cycle_infos[0], &mut batch);
         pos_state.put_new_cycle_info(&cycle_infos[1], &mut batch);
         pos_state.put_new_cycle_info(&cycle_infos[2], &mut batch);
@@ -1542,8 +1545,12 @@ mod tests {
             .write()
             .write_batch(batch, DBBatch::new(), None);
 
+        // Recompute the cache, and assert we do not miss any data
+        // We .clear() the cache explicitly, even though we do not need to, to make sure the recomputation works
+        pos_state.cycle_history_cache.clear();
         pos_state.recompute_pos_state_caches();
 
+        // Assert that the cache contains the expected cycles
         assert_eq!(
             pos_state.cycle_history_cache.len(),
             cycle_infos.len(),
@@ -1560,6 +1567,7 @@ mod tests {
         }
     }
 
+    // This test aims to check that the basic workflow of apply changes to the PoS state works.
     #[test]
     fn test_pos_final_state_hash_computation() {
         use crate::test_exports::MockSelectorController;
@@ -1587,7 +1595,7 @@ mod tests {
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
         };
 
-        // initialize the executed ops config
+        // initialize the database and pos_state
         let tempdir = TempDir::new().expect("cannot create temp directory");
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
@@ -1634,9 +1642,8 @@ mod tests {
         db.write()
             .write_batch(batch, Default::default(), Some(Slot::new(0, 0)));
 
-        let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-
         // add changes
+        let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
         let mut roll_changes = PreHashMap::default();
         roll_changes.insert(addr, 10);
         let mut production_stats = PreHashMap::default();
