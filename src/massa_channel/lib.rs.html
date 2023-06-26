@@ -63,10 +63,43 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Massa Channel is a crossbeam channel wrapper with prometheus metrics
+//! expose for each channel :
+//! - actual length of channel (can be inc() when sending msg or dec() when receive)
+//! - total received messages (inc() when receive)
+//!
+//! # Example
+//! ```
+//! use massa_channel::MassaChannel;
+//! let (sender, receiver) = MassaChannel::new::&lt;String&gt;(&quot;test&quot;.to_string(), None);
+//! ```
+//!
+//! # Warning
+//! care about use MassaReceiver with select! macro
+//! select! does not call recv() so metrics will not be updated
+//! you should call `your_receiver.inc_metrics()` manually
+
+</span><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>receiver::MassaReceiver;
 <span class="kw">use </span>sender::MassaSender;
+<span class="kw">use </span>tracing::debug;
 
 <span class="kw">pub mod </span>receiver;
 <span class="kw">pub mod </span>sender;
@@ -78,7 +111,6 @@
     <span class="attr">#[allow(clippy::new_ret_no_self)]
     </span><span class="kw">pub fn </span>new&lt;T&gt;(name: String, capacity: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; (MassaSender&lt;T&gt;, MassaReceiver&lt;T&gt;) {
         <span class="kw">use </span>prometheus::{Counter, Gauge};
-        <span class="kw">use </span>tracing::error;
 
         <span class="kw">let </span>(s, r) = <span class="kw">if let </span><span class="prelude-val">Some</span>(capacity) = capacity {
             crossbeam::channel::bounded::&lt;T&gt;(capacity)
@@ -104,11 +136,11 @@
         <span class="comment">// Register metrics in prometheus
         // error here if metrics already registered (ex : ProtocolController&gt;::get_stats )
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::register(Box::new(actual_len.clone())) {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to register actual_len gauge for {} : {}&quot;</span>, name, e);
+            <span class="macro">debug!</span>(<span class="string">&quot;Failed to register actual_len gauge for {} : {}&quot;</span>, name, e);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::register(Box::new(received.clone())) {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to register received counter for {} : {}&quot;</span>, name, e);
+            <span class="macro">debug!</span>(<span class="string">&quot;Failed to register received counter for {} : {}&quot;</span>, name, e);
         }
 
         <span class="kw">let </span>sender = MassaSender {
