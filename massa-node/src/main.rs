@@ -84,7 +84,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::mips::MIP_LIST;
+use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -97,7 +97,7 @@ use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::sync::broadcast;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 #[cfg(feature = "op_spammer")]
@@ -275,8 +275,10 @@ async fn launch(
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
+    let mip_list = get_mip_list();
+    debug!("MIP list: {:?}", mip_list);
     let mip_store =
-        MipStore::try_from((MIP_LIST, mip_stats_config)).expect("mip store creation failed");
+        MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
 
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
