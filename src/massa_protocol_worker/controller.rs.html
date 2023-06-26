@@ -190,6 +190,8 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, time::Duration};
 
 <span class="kw">use </span>massa_channel::{sender::MassaSender, MassaChannel};
@@ -304,10 +306,12 @@
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
     </span><span class="kw">fn </span>propagate_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, operations: Storage) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="comment">//TODO: Change when send will be in propagation
+        </span><span class="kw">let </span>operations = operations.get_op_refs().clone();
         <span class="self">self</span>.sender_operation_handler
             .as_ref()
             .unwrap()
-            .try_send(OperationHandlerPropagationCommand::PropagateOperations(
+            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
                 operations,
             ))
             .map_err(|<span class="kw">_</span>| {
