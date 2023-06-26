@@ -136,7 +136,8 @@ pub fn start_protocol_controller_with_mock_network(
             "0.0.0.0:9898".parse().unwrap(),
             32,
             std::time::Duration::from_secs(5),
-        ),
+        )
+        .0,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

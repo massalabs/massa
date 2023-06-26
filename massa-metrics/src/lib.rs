@@ -8,15 +8,17 @@ use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::{Arc, RwLock},
+    thread::JoinHandle,
     time::Duration,
 };
 
 use lazy_static::lazy_static;
+use massa_channel::sender::MassaSender;
 use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
 use survey::MassaSurvey;
 use tracing::warn;
 
-#[cfg(not(feature = "testing"))]
+// #[cfg(not(feature = "testing"))]
 mod server;
 
 mod survey;
@@ -44,6 +46,28 @@ pub fn set_endorsements_counter(val: usize) {
 
 pub fn set_operations_counter(val: usize) {
     OPERATIONS_COUNTER.set(val as i64);
+}
+
+#[derive(Default)]
+pub struct MetricsStopper {
+    pub(crate) stopper: Option<MassaSender<()>>,
+    pub(crate) stop_handle: Option<JoinHandle<()>>,
+}
+
+impl MetricsStopper {
+    pub fn stop(&mut self) {
+        if let Some(stopper) = self.stopper.take() {
+            if let Err(e) = stopper.send(()) {
+                warn!("failed to send stop signal to metrics server: {}", e);
+            }
+
+            if let Some(handle) = self.stop_handle.take() {
+                if let Err(_e) = handle.join() {
+                    warn!("failed to join metrics server thread");
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -111,7 +135,13 @@ pub struct MassaMetrics {
 
 impl MassaMetrics {
     #[allow(unused_variables)]
-    pub fn new(enabled: bool, addr: SocketAddr, nb_thread: u8, tick_delay: Duration) -> Self {
+    #[allow(unused_mut)]
+    pub fn new(
+        enabled: bool,
+        addr: SocketAddr,
+        nb_thread: u8,
+        tick_delay: Duration,
+    ) -> (Self, MetricsStopper) {
         // TODO unwrap
 
         let mut consensus_vec = vec![];
@@ -251,10 +281,12 @@ impl MassaMetrics {
         let operations_final_counter =
             IntCounter::new("operations_final_counter", "total final operations").unwrap();
 
+        let mut stopper = MetricsStopper::default();
+
         if enabled {
             #[cfg(not(feature = "testing"))]
             {
-                server::bind_metrics(addr);
+                // server::bind_metrics(addr);
 
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
                 let _ = prometheus::register(Box::new(final_cursor_period.clone()));
@@ -286,6 +318,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
+
+                stopper = server::bind_metrics(addr);
             }
 
             MassaSurvey::run(
@@ -297,39 +331,42 @@ impl MassaMetrics {
             );
         }
 
-        MassaMetrics {
-            enabled,
-            consensus_vec,
-            peernet_total_bytes_receive,
-            peernet_total_bytes_sent,
-            block_graph_counter,
-            block_graph_ms,
-            active_in_connections,
-            active_out_connections,
-            retrieval_thread_stored_operations_sum,
-            operations_final_counter,
-            block_cache_checked_headers_size,
-            block_cache_blocks_known_by_peer,
-            operation_cache_checked_operations,
-            operation_cache_checked_operations_prefix,
-            operation_cache_ops_know_by_peer,
-            consensus_state_active_index,
-            consensus_state_active_index_without_ops,
-            consensus_state_incoming_index,
-            consensus_state_discarded_index,
-            consensus_state_block_statuses,
-            endorsement_cache_checked_endorsements,
-            endorsement_cache_known_by_peer,
-            // blocks_counter,
-            // endorsements_counter,
-            // operations_counter,
-            active_cursor_thread,
-            active_cursor_period,
-            final_cursor_thread,
-            final_cursor_period,
-            peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
-            tick_delay,
-        }
+        (
+            MassaMetrics {
+                enabled,
+                consensus_vec,
+                peernet_total_bytes_receive,
+                peernet_total_bytes_sent,
+                block_graph_counter,
+                block_graph_ms,
+                active_in_connections,
+                active_out_connections,
+                retrieval_thread_stored_operations_sum,
+                operations_final_counter,
+                block_cache_checked_headers_size,
+                block_cache_blocks_known_by_peer,
+                operation_cache_checked_operations,
+                operation_cache_checked_operations_prefix,
+                operation_cache_ops_know_by_peer,
+                consensus_state_active_index,
+                consensus_state_active_index_without_ops,
+                consensus_state_incoming_index,
+                consensus_state_discarded_index,
+                consensus_state_block_statuses,
+                endorsement_cache_checked_endorsements,
+                endorsement_cache_known_by_peer,
+                // blocks_counter,
+                // endorsements_counter,
+                // operations_counter,
+                active_cursor_thread,
+                active_cursor_period,
+                final_cursor_thread,
+                final_cursor_period,
+                peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
+                tick_delay,
+            },
+            stopper,
+        )
     }
 
     pub fn set_active_connections(&self, in_connections: usize, out_connections: usize) {
@@ -432,9 +469,6 @@ impl MassaMetrics {
     /// HashMap<peer_id, (tx, rx)>
     pub fn update_peers_tx_rx(&self, data: HashMap<String, (u64, u64)>) {
         if self.enabled {
-            // #[cfg(not(feature = "testing"))]
-            // {
-
             let mut write = self.peers_bandwidth.write().unwrap();
 
             // metrics of peers that are not in the data HashMap are removed

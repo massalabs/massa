@@ -84,7 +84,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         manager.stop();
     }
@@ -122,7 +123,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         controller.update_blockclique_status(
             Default::default(),
@@ -172,7 +174,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -281,7 +284,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -447,7 +451,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -606,7 +611,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -723,7 +729,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -830,7 +837,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -959,7 +967,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1078,7 +1087,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1236,7 +1246,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1340,7 +1351,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1459,7 +1471,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1561,7 +1574,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1665,7 +1679,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1875,7 +1890,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2042,7 +2058,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2216,7 +2233,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2310,7 +2328,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2401,7 +2420,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2492,7 +2512,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2640,7 +2661,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2756,7 +2778,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2908,7 +2931,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -3008,7 +3032,8 @@ mod tests {
                 "0.0.0.0:9898".parse().unwrap(),
                 32,
                 std::time::Duration::from_secs(5),
-            ),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
