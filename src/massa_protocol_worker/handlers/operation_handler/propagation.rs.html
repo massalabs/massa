@@ -157,14 +157,82 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{mem, thread::JoinHandle};
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::{mem, thread::JoinHandle};
 
 <span class="kw">use </span>crossbeam::channel::RecvTimeoutError;
 <span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::operation::OperationId;
+<span class="kw">use </span>massa_models::prehash::CapacityAllocator;
+<span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>tracing::{debug, info, log::warn};
 
 <span class="kw">use crate</span>::{
@@ -180,39 +248,55 @@
 <span class="kw">struct </span>PropagationThread {
     internal_receiver: MassaReceiver&lt;OperationHandlerPropagationCommand&gt;,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
-    operations_to_announce: Vec&lt;OperationId&gt;,
+    <span class="comment">// times at which previous ops were announced
+    </span>stored_for_propagation: VecDeque&lt;(std::time::Instant, PreHashSet&lt;OperationId&gt;)&gt;,
+    op_storage: Storage,
+    next_batch: PreHashSet&lt;OperationId&gt;,
     config: ProtocolConfig,
     cache: SharedOperationCache,
     operation_message_serializer: MessagesSerializer,
+    _massa_metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>PropagationThread {
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>next_announce = std::time::Instant::now()
+        <span class="kw">let </span><span class="kw-2">mut </span>batch_deadline = std::time::Instant::now()
             .checked_add(<span class="self">self</span>.config.operation_announcement_interval.to_duration())
             .expect(<span class="string">&quot;Can&#39;t init interval op propagation&quot;</span>);
         <span class="kw">loop </span>{
-            <span class="kw">match </span><span class="self">self</span>.internal_receiver.recv_deadline(next_announce) {
+            <span class="kw">match </span><span class="self">self</span>.internal_receiver.recv_deadline(batch_deadline) {
                 <span class="prelude-val">Ok</span>(internal_message) =&gt; {
                     <span class="kw">match </span>internal_message {
-                        OperationHandlerPropagationCommand::AnnounceOperations(operations_ids) =&gt; {
+                        OperationHandlerPropagationCommand::PropagateOperations(operations) =&gt; {
                             <span class="comment">// Note operations as checked.
                             </span>{
                                 <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                                <span class="kw">for </span>op_id <span class="kw">in </span>operations_ids.iter().copied() {
+                                <span class="kw">for </span>op_id <span class="kw">in </span>operations.get_op_refs().iter().copied() {
                                     cache_write.insert_checked_operation(op_id);
                                 }
                             }
-                            <span class="self">self</span>.operations_to_announce.extend(operations_ids);
-                            <span class="kw">if </span><span class="self">self</span>.operations_to_announce.len()
-                                &gt; <span class="self">self</span>.config.operation_announcement_buffer_capacity
-                            {
-                                <span class="self">self</span>.announce_ops();
-                                next_announce = std::time::Instant::now()
-                                    .checked_add(
-                                        <span class="self">self</span>.config.operation_announcement_interval.to_duration(),
-                                    )
-                                    .expect(<span class="string">&quot;Can&#39;t init interval op propagation&quot;</span>);
+
+                            <span class="comment">// add to propagation storage
+                            </span><span class="kw">let </span>new_ops = operations.get_op_refs().clone();
+                            <span class="self">self</span>.stored_for_propagation
+                                .push_back((std::time::Instant::now(), new_ops.clone()));
+                            <span class="self">self</span>.op_storage.extend(operations);
+                            <span class="self">self</span>.prune_propagation_storage();
+
+                            <span class="kw">for </span>op_id <span class="kw">in </span>new_ops {
+                                <span class="self">self</span>.next_batch.insert(op_id);
+                                <span class="kw">if </span><span class="self">self</span>.next_batch.len()
+                                    &gt;= <span class="self">self</span>.config.operation_announcement_buffer_capacity
+                                {
+                                    <span class="self">self</span>.announce_ops();
+                                    batch_deadline = std::time::Instant::now()
+                                        .checked_add(
+                                            <span class="self">self</span>.config
+                                                .operation_announcement_interval
+                                                .to_duration(),
+                                        )
+                                        .expect(<span class="string">&quot;Can&#39;t init interval op propagation&quot;</span>);
+                                }
                             }
                         }
                         OperationHandlerPropagationCommand::Stop =&gt; {
@@ -223,7 +307,7 @@
                 }
                 <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
                     <span class="self">self</span>.announce_ops();
-                    next_announce = std::time::Instant::now()
+                    batch_deadline = std::time::Instant::now()
                         .checked_add(<span class="self">self</span>.config.operation_announcement_interval.to_duration())
                         .expect(<span class="string">&quot;Can&#39;t init interval op propagation&quot;</span>);
                 }
@@ -234,12 +318,43 @@
         }
     }
 
+    <span class="doccomment">/// Prune the list of operations kept for propagation.
+    </span><span class="kw">fn </span>prune_propagation_storage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span><span class="kw-2">mut </span>removed = PreHashSet::default();
+
+        <span class="comment">// cap cache size
+        </span><span class="kw">while </span><span class="self">self</span>.stored_for_propagation.len() &gt; <span class="self">self</span>.config.max_ops_kept_for_propagation {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((_t, op_ids)) = <span class="self">self</span>.stored_for_propagation.pop_front() {
+                removed.extend(op_ids);
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
+            }
+        }
+
+        <span class="comment">// remove expired
+        </span><span class="kw">let </span>max_op_prop_time = <span class="self">self</span>.config.max_operations_propagation_time.to_duration();
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((t, <span class="kw">_</span>)) = <span class="self">self</span>.stored_for_propagation.front() {
+            <span class="kw">if </span>t.elapsed() &gt; max_op_prop_time {
+                <span class="kw">let </span>(<span class="kw">_</span>, op_ids) = <span class="self">self
+                    </span>.stored_for_propagation
+                    .pop_front()
+                    .expect(<span class="string">&quot;there should be at least one element, checked above&quot;</span>);
+                removed.extend(op_ids);
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
+            }
+        }
+
+        <span class="comment">// remove from storage
+        </span><span class="self">self</span>.op_storage.drop_operation_refs(<span class="kw-2">&amp;</span>removed);
+    }
+
     <span class="kw">fn </span>announce_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Quit if empty  to avoid iterating on nodes
-        </span><span class="kw">if </span><span class="self">self</span>.operations_to_announce.is_empty() {
+        </span><span class="kw">if </span><span class="self">self</span>.next_batch.is_empty() {
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>operation_ids = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.operations_to_announce);
+        <span class="kw">let </span>operation_ids = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.next_batch);
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.announce_ops.begin&quot;</span>, {
             <span class="string">&quot;operation_ids&quot;</span>: operation_ids
         });
@@ -299,6 +414,8 @@
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     config: ProtocolConfig,
     cache: SharedOperationCache,
+    op_storage: Storage,
+    massa_metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-operation-handler-propagation&quot;</span>.to_string())
@@ -306,9 +423,18 @@
             <span class="kw">let </span><span class="kw-2">mut </span>propagation_thread = PropagationThread {
                 internal_receiver,
                 active_connections,
-                operations_to_announce: Vec::new(),
+                stored_for_propagation: VecDeque::with_capacity(
+                    config.max_ops_kept_for_propagation,
+                ),
+                op_storage,
+                next_batch: PreHashSet::with_capacity(
+                    config
+                        .operation_announcement_buffer_capacity
+                        .saturating_add(<span class="number">1</span>),
+                ),
                 config,
                 cache,
+                _massa_metrics: massa_metrics,
                 operation_message_serializer: MessagesSerializer::new()
                     .with_operation_message_serializer(OperationMessageSerializer::new()),
             };

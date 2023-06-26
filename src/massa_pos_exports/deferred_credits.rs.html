@@ -434,12 +434,7 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -462,7 +457,7 @@
     ops::Bound::{Excluded, Included},
 };
 
-<span class="kw">const </span>DEFERRED_CREDITS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; HASH_XOF_SIZE_BYTES] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_XOF_SIZE_BYTES];
+<span class="kw">const </span>DEFERRED_CREDITS_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="attr">#[derive(Clone, Serialize, Deserialize)]
 </span><span class="doccomment">/// Structure containing all the PoS deferred credits information
@@ -485,7 +480,7 @@
     slot_ser: SlotSerializer,
     address_ser: AddressSerializer,
     amount_ser: AmountSerializer,
-    hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
+    hash: Hash,
 }
 
 <span class="kw">impl </span>DeferredCreditsHashTracker {
@@ -495,12 +490,12 @@
             slot_ser: SlotSerializer::new(),
             address_ser: AddressSerializer::new(),
             amount_ser: AmountSerializer::new(),
-            hash: HashXof::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
+            hash: Hash::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
         }
     }
 
     <span class="doccomment">/// Get resulting hash from the tracker
-    </span><span class="kw">pub fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashXof&lt;HASH_XOF_SIZE_BYTES&gt; {
+    </span><span class="kw">pub fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
         <span class="kw-2">&amp;</span><span class="self">self</span>.hash
     }
 
@@ -510,18 +505,13 @@
     }
 
     <span class="doccomment">/// Compute the hash for a specific entry
-    </span><span class="kw">fn </span>compute_hash(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        slot: <span class="kw-2">&amp;</span>Slot,
-        address: <span class="kw-2">&amp;</span>Address,
-        amount: <span class="kw-2">&amp;</span>Amount,
-    ) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt; {
+    </span><span class="kw">fn </span>compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, address: <span class="kw-2">&amp;</span>Address, amount: <span class="kw-2">&amp;</span>Amount) -&gt; Hash {
         <span class="comment">// serialization can never fail in the following computations, unwrap is justified
         </span><span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         <span class="self">self</span>.slot_ser.serialize(slot, <span class="kw-2">&amp;mut </span>buffer).unwrap();
         <span class="self">self</span>.address_ser.serialize(address, <span class="kw-2">&amp;mut </span>buffer).unwrap();
         <span class="self">self</span>.amount_ser.serialize(amount, <span class="kw-2">&amp;mut </span>buffer).unwrap();
-        HashXof::compute_from(<span class="kw-2">&amp;</span>buffer)
+        Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
     }
 }
 
@@ -548,7 +538,7 @@
     }
 
     <span class="doccomment">/// Get hash from tracker, if any
-    </span><span class="kw">pub fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HashXof&lt;HASH_XOF_SIZE_BYTES&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Hash&gt; {
         <span class="self">self</span>.hash_tracker.as_ref().map(|ht| ht.get_hash())
     }
 
@@ -565,7 +555,7 @@
     }
 
     <span class="doccomment">/// Enables the hash tracker (and compute the hash if absent)
-    </span><span class="kw">pub fn </span>enable_hash_tracker_and_compute_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashXof&lt;HASH_XOF_SIZE_BYTES&gt; {
+    </span><span class="kw">pub fn </span>enable_hash_tracker_and_compute_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
         <span class="kw">if </span><span class="self">self</span>.hash_tracker.is_none() {
             <span class="kw">let </span><span class="kw-2">mut </span>hash_tracker = DeferredCreditsHashTracker::new();
             <span class="self">self</span>.for_each(|slot, address, amount| {
