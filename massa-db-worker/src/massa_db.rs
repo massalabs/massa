@@ -4,7 +4,7 @@ use massa_db_exports::{
     CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
     STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
-use massa_hash::{Hash, HashXof, XOF_HASH_SIZE_BYTES};
+use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -531,13 +531,13 @@ where
     }
 
     /// Get the current XOF state hash of the database
-    pub fn get_xof_db_hash(&self) -> HashXof<XOF_HASH_SIZE_BYTES> {
+    pub fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
         self.get_xof_db_hash_opt()
             .unwrap_or(HashXof(*STATE_HASH_INITIAL_BYTES))
     }
 
     /// Get the current XOF state hash of the database
-    fn get_xof_db_hash_opt(&self) -> Option<HashXof<XOF_HASH_SIZE_BYTES>> {
+    fn get_xof_db_hash_opt(&self) -> Option<HashXof<HASH_XOF_SIZE_BYTES>> {
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
@@ -545,14 +545,6 @@ where
             .expect(CRUD_ERROR)
             .as_deref()
             .map(|state_hash_bytes| HashXof(state_hash_bytes.try_into().expect(STATE_HASH_ERROR)))
-    }
-
-    /// Get the current state hash of the database
-    pub fn get_db_hash(&self) -> Hash {
-        let hash_xof = self
-            .get_xof_db_hash_opt()
-            .unwrap_or(HashXof(*STATE_HASH_INITIAL_BYTES));
-        Hash::compute_from(&hash_xof.0)
     }
 }
 
@@ -730,12 +722,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Get the current extended state hash of the database
-    fn get_db_hash(&self) -> Hash {
-        self.get_db_hash()
-    }
-
-    /// Get the current extended state hash of the database
-    fn get_xof_db_hash(&self) -> HashXof<XOF_HASH_SIZE_BYTES> {
+    fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
         self.get_xof_db_hash()
     }
 
