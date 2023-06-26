@@ -1269,6 +1269,8 @@
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
 <a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1355,7 +1357,7 @@
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>massa_versioning::mips::MIP_LIST;
+<span class="kw">use </span>massa_versioning::mips::get_mip_list;
 <span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -1368,7 +1370,7 @@
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
 <span class="kw">use </span>tokio::sync::broadcast;
-<span class="kw">use </span>tracing::{error, info, warn};
+<span class="kw">use </span>tracing::{debug, error, info, warn};
 <span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
@@ -1546,8 +1548,10 @@
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
+    <span class="kw">let </span>mip_list = get_mip_list();
+    <span class="macro">debug!</span>(<span class="string">&quot;MIP list: {:?}&quot;</span>, mip_list);
     <span class="kw">let </span>mip_store =
-        MipStore::try_from((MIP_LIST, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+        MipStore::try_from((mip_list, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
 
     <span class="comment">// Create final state, either from a snapshot, or from scratch
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
