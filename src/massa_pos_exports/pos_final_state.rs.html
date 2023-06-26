@@ -1622,13 +1622,6 @@
 <a href="#1622" id="1622">1622</a>
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
-<a href="#1625" id="1625">1625</a>
-<a href="#1626" id="1626">1626</a>
-<a href="#1627" id="1627">1627</a>
-<a href="#1628" id="1628">1628</a>
-<a href="#1629" id="1629">1629</a>
-<a href="#1630" id="1630">1630</a>
-<a href="#1631" id="1631">1631</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -1641,7 +1634,7 @@
     CYCLE_HISTORY_DESER_ERROR, CYCLE_HISTORY_PREFIX, CYCLE_HISTORY_SER_ERROR,
     DEFERRED_CREDITS_DESER_ERROR, DEFERRED_CREDITS_PREFIX, DEFERRED_CREDITS_SER_ERROR, STATE_CF,
 };
-<span class="kw">use </span>massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
@@ -2175,11 +2168,7 @@
     }
 
     <span class="doccomment">/// Feeds the selector targeting a given draw cycle
-    </span><span class="kw">pub fn </span>feed_cycle_state_hash(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cycle: u64,
-        final_state_hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
-    ) {
+    </span><span class="kw">pub fn </span>feed_cycle_state_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64, final_state_hash: Hash) {
         <span class="kw">if </span><span class="self">self</span>.get_cycle_index(cycle).is_some() {
             <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
             <span class="self">self</span>.put_cycle_history_final_state_hash_snapshot(
@@ -2481,10 +2470,7 @@
     <span class="doccomment">/// Getter for the final_state_hash_snapshot of a given cycle.
     ///
     /// Panics if the cycle is not in the history.
-    </span><span class="kw">fn </span>get_cycle_history_final_state_hash_snapshot(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cycle: u64,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;&gt; {
+    </span><span class="kw">fn </span>get_cycle_history_final_state_hash_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;Hash&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span>serialized_state_hash = db
@@ -2701,7 +2687,7 @@
     </span><span class="kw">fn </span>put_cycle_history_final_state_hash_snapshot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cycle: u64,
-        value: <span class="prelude-ty">Option</span>&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;&gt;,
+        value: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
         batch: <span class="kw-2">&amp;mut </span>DBBatch,
     ) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();

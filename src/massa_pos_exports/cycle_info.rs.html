@@ -563,13 +563,8 @@
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
 <a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
-<span class="kw">use </span>massa_hash::{Hash, HashXof, HashXofDeserializer, HashXofSerializer, HASH_XOF_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
@@ -593,7 +588,7 @@
 <span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
 <span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="kw">const </span>CYCLE_INFO_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; HASH_XOF_SIZE_BYTES] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_XOF_SIZE_BYTES];
+<span class="kw">const </span>CYCLE_INFO_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_SIZE_BYTES];
 
 <span class="kw">struct </span>CycleInfoHashComputer {
     u64_ser: U64VarIntSerializer,
@@ -631,23 +626,18 @@
         Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
     }
 
-    <span class="comment">// TODO: Remove hash from cycle and deferred credits as it&#39;s not saved in the DB.
-    </span><span class="kw">fn </span>compute_roll_entry_hash(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        address: <span class="kw-2">&amp;</span>Address,
-        roll_count: u64,
-    ) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt; {
+    <span class="kw">fn </span>compute_roll_entry_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address, roll_count: u64) -&gt; Hash {
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         <span class="self">self</span>.address_ser.serialize(address, <span class="kw-2">&amp;mut </span>buffer).unwrap();
         <span class="self">self</span>.u64_ser.serialize(<span class="kw-2">&amp;</span>roll_count, <span class="kw-2">&amp;mut </span>buffer).unwrap();
-        HashXof::compute_from(<span class="kw-2">&amp;</span>buffer)
+        Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
     }
 
     <span class="kw">fn </span>compute_prod_stats_entry_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         address: <span class="kw-2">&amp;</span>Address,
         prod_stats: <span class="kw-2">&amp;</span>ProductionStats,
-    ) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt; {
+    ) -&gt; Hash {
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         <span class="self">self</span>.address_ser.serialize(address, <span class="kw-2">&amp;mut </span>buffer).unwrap();
         <span class="self">self</span>.u64_ser
@@ -656,7 +646,7 @@
         <span class="self">self</span>.u64_ser
             .serialize(<span class="kw-2">&amp;</span>prod_stats.block_failure_count, <span class="kw-2">&amp;mut </span>buffer)
             .unwrap();
-        HashXof::compute_from(<span class="kw-2">&amp;</span>buffer)
+        Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
     }
 }
 
@@ -674,14 +664,14 @@
     <span class="doccomment">/// Per-address production statistics
     </span><span class="kw">pub </span>production_stats: PreHashMap&lt;Address, ProductionStats&gt;,
     <span class="doccomment">/// Hash of the roll counts
-    </span><span class="kw">pub </span>roll_counts_hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
+    </span><span class="kw">pub </span>roll_counts_hash: Hash,
     <span class="doccomment">/// Hash of the production statistics
-    </span><span class="kw">pub </span>production_stats_hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
+    </span><span class="kw">pub </span>production_stats_hash: Hash,
     <span class="doccomment">/// Hash of the cycle state
-    </span><span class="kw">pub </span>cycle_global_hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
+    </span><span class="kw">pub </span>cycle_global_hash: Hash,
     <span class="doccomment">/// Snapshot of the final state hash
     /// Used for PoS selections
-    </span><span class="kw">pub </span>final_state_hash_snapshot: <span class="prelude-ty">Option</span>&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;&gt;,
+    </span><span class="kw">pub </span>final_state_hash_snapshot: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
 }
 
 <span class="kw">impl </span>CycleInfo {
@@ -694,8 +684,8 @@
         production_stats: PreHashMap&lt;Address, ProductionStats&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>hash_computer = CycleInfoHashComputer::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>roll_counts_hash = HashXof::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
-        <span class="kw">let </span><span class="kw-2">mut </span>production_stats_hash = HashXof::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        <span class="kw">let </span><span class="kw-2">mut </span>roll_counts_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        <span class="kw">let </span><span class="kw-2">mut </span>production_stats_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
 
         <span class="comment">// compute the cycle hash
         </span><span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = Vec::new();
@@ -712,7 +702,7 @@
         hash_concat.extend(production_stats_hash.to_bytes());
 
         <span class="comment">// compute the global hash
-        </span><span class="kw">let </span>cycle_global_hash = HashXof::compute_from(<span class="kw-2">&amp;</span>hash_concat);
+        </span><span class="kw">let </span>cycle_global_hash = Hash::compute_from(<span class="kw-2">&amp;</span>hash_concat);
 
         <span class="comment">// create the new cycle
         </span>CycleInfo {
@@ -737,7 +727,7 @@
     <span class="kw">pub </span>bitvec_ser: BitVecSerializer,
     <span class="kw">pub </span>production_stats_ser: ProductionStatsSerializer,
     <span class="kw">pub </span>address_ser: AddressSerializer,
-    <span class="kw">pub </span>opt_hash_ser: OptionSerializer&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;, HashXofSerializer&gt;,
+    <span class="kw">pub </span>opt_hash_ser: OptionSerializer&lt;Hash, HashSerializer&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>CycleInfoSerializer {
@@ -754,7 +744,7 @@
             bitvec_ser: BitVecSerializer::new(),
             production_stats_ser: ProductionStatsSerializer::new(),
             address_ser: AddressSerializer::new(),
-            opt_hash_ser: OptionSerializer::new(HashXofSerializer::new()),
+            opt_hash_ser: OptionSerializer::new(HashSerializer::new()),
         }
     }
 }
@@ -798,7 +788,7 @@
     <span class="kw">pub </span>rolls_deser: RollsDeserializer,
     <span class="kw">pub </span>bitvec_deser: BitVecDeserializer,
     <span class="kw">pub </span>production_stats_deser: ProductionStatsDeserializer,
-    <span class="kw">pub </span>opt_hash_deser: OptionDeserializer&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;, HashXofDeserializer&gt;,
+    <span class="kw">pub </span>opt_hash_deser: OptionDeserializer&lt;Hash, HashDeserializer&gt;,
 }
 
 <span class="kw">impl </span>CycleInfoDeserializer {
@@ -809,7 +799,7 @@
             rolls_deser: RollsDeserializer::new(max_rolls_length),
             bitvec_deser: BitVecDeserializer::new(),
             production_stats_deser: ProductionStatsDeserializer::new(max_production_stats_length),
-            opt_hash_deser: OptionDeserializer::new(HashXofDeserializer::new()),
+            opt_hash_deser: OptionDeserializer::new(HashDeserializer::new()),
         }
     }
 }
@@ -845,7 +835,7 @@
                 </span>Vec&lt;(Address, u64)&gt;,                  <span class="comment">// roll_counts
                 </span>BitVec&lt;u8&gt;,                           <span class="comment">// rng_seed
                 </span>PreHashMap&lt;Address, ProductionStats&gt;, <span class="comment">// production_stats (address, n_success, n_fail)
-                </span><span class="prelude-ty">Option</span>&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;&gt;, <span class="comment">// final_state_hash_snapshot
+                </span><span class="prelude-ty">Option</span>&lt;Hash&gt;,                         <span class="comment">// final_state_hash_snapshot
             </span>)| {
                 <span class="kw">let </span><span class="kw-2">mut </span>cycle = CycleInfo::new_with_hash(
                     cycle,

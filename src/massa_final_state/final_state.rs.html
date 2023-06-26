@@ -829,7 +829,7 @@
         <span class="macro">info!</span>(
             <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
             slot,
-            final_state.db.read().get_xof_db_hash()
+            final_state.db.read().get_db_hash()
         );
 
         <span class="comment">// create the final state
@@ -921,7 +921,7 @@
         <span class="macro">info!</span>(
             <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
             recovered_slot,
-            final_state.db.read().get_xof_db_hash()
+            final_state.db.read().get_db_hash()
         );
 
         <span class="comment">// Then, interpolate the downtime, to attach at end_slot;
@@ -966,7 +966,7 @@
         }
 
         <span class="comment">// Recompute the hash with the updated data and feed it to POS_state.
-        </span><span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
+        </span><span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_db_hash();
 
         <span class="macro">info!</span>(
             <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
@@ -1184,7 +1184,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         cycle: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
+        <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_db_hash();
 
         <span class="self">self</span>.pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
@@ -1268,7 +1268,7 @@
             .write()
             .write_batch(db_batch, Default::default(), <span class="prelude-val">Some</span>(slot));
 
-        <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
+        <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_db_hash();
 
         <span class="comment">// compute the final state hash
         </span><span class="macro">info!</span>(<span class="string">&quot;final_state hash at slot {}: {}&quot;</span>, slot, final_state_hash);
