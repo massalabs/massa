@@ -711,6 +711,9 @@ async fn launch(
         last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        stop_production_when_zero_connections: SETTINGS
+            .factory
+            .stop_production_when_zero_connections,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),

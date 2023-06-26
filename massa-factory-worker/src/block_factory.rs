@@ -157,6 +157,17 @@ impl BlockFactoryWorker {
                 }
             }
         }
+
+        // check if we need to have connections to produce a block and in this case, check if we have enough.
+        if self.cfg.stop_production_when_zero_connections {
+            if let Ok(stats) = self.channels.protocol.get_stats() {
+                if stats.1.is_empty() {
+                    warn!("block factory could not produce block for slot {} because there are no connections", slot);
+                    return;
+                }
+            }
+        }
+
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
