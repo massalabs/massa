@@ -129,6 +129,7 @@ impl ExecutionController for MockExecutionController {
             final_block_count: 0,
             final_executed_operations_count: 0,
             active_cursor: Slot::new(0, 0),
+            final_cursor: Slot::new(0, 0),
         }
     }
 
