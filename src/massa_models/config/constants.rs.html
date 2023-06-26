@@ -324,8 +324,6 @@
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -406,9 +404,9 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
-            <span class="string">&quot;SAND.23.2&quot;
+            <span class="string">&quot;SAND.24.0&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.23.2&quot;
+            <span class="string">&quot;TEST.24.0&quot;
         </span>}
         .parse()
         .unwrap()
@@ -433,11 +431,9 @@
 <span class="doccomment">/// Price of a roll in the network
 </span><span class="kw">pub const </span>ROLL_PRICE: Amount = Amount::const_init(<span class="number">100</span>, <span class="number">0</span>);
 <span class="doccomment">/// Block reward is given for each block creation
-</span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::const_init(<span class="number">3</span>, <span class="number">1</span>);
+</span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::const_init(<span class="number">102</span>, <span class="number">2</span>);
 <span class="doccomment">/// Cost to store one byte in the ledger
-</span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::const_init(<span class="number">25</span>, <span class="number">5</span>);
-<span class="doccomment">/// Address size in bytes
-</span><span class="kw">pub const </span>ADDRESS_SIZE_BYTES: usize = <span class="number">32</span>;
+</span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::const_init(<span class="number">1</span>, <span class="number">3</span>);
 <span class="doccomment">/// Cost for a base entry default 0.01 MASSA
 </span><span class="kw">pub const </span>LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(<span class="number">1</span>, <span class="number">2</span>);
 <span class="doccomment">/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
