@@ -11,7 +11,7 @@ use massa_models::{
 #[derive(Default)]
 pub struct OperationIndexes {
     /// Operations structure container
-    operations: PreHashMap<OperationId, SecureShareOperation>,
+    operations: PreHashMap<OperationId, Box<SecureShareOperation>>,
     /// Structure mapping creators with the created operations
     index_by_creator: PreHashMap<Address, PreHashSet<OperationId>>,
     /// Structure indexing operations by ID prefix
@@ -23,7 +23,10 @@ impl OperationIndexes {
     /// Arguments:
     /// * `operation`: the operation to insert
     pub(crate) fn insert(&mut self, operation: SecureShareOperation) {
-        if let Ok(o) = self.operations.try_insert(operation.id, operation) {
+        if let Ok(o) = self
+            .operations
+            .try_insert(operation.id, Box::new(operation))
+        {
             massa_metrics::inc_operations_counter();
 
             // update creator index
@@ -42,7 +45,10 @@ impl OperationIndexes {
     /// Remove a operation, remove from the indexes and made some clean-up in indexes if necessary.
     /// Arguments:
     /// * `operation_id`: the operation id to remove
-    pub(crate) fn remove(&mut self, operation_id: &OperationId) -> Option<SecureShareOperation> {
+    pub(crate) fn remove(
+        &mut self,
+        operation_id: &OperationId,
+    ) -> Option<Box<SecureShareOperation>> {
         if let Some(o) = self.operations.remove(operation_id) {
             massa_metrics::dec_operations_counter();
 
@@ -69,7 +75,7 @@ impl OperationIndexes {
 
     /// Gets a reference to a stored operation, if any.
     pub fn get(&self, id: &OperationId) -> Option<&SecureShareOperation> {
-        self.operations.get(id)
+        self.operations.get(id).map(|v| v.as_ref())
     }
 
     /// Checks whether an operation exists in global storage.

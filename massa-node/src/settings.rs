@@ -209,12 +209,12 @@ pub struct ProtocolSettings {
     pub operation_announcement_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: MassaTime,
-    /// All operations asked are prune each `operation_asked_pruning_period` millisecond
-    pub asked_operations_pruning_period: MassaTime,
     /// Interval at which operations are announced in batches.
     pub operation_announcement_interval: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
+    /// MAx number of operations kept for propagation
+    pub max_ops_kept_for_propagation: usize,
     /// Time threshold after which operation are not propagated
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
