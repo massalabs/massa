@@ -61,6 +61,7 @@ impl CycleInfoHashComputer {
         Hash::compute_from(&buffer)
     }
 
+    // TODO: Remove hash from cycle and deferred credits as it's not saved in the DB.
     fn compute_roll_entry_hash(
         &self,
         address: &Address,
