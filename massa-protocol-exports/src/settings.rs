@@ -60,8 +60,6 @@ pub struct ProtocolConfig {
     pub operation_batch_proc_period: MassaTime,
     /// Maximum number of asked operations in the memory buffer.
     pub asked_operations_buffer_capacity: usize,
-    /// All operations asked are prune each `operation_asked_pruning_period` millisecond
-    pub asked_operations_pruning_period: MassaTime,
     /// Interval at which operations are announced in batches.
     pub operation_announcement_interval: MassaTime,
     /// Maximum time we keep an operation in the storage
@@ -80,6 +78,8 @@ pub struct ProtocolConfig {
     pub t0: MassaTime,
     /// Genesis timestamp
     pub genesis_timestamp: MassaTime,
+    /// max number of operations kept in memory for propagation
+    pub max_ops_kept_for_propagation: usize,
     /// max time we propagate operations
     pub max_operations_propagation_time: MassaTime,
     /// max time we propagate endorsements
