@@ -1756,6 +1756,9 @@
 <a href="#1756" id="1756">1756</a>
 <a href="#1757" id="1757">1757</a>
 <a href="#1758" id="1758">1758</a>
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1950,8 +1953,7 @@
 
     <span class="doccomment">/// Get execution statistics
     </span><span class="kw">pub fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats {
-        <span class="self">self</span>.stats_counter
-            .get_stats(<span class="self">self</span>.active_cursor, <span class="self">self</span>.final_cursor)
+        <span class="self">self</span>.stats_counter.get_stats(<span class="self">self</span>.active_cursor)
     }
 
     <span class="doccomment">/// Applies the output of an execution to the final execution state.
@@ -3103,6 +3105,10 @@
         <span class="macro">debug!</span>(
             <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
         </span>);
+
+        <span class="comment">// update prometheus metrics
+        </span><span class="self">self</span>.massa_metrics
+            .inc_operations_final_counter(exec_out.state_changes.executed_ops_changes.len() <span class="kw">as </span>u64);
 
         <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
         </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {

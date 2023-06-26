@@ -109,13 +109,13 @@
             </span>.endorsements
             .try_insert(endorsement.id, Box::new(endorsement))
         {
-            massa_metrics::inc_endorsements_counter();
-
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(e.content_creator_address)
                 .or_default()
                 .insert(e.id);
+
+            massa_metrics::set_endorsements_counter(<span class="self">self</span>.endorsements.len());
         }
     }
 
@@ -127,7 +127,7 @@
         endorsement_id: <span class="kw-2">&amp;</span>EndorsementId,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;SecureShareEndorsement&gt;&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = <span class="self">self</span>.endorsements.remove(endorsement_id) {
-            massa_metrics::dec_endorsements_counter();
+            massa_metrics::set_endorsements_counter(<span class="self">self</span>.endorsements.len());
 
             <span class="comment">// update creator index
             </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =

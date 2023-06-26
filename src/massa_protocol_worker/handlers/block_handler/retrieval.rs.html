@@ -1500,7 +1500,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 <span class="kw">use crate</span>::{
@@ -1629,7 +1629,7 @@
                 last_start_period: <span class="prelude-val">Some</span>(<span class="self">self</span>.config.last_start_period),
             });
 
-        <span class="kw">let </span>tick_update_metrics = tick(Duration::from_secs(<span class="number">5</span>));
+        <span class="kw">let </span>tick_update_metrics = tick(<span class="self">self</span>.massa_metrics.tick_delay);
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver_network) -&gt; msg =&gt; {
