@@ -218,7 +218,7 @@
     }
 }
 
-<span class="comment">// To use this xor operator you must ensure that you have all the criteria listed here : 
+<span class="comment">// To use this xor operator you must ensure that you have all the criteria listed here :
 // https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
 </span><span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXorAssign <span class="kw">for </span>HashXof&lt;SIZE&gt; {
     <span class="kw">fn </span>bitxor_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: <span class="self">Self</span>) {
@@ -226,7 +226,7 @@
     }
 }
 
-<span class="comment">// To use this xor operator you must ensure that you have all the criteria listed here : 
+<span class="comment">// To use this xor operator you must ensure that you have all the criteria listed here :
 // https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
 </span><span class="kw">impl</span>&lt;<span class="kw">const </span>SIZE: usize&gt; BitXor <span class="kw">for </span>HashXof&lt;SIZE&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
