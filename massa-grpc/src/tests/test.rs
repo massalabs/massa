@@ -17,7 +17,7 @@ use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::massa_service_client::MassaServiceClient;
-use massa_protocol_exports::MockProtocolController;
+use massa_protocol_exports::AutoMockProtocolController;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -38,7 +38,7 @@ async fn test_start_grpc_server() {
         execution_controller: execution_ctrl.0.clone(),
         selector_controller: selector_ctrl.0.clone(),
         pool_controller: pool_ctrl.0.clone(),
-        protocol_controller: Box::new(MockProtocolController::new()),
+        protocol_controller: Box::new(AutoMockProtocolController::new()),
         controller_event_tx: consensus_event_sender,
         block_sender: tokio::sync::broadcast::channel(100).0,
         block_header_sender: tokio::sync::broadcast::channel(100).0,
@@ -118,7 +118,7 @@ async fn test_start_grpc_server() {
             execution_controller: execution_ctrl.0.clone(),
         },
         pool_command_sender: pool_ctrl.0,
-        protocol_command_sender: Box::new(MockProtocolController::new()),
+        protocol_command_sender: Box::new(AutoMockProtocolController::new()),
         selector_controller: selector_ctrl.0,
         storage: shared_storage,
         grpc_config: grpc_config.clone(),

@@ -18,4 +18,4 @@ pub use settings::{PeerCategoryInfo, ProtocolConfig};
 pub mod test_exports;
 
 #[cfg(feature = "testing")]
-pub use controller_trait::MockProtocolController;
+pub use controller_trait::MockProtocolController as AutoMockProtocolController;

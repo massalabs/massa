@@ -46,7 +46,7 @@ use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
 };
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::MockProtocolController;
+use massa_protocol_exports::AutoMockProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use mockall::Sequence;
@@ -80,8 +80,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 
     // start bootstrap manager
     let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let mut mocked1 = Box::new(MockProtocolController::new());
-    let mocked2 = Box::new(MockProtocolController::new());
+    let mut mocked1 = Box::new(AutoMockProtocolController::new());
+    let mocked2 = Box::new(AutoMockProtocolController::new());
     mocked1.expect_clone_box().return_once(move || mocked2);
 
     // start proof-of-stake selectors
@@ -369,8 +369,8 @@ fn test_bootstrap_server() {
 
     let (mock_bs_listener, mock_remote_connector) = conn_establishment_mocks();
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
-    let mut mocked1 = MockProtocolController::new();
-    let mut mocked2 = Box::new(MockProtocolController::new());
+    let mut mocked1 = AutoMockProtocolController::new();
+    let mut mocked2 = Box::new(AutoMockProtocolController::new());
     mocked2
         .expect_get_bootstrap_peers()
         .times(1)
@@ -656,10 +656,10 @@ fn test_bootstrap_accept_err() {
     // mock story: 1. accept() -> error. 2. accept() -> stop
     let (mock_bs_listener, _mock_remote_connector) = accept_err_accept_stop_mocks();
 
-    let mut mocked_proto_ctrl = MockProtocolController::new();
+    let mut mocked_proto_ctrl = AutoMockProtocolController::new();
     mocked_proto_ctrl
         .expect_clone_box()
-        .return_once(move || Box::new(MockProtocolController::new()));
+        .return_once(move || Box::new(AutoMockProtocolController::new()));
 
     let stream_mock1 = Box::new(AutoMockConsensusController::new());
 
