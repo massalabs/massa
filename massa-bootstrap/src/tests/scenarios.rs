@@ -183,6 +183,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 }
 
 #[test]
+#[cfg_attr(target_os = "macos", serial_test::serial)]
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
@@ -193,6 +194,7 @@ fn test_bootstrap_whitelist() {
 }
 
 #[test]
+#[cfg_attr(target_os = "macos", serial_test::serial)]
 fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
