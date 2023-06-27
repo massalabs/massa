@@ -356,6 +356,11 @@ impl MipState {
             return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
+        if mip_info.start < initial_ts.now || mip_info.timeout < initial_ts.now {
+            // MIP info start (or timeout) is before Defined timestamp??
+            return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
+        }
+
         // Build a new MipStateHistory from initial state, replaying the whole history
         // but with given versioning info then compare
         let mut vsh = MipState::new(initial_ts.now);
@@ -1809,6 +1814,58 @@ mod test {
     }
 
     #[test]
+    fn test_try_from_invalid() {
+        // Test create a MIP store with invalid MIP info
+
+        // part 0 - defines data for the test
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
+        };
+        let _time = MassaTime::now().unwrap();
+        let ms_1 = advance_state_until(ComponentState::active(_time), &mi_1);
+        assert!(matches!(ms_1.state, ComponentState::Active(_)));
+        {
+            // make mi_1_1 invalid: start is after timeout
+            let mut mi_1_1 = mi_1.clone();
+            mi_1_1.start = MassaTime::from_millis(5);
+            mi_1_1.timeout = MassaTime::from_millis(2);
+
+            let mip_store =
+                MipStoreRaw::try_from(([(mi_1_1, ms_1.clone())], mip_stats_cfg.clone()));
+            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+        }
+        {
+            let ms_1_2 = MipState::new(MassaTime::from_millis(15));
+            // make mi_1_1 invalid: start is after timeout
+            let mut mi_1_2 = mi_1.clone();
+            mi_1_2.start = MassaTime::from_millis(2);
+            mi_1_2.timeout = MassaTime::from_millis(5);
+
+            let mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg.clone()));
+            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+        }
+        {
+            let ms_1_2 = MipState::new(MassaTime::from_millis(15));
+            // make mi_1_1 invalid: start is after timeout
+            let mut mi_1_2 = mi_1.clone();
+            mi_1_2.start = MassaTime::from_millis(16);
+            mi_1_2.timeout = MassaTime::from_millis(5);
+
+            let mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg));
+            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+        }
+    }
+
+    #[test]
     fn test_empty_mip_store() {
         // Test if we can init an empty MipStore
 
@@ -2170,7 +2227,7 @@ mod test {
         let between = (&get_slot_ts(*slot_bounds_.0), &get_slot_ts(*slot_bounds_.1));
 
         mip_store
-            .update_batches(&mut db_batch, &mut db_versioning_batch, between)
+            .update_batches(&mut db_batch, &mut db_versioning_batch, Some(between))
             .unwrap();
 
         assert_eq!(db_batch.len(), 1); // mi_1
