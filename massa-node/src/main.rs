@@ -4,7 +4,6 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
-use std::thread::sleep;
 extern crate massa_logging;
 
 #[cfg(feature = "op_spammer")]
