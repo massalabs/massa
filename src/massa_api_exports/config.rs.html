@@ -70,6 +70,8 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::KeyPair;
@@ -141,5 +143,7 @@
     </span><span class="kw">pub </span>periods_per_cycle: u64,
     <span class="doccomment">/// keypair file
     </span><span class="kw">pub </span>keypair: KeyPair,
+    <span class="doccomment">/// last_start_period value, used to know if we are during a restart or not
+    </span><span class="kw">pub </span>last_start_period: u64,
 }
 </code></pre></div></section></main></body></html>

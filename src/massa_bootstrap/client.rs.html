@@ -650,12 +650,6 @@
 <a href="#650" id="650">650</a>
 <a href="#651" id="651">651</a>
 <a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_db_exports::DBBatch;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
@@ -1091,7 +1085,6 @@
 
             <span class="comment">// create the initial cycle of PoS cycle_history
             </span><span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
-            <span class="kw">let </span><span class="kw-2">mut </span>db_versioning_batch = DBBatch::new();
             final_state_guard.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
 
             <span class="kw">let </span>slot = Slot::new(
@@ -1099,16 +1092,11 @@
                 bootstrap_config.thread_count.saturating_sub(<span class="number">1</span>),
             );
 
-            <span class="comment">// Need to write MIP store to Db if we want to bootstrap it to others
+            <span class="comment">// TODO: should receive ver batch here?
             </span>final_state_guard
-                .mip_store
-                .update_batches(<span class="kw-2">&amp;mut </span>batch, <span class="kw-2">&amp;mut </span>db_versioning_batch, <span class="prelude-val">None</span>)
-                .map_err(|e| BootstrapError::GeneralError(e.to_string()))<span class="question-mark">?</span>;
-
-            final_state_guard
                 .db
                 .write()
-                .write_batch(batch, db_versioning_batch, <span class="prelude-val">Some</span>(slot));
+                .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(slot));
         }
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }

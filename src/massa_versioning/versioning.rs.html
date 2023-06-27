@@ -2245,82 +2245,6 @@
 <a href="#2245" id="2245">2245</a>
 <a href="#2246" id="2246">2246</a>
 <a href="#2247" id="2247">2247</a>
-<a href="#2248" id="2248">2248</a>
-<a href="#2249" id="2249">2249</a>
-<a href="#2250" id="2250">2250</a>
-<a href="#2251" id="2251">2251</a>
-<a href="#2252" id="2252">2252</a>
-<a href="#2253" id="2253">2253</a>
-<a href="#2254" id="2254">2254</a>
-<a href="#2255" id="2255">2255</a>
-<a href="#2256" id="2256">2256</a>
-<a href="#2257" id="2257">2257</a>
-<a href="#2258" id="2258">2258</a>
-<a href="#2259" id="2259">2259</a>
-<a href="#2260" id="2260">2260</a>
-<a href="#2261" id="2261">2261</a>
-<a href="#2262" id="2262">2262</a>
-<a href="#2263" id="2263">2263</a>
-<a href="#2264" id="2264">2264</a>
-<a href="#2265" id="2265">2265</a>
-<a href="#2266" id="2266">2266</a>
-<a href="#2267" id="2267">2267</a>
-<a href="#2268" id="2268">2268</a>
-<a href="#2269" id="2269">2269</a>
-<a href="#2270" id="2270">2270</a>
-<a href="#2271" id="2271">2271</a>
-<a href="#2272" id="2272">2272</a>
-<a href="#2273" id="2273">2273</a>
-<a href="#2274" id="2274">2274</a>
-<a href="#2275" id="2275">2275</a>
-<a href="#2276" id="2276">2276</a>
-<a href="#2277" id="2277">2277</a>
-<a href="#2278" id="2278">2278</a>
-<a href="#2279" id="2279">2279</a>
-<a href="#2280" id="2280">2280</a>
-<a href="#2281" id="2281">2281</a>
-<a href="#2282" id="2282">2282</a>
-<a href="#2283" id="2283">2283</a>
-<a href="#2284" id="2284">2284</a>
-<a href="#2285" id="2285">2285</a>
-<a href="#2286" id="2286">2286</a>
-<a href="#2287" id="2287">2287</a>
-<a href="#2288" id="2288">2288</a>
-<a href="#2289" id="2289">2289</a>
-<a href="#2290" id="2290">2290</a>
-<a href="#2291" id="2291">2291</a>
-<a href="#2292" id="2292">2292</a>
-<a href="#2293" id="2293">2293</a>
-<a href="#2294" id="2294">2294</a>
-<a href="#2295" id="2295">2295</a>
-<a href="#2296" id="2296">2296</a>
-<a href="#2297" id="2297">2297</a>
-<a href="#2298" id="2298">2298</a>
-<a href="#2299" id="2299">2299</a>
-<a href="#2300" id="2300">2300</a>
-<a href="#2301" id="2301">2301</a>
-<a href="#2302" id="2302">2302</a>
-<a href="#2303" id="2303">2303</a>
-<a href="#2304" id="2304">2304</a>
-<a href="#2305" id="2305">2305</a>
-<a href="#2306" id="2306">2306</a>
-<a href="#2307" id="2307">2307</a>
-<a href="#2308" id="2308">2308</a>
-<a href="#2309" id="2309">2309</a>
-<a href="#2310" id="2310">2310</a>
-<a href="#2311" id="2311">2311</a>
-<a href="#2312" id="2312">2312</a>
-<a href="#2313" id="2313">2313</a>
-<a href="#2314" id="2314">2314</a>
-<a href="#2315" id="2315">2315</a>
-<a href="#2316" id="2316">2316</a>
-<a href="#2317" id="2317">2317</a>
-<a href="#2318" id="2318">2318</a>
-<a href="#2319" id="2319">2319</a>
-<a href="#2320" id="2320">2320</a>
-<a href="#2321" id="2321">2321</a>
-<a href="#2322" id="2322">2322</a>
-<a href="#2323" id="2323">2323</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -2386,22 +2310,7 @@
 
 </span><span class="kw">impl </span>Ord <span class="kw">for </span>MipInfo {
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
-        (
-            <span class="self">self</span>.start,
-            <span class="self">self</span>.timeout,
-            <span class="self">self</span>.activation_delay,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.name,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.version,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.components,
-        )
-            .cmp(<span class="kw-2">&amp;</span>(
-                other.start,
-                other.timeout,
-                other.activation_delay,
-                <span class="kw-2">&amp;</span>other.name,
-                <span class="kw-2">&amp;</span>other.version,
-                <span class="kw-2">&amp;</span>other.components,
-            ))
+        (<span class="self">self</span>.start, <span class="kw-2">&amp;</span><span class="self">self</span>.timeout).cmp(<span class="kw-2">&amp;</span>(other.start, <span class="kw-2">&amp;</span>other.timeout))
     }
 }
 
@@ -2679,11 +2588,6 @@
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
-        <span class="kw">if </span>mip_info.start &lt; initial_ts.now || mip_info.timeout &lt; initial_ts.now {
-            <span class="comment">// MIP info start (or timeout) is before Defined timestamp??
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::InvalidHistory(initial_state_id.clone()));
-        }
-
         <span class="comment">// Build a new MipStateHistory from initial state, replaying the whole history
         // but with given versioning info then compare
         </span><span class="kw">let </span><span class="kw-2">mut </span>vsh = MipState::new(initial_ts.now);
@@ -2951,7 +2855,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         db_batch: <span class="kw-2">&amp;mut </span>DBBatch,
         db_versioning_batch: <span class="kw-2">&amp;mut </span>DBBatch,
-        between: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime)&gt;,
+        between: (<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime),
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
         guard.update_batches(db_batch, db_versioning_batch, between)
@@ -3424,15 +3328,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         batch: <span class="kw-2">&amp;mut </span>DBBatch,
         versioning_batch: <span class="kw-2">&amp;mut </span>DBBatch,
-        between: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime)&gt;,
+        between: (<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime),
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>mip_info_ser = MipInfoSerializer::new();
         <span class="kw">let </span>mip_state_ser = MipStateSerializer::new();
 
-        <span class="kw">let </span>bounds = <span class="kw">match </span>between {
-            <span class="prelude-val">Some</span>(between) =&gt; (<span class="kw-2">*</span>between.<span class="number">0</span>)..=(<span class="kw-2">*</span>between.<span class="number">1</span>),
-            <span class="prelude-val">None </span>=&gt; MassaTime::from_millis(<span class="number">0</span>)..=MassaTime::max(),
-        };
+        <span class="kw">let </span>bounds = (<span class="kw-2">*</span>between.<span class="number">0</span>)..=(<span class="kw-2">*</span>between.<span class="number">1</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>key = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>value = Vec::new();
 
@@ -4128,63 +4029,10 @@
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
-            <span class="comment">// MIP-0003 in vs_raw_1 &amp; vs_raw_2 has != components
-            </span><span class="macro">assert_matches!</span>(
-                vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2),
-                <span class="prelude-val">Err</span>(UpdateWithError::Overlapping(..))
-            );
-        }
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_try_from_invalid() {
-        <span class="comment">// Test create a MIP store with invalid MIP info
-
-        // part 0 - defines data for the test
-        </span><span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
-            block_count_considered: <span class="number">10</span>,
-            counters_max: <span class="number">5</span>,
-        };
-        <span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
-            version: <span class="number">2</span>,
-            components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
-            start: MassaTime::from_millis(<span class="number">0</span>),
-            timeout: MassaTime::from_millis(<span class="number">5</span>),
-            activation_delay: MassaTime::from_millis(<span class="number">2</span>),
-        };
-        <span class="kw">let </span>_time = MassaTime::now().unwrap();
-        <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>mi_1);
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(ms_1.state, ComponentState::Active(<span class="kw">_</span>)));
-        {
-            <span class="comment">// make mi_1_1 invalid: start is after timeout
-            </span><span class="kw">let </span><span class="kw-2">mut </span>mi_1_1 = mi_1.clone();
-            mi_1_1.start = MassaTime::from_millis(<span class="number">5</span>);
-            mi_1_1.timeout = MassaTime::from_millis(<span class="number">2</span>);
-
-            <span class="kw">let </span>mip_store =
-                MipStoreRaw::try_from(([(mi_1_1, ms_1.clone())], mip_stats_cfg.clone()));
-            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonCoherent(..)));
-        }
-        {
-            <span class="kw">let </span>ms_1_2 = MipState::new(MassaTime::from_millis(<span class="number">15</span>));
-            <span class="comment">// make mi_1_1 invalid: start is after timeout
-            </span><span class="kw">let </span><span class="kw-2">mut </span>mi_1_2 = mi_1.clone();
-            mi_1_2.start = MassaTime::from_millis(<span class="number">2</span>);
-            mi_1_2.timeout = MassaTime::from_millis(<span class="number">5</span>);
-
-            <span class="kw">let </span>mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg.clone()));
-            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonCoherent(..)));
-        }
-        {
-            <span class="kw">let </span>ms_1_2 = MipState::new(MassaTime::from_millis(<span class="number">15</span>));
-            <span class="comment">// make mi_1_1 invalid: start is after timeout
-            </span><span class="kw">let </span><span class="kw-2">mut </span>mi_1_2 = mi_1.clone();
-            mi_1_2.start = MassaTime::from_millis(<span class="number">16</span>);
-            mi_1_2.timeout = MassaTime::from_millis(<span class="number">5</span>);
-
-            <span class="kw">let </span>mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg));
-            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonCoherent(..)));
+            <span class="comment">// Component states being equal should produce an Ok result
+            // We also have vi.1.components == vi_2_2.components ~ overlapping versions
+            // TODO: clarify how this is supposed to behave
+            </span><span class="macro">assert_matches!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), <span class="prelude-val">Ok</span>(<span class="kw">_</span>));
         }
     }
 
@@ -4550,7 +4398,7 @@
         <span class="kw">let </span>between = (<span class="kw-2">&amp;</span>get_slot_ts(<span class="kw-2">*</span>slot_bounds_.<span class="number">0</span>), <span class="kw-2">&amp;</span>get_slot_ts(<span class="kw-2">*</span>slot_bounds_.<span class="number">1</span>));
 
         mip_store
-            .update_batches(<span class="kw-2">&amp;mut </span>db_batch, <span class="kw-2">&amp;mut </span>db_versioning_batch, <span class="prelude-val">Some</span>(between))
+            .update_batches(<span class="kw-2">&amp;mut </span>db_batch, <span class="kw-2">&amp;mut </span>db_versioning_batch, between)
             .unwrap();
 
         <span class="macro">assert_eq!</span>(db_batch.len(), <span class="number">1</span>); <span class="comment">// mi_1
