@@ -7,6 +7,7 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
+use hex_literal::hex;
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
@@ -890,4 +891,14 @@ impl Interface for InterfaceImpl {
         let hash = hasher.finalize().into();
         Ok(hash)
     }
+}
+
+#[test]
+fn test_verify_bn254() {
+    let pubkey = hex!("0315a09cefca423b88e3a8e44f010f6a55576bfd4a877681d61d6484f383f6b972007c42b6a3c34ca60752e6e31099aa03c818006b096be59d821c6c7b7062a25d");
+    let signature = hex!("02210745fb2b594720e0c38fc9bfda18909b9a72aa00f4515436e90becd4f1b950");
+    let sig = bn254::Signature::from_compressed(pubkey).unwrap();
+    let pk = bn254::PublicKey::from_compressed(signature).unwrap();
+    let message = b"test";
+    bn254::ECDSA::verify(message, &sig, &pk).unwrap();
 }
