@@ -903,12 +903,18 @@ fn test_evm_verify() {
     use hex_literal::hex;
 
     let message_ = b"test";
-    let public_key_ = hex!("807a7Bb5193eDf9898b9092c1597bB966fe52514");
+    let address_ = hex!("807a7Bb5193eDf9898b9092c1597bB966fe52514");
+    let private_key_ = hex!("ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3");
     let signature_ = hex!("d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b");
 
-    println!("public key len: {}", public_key_.len());
-    println!("public key: {:?}", public_key_);
+    println!("address len: {}", address_.len());
+    println!("address: {:?}", address_);
     println!("signature value: {:?}", signature_);
+
+    // build original public key
+    let private_key = libsecp256k1::SecretKey::parse_slice(&private_key_).unwrap();
+    let public_key = libsecp256k1::PublicKey::from_secret_key(&private_key);
+    println!("orginal public key: {:?}", public_key.serialize());
 
     // build the message
     let message_hash = sha3::Keccak256::digest(&message_);
