@@ -23,7 +23,7 @@ use super::tools::{create_some_operations, operation_pool_test, PoolTestBoilerPl
 use massa_execution_exports::MockExecutionController;
 use massa_models::{amount::Amount, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
-use massa_pos_exports::MockSelectorController;
+use massa_pos_exports::AutoMockSelectorController;
 use std::time::Duration;
 
 #[test]
@@ -53,10 +53,10 @@ fn test_add_operation() {
         res
     };
     let selector_controller = {
-        let mut res = Box::new(MockSelectorController::new());
+        let mut res = Box::new(AutoMockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
-            let mut story = MockSelectorController::new();
+            let mut story = AutoMockSelectorController::new();
             story.expect_get_address_selections().returning(|_, _, _| {
                 let mut all_slots = Vec::new();
                 for i in 0..15 {
@@ -116,10 +116,10 @@ fn test_add_irrelevant_operation() {
         res
     };
     let selector_controller = {
-        let mut res = Box::new(MockSelectorController::new());
+        let mut res = Box::new(AutoMockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
-            let mut story = MockSelectorController::new();
+            let mut story = AutoMockSelectorController::new();
             story.expect_get_address_selections().returning(|_, _, _| {
                 let mut all_slots = Vec::new();
                 for i in 0..15 {
@@ -180,10 +180,10 @@ fn test_pool() {
     };
 
     let selector_controller = {
-        let mut res = Box::new(MockSelectorController::new());
+        let mut res = Box::new(AutoMockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
-            let mut story = MockSelectorController::new();
+            let mut story = AutoMockSelectorController::new();
             story.expect_get_address_selections().returning(|_, _, _| {
                 let mut all_slots = Vec::new();
                 for i in 0..15 {

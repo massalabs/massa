@@ -17,7 +17,7 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolController, PoolManager};
-use massa_pos_exports::MockSelectorController as AutoMockSelectorController;
+use massa_pos_exports::AutoMockSelectorController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_wallet::test_exports::create_test_wallet;

@@ -18,7 +18,7 @@ mod settings;
 
 pub use config::PoSConfig;
 #[cfg(any(test, feature = "testing"))]
-pub use controller_traits::MockSelectorController;
+pub use controller_traits::MockSelectorController as AutoMockSelectorController;
 pub use controller_traits::{Selection, SelectorController, SelectorManager};
 pub use cycle_info::*;
 pub use deferred_credits::*;

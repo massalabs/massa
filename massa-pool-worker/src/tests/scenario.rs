@@ -23,7 +23,7 @@ use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_pool_exports::PoolConfig;
-use massa_pos_exports::MockSelectorController;
+use massa_pos_exports::AutoMockSelectorController;
 use massa_signature::KeyPair;
 
 use super::tools::PoolTestBoilerPlate;
@@ -64,10 +64,10 @@ fn test_simple_get_operations() {
 
     // Provide the selector boilderplate
     let mut selector_controller = {
-        let mut res = Box::new(MockSelectorController::new());
+        let mut res = Box::new(AutoMockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
-            let mut story = MockSelectorController::new();
+            let mut story = AutoMockSelectorController::new();
             story.expect_get_address_selections().returning(|_, _, _| {
                 let mut all_slots = Vec::new();
                 for i in 0..15 {
@@ -83,7 +83,7 @@ fn test_simple_get_operations() {
     };
     selector_controller
         .expect_clone_box()
-        .returning(|| Box::new(MockSelectorController::new()));
+        .returning(|| Box::new(AutoMockSelectorController::new()));
 
     // Setup the pool controller
     let config = PoolConfig::default();
@@ -184,10 +184,10 @@ fn test_get_operations_overflow() {
 
     // Provide the selector boilderplate
     let selector_controller = {
-        let mut res = Box::new(MockSelectorController::new());
+        let mut res = Box::new(AutoMockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
-            let mut story = MockSelectorController::new();
+            let mut story = AutoMockSelectorController::new();
             story.expect_get_address_selections().returning(|_, _, _| {
                 let mut all_slots = Vec::new();
                 for i in 0..15 {
@@ -458,13 +458,13 @@ fn test_get_operations_overflow() {
 // The _actual_ story of the mock involves some clones that we don't want to worry about.
 // This helper method means that tests need only concern themselves with the actual story.
 pub fn _pool_test_mock_selector_controller(
-    story: MockSelectorController,
-) -> Box<MockSelectorController> {
-    let mut selector_controller = Box::new(MockSelectorController::new());
+    story: AutoMockSelectorController,
+) -> Box<AutoMockSelectorController> {
+    let mut selector_controller = Box::new(AutoMockSelectorController::new());
     selector_controller
         .expect_clone_box()
         .times(2)
-        .returning(move || Box::new(MockSelectorController::new()));
+        .returning(move || Box::new(AutoMockSelectorController::new()));
     selector_controller
         .expect_clone_box()
         .return_once(move || Box::new(story));
