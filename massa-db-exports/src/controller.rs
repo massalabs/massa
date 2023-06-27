@@ -1,5 +1,5 @@
 use crate::{DBBatch, Key, MassaDBError, StreamBatch, Value};
-use massa_hash::Hash;
+use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
 use parking_lot::RwLock;
 use std::{fmt::Debug, sync::Arc};
@@ -52,8 +52,8 @@ pub trait MassaDBController: Send + Sync + Debug {
         prefix: &[u8],
     ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
 
-    /// Get the current state hash of the database
-    fn get_db_hash(&self) -> Hash;
+    /// Get the current extended state hash of the database
+    fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES>;
 
     /// Flushes the underlying db.
     fn flush(&self) -> Result<(), MassaDBError>;

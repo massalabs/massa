@@ -1,5 +1,5 @@
 use bitvec::vec::BitVec;
-use massa_hash::{Hash, HashDeserializer, HashSerializer, HASH_SIZE_BYTES};
+use massa_hash::{Hash, HashXof, HashXofDeserializer, HashXofSerializer, HASH_XOF_SIZE_BYTES};
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Bound::Included;
 
-const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; 32] = &[0; HASH_SIZE_BYTES];
+const CYCLE_INFO_HASH_INITIAL_BYTES: &[u8; HASH_XOF_SIZE_BYTES] = &[0; HASH_XOF_SIZE_BYTES];
 
 struct CycleInfoHashComputer {
     u64_ser: U64VarIntSerializer,
@@ -61,18 +61,23 @@ impl CycleInfoHashComputer {
         Hash::compute_from(&buffer)
     }
 
-    fn compute_roll_entry_hash(&self, address: &Address, roll_count: u64) -> Hash {
+    // TODO: Remove hash from cycle and deferred credits as it's not saved in the DB.
+    fn compute_roll_entry_hash(
+        &self,
+        address: &Address,
+        roll_count: u64,
+    ) -> HashXof<HASH_XOF_SIZE_BYTES> {
         let mut buffer = Vec::new();
         self.address_ser.serialize(address, &mut buffer).unwrap();
         self.u64_ser.serialize(&roll_count, &mut buffer).unwrap();
-        Hash::compute_from(&buffer)
+        HashXof::compute_from(&buffer)
     }
 
     fn compute_prod_stats_entry_hash(
         &self,
         address: &Address,
         prod_stats: &ProductionStats,
-    ) -> Hash {
+    ) -> HashXof<HASH_XOF_SIZE_BYTES> {
         let mut buffer = Vec::new();
         self.address_ser.serialize(address, &mut buffer).unwrap();
         self.u64_ser
@@ -81,7 +86,7 @@ impl CycleInfoHashComputer {
         self.u64_ser
             .serialize(&prod_stats.block_failure_count, &mut buffer)
             .unwrap();
-        Hash::compute_from(&buffer)
+        HashXof::compute_from(&buffer)
     }
 }
 
@@ -99,14 +104,14 @@ pub struct CycleInfo {
     /// Per-address production statistics
     pub production_stats: PreHashMap<Address, ProductionStats>,
     /// Hash of the roll counts
-    pub roll_counts_hash: Hash,
+    pub roll_counts_hash: HashXof<HASH_XOF_SIZE_BYTES>,
     /// Hash of the production statistics
-    pub production_stats_hash: Hash,
+    pub production_stats_hash: HashXof<HASH_XOF_SIZE_BYTES>,
     /// Hash of the cycle state
-    pub cycle_global_hash: Hash,
+    pub cycle_global_hash: HashXof<HASH_XOF_SIZE_BYTES>,
     /// Snapshot of the final state hash
     /// Used for PoS selections
-    pub final_state_hash_snapshot: Option<Hash>,
+    pub final_state_hash_snapshot: Option<HashXof<HASH_XOF_SIZE_BYTES>>,
 }
 
 impl CycleInfo {
@@ -119,8 +124,8 @@ impl CycleInfo {
         production_stats: PreHashMap<Address, ProductionStats>,
     ) -> Self {
         let hash_computer = CycleInfoHashComputer::new();
-        let mut roll_counts_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
-        let mut production_stats_hash = Hash::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        let mut roll_counts_hash = HashXof::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        let mut production_stats_hash = HashXof::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
 
         // compute the cycle hash
         let mut hash_concat: Vec<u8> = Vec::new();
@@ -137,7 +142,7 @@ impl CycleInfo {
         hash_concat.extend(production_stats_hash.to_bytes());
 
         // compute the global hash
-        let cycle_global_hash = Hash::compute_from(&hash_concat);
+        let cycle_global_hash = HashXof::compute_from(&hash_concat);
 
         // create the new cycle
         CycleInfo {
@@ -162,7 +167,7 @@ pub struct CycleInfoSerializer {
     pub bitvec_ser: BitVecSerializer,
     pub production_stats_ser: ProductionStatsSerializer,
     pub address_ser: AddressSerializer,
-    pub opt_hash_ser: OptionSerializer<Hash, HashSerializer>,
+    pub opt_hash_ser: OptionSerializer<HashXof<HASH_XOF_SIZE_BYTES>, HashXofSerializer>,
 }
 
 impl Default for CycleInfoSerializer {
@@ -179,7 +184,7 @@ impl CycleInfoSerializer {
             bitvec_ser: BitVecSerializer::new(),
             production_stats_ser: ProductionStatsSerializer::new(),
             address_ser: AddressSerializer::new(),
-            opt_hash_ser: OptionSerializer::new(HashSerializer::new()),
+            opt_hash_ser: OptionSerializer::new(HashXofSerializer::new()),
         }
     }
 }
@@ -223,7 +228,7 @@ pub struct CycleInfoDeserializer {
     pub rolls_deser: RollsDeserializer,
     pub bitvec_deser: BitVecDeserializer,
     pub production_stats_deser: ProductionStatsDeserializer,
-    pub opt_hash_deser: OptionDeserializer<Hash, HashDeserializer>,
+    pub opt_hash_deser: OptionDeserializer<HashXof<HASH_XOF_SIZE_BYTES>, HashXofDeserializer>,
 }
 
 impl CycleInfoDeserializer {
@@ -234,7 +239,7 @@ impl CycleInfoDeserializer {
             rolls_deser: RollsDeserializer::new(max_rolls_length),
             bitvec_deser: BitVecDeserializer::new(),
             production_stats_deser: ProductionStatsDeserializer::new(max_production_stats_length),
-            opt_hash_deser: OptionDeserializer::new(HashDeserializer::new()),
+            opt_hash_deser: OptionDeserializer::new(HashXofDeserializer::new()),
         }
     }
 }
@@ -270,7 +275,7 @@ impl Deserializer<CycleInfo> for CycleInfoDeserializer {
                 Vec<(Address, u64)>,                  // roll_counts
                 BitVec<u8>,                           // rng_seed
                 PreHashMap<Address, ProductionStats>, // production_stats (address, n_success, n_fail)
-                Option<Hash>,                         // final_state_hash_snapshot
+                Option<HashXof<HASH_XOF_SIZE_BYTES>>, // final_state_hash_snapshot
             )| {
                 let mut cycle = CycleInfo::new_with_hash(
                     cycle,

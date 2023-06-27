@@ -112,12 +112,10 @@ impl ProtocolController for ProtocolControllerImpl {
     ///
     /// note: Full `OperationId` is replaced by a `OperationPrefixId` later by the worker.
     fn propagate_operations(&self, operations: Storage) -> Result<(), ProtocolError> {
-        //TODO: Change when send will be in propagation
-        let operations = operations.get_op_refs().clone();
         self.sender_operation_handler
             .as_ref()
             .unwrap()
-            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
+            .try_send(OperationHandlerPropagationCommand::PropagateOperations(
                 operations,
             ))
             .map_err(|_| {

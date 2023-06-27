@@ -11,7 +11,7 @@ use massa_models::{
 #[derive(Default)]
 pub struct EndorsementIndexes {
     /// Endorsements structure container
-    endorsements: PreHashMap<EndorsementId, SecureShareEndorsement>,
+    endorsements: PreHashMap<EndorsementId, Box<SecureShareEndorsement>>,
     /// Structure mapping creators with the created endorsements
     index_by_creator: PreHashMap<Address, PreHashSet<EndorsementId>>,
 }
@@ -21,7 +21,10 @@ impl EndorsementIndexes {
     /// Arguments:
     /// - endorsement: the endorsement to insert
     pub(crate) fn insert(&mut self, endorsement: SecureShareEndorsement) {
-        if let Ok(e) = self.endorsements.try_insert(endorsement.id, endorsement) {
+        if let Ok(e) = self
+            .endorsements
+            .try_insert(endorsement.id, Box::new(endorsement))
+        {
             massa_metrics::inc_endorsements_counter();
 
             // update creator index
@@ -38,7 +41,7 @@ impl EndorsementIndexes {
     pub(crate) fn remove(
         &mut self,
         endorsement_id: &EndorsementId,
-    ) -> Option<SecureShareEndorsement> {
+    ) -> Option<Box<SecureShareEndorsement>> {
         if let Some(e) = self.endorsements.remove(endorsement_id) {
             massa_metrics::dec_endorsements_counter();
 
@@ -58,7 +61,7 @@ impl EndorsementIndexes {
 
     /// Gets a reference to a stored endorsement, if any.
     pub fn get(&self, id: &EndorsementId) -> Option<&SecureShareEndorsement> {
-        self.endorsements.get(id)
+        self.endorsements.get(id).map(|v| v.as_ref())
     }
 
     /// Checks whether an endorsement exists in global storage.

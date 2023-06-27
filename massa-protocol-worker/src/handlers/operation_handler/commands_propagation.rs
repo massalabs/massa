@@ -1,8 +1,8 @@
-use massa_models::{operation::OperationId, prehash::PreHashSet};
+use massa_storage::Storage;
 
 #[derive(Clone)]
 pub enum OperationHandlerPropagationCommand {
     Stop,
     /// operations ids
-    AnnounceOperations(PreHashSet<OperationId>),
+    PropagateOperations(Storage),
 }
