@@ -218,22 +218,17 @@ impl ConsensusWorker {
             {
                 let mut write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.genesis_hashes = genesis_block_ids;
-                write_shared_state.active_index =
-                    final_blocks.iter().map(|(b, _)| b.block_id).collect();
                 write_shared_state.best_parents = latest_final_blocks_periods.clone();
                 write_shared_state.latest_final_blocks_periods = latest_final_blocks_periods;
-                write_shared_state.block_statuses = final_blocks
-                    .into_iter()
-                    .map(|(b, s)| {
-                        Ok((
-                            b.block_id,
-                            BlockStatus::Active {
-                                a_block: Box::new(b),
-                                storage: s,
-                            },
-                        ))
-                    })
-                    .collect::<Result<_, ConsensusError>>()?;
+                for (b, s) in final_blocks {
+                    write_shared_state.blocks_state.insert_block(
+                        b.block_id,
+                        BlockStatus::Active {
+                            a_block: Box::new(b),
+                            storage: s,
+                        },
+                    )?;
+                }
                 write_shared_state.final_block_stats = final_block_stats;
             }
 
@@ -242,13 +237,14 @@ impl ConsensusWorker {
             // Initialize the shared state between the worker and the interface used by the other modules.
             {
                 let mut write_shared_state = res_consensus.shared_state.write();
-                write_shared_state.active_index = genesis_block_ids.iter().copied().collect();
                 write_shared_state.latest_final_blocks_periods =
                     genesis_block_ids.iter().map(|h| (*h, 0)).collect();
                 write_shared_state.best_parents =
                     genesis_block_ids.iter().map(|v| (*v, 0)).collect();
                 write_shared_state.genesis_hashes = genesis_block_ids;
-                write_shared_state.block_statuses = block_statuses;
+                for (b, s) in block_statuses {
+                    write_shared_state.blocks_state.insert_block(b, s)?;
+                }
                 write_shared_state.final_block_stats = final_block_stats;
             }
         }
@@ -293,7 +289,7 @@ impl ConsensusWorker {
     /// Internal function used at initialization of the `ConsensusWorker` to link blocks with their parents
     fn claim_parent_refs(&mut self) -> Result<(), ConsensusError> {
         let mut write_shared_state = self.shared_state.write();
-        for (_b_id, block_status) in write_shared_state.block_statuses.iter_mut() {
+        for (_b_id, block_status) in write_shared_state.blocks_state.iter_mut() {
             if let BlockStatus::Active {
                 a_block,
                 storage: block_storage,
@@ -317,7 +313,7 @@ impl ConsensusWorker {
 
         // list active block parents
         let active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)> = write_shared_state
-            .block_statuses
+            .blocks_state
             .iter()
             .filter_map(|(h, s)| {
                 if let BlockStatus::Active { a_block: a, .. } = s {

@@ -21,9 +21,10 @@ impl ConsensusState {
 
         // list all elements for which the time has come
         let to_process: BTreeSet<(Slot, BlockId)> = self
-            .waiting_for_slot_index
+            .blocks_state
+            .waiting_for_dependencies_blocks()
             .iter()
-            .filter_map(|b_id| match self.block_statuses.get(b_id) {
+            .filter_map(|b_id| match self.blocks_state.get(b_id) {
                 Some(BlockStatus::WaitingForSlot(header_or_block)) => {
                     let slot = header_or_block.get_slot();
                     if slot <= current_slot {
@@ -81,10 +82,10 @@ impl ConsensusState {
         }
 
         self.massa_metrics.set_consensus_state(
-            self.active_index.len(),
-            self.incoming_index.len(),
-            self.discarded_index.len(),
-            self.block_statuses.len(),
+            self.blocks_state.active_blocks().len(),
+            self.blocks_state.incoming_blocks().len(),
+            self.blocks_state.discarded_blocks().len(),
+            self.blocks_state.len(),
             self.active_index_without_ops.len(),
         );
 

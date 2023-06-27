@@ -110,31 +110,34 @@ impl ConsensusState {
                 if self.detect_multistake(&stored_block.content.header) {
                     return Ok(None);
                 }
-                self.store_wait_for_dependencies(
-                    block_id,
-                    HeaderOrBlock::Block {
-                        id: block_id,
-                        slot,
-                        storage,
+                self.blocks_state.update_block_state(
+                    &block_id,
+                    BlockStatus::WaitingForDependencies {
+                        header_or_block: HeaderOrBlock::Block {
+                            id: block_id,
+                            slot,
+                            storage,
+                        },
+                        unsatisfied_dependencies: dependencies,
+                        sequence_number: self.blocks_state.sequence_counter(),
                     },
-                    dependencies,
                 )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
                 if self.detect_multistake(&stored_block.content.header) {
                     return Ok(None);
                 }
-                self.store_wait_for_slot(
-                    block_id,
-                    HeaderOrBlock::Block {
+                self.blocks_state.update_block_state(
+                    &block_id,
+                    BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
                         id: block_id,
                         slot,
                         storage,
-                    },
-                );
+                    }),
+                )?;
             }
             HeaderCheckOutcome::Discard(reason) => {
-                self.store_discard_block_header(reason, block_id, stored_block.content.header);
+                self.store_discard_block_header(reason, block_id, stored_block.content.header)?;
             }
         }
         Ok(None)
@@ -156,19 +159,14 @@ impl ConsensusState {
                 // set as waiting dependencies
                 let mut dependencies = PreHashSet::<BlockId>::default();
                 dependencies.insert(block_id); // add self as unsatisfied
-                self.block_statuses.insert(
-                    block_id,
+                self.blocks_state.update_block_state(
+                    &block_id,
                     BlockStatus::WaitingForDependencies {
                         header_or_block: HeaderOrBlock::Header(header),
                         unsatisfied_dependencies: dependencies,
-                        sequence_number: {
-                            self.sequence_counter += 1;
-                            self.sequence_counter
-                        },
+                        sequence_number: self.blocks_state.sequence_counter(),
                     },
-                );
-                self.waiting_for_dependencies_index.insert(block_id);
-                self.promote_dep_tree(block_id)?;
+                )?;
 
                 massa_trace!(
                     "consensus.block_graph.process.incoming_header.waiting_for_self",
@@ -181,70 +179,29 @@ impl ConsensusState {
                 }
                 // set as waiting dependencies
                 dependencies.insert(block_id); // add self as unsatisfied
-                self.store_wait_for_dependencies(
-                    block_id,
-                    HeaderOrBlock::Header(header),
-                    dependencies,
+                self.blocks_state.update_block_state(
+                    &block_id,
+                    BlockStatus::WaitingForDependencies {
+                        header_or_block: HeaderOrBlock::Header(header),
+                        unsatisfied_dependencies: dependencies,
+                        sequence_number: self.blocks_state.sequence_counter(),
+                    },
                 )?;
             }
             HeaderCheckOutcome::WaitForSlot => {
                 if self.detect_multistake(&header) {
                     return Ok(());
                 }
-                self.store_wait_for_slot(block_id, HeaderOrBlock::Header(header));
+                self.blocks_state.update_block_state(
+                    &block_id,
+                    BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
+                )?;
             }
             HeaderCheckOutcome::Discard(reason) => {
-                self.store_discard_block_header(reason, block_id, header);
+                self.store_discard_block_header(reason, block_id, header)?;
             }
         };
         Ok(())
-    }
-
-    /// Store in our indexes that a block or a header is waiting for its dependencies
-    ///
-    /// # Arguments:
-    /// `block_id`: ID of the block
-    /// `header_or_block`: block or header to save
-    /// `dependencies`: dependencies that this block requires (if it's a header it should contain the full block itself)
-    fn store_wait_for_dependencies(
-        &mut self,
-        block_id: BlockId,
-        header_or_block: HeaderOrBlock,
-        dependencies: PreHashSet<BlockId>,
-    ) -> Result<(), ConsensusError> {
-        massa_trace!("consensus.block_graph.process.incoming_header.waiting_for_dependencies", {"block_id": block_id, "dependencies": dependencies});
-
-        self.block_statuses.insert(
-            block_id,
-            BlockStatus::WaitingForDependencies {
-                header_or_block,
-                unsatisfied_dependencies: dependencies,
-                sequence_number: {
-                    self.sequence_counter += 1;
-                    self.sequence_counter
-                },
-            },
-        );
-        self.waiting_for_dependencies_index.insert(block_id);
-        self.promote_dep_tree(block_id)?;
-        Ok(())
-    }
-
-    /// Store in our indexes that we are waiting for the slot of this block or block header
-    ///
-    /// # Arguments:
-    /// `block_id`: ID of the block
-    /// `header_or_block`: block or header to save
-    fn store_wait_for_slot(&mut self, block_id: BlockId, header_or_block: HeaderOrBlock) {
-        // make it wait for slot
-        self.block_statuses
-            .insert(block_id, BlockStatus::WaitingForSlot(header_or_block));
-        self.waiting_for_slot_index.insert(block_id);
-
-        massa_trace!(
-            "consensus.block_graph.process.incoming_header.waiting_for_slot",
-            { "block_id": block_id }
-        );
     }
 
     /// Store in our indexes that we discarded this block or block header
@@ -258,7 +215,7 @@ impl ConsensusState {
         reason: DiscardReason,
         block_id: BlockId,
         header: SecuredHeader,
-    ) {
+    ) -> Result<(), ConsensusError> {
         self.maybe_note_attack_attempt(&reason, &block_id);
         massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
         // count stales
@@ -269,20 +226,16 @@ impl ConsensusState {
             );
         }
         // discard
-        self.block_statuses.insert(
-            block_id,
+        self.blocks_state.update_block_state(
+            &block_id,
             BlockStatus::Discarded {
                 slot: header.content.slot,
                 creator: header.content_creator_address,
                 parents: header.content.parents,
                 reason,
-                sequence_number: {
-                    self.sequence_counter += 1;
-                    self.sequence_counter
-                },
+                sequence_number: self.blocks_state.sequence_counter(),
             },
-        );
-        self.discarded_index.insert(block_id);
+        )
     }
 
     /// Process an incoming header.
@@ -354,7 +307,7 @@ impl ConsensusState {
         let parent_set: PreHashSet<BlockId> = header.content.parents.iter().copied().collect();
         for parent_thread in 0u8..self.config.thread_count {
             let parent_hash = header.content.parents[parent_thread as usize];
-            match self.block_statuses.get(&parent_hash) {
+            match self.blocks_state.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
                     return Ok(HeaderCheckOutcome::Discard(match reason {
@@ -413,7 +366,7 @@ impl ConsensusState {
             let mut gp_max_slots = vec![0u64; self.config.thread_count as usize];
             for parent_i in 0..self.config.thread_count {
                 let (parent_h, parent_period) = parents[parent_i as usize];
-                let parent = match self.block_statuses.get(&parent_h) {
+                let parent = match self.blocks_state.get(&parent_h) {
                     Some(BlockStatus::Active {
                         a_block,
                         storage: _,
@@ -442,7 +395,7 @@ impl ConsensusState {
                         continue;
                     }
                     let gp_h = parent.parents[gp_i as usize].0;
-                    match self.block_statuses.get(&gp_h) {
+                    match self.blocks_state.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
                             return Ok(HeaderCheckOutcome::Discard(reason.clone()));
@@ -469,7 +422,7 @@ impl ConsensusState {
 
         // get parent in own thread
         let parent_in_own_thread = match self
-            .block_statuses
+            .blocks_state
             .get(&parents[header.content.slot.thread as usize].0)
         {
             Some(BlockStatus::Active {
@@ -509,7 +462,7 @@ impl ConsensusState {
             // traverse parent's descendants in tau
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
-                let cur_b = match self.block_statuses.get(&cur_h) {
+                let cur_b = match self.blocks_state.get(&cur_h) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
                 }.ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_h,  block_id)))?;
@@ -542,7 +495,7 @@ impl ConsensusState {
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
                 // note: cur_b cannot be genesis at gen > 1
-                let parent_period = match self.block_statuses.get(&parent_id) {
+                let parent_period = match self.blocks_state.get(&parent_id) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
                 }.ok_or_else(||
@@ -568,11 +521,11 @@ impl ConsensusState {
         // check if the block is incompatible with a final block
         if !incomp.is_disjoint(
             &self
-                .active_index
+                .blocks_state
+                .active_blocks()
                 .iter()
                 .filter_map(|h| {
-                    if let Some(BlockStatus::Active { a_block: a, .. }) = self.block_statuses.get(h)
-                    {
+                    if let Some(BlockStatus::Active { a_block: a, .. }) = self.blocks_state.get(h) {
                         if a.is_final {
                             return Some(*h);
                         }

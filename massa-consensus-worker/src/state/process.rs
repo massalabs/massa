@@ -87,7 +87,7 @@ impl ConsensusState {
 
         massa_trace!("consensus.block_graph.process", { "block_id": block_id });
         // control all the waiting states and try to get a valid block
-        let valid_block_infos = match self.block_statuses.get(&block_id) {
+        let valid_block_infos = match self.blocks_state.get(&block_id) {
             None => return Ok(BTreeSet::new()), // disappeared before being processed: do nothing
 
             // discarded: do nothing
@@ -113,9 +113,8 @@ impl ConsensusState {
                 });
                 // remove header
                 let header = if let Some(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
-                    self.block_statuses.remove(&block_id)
+                    self.blocks_state.get(&block_id)
                 {
-                    self.incoming_index.remove(&block_id);
                     header
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
@@ -123,7 +122,7 @@ impl ConsensusState {
                         block_id
                     )));
                 };
-                self.check_block_header_and_store(block_id, header, current_slot)?;
+                self.check_block_header_and_store(block_id, header.clone(), current_slot)?;
                 return Ok(BTreeSet::new());
             }
 
@@ -136,9 +135,8 @@ impl ConsensusState {
                 let (slot, storage) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
                         slot, storage, ..
-                    })) = self.block_statuses.remove(&block_id)
+                    })) = self.blocks_state.get(&block_id)
                     {
-                        self.incoming_index.remove(&block_id);
                         (slot, storage)
                     } else {
                         return Err(ConsensusError::ContainerInconsistency(format!(
@@ -153,8 +151,8 @@ impl ConsensusState {
                     .expect("incoming block not found in storage");
                 match self.check_block_and_store(
                     block_id,
-                    slot,
-                    storage,
+                    *slot,
+                    storage.clone(),
                     stored_block,
                     current_slot,
                 )? {
@@ -177,26 +175,16 @@ impl ConsensusState {
                     return Ok(BTreeSet::new());
                 }
                 // send back as incoming and ask for reprocess
-                if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
-                    self.block_statuses.remove(&block_id)
-                {
-                    self.waiting_for_slot_index.remove(&block_id);
-                    self.block_statuses
-                        .insert(block_id, BlockStatus::Incoming(header_or_block));
-                    self.incoming_index.insert(block_id);
-                    reprocess.insert((slot, block_id));
-                    massa_trace!(
-                        "consensus.block_graph.process.waiting_for_slot.reprocess",
-                        { "block_id": block_id }
-                    );
-                    return Ok(reprocess);
-                } else {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot block or header {}", block_id)));
-                };
+                self.blocks_state.update_block_state(
+                    &block_id,
+                    BlockStatus::Incoming(header_or_block.clone()),
+                )?;
+                return Ok(reprocess);
             }
 
             Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
+                header_or_block,
                 ..
             }) => {
                 massa_trace!("consensus.block_graph.process.waiting_for_dependencies", {
@@ -207,23 +195,11 @@ impl ConsensusState {
                     return Ok(BTreeSet::new());
                 }
                 // send back as incoming and ask for reprocess
-                if let Some(BlockStatus::WaitingForDependencies {
-                    header_or_block, ..
-                }) = self.block_statuses.remove(&block_id)
-                {
-                    self.waiting_for_dependencies_index.remove(&block_id);
-                    reprocess.insert((header_or_block.get_slot(), block_id));
-                    self.block_statuses
-                        .insert(block_id, BlockStatus::Incoming(header_or_block));
-                    self.incoming_index.insert(block_id);
-                    massa_trace!(
-                        "consensus.block_graph.process.waiting_for_dependencies.reprocess",
-                        { "block_id": block_id }
-                    );
-                    return Ok(reprocess);
-                } else {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot header or block {}", block_id)));
-                }
+                self.blocks_state.update_block_state(
+                    &block_id,
+                    BlockStatus::Incoming(header_or_block.clone()),
+                )?;
+                return Ok(reprocess);
             }
         };
 
@@ -240,17 +216,22 @@ impl ConsensusState {
         )?;
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active { storage, .. }) = self.block_statuses.get(&block_id) {
+        if let Some(BlockStatus::Active { storage, .. }) = self.blocks_state.get(&block_id) {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
             self.to_propagate.insert(block_id, storage.clone());
-            for itm_block_id in self.waiting_for_dependencies_index.iter() {
+            for itm_block_id in self
+                .blocks_state
+                .waiting_for_dependencies_blocks()
+                .clone()
+                .iter()
+            {
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
                     ..
-                }) = self.block_statuses.get_mut(itm_block_id)
+                }) = self.blocks_state.get_mut(itm_block_id)
                 {
                     if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: retry
@@ -261,44 +242,6 @@ impl ConsensusState {
         }
 
         Ok(reprocess)
-    }
-
-    pub fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), ConsensusError> {
-        let mut to_explore = vec![hash];
-        let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
-        while let Some(h) = to_explore.pop() {
-            if to_promote.contains_key(&h) {
-                continue;
-            }
-            if let Some(BlockStatus::WaitingForDependencies {
-                header_or_block,
-                unsatisfied_dependencies,
-                sequence_number,
-                ..
-            }) = self.block_statuses.get(&h)
-            {
-                // promote current block
-                to_promote.insert(h, (header_or_block.get_slot(), *sequence_number));
-                // register dependencies for exploration
-                to_explore.extend(unsatisfied_dependencies);
-            }
-        }
-
-        let mut to_promote: Vec<(Slot, u64, BlockId)> = to_promote
-            .into_iter()
-            .map(|(h, (slot, seq))| (slot, seq, h))
-            .collect();
-        to_promote.sort_unstable(); // last ones should have the highest seq number
-        for (_slot, _seq, h) in to_promote.into_iter() {
-            if let Some(BlockStatus::WaitingForDependencies {
-                sequence_number, ..
-            }) = self.block_statuses.get_mut(&h)
-            {
-                self.sequence_counter += 1;
-                *sequence_number = self.sequence_counter;
-            }
-        }
-        Ok(())
     }
 
     /// Add a block to the graph and update the cliques, the graph dependencies and incompatibilities
@@ -335,8 +278,8 @@ impl ConsensusState {
         storage.claim_block_refs(&parents_hash_period.iter().map(|(p_id, _)| *p_id).collect());
 
         // add block to status structure
-        self.block_statuses.insert(
-            add_block_id,
+        self.blocks_state.update_block_state(
+            &add_block_id,
             BlockStatus::Active {
                 a_block: Box::new(ActiveBlock {
                     creator_address: Address::from_public_key(&add_block_creator),
@@ -350,8 +293,7 @@ impl ConsensusState {
                 }),
                 storage,
             },
-        );
-        self.active_index.insert(add_block_id);
+        )?;
 
         // add as child to parents
         // add as descendant to ancestors. Note: descendants are never removed.
@@ -441,7 +383,7 @@ impl ConsensusState {
             // for each blockclique block, set it as best_parent in its own thread
             // if its period is higher than the current best_parent in that thread
             for block_h in blockclique.block_ids.iter() {
-                let b_slot = match self.block_statuses.get(block_h) {
+                let b_slot = match self.blocks_state.get(block_h) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => a_block.slot,
                     _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h))),
                 };
@@ -530,7 +472,7 @@ impl ConsensusState {
                     // was previously sent as a blockclique element
                     return None;
                 }
-                let storage = match self.block_statuses.get(b_id) {
+                let storage = match self.blocks_state.get(b_id) {
                     Some(BlockStatus::Active {
                         a_block: _,
                         storage,
@@ -556,7 +498,7 @@ impl ConsensusState {
                     // The block was not present in the previous blockclique:
                     // the blockclique has changed => get the block's slot by querying Storage.
                     blockclique_changed = true;
-                    let (slot, storage) = match self.block_statuses.get(b_id) {
+                    let (slot, storage) = match self.blocks_state.get(b_id) {
                         Some(BlockStatus::Active { a_block, storage }) => (a_block.slot, storage),
                         _ => panic!("blockclique block not found in active blocks"),
                     };
@@ -641,7 +583,7 @@ impl ConsensusState {
                 if let Some(BlockStatus::Active {
                     a_block,
                     storage: _,
-                }) = self.block_statuses.get(&b_id)
+                }) = self.blocks_state.get(&b_id)
                 {
                     // add to final blocks to notify execution
                     final_block_slots.insert(a_block.slot, b_id);

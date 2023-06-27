@@ -1,9 +1,6 @@
 use std::collections::hash_map::Entry;
 
-use massa_consensus_exports::{
-    block_status::{BlockStatus, HeaderOrBlock},
-    error::ConsensusError,
-};
+use massa_consensus_exports::{block_status::BlockStatus, error::ConsensusError};
 use massa_models::{
     block_id::BlockId,
     prehash::{PreHashMap, PreHashSet},
@@ -11,13 +8,14 @@ use massa_models::{
 };
 use tracing::warn;
 
+#[derive(Debug, Clone)]
 pub struct BlocksState {
     /// Every block we know about
     block_statuses: PreHashMap<BlockId, BlockStatus>,
     /// Ids of incoming blocks/headers
     incoming_index: PreHashSet<BlockId>,
     /// Used to limit the number of waiting and discarded blocks
-    pub sequence_counter: u64,
+    sequence_counter: u64,
     /// ids of waiting for slot blocks/headers
     waiting_for_slot_index: PreHashSet<BlockId>,
     /// ids of waiting for dependencies blocks/headers
@@ -41,8 +39,20 @@ impl BlocksState {
         }
     }
 
-    pub fn block_statuses(&self) -> &PreHashMap<BlockId, BlockStatus> {
-        &self.block_statuses
+    pub fn get(&self, block_id: &BlockId) -> Option<&BlockStatus> {
+        self.block_statuses.get(block_id)
+    }
+
+    pub fn get_mut(&mut self, block_id: &BlockId) -> Option<&mut BlockStatus> {
+        self.block_statuses.get_mut(block_id)
+    }
+
+    pub fn sequence_counter(&self) -> u64 {
+        self.sequence_counter
+    }
+
+    pub fn inc_sequence_counter(&mut self) {
+        self.sequence_counter += 1
     }
 
     pub fn incoming_blocks(&self) -> &PreHashSet<BlockId> {
@@ -61,12 +71,16 @@ impl BlocksState {
         &self.discarded_index
     }
 
+    pub fn active_blocks(&self) -> &PreHashSet<BlockId> {
+        &self.active_index
+    }
+
     // Internal function to update the indexes
     fn update_indexes(
         &mut self,
         block_id: &BlockId,
         old_block_status: &Option<BlockStatus>,
-        new_block_status: &BlockStatus,
+        new_block_status: &Option<BlockStatus>,
     ) {
         if let Some(old_block_status) = old_block_status {
             match old_block_status {
@@ -87,61 +101,57 @@ impl BlocksState {
                 }
             }
         }
-        match new_block_status {
-            BlockStatus::Incoming(_) => {
-                self.incoming_index.insert(block_id.clone());
-            }
-            BlockStatus::WaitingForSlot { .. } => {
-                self.waiting_for_slot_index.insert(block_id.clone());
-            }
-            BlockStatus::WaitingForDependencies { .. } => {
-                self.waiting_for_dependencies_index.insert(block_id.clone());
-            }
-            BlockStatus::Discarded { .. } => {
-                self.discarded_index.insert(block_id.clone());
-            }
-            BlockStatus::Active { .. } => {
-                self.active_index.insert(block_id.clone());
+        if let Some(new_block_status) = new_block_status {
+            match new_block_status {
+                BlockStatus::Incoming(_) => {
+                    self.incoming_index.insert(*block_id);
+                }
+                BlockStatus::WaitingForSlot { .. } => {
+                    self.waiting_for_slot_index.insert(*block_id);
+                }
+                BlockStatus::WaitingForDependencies { .. } => {
+                    self.waiting_for_dependencies_index.insert(*block_id);
+                }
+                BlockStatus::Discarded { .. } => {
+                    self.discarded_index.insert(*block_id);
+                }
+                BlockStatus::Active { .. } => {
+                    self.active_index.insert(*block_id);
+                }
             }
         }
     }
 
-    /// - If the set did not previously contain this value, true is returned.
-    /// - If the set already contained this value, false is returned.
-    pub fn insert_new_block(
+    /// - If the set did not previously contain a value, None is returned.
+    /// - If the set already contained a value, Some(value) is returned.
+    /// TODO: Expose entry system
+    pub fn insert_block(
         &mut self,
         block_id: BlockId,
         block_status: BlockStatus,
-    ) -> Result<bool, ConsensusError> {
+    ) -> Result<Option<BlockStatus>, ConsensusError> {
         match self.block_statuses.entry(block_id) {
             Entry::Vacant(vac) => {
-                //TODO: Readd in return of this function
-                //to_ack.insert((header.content.slot, block_id));
                 vac.insert(block_status.clone());
-                self.update_indexes(&block_id, &None, &block_status);
-                Ok(true)
+                self.update_indexes(&block_id, &None, &Some(block_status));
+                Ok(None)
             }
-            Entry::Occupied(mut occ) => {
-                match occ.get_mut() {
-                    BlockStatus::Discarded {
-                        sequence_number, ..
-                    } => {
-                        // promote if discarded
-                        self.sequence_counter += 1;
-                        *sequence_number = self.sequence_counter;
-                    }
-                    BlockStatus::WaitingForDependencies { .. } => {
-                        // promote in dependencies
-                        self.promote_dep_tree(block_id)?;
-                    }
-                    _ => {}
-                }
-                Ok(false)
-            }
+            Entry::Occupied(occ) => Ok(Some(occ.get().clone())),
         }
     }
 
-    fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), ConsensusError> {
+    /// - Return Some(BlockStatus) if the block was in the set.
+    /// - Return None if the block was not in the set.
+    pub fn remove_block(&mut self, hash: &BlockId) -> Option<BlockStatus> {
+        if let Some(block_status) = self.block_statuses.remove(hash) {
+            self.update_indexes(hash, &Some(block_status.clone()), &None);
+            Some(block_status)
+        } else {
+            None
+        }
+    }
+
+    pub fn promote_dep_tree(&mut self, hash: BlockId) -> Result<(), ConsensusError> {
         let mut to_explore = vec![hash];
         let mut to_promote: PreHashMap<BlockId, (Slot, u64)> = PreHashMap::default();
         while let Some(h) = to_explore.pop() {
@@ -179,46 +189,106 @@ impl BlocksState {
         Ok(())
     }
 
-    pub fn update_state(&mut self, block_id: &BlockId, new_block_status: BlockStatus) {
-        match self.block_statuses.entry(block_id.clone()) {
+    pub fn iter(&self) -> impl Iterator<Item = (&BlockId, &BlockStatus)> + '_ {
+        self.block_statuses.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&BlockId, &mut BlockStatus)> + '_ {
+        self.block_statuses.iter_mut()
+    }
+
+    pub fn len(&self) -> usize {
+        self.block_statuses.len()
+    }
+
+    pub fn update_block_state(
+        &mut self,
+        block_id: &BlockId,
+        mut new_block_status: BlockStatus,
+    ) -> Result<(), ConsensusError> {
+        match self.block_statuses.entry(*block_id) {
             Entry::Vacant(_vac) => {
                 // TODO: Determine what to do ? @damip ? Panic or warn and add
             }
             Entry::Occupied(mut occ) => {
                 // All possible transitions
                 let value = occ.get_mut();
-                match (&value, &new_block_status) {
+                let old_value = value.clone();
+                match (&value, &mut new_block_status) {
                     // From incoming status
-                    (BlockStatus::Incoming(_), _) => *value = new_block_status,
+                    (
+                        BlockStatus::Incoming(_),
+                        BlockStatus::WaitingForDependencies {
+                            sequence_number, ..
+                        },
+                    ) => {
+                        self.sequence_counter += 1;
+                        *sequence_number = self.sequence_counter;
+                        *value = new_block_status.clone();
+                        self.promote_dep_tree(*block_id)?;
+                    }
+                    (
+                        BlockStatus::Incoming(_),
+                        BlockStatus::Discarded {
+                            sequence_number, ..
+                        },
+                    ) => {
+                        self.sequence_counter += 1;
+                        *sequence_number = self.sequence_counter;
+                        *value = new_block_status.clone();
+                    }
+                    (BlockStatus::Incoming(_), _) => *value = new_block_status.clone(),
 
                     // From waiting for slot status
                     (BlockStatus::WaitingForSlot { .. }, BlockStatus::Incoming { .. }) => {
-                        *value = new_block_status
+                        *value = new_block_status.clone()
                     }
-                    (BlockStatus::WaitingForSlot { .. }, BlockStatus::Discarded { .. }) => {
-                        *value = new_block_status
+                    (
+                        BlockStatus::WaitingForSlot { .. },
+                        BlockStatus::Discarded {
+                            sequence_number, ..
+                        },
+                    ) => {
+                        self.sequence_counter += 1;
+                        *sequence_number = self.sequence_counter;
+                        *value = new_block_status.clone()
                     }
 
                     // From waiting for dependencies status
                     (BlockStatus::WaitingForDependencies { .. }, BlockStatus::Incoming { .. }) => {
-                        *value = new_block_status
+                        *value = new_block_status.clone()
                     }
-                    (BlockStatus::WaitingForDependencies { .. }, BlockStatus::Discarded { .. }) => {
-                        *value = new_block_status
+                    (
+                        BlockStatus::WaitingForDependencies { .. },
+                        BlockStatus::Discarded {
+                            sequence_number, ..
+                        },
+                    ) => {
+                        self.sequence_counter += 1;
+                        *sequence_number = self.sequence_counter;
+                        *value = new_block_status.clone()
                     }
 
                     // From active status
                     (BlockStatus::Active { .. }, BlockStatus::Discarded { .. }) => {
-                        *value = new_block_status
+                        *value = new_block_status.clone()
                     }
                     // No possibility for discarded status
                     // All other possibilities are invalid
-                    (_, _) => warn!(
-                        "Invalid transition from {:?} to {:?}",
-                        value, new_block_status
-                    ),
+                    (_, _) => {
+                        warn!(
+                            "Invalid transition from {:?} to {:?}",
+                            value, new_block_status
+                        );
+                        return Err(ConsensusError::InvalidTransition(format!(
+                            "Invalid transition from {:?} to {:?}",
+                            value, new_block_status
+                        )));
+                    }
                 }
+                self.update_indexes(block_id, &Some(old_value), &Some(new_block_status));
             }
         }
+        Ok(())
     }
 }

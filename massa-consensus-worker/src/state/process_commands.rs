@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, BTreeSet};
+use std::collections::BTreeSet;
 
 use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
@@ -8,7 +8,7 @@ use massa_logging::massa_trace;
 use massa_models::{block_header::SecuredHeader, block_id::BlockId, slot::Slot};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::debug;
+use tracing::{debug, log::warn};
 
 use super::ConsensusState;
 
@@ -39,29 +39,40 @@ impl ConsensusState {
         );
         massa_trace!("consensus.block_graph.incoming_header", {"block_id": block_id, "header": header});
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
-        match self.block_statuses.entry(block_id) {
-            // if absent => add as Incoming, call rec_ack on it
-            Entry::Vacant(vac) => {
+        match self.blocks_state.insert_block(
+            block_id,
+            BlockStatus::Incoming(HeaderOrBlock::Header(header.clone())),
+        ) {
+            Ok(None) => {
                 to_ack.insert((header.content.slot, block_id));
-                vac.insert(BlockStatus::Incoming(HeaderOrBlock::Header(header)));
-                self.incoming_index.insert(block_id);
             }
-            Entry::Occupied(mut occ) => match occ.get_mut() {
-                BlockStatus::Discarded {
-                    sequence_number, ..
-                } => {
-                    // promote if discarded
-                    self.sequence_counter += 1;
-                    *sequence_number = self.sequence_counter;
+            Ok(Some(_)) => {
+                let mut to_increase = false;
+                let sequence_counter = self.blocks_state.sequence_counter();
+                let occ = self.blocks_state.get_mut(&block_id).unwrap();
+                match occ {
+                    BlockStatus::Discarded {
+                        sequence_number, ..
+                    } => {
+                        // promote if discarded
+                        *sequence_number = sequence_counter + 1;
+                        to_increase = true;
+                    }
+                    BlockStatus::WaitingForDependencies { .. } => {
+                        // promote in dependencies
+                        self.blocks_state.promote_dep_tree(block_id)?;
+                    }
+                    _ => {}
                 }
-                BlockStatus::WaitingForDependencies { .. } => {
-                    // promote in dependencies
-                    self.promote_dep_tree(block_id)?;
+                if to_increase {
+                    self.blocks_state.inc_sequence_counter();
                 }
-                _ => {}
-            },
+            }
+            Err(e) => {
+                warn!("couldn't store header {} received: {}", block_id, e);
+                return Err(e);
+            }
         }
-
         // process
         self.rec_process(to_ack, current_slot)?;
 
@@ -101,53 +112,67 @@ impl ConsensusState {
         debug!("received block {} for slot {}", block_id, slot);
 
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
-        match self.block_statuses.entry(block_id) {
-            // if absent => add as Incoming, call rec_ack on it
-            Entry::Vacant(vac) => {
+        match self.blocks_state.insert_block(
+            block_id,
+            BlockStatus::Incoming(HeaderOrBlock::Block {
+                id: block_id,
+                slot,
+                storage: storage.clone(),
+            }),
+        ) {
+            Ok(None) => {
                 to_ack.insert((slot, block_id));
-                vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block {
-                    id: block_id,
-                    slot,
-                    storage,
-                }));
-                self.incoming_index.insert(block_id);
             }
-            Entry::Occupied(mut occ) => match occ.get_mut() {
-                BlockStatus::Discarded {
-                    sequence_number, ..
-                } => {
-                    // promote if discarded
-                    self.sequence_counter += 1;
-                    *sequence_number = self.sequence_counter;
-                }
-                BlockStatus::WaitingForSlot(header_or_block) => {
-                    // promote to full block
-                    *header_or_block = HeaderOrBlock::Block {
-                        id: block_id,
-                        slot,
-                        storage,
-                    };
-                }
-                BlockStatus::WaitingForDependencies {
-                    header_or_block,
-                    unsatisfied_dependencies,
-                    ..
-                } => {
-                    // promote to full block and satisfy self-dependency
-                    if unsatisfied_dependencies.remove(&block_id) {
-                        // a dependency was satisfied: process
-                        to_ack.insert((slot, block_id));
+            Ok(Some(_)) => {
+                let mut to_increase = false;
+                let sequence_counter = self.blocks_state.sequence_counter();
+                let occ = self.blocks_state.get_mut(&block_id).unwrap();
+                match occ {
+                    BlockStatus::Discarded {
+                        sequence_number, ..
+                    } => {
+                        // promote if discarded
+                        *sequence_number = sequence_counter + 1;
+                        to_increase = true;
                     }
-                    *header_or_block = HeaderOrBlock::Block {
-                        id: block_id,
-                        slot,
-                        storage,
-                    };
-                    // promote in dependencies
-                    self.promote_dep_tree(block_id)?;
+                    BlockStatus::WaitingForSlot(header_or_block) => {
+                        // promote to full block
+                        *header_or_block = HeaderOrBlock::Block {
+                            id: block_id,
+                            slot,
+                            storage,
+                        };
+                    }
+                    BlockStatus::WaitingForDependencies {
+                        header_or_block,
+                        unsatisfied_dependencies,
+                        ..
+                    } => {
+                        // promote to full block and satisfy self-dependency
+                        if unsatisfied_dependencies.remove(&block_id) {
+                            // a dependency was satisfied: process
+                            to_ack.insert((slot, block_id));
+                        }
+                        *header_or_block = HeaderOrBlock::Block {
+                            id: block_id,
+                            slot,
+                            storage,
+                        };
+                        // promote in dependencies
+                        self.blocks_state.promote_dep_tree(block_id)?;
+                    }
+                    _ => {
+                        return Ok(());
+                    }
                 }
-                _ => return Ok(()),
-            },
+                if to_increase {
+                    self.blocks_state.inc_sequence_counter();
+                }
+            }
+            Err(e) => {
+                warn!("couldn't store block {} received: {}", block_id, e);
+                return Err(e);
+            }
         }
 
         // process
@@ -161,40 +186,23 @@ impl ConsensusState {
     /// # Arguments:
     /// * `block_id`: Block id of the block to mark as invalid
     /// * `header`: Header of the block to mark as invalid
-    pub fn mark_invalid_block(&mut self, block_id: &BlockId, header: SecuredHeader) {
+    pub fn mark_invalid_block(
+        &mut self,
+        block_id: &BlockId,
+        header: SecuredHeader,
+    ) -> Result<(), ConsensusError> {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
-        match self.block_statuses.get(block_id) {
-            Some(BlockStatus::WaitingForDependencies { .. }) => {
-                self.waiting_for_dependencies_index.remove(block_id);
-            }
-            Some(BlockStatus::WaitingForSlot(_)) => {
-                self.waiting_for_slot_index.remove(block_id);
-            }
-            Some(BlockStatus::Incoming(_)) => {
-                self.incoming_index.remove(block_id);
-            }
-            Some(BlockStatus::Active { .. }) => {
-                self.active_index.remove(block_id);
-            }
-            Some(BlockStatus::Discarded { .. }) => {}
-            None => {}
-        };
-        // add to discard
-        self.block_statuses.insert(
-            *block_id,
+        self.blocks_state.update_block_state(
+            block_id,
             BlockStatus::Discarded {
                 slot: header.content.slot,
                 creator: header.content_creator_address,
                 parents: header.content.parents,
                 reason,
-                sequence_number: {
-                    self.sequence_counter += 1;
-                    self.sequence_counter
-                },
+                sequence_number: self.blocks_state.sequence_counter(),
             },
-        );
-        self.discarded_index.insert(*block_id);
+        )
     }
 }
