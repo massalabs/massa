@@ -179,6 +179,7 @@ impl ConsensusState {
                     &block_id,
                     BlockStatus::Incoming(header_or_block.clone()),
                 )?;
+                reprocess.insert((slot, block_id));
                 return Ok(reprocess);
             }
 
@@ -195,6 +196,7 @@ impl ConsensusState {
                     return Ok(BTreeSet::new());
                 }
                 // send back as incoming and ask for reprocess
+                reprocess.insert((header_or_block.get_slot(), block_id));
                 self.blocks_state.update_block_state(
                     &block_id,
                     BlockStatus::Incoming(header_or_block.clone()),
