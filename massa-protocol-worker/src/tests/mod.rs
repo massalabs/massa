@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
+use massa_consensus_exports::AutoMockConsensusController;
 use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_pool_exports::AutoMockPoolController;

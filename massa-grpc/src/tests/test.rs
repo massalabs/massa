@@ -3,8 +3,7 @@
 use crate::config::GrpcConfig;
 use crate::server::MassaGrpc;
 use massa_channel::MassaChannel;
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
-use massa_consensus_exports::ConsensusChannels;
+use massa_consensus_exports::{AutoMockConsensusController, ConsensusChannels};
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
 use massa_models::config::{
     ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
@@ -27,7 +26,7 @@ use std::{
 
 #[tokio::test]
 async fn test_start_grpc_server() {
-    let consensus_controller = MockConsensusControllerImpl::new();
+    let consensus_controller = AutoMockConsensusController::new();
     let execution_ctrl = MockExecutionController::new_with_receiver();
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
