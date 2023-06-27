@@ -1,6 +1,6 @@
 [package]
 name = "massa_protocol_exports"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
