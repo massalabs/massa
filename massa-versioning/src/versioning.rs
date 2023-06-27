@@ -265,6 +265,8 @@ pub enum IsCoherentError {
     InvalidHistory(ComponentStateTypeId),
     #[error("Non coherent state: {0:?} versus rebuilt state: {1:?}")]
     NonCoherent(ComponentState, ComponentState),
+    #[error("Invalid data in MIP info, start >= timeout")]
+    Invalid,
 }
 
 /// Wrapper of ComponentState (in order to keep state history)
@@ -343,6 +345,10 @@ impl MipState {
         // Always return false for state Error or if history is empty
         if matches!(&self.state, &ComponentState::Error) {
             return Err(IsCoherentError::AtError);
+        }
+
+        if mip_info.start >= mip_info.timeout {
+            return Err(IsCoherentError::Invalid);
         }
 
         if self.history.is_empty() {
@@ -1698,7 +1704,6 @@ mod test {
         ))
         .unwrap();
 
-        println!("update with:");
         let (updated, added) = vs_raw_1.update_with(&vs_raw_2).unwrap();
 
         // Check update_with result
