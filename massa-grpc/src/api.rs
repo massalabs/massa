@@ -275,7 +275,7 @@ pub(crate) fn get_largest_stakers(
     };
 
     // Create the context for the response.
-    let context = Some(grpc::LargestStakersContext {
+    let context = Some(grpc_api::LargestStakersContext {
         slot: Some(cur_slot.into()),
         in_downtime,
     });
