@@ -7,7 +7,6 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
-use hex_literal::hex;
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
@@ -635,25 +634,6 @@ impl Interface for InterfaceImpl {
         Ok(false)
     }
 
-    /// Verify a bn254 signature
-    ///
-    /// Important information:
-    /// * Provided signature and public key must be in compressed format
-    /// * Signature can be the result of a multi signature aggregation
-    /// * If there is a multi signature, public key must be the result of public key pairing
-    fn verify_bn254_signature(
-        &self,
-        signature: &[u8],
-        message: &[u8],
-        public_key: &[u8],
-    ) -> Result<bool> {
-        let sig = bn254::Signature::from_compressed(signature)?;
-        let pk = bn254::PublicKey::from_compressed(public_key)?;
-        Ok(bn254::ECDSA::verify(message, &sig, &pk)
-            .map_err(|_| anyhow!("Signature verification failed"))
-            .is_ok())
-    }
-
     /// Transfer coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments
@@ -891,14 +871,4 @@ impl Interface for InterfaceImpl {
         let hash = hasher.finalize().into();
         Ok(hash)
     }
-}
-
-#[test]
-fn test_verify_bn254() {
-    let pubkey = hex!("0315a09cefca423b88e3a8e44f010f6a55576bfd4a877681d61d6484f383f6b972007c42b6a3c34ca60752e6e31099aa03c818006b096be59d821c6c7b7062a25d");
-    let signature = hex!("02210745fb2b594720e0c38fc9bfda18909b9a72aa00f4515436e90becd4f1b950");
-    let sig = bn254::Signature::from_compressed(pubkey).unwrap();
-    let pk = bn254::PublicKey::from_compressed(signature).unwrap();
-    let message = b"test";
-    bn254::ECDSA::verify(message, &sig, &pk).unwrap();
 }
