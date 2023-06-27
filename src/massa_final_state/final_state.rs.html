@@ -698,6 +698,9 @@
 <a href="#698" id="698">698</a>
 <a href="#699" id="699">699</a>
 <a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -716,11 +719,13 @@
 <span class="kw">use </span>massa_executed_ops::ExecutedDenunciations;
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
 <span class="kw">use </span>massa_ledger_exports::LedgerController;
-<span class="kw">use </span>massa_models::config::PERIODS_BETWEEN_BACKUPS;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::{debug, info, warn};
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;bootstrap_server&quot;</span>)]
+</span><span class="kw">use </span>massa_models::config::PERIODS_BETWEEN_BACKUPS;
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 </span><span class="kw">pub struct </span>FinalState {
@@ -1274,6 +1279,7 @@
         </span><span class="macro">info!</span>(<span class="string">&quot;final_state hash at slot {}: {}&quot;</span>, slot, final_state_hash);
 
         <span class="comment">// Backup DB if needed
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;bootstrap_server&quot;</span>)]
         </span><span class="kw">if </span>slot.period % PERIODS_BETWEEN_BACKUPS == <span class="number">0 </span>&amp;&amp; slot.period != <span class="number">0 </span>&amp;&amp; slot.thread == <span class="number">0 </span>{
             <span class="kw">let </span>state_slot = <span class="self">self</span>.db.read().get_change_id();
             <span class="kw">match </span>state_slot {
