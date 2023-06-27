@@ -1713,11 +1713,16 @@ impl ExecutionState {
     }
 
     /// Get cycle infos
-    pub fn get_cycle_infos(&self, cycle: u64, restrict_to_addresses: &PreHashSet<Address>) -> ExecutionQueryCycleInfos {
-        self.final_state.read().pos_state.get_cycle_info(cycle)
-        ExecutionQueryCycleInfos {
-            cycle,
-
+    pub fn get_cycle_infos(&self, cycle: u64, restrict_to_addresses: Option<&PreHashSet<Address>>) -> Option<ExecutionQueryCycleInfos> {
+        let lock = self.final_state.read();
+        if let Some(nfo) = lock.pos_state.get_cycle_info(cycle) {
+            Some(ExecutionQueryCycleInfos {
+                cycle,
+                is_final: nfo.complete,
+                staker_infos: nfo.
+            })
+        } else {
+            None
         }
     }
 

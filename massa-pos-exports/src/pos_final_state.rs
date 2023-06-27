@@ -12,6 +12,7 @@ use massa_db_exports::{
 };
 use massa_hash::Hash;
 use massa_models::amount::Amount;
+use massa_models::prehash::PreHashSet;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use nom::AsBytes;
@@ -955,33 +956,37 @@ impl PoSFinalState {
     }
 
     /// Queries a given cycle info in the database
-    pub fn get_cycle_info(&self, cycle: u64, restrict_to_addresses: Option<&PreHashSet<Address>>) -> Option<CycleInfo> {
-        TODO
+    pub fn get_cycle_info(
+        &self,
+        cycle: u64,
+        restrict_to_addresses: Option<&PreHashSet<Address>>,
+    ) -> Option<CycleInfo> {
+        // TODO improve performance by not taking a lock and re-searching the key at every element
 
-        {
-            let prefix = self.cycle_history_cycle_prefix(cycle);
-            let db = self.db.read();
-            if let Ok(Some(complete_value)) = db.get_cf(STATE_CF, complete_key!(prefix)) {
-                complete_value.len() == 1 && complete_value[0] == 1
-            } else {
-                false
-            }
+        if self.get_cycle_index(cycle).is_none() {
+            return None;
         }
-
 
         let complete = self.is_cycle_complete(cycle);
         let rng_seed = self.get_cycle_history_rng_seed(cycle);
         let final_state_hash_snapshot = self.get_cycle_history_final_state_hash_snapshot(cycle);
 
-        let roll_counts = self.get_all_roll_counts(cycle);
-        let production_stats = self
+        let mut roll_counts = self.get_all_roll_counts(cycle);
+        if let Some(filter_addresses) = &restrict_to_addresses {
+            roll_counts.retain(|addr, _| filter_addresses.contains(addr));
+        }
+
+        let mut production_stats = self
             .get_all_production_stats(cycle)
             .unwrap_or(PreHashMap::default());
+        if let Some(filter_addresses) = &restrict_to_addresses {
+            production_stats.retain(|addr, _| filter_addresses.contains(addr));
+        }
 
         let mut cycle_info =
             CycleInfo::new_with_hash(cycle, complete, roll_counts, rng_seed, production_stats);
         cycle_info.final_state_hash_snapshot = final_state_hash_snapshot;
-        cycle_info
+        Some(cycle_info)
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
