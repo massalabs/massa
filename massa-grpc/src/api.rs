@@ -250,24 +250,40 @@ pub(crate) fn get_largest_stakers(
 
     // Get the current cycle and slot.
     let now: MassaTime = MassaTime::now()?;
-    let current_slot = get_latest_block_slot_at_timestamp(
+
+    let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,
         grpc.grpc_config.genesis_timestamp,
         now,
-    )?
-    .unwrap_or_else(|| Slot::new(0, 0));
-    let current_cycle = current_slot.get_cycle(grpc.grpc_config.periods_per_cycle);
+    );
+
+    let (cur_cycle, cur_slot, in_downtime) = match latest_block_slot_at_timestamp_result {
+        Ok(Some(cur_slot)) if cur_slot.period <= grpc.grpc_config.last_start_period => (
+            Slot::new(grpc.grpc_config.last_start_period, 0)
+                .get_cycle(grpc.grpc_config.periods_per_cycle),
+            cur_slot,
+            true,
+        ),
+        Ok(Some(cur_slot)) => (
+            cur_slot.get_cycle(grpc.grpc_config.periods_per_cycle),
+            cur_slot,
+            false,
+        ),
+        Ok(None) => (0, Slot::new(0, 0), false),
+        Err(e) => return Err(GrpcError::ModelsError(e).into()),
+    };
 
     // Create the context for the response.
-    let context = Some(grpc_api::LargestStakersContext {
-        slot: Some(current_slot.into()),
+    let context = Some(grpc::LargestStakersContext {
+        slot: Some(cur_slot.into()),
+        in_downtime,
     });
 
     // Get the list of stakers, filtered by the specified minimum and maximum roll counts.
     let mut staker_vec = grpc
         .execution_controller
-        .get_cycle_active_rolls(current_cycle)
+        .get_cycle_active_rolls(cur_cycle)
         .into_iter()
         .filter(|(_, rolls)| {
             filter_opt.as_ref().map_or(true, |filter| {
