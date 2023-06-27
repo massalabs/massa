@@ -20,3 +20,5 @@ pub use settings::ConsensusConfig;
 #[cfg(feature = "testing")]
 /// Exports related to tests as Mocks and configurations
 pub mod test_exports;
+#[cfg(feature = "testing")]
+pub use controller_trait::MockConsensusController as AutoMockConsensusController;

@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
-use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_pool_exports::AutoMockPoolController;
@@ -45,8 +44,8 @@ fn basic() {
         .expect_clone_box()
         .returning(|| Box::new(AutoMockPoolController::new()));
 
-    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
-    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+    let consensus_controller1 = Box::new(AutoMockConsensusController::new());
+    let consensus_controller2 = Box::new(AutoMockConsensusController::new());
 
     let mut selector_controller1 = Box::new(AutoMockSelectorController::new());
     selector_controller1
@@ -208,8 +207,8 @@ fn stop_with_controller_still_exists() {
         .expect_clone_box()
         .returning(|| Box::new(AutoMockPoolController::new()));
 
-    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
-    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+    let consensus_controller1 = Box::new(AutoMockConsensusController::new());
+    let consensus_controller2 = Box::new(AutoMockConsensusController::new());
 
     let mut selector_controller1 = Box::new(AutoMockSelectorController::new());
     selector_controller1
