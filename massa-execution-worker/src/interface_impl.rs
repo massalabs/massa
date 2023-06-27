@@ -897,3 +897,37 @@ impl Interface for InterfaceImpl {
         Ok(hash)
     }
 }
+
+#[test]
+fn test_evm_verify() {
+    use hex_literal::hex;
+
+    let message_ = b"test";
+    let public_key_ = hex!("807a7Bb5193eDf9898b9092c1597bB966fe52514");
+    let signature_ = hex!("d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b");
+
+    println!("public key len: {}", public_key_.len());
+    println!("public key: {:?}", public_key_);
+    println!("signature value: {:?}", signature_);
+
+    // build the message
+    let message_hash = sha3::Keccak256::digest(&message_);
+    let prefix = b"\x19Ethereum Signed Message:\n32";
+    let to_hash = [&prefix[..], message_hash.as_slice()].concat();
+    let full_hash = sha3::Keccak256::digest(&to_hash);
+    let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
+
+    // parse the signature as being (r, s, v)
+    // r is the R.x value of the signature's R point (32 bytes)
+    // s is the signature proof for R.x (32 bytes)
+    // v is a recovery parameter used to ease the signature verification (1 byte)
+    let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+    let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
+
+    // recover the public key using v
+    let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+    println!("recovered public key: {:?}", recovered.serialize());
+
+    // verify
+    assert!(libsecp256k1::verify(&message, &signature, &recovered));
+}
