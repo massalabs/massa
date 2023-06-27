@@ -902,24 +902,18 @@ impl Interface for InterfaceImpl {
 fn test_evm_verify() {
     use hex_literal::hex;
 
+    // corresponding address is 0x807a7Bb5193eDf9898b9092c1597bB966fe52514
     let message_ = b"test";
-    let address_ = hex!("807a7Bb5193eDf9898b9092c1597bB966fe52514");
-    let private_key_ = hex!("ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3");
     let signature_ = hex!("d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b");
-
-    println!("address len: {}", address_.len());
-    println!("address: {:?}", address_);
-    println!("signature value: {:?}", signature_);
+    let private_key_ = hex!("ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3");
 
     // build original public key
     let private_key = libsecp256k1::SecretKey::parse_slice(&private_key_).unwrap();
     let public_key = libsecp256k1::PublicKey::from_secret_key(&private_key);
-    println!("orginal public key: {:?}", public_key.serialize());
 
     // build the message
-    let message_hash = sha3::Keccak256::digest(&message_);
-    let prefix = b"\x19Ethereum Signed Message:\n32";
-    let to_hash = [&prefix[..], message_hash.as_slice()].concat();
+    let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
+    let to_hash = [prefix.as_bytes(), message_].concat();
     let full_hash = sha3::Keccak256::digest(&to_hash);
     let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
 
@@ -930,10 +924,17 @@ fn test_evm_verify() {
     let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
     let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
 
-    // recover the public key using v
-    let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
-    println!("recovered public key: {:?}", recovered.serialize());
+    // check 1
+    // verify the signature
+    assert!(libsecp256k1::verify(&message, &signature, &public_key));
 
-    // verify
-    assert!(libsecp256k1::verify(&message, &signature, &recovered));
+    // check 2
+    // recover the public key using v and match it with the derived one
+    let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+    assert_eq!(public_key, recovered);
+
+    // check 3
+    // sign the message and match it with the original signature
+    let (second_signature, _) = libsecp256k1::sign(&message, &private_key);
+    assert_eq!(signature, second_signature);
 }
