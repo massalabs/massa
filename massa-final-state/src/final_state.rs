@@ -552,11 +552,8 @@ impl FinalState {
         // bootstrap again instead
         self.ledger
             .apply_changes_to_batch(changes.ledger_changes, &mut db_batch);
-        self.executed_ops.apply_changes_to_batch(
-            changes.executed_ops_changes,
-            slot,
-            &mut db_batch,
-        );
+        self.executed_ops
+            .apply_changes_to_batch(changes.executed_ops_changes, slot, &mut db_batch);
 
         self.executed_denunciations.apply_changes_to_batch(
             changes.executed_denunciations_changes,

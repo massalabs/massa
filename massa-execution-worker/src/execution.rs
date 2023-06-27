@@ -1504,6 +1504,23 @@ impl ExecutionState {
         )
     }
 
+    /// Gets a balance both at the latest final and candidate executed slots
+    pub fn get_final_and_active_bytecode(
+        &self,
+        address: &Address,
+    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+        let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
+        let search_result = self.active_history.read().fetch_bytecode(address);
+        (
+            final_bytecode,
+            match search_result {
+                HistorySearchResult::Present(active_bytecode) => Some(active_bytecode),
+                HistorySearchResult::NoInfo => final_bytecode,
+                HistorySearchResult::Absent => None,
+            },
+        )
+    }
+
     /// Gets roll counts both at the latest final and active executed slots
     pub fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
         let final_rolls = self.final_state.read().pos_state.get_rolls_for(address);
@@ -1540,6 +1557,7 @@ impl ExecutionState {
     pub fn get_final_and_candidate_datastore_keys(
         &self,
         addr: &Address,
+        prefix: &[u8],
     ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
@@ -1547,9 +1565,34 @@ impl ExecutionState {
             .final_state
             .read()
             .ledger
-            .get_datastore_keys(addr)
+            .get_datastore_keys(addr, prefix)
             .unwrap_or_default();
         let mut candidate_keys = final_keys.clone();
+
+        // compute prefix range
+        let prefix_range = if !prefix.is_empty() {
+            // compute end of prefix range
+            let n_keep = prefix
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(i, v)| if v < &255 { Some(i + 1) } else { None })
+                .unwrap_or(0);
+            let mut prefix_end = prefix[..n_keep].to_vec();
+            if let Some(v) = prefix_end.last_mut() {
+                *v += 1;
+            }
+            (
+                std::ops::Bound::Included(prefix.to_vec()),
+                if !prefix_end.is_empty() {
+                    std::ops::Bound::Excluded(prefix_end)
+                } else {
+                    std::ops::Bound::Unbounded
+                },
+            )
+        } else {
+            (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
+        };
 
         // here, traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
@@ -1559,12 +1602,16 @@ impl ExecutionState {
 
                 // address ledger entry being reset to an absolute new list of keys
                 Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = new_ledger_entry.datastore.keys().cloned().collect();
+                    candidate_keys = new_ledger_entry
+                        .datastore
+                        .range(prefix_range)
+                        .cloned()
+                        .collect();
                 }
 
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    for (ds_key, ds_update) in &entry_updates.datastore {
+                    for (ds_key, ds_update) in &entry_updates.datastore.range(prefix_range) {
                         match ds_update {
                             SetOrDelete::Set(_) => candidate_keys.insert(ds_key.clone()),
                             SetOrDelete::Delete => candidate_keys.remove(ds_key),
@@ -1635,22 +1682,34 @@ impl ExecutionState {
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
-        // check active history
-        let history = self.active_history.read();
-
-        if matches!(
-            history.fetch_executed_denunciation(denunciation_index),
-            HistorySearchResult::Present(())
-        ) {
-            return true;
+    /// Returns a tuple of booleans:
+    /// * first boolean is true if the denunciation has been executed speculatively
+    /// * second boolean is true if the denunciation has been executed in the final state
+    pub fn get_denunciation_execution_status(
+        &self,
+        denunciation_index: &DenunciationIndex,
+    ) -> (bool, bool) {
+        // check final state
+        let executed_final = self
+            .final_state
+            .read()
+            .executed_denunciations
+            .contains(denunciation_index);
+        if executed_final {
+            return (true, true);
         }
 
-        // check final state
-        let final_state = self.final_state.read();
-        final_state
-            .executed_denunciations
-            .contains(denunciation_index)
+        // check active history
+        let executed_candidate = {
+            matches!(
+                self.active_history
+                    .read()
+                    .fetch_executed_denunciation(denunciation_index),
+                HistorySearchResult::Present(())
+            )
+        };
+
+        (executed_candidate, false)
     }
 
     /// Gets the production stats for an address at all cycles

@@ -211,7 +211,10 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
+    fn get_denunciation_execution_status(
+        &self,
+        denunciation_index: &DenunciationIndex,
+    ) -> (bool, bool) {
         let (response_tx, response_rx) = mpsc::channel();
         if let Err(err) =
             self.0

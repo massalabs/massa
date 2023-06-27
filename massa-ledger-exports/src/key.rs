@@ -134,17 +134,18 @@ impl Key {
     }
 }
 
-pub fn datastore_prefix_from_address(address: &Address) -> Vec<u8> {
-    let mut prefix = Vec::new();
-    prefix.extend(LEDGER_PREFIX.as_bytes());
+/// Gives the general prefix of the datastore of an address while respecting a provided key prefix
+pub fn datastore_prefix_from_address(address: &Address, prefix: &[u8]) -> Vec<u8> {
+    let mut res_prefix = LEDGER_PREFIX.as_bytes().to_vec();
     U64VarIntSerializer::new()
-        .serialize(&KEY_VERSION, &mut prefix)
+        .serialize(&KEY_VERSION, &mut res_prefix)
         .unwrap();
     AddressSerializer::new()
-        .serialize(address, &mut prefix)
+        .serialize(address, &mut res_prefix)
         .unwrap();
-    prefix.extend([DATASTORE_IDENT]);
-    prefix
+    res_prefix.push(DATASTORE_IDENT);
+    res_prefix.extend(prefix);
+    res_prefix
 }
 
 /// Basic key serializer

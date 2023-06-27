@@ -2,15 +2,15 @@
 
 //! This file exports useful types used to interact with the execution worker
 
+use crate::error::{ExecutionError, ExecutionQueryError};
 use crate::event_store::EventStore;
-use crate::error::ExecutionError;
 use massa_final_state::StateChanges;
 use massa_models::datastore::Datastore;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashSet, PreHashMap};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
     slot::Slot,
@@ -19,14 +19,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// Request to atomically execute a batch of execution state queries
 pub struct ExecutionQueryRequest {
-    requests: Vec<ExecutionQueryRequestItem>,
+    pub requests: Vec<ExecutionQueryRequestItem>,
 }
 
 /// Response to a list of execution queries
 pub struct ExecutionQueryResponse {
-    pub responses: Vec<Result<ExecutionQueryResponseItem, ExecutionError>>,
+    pub responses: Vec<Result<ExecutionQueryResponseItem, ExecutionQueryError>>,
     pub final_cursor: Slot,
-    pub candidate_cursor: Slot
+    pub candidate_cursor: Slot,
 }
 
 /// Execution state query item
@@ -44,25 +44,13 @@ pub enum ExecutionQueryRequestItem {
     /// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytes(bytecode) or an error if the address is not found
     AddressBytecodeFinal(Address),
     /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::VecBytes(keys) or an error if the address is not found
-    AddressDatastoreKeysCandidate {
-        addr: Address,
-        prefix: Vec<u8>,
-    },
+    AddressDatastoreKeysCandidate { addr: Address, prefix: Vec<u8> },
     /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::VecBytes(keys) or an error if the address is not found
-    AddressDatastoreKeysFinal {
-        addr: Address,
-        prefix: Vec<u8>,
-    },
+    AddressDatastoreKeysFinal { addr: Address, prefix: Vec<u8> },
     /// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::Bytes(keys) or an error if the address or key is not found
-    AddressDatastoreValueCandidate {
-        addr: Address,
-        key: Vec<u8>,
-    },
+    AddressDatastoreValueCandidate { addr: Address, key: Vec<u8> },
     /// gets a datastore value (final) for an address, returns ExecutionQueryResponseItem::Bytes(keys) or an error if the address or key is not found
-    AddressDatastoreValueFinal {
-        addr: Address,
-        key: Vec<u8>,
-    },
+    AddressDatastoreValueFinal { addr: Address, key: Vec<u8> },
 
     /// gets the execution status (candidate) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     OpExecutionStatusCandidate(OperationId),
@@ -91,11 +79,11 @@ pub enum ExecutionQueryRequestItem {
     },
 
     /// get filtered events. Returns ExecutionQueryResponseItem::Events
-    Events(EventFilter)
+    Events(EventFilter),
 }
 
 /// Execution state query response item
- pub enum ExecutionQueryResponseItem {
+pub enum ExecutionQueryResponseItem {
     /// boolean value
     Boolean(bool),
     /// roll counts value
@@ -113,11 +101,11 @@ pub enum ExecutionQueryRequestItem {
     /// cycle infos value
     CycleInfos(ExecutionQueryCycleInfos),
     /// Events
-    Events(Vec<SCOutputEvent>)
- }
+    Events(Vec<SCOutputEvent>),
+}
 
 /// Execution status of an operation or denunciation
- pub enum ExecutionQueryExecutionStatus {
+pub enum ExecutionQueryExecutionStatus {
     /// The operation or denunciation was executed recently with success
     AlreadyExecutedWithSuccess,
     /// The operation or denunciation was executed recently with failure
@@ -127,33 +115,30 @@ pub enum ExecutionQueryRequestItem {
     /// Technically it means that the operation or denunciation
     /// can still be executed unless it has expired.
     ExecutableOrExpired,
- }
+}
 
- pub struct ExecutionQueryCycleInfos {
+pub struct ExecutionQueryCycleInfos {
     /// cycle number
     pub cycle: u64,
     /// whether the cycle is final
     pub is_final: bool,
     /// infos for each PoS-participating address among the ones that were asked
     pub staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>,
- }
+}
 
- pub struct ExecutionQueryStakerInfo {
+pub struct ExecutionQueryStakerInfo {
     /// active roll count
     pub active_rolls: u64,
     /// production stats
-    pub production_stats: PreHashMap<Address, ExecutionQueryStakerInfoProductionStats>
- }
+    pub production_stats: PreHashMap<Address, ExecutionQueryStakerInfoProductionStats>,
+}
 
- pub struct ExecutionQueryStakerInfoProductionStats {
+pub struct ExecutionQueryStakerInfoProductionStats {
     /// producetion successes
     pub block_success_count: u64,
     /// producetion failures
     pub block_failure_count: u64,
- }
-
-
-
+}
 
 /// Execution info about an address
 #[derive(Clone, Debug)]

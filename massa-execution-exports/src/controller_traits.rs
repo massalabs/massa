@@ -2,7 +2,7 @@
 
 //! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-use crate::types::{ReadOnlyExecutionRequest, ExecutionQueryRequest, ExecutionQueryResponse};
+use crate::types::{ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest};
 use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
@@ -94,7 +94,10 @@ pub trait ExecutionController: Send + Sync {
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError>;
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool;
+    fn get_denunciation_execution_status(
+        &self,
+        denunciation_index: &DenunciationIndex,
+    ) -> (bool, bool);
 
     /// Gets information about a batch of addresses
     fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;
