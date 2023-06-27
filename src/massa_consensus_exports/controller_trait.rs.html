@@ -138,6 +138,7 @@
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_graph_export::BlockGraphExport;
 <span class="kw">use crate</span>::{bootstrapable_graph::BootstrapableGraph, error::ConsensusError};
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
@@ -149,6 +150,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="doccomment">/// Interface that communicates with the graph worker thread
+</span><span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 </span><span class="kw">pub trait </span>ConsensusController: Send + Sync {
     <span class="doccomment">/// Get an export of a part of the graph
     ///
