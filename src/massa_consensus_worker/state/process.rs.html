@@ -664,6 +664,64 @@
 <a href="#664" id="664">664</a>
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -753,7 +811,7 @@
 
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process&quot;</span>, { <span class="string">&quot;block_id&quot;</span>: block_id });
         <span class="comment">// control all the waiting states and try to get a valid block
-        </span><span class="kw">let </span>valid_block_infos = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id) {
+        </span><span class="kw">let </span>valid_block_infos = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>block_id) {
             <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new()), <span class="comment">// disappeared before being processed: do nothing
 
             // discarded: do nothing
@@ -779,8 +837,9 @@
                 });
                 <span class="comment">// remove header
                 </span><span class="kw">let </span>header = <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
-                    <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id)
+                    <span class="self">self</span>.block_statuses.remove(<span class="kw-2">&amp;</span>block_id)
                 {
+                    <span class="self">self</span>.incoming_index.remove(<span class="kw-2">&amp;</span>block_id);
                     header
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(
@@ -788,7 +847,7 @@
                         block_id
                     )));
                 };
-                <span class="self">self</span>.check_block_header_and_store(block_id, header.clone(), current_slot)<span class="question-mark">?</span>;
+                <span class="self">self</span>.check_block_header_and_store(block_id, header, current_slot)<span class="question-mark">?</span>;
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
             }
 
@@ -801,8 +860,9 @@
                 <span class="kw">let </span>(slot, storage) =
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Incoming(HeaderOrBlock::Block {
                         slot, storage, ..
-                    })) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id)
+                    })) = <span class="self">self</span>.block_statuses.remove(<span class="kw-2">&amp;</span>block_id)
                     {
+                        <span class="self">self</span>.incoming_index.remove(<span class="kw-2">&amp;</span>block_id);
                         (slot, storage)
                     } <span class="kw">else </span>{
                         <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(
@@ -817,8 +877,8 @@
                     .expect(<span class="string">&quot;incoming block not found in storage&quot;</span>);
                 <span class="kw">match </span><span class="self">self</span>.check_block_and_store(
                     block_id,
-                    <span class="kw-2">*</span>slot,
-                    storage.clone(),
+                    slot,
+                    storage,
                     stored_block,
                     current_slot,
                 )<span class="question-mark">? </span>{
@@ -841,16 +901,26 @@
                     </span><span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
                 }
                 <span class="comment">// send back as incoming and ask for reprocess
-                </span><span class="self">self</span>.blocks_state.update_block_state(
-                    <span class="kw-2">&amp;</span>block_id,
-                    BlockStatus::Incoming(header_or_block.clone()),
-                )<span class="question-mark">?</span>;
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(reprocess);
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(header_or_block)) =
+                    <span class="self">self</span>.block_statuses.remove(<span class="kw-2">&amp;</span>block_id)
+                {
+                    <span class="self">self</span>.waiting_for_slot_index.remove(<span class="kw-2">&amp;</span>block_id);
+                    <span class="self">self</span>.block_statuses
+                        .insert(block_id, BlockStatus::Incoming(header_or_block));
+                    <span class="self">self</span>.incoming_index.insert(block_id);
+                    reprocess.insert((slot, block_id));
+                    <span class="macro">massa_trace!</span>(
+                        <span class="string">&quot;consensus.block_graph.process.waiting_for_slot.reprocess&quot;</span>,
+                        { <span class="string">&quot;block_id&quot;</span>: block_id }
+                    );
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(reprocess);
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses removing waiting for slot block or header {}&quot;</span>, block_id)));
+                };
             }
 
             <span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
-                header_or_block,
                 ..
             }) =&gt; {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.waiting_for_dependencies&quot;</span>, {
@@ -861,11 +931,23 @@
                     </span><span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
                 }
                 <span class="comment">// send back as incoming and ask for reprocess
-                </span><span class="self">self</span>.blocks_state.update_block_state(
-                    <span class="kw-2">&amp;</span>block_id,
-                    BlockStatus::Incoming(header_or_block.clone()),
-                )<span class="question-mark">?</span>;
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(reprocess);
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
+                    header_or_block, ..
+                }) = <span class="self">self</span>.block_statuses.remove(<span class="kw-2">&amp;</span>block_id)
+                {
+                    <span class="self">self</span>.waiting_for_dependencies_index.remove(<span class="kw-2">&amp;</span>block_id);
+                    reprocess.insert((header_or_block.get_slot(), block_id));
+                    <span class="self">self</span>.block_statuses
+                        .insert(block_id, BlockStatus::Incoming(header_or_block));
+                    <span class="self">self</span>.incoming_index.insert(block_id);
+                    <span class="macro">massa_trace!</span>(
+                        <span class="string">&quot;consensus.block_graph.process.waiting_for_dependencies.reprocess&quot;</span>,
+                        { <span class="string">&quot;block_id&quot;</span>: block_id }
+                    );
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(reprocess);
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses removing waiting for slot header or block {}&quot;</span>, block_id)));
+                }
             }
         };
 
@@ -882,22 +964,17 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// if the block was added, update linked dependencies and mark satisfied ones for recheck
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { storage, .. }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id) {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { storage, .. }) = <span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>block_id) {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.is_active&quot;</span>, {
                 <span class="string">&quot;block_id&quot;</span>: block_id
             });
             <span class="self">self</span>.to_propagate.insert(block_id, storage.clone());
-            <span class="kw">for </span>itm_block_id <span class="kw">in </span><span class="self">self
-                </span>.blocks_state
-                .waiting_for_dependencies_blocks()
-                .clone()
-                .iter()
-            {
+            <span class="kw">for </span>itm_block_id <span class="kw">in </span><span class="self">self</span>.waiting_for_dependencies_index.iter() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
                     ..
-                }) = <span class="self">self</span>.blocks_state.get_mut(itm_block_id)
+                }) = <span class="self">self</span>.block_statuses.get_mut(itm_block_id)
                 {
                     <span class="kw">if </span>unsatisfied_dependencies.remove(<span class="kw-2">&amp;</span>block_id) {
                         <span class="comment">// a dependency was satisfied: retry
@@ -908,6 +985,44 @@
         }
 
         <span class="prelude-val">Ok</span>(reprocess)
+    }
+
+    <span class="kw">pub fn </span>promote_dep_tree(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hash: BlockId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>to_explore = <span class="macro">vec!</span>[hash];
+        <span class="kw">let </span><span class="kw-2">mut </span>to_promote: PreHashMap&lt;BlockId, (Slot, u64)&gt; = PreHashMap::default();
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(h) = to_explore.pop() {
+            <span class="kw">if </span>to_promote.contains_key(<span class="kw-2">&amp;</span>h) {
+                <span class="kw">continue</span>;
+            }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
+                header_or_block,
+                unsatisfied_dependencies,
+                sequence_number,
+                ..
+            }) = <span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>h)
+            {
+                <span class="comment">// promote current block
+                </span>to_promote.insert(h, (header_or_block.get_slot(), <span class="kw-2">*</span>sequence_number));
+                <span class="comment">// register dependencies for exploration
+                </span>to_explore.extend(unsatisfied_dependencies);
+            }
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>to_promote: Vec&lt;(Slot, u64, BlockId)&gt; = to_promote
+            .into_iter()
+            .map(|(h, (slot, seq))| (slot, seq, h))
+            .collect();
+        to_promote.sort_unstable(); <span class="comment">// last ones should have the highest seq number
+        </span><span class="kw">for </span>(_slot, _seq, h) <span class="kw">in </span>to_promote.into_iter() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
+                sequence_number, ..
+            }) = <span class="self">self</span>.block_statuses.get_mut(<span class="kw-2">&amp;</span>h)
+            {
+                <span class="self">self</span>.sequence_counter += <span class="number">1</span>;
+                <span class="kw-2">*</span>sequence_number = <span class="self">self</span>.sequence_counter;
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Add a block to the graph and update the cliques, the graph dependencies and incompatibilities
@@ -944,8 +1059,8 @@
         </span>storage.claim_block_refs(<span class="kw-2">&amp;</span>parents_hash_period.iter().map(|(p_id, <span class="kw">_</span>)| <span class="kw-2">*</span>p_id).collect());
 
         <span class="comment">// add block to status structure
-        </span><span class="self">self</span>.blocks_state.update_block_state(
-            <span class="kw-2">&amp;</span>add_block_id,
+        </span><span class="self">self</span>.block_statuses.insert(
+            add_block_id,
             BlockStatus::Active {
                 a_block: Box::new(ActiveBlock {
                     creator_address: Address::from_public_key(<span class="kw-2">&amp;</span>add_block_creator),
@@ -959,7 +1074,8 @@
                 }),
                 storage,
             },
-        )<span class="question-mark">?</span>;
+        );
+        <span class="self">self</span>.active_index.insert(add_block_id);
 
         <span class="comment">// add as child to parents
         // add as descendant to ancestors. Note: descendants are never removed.
@@ -1049,7 +1165,7 @@
             <span class="comment">// for each blockclique block, set it as best_parent in its own thread
             // if its period is higher than the current best_parent in that thread
             </span><span class="kw">for </span>block_h <span class="kw">in </span>blockclique.block_ids.iter() {
-                <span class="kw">let </span>b_slot = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_h) {
+                <span class="kw">let </span>b_slot = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(block_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; a_block.slot,
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses updating best parents while adding {} - missing {}&quot;</span>, add_block_id, block_h))),
                 };
@@ -1138,7 +1254,7 @@
                     <span class="comment">// was previously sent as a blockclique element
                     </span><span class="kw">return </span><span class="prelude-val">None</span>;
                 }
-                <span class="kw">let </span>storage = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
+                <span class="kw">let </span>storage = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(b_id) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active {
                         a_block: <span class="kw">_</span>,
                         storage,
@@ -1164,7 +1280,7 @@
                     <span class="comment">// The block was not present in the previous blockclique:
                     // the blockclique has changed =&gt; get the block&#39;s slot by querying Storage.
                     </span>blockclique_changed = <span class="bool-val">true</span>;
-                    <span class="kw">let </span>(slot, storage) = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
+                    <span class="kw">let </span>(slot, storage) = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(b_id) {
                         <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =&gt; (a_block.slot, storage),
                         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;blockclique block not found in active blocks&quot;</span>),
                     };
@@ -1249,7 +1365,7 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                     a_block,
                     storage: <span class="kw">_</span>,
-                }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>b_id)
+                }) = <span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>b_id)
                 {
                     <span class="comment">// add to final blocks to notify execution
                     </span>final_block_slots.insert(a_block.slot, b_id);
