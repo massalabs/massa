@@ -40,7 +40,7 @@ use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
-use massa_metrics::MassaMetrics;
+use massa_metrics::{MassaMetrics, MetricsStopper};
 use massa_models::address::Address;
 use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -84,7 +84,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::mips::MIP_LIST;
+use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
@@ -97,7 +97,7 @@ use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::sync::broadcast;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 #[cfg(feature = "op_spammer")]
@@ -121,6 +121,7 @@ async fn launch(
     StopHandle,
     StopHandle,
     Option<massa_grpc::server::StopHandle>,
+    MetricsStopper,
 ) {
     info!("Node version : {}", *VERSION);
     let now = MassaTime::now().expect("could not get now time");
@@ -228,7 +229,12 @@ async fn launch(
     };
 
     // Start massa metrics
-    let metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
+    let (massa_metrics, metrics_stopper) = MassaMetrics::new(
+        SETTINGS.metrics.enabled,
+        SETTINGS.metrics.bind,
+        THREAD_COUNT,
+        SETTINGS.metrics.tick_delay.to_duration(),
+    );
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -275,8 +281,10 @@ async fn launch(
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
+    let mip_list = get_mip_list();
+    debug!("MIP list: {:?}", mip_list);
     let mip_store =
-        MipStore::try_from((MIP_LIST, mip_stats_config)).expect("mip store creation failed");
+        MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
 
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
@@ -483,7 +491,7 @@ async fn launch(
         mip_store.clone(),
         execution_channels.clone(),
         node_wallet.clone(),
-        metrics.clone(),
+        massa_metrics.clone(),
     );
 
     // launch pool controller
@@ -679,7 +687,7 @@ async fn launch(
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
-        metrics.clone(),
+        massa_metrics.clone(),
     );
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
@@ -691,7 +699,7 @@ async fn launch(
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
-        metrics,
+        massa_metrics.clone(),
     )
     .expect("could not start protocol controller");
 
@@ -989,6 +997,7 @@ async fn launch(
         api_public_handle,
         api_handle,
         grpc_handle,
+        metrics_stopper,
     )
 }
 
@@ -1017,6 +1026,7 @@ async fn stop(
     api_public_handle: StopHandle,
     api_handle: StopHandle,
     grpc_handle: Option<massa_grpc::server::StopHandle>,
+    mut metrics_stopper: MetricsStopper,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -1043,6 +1053,9 @@ async fn stop(
     // stop private API
     api_private_handle.stop().await;
     info!("API | PRIVATE JsonRPC | stopped");
+
+    // stop metrics
+    metrics_stopper.stop();
 
     // stop factory
     factory_manager.stop();
@@ -1206,6 +1219,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
 
         // loop over messages
@@ -1258,6 +1272,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         )
         .await;
 
