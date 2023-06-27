@@ -306,8 +306,9 @@ impl ExecutionController for ExecutionControllerImpl {
                 }
 
                 ExecutionQueryRequestItem::Events(filter) => {
-                    let events = execution_lock.get_filtered_sc_output_event(filter);
-                    Ok(ExecutionQueryResponseItem::Events(events))
+                    Ok(ExecutionQueryResponseItem::Events(
+                        execution_lock.get_filtered_sc_output_event(filter),
+                    ))
                 }
 
                 _ => unimplemented!("query_state: {:?}", req_item),
