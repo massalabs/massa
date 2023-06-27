@@ -16,11 +16,13 @@ use massa_db_exports::{
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
-use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
+
+#[cfg(feature = "bootstrap_server")]
+use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -574,6 +576,7 @@ impl FinalState {
         info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
         // Backup DB if needed
+        #[cfg(feature = "bootstrap_server")]
         if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {
             let state_slot = self.db.read().get_change_id();
             match state_slot {

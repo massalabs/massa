@@ -94,6 +94,10 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     fn shutdown_connection(&mut self, peer_id: &PeerId) {
         self.write().connections.remove(peer_id);
     }
+
+    fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)> {
+        HashMap::new()
+    }
 }
 
 pub struct MockNetworkController {
@@ -204,5 +208,13 @@ impl NetworkController for MockNetworkController {
 
     fn get_active_connections(&self) -> Box<dyn crate::wrap_network::ActiveConnectionsTrait> {
         Box::new(self.connections.clone())
+    }
+
+    fn get_total_bytes_received(&self) -> u64 {
+        0
+    }
+
+    fn get_total_bytes_sent(&self) -> u64 {
+        0
     }
 }

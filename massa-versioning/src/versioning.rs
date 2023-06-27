@@ -1099,6 +1099,8 @@ impl MipStoreRaw {
                     match state_id {
                         ComponentStateTypeId::Active => {
                             batch.insert(key.clone(), Some(value.clone()));
+                            // + "Remove key" in VERSIONING_CF
+                            versioning_batch.insert(key.clone(), None);
                         }
                         _ => {
                             versioning_batch.insert(key.clone(), Some(value.clone()));
@@ -2152,8 +2154,8 @@ mod test {
             .update_batches(&mut db_batch, &mut db_versioning_batch, between)
             .unwrap();
 
-        assert_eq!(db_batch.len(), 1);
-        assert_eq!(db_versioning_batch.len(), 2); // + stats
+        assert_eq!(db_batch.len(), 1); // mi_1
+        assert_eq!(db_versioning_batch.len(), 3); // mi_2 + mi_1 removal + stats
 
         let mut guard_db = db.write();
         // FIXME / TODO: no slot hardcoding?

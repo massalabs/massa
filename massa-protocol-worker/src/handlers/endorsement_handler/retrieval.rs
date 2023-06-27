@@ -1,4 +1,4 @@
-use std::{thread::JoinHandle, time::Duration};
+use std::thread::JoinHandle;
 
 use crossbeam::{channel::tick, select};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -55,7 +55,7 @@ impl RetrievalThread {
                 max_length_endorsements: self.config.max_endorsements_per_message,
                 endorsement_count: self.config.endorsement_count,
             });
-        let tick_metrics = tick(Duration::from_secs(5));
+        let tick_metrics = tick(self.metrics.tick_delay);
 
         loop {
             select! {

@@ -17,7 +17,7 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "bf8adf5" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "b18e8e8f68aa268874ffd533b8f950699075c7a9" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 rand = { version = "0.8.5", optional = true }
@@ -54,9 +54,10 @@ massa_factory_exports = { path = "../massa-factory-exports" }
 massa_factory_worker = { path = "../massa-factory-worker" }
 massa_grpc = { path = "../massa-grpc" }
 massa_versioning = { path = "../massa-versioning" }
+massa_signature = { path = "../massa-signature", optional = true }
 massa_db_exports = { path = "../massa-db-exports" }
 massa_db_worker = { path = "../massa-db-worker" }
-massa_signature = { path = "../massa-signature", optional = true }
+#massa_signature = { path = "../massa-signature", optional = true }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
@@ -65,6 +66,6 @@ beta = []
 resync_check = []
 deadlock_detection = []
 op_spammer = ["rand", "massa_signature"]
-bootstrap_server = ["massa_consensus_worker/bootstrap_server"]
-sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
+bootstrap_server = ["massa_consensus_worker/bootstrap_server", "massa_final_state/bootstrap_server"]
+sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox", "massa_metrics/sandbox"]
 testing = ["massa_metrics/testing"]
