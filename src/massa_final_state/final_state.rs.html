@@ -696,6 +696,11 @@
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -765,7 +770,7 @@
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        mip_store: MipStore,
+        <span class="kw-2">mut </span>mip_store: MipStore,
         reset_final_state: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
         <span class="kw">let </span>db_slot = db
@@ -799,6 +804,11 @@
         <span class="comment">// create a default executed denunciations
         </span><span class="kw">let </span>executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
+
+        <span class="comment">// init MIP store by reading from the db
+        </span>mip_store
+            .extend_from_db(db.clone())
+            .map_err(FinalStateError::from)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState {
             ledger,
