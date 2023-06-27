@@ -137,7 +137,13 @@ fn basic() {
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-    let metrics = MassaMetrics::new(false, 32);
+    let metrics = MassaMetrics::new(
+        false,
+        "0.0.0.0:9898".parse().unwrap(),
+        32,
+        std::time::Duration::from_secs(5),
+    )
+    .0;
 
     // Setup the protocols
     let (mut manager1, _, _) = start_protocol_controller(
@@ -278,7 +284,13 @@ fn stop_with_controller_still_exists() {
         counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
-    let metrics = MassaMetrics::new(false, 32);
+    let metrics = MassaMetrics::new(
+        false,
+        "0.0.0.0:9898".parse().unwrap(),
+        32,
+        std::time::Duration::from_secs(5),
+    )
+    .0;
 
     // Setup the protocols
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());

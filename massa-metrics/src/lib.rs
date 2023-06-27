@@ -1,60 +1,101 @@
-use lazy_static::lazy_static;
-use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
+//! this library is used to collect metrics from the node and expose them to the prometheus server
+//!
+//! the metrics are collected from the node and from the survey
+//! the survey is a separate thread that is used to collect metrics from the network (active connections)
+//!
 
-#[cfg(not(feature = "testing"))]
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+    thread::JoinHandle,
+    time::Duration,
+};
+
+use lazy_static::lazy_static;
+use massa_channel::sender::MassaSender;
+use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
+use survey::MassaSurvey;
+use tracing::warn;
+
+// #[cfg(not(feature = "testing"))]
 mod server;
 
-// TODO load only if feature metrics is enabled
+mod survey;
+
 lazy_static! {
-
-
-    static ref IN_CONNECTIONS: IntGauge = register_int_gauge!("in_connections", "active in connections").unwrap();
-
-    static ref OUT_CONNECTIONS: IntGauge = register_int_gauge!("out_connections", "active out connections").unwrap();
-
-    static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!("operations_counter", "operations counter len").unwrap();
-    static ref BLOCKS_COUNTER: IntGauge = register_int_gauge!("blocks_counter", "blocks counter len").unwrap();
-    static ref ENDORSEMENTS_COUNTER: IntGauge = register_int_gauge!("endorsements_counter", "endorsements counter len").unwrap();
-    // static ref BLOCK_GRAPH_SLOT_TIME: IntGauge = register_int_gauge!("block_graph_slot_time", "sum of delta in ms between block inclusion in graph and block slot").unwrap();
-
-
-    // static ref A_INT_GAUGE: IntGauge = register_int_gauge!("A_int_gauge", "foobar").unwrap();
-}
-
-pub fn set_connections(in_connections: usize, out_connections: usize) {
-    IN_CONNECTIONS.set(in_connections as i64);
-    OUT_CONNECTIONS.set(out_connections as i64);
+    // use lazy_static for these metrics because they are used in storage which implement default
+    static ref OPERATIONS_COUNTER: IntGauge = register_int_gauge!(
+        "operations_storage_counter",
+        "operations storage counter len"
+    )
+    .unwrap();
+    static ref BLOCKS_COUNTER: IntGauge =
+        register_int_gauge!("blocks_storage_counter", "blocks storage counter len").unwrap();
+    static ref ENDORSEMENTS_COUNTER: IntGauge =
+        register_int_gauge!("endorsements_storage_counter", "endorsements storage counter len").unwrap();
 }
 
 pub fn set_blocks_counter(val: usize) {
     BLOCKS_COUNTER.set(val as i64);
 }
 
-pub fn inc_endorsements_counter() {
-    ENDORSEMENTS_COUNTER.inc();
+pub fn set_endorsements_counter(val: usize) {
+    ENDORSEMENTS_COUNTER.set(val as i64);
 }
 
-pub fn dec_endorsements_counter() {
-    ENDORSEMENTS_COUNTER.dec();
+pub fn set_operations_counter(val: usize) {
+    OPERATIONS_COUNTER.set(val as i64);
 }
 
-pub fn inc_operations_counter() {
-    OPERATIONS_COUNTER.inc();
+#[derive(Default)]
+pub struct MetricsStopper {
+    pub(crate) stopper: Option<MassaSender<()>>,
+    pub(crate) stop_handle: Option<JoinHandle<()>>,
 }
 
-pub fn dec_operations_counter() {
-    OPERATIONS_COUNTER.dec();
+impl MetricsStopper {
+    pub fn stop(&mut self) {
+        if let Some(stopper) = self.stopper.take() {
+            if let Err(e) = stopper.send(()) {
+                warn!("failed to send stop signal to metrics server: {}", e);
+            }
+
+            if let Some(handle) = self.stop_handle.take() {
+                if let Err(_e) = handle.join() {
+                    warn!("failed to join metrics server thread");
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct MassaMetrics {
+    /// enable metrics
+    enabled: bool,
+
+    /// consensus period for each thread
+    /// index 0 = thread 0 ...
     consensus_vec: Vec<Gauge>,
 
+    /// total bytes receive by peernet manager
+    peernet_total_bytes_receive: IntCounter,
+    /// total bytes sent by peernet manager
+    peernet_total_bytes_sent: IntCounter,
+
+    /// total block in graph
     block_graph_counter: IntCounter,
+    /// total time to add block to graph
     block_graph_ms: IntCounter,
 
+    /// active in connections peer
     active_in_connections: IntGauge,
+    /// active out connections peer
     active_out_connections: IntGauge,
+
+    /// counter of operations for final slot
+    operations_final_counter: IntCounter,
 
     // block_cache
     block_cache_checked_headers_size: IntGauge,
@@ -76,18 +117,28 @@ pub struct MassaMetrics {
     endorsement_cache_checked_endorsements: IntGauge,
     endorsement_cache_known_by_peer: IntGauge,
 
-    // blocks_counter: IntGauge,
-    // endorsements_counter: IntGauge,
-    // operations_counter: IntGauge,
+    // cursor
     active_cursor_thread: IntGauge,
     active_cursor_period: IntGauge,
 
     final_cursor_thread: IntGauge,
     final_cursor_period: IntGauge,
+
+    // peer bandwidth (bytes sent, bytes received)
+    peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
+
+    pub tick_delay: Duration,
 }
 
 impl MassaMetrics {
-    pub fn new(enabled: bool, nb_thread: u8) -> Self {
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    pub fn new(
+        enabled: bool,
+        addr: SocketAddr,
+        nb_thread: u8,
+        tick_delay: Duration,
+    ) -> (Self, MetricsStopper) {
         // TODO unwrap
 
         let mut consensus_vec = vec![];
@@ -104,6 +155,7 @@ impl MassaMetrics {
 
             consensus_vec.push(gauge);
         }
+
         // active cursor
         let active_cursor_thread =
             IntGauge::new("active_cursor_thread", "execution active cursor thread").unwrap();
@@ -115,22 +167,6 @@ impl MassaMetrics {
             IntGauge::new("final_cursor_thread", "execution final cursor thread").unwrap();
         let final_cursor_period =
             IntGauge::new("final_cursor_period", "execution final cursor period").unwrap();
-
-        // // block counter
-        // let blocks_counter = IntGauge::new("blocks_counter", "block counter len").unwrap();
-        // let _ = prometheus::register(Box::new(blocks_counter.clone())).expect("Failed to register gauge");
-
-        // // endorsement counter
-        // let endorsements_counter =
-        //     IntGauge::new("endorsements_counter", "endorsements counter len").unwrap();
-        // let _ = prometheus::register(Box::new(endorsements_counter.clone()))
-        //     .expect("Failed to register gauge");
-
-        // operation counter
-        // let operations_counter =
-        //     IntGauge::new("operations_counter", "operations counter len").unwrap();
-        // let _ = prometheus::register(Box::new(operations_counter.clone()))
-        //     .expect("Failed to register gauge");
 
         // active connections IN
         let active_in_connections =
@@ -223,12 +259,24 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let peernet_total_bytes_receive = IntCounter::new(
+            "peernet_total_bytes_receive",
+            "total byte received by peernet",
+        )
+        .unwrap();
+
+        let peernet_total_bytes_sent =
+            IntCounter::new("peernet_total_bytes_sent", "total byte sent by peernet").unwrap();
+
+        let operations_final_counter =
+            IntCounter::new("operations_final_counter", "total final operations").unwrap();
+
+        let mut stopper = MetricsStopper::default();
+
         if enabled {
-            // TODO addr from config
             #[cfg(not(feature = "testing"))]
             {
-                let addr = "0.0.0.0:9898".parse().unwrap();
-                server::bind_metrics(addr);
+                // server::bind_metrics(addr);
 
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
                 let _ = prometheus::register(Box::new(final_cursor_period.clone()));
@@ -255,60 +303,58 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
                 let _ = prometheus::register(Box::new(block_graph_counter.clone()));
                 let _ = prometheus::register(Box::new(block_graph_ms.clone()));
+                let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
+                let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
+                let _ = prometheus::register(Box::new(operations_final_counter.clone()));
+
+                stopper = server::bind_metrics(addr);
             }
+
+            MassaSurvey::run(
+                tick_delay,
+                active_in_connections.clone(),
+                active_out_connections.clone(),
+                peernet_total_bytes_sent.clone(),
+                peernet_total_bytes_receive.clone(),
+            );
         }
 
-        MassaMetrics {
-            consensus_vec,
-            block_graph_counter,
-            block_graph_ms,
-            active_in_connections,
-            active_out_connections,
-            block_cache_checked_headers_size,
-            block_cache_blocks_known_by_peer,
-            operation_cache_checked_operations,
-            operation_cache_checked_operations_prefix,
-            operation_cache_ops_know_by_peer,
-            consensus_state_active_index,
-            consensus_state_active_index_without_ops,
-            consensus_state_incoming_index,
-            consensus_state_discarded_index,
-            consensus_state_block_statuses,
-            endorsement_cache_checked_endorsements,
-            endorsement_cache_known_by_peer,
-            // blocks_counter,
-            // endorsements_counter,
-            // operations_counter,
-            active_cursor_thread,
-            active_cursor_period,
-            final_cursor_thread,
-            final_cursor_period,
-        }
+        (
+            MassaMetrics {
+                enabled,
+                consensus_vec,
+                peernet_total_bytes_receive,
+                peernet_total_bytes_sent,
+                block_graph_counter,
+                block_graph_ms,
+                active_in_connections,
+                active_out_connections,
+                operations_final_counter,
+                block_cache_checked_headers_size,
+                block_cache_blocks_known_by_peer,
+                operation_cache_checked_operations,
+                operation_cache_checked_operations_prefix,
+                operation_cache_ops_know_by_peer,
+                consensus_state_active_index,
+                consensus_state_active_index_without_ops,
+                consensus_state_incoming_index,
+                consensus_state_discarded_index,
+                consensus_state_block_statuses,
+                endorsement_cache_checked_endorsements,
+                endorsement_cache_known_by_peer,
+                // blocks_counter,
+                // endorsements_counter,
+                // operations_counter,
+                active_cursor_thread,
+                active_cursor_period,
+                final_cursor_thread,
+                final_cursor_period,
+                peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
+                tick_delay,
+            },
+            stopper,
+        )
     }
-
-    // pub fn inc_blocks_counter(&self) {
-    //     self.blocks_counter.inc();
-    // }
-
-    // pub fn dec_blocks_counter(&self) {
-    //     self.blocks_counter.dec();
-    // }
-
-    // pub fn inc_endorsements_counter(&self) {
-    //     self.endorsements_counter.inc();
-    // }
-
-    // pub fn dec_endorsements_counter(&self) {
-    //     self.endorsements_counter.dec();
-    // }
-
-    // pub fn inc_operations_counter(&self) {
-    //     self.operations_counter.inc();
-    // }
-
-    // pub fn dec_operations_counter(&self) {
-    //     self.operations_counter.dec();
-    // }
 
     pub fn set_active_connections(&self, in_connections: usize, out_connections: usize) {
         self.active_in_connections.set(in_connections as i64);
@@ -389,6 +435,77 @@ impl MassaMetrics {
     pub fn inc_block_graph_counter(&self) {
         self.block_graph_counter.inc();
     }
+
+    pub fn inc_peernet_total_bytes_receive(&self, diff: u64) {
+        self.peernet_total_bytes_receive.inc_by(diff);
+    }
+
+    pub fn inc_peernet_total_bytes_sent(&self, diff: u64) {
+        self.peernet_total_bytes_sent.inc_by(diff);
+    }
+
+    pub fn inc_operations_final_counter(&self, diff: u64) {
+        self.operations_final_counter.inc_by(diff);
+    }
+
+    /// Update the bandwidth metrics for all peers
+    /// HashMap<peer_id, (tx, rx)>
+    pub fn update_peers_tx_rx(&self, data: HashMap<String, (u64, u64)>) {
+        if self.enabled {
+            let mut write = self.peers_bandwidth.write().unwrap();
+
+            // metrics of peers that are not in the data HashMap are removed
+            let missing_peer: Vec<String> = write
+                .keys()
+                .filter(|key| !data.contains_key(key.as_str()))
+                .cloned()
+                .collect();
+
+            for key in missing_peer {
+                // remove peer and unregister metrics
+                if let Some((tx, rx)) = write.remove(&key) {
+                    if let Err(e) = prometheus::unregister(Box::new(tx)) {
+                        warn!("Failed to unregister tx metricfor peer {} : {}", key, e);
+                    }
+
+                    if let Err(e) = prometheus::unregister(Box::new(rx)) {
+                        warn!("Failed to unregister rx metric for peer {} : {}", key, e);
+                    }
+                }
+            }
+
+            for (k, (tx_peernet, rx_peernet)) in data {
+                if let Some((tx_metric, rx_metric)) = write.get_mut(&k) {
+                    // peer metrics exist
+                    // update tx and rx
+
+                    let to_add = tx_peernet.saturating_sub(tx_metric.get());
+                    tx_metric.inc_by(to_add);
+
+                    let to_add = rx_peernet.saturating_sub(rx_metric.get());
+                    rx_metric.inc_by(to_add);
+                } else {
+                    // peer metrics does not exist
+                    let label_rx = format!("peer_total_bytes_receive_{}", k);
+                    let label_tx = format!("peer_total_bytes_sent_{}", k);
+
+                    let peer_total_bytes_receive =
+                        IntCounter::new(label_rx, "total byte received by the peer").unwrap();
+
+                    let peer_total_bytes_sent =
+                        IntCounter::new(label_tx, "total byte sent by the peer").unwrap();
+
+                    peer_total_bytes_sent.inc_by(tx_peernet);
+                    peer_total_bytes_receive.inc_by(rx_peernet);
+
+                    let _ = prometheus::register(Box::new(peer_total_bytes_receive.clone()));
+                    let _ = prometheus::register(Box::new(peer_total_bytes_sent.clone()));
+
+                    write.insert(k, (peer_total_bytes_sent, peer_total_bytes_receive));
+                }
+            }
+        }
+    }
 }
 // mod test {
 //     use massa_channel::MassaChannel;
@@ -418,7 +535,7 @@ impl MassaMetrics {
 //         }
 
 //         assert_eq!(receiver.len(), 80);
-//         std::thread::sleep(std::time::Duration::from_secs(5));
+//         std::thread::sleep(std::time::std::time::Duration::from_secs(5));
 //         drop(sender2);
 //         drop(receiver2);
 //         std::thread::sleep(std::time::Duration::from_secs(100));
@@ -448,7 +565,7 @@ impl MassaMetrics {
 //         });
 //         std::thread::sleep(std::time::Duration::from_secs(2));
 //         std::thread::spawn(move || {
-//             std::thread::sleep(std::time::Duration::from_secs(5));
+//             std::thread::sleep(std::time::std::time::Duration::from_secs(5));
 
 //             drop(sender);
 //         });
