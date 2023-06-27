@@ -23,23 +23,23 @@ use std::ops::Bound;
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
+    /// Version
+    Version,
     /// Balance
     Balance,
     /// Bytecode
     Bytecode,
     /// Datastore entry
     Datastore(Vec<u8>),
-    /// Version
-    Version,
 }
 
 impl LedgerSubEntry {
     fn derive_key(&self, addr: &Address) -> Key {
         match self {
+            LedgerSubEntry::Version => Key::new(addr, KeyType::VERSION),
             LedgerSubEntry::Balance => Key::new(addr, KeyType::BALANCE),
             LedgerSubEntry::Bytecode => Key::new(addr, KeyType::BYTECODE),
             LedgerSubEntry::Datastore(hash) => Key::new(addr, KeyType::DATASTORE(hash.to_vec())),
-            LedgerSubEntry::Version => Key::new(addr, KeyType::VERSION),
         }
     }
 }
@@ -218,6 +218,14 @@ impl LedgerDB {
         }
 
         match key.key_type {
+            KeyType::VERSION => {
+                let Ok((rest, _version)) = self.version_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
             KeyType::BALANCE => {
                 let Ok((rest, _amount)) = self.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
                     return false;
@@ -236,14 +244,6 @@ impl LedgerDB {
             }
             KeyType::DATASTORE(_) => {
                 if serialized_value.len() >= self.max_datastore_value_length as usize {
-                    return false;
-                }
-            }
-            KeyType::VERSION => {
-                let Ok((rest, _version)) = self.version_deserializer.deserialize::<DeserializeError>(serialized_value) else {
-                    return false;
-                };
-                if !rest.is_empty() {
                     return false;
                 }
             }
