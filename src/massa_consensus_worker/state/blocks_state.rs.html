@@ -391,7 +391,7 @@
                     <span class="self">self</span>.discarded_index.remove(block_id);
                 }
                 BlockStatus::Active { .. } =&gt; {
-                    <span class="self">self</span>.discarded_index.remove(block_id);
+                    <span class="self">self</span>.active_index.remove(block_id);
                 }
             }
         }
