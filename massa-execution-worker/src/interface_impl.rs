@@ -624,14 +624,39 @@ impl Interface for InterfaceImpl {
         Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
-    /// TODO
+    /// Verify an EVM signature
+    ///
+    /// Information:
+    /// * Expects a standard SECP256K1 signature.
+    ///   The signature is required to be within 0 and curve order.
+    ///   Returns error if it overflows.
+    ///   Expected length is 64 bytes.
+    /// * Expects a standard uncompressed raw public key.
+    ///   Expected length is 64 bytes.
     fn verify_evm_signature(
         &self,
-        _signature: &[u8],
-        _message: &[u8],
-        _public_key: &[u8],
+        signature: &[u8],
+        message: &[u8],
+        public_key: &[u8],
     ) -> Result<bool> {
-        Ok(false)
+        // format is: secp256k1_sign(Keccak256("\x19Ethereum Signed Message:\n32" + Keccak256(message));
+        let message_hash = sha3::Keccak256::digest(&message);
+        let prefix = b"\x19Ethereum Signed Message:\n32";
+        let to_hash = [&prefix[..], message_hash.as_slice()].concat();
+        let full_hash = sha3::Keccak256::digest(&to_hash);
+
+        let m = libsecp256k1::Message::parse_slice(&full_hash)?;
+        let s = libsecp256k1::Signature::parse_standard_slice(signature)?;
+        let k = libsecp256k1::PublicKey::parse_slice(
+            public_key,
+            Some(libsecp256k1::PublicKeyFormat::Raw),
+        )?;
+        Ok(libsecp256k1::verify(&m, &s, &k))
+    }
+
+    /// Keccak256 hash function
+    fn hash_keccak256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
+        Ok(sha3::Keccak256::digest(bytes).into())
     }
 
     /// Transfer coins from the current address (top of the call stack) towards a target address.
