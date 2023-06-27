@@ -488,7 +488,7 @@
 
         <span class="kw">for </span>b_id <span class="kw">in </span><span class="kw-2">&amp;</span>current_ids {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =
-                read_shared_state.block_statuses.get(b_id)
+                read_shared_state.blocks_state.get(b_id)
             {
                 <span class="kw">if </span>final_blocks.len() <span class="kw">as </span>u64 &gt;= <span class="self">self</span>.bootstrap_part_size {
                     <span class="kw">break</span>;

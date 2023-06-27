@@ -121,12 +121,6 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::{receiver::MassaReceiver, MassaChannel};
 <span class="kw">use </span>massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
@@ -148,7 +142,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::commands::ConsensusCommand;
 <span class="kw">use </span><span class="kw">crate</span>::controller::ConsensusControllerImpl;
 <span class="kw">use </span><span class="kw">crate</span>::manager::ConsensusManagerImpl;
-<span class="kw">use </span><span class="kw">crate</span>::state::ConsensusState;
+<span class="kw">use </span><span class="kw">crate</span>::state::{blocks_state::BlocksState, ConsensusState};
 
 <span class="doccomment">/// The consensus worker structure that contains all information and tools for the consensus worker thread.
 </span><span class="kw">pub struct </span>ConsensusWorker {
@@ -201,21 +195,15 @@
             fitness: <span class="number">0</span>,
             is_blockclique: <span class="bool-val">true</span>,
         }],
-        sequence_counter: <span class="number">0</span>,
-        waiting_for_slot_index: Default::default(),
-        waiting_for_dependencies_index: Default::default(),
-        discarded_index: Default::default(),
+        blocks_state: BlocksState::new(),
         to_propagate: Default::default(),
         attack_attempts: Default::default(),
         new_final_blocks: Default::default(),
         new_stale_blocks: Default::default(),
-        incoming_index: Default::default(),
-        active_index: Default::default(),
         active_index_without_ops: Default::default(),
         save_final_periods: Default::default(),
         latest_final_blocks_periods: Default::default(),
         best_parents: Default::default(),
-        block_statuses: Default::default(),
         genesis_hashes: Default::default(),
         gi_head: Default::default(),
         final_block_stats: Default::default(),
