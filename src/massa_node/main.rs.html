@@ -1271,6 +1271,19 @@
 <a href="#1271" id="1271">1271</a>
 <a href="#1272" id="1272">1272</a>
 <a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1313,7 +1326,7 @@
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_metrics::MassaMetrics;
+<span class="kw">use </span>massa_metrics::{MassaMetrics, MetricsStopper};
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -1394,6 +1407,7 @@
     StopHandle,
     StopHandle,
     <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
+    MetricsStopper,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
     <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
@@ -1501,7 +1515,12 @@
     };
 
     <span class="comment">// Start massa metrics
-    </span><span class="kw">let </span>metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
+    </span><span class="kw">let </span>(massa_metrics, metrics_stopper) = MassaMetrics::new(
+        SETTINGS.metrics.enabled,
+        SETTINGS.metrics.bind,
+        THREAD_COUNT,
+        SETTINGS.metrics.tick_delay.to_duration(),
+    );
 
     <span class="comment">// Remove current disk ledger if there is one and we don&#39;t want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -1758,7 +1777,7 @@
         mip_store.clone(),
         execution_channels.clone(),
         node_wallet.clone(),
-        metrics.clone(),
+        massa_metrics.clone(),
     );
 
     <span class="comment">// launch pool controller
@@ -1954,7 +1973,7 @@
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
-        metrics.clone(),
+        massa_metrics.clone(),
     );
 
     <span class="kw">let </span>(protocol_manager, keypair, node_id) = start_protocol_controller(
@@ -1966,7 +1985,7 @@
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
-        metrics,
+        massa_metrics.clone(),
     )
     .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
 
@@ -2264,6 +2283,7 @@
         api_public_handle,
         api_handle,
         grpc_handle,
+        metrics_stopper,
     )
 }
 
@@ -2292,6 +2312,7 @@
     api_public_handle: StopHandle,
     api_handle: StopHandle,
     grpc_handle: <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
+    <span class="kw-2">mut </span>metrics_stopper: MetricsStopper,
 ) {
     <span class="comment">// stop bootstrap
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
@@ -2318,6 +2339,9 @@
     <span class="comment">// stop private API
     </span>api_private_handle.stop().<span class="kw">await</span>;
     <span class="macro">info!</span>(<span class="string">&quot;API | PRIVATE JsonRPC | stopped&quot;</span>);
+
+    <span class="comment">// stop metrics
+    </span>metrics_stopper.stop();
 
     <span class="comment">// stop factory
     </span>factory_manager.stop();
@@ -2481,6 +2505,7 @@
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone(), Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled)).<span class="kw">await</span>;
 
         <span class="comment">// loop over messages
@@ -2533,6 +2558,7 @@
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         )
         .<span class="kw">await</span>;
 
