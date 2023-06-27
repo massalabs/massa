@@ -696,24 +696,6 @@
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -783,7 +765,7 @@
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        <span class="kw-2">mut </span>mip_store: MipStore,
+        mip_store: MipStore,
         reset_final_state: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
         <span class="kw">let </span>db_slot = db
@@ -817,11 +799,6 @@
         <span class="comment">// create a default executed denunciations
         </span><span class="kw">let </span>executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
-
-        <span class="comment">// init MIP store by reading from the db
-        </span>mip_store
-            .extend_from_db(db.clone())
-            .map_err(FinalStateError::from)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState {
             ledger,
@@ -970,11 +947,6 @@
         );
         <span class="kw">let </span>end_slot_cycle = end_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
 
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;Interpolating downtime between slots {} and {}&quot;</span>,
-            current_slot, end_slot
-        );
-
         <span class="kw">if </span>current_slot_cycle == end_slot_cycle {
             <span class="comment">// In that case, we just complete the gap in the same cycle
             </span><span class="self">self</span>.interpolate_single_cycle(current_slot, end_slot)<span class="question-mark">?</span>;
@@ -1011,22 +983,18 @@
         current_slot: Slot,
         end_slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="kw">let </span>latest_snapshot_cycle = <span class="self">self</span>.pos_state.cycle_history_cache.back().cloned().ok_or(
-            FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
-            )),
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>latest_snapshot_cycle =
+            <span class="self">self</span>.pos_state
+                .cycle_history_cache
+                .pop_back()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    <span class="string">&quot;Invalid cycle_history&quot;</span>,
+                )))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self</span>.pos_state.get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
-        <span class="self">self</span>.pos_state
-            .cycle_history_cache
-            .pop_back()
-            .ok_or(FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
-            )))<span class="question-mark">?</span>;
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
 
@@ -1064,22 +1032,18 @@
         current_slot_cycle: u64,
         end_slot_cycle: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="kw">let </span>latest_snapshot_cycle = <span class="self">self</span>.pos_state.cycle_history_cache.back().cloned().ok_or(
-            FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
-            )),
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>latest_snapshot_cycle =
+            <span class="self">self</span>.pos_state
+                .cycle_history_cache
+                .pop_back()
+                .ok_or(FinalStateError::SnapshotError(String::from(
+                    <span class="string">&quot;Invalid cycle_history&quot;</span>,
+                )))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self</span>.pos_state.get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
-        <span class="self">self</span>.pos_state
-            .cycle_history_cache
-            .pop_back()
-            .ok_or(FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
-            )))<span class="question-mark">?</span>;
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
 

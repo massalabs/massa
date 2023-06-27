@@ -1629,10 +1629,6 @@
 <a href="#1629" id="1629">1629</a>
 <a href="#1630" id="1630">1630</a>
 <a href="#1631" id="1631">1631</a>
-<a href="#1632" id="1632">1632</a>
-<a href="#1633" id="1633">1633</a>
-<a href="#1634" id="1634">1634</a>
-<a href="#1635" id="1635">1635</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2349,10 +2345,6 @@
     <span class="doccomment">/// Get all the roll counts for a given cycle
     </span><span class="kw">pub fn </span>get_all_roll_counts(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-
-        <span class="kw">if </span><span class="self">self</span>.get_cycle_index(cycle).is_none() {
-            <span class="macro">panic!</span>(<span class="string">&quot;Cycle {} not in history&quot;</span>, cycle)
-        }
 
         <span class="kw">let </span><span class="kw-2">mut </span>roll_counts: BTreeMap&lt;Address, u64&gt; = BTreeMap::new();
 

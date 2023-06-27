@@ -185,8 +185,6 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="kw">use </span>std::net::SocketAddr;
@@ -269,11 +267,9 @@
         );
 
         <span class="kw">let </span>curr_cycle = <span class="kw">match </span>latest_block_slot_at_timestamp_result {
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) <span class="kw">if </span>cur_slot.period &lt;= <span class="self">self</span>.<span class="number">0</span>.api_settings.last_start_period =&gt; {
-                Slot::new(<span class="self">self</span>.<span class="number">0</span>.api_settings.last_start_period, <span class="number">0</span>).get_cycle(cfg.periods_per_cycle)
-            }
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) =&gt; cur_slot.get_cycle(cfg.periods_per_cycle),
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="number">0</span>,
+            <span class="prelude-val">Ok</span>(curr_cycle) =&gt; curr_cycle
+                .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>))
+                .get_cycle(cfg.periods_per_cycle),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 

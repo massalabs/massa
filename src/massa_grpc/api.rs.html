@@ -635,19 +635,6 @@
 <a href="#635" id="635">635</a>
 <a href="#636" id="636">636</a>
 <a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -900,37 +887,24 @@
 
     <span class="comment">// Get the current cycle and slot.
     </span><span class="kw">let </span>now: MassaTime = MassaTime::now()<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
+    <span class="kw">let </span>current_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,
         grpc.grpc_config.genesis_timestamp,
         now,
-    );
-
-    <span class="kw">let </span>(cur_cycle, cur_slot) = <span class="kw">match </span>latest_block_slot_at_timestamp_result {
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) <span class="kw">if </span>cur_slot.period &lt;= grpc.grpc_config.last_start_period =&gt; (
-            Slot::new(grpc.grpc_config.last_start_period, <span class="number">0</span>)
-                .get_cycle(grpc.grpc_config.periods_per_cycle),
-            cur_slot,
-        ),
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) =&gt; (
-            cur_slot.get_cycle(grpc.grpc_config.periods_per_cycle),
-            cur_slot,
-        ),
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; (<span class="number">0</span>, Slot::new(<span class="number">0</span>, <span class="number">0</span>)),
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::ModelsError(e)),
-    };
+    )<span class="question-mark">?
+    </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
+    <span class="kw">let </span>current_cycle = current_slot.get_cycle(grpc.grpc_config.periods_per_cycle);
 
     <span class="comment">// Create the context for the response.
     </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc_api::LargestStakersContext {
-        slot: <span class="prelude-val">Some</span>(cur_slot.into()),
+        slot: <span class="prelude-val">Some</span>(current_slot.into()),
     });
 
     <span class="comment">// Get the list of stakers, filtered by the specified minimum and maximum roll counts.
     </span><span class="kw">let </span><span class="kw-2">mut </span>staker_vec = grpc
         .execution_controller
-        .get_cycle_active_rolls(cur_cycle)
+        .get_cycle_active_rolls(current_cycle)
         .into_iter()
         .filter(|(<span class="kw">_</span>, rolls)| {
             filter_opt.as_ref().map_or(<span class="bool-val">true</span>, |filter| {
