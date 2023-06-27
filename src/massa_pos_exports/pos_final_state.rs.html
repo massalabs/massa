@@ -3073,7 +3073,7 @@
 
 <span class="attr">#[test]
 </span><span class="kw">fn </span>test_pos_final_state_hash_computation() {
-    <span class="kw">use </span><span class="kw">crate</span>::AutoMockSelectorController;
+    <span class="kw">use </span><span class="kw">crate</span>::test_exports::MockSelectorController;
     <span class="kw">use </span><span class="kw">crate</span>::DeferredCredits;
     <span class="kw">use </span><span class="kw">crate</span>::PoSFinalState;
     <span class="kw">use </span>bitvec::prelude::<span class="kw-2">*</span>;
@@ -3109,7 +3109,7 @@
     <span class="kw">let </span>db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
     ));
-    <span class="kw">let </span>selector_controller = Box::new(AutoMockSelectorController::new());
+    <span class="kw">let </span>(selector_controller, <span class="kw">_</span>) = MockSelectorController::new_with_receiver();
     <span class="kw">let </span>init_seed = Hash::compute_from(<span class="string">b&quot;&quot;</span>);
     <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
 

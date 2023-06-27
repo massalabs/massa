@@ -2245,6 +2245,25 @@
 <a href="#2245" id="2245">2245</a>
 <a href="#2246" id="2246">2246</a>
 <a href="#2247" id="2247">2247</a>
+<a href="#2248" id="2248">2248</a>
+<a href="#2249" id="2249">2249</a>
+<a href="#2250" id="2250">2250</a>
+<a href="#2251" id="2251">2251</a>
+<a href="#2252" id="2252">2252</a>
+<a href="#2253" id="2253">2253</a>
+<a href="#2254" id="2254">2254</a>
+<a href="#2255" id="2255">2255</a>
+<a href="#2256" id="2256">2256</a>
+<a href="#2257" id="2257">2257</a>
+<a href="#2258" id="2258">2258</a>
+<a href="#2259" id="2259">2259</a>
+<a href="#2260" id="2260">2260</a>
+<a href="#2261" id="2261">2261</a>
+<a href="#2262" id="2262">2262</a>
+<a href="#2263" id="2263">2263</a>
+<a href="#2264" id="2264">2264</a>
+<a href="#2265" id="2265">2265</a>
+<a href="#2266" id="2266">2266</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -2310,7 +2329,22 @@
 
 </span><span class="kw">impl </span>Ord <span class="kw">for </span>MipInfo {
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
-        (<span class="self">self</span>.start, <span class="kw-2">&amp;</span><span class="self">self</span>.timeout).cmp(<span class="kw-2">&amp;</span>(other.start, <span class="kw-2">&amp;</span>other.timeout))
+        (
+            <span class="self">self</span>.start,
+            <span class="self">self</span>.timeout,
+            <span class="self">self</span>.activation_delay,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.name,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.version,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.components,
+        )
+            .cmp(<span class="kw-2">&amp;</span>(
+                other.start,
+                other.timeout,
+                other.activation_delay,
+                <span class="kw-2">&amp;</span>other.name,
+                <span class="kw-2">&amp;</span>other.version,
+                <span class="kw-2">&amp;</span>other.components,
+            ))
     }
 }
 
@@ -2855,7 +2889,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         db_batch: <span class="kw-2">&amp;mut </span>DBBatch,
         db_versioning_batch: <span class="kw-2">&amp;mut </span>DBBatch,
-        between: (<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime),
+        between: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
         guard.update_batches(db_batch, db_versioning_batch, between)
@@ -3328,12 +3362,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         batch: <span class="kw-2">&amp;mut </span>DBBatch,
         versioning_batch: <span class="kw-2">&amp;mut </span>DBBatch,
-        between: (<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime),
+        between: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>MassaTime, <span class="kw-2">&amp;</span>MassaTime)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>mip_info_ser = MipInfoSerializer::new();
         <span class="kw">let </span>mip_state_ser = MipStateSerializer::new();
 
-        <span class="kw">let </span>bounds = (<span class="kw-2">*</span>between.<span class="number">0</span>)..=(<span class="kw-2">*</span>between.<span class="number">1</span>);
+        <span class="kw">let </span>bounds = <span class="kw">match </span>between {
+            <span class="prelude-val">Some</span>(between) =&gt; (<span class="kw-2">*</span>between.<span class="number">0</span>)..=(<span class="kw-2">*</span>between.<span class="number">1</span>),
+            <span class="prelude-val">None </span>=&gt; MassaTime::from_millis(<span class="number">0</span>)..=MassaTime::max(),
+        };
         <span class="kw">let </span><span class="kw-2">mut </span>key = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>value = Vec::new();
 
@@ -4029,10 +4066,11 @@
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
-            <span class="comment">// Component states being equal should produce an Ok result
-            // We also have vi.1.components == vi_2_2.components ~ overlapping versions
-            // TODO: clarify how this is supposed to behave
-            </span><span class="macro">assert_matches!</span>(vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2), <span class="prelude-val">Ok</span>(<span class="kw">_</span>));
+            <span class="comment">// MIP-0003 in vs_raw_1 &amp; vs_raw_2 has != components
+            </span><span class="macro">assert_matches!</span>(
+                vs_raw_1.update_with(<span class="kw-2">&amp;</span>vs_raw_2),
+                <span class="prelude-val">Err</span>(UpdateWithError::Overlapping(..))
+            );
         }
     }
 
