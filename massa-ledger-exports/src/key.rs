@@ -10,9 +10,10 @@ use nom::error::{ContextError, ParseError};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
-pub const BALANCE_IDENT: u8 = 0u8;
-pub const BYTECODE_IDENT: u8 = 1u8;
-pub const DATASTORE_IDENT: u8 = 2u8;
+pub const VERSION_IDENT: u8 = 0u8;
+pub const BALANCE_IDENT: u8 = 1u8;
+pub const BYTECODE_IDENT: u8 = 2u8;
+pub const DATASTORE_IDENT: u8 = 3u8;
 pub const KEY_VERSION: u64 = 0;
 
 #[derive(PartialEq, Eq, Clone, IntoPrimitive, TryFromPrimitive, Debug)]
