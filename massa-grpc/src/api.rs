@@ -271,7 +271,7 @@ pub(crate) fn get_largest_stakers(
             false,
         ),
         Ok(None) => (0, Slot::new(0, 0), false),
-        Err(e) => return Err(GrpcError::ModelsError(e).into()),
+        Err(e) => return Err(GrpcError::ModelsError(e)),
     };
 
     // Create the context for the response.
