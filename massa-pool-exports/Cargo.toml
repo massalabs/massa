@@ -14,12 +14,14 @@ massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time"}
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_execution_exports = { path = "../massa-execution-exports" }
+mockall = { version = "0.11.4", optional = true }
 
 [dev-dependencies]
+mockall = "0.11.4"
 
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = [
-    "crossbeam-channel"
+    "crossbeam-channel", "mockall"
 ]

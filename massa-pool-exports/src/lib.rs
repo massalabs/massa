@@ -17,3 +17,5 @@ pub use controller_traits::{PoolController, PoolManager};
 #[cfg(feature = "testing")]
 /// Exports related to tests as Mocks and configurations
 pub mod test_exports;
+#[cfg(feature = "testing")]
+pub use controller_traits::MockPoolController as AutoMockPoolController;
