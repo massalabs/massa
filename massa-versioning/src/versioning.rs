@@ -63,7 +63,22 @@ pub struct MipInfo {
 
 impl Ord for MipInfo {
     fn cmp(&self, other: &Self) -> Ordering {
-        (self.start, &self.timeout).cmp(&(other.start, &other.timeout))
+        (
+            self.start,
+            self.timeout,
+            self.activation_delay,
+            &self.name,
+            &self.version,
+            &self.components,
+        )
+            .cmp(&(
+                other.start,
+                other.timeout,
+                other.activation_delay,
+                &other.name,
+                &other.version,
+                &other.components,
+            ))
     }
 }
 
@@ -608,7 +623,7 @@ impl MipStore {
         &self,
         db_batch: &mut DBBatch,
         db_versioning_batch: &mut DBBatch,
-        between: (&MassaTime, &MassaTime),
+        between: Option<(&MassaTime, &MassaTime)>,
     ) -> Result<(), SerializeError> {
         let guard = self.0.read();
         guard.update_batches(db_batch, db_versioning_batch, between)
@@ -1081,12 +1096,15 @@ impl MipStoreRaw {
         &self,
         batch: &mut DBBatch,
         versioning_batch: &mut DBBatch,
-        between: (&MassaTime, &MassaTime),
+        between: Option<(&MassaTime, &MassaTime)>,
     ) -> Result<(), SerializeError> {
         let mip_info_ser = MipInfoSerializer::new();
         let mip_state_ser = MipStateSerializer::new();
 
-        let bounds = (*between.0)..=(*between.1);
+        let bounds = match between {
+            Some(between) => (*between.0)..=(*between.1),
+            None => MassaTime::from_millis(0)..=MassaTime::max(),
+        };
         let mut key = Vec::new();
         let mut value = Vec::new();
 
@@ -1782,10 +1800,11 @@ mod test {
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
-            // Component states being equal should produce an Ok result
-            // We also have vi.1.components == vi_2_2.components ~ overlapping versions
-            // TODO: clarify how this is supposed to behave
-            assert_matches!(vs_raw_1.update_with(&vs_raw_2), Ok(_));
+            // MIP-0003 in vs_raw_1 & vs_raw_2 has != components
+            assert_matches!(
+                vs_raw_1.update_with(&vs_raw_2),
+                Err(UpdateWithError::Overlapping(..))
+            );
         }
     }
 

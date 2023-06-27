@@ -1733,7 +1733,7 @@ impl ExecutionState {
                         .update_batches(
                             &mut db_batch,
                             &mut db_versioning_batch,
-                            (&slot_prev_ts, &slot_ts),
+                            Some((&slot_prev_ts, &slot_ts)),
                         )
                         .unwrap_or_else(|e| {
                             panic!(
