@@ -279,16 +279,37 @@ impl ExecutionController for ExecutionControllerImpl {
                         )),
                     }
                 }
+                ExecutionQueryRequestItem::AddressRollsCandidate(addr) => {
+                    let (_final_rolls, candidate_rolls) =
+                        execution_lock.get_final_and_candidate_rolls(&addr);
+                    Ok(ExecutionQueryResponseItem::Rolls(candidate_rolls))
+                }
+                ExecutionQueryRequestItem::AddressRollsFinal(addr) => {
+                    let (final_rolls, _candidate_rolls) =
+                        execution_lock.get_final_and_candidate_rolls(&addr);
+                    Ok(ExecutionQueryResponseItem::Rolls(final_rolls))
+                }
 
-                /*
-                TODO:
-                    AddressRollsCandidate(Address),
-                    AddressRollsFinal(Address),
-                    AddressDeferredCreditsCandidate(Address),
-                    AddressDeferredCreditsFinal(Address),
-                    CycleInfos { cycle: u64, restrict_to_addresses: Option<PreHashSet<Address>>},
-                    Events(EventFilter),
-                */
+                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) => {
+                    // TODO
+                }
+
+                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) => {
+                    // TODO
+                }
+
+                ExecutionQueryRequestItem::CycleInfos {
+                    cycle,
+                    restrict_to_addresses,
+                } => {
+                    // TODO
+                }
+
+                ExecutionQueryRequestItem::Events(filter) => {
+                    let events = execution_lock.get_filtered_sc_output_event(filter);
+                    Ok(ExecutionQueryResponseItem::Events(events))
+                }
+
                 _ => unimplemented!("query_state: {:?}", req_item),
             };
             resp.responses.push(resp_item);
