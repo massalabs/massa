@@ -309,7 +309,7 @@ impl FinalState {
             .cycle_history_cache
             .pop_back()
             .ok_or(FinalStateError::SnapshotError(String::from(
-                "Invalid cycle_history",
+                "Impossible to interpolate the downtime: no cycle in the given snapshot",
             )))?;
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
@@ -362,7 +362,7 @@ impl FinalState {
             .cycle_history_cache
             .pop_back()
             .ok_or(FinalStateError::SnapshotError(String::from(
-                "Invalid cycle_history",
+                "Impossible to interpolate the downtime: no cycle in the given snapshot",
             )))?;
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);

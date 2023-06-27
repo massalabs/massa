@@ -262,11 +262,11 @@ pub(crate) fn get_largest_stakers(
         Ok(Some(cur_slot)) if cur_slot.period <= grpc.grpc_config.last_start_period => (
             Slot::new(grpc.grpc_config.last_start_period, 0)
                 .get_cycle(grpc.grpc_config.periods_per_cycle),
-            cur_slot
+            cur_slot,
         ),
         Ok(Some(cur_slot)) => (
             cur_slot.get_cycle(grpc.grpc_config.periods_per_cycle),
-            cur_slot
+            cur_slot,
         ),
         Ok(None) => (0, Slot::new(0, 0)),
         Err(e) => return Err(GrpcError::ModelsError(e)),
