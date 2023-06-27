@@ -715,6 +715,10 @@ impl PoSFinalState {
     pub fn get_all_roll_counts(&self, cycle: u64) -> BTreeMap<Address, u64> {
         let db = self.db.read();
 
+        if self.get_cycle_index(cycle).is_none() {
+            panic!("Cycle {} not in history", cycle)
+        }
+
         let mut roll_counts: BTreeMap<Address, u64> = BTreeMap::new();
 
         let prefix = roll_count_prefix!(self.cycle_history_cycle_prefix(cycle));

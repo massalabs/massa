@@ -784,6 +784,7 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        last_start_period: final_state.read().last_start_period,
     };
 
     // spawn Massa API
