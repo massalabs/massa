@@ -4,7 +4,7 @@ use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_metrics::MassaMetrics;
 use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 use massa_pool_exports::test_exports::MockPoolController;
-use massa_pos_exports::test_exports::MockSelectorController;
+use massa_pos_exports::AutoMockSelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -42,8 +42,14 @@ fn basic() {
     let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
     let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
 
-    let (selector_controller1, _) = MockSelectorController::new_with_receiver();
-    let (selector_controller2, _) = MockSelectorController::new_with_receiver();
+    let mut selector_controller1 = Box::new(AutoMockSelectorController::new());
+    selector_controller1
+        .expect_clone_box()
+        .returning(|| Box::new(AutoMockSelectorController::new()));
+    let mut selector_controller2 = Box::new(AutoMockSelectorController::new());
+    selector_controller2
+        .expect_clone_box()
+        .returning(|| Box::new(AutoMockSelectorController::new()));
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
@@ -193,8 +199,14 @@ fn stop_with_controller_still_exists() {
     let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
     let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
 
-    let (selector_controller1, _) = MockSelectorController::new_with_receiver();
-    let (selector_controller2, _) = MockSelectorController::new_with_receiver();
+    let mut selector_controller1 = Box::new(AutoMockSelectorController::new());
+    selector_controller1
+        .expect_clone_box()
+        .returning(|| Box::new(AutoMockSelectorController::new()));
+    let mut selector_controller2 = Box::new(AutoMockSelectorController::new());
+    selector_controller2
+        .expect_clone_box()
+        .returning(|| Box::new(AutoMockSelectorController::new()));
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
