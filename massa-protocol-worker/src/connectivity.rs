@@ -1,3 +1,4 @@
+use crossbeam::channel::tick;
 use crossbeam::select;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
@@ -181,57 +182,67 @@ pub(crate) fn start_connectivity_thread(
                 massa_metrics.clone(),
             );
 
+            let tick_metrics = tick(massa_metrics.tick_delay);
+            let tick_try_connect = tick(config.try_connection_timer.to_duration());
+
             //Try to connect to peers
             loop {
                 select! {
-                        recv(protocol_channels.connectivity_thread.1) -> msg => {
-                            match msg {
-                                Ok(ConnectivityCommand::Stop) => {
-                                    println!("Stopping protocol");
-                                    drop(network_controller);
-                                    println!("Stoppeed network controller");
-                                    operation_handler.stop();
-                                    println!("Stopped operation handler");
-                                    endorsement_handler.stop();
-                                    println!("Stopped endorsement handler");
-                                    block_handler.stop();
-                                    println!("Stopped block handler");
-                                    peer_management_handler.stop();
-                                    println!("Stopped peer handler");
-                                    break;
-                                },
-                                Ok(ConnectivityCommand::GetStats { responder }) => {
-                                    let active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() as u64;
-                                    let in_connection_count = network_controller.get_active_connections().get_nb_in_connections() as u64;
-                                    let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
-                                    let (banned_peer_count, known_peer_count) = {
-                                        let peer_db_read = peer_db.read();
-                                        (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() as u64)
-                                    };
-                                    let stats = NetworkStats {
-                                        active_node_count,
-                                        in_connection_count,
-                                        out_connection_count,
-                                        banned_peer_count,
-                                        known_peer_count,
-                                    };
-                                    let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
-                                        (peer_id, (peer.0, peer.1))
-                                    }).collect();
-                                    responder.try_send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
-                                }
-                                Err(_) => {
-                                    warn!("Channel to connectivity thread is closed. Stopping the protocol");
-                                    break;
-                                }
+                    recv(protocol_channels.connectivity_thread.1) -> msg => {
+                        match msg {
+                            Ok(ConnectivityCommand::Stop) => {
+                                println!("Stopping protocol");
+                                drop(network_controller);
+                                println!("Stoppeed network controller");
+                                operation_handler.stop();
+                                println!("Stopped operation handler");
+                                endorsement_handler.stop();
+                                println!("Stopped endorsement handler");
+                                block_handler.stop();
+                                println!("Stopped block handler");
+                                peer_management_handler.stop();
+                                println!("Stopped peer handler");
+                                break;
+                            },
+                            Ok(ConnectivityCommand::GetStats { responder }) => {
+                                let active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() as u64;
+                                let in_connection_count = network_controller.get_active_connections().get_nb_in_connections() as u64;
+                                let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
+                                let (banned_peer_count, known_peer_count) = {
+                                    let peer_db_read = peer_db.read();
+                                    (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() as u64)
+                                };
+                                let stats = NetworkStats {
+                                    active_node_count,
+                                    in_connection_count,
+                                    out_connection_count,
+                                    banned_peer_count,
+                                    known_peer_count,
+                                };
+                                let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
+                                    (peer_id, (peer.0, peer.1))
+                                }).collect();
+                                responder.try_send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
+                            }
+                            Err(_) => {
+                                warn!("Channel to connectivity thread is closed. Stopping the protocol");
+                                break;
                             }
                         }
-                    default(config.try_connection_timer.to_duration()) => {
+                    },
+                    recv(tick_metrics) -> _ => {
+                        massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
+
+                        massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
+
+                        let active_conn = network_controller.get_active_connections();
+                        massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
+                        let peers_map = active_conn.get_peers_connections_bandwidth();
+                        massa_metrics.update_peers_tx_rx(peers_map);
+                    },
+                    recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();
-                        // update massa metrics
-                        massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
-
                         let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                                 if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {

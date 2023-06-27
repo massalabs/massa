@@ -476,7 +476,7 @@ where
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
         versioning_changes.extend(
-            stream_changes
+            stream_changes_versioning
                 .new_elements
                 .iter()
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
