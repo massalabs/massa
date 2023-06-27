@@ -289,29 +289,27 @@ impl ExecutionController for ExecutionControllerImpl {
                         execution_lock.get_final_and_candidate_rolls(&addr);
                     Ok(ExecutionQueryResponseItem::Rolls(final_rolls))
                 }
-
                 ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) => {
-                    // TODO
+                    let (candidate_v, _final_v) =
+                        execution_lock.get_address_deferred_credits(&addr);
+                    Ok(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
                 }
-
                 ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) => {
-                    // TODO
+                    let (_candidate_v, final_v) =
+                        execution_lock.get_address_deferred_credits(&addr);
+                    Ok(ExecutionQueryResponseItem::DeferredCredits(final_v))
                 }
-
                 ExecutionQueryRequestItem::CycleInfos {
                     cycle,
                     restrict_to_addresses,
                 } => {
                     // TODO
                 }
-
                 ExecutionQueryRequestItem::Events(filter) => {
                     Ok(ExecutionQueryResponseItem::Events(
                         execution_lock.get_filtered_sc_output_event(filter),
                     ))
                 }
-
-                _ => unimplemented!("query_state: {:?}", req_item),
             };
             resp.responses.push(resp_item);
         }

@@ -1717,9 +1717,51 @@ impl ExecutionState {
         context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
     }
 
+    /// Gets the production stats for an address at all cycles
+    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
+        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
+    }
+
     /// Get future deferred credits of an address
-    pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
+    /// Returns tuple: (speculative, final)
+    pub fn get_address_future_deferred_credits(
+        &self,
+        address: &Address,
+    ) -> (BTreeMap<Slot, Amount>, BTreeMap<Slot, Amount>) {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    }
+
+    /// Get future deferred credits of an address
+    /// Returns tuple: (speculative, final)
+    pub fn get_address_deferred_credits(
+        &self,
+        address: &Address,
+    ) -> (BTreeMap<Slot, Amount>, BTreeMap<Slot, Amount>) {
+        // get values from final state
+        let res_final = self
+            .final_state
+            .read()
+            .pos_state
+            .get_address_deferred_credits(address);
+
+        // get values from active history, backwards
+        let mut res_speculative: HashMap<Slot, Amount> = HashMap::default();
+        for hist_item in self.active_history.read().0.iter().rev() {
+            for (slot, addr_amount) in hist_item.state_changes.pos_changes.deferred_credits.credits
+            {
+                if let Some(amount) = addr_amount.get(address) {
+                    let _ = res_speculative.try_insert(*slot, *amount);
+                };
+            }
+        }
+        // fill missing speculative entries with final entries
+        for (s, v) in res_final.iter() {
+            let _ = res_speculative.try_insert(*s, *v);
+        }
+        // remove zero entries from speculative
+        res_speculative.retain(|(_s, a)| !a.is_zero());
+
+        (res_speculative, res_final)
     }
 
     /// Get the execution status of a batch of operations.

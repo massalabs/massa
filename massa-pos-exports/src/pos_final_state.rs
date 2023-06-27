@@ -688,6 +688,52 @@ impl PoSFinalState {
         deferred_credits
     }
 
+    /// Gets the deferred credits for an address
+    pub fn get_address_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
+        let db = self.db.read();
+
+        let mut deferred_credits = DeferredCredits::new_without_hash();
+
+        let mut start_key_buffer = DEFERRED_CREDITS_PREFIX.as_bytes().to_vec();
+
+        for (serialized_key, serialized_value) in db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
+        ) {
+            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
+                break;
+            }
+            let (rest, slot) = self
+                .deferred_credits_deserializer
+                .slot_deserializer
+                .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+                .expect(DEFERRED_CREDITS_DESER_ERROR);
+
+            let (_, address) = self
+                .deferred_credits_deserializer
+                .credit_deserializer
+                .address_deserializer
+                .deserialize::<DeserializeError>(rest)
+                .expect(DEFERRED_CREDITS_DESER_ERROR);
+
+            if address != *address {
+                // TODO improve performance
+                continue;
+            }
+
+            let (_, amount) = self
+                .deferred_credits_deserializer
+                .credit_deserializer
+                .amount_deserializer
+                .deserialize::<DeserializeError>(&serialized_value)
+                .expect(DEFERRED_CREDITS_DESER_ERROR);
+
+            deferred_credits.insert(slot, address, amount);
+        }
+
+        deferred_credits
+    }
+
     /// Gets the index of a cycle in history
     pub fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
         let first_cycle = match self.cycle_history_cache.front() {
