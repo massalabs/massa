@@ -522,6 +522,14 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -548,9 +556,6 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>tracing::debug;
 
-<span class="kw">use </span><span class="self">self</span>::blocks_state::BlocksState;
-
-<span class="kw">pub mod </span>blocks_state;
 <span class="kw">mod </span>clique_computation;
 <span class="kw">mod </span>graph;
 <span class="kw">mod </span>process;
@@ -575,16 +580,28 @@
     </span><span class="kw">pub </span>gi_head: PreHashMap&lt;BlockId, PreHashSet&lt;BlockId&gt;&gt;,
     <span class="doccomment">/// All the cliques
     </span><span class="kw">pub </span>max_cliques: Vec&lt;Clique&gt;,
+    <span class="doccomment">/// ids of active blocks
+    </span><span class="kw">pub </span>active_index: PreHashSet&lt;BlockId&gt;,
     <span class="doccomment">/// ids of active blocks without ops
     </span><span class="kw">pub </span>active_index_without_ops: PreHashSet&lt;BlockId&gt;,
     <span class="doccomment">/// Save of latest periods
     </span><span class="kw">pub </span>save_final_periods: Vec&lt;u64&gt;,
     <span class="doccomment">/// One (block id, period) per thread
     </span><span class="kw">pub </span>latest_final_blocks_periods: Vec&lt;(BlockId, u64)&gt;,
-    <span class="doccomment">/// All the blocks we know about and their status
-    </span><span class="kw">pub </span>blocks_state: BlocksState,
     <span class="doccomment">/// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
     </span><span class="kw">pub </span>best_parents: Vec&lt;(BlockId, u64)&gt;,
+    <span class="doccomment">/// Every block we know about
+    </span><span class="kw">pub </span>block_statuses: PreHashMap&lt;BlockId, BlockStatus&gt;,
+    <span class="doccomment">/// Ids of incoming blocks/headers
+    </span><span class="kw">pub </span>incoming_index: PreHashSet&lt;BlockId&gt;,
+    <span class="doccomment">/// Used to limit the number of waiting and discarded blocks
+    </span><span class="kw">pub </span>sequence_counter: u64,
+    <span class="doccomment">/// ids of waiting for slot blocks/headers
+    </span><span class="kw">pub </span>waiting_for_slot_index: PreHashSet&lt;BlockId&gt;,
+    <span class="doccomment">/// ids of waiting for dependencies blocks/headers
+    </span><span class="kw">pub </span>waiting_for_dependencies_index: PreHashSet&lt;BlockId&gt;,
+    <span class="doccomment">/// ids of discarded blocks
+    </span><span class="kw">pub </span>discarded_index: PreHashSet&lt;BlockId&gt;,
     <span class="doccomment">/// Blocks that need to be propagated
     </span><span class="kw">pub </span>to_propagate: PreHashMap&lt;BlockId, Storage&gt;,
     <span class="doccomment">/// List of block ids we think are attack attempts
@@ -619,7 +636,7 @@
 <span class="kw">impl </span>ConsensusState {
     <span class="doccomment">/// Get a full active block
     </span><span class="kw">pub fn </span>get_full_active_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>ActiveBlock, <span class="kw-2">&amp;</span>Storage)&gt; {
-        <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_id) {
+        <span class="kw">match </span><span class="self">self</span>.block_statuses.get(block_id) {
             <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =&gt; <span class="prelude-val">Some</span>((a_block.as_ref(), storage)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
@@ -672,7 +689,7 @@
         <span class="comment">// block not found in the blockclique: search in the final blocks
         </span>blocks_at_slot
             .into_iter()
-            .find(|b_id| <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
+            .find(|b_id| <span class="kw">match </span><span class="self">self</span>.block_statuses.get(b_id) {
                 <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block.is_final,
                 <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
             })
@@ -687,7 +704,7 @@
 
         <span class="self">self</span>.get_blockclique()
             .iter()
-            .for_each(|id| <span class="kw">match </span><span class="self">self</span>.blocks_state.get(id) {
+            .for_each(|id| <span class="kw">match </span><span class="self">self</span>.block_statuses.get(id) {
                 <span class="prelude-val">Some</span>(BlockStatus::Active {
                     a_block,
                     storage: <span class="kw">_</span>,
@@ -713,7 +730,7 @@
     }
 
     <span class="kw">pub fn </span>get_block_status(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; BlockGraphStatus {
-        <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_id) {
+        <span class="kw">match </span><span class="self">self</span>.block_statuses.get(block_id) {
             <span class="prelude-val">None </span>=&gt; BlockGraphStatus::NotFound,
             <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; {
                 <span class="kw">if </span>a_block.is_final {
@@ -748,7 +765,7 @@
         slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(BlockId, u64)&gt;, ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>latest: Vec&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, u64)&gt;&gt; = <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
-        <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().iter() {
+        <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.active_index.iter() {
             <span class="kw">let </span>(block, _storage) = <span class="self">self</span>.try_get_full_active_block(id)<span class="question-mark">?</span>;
             <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = latest[block.slot.thread <span class="kw">as </span>usize] &amp;&amp; block.slot.period &lt; p {
                 <span class="kw">continue</span>;
@@ -814,7 +831,7 @@
         lower_bound: <span class="kw-2">&amp;</span>[(BlockId, u64)],
         end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) {
-        <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().iter() {
+        <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.active_index.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>((block, _storage)) = <span class="self">self</span>.get_full_active_block(id) {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot &amp;&amp; block.slot &gt; slot {
                     <span class="kw">continue</span>;
@@ -900,8 +917,8 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BlockGraphExport, ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>export = BlockGraphExport {
             genesis_blocks: <span class="self">self</span>.genesis_hashes.clone(),
-            active_blocks: PreHashMap::with_capacity(<span class="self">self</span>.blocks_state.len()),
-            discarded_blocks: PreHashMap::with_capacity(<span class="self">self</span>.blocks_state.len()),
+            active_blocks: PreHashMap::with_capacity(<span class="self">self</span>.block_statuses.len()),
+            discarded_blocks: PreHashMap::with_capacity(<span class="self">self</span>.block_statuses.len()),
             best_parents: <span class="self">self</span>.best_parents.clone(),
             latest_final_blocks_periods: <span class="self">self</span>.latest_final_blocks_periods.clone(),
             gi_head: <span class="self">self</span>.gi_head.clone(),
@@ -922,7 +939,7 @@
             <span class="bool-val">true
         </span>};
 
-        <span class="kw">for </span>(hash, block) <span class="kw">in </span><span class="self">self</span>.blocks_state.iter() {
+        <span class="kw">for </span>(hash, block) <span class="kw">in </span><span class="self">self</span>.block_statuses.iter() {
             <span class="kw">match </span>block {
                 BlockStatus::Discarded {
                     slot,
@@ -974,11 +991,10 @@
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
     </span><span class="kw">pub fn </span>get_all_final_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;BlockId, (Slot, Storage)&gt; {
-        <span class="self">self</span>.blocks_state
-            .active_blocks()
+        <span class="self">self</span>.active_index
             .iter()
             .map(|b_id| {
-                <span class="kw">let </span>block_infos = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
+                <span class="kw">let </span>block_infos = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(b_id) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =&gt; {
                         (a_block.slot, storage.clone())
                     }
@@ -994,14 +1010,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;, ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>wishlist = PreHashMap::&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;::default();
-        <span class="kw">for </span>block_id <span class="kw">in </span><span class="self">self</span>.blocks_state.waiting_for_dependencies_blocks().iter() {
+        <span class="kw">for </span>block_id <span class="kw">in </span><span class="self">self</span>.waiting_for_dependencies_index.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
                 ..
-            }) = <span class="self">self</span>.blocks_state.get(block_id)
+            }) = <span class="self">self</span>.block_statuses.get(block_id)
             {
                 <span class="kw">for </span>unsatisfied_h <span class="kw">in </span>unsatisfied_dependencies.iter() {
-                    <span class="kw">match </span><span class="self">self</span>.blocks_state.get(unsatisfied_h) {
+                    <span class="kw">match </span><span class="self">self</span>.block_statuses.get(unsatisfied_h) {
                         <span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                             header_or_block: HeaderOrBlock::Header(header),
                             ..
@@ -1034,7 +1050,7 @@
             <span class="kw">if </span>!result.insert(visit_h) {
                 <span class="kw">continue</span>; <span class="comment">// already visited
             </span>}
-            <span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>visit_h) {
+            <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>visit_h) {
                 <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; {
                     a_block.as_ref()
                     .children.iter()
