@@ -93,7 +93,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
-use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
@@ -1268,8 +1267,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     break true;
                 }
             }
-
-            sleep(Duration::from_millis(100));
         };
         stop(
             consensus_event_receiver,
