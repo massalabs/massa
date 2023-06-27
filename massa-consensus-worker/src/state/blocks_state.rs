@@ -97,7 +97,7 @@ impl BlocksState {
                     self.discarded_index.remove(block_id);
                 }
                 BlockStatus::Active { .. } => {
-                    self.discarded_index.remove(block_id);
+                    self.active_index.remove(block_id);
                 }
             }
         }
