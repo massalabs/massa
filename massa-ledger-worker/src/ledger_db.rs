@@ -183,8 +183,8 @@ impl LedgerDB {
                 STATE_CF,
                 MassaIteratorMode::From(&start_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, _)| match end_prefix {
-                Some(end) => key < &end,
+            .take_while(|(key, _)| match &end_prefix {
+                Some(end) => key < end,
                 None => true,
             })
             .filter_map(|(key, _)| {

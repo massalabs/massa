@@ -17,17 +17,18 @@ use massa_async_pool::AsyncMessage;
 use massa_db_exports::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput, ExecutionQueryCycleInfos,
+    ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
-use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -44,7 +45,7 @@ use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
@@ -1508,7 +1509,7 @@ impl ExecutionState {
     pub fn get_final_and_active_bytecode(
         &self,
         address: &Address,
-    ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+    ) -> (Option<Bytecode>, Option<Bytecode>) {
         let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
         let search_result = self.active_history.read().fetch_bytecode(address);
         (
@@ -1558,15 +1559,15 @@ impl ExecutionState {
         &self,
         addr: &Address,
         prefix: &[u8],
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
+    ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
         let final_keys = self
             .final_state
             .read()
             .ledger
-            .get_datastore_keys(addr, prefix)
-            .unwrap_or_default();
+            .get_datastore_keys(addr, prefix);
+
         let mut candidate_keys = final_keys.clone();
 
         // compute prefix range
@@ -1583,9 +1584,9 @@ impl ExecutionState {
                 *v += 1;
             }
             (
-                std::ops::Bound::Included(prefix.to_vec()),
+                std::ops::Bound::Included(&prefix.to_vec()),
                 if !prefix_end.is_empty() {
-                    std::ops::Bound::Excluded(prefix_end)
+                    std::ops::Bound::Excluded(&prefix_end)
                 } else {
                     std::ops::Bound::Unbounded
                 },
@@ -1594,7 +1595,7 @@ impl ExecutionState {
             (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
         };
 
-        // here, traverse the history from oldest to newest, applying additions and deletions
+        // traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
             match output.state_changes.ledger_changes.get(addr) {
                 // address absent from the changes
@@ -1602,26 +1603,29 @@ impl ExecutionState {
 
                 // address ledger entry being reset to an absolute new list of keys
                 Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = new_ledger_entry
-                        .datastore
-                        .range(prefix_range)
-                        .cloned()
-                        .collect();
+                    candidate_keys = Some(
+                        new_ledger_entry
+                            .datastore
+                            .range(prefix_range)
+                            .map(|(k, _v)| k.clone())
+                            .collect(),
+                    );
                 }
 
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    for (ds_key, ds_update) in &entry_updates.datastore.range(prefix_range) {
+                    let c_k = candidate_keys.get_or_insert_default();
+                    for (ds_key, ds_update) in entry_updates.datastore.range(prefix_range) {
                         match ds_update {
-                            SetOrDelete::Set(_) => candidate_keys.insert(ds_key.clone()),
-                            SetOrDelete::Delete => candidate_keys.remove(ds_key),
+                            SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
+                            SetOrDelete::Delete => c_k.remove(ds_key),
                         };
                     }
                 }
 
                 // address ledger entry being deleted
                 Some(SetUpdateOrDelete::Delete) => {
-                    candidate_keys.clear();
+                    candidate_keys = None;
                 }
             }
         }
@@ -1634,15 +1638,10 @@ impl ExecutionState {
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
-        let final_state = self.final_state.read();
-
-        match cycle.checked_sub(3) {
-            Some(lookback_cycle) => {
-                // get rolls
-                final_state.pos_state.get_all_roll_counts(lookback_cycle)
-            }
-            None => final_state.pos_state.initial_rolls.clone(),
-        }
+        self.final_state
+            .read()
+            .pos_state
+            .get_all_active_rolls(cycle)
     }
 
     /// Gets execution events optionally filtered by:
@@ -1713,27 +1712,67 @@ impl ExecutionState {
     }
 
     /// Get cycle infos
-    pub fn get_cycle_infos(&self, cycle: u64, restrict_to_addresses: Option<&PreHashSet<Address>>) -> Option<ExecutionQueryCycleInfos> {
+    pub fn get_cycle_infos(
+        &self,
+        cycle: u64,
+        restrict_to_addresses: Option<&PreHashSet<Address>>,
+    ) -> Option<ExecutionQueryCycleInfos> {
         let lock = self.final_state.read();
-        if let Some(nfo) = lock.pos_state.get_cycle_info(cycle) {
-            Some(ExecutionQueryCycleInfos {
-                cycle,
-                is_final: nfo.complete,
-                staker_infos: nfo.
-            })
+
+        // check if cycle is complete
+        let is_final = match lock.pos_state.is_cycle_complete(cycle) {
+            Some(v) => v,
+            None => return None,
+        };
+
+        // active rolls
+        let staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>;
+        if let Some(addrs) = restrict_to_addresses {
+            staker_infos = addrs
+                .into_iter()
+                .map(|addr| {
+                    let staker_info = ExecutionQueryStakerInfo {
+                        active_rolls: lock
+                            .pos_state
+                            .get_address_active_rolls(addr, cycle)
+                            .unwrap_or(0),
+                        production_stats: lock
+                            .pos_state
+                            .get_production_stats_for_address(cycle, addr)
+                            .unwrap_or_default(),
+                    };
+                    (addr, staker_info)
+                })
+                .collect()
         } else {
-            None
+            let active_rolls = lock.pos_state.get_all_roll_counts(cycle);
+            let production_stats = lock
+                .pos_state
+                .get_all_production_stats(cycle)
+                .unwrap_or_default();
+            let all_addrs: BTreeSet<Address> = active_rolls
+                .keys()
+                .chain(production_stats.keys())
+                .copied()
+                .collect();
+            staker_infos = all_addrs
+                .into_iter()
+                .map(|addr| {
+                    let staker_info = ExecutionQueryStakerInfo {
+                        active_rolls: active_rolls.get(&addr).copied().unwrap_or(0),
+                        production_stats: production_stats.get(&addr).copied().unwrap_or_default(),
+                    };
+                    (addr, staker_info)
+                })
+                .collect()
         }
-    }
 
-    /// Gets the production stats for an address at all cycles
-    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
-        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
-    }
-
-    /// Gets the production stats for an address at all cycles
-    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
-        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
+        // build result
+        Some(ExecutionQueryCycleInfos {
+            cycle,
+            is_final,
+            staker_infos,
+        })
     }
 
     /// Get future deferred credits of an address

@@ -2,30 +2,36 @@
 
 //! This file exports useful types used to interact with the execution worker
 
-use crate::error::{ExecutionError, ExecutionQueryError};
+use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
+use massa_models::bytecode::Bytecode;
 use massa_models::datastore::Datastore;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::prehash::PreHashSet;
 use massa_models::{
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
     slot::Slot,
 };
+use massa_pos_exports::ProductionStats;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Request to atomically execute a batch of execution state queries
 pub struct ExecutionQueryRequest {
+    /// List of requests
     pub requests: Vec<ExecutionQueryRequestItem>,
 }
 
 /// Response to a list of execution queries
 pub struct ExecutionQueryResponse {
+    /// List of responses
     pub responses: Vec<Result<ExecutionQueryResponseItem, ExecutionQueryError>>,
+    /// Last executed final slot
     pub final_cursor: Slot,
+    /// Last executed candidate slot
     pub candidate_cursor: Slot,
 }
 
@@ -39,18 +45,38 @@ pub enum ExecutionQueryRequestItem {
     AddressBalanceCandidate(Address),
     /// gets the balance (final) of an address, returns ExecutionQueryResponseItem::Amount(balance) or an error if the address is not found
     AddressBalanceFinal(Address),
-    /// gets the bytecode (candidate) of an address, returns ExecutionQueryResponseItem::Bytes(bytecode) or an error if the address is not found
+    /// gets the bytecode (candidate) of an address, returns ExecutionQueryResponseItem::Bytecode(bytecode) or an error if the address is not found
     AddressBytecodeCandidate(Address),
-    /// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytes(bytecode) or an error if the address is not found
+    /// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytecode(bytecode) or an error if the address is not found
     AddressBytecodeFinal(Address),
-    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::VecBytes(keys) or an error if the address is not found
-    AddressDatastoreKeysCandidate { addr: Address, prefix: Vec<u8> },
-    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::VecBytes(keys) or an error if the address is not found
-    AddressDatastoreKeysFinal { addr: Address, prefix: Vec<u8> },
-    /// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::Bytes(keys) or an error if the address or key is not found
-    AddressDatastoreValueCandidate { addr: Address, key: Vec<u8> },
-    /// gets a datastore value (final) for an address, returns ExecutionQueryResponseItem::Bytes(keys) or an error if the address or key is not found
-    AddressDatastoreValueFinal { addr: Address, key: Vec<u8> },
+    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    AddressDatastoreKeysCandidate {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Filter only entries whose key starts with a prefix
+        prefix: Vec<u8>,
+    },
+    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    AddressDatastoreKeysFinal {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Filter only entries whose key starts with a prefix
+        prefix: Vec<u8>,
+    },
+    /// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::DatastoreValue(keys) or an error if the address or key is not found
+    AddressDatastoreValueCandidate {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Key of the entry
+        key: Vec<u8>,
+    },
+    /// gets a datastore value (final) for an address, returns ExecutionQueryResponseItem::DatastoreValue(keys) or an error if the address or key is not found
+    AddressDatastoreValueFinal {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Key of the entry
+        key: Vec<u8>,
+    },
 
     /// gets the execution status (candidate) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     OpExecutionStatusCandidate(OperationId),
@@ -70,7 +96,7 @@ pub enum ExecutionQueryRequestItem {
     /// gets the deferred credits (final) of an address, returns ExecutionQueryResponseItem::DeferredCredits(deferred_credits) or an error if the address is not found
     AddressDeferredCreditsFinal(Address),
 
-    // get all information for a given cycle, returns ExecutionQueryResponseItem::CycleInfos(cycle_infos) or an error if the cycle is not found
+    /// get all information for a given cycle, returns ExecutionQueryResponseItem::CycleInfos(cycle_infos) or an error if the cycle is not found
     CycleInfos {
         /// cycle to query
         cycle: u64,
@@ -90,10 +116,12 @@ pub enum ExecutionQueryResponseItem {
     RollCount(u64),
     /// amount value
     Amount(Amount),
-    /// bytes value
-    Bytes(Vec<u8>),
-    /// vector of bytes value
-    VecBytes(Vec<Vec<u8>>),
+    /// bytecode
+    Bytecode(Bytecode),
+    /// datastore value
+    DatastoreValue(Vec<u8>),
+    /// list of keys
+    KeyList(BTreeSet<Vec<u8>>),
     /// deferred credits value
     DeferredCredits(BTreeMap<Slot, Amount>),
     /// execution status value
@@ -117,6 +145,7 @@ pub enum ExecutionQueryExecutionStatus {
     ExecutableOrExpired,
 }
 
+/// Information about cycles
 pub struct ExecutionQueryCycleInfos {
     /// cycle number
     pub cycle: u64,
@@ -126,18 +155,12 @@ pub struct ExecutionQueryCycleInfos {
     pub staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>,
 }
 
+/// Staker information for a given cycle
 pub struct ExecutionQueryStakerInfo {
     /// active roll count
     pub active_rolls: u64,
     /// production stats
-    pub production_stats: ExecutionQueryStakerInfoProductionStats,
-}
-
-pub struct ExecutionQueryStakerInfoProductionStats {
-    /// producetion successes
-    pub block_success_count: u64,
-    /// producetion failures
-    pub block_failure_count: u64,
+    pub production_stats: ProductionStats,
 }
 
 /// Execution info about an address

@@ -288,15 +288,16 @@ impl FinalState {
         current_slot: Slot,
         end_slot: Slot,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle =
-            self.pos_state
-                .cycle_history_cache
-                .pop_back()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    "Invalid cycle_history",
-                )))?;
+        let latest_snapshot_cycle = self
+            .pos_state
+            .cycle_history_cache
+            .pop_back()
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from("Invalid cycle_history")))?;
 
-        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        let latest_snapshot_cycle_info = self
+            .pos_state
+            .get_cycle_info(latest_snapshot_cycle.0)
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from("Missing cycle info")))?;
 
         let mut batch = DBBatch::new();
 
@@ -345,7 +346,10 @@ impl FinalState {
                     "Invalid cycle_history",
                 )))?;
 
-        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        let latest_snapshot_cycle_info = self
+            .pos_state
+            .get_cycle_info(latest_snapshot_cycle.0)
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from("Missing cycle info")))?;
 
         let mut batch = DBBatch::new();
 

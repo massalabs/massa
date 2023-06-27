@@ -63,8 +63,8 @@ pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
     ExecutionAddressInfo, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryExecutionStatus,
     ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
-    ExecutionQueryResponseItem, ExecutionQueryStakerInfo, ExecutionQueryStakerInfoProductionStats,
-    ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionQueryResponseItem, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyCallRequest, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 

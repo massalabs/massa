@@ -2692,6 +2692,7 @@ dependencies = [
  "massa_ledger_exports",
  "massa_models",
  "massa_module_cache",
+ "massa_pos_exports",
  "massa_storage",
  "massa_time",
  "massa_versioning",
