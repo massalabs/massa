@@ -302,9 +302,9 @@ impl ExecutionController for ExecutionControllerImpl {
                 ExecutionQueryRequestItem::CycleInfos {
                     cycle,
                     restrict_to_addresses,
-                } => {
-                    // TODO
-                }
+                } => Ok(ExecutionQueryResponseItem::CycleInfos(
+                    execution_lock.get_cycle_infos(cycle, &restrict_to_addresses),
+                )),
                 ExecutionQueryRequestItem::Events(filter) => {
                     Ok(ExecutionQueryResponseItem::Events(
                         execution_lock.get_filtered_sc_output_event(filter),

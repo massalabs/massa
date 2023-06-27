@@ -18,7 +18,7 @@ use massa_db_exports::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ReadOnlyExecutionTarget, SlotExecutionOutput, ExecutionQueryCycleInfos,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -1710,6 +1710,15 @@ impl ExecutionState {
         };
 
         (executed_candidate, false)
+    }
+
+    /// Get cycle infos
+    pub fn get_cycle_infos(&self, cycle: u64, restrict_to_addresses: &PreHashSet<Address>) -> ExecutionQueryCycleInfos {
+        self.final_state.read().pos_state.get_cycle_info(cycle)
+        ExecutionQueryCycleInfos {
+            cycle,
+
+        }
     }
 
     /// Gets the production stats for an address at all cycles

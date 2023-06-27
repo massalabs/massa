@@ -955,8 +955,20 @@ impl PoSFinalState {
     }
 
     /// Queries a given cycle info in the database
-    /// Panics if the cycle is not on disk
-    pub fn get_cycle_info(&self, cycle: u64) -> CycleInfo {
+    pub fn get_cycle_info(&self, cycle: u64, restrict_to_addresses: Option<&PreHashSet<Address>>) -> Option<CycleInfo> {
+        TODO
+
+        {
+            let prefix = self.cycle_history_cycle_prefix(cycle);
+            let db = self.db.read();
+            if let Ok(Some(complete_value)) = db.get_cf(STATE_CF, complete_key!(prefix)) {
+                complete_value.len() == 1 && complete_value[0] == 1
+            } else {
+                false
+            }
+        }
+
+
         let complete = self.is_cycle_complete(cycle);
         let rng_seed = self.get_cycle_history_rng_seed(cycle);
         let final_state_hash_snapshot = self.get_cycle_history_final_state_hash_snapshot(cycle);

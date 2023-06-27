@@ -130,7 +130,7 @@ pub struct ExecutionQueryStakerInfo {
     /// active roll count
     pub active_rolls: u64,
     /// production stats
-    pub production_stats: PreHashMap<Address, ExecutionQueryStakerInfoProductionStats>,
+    pub production_stats: ExecutionQueryStakerInfoProductionStats,
 }
 
 pub struct ExecutionQueryStakerInfoProductionStats {
