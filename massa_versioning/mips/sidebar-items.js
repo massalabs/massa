@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MIP_LIST"]};
+window.SIDEBAR_ITEMS = {"fn":["get_mip_list"]};
