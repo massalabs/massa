@@ -7,7 +7,7 @@ use machine::{machine, transitions};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::{debug, warn};
+use tracing::debug;
 
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
@@ -308,13 +308,12 @@ impl MipState {
     /// Advance the state
     /// Can be called as multiple times as it will only store what changes the state in history
     pub fn on_advance(&mut self, input: &Advance) {
-        let now = input.now;
         // Check that input.now is after last item in history
         // We don't want to go backward
         let is_forward = self
             .history
             .last_key_value()
-            .map(|(adv, _)| adv.now < now)
+            .map(|(adv, _)| adv.now < input.now)
             .unwrap_or(false);
 
         if is_forward {
@@ -322,14 +321,13 @@ impl MipState {
             let state = self.state.on_advance(input.clone());
             // Update history as well
             if state != self.state {
-                let state_id = ComponentStateTypeId::from(&state);
-
                 // Avoid storing too much things in history
                 // Here we avoid storing for every threshold update
                 if !(matches!(state, ComponentState::Started(Started { .. }))
                     && matches!(self.state, ComponentState::Started(Started { .. })))
                 {
-                    self.history.insert(input.clone(), state_id);
+                    self.history
+                        .insert(input.clone(), ComponentStateTypeId::from(&state));
                 }
                 self.state = state;
             }
@@ -494,6 +492,16 @@ impl MipState {
                 Some(at.saturating_add(mip_info.activation_delay))
             }
             _ => None,
+        }
+    }
+
+    /// Return True if state can not change anymore (e.g. Active, Failed or Error)
+    pub fn is_final(&self) -> bool {
+        match self.state {
+            ComponentState::Active(..) => true,
+            ComponentState::Failed(..) => true,
+            ComponentState::Error => true,
+            _ => false,
         }
     }
 }
@@ -680,9 +688,10 @@ pub struct MipStatsConfig {
 pub(crate) struct MipStoreStats {
     // config for max counters + block to consider when computing the vote ratio
     pub(crate) config: MipStatsConfig,
-    // used to clean up the counters (pop the oldest then subtract matching counter)
+    // Last network version announcements (in last block header)
+    // Used to clean up the field: network_version_counters (pop the oldest then subtract matching counter)
     pub(crate) latest_announcements: VecDeque<u32>,
-    // counter per network version
+    // A map where key: network version, value: announcement for this network version count
     pub(crate) network_version_counters: BTreeMap<u32, u64>,
 }
 
@@ -872,74 +881,107 @@ impl MipStoreRaw {
         network_versions: Option<(u32, u32)>,
     ) {
         if let Some((_current_network_version, announced_network_version)) = network_versions {
-            let removed_version_ = match self.stats.latest_announcements.len() {
-                n if n >= self.stats.config.block_count_considered => {
-                    self.stats.latest_announcements.pop_front()
-                }
-                _ => None,
-            };
-            self.stats
-                .latest_announcements
-                .push_back(announced_network_version);
-
-            // We update the count of the received version
-            let entry_value = self
+            // Check that we will not grow network_version_counters below the limit
+            if self
                 .stats
                 .network_version_counters
-                .entry(announced_network_version)
-                .or_default();
-            *entry_value = entry_value.saturating_add(1);
-
-            if let Some(removed_version) = removed_version_ {
-                let entry_value = self
+                .contains_key(&announced_network_version)
+                || (!self
                     .stats
                     .network_version_counters
-                    .entry(removed_version)
-                    .or_insert(1);
-                *entry_value = entry_value.saturating_sub(1);
-            }
+                    .contains_key(&announced_network_version)
+                    && self.stats.network_version_counters.len() < self.stats.config.counters_max)
+            {
+                let removed_version_ = match self.stats.latest_announcements.len() {
+                    n if n >= self.stats.config.block_count_considered => {
+                        self.stats.latest_announcements.pop_front()
+                    }
+                    _ => None,
+                };
+                self.stats
+                    .latest_announcements
+                    .push_back(announced_network_version);
 
-            // Cleanup the counters
-            if self.stats.network_version_counters.len() > self.stats.config.counters_max {
-                if let Some((version, count)) = self.stats.network_version_counters.pop_first() {
-                    // TODO: return version / count for unit tests?
-                    warn!(
-                        "MipStoreStats removed counter for version {}, count was: {}",
-                        version, count
-                    )
+                // We update the count of the received version (example: update counter for version 1)
+                self.stats
+                    .network_version_counters
+                    .entry(announced_network_version)
+                    .and_modify(|v| *v = v.saturating_add(1))
+                    .or_insert(1);
+
+                // If we removed a version announcement, we decrement the corresponding counter
+                // (example: remove a version 0, so decrement the corresponding counter)
+                if let Some(removed_version) = removed_version_ {
+                    self.stats
+                        .network_version_counters
+                        .entry(removed_version)
+                        .and_modify(|v| *v = v.saturating_sub(1))
+                        .or_insert(0);
                 }
             }
 
-            self.advance_states_on_updated_stats(slot_timestamp);
+            debug!(
+                "[VERSIONING STATS] stats have {} counters and {} announcements",
+                self.stats.network_version_counters.len(),
+                self.stats.latest_announcements.len()
+            )
         }
+
+        // Even if stats did not move, update the states (e.g. LockedIn -> Active)
+        self.advance_states_on_updated_stats(slot_timestamp);
     }
 
     /// Used internally by `update_network_version_stats`
     fn advance_states_on_updated_stats(&mut self, slot_timestamp: MassaTime) {
+        let mut reset_stats = false;
+
         for (mi, state) in self.store.iter_mut() {
+            if state.is_final() {
+                // State cannot change (ex: Active), no need to update
+                continue;
+            }
+
             let network_version_count = *self
                 .stats
                 .network_version_counters
                 .get(&mi.version)
-                .unwrap_or(&0) as f32;
-            let block_count_considered = self.stats.config.block_count_considered as f32;
+                .unwrap_or(&0);
+            let block_count_considered = self.stats.config.block_count_considered;
+            let vote_ratio_ = Amount::from_mantissa_scale(network_version_count, 0).and_then(|a| {
+                Ok(a.saturating_mul_u64(100)
+                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(0)))
+            });
 
-            let vote_ratio_ = 100.0 * network_version_count / block_count_considered;
+            if let Ok(Some(vote_ratio)) = vote_ratio_ {
+                debug!("[VERSIONING STATS] vote ratio = {} (network version counter = {} - blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
 
-            let vote_ratio = Amount::const_init(vote_ratio_.round() as u64, 0);
+                let advance_msg = Advance {
+                    start_timestamp: mi.start,
+                    timeout: mi.timeout,
+                    threshold: vote_ratio,
+                    now: slot_timestamp,
+                    activation_delay: mi.activation_delay,
+                };
 
-            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+                state.on_advance(&advance_msg.clone());
 
-            let advance_msg = Advance {
-                start_timestamp: mi.start,
-                timeout: mi.timeout,
-                threshold: vote_ratio,
-                now: slot_timestamp,
-                activation_delay: mi.activation_delay,
-            };
+                if vote_ratio > VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
+                    // A new version is going to be 'Active' - reset stats
+                    reset_stats = true;
+                }
+            }
+        }
 
-            // TODO / OPTIM: filter the store to avoid advancing on failed and active versions
-            state.on_advance(&advance_msg.clone());
+        if reset_stats {
+            // Reset stats after loop as we can have 2 MIP
+            // One become LockedIn & One become Started
+            // FIXME: is this true? Can we have LockedIn & Started at the same time
+            //        can have LockedIn & Defined at the same time
+
+            debug!("[VERSIONING STATS] reset stats (threshold reached)");
+            self.stats.reset();
+            // TODO: can we pass the latest accepted network version so we ensure to have
+            //       an increment in network_version_counters?
         }
     }
 
@@ -1141,12 +1183,13 @@ impl MipStoreRaw {
             }
         }
 
-        key.clear();
         value.clear();
-        key.extend(MIP_STORE_STATS_PREFIX.as_bytes().to_vec());
         let mip_stats_ser = MipStoreStatsSerializer::new();
         mip_stats_ser.serialize(&self.stats, &mut value)?;
-        versioning_batch.insert(key.clone(), Some(value.clone()));
+        versioning_batch.insert(
+            MIP_STORE_STATS_PREFIX.as_bytes().to_vec(),
+            Some(value.clone()),
+        );
 
         Ok(())
     }
@@ -1186,18 +1229,24 @@ impl MipStoreRaw {
             update_data.insert(mip_info, mip_state);
         }
 
-        let store_raw_ = MipStoreRaw {
-            store: update_data,
-            stats: MipStoreStats {
-                config: MipStatsConfig {
-                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-                },
-                latest_announcements: Default::default(),
-                network_version_counters: Default::default(),
-            },
+        let (mut updated, mut added) = match update_data.is_empty() {
+            true => (vec![], BTreeMap::new()),
+            false => {
+                let store_raw_ = MipStoreRaw {
+                    store: update_data,
+                    stats: MipStoreStats {
+                        config: MipStatsConfig {
+                            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+                        },
+                        latest_announcements: Default::default(),
+                        network_version_counters: Default::default(),
+                    },
+                };
+                // Only call update_with if update_data is not empty
+                self.update_with(&store_raw_)?
+            }
         };
-        let (mut updated, mut added) = self.update_with(&store_raw_)?;
 
         let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
 
@@ -1232,20 +1281,23 @@ impl MipStoreRaw {
             }
         }
 
-        let store_raw_ = MipStoreRaw {
-            store: update_data,
-            stats: MipStoreStats {
-                config: MipStatsConfig {
-                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        if !update_data.is_empty() {
+            let store_raw_ = MipStoreRaw {
+                store: update_data,
+                stats: MipStoreStats {
+                    config: MipStatsConfig {
+                        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+                    },
+                    latest_announcements: Default::default(),
+                    network_version_counters: Default::default(),
                 },
-                latest_announcements: Default::default(),
-                network_version_counters: Default::default(),
-            },
-        };
-        let (updated_2, added_2) = self.update_with(&store_raw_)?;
-        updated.extend(updated_2);
-        added.extend(added_2);
+            };
+            // Only call update_with if update_data is not empty
+            let (updated_2, added_2) = self.update_with(&store_raw_)?;
+            updated.extend(updated_2);
+            added.extend(added_2);
+        }
 
         Ok((updated, added))
     }
@@ -2304,8 +2356,7 @@ mod test {
         assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&1));
 
         mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
-        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
-        assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&2));
+        assert_eq!(mip_store.stats.network_version_counters.len(), 0); // reset as we reached the vote threshold
 
         // Check that MipInfo is now
         let (mi_, ms_) = mip_store.store.last_key_value().unwrap();
