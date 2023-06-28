@@ -1,5 +1,6 @@
 * [ ] document all added functions
 * [ ] try in sandbox /simulation/labnet
+  * [ ] if part of node-launch, checked using the `resync_check` flag
 * [ ] unit tests on the added/changed features
   * [ ] make tests compile
   * [ ] make tests pass 
