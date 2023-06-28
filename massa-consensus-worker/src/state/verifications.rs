@@ -481,7 +481,7 @@ impl ConsensusState {
                     if let BlockStatus::Active {
                         a_block,
                         storage: _,
-                    } = self.block_statuses.get(&cur_b.block_id).ok_or_else(|| {
+                    } = self.blocks_state.get(&cur_b.block_id).ok_or_else(|| {
                         ConsensusError::MissingBlock(format!(
                             "missing block in grandpa incomp test: {}",
                             cur_b.block_id

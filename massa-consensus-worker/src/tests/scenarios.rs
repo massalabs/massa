@@ -12,14 +12,15 @@ use super::tools::{
     validate_propagate_block_in_list,
 };
 
-#[tokio::test]
-async fn test_unsorted_block() {
-    let staking_key: KeyPair = KeyPair::generate();
+#[test]
+fn test_unsorted_block() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
-        t0: 1000.into(),
+        t0: MassaTime::from_millis(1000),
         thread_count: 2,
         genesis_timestamp: MassaTime::now().unwrap(),
-        future_block_processing_max_periods: 50,
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
         max_future_processing_blocks: 10,
         genesis_key: staking_key.clone(),
         ..ConsensusConfig::default()
@@ -29,7 +30,7 @@ async fn test_unsorted_block() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller,
+        move |mut protocol_controller,
                     consensus_controller,
                     consensus_event_receiver,
                     selector_controller,
@@ -146,35 +147,35 @@ async fn test_unsorted_block() {
                 3000 + start_period * 1000,
             );
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
 
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             // block t0s2 and t1s2 are propagated
             let hash_list = vec![t0s2.id, t1s2.id];
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             // block t0s3 and t1s3 are propagated
             let hash_list = vec![t0s3.id, t1s3.id];
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             // block t0s4 and t1s4 are propagated
             let hash_list = vec![t0s4.id, t1s4.id];
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 4000).await;
+            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 4000);
             (
                 protocol_controller,
                 consensus_controller,
@@ -183,18 +184,17 @@ async fn test_unsorted_block() {
                 selector_receiver,
             )
         },
-    )
-    .await;
+    );
 }
 
-#[tokio::test]
-async fn test_grandpa_incompatibility() {
-    let staking_key: KeyPair = KeyPair::generate();
+#[test]
+fn test_grandpa_incompatibility() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
-        t0: 200.into(),
+        t0: MassaTime::from_millis(200),
         thread_count: 2,
         genesis_timestamp: MassaTime::now().unwrap(),
-        future_block_processing_max_periods: 50,
+        force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 32,
         ..ConsensusConfig::default()
@@ -204,7 +204,7 @@ async fn test_grandpa_incompatibility() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller,
+        move |protocol_controller,
                     consensus_controller,
                     consensus_event_receiver,
                     selector_controller,
@@ -325,6 +325,5 @@ async fn test_grandpa_incompatibility() {
                 selector_receiver,
             )
         },
-    )
-    .await;
+    );
 }
