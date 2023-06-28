@@ -95,7 +95,13 @@ where
         },
         None,
         storage.clone(),
-        MassaMetrics::new(false, THREAD_COUNT),
+        MassaMetrics::new(
+            false,
+            "0.0.0.0:9898".parse().unwrap(),
+            THREAD_COUNT,
+            Duration::from_secs(1),
+        )
+        .0,
     );
 
     // Call test func.
