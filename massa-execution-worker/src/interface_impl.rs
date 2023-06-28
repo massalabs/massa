@@ -15,8 +15,6 @@ use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
-use massa_proto_rs::massa::model::v1::NativePubKey;
-use massa_proto_rs::massa::model::v1::NativeSig;
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
@@ -605,53 +603,42 @@ impl Interface for InterfaceImpl {
         Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
-    /// Verify a massa native signature
-    fn verify_native_signature(
-        &self,
-        signature: NativeSig,
-        message: &[u8],
-        public_key: NativePubKey,
-    ) -> Result<bool> {
-        let signature = match massa_signature::Signature::from_native_sig(&signature) {
-            Ok(sig) => sig,
-            Err(_) => return Ok(false),
-        };
-        let public_key = match massa_signature::PublicKey::from_native_public_key(&public_key) {
-            Ok(pubk) => pubk,
-            Err(_) => return Ok(false),
-        };
-        let h = massa_hash::Hash::compute_from(message);
-        Ok(public_key.verify_signature(&h, &signature).is_ok())
-    }
-
     /// Verify an EVM signature
     ///
     /// Information:
-    /// * Expects a standard SECP256K1 signature.
-    ///   The signature is required to be within 0 and curve order.
-    ///   Returns error if it overflows.
-    ///   Expected length is 64 bytes.
-    /// * Expects a standard uncompressed raw public key.
-    ///   Expected length is 64 bytes.
+    /// * Expects a SECP256K1 signature in full ETH format.
+    ///   Format: (r, s, v) v will be ignored
+    ///   Length: 65 bytes
+    /// * Expects a public key in full ETH format.
+    ///   Length: 65 bytes
     fn verify_evm_signature(
         &self,
-        signature: &[u8],
-        message: &[u8],
-        public_key: &[u8],
+        signature_: &[u8],
+        message_: &[u8],
+        public_key_: &[u8],
     ) -> Result<bool> {
-        // format is: secp256k1_sign(Keccak256("\x19Ethereum Signed Message:\n32" + Keccak256(message));
-        let message_hash = sha3::Keccak256::digest(&message);
-        let prefix = b"\x19Ethereum Signed Message:\n32";
-        let to_hash = [&prefix[..], message_hash.as_slice()].concat();
-        let full_hash = sha3::Keccak256::digest(&to_hash);
-
-        let m = libsecp256k1::Message::parse_slice(&full_hash)?;
-        let s = libsecp256k1::Signature::parse_standard_slice(signature)?;
-        let k = libsecp256k1::PublicKey::parse_slice(
-            public_key,
-            Some(libsecp256k1::PublicKeyFormat::Raw),
+        // parse the public key
+        let public_key = libsecp256k1::PublicKey::parse_slice(
+            public_key_,
+            Some(libsecp256k1::PublicKeyFormat::Full),
         )?;
-        Ok(libsecp256k1::verify(&m, &s, &k))
+
+        // build the message
+        let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
+        let to_hash = [prefix.as_bytes(), message_].concat();
+        let full_hash = sha3::Keccak256::digest(&to_hash);
+        let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
+
+        // parse the signature as being (r, s, v)
+        // r is the R.x value of the signature's R point (32 bytes)
+        // s is the signature proof for R.x (32 bytes)
+        // v is a recovery parameter used to ease the signature verification (1 byte)
+        // we ignore the recovery parameter here
+        // see test_evm_verify for an example of its usage
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+
+        // verify the signature
+        Ok(libsecp256k1::verify(&message, &signature, &public_key))
     }
 
     /// Keccak256 hash function
