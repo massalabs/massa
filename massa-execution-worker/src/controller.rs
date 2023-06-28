@@ -131,7 +131,7 @@ impl ExecutionController for ExecutionControllerImpl {
 
     /// Atomically query the execution state with multiple requests
     fn query_state(&self, req: ExecutionQueryRequest) -> ExecutionQueryResponse {
-        let mut execution_lock = self.execution_state.read();
+        let execution_lock = self.execution_state.read();
         let mut resp: ExecutionQueryResponse = ExecutionQueryResponse {
             responses: Vec::with_capacity(req.requests.len()),
             candidate_cursor: execution_lock.active_cursor,
@@ -196,7 +196,7 @@ impl ExecutionController for ExecutionControllerImpl {
                     }
                 }
                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } => {
-                    let (final_v, speculative_v) =
+                    let (final_v, _speculative_v) =
                         execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
                     match final_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
@@ -229,6 +229,7 @@ impl ExecutionController for ExecutionControllerImpl {
                     let (speculative_v, _final_v) = execution_lock
                         .get_ops_exec_status(&vec![id])
                         .get(0)
+                        .map(|(s_v, f_v)| (s_v.clone(), f_v.clone()))
                         .expect("expected one return value");
                     match speculative_v {
                         Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
@@ -246,6 +247,7 @@ impl ExecutionController for ExecutionControllerImpl {
                     let (_speculative_v, final_v) = execution_lock
                         .get_ops_exec_status(&vec![id])
                         .get(0)
+                        .map(|(s_v, f_v)| (s_v.clone(), f_v.clone()))
                         .expect("expected one return value");
                     match final_v {
                         Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(

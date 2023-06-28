@@ -1513,14 +1513,12 @@ impl ExecutionState {
     ) -> (Option<Bytecode>, Option<Bytecode>) {
         let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
         let search_result = self.active_history.read().fetch_bytecode(address);
-        (
-            final_bytecode,
-            match search_result {
-                HistorySearchResult::Present(active_bytecode) => Some(active_bytecode),
-                HistorySearchResult::NoInfo => final_bytecode,
-                HistorySearchResult::Absent => None,
-            },
-        )
+        let speculative_v = match search_result {
+            HistorySearchResult::Present(active_bytecode) => Some(active_bytecode),
+            HistorySearchResult::NoInfo => final_bytecode.clone(),
+            HistorySearchResult::Absent => None,
+        };
+        (final_bytecode, speculative_v)
     }
 
     /// Gets roll counts both at the latest final and active executed slots
