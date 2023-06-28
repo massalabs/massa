@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["BALANCE_IDENT","BYTECODE_IDENT","DATASTORE_IDENT","KEY_VERSION"],"enum":["KeyType","KeyTypeId"],"fn":["datastore_prefix_from_address"],"struct":["Key","KeyDeserializer","KeySerializer","KeyTypeDeserializer","KeyTypeSerializer"]};
+window.SIDEBAR_ITEMS = {"constant":["BALANCE_IDENT","BYTECODE_IDENT","DATASTORE_IDENT","KEY_VERSION","VERSION_IDENT"],"enum":["KeyType","KeyTypeId"],"fn":["datastore_prefix_from_address"],"struct":["Key","KeyDeserializer","KeySerializer","KeyTypeDeserializer","KeyTypeSerializer"]};
