@@ -13,9 +13,9 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use massa_channel::sender::MassaSender;
 use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
 use survey::MassaSurvey;
+use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
 // #[cfg(not(feature = "testing"))]
@@ -50,15 +50,15 @@ pub fn set_operations_counter(val: usize) {
 
 #[derive(Default)]
 pub struct MetricsStopper {
-    pub(crate) stopper: Option<MassaSender<()>>,
+    pub(crate) stopper: Option<Sender<()>>,
     pub(crate) stop_handle: Option<JoinHandle<()>>,
 }
 
 impl MetricsStopper {
     pub fn stop(&mut self) {
         if let Some(stopper) = self.stopper.take() {
-            if let Err(e) = stopper.send(()) {
-                warn!("failed to send stop signal to metrics server: {}", e);
+            if stopper.send(()).is_err() {
+                warn!("failed to send stop signal to metrics server");
             }
 
             if let Some(handle) = self.stop_handle.take() {
