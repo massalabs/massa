@@ -198,16 +198,7 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, BTreeSet};
 
 <span class="kw">use </span>massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
@@ -217,7 +208,7 @@
 <span class="kw">use </span>massa_models::{block_header::SecuredHeader, block_id::BlockId, slot::Slot};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>tracing::{debug, log::warn};
+<span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
@@ -248,40 +239,29 @@
         );
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.incoming_header&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;header&quot;</span>: header});
         <span class="kw">let </span><span class="kw-2">mut </span>to_ack: BTreeSet&lt;(Slot, BlockId)&gt; = BTreeSet::new();
-        <span class="kw">match </span><span class="self">self</span>.blocks_state.insert_block(
-            block_id,
-            BlockStatus::Incoming(HeaderOrBlock::Header(header.clone())),
-        ) {
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
+        <span class="kw">match </span><span class="self">self</span>.block_statuses.entry(block_id) {
+            <span class="comment">// if absent =&gt; add as Incoming, call rec_ack on it
+            </span>Entry::Vacant(vac) =&gt; {
                 to_ack.insert((header.content.slot, block_id));
+                vac.insert(BlockStatus::Incoming(HeaderOrBlock::Header(header)));
+                <span class="self">self</span>.incoming_index.insert(block_id);
             }
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>to_increase = <span class="bool-val">false</span>;
-                <span class="kw">let </span>sequence_counter = <span class="self">self</span>.blocks_state.sequence_counter();
-                <span class="kw">let </span>occ = <span class="self">self</span>.blocks_state.get_mut(<span class="kw-2">&amp;</span>block_id).unwrap();
-                <span class="kw">match </span>occ {
-                    BlockStatus::Discarded {
-                        sequence_number, ..
-                    } =&gt; {
-                        <span class="comment">// promote if discarded
-                        </span><span class="kw-2">*</span>sequence_number = sequence_counter + <span class="number">1</span>;
-                        to_increase = <span class="bool-val">true</span>;
-                    }
-                    BlockStatus::WaitingForDependencies { .. } =&gt; {
-                        <span class="comment">// promote in dependencies
-                        </span><span class="self">self</span>.blocks_state.promote_dep_tree(block_id)<span class="question-mark">?</span>;
-                    }
-                    <span class="kw">_ </span>=&gt; {}
+            Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; <span class="kw">match </span>occ.get_mut() {
+                BlockStatus::Discarded {
+                    sequence_number, ..
+                } =&gt; {
+                    <span class="comment">// promote if discarded
+                    </span><span class="self">self</span>.sequence_counter += <span class="number">1</span>;
+                    <span class="kw-2">*</span>sequence_number = <span class="self">self</span>.sequence_counter;
                 }
-                <span class="kw">if </span>to_increase {
-                    <span class="self">self</span>.blocks_state.inc_sequence_counter();
+                BlockStatus::WaitingForDependencies { .. } =&gt; {
+                    <span class="comment">// promote in dependencies
+                    </span><span class="self">self</span>.promote_dep_tree(block_id)<span class="question-mark">?</span>;
                 }
-            }
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;couldn&#39;t store header {} received: {}&quot;</span>, block_id, e);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(e);
-            }
+                <span class="kw">_ </span>=&gt; {}
+            },
         }
+
         <span class="comment">// process
         </span><span class="self">self</span>.rec_process(to_ack, current_slot)<span class="question-mark">?</span>;
 
@@ -321,72 +301,57 @@
         <span class="macro">debug!</span>(<span class="string">&quot;received block {} for slot {}&quot;</span>, block_id, slot);
 
         <span class="kw">let </span><span class="kw-2">mut </span>to_ack: BTreeSet&lt;(Slot, BlockId)&gt; = BTreeSet::new();
-        <span class="kw">match </span><span class="self">self</span>.blocks_state.insert_block(
-            block_id,
-            BlockStatus::Incoming(HeaderOrBlock::Block {
-                id: block_id,
-                slot,
-                storage: storage.clone(),
-            }),
-        ) {
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
+        <span class="kw">match </span><span class="self">self</span>.block_statuses.entry(block_id) {
+            <span class="comment">// if absent =&gt; add as Incoming, call rec_ack on it
+            </span>Entry::Vacant(vac) =&gt; {
                 to_ack.insert((slot, block_id));
+                vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block {
+                    id: block_id,
+                    slot,
+                    storage,
+                }));
+                <span class="self">self</span>.incoming_index.insert(block_id);
             }
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>to_increase = <span class="bool-val">false</span>;
-                <span class="kw">let </span>sequence_counter = <span class="self">self</span>.blocks_state.sequence_counter();
-                <span class="kw">let </span>occ = <span class="self">self</span>.blocks_state.get_mut(<span class="kw-2">&amp;</span>block_id).unwrap();
-                <span class="kw">match </span>occ {
-                    BlockStatus::Discarded {
-                        sequence_number, ..
-                    } =&gt; {
-                        <span class="comment">// promote if discarded
-                        </span><span class="kw-2">*</span>sequence_number = sequence_counter + <span class="number">1</span>;
-                        to_increase = <span class="bool-val">true</span>;
-                    }
-                    BlockStatus::WaitingForSlot(header_or_block) =&gt; {
-                        <span class="comment">// promote to full block
-                        </span><span class="kw-2">*</span>header_or_block = HeaderOrBlock::Block {
-                            id: block_id,
-                            slot,
-                            storage,
-                        };
-                    }
-                    BlockStatus::WaitingForDependencies {
-                        header_or_block,
-                        unsatisfied_dependencies,
-                        ..
-                    } =&gt; {
-                        <span class="comment">// promote to full block and satisfy self-dependency
-                        </span><span class="kw">if </span>unsatisfied_dependencies.remove(<span class="kw-2">&amp;</span>block_id) {
-                            <span class="comment">// a dependency was satisfied: process
-                            </span>to_ack.insert((slot, block_id));
-                        }
-                        <span class="kw-2">*</span>header_or_block = HeaderOrBlock::Block {
-                            id: block_id,
-                            slot,
-                            storage,
-                        };
-                        <span class="comment">// promote in dependencies
-                        </span><span class="self">self</span>.blocks_state.promote_dep_tree(block_id)<span class="question-mark">?</span>;
-                    }
-                    <span class="kw">_ </span>=&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-                    }
+            Entry::Occupied(<span class="kw-2">mut </span>occ) =&gt; <span class="kw">match </span>occ.get_mut() {
+                BlockStatus::Discarded {
+                    sequence_number, ..
+                } =&gt; {
+                    <span class="comment">// promote if discarded
+                    </span><span class="self">self</span>.sequence_counter += <span class="number">1</span>;
+                    <span class="kw-2">*</span>sequence_number = <span class="self">self</span>.sequence_counter;
                 }
-                <span class="kw">if </span>to_increase {
-                    <span class="self">self</span>.blocks_state.inc_sequence_counter();
+                BlockStatus::WaitingForSlot(header_or_block) =&gt; {
+                    <span class="comment">// promote to full block
+                    </span><span class="kw-2">*</span>header_or_block = HeaderOrBlock::Block {
+                        id: block_id,
+                        slot,
+                        storage,
+                    };
                 }
-            }
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;couldn&#39;t store block {} received: {}&quot;</span>, block_id, e);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(e);
-            }
+                BlockStatus::WaitingForDependencies {
+                    header_or_block,
+                    unsatisfied_dependencies,
+                    ..
+                } =&gt; {
+                    <span class="comment">// promote to full block and satisfy self-dependency
+                    </span><span class="kw">if </span>unsatisfied_dependencies.remove(<span class="kw-2">&amp;</span>block_id) {
+                        <span class="comment">// a dependency was satisfied: process
+                        </span>to_ack.insert((slot, block_id));
+                    }
+                    <span class="kw-2">*</span>header_or_block = HeaderOrBlock::Block {
+                        id: block_id,
+                        slot,
+                        storage,
+                    };
+                    <span class="comment">// promote in dependencies
+                    </span><span class="self">self</span>.promote_dep_tree(block_id)<span class="question-mark">?</span>;
+                }
+                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+            },
         }
 
         <span class="comment">// process
-        </span><span class="macro">println!</span>(<span class="string">&quot;AURELIEN: to ack {:?} slot: {:?}&quot;</span>, to_ack, current_slot);
-        <span class="self">self</span>.rec_process(to_ack, current_slot)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.rec_process(to_ack, current_slot)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -396,24 +361,41 @@
     /// # Arguments:
     /// * `block_id`: Block id of the block to mark as invalid
     /// * `header`: Header of the block to mark as invalid
-    </span><span class="kw">pub fn </span>mark_invalid_block(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        block_id: <span class="kw-2">&amp;</span>BlockId,
-        header: SecuredHeader,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
+    </span><span class="kw">pub fn </span>mark_invalid_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId, header: SecuredHeader) {
         <span class="kw">let </span>reason = DiscardReason::Invalid(<span class="string">&quot;invalid&quot;</span>.to_string());
         <span class="self">self</span>.maybe_note_attack_attempt(<span class="kw-2">&amp;</span>reason, block_id);
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.invalid_block&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason});
-        <span class="self">self</span>.blocks_state.update_block_state(
-            block_id,
+        <span class="kw">match </span><span class="self">self</span>.block_statuses.get(block_id) {
+            <span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies { .. }) =&gt; {
+                <span class="self">self</span>.waiting_for_dependencies_index.remove(block_id);
+            }
+            <span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(<span class="kw">_</span>)) =&gt; {
+                <span class="self">self</span>.waiting_for_slot_index.remove(block_id);
+            }
+            <span class="prelude-val">Some</span>(BlockStatus::Incoming(<span class="kw">_</span>)) =&gt; {
+                <span class="self">self</span>.incoming_index.remove(block_id);
+            }
+            <span class="prelude-val">Some</span>(BlockStatus::Active { .. }) =&gt; {
+                <span class="self">self</span>.active_index.remove(block_id);
+            }
+            <span class="prelude-val">Some</span>(BlockStatus::Discarded { .. }) =&gt; {}
+            <span class="prelude-val">None </span>=&gt; {}
+        };
+        <span class="comment">// add to discard
+        </span><span class="self">self</span>.block_statuses.insert(
+            <span class="kw-2">*</span>block_id,
             BlockStatus::Discarded {
                 slot: header.content.slot,
                 creator: header.content_creator_address,
                 parents: header.content.parents,
                 reason,
-                sequence_number: <span class="self">self</span>.blocks_state.sequence_counter(),
+                sequence_number: {
+                    <span class="self">self</span>.sequence_counter += <span class="number">1</span>;
+                    <span class="self">self</span>.sequence_counter
+                },
             },
-        )
+        );
+        <span class="self">self</span>.discarded_index.insert(<span class="kw-2">*</span>block_id);
     }
 }
 </code></pre></div></section></main></body></html>
