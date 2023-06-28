@@ -17,7 +17,7 @@ pub(crate) fn bind_metrics(addr: SocketAddr) -> MetricsStopper {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .expect("build runtime");
+            .expect("error on build tokio runtime for metrics server");
 
         rt.block_on(async {
             let server = hyper::Server::bind(&addr).serve(make_service_fn(|_| async {
