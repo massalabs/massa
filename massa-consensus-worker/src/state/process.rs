@@ -271,7 +271,6 @@ impl ConsensusState {
         fitness: u64,
         mut storage: Storage,
     ) -> Result<(), ConsensusError> {
-        println!("AURELIEN: add_block_to_graph");
         massa_trace!("consensus.block_graph.add_block_to_graph", {
             "block_id": add_block_id
         });

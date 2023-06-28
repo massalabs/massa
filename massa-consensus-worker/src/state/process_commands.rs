@@ -176,7 +176,6 @@ impl ConsensusState {
         }
 
         // process
-        println!("AURELIEN: to ack {:?} slot: {:?}", to_ack, current_slot);
         self.rec_process(to_ack, current_slot)?;
 
         Ok(())

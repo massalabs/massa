@@ -150,7 +150,6 @@ impl ConsensusWorker {
                     // Execute all operations and checks that should be performed at each slot
                     {
                         let mut write_shared_state = self.shared_state.write();
-                        println!("AURELIEN execute slot {}", self.next_slot);
                         if let Err(err) = write_shared_state.slot_tick(self.next_slot) {
                             warn!("Error while processing block tick: {}", err);
                         }
