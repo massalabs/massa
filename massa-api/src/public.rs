@@ -464,9 +464,11 @@ impl MassaRpcServer for API<Public> {
         );
 
         let curr_cycle = match latest_block_slot_at_timestamp_result {
-            Ok(curr_cycle) => curr_cycle
-                .unwrap_or_else(|| Slot::new(0, 0))
-                .get_cycle(cfg.periods_per_cycle),
+            Ok(Some(cur_slot)) if cur_slot.period <= self.0.api_settings.last_start_period => {
+                Slot::new(self.0.api_settings.last_start_period, 0).get_cycle(cfg.periods_per_cycle)
+            }
+            Ok(Some(cur_slot)) => cur_slot.get_cycle(cfg.periods_per_cycle),
+            Ok(None) => 0,
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
