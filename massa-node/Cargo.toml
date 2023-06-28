@@ -1,6 +1,6 @@
 [package]
 name = "massa-node"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -17,7 +17,7 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "b18e8e8f68aa268874ffd533b8f950699075c7a9" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "4929687ed69946482cc3bffddf2162fbe02f734f" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 rand = { version = "0.8.5", optional = true }

@@ -294,8 +294,7 @@ pub fn start_protocol_controller(
                         })
                         .collect(),
                     PeerNetCategoryInfo {
-                        max_in_connections_post_handshake: infos.max_in_connections_post_handshake,
-                        max_in_connections_pre_handshake: infos.max_in_connections_pre_handshake,
+                        max_in_connections: infos.max_in_connections,
                         max_in_connections_per_ip: infos.max_in_connections_per_ip,
                     },
                 ),
@@ -304,12 +303,7 @@ pub fn start_protocol_controller(
         .collect();
     peernet_config.peers_categories = peernet_categories;
     peernet_config.default_category_info = PeerNetCategoryInfo {
-        max_in_connections_pre_handshake: config
-            .default_category_info
-            .max_in_connections_pre_handshake,
-        max_in_connections_post_handshake: config
-            .default_category_info
-            .max_in_connections_post_handshake,
+        max_in_connections: config.default_category_info.max_in_connections,
         max_in_connections_per_ip: config.default_category_info.max_in_connections_per_ip,
     };
     peernet_config.max_in_connections = config.max_in_connections;

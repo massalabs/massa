@@ -1,6 +1,6 @@
 [package]
 name = "massa_protocol_worker"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -13,7 +13,7 @@ serde_json = "1.0"
 nom = "=7.1"
 num_enum = "0.5"
 # TODO tag peernet version
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "b18e8e8f68aa268874ffd533b8f950699075c7a9" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "4929687ed69946482cc3bffddf2162fbe02f734f" }
 tempfile = { version = "3.3", optional = true } # use with testing feature
 rayon = "1.7.0"
 schnellru = "0.2.1"
