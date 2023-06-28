@@ -91,6 +91,7 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>massa_consensus_exports::{block_status::BlockStatus, error::ConsensusError};
@@ -114,9 +115,10 @@
 
         <span class="comment">// list all elements for which the time has come
         </span><span class="kw">let </span>to_process: BTreeSet&lt;(Slot, BlockId)&gt; = <span class="self">self
-            </span>.waiting_for_slot_index
+            </span>.blocks_state
+            .waiting_for_dependencies_blocks()
             .iter()
-            .filter_map(|b_id| <span class="kw">match </span><span class="self">self</span>.block_statuses.get(b_id) {
+            .filter_map(|b_id| <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
                 <span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(header_or_block)) =&gt; {
                     <span class="kw">let </span>slot = header_or_block.get_slot();
                     <span class="kw">if </span>slot &lt;= current_slot {
@@ -174,10 +176,10 @@
         }
 
         <span class="self">self</span>.massa_metrics.set_consensus_state(
-            <span class="self">self</span>.active_index.len(),
-            <span class="self">self</span>.incoming_index.len(),
-            <span class="self">self</span>.discarded_index.len(),
-            <span class="self">self</span>.block_statuses.len(),
+            <span class="self">self</span>.blocks_state.active_blocks().len(),
+            <span class="self">self</span>.blocks_state.incoming_blocks().len(),
+            <span class="self">self</span>.blocks_state.discarded_blocks().len(),
+            <span class="self">self</span>.blocks_state.len(),
             <span class="self">self</span>.active_index_without_ops.len(),
         );
 
