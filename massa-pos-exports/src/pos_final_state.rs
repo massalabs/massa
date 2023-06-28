@@ -442,7 +442,7 @@ impl PoSFinalState {
 
         // extend production stats
         for (addr, stats) in changes.production_stats {
-            if let Some(prev_production_stats) = self.get_production_stats_for_address(cycle, addr)
+            if let Some(prev_production_stats) = self.get_production_stats_for_address(cycle, &addr)
             {
                 let mut new_production_stats = prev_production_stats;
                 new_production_stats.extend(&stats);
@@ -708,10 +708,10 @@ impl PoSFinalState {
     }
 
     /// Gets the deferred credits for an address
-    pub fn get_address_deferred_credits(&self, address: &Address) -> DeferredCredits {
+    pub fn get_address_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         let db = self.db.read();
 
-        let mut deferred_credits = DeferredCredits::new_without_hash();
+        let mut deferred_credits = BTreeMap::new();
 
         let start_key_buffer = DEFERRED_CREDITS_PREFIX.as_bytes().to_vec();
 
@@ -728,7 +728,7 @@ impl PoSFinalState {
                 .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
-            let (_, addr) = self
+            let (_, addr): (_, Address) = self
                 .deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
@@ -747,7 +747,7 @@ impl PoSFinalState {
                 .deserialize::<DeserializeError>(&serialized_value)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
-            deferred_credits.insert(slot, addr, amount);
+            deferred_credits.insert(slot, amount);
         }
 
         deferred_credits
@@ -1032,15 +1032,15 @@ impl PoSFinalState {
     pub fn get_production_stats_for_address(
         &self,
         cycle: u64,
-        address: Address,
+        address: &Address,
     ) -> Option<ProductionStats> {
         let db = self.db.read();
 
         let prefix = self.cycle_history_cycle_prefix(cycle);
 
         let query = vec![
-            (STATE_CF, prod_stats_fail_key!(prefix, address)),
-            (STATE_CF, prod_stats_success_key!(prefix, address)),
+            (STATE_CF, prod_stats_fail_key!(prefix, *address)),
+            (STATE_CF, prod_stats_success_key!(prefix, *address)),
         ];
 
         let results = db.multi_get_cf(query);

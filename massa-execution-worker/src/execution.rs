@@ -24,6 +24,7 @@ use massa_execution_exports::{
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
+use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
@@ -45,7 +46,7 @@ use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
@@ -1606,7 +1607,7 @@ impl ExecutionState {
                     candidate_keys = Some(
                         new_ledger_entry
                             .datastore
-                            .range(prefix_range)
+                            .range::<Vec<u8>, _>(prefix_range)
                             .map(|(k, _v)| k.clone())
                             .collect(),
                     );
@@ -1615,7 +1616,9 @@ impl ExecutionState {
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
                     let c_k = candidate_keys.get_or_insert_default();
-                    for (ds_key, ds_update) in entry_updates.datastore.range(prefix_range) {
+                    for (ds_key, ds_update) in
+                        entry_updates.datastore.range::<Vec<u8>, _>(prefix_range)
+                    {
                         match ds_update {
                             SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
                             SetOrDelete::Delete => c_k.remove(ds_key),
@@ -1631,6 +1634,10 @@ impl ExecutionState {
         }
 
         (final_keys, candidate_keys)
+    }
+
+    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
+        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
     }
 
     /// Returns for a given cycle the stakers taken into account
@@ -1741,7 +1748,7 @@ impl ExecutionState {
                             .get_production_stats_for_address(cycle, addr)
                             .unwrap_or_default(),
                     };
-                    (addr, staker_info)
+                    (*addr, staker_info)
                 })
                 .collect()
         } else {
@@ -1776,11 +1783,7 @@ impl ExecutionState {
     }
 
     /// Get future deferred credits of an address
-    /// Returns tuple: (speculative, final)
-    pub fn get_address_future_deferred_credits(
-        &self,
-        address: &Address,
-    ) -> (BTreeMap<Slot, Amount>, BTreeMap<Slot, Amount>) {
+    pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
     }
 
@@ -1798,12 +1801,12 @@ impl ExecutionState {
             .get_address_deferred_credits(address);
 
         // get values from active history, backwards
-        let mut res_speculative: HashMap<Slot, Amount> = HashMap::default();
+        let mut res_speculative: BTreeMap<Slot, Amount> = BTreeMap::default();
         for hist_item in self.active_history.read().0.iter().rev() {
             for (slot, addr_amount) in hist_item.state_changes.pos_changes.deferred_credits.credits
             {
                 if let Some(amount) = addr_amount.get(address) {
-                    let _ = res_speculative.try_insert(*slot, *amount);
+                    let _ = res_speculative.try_insert(slot, *amount);
                 };
             }
         }
@@ -1812,7 +1815,7 @@ impl ExecutionState {
             let _ = res_speculative.try_insert(*s, *v);
         }
         // remove zero entries from speculative
-        res_speculative.retain(|(_s, a)| !a.is_zero());
+        res_speculative.retain(|_s, a| !a.is_zero());
 
         (res_speculative, res_final)
     }

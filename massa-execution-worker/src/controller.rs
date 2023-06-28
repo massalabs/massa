@@ -445,7 +445,7 @@ impl ExecutionController for ExecutionControllerImpl {
                 candidate_balance: candidate_balance.unwrap_or_default(),
                 final_roll_count,
                 candidate_roll_count,
-                future_deferred_credits: exec_state.get_address_future_deferred_credits(addr).0,
+                future_deferred_credits: exec_state.get_address_future_deferred_credits(addr),
                 cycle_infos: exec_state.get_address_cycle_infos(addr),
             });
         }
