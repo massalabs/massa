@@ -1259,6 +1259,10 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 info!("interrupt signal received");
                 break false;
             }
+
+            // Elements of the system that involve stopping and restarting should be checked by forcing a relaunch.
+            // This check allows the system to start up as normal, wait 10s, then force a relaunch. If Things take too long
+            // to shutdown, or does not allow for a clean relaunch, this feature flag can expose those issues.
             #[cfg(feature = "resync_check")]
             if let Some(resync_moment) = resync_check {
                 if resync_moment < std::time::Instant::now() {
