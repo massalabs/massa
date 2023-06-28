@@ -67,7 +67,7 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
-        mut mip_store: MipStore,
+        mip_store: MipStore,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
         let db_slot = db
@@ -101,11 +101,6 @@ impl FinalState {
         // create a default executed denunciations
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
-
-        // init MIP store by reading from the db
-        mip_store
-            .extend_from_db(db.clone())
-            .map_err(FinalStateError::from)?;
 
         let mut final_state = FinalState {
             ledger,
