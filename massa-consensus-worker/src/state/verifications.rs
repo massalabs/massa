@@ -80,6 +80,7 @@ impl ConsensusState {
         stored_block: SecureShareBlock,
         current_slot: Option<Slot>,
     ) -> Result<Option<BlockInfos>, ConsensusError> {
+        println!("AURELIEN: before check_header");
         let header_outcome =
             self.check_header(&block_id, &stored_block.content.header, current_slot)?;
         match header_outcome {
@@ -96,6 +97,7 @@ impl ConsensusState {
                 massa_trace!("consensus.block_graph.process.incoming_block.valid", {
                     "block_id": block_id
                 });
+                println!("AURELIEN: return in proceed");
                 return Ok(Some(BlockInfos {
                     creator: stored_block.content.header.content_creator_pub_key,
                     parents_hash_period,
@@ -127,6 +129,7 @@ impl ConsensusState {
                 if self.detect_multistake(&stored_block.content.header) {
                     return Ok(None);
                 }
+                println!("AURELIEN: in wait for slot");
                 self.blocks_state.update_block_state(
                     &block_id,
                     BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
@@ -135,6 +138,14 @@ impl ConsensusState {
                         storage,
                     }),
                 )?;
+                println!(
+                    "AURELIEN: after wait for slot {:?}",
+                    self.blocks_state.get(&block_id)
+                );
+                println!(
+                    "AURELIEN: after wait for slot {:?}",
+                    self.blocks_state.waiting_for_slot_blocks()
+                );
             }
             HeaderCheckOutcome::Discard(reason) => {
                 self.store_discard_block_header(reason, block_id, stored_block.content.header)?;
@@ -278,6 +289,7 @@ impl ConsensusState {
 
         // check if it was the creator's turn to create this block
         // (step 1 in consensus/pos.md)
+        println!("AURELIEN: before first check");
         let slot_draw_address = match self
             .channels
             .selector_controller
@@ -286,6 +298,10 @@ impl ConsensusState {
             Ok(draw) => draw,
             Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot), // TODO properly handle PoS errors
         };
+        println!(
+            "AURELIEN: after first check {} {}",
+            creator_addr, slot_draw_address
+        );
         if creator_addr != slot_draw_address {
             // it was not the creator's turn to create a block for this slot
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
@@ -296,6 +312,10 @@ impl ConsensusState {
         // check if block is in the future: queue it
         // note: do it after testing signature + draw to prevent queue flooding/DoS
         // note: Some(x) > None
+        println!(
+            "AURELIEN: check slot {:?} {:?}",
+            header.content.slot, current_slot
+        );
         if Some(header.content.slot) > current_slot {
             return Ok(HeaderCheckOutcome::WaitForSlot);
         }
@@ -303,6 +323,7 @@ impl ConsensusState {
         // Note: here we will check if we already have a block for that slot
         // and if someone double staked, they will be denounced
 
+        println!("AURELIEN: before parents");
         // list parents and ensure they are present
         let parent_set: PreHashSet<BlockId> = header.content.parents.iter().copied().collect();
         for parent_thread in 0u8..self.config.thread_count {
@@ -439,6 +460,7 @@ impl ConsensusState {
         })?;
 
         // check endorsements
+        println!("AURELIEN: before check_endorsements");
         match self.check_endorsements(header)? {
             EndorsementsCheckOutcome::Proceed => {}
             EndorsementsCheckOutcome::Discard(reason) => {

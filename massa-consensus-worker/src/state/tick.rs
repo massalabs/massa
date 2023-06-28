@@ -22,7 +22,7 @@ impl ConsensusState {
         // list all elements for which the time has come
         let to_process: BTreeSet<(Slot, BlockId)> = self
             .blocks_state
-            .waiting_for_dependencies_blocks()
+            .waiting_for_slot_blocks()
             .iter()
             .filter_map(|b_id| match self.blocks_state.get(b_id) {
                 Some(BlockStatus::WaitingForSlot(header_or_block)) => {

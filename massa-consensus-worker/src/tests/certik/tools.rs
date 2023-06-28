@@ -1,20 +1,18 @@
-use std::{sync::Arc, time::Duration, vec};
+use std::{future::Future, sync::Arc, time::Duration};
 
 use crate::start_consensus_worker;
 use crossbeam_channel::Receiver;
-use massa_channel::{receiver::MassaReceiver, MassaChannel};
 use massa_consensus_exports::{
     events::ConsensusEvent, ConsensusChannels, ConsensusConfig, ConsensusController,
 };
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_hash::Hash;
-use massa_metrics::MassaMetrics;
 use massa_models::{
     address::Address,
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
-    config::{ENDORSEMENT_COUNT, THREAD_COUNT},
+    config::ENDORSEMENT_COUNT,
     secure_share::SecureShareContent,
     slot::Slot,
 };
@@ -23,45 +21,33 @@ use massa_pos_exports::{
     test_exports::{MockSelectorController, MockSelectorControllerMessage},
     Selection, SelectorController,
 };
-use massa_protocol_exports::{MockProtocolController, ProtocolController};
+use massa_protocol_exports::{test_exports::MockProtocolController, ProtocolCommand};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::Mutex;
 
-pub fn consensus_without_pool_test<F>(cfg: ConsensusConfig, test: F)
+pub async fn consensus_without_pool_test<F, V>(cfg: ConsensusConfig, test: F)
 where
     F: FnOnce(
         MockProtocolController,
         Box<dyn ConsensusController>,
-        MassaReceiver<ConsensusEvent>,
+        Receiver<ConsensusEvent>,
         Box<dyn SelectorController>,
         Receiver<MockSelectorControllerMessage>,
-    ) -> (
-        MockProtocolController,
-        Box<dyn ConsensusController>,
-        MassaReceiver<ConsensusEvent>,
-        Box<dyn SelectorController>,
-        Receiver<MockSelectorControllerMessage>,
-    ),
+    ) -> V,
+    V: Future<
+        Output = (
+            MockProtocolController,
+            Box<dyn ConsensusController>,
+            Receiver<ConsensusEvent>,
+            Box<dyn SelectorController>,
+            Receiver<MockSelectorControllerMessage>,
+        ),
+    >,
 {
     let storage: Storage = Storage::create_root();
     // mock protocol & pool
-    let mut protocol_controller = MockProtocolController::default();
-    let mut protocol_controller_2 = MockProtocolController::default();
-    let mut protocol_controller_3 = MockProtocolController::default();
-    //TODO: Test better here for example number of times
-    protocol_controller_3
-        .expect_integrated_block()
-        .returning(|_, _| Ok(()));
-    protocol_controller_3
-        .expect_notify_block_attack()
-        .returning(|_| Ok(()));
-    protocol_controller_2
-        .expect_clone_box()
-        .return_once(move || Box::new(protocol_controller_3));
-    protocol_controller
-        .expect_clone_box()
-        .return_once(move || Box::new(protocol_controller_2));
+    let (protocol_controller, protocol_command_sender) = MockProtocolController::new();
     let (pool_controller, _pool_event_receiver) = MockPoolController::new_with_receiver();
     let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
     // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
@@ -74,8 +60,9 @@ where
         }
     });
     // launch consensus controller
-    let (consensus_event_sender, consensus_event_receiver) =
-        MassaChannel::new(String::from("consensus_event"), Some(10));
+    let (consensus_event_sender, consensus_event_receiver) = crossbeam_channel::unbounded();
+    let (denunciation_factory_sender, _denunciation_factory_receiver) =
+        crossbeam_channel::unbounded();
 
     // All API channels
     let (block_sender, _block_receiver) = tokio::sync::broadcast::channel(10);
@@ -88,14 +75,14 @@ where
             block_header_sender,
             filled_block_sender,
             controller_event_tx: consensus_event_sender,
+            denunciation_factory_sender,
             execution_controller,
-            protocol_controller: protocol_controller.clone_box(),
-            pool_controller,
+            protocol_command_sender: protocol_command_sender.clone(),
+            pool_command_sender: pool_controller,
             selector_controller: selector_controller.clone(),
         },
         None,
         storage.clone(),
-        MassaMetrics::new(false, THREAD_COUNT),
     );
 
     // Call test func.
@@ -111,7 +98,8 @@ where
         consensus_event_receiver,
         selector_controller,
         selector_receiver,
-    );
+    )
+    .await;
 
     // stop controller while ignoring all commands
     drop(consensus_controller);
@@ -140,9 +128,6 @@ pub fn create_block_with_merkle_root(
 ) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
-            current_version: 0,
-            announced_version: 0,
-            denunciations: vec![],
             slot,
             parents: best_parents,
             operation_merkle_root,
@@ -162,6 +147,32 @@ pub fn create_block_with_merkle_root(
         creator,
     )
     .unwrap()
+}
+
+pub async fn validate_propagate_block_in_list(
+    protocol_controller: &mut MockProtocolController,
+    valid: &Vec<BlockId>,
+    timeout_ms: u64,
+) -> BlockId {
+    let param = protocol_controller
+        .wait_command(timeout_ms.into(), |cmd| match cmd {
+            ProtocolCommand::IntegratedBlock {
+                block_id,
+                storage: _,
+            } => Some(block_id),
+            _ => None,
+        })
+        .await;
+    match param {
+        Some(block_id) => {
+            assert!(
+                valid.contains(&block_id),
+                "not the valid hash propagated, it can be a genesis_timestamp problem"
+            );
+            block_id
+        }
+        None => panic!("Hash not propagated."),
+    }
 }
 
 pub fn answer_ask_producer_pos(
@@ -250,7 +261,7 @@ pub struct TestController {
 pub fn register_block_and_process_with_tc(
     slot: Slot,
     best_parents: Vec<BlockId>,
-    test_controller: &TestController,
+    test_controller: &TestController
 ) -> SecureShareBlock {
     return register_block_and_process(
         slot,
@@ -275,12 +286,7 @@ pub fn register_block_and_process(
     timeout_ms: u64,
 ) -> SecureShareBlock {
     let block = create_block(slot, best_parents, creator);
-    register_block(
-        consensus_controller,
-        selector_receiver,
-        block.clone(),
-        storage,
-    );
+    register_block(consensus_controller, selector_receiver, block.clone(), storage);
     answer_ask_producer_pos(selector_receiver, staking_address, timeout_ms);
     answer_ask_selection_pos(selector_receiver, staking_address, timeout_ms);
     return block;

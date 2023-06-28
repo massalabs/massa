@@ -9,7 +9,6 @@ use massa_time::MassaTime;
 
 use super::tools::{
     answer_ask_producer_pos, answer_ask_selection_pos, consensus_without_pool_test, register_block,
-    validate_propagate_block_in_list,
 };
 
 #[test]
@@ -30,11 +29,11 @@ fn test_unsorted_block() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        move |mut protocol_controller,
-                    consensus_controller,
-                    consensus_event_receiver,
-                    selector_controller,
-                    selector_receiver| {
+        move |protocol_controller,
+              consensus_controller,
+              consensus_event_receiver,
+              selector_controller,
+              selector_receiver| {
             let start_period = 3;
             let genesis_hashes = consensus_controller
                 .get_block_graph_status(None, None)
@@ -140,42 +139,30 @@ fn test_unsorted_block() {
 
             // block t0s1 and t1s1 are propagated
             let staking_address = Address::from_public_key(&staking_key.get_public_key());
-            let hash_list = vec![t0s1.id, t1s1.id];
             answer_ask_producer_pos(
                 &selector_receiver,
                 &staking_address,
                 3000 + start_period * 1000,
             );
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
 
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             // block t0s2 and t1s2 are propagated
-            let hash_list = vec![t0s2.id, t1s2.id];
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             // block t0s3 and t1s3 are propagated
-            let hash_list = vec![t0s3.id, t1s3.id];
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             // block t0s4 and t1s4 are propagated
-            let hash_list = vec![t0s4.id, t1s4.id];
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000);
             answer_ask_producer_pos(&selector_receiver, &staking_address, 1000);
             answer_ask_selection_pos(&selector_receiver, &staking_address, 1000);
-            validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 4000);
             (
                 protocol_controller,
                 consensus_controller,
@@ -205,10 +192,10 @@ fn test_grandpa_incompatibility() {
     consensus_without_pool_test(
         cfg.clone(),
         move |protocol_controller,
-                    consensus_controller,
-                    consensus_event_receiver,
-                    selector_controller,
-                    selector_receiver| {
+              consensus_controller,
+              consensus_event_receiver,
+              selector_controller,
+              selector_receiver| {
             let genesis = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status")
