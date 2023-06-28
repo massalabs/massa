@@ -1345,6 +1345,10 @@ impl ExecutionState {
             "execute_final_slot: execution finished & result applied & versioning stats updated"
         );
 
+        // update prometheus metrics
+        self.massa_metrics
+            .inc_operations_final_counter(exec_out.state_changes.executed_ops_changes.len() as u64);
+
         // Broadcast a final slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
             let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
@@ -1729,7 +1733,7 @@ impl ExecutionState {
                         .update_batches(
                             &mut db_batch,
                             &mut db_versioning_batch,
-                            (&slot_prev_ts, &slot_ts),
+                            Some((&slot_prev_ts, &slot_ts)),
                         )
                         .unwrap_or_else(|e| {
                             panic!(

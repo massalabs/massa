@@ -40,7 +40,7 @@ use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
-use massa_metrics::MassaMetrics;
+use massa_metrics::{MassaMetrics, MetricsStopper};
 use massa_models::address::Address;
 use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -121,6 +121,7 @@ async fn launch(
     StopHandle,
     StopHandle,
     Option<massa_grpc::server::StopHandle>,
+    MetricsStopper,
 ) {
     info!("Node version : {}", *VERSION);
     let now = MassaTime::now().expect("could not get now time");
@@ -228,7 +229,12 @@ async fn launch(
     };
 
     // Start massa metrics
-    let metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
+    let (massa_metrics, metrics_stopper) = MassaMetrics::new(
+        SETTINGS.metrics.enabled,
+        SETTINGS.metrics.bind,
+        THREAD_COUNT,
+        SETTINGS.metrics.tick_delay.to_duration(),
+    );
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -485,7 +491,7 @@ async fn launch(
         mip_store.clone(),
         execution_channels.clone(),
         node_wallet.clone(),
-        metrics.clone(),
+        massa_metrics.clone(),
     );
 
     // launch pool controller
@@ -681,7 +687,7 @@ async fn launch(
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
-        metrics.clone(),
+        massa_metrics.clone(),
     );
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
@@ -693,7 +699,7 @@ async fn launch(
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
-        metrics,
+        massa_metrics.clone(),
     )
     .expect("could not start protocol controller");
 
@@ -778,6 +784,7 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        last_start_period: final_state.read().last_start_period,
     };
 
     // spawn Massa API
@@ -991,6 +998,7 @@ async fn launch(
         api_public_handle,
         api_handle,
         grpc_handle,
+        metrics_stopper,
     )
 }
 
@@ -1019,6 +1027,7 @@ async fn stop(
     api_public_handle: StopHandle,
     api_handle: StopHandle,
     grpc_handle: Option<massa_grpc::server::StopHandle>,
+    mut metrics_stopper: MetricsStopper,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -1045,6 +1054,9 @@ async fn stop(
     // stop private API
     api_private_handle.stop().await;
     info!("API | PRIVATE JsonRPC | stopped");
+
+    // stop metrics
+    metrics_stopper.stop();
 
     // stop factory
     factory_manager.stop();
@@ -1194,6 +1206,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
+    #[cfg(feature = "resync_check")]
+    let mut resync_check = Some(std::time::Instant::now() + std::time::Duration::from_secs(10));
+
     loop {
         let (
             consensus_event_receiver,
@@ -1208,6 +1223,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
 
         // loop over messages
@@ -1244,6 +1260,18 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 info!("interrupt signal received");
                 break false;
             }
+
+            // Elements of the system that involve stopping and restarting should be checked by forcing a relaunch.
+            // This check allows the system to start up as normal, wait 10s, then force a relaunch. If Things take too long
+            // to shutdown, or does not allow for a clean relaunch, this feature flag can expose those issues.
+            #[cfg(feature = "resync_check")]
+            if let Some(resync_moment) = resync_check {
+                if resync_moment < std::time::Instant::now() {
+                    warn!("resync check triggered");
+                    resync_check = None;
+                    break true;
+                }
+            }
         };
         stop(
             consensus_event_receiver,
@@ -1260,6 +1288,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         )
         .await;
 

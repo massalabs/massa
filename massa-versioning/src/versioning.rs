@@ -63,7 +63,22 @@ pub struct MipInfo {
 
 impl Ord for MipInfo {
     fn cmp(&self, other: &Self) -> Ordering {
-        (self.start, &self.timeout).cmp(&(other.start, &other.timeout))
+        (
+            self.start,
+            self.timeout,
+            self.activation_delay,
+            &self.name,
+            &self.version,
+            &self.components,
+        )
+            .cmp(&(
+                other.start,
+                other.timeout,
+                other.activation_delay,
+                &other.name,
+                &other.version,
+                &other.components,
+            ))
     }
 }
 
@@ -250,6 +265,8 @@ pub enum IsCoherentError {
     InvalidHistory(ComponentStateTypeId),
     #[error("Non coherent state: {0:?} versus rebuilt state: {1:?}")]
     NonCoherent(ComponentState, ComponentState),
+    #[error("Invalid data in MIP info, start >= timeout")]
+    Invalid,
 }
 
 /// Wrapper of ComponentState (in order to keep state history)
@@ -330,6 +347,10 @@ impl MipState {
             return Err(IsCoherentError::AtError);
         }
 
+        if mip_info.start >= mip_info.timeout {
+            return Err(IsCoherentError::Invalid);
+        }
+
         if self.history.is_empty() {
             return Err(IsCoherentError::EmptyHistory);
         }
@@ -338,6 +359,11 @@ impl MipState {
         let (initial_ts, initial_state_id) = self.history.first_key_value().unwrap();
         if *initial_state_id != ComponentStateTypeId::Defined {
             // self.history does not start with Defined -> (always) false
+            return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
+        }
+
+        if mip_info.start < initial_ts.now || mip_info.timeout < initial_ts.now {
+            // MIP info start (or timeout) is before Defined timestamp??
             return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
@@ -608,7 +634,7 @@ impl MipStore {
         &self,
         db_batch: &mut DBBatch,
         db_versioning_batch: &mut DBBatch,
-        between: (&MassaTime, &MassaTime),
+        between: Option<(&MassaTime, &MassaTime)>,
     ) -> Result<(), SerializeError> {
         let guard = self.0.read();
         guard.update_batches(db_batch, db_versioning_batch, between)
@@ -1081,12 +1107,15 @@ impl MipStoreRaw {
         &self,
         batch: &mut DBBatch,
         versioning_batch: &mut DBBatch,
-        between: (&MassaTime, &MassaTime),
+        between: Option<(&MassaTime, &MassaTime)>,
     ) -> Result<(), SerializeError> {
         let mip_info_ser = MipInfoSerializer::new();
         let mip_state_ser = MipStateSerializer::new();
 
-        let bounds = (*between.0)..=(*between.1);
+        let bounds = match between {
+            Some(between) => (*between.0)..=(*between.1),
+            None => MassaTime::from_millis(0)..=MassaTime::max(),
+        };
         let mut key = Vec::new();
         let mut value = Vec::new();
 
@@ -1675,7 +1704,6 @@ mod test {
         ))
         .unwrap();
 
-        println!("update with:");
         let (updated, added) = vs_raw_1.update_with(&vs_raw_2).unwrap();
 
         // Check update_with result
@@ -1782,10 +1810,63 @@ mod test {
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
-            // Component states being equal should produce an Ok result
-            // We also have vi.1.components == vi_2_2.components ~ overlapping versions
-            // TODO: clarify how this is supposed to behave
-            assert_matches!(vs_raw_1.update_with(&vs_raw_2), Ok(_));
+            // MIP-0003 in vs_raw_1 & vs_raw_2 has != components
+            assert_matches!(
+                vs_raw_1.update_with(&vs_raw_2),
+                Err(UpdateWithError::Overlapping(..))
+            );
+        }
+    }
+
+    #[test]
+    fn test_try_from_invalid() {
+        // Test create a MIP store with invalid MIP info
+
+        // part 0 - defines data for the test
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            counters_max: 5,
+        };
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
+        };
+        let _time = MassaTime::now().unwrap();
+        let ms_1 = advance_state_until(ComponentState::active(_time), &mi_1);
+        assert!(matches!(ms_1.state, ComponentState::Active(_)));
+        {
+            // make mi_1_1 invalid: start is after timeout
+            let mut mi_1_1 = mi_1.clone();
+            mi_1_1.start = MassaTime::from_millis(5);
+            mi_1_1.timeout = MassaTime::from_millis(2);
+
+            let mip_store =
+                MipStoreRaw::try_from(([(mi_1_1, ms_1.clone())], mip_stats_cfg.clone()));
+            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+        }
+        {
+            let ms_1_2 = MipState::new(MassaTime::from_millis(15));
+            // make mi_1_1 invalid: start is after timeout
+            let mut mi_1_2 = mi_1.clone();
+            mi_1_2.start = MassaTime::from_millis(2);
+            mi_1_2.timeout = MassaTime::from_millis(5);
+
+            let mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg.clone()));
+            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+        }
+        {
+            let ms_1_2 = MipState::new(MassaTime::from_millis(15));
+            // make mi_1_1 invalid: start is after timeout
+            let mut mi_1_2 = mi_1.clone();
+            mi_1_2.start = MassaTime::from_millis(16);
+            mi_1_2.timeout = MassaTime::from_millis(5);
+
+            let mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg));
+            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
         }
     }
 
@@ -2151,7 +2232,7 @@ mod test {
         let between = (&get_slot_ts(*slot_bounds_.0), &get_slot_ts(*slot_bounds_.1));
 
         mip_store
-            .update_batches(&mut db_batch, &mut db_versioning_batch, between)
+            .update_batches(&mut db_batch, &mut db_versioning_batch, Some(between))
             .unwrap();
 
         assert_eq!(db_batch.len(), 1); // mi_1
