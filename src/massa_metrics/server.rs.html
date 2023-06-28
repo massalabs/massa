@@ -62,8 +62,6 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::SocketAddr;
 
 <span class="kw">use </span>hyper::{
@@ -71,27 +69,25 @@
     service::{make_service_fn, service_fn},
     Body, Request, Response,
 };
+<span class="kw">use </span>massa_channel::MassaChannel;
 <span class="kw">use </span>prometheus::{Encoder, TextEncoder};
+<span class="kw">use </span>tokio::runtime::Runtime;
 <span class="kw">use </span>tracing::{error, info};
 
 <span class="kw">use </span><span class="kw">crate</span>::MetricsStopper;
 
 <span class="attr">#[allow(dead_code)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bind_metrics(addr: SocketAddr) -&gt; MetricsStopper {
-    <span class="kw">let </span>(tx, rx) = tokio::sync::oneshot::channel::&lt;()&gt;();
+    <span class="kw">let </span>(tx, rx) = MassaChannel::new(<span class="string">&quot;metrics_stopper&quot;</span>.to_string(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
     <span class="kw">let </span>handle = std::thread::spawn(<span class="kw">move </span>|| {
-        <span class="kw">let </span>rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect(<span class="string">&quot;error on build tokio runtime for metrics server&quot;</span>);
-
-        rt.block_on(<span class="kw">async </span>{
+        <span class="kw">let </span>runtime = Runtime::new().unwrap();
+        runtime.block_on(<span class="kw">async </span>{
             <span class="kw">let </span>server = hyper::Server::bind(<span class="kw-2">&amp;</span>addr).serve(make_service_fn(|<span class="kw">_</span>| <span class="kw">async </span>{
                 <span class="prelude-val">Ok</span>::&lt;<span class="kw">_</span>, hyper::Error&gt;(service_fn(serve_req))
             }));
 
             <span class="kw">let </span>graceful_server = server.with_graceful_shutdown(<span class="kw">async </span>{
-                rx.<span class="kw">await</span>.ok();
+                rx.recv().unwrap();
             });
             <span class="macro">info!</span>(<span class="string">&quot;METRICS | listening on http://{}&quot;</span>, addr);
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = graceful_server.<span class="kw">await </span>{
