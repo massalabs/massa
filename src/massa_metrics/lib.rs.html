@@ -588,9 +588,9 @@
 };
 
 <span class="kw">use </span>lazy_static::lazy_static;
-<span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
 <span class="kw">use </span>survey::MassaSurvey;
+<span class="kw">use </span>tokio::sync::oneshot::Sender;
 <span class="kw">use </span>tracing::warn;
 
 <span class="comment">// #[cfg(not(feature = &quot;testing&quot;))]
@@ -625,15 +625,15 @@
 
 <span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>MetricsStopper {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) stopper: <span class="prelude-ty">Option</span>&lt;MassaSender&lt;()&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) stopper: <span class="prelude-ty">Option</span>&lt;Sender&lt;()&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) stop_handle: <span class="prelude-ty">Option</span>&lt;JoinHandle&lt;()&gt;&gt;,
 }
 
 <span class="kw">impl </span>MetricsStopper {
     <span class="kw">pub fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(stopper) = <span class="self">self</span>.stopper.take() {
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = stopper.send(()) {
-                <span class="macro">warn!</span>(<span class="string">&quot;failed to send stop signal to metrics server: {}&quot;</span>, e);
+            <span class="kw">if </span>stopper.send(()).is_err() {
+                <span class="macro">warn!</span>(<span class="string">&quot;failed to send stop signal to metrics server&quot;</span>);
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = <span class="self">self</span>.stop_handle.take() {
