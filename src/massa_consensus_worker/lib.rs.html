@@ -35,6 +35,10 @@
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # General module description
@@ -64,6 +68,7 @@
 
 </span><span class="attr">#![feature(deadline_api)]
 #![feature(let_chains)]
+#![feature(async_closure)]
 
 </span><span class="kw">mod </span>commands;
 <span class="kw">mod </span>controller;
@@ -72,4 +77,7 @@
 <span class="kw">mod </span>worker;
 
 <span class="kw">pub use </span>worker::start_consensus_worker;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">pub mod </span>tests;
 </code></pre></div></section></main></body></html>
