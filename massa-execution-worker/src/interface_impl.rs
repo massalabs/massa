@@ -407,7 +407,7 @@ impl Interface for InterfaceImpl {
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
         let keys = datastore
-            .range(prefix_range)
+            .range::<Vec<u8>, _>(prefix_range)
             .map(|(k, _v)| k.clone())
             .collect();
         Ok(keys)
