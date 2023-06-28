@@ -289,6 +289,21 @@ impl Interface for InterfaceImpl {
         }
     }
 
+    /// Sets a datastore entry for a given address.
+    /// Fails if the address does not exist.
+    /// Creates the entry if it does not exist.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to set
+    /// * value: new value to set
+    fn set_ds_value(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
+        let addr = massa_models::address::Address::from_str(address)?;
+        let mut context = context_guard!(self);
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
     /// Appends a value to a datastore entry for a given address.
     /// Fails if the entry or address does not exist.
     ///
@@ -378,9 +393,9 @@ impl Interface for InterfaceImpl {
                 *v += 1;
             }
             (
-                std::ops::Bound::Included(&prefix.to_vec()),
+                std::ops::Bound::Included(prefix.to_vec()),
                 if !prefix_end.is_empty() {
-                    std::ops::Bound::Excluded(&prefix_end)
+                    std::ops::Bound::Excluded(prefix_end)
                 } else {
                     std::ops::Bound::Unbounded
                 },
@@ -388,6 +403,7 @@ impl Interface for InterfaceImpl {
         } else {
             (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
         };
+        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
@@ -396,7 +412,7 @@ impl Interface for InterfaceImpl {
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
         let keys = datastore
-            .range::<Vec<u8>, _>(prefix_range)
+            .range::<Vec<u8>, _>(range_ref)
             .map(|(k, _v)| k.clone())
             .collect();
         Ok(keys)

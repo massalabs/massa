@@ -401,9 +401,9 @@ impl SpeculativeLedger {
                 *v += 1;
             }
             (
-                std::ops::Bound::Included(&prefix.to_vec()),
+                std::ops::Bound::Included(prefix.to_vec()),
                 if !prefix_end.is_empty() {
-                    std::ops::Bound::Excluded(&prefix_end)
+                    std::ops::Bound::Excluded(prefix_end)
                 } else {
                     std::ops::Bound::Unbounded
                 },
@@ -411,6 +411,7 @@ impl SpeculativeLedger {
         } else {
             (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
         };
+        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         // init keys with final state
         let mut candidate_keys: Option<BTreeSet<Vec<u8>>> = self
@@ -436,7 +437,7 @@ impl SpeculativeLedger {
                     candidate_keys = Some(
                         new_ledger_entry
                             .datastore
-                            .range::<Vec<u8>, _>(prefix_range)
+                            .range::<Vec<u8>, _>(range_ref)
                             .map(|(k, _v)| k.clone())
                             .collect(),
                     );
@@ -446,7 +447,7 @@ impl SpeculativeLedger {
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
                     let c_k = candidate_keys.get_or_insert_default();
                     for (ds_key, ds_update) in
-                        entry_updates.datastore.range::<Vec<u8>, _>(prefix_range)
+                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
                     {
                         match ds_update {
                             SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),

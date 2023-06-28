@@ -1583,9 +1583,9 @@ impl ExecutionState {
                 *v += 1;
             }
             (
-                std::ops::Bound::Included(&prefix.to_vec()),
+                std::ops::Bound::Included(prefix.to_vec()),
                 if !prefix_end.is_empty() {
-                    std::ops::Bound::Excluded(&prefix_end)
+                    std::ops::Bound::Excluded(prefix_end)
                 } else {
                     std::ops::Bound::Unbounded
                 },
@@ -1593,6 +1593,7 @@ impl ExecutionState {
         } else {
             (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
         };
+        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         // traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
@@ -1605,7 +1606,7 @@ impl ExecutionState {
                     candidate_keys = Some(
                         new_ledger_entry
                             .datastore
-                            .range::<Vec<u8>, _>(prefix_range)
+                            .range::<Vec<u8>, _>(range_ref)
                             .map(|(k, _v)| k.clone())
                             .collect(),
                     );
@@ -1615,7 +1616,7 @@ impl ExecutionState {
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
                     let c_k = candidate_keys.get_or_insert_default();
                     for (ds_key, ds_update) in
-                        entry_updates.datastore.range::<Vec<u8>, _>(prefix_range)
+                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
                     {
                         match ds_update {
                             SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
@@ -1801,10 +1802,10 @@ impl ExecutionState {
         // get values from active history, backwards
         let mut res_speculative: BTreeMap<Slot, Amount> = BTreeMap::default();
         for hist_item in self.active_history.read().0.iter().rev() {
-            for (slot, addr_amount) in hist_item.state_changes.pos_changes.deferred_credits.credits
+            for (slot, addr_amount) in &hist_item.state_changes.pos_changes.deferred_credits.credits
             {
                 if let Some(amount) = addr_amount.get(address) {
-                    let _ = res_speculative.try_insert(slot, *amount);
+                    let _ = res_speculative.try_insert(*slot, *amount);
                 };
             }
         }
