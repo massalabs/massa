@@ -1285,21 +1285,6 @@
 <a href="#1285" id="1285">1285</a>
 <a href="#1286" id="1286">1286</a>
 <a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
-<a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
-<a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
-<a href="#1295" id="1295">1295</a>
-<a href="#1296" id="1296">1296</a>
-<a href="#1297" id="1297">1297</a>
-<a href="#1298" id="1298">1298</a>
-<a href="#1299" id="1299">1299</a>
-<a href="#1300" id="1300">1300</a>
-<a href="#1301" id="1301">1301</a>
-<a href="#1302" id="1302">1302</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -2508,9 +2493,6 @@
     })
     .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;resync_check&quot;</span>)]
-    </span><span class="kw">let </span><span class="kw-2">mut </span>resync_check = <span class="prelude-val">Some</span>(std::time::Instant::now() + std::time::Duration::from_secs(<span class="number">10</span>));
-
     <span class="kw">loop </span>{
         <span class="kw">let </span>(
             consensus_event_receiver,
@@ -2561,18 +2543,6 @@
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
                 <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received&quot;</span>);
                 <span class="kw">break </span><span class="bool-val">false</span>;
-            }
-
-            <span class="comment">// Elements of the system that involve stopping and restarting should be checked by forcing a relaunch.
-            // This check allows the system to start up as normal, wait 10s, then force a relaunch. If Things take too long
-            // to shutdown, or does not allow for a clean relaunch, this feature flag can expose those issues.
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;resync_check&quot;</span>)]
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(resync_moment) = resync_check {
-                <span class="kw">if </span>resync_moment &lt; std::time::Instant::now() {
-                    <span class="macro">warn!</span>(<span class="string">&quot;resync check triggered&quot;</span>);
-                    resync_check = <span class="prelude-val">None</span>;
-                    <span class="kw">break </span><span class="bool-val">true</span>;
-                }
             }
         };
         stop(
