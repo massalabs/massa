@@ -298,7 +298,7 @@ impl BlocksState {
                 let new_state = callback(None, &mut self.block_statuses);
                 if let Some(new_state) = new_state {
                     let state = BlockStatusId::from(&new_state);
-                    if state != BlockStatusId::Incoming {
+                    if state != BlockStatusId::Incoming && state != BlockStatusId::Active {
                         panic!(
                             "Invalid transition from None to {:?} for block {}",
                             state, block_id
