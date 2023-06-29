@@ -175,9 +175,11 @@ pub fn answer_ask_producer_pos(
     staking_address: &Address,
     timeout_ms: u64,
 ) {
-    match selector_receiver
-        .recv_timeout(Duration::from_millis(timeout_ms))
-        .unwrap()
+    let res = selector_receiver
+    .recv_timeout(Duration::from_millis(timeout_ms))
+    .unwrap();
+    println!("res: {:?}", res);
+    match res
     {
         MockSelectorControllerMessage::GetProducer {
             slot: _,
