@@ -6,7 +6,6 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
 };
-use tracing::warn;
 
 #[derive(Debug, Clone)]
 pub struct BlocksState {
@@ -79,8 +78,8 @@ impl BlocksState {
     fn update_indexes(
         &mut self,
         block_id: &BlockId,
-        old_block_status: &Option<BlockStatus>,
-        new_block_status: &Option<BlockStatus>,
+        old_block_status: Option<&BlockStatus>,
+        new_block_status: Option<&BlockStatus>,
     ) {
         if let Some(old_block_status) = old_block_status {
             match old_block_status {
@@ -133,7 +132,7 @@ impl BlocksState {
         match self.block_statuses.entry(block_id) {
             Entry::Vacant(vac) => {
                 vac.insert(block_status.clone());
-                self.update_indexes(&block_id, &None, &Some(block_status));
+                self.update_indexes(&block_id, None, Some(&block_status));
                 Ok(None)
             }
             Entry::Occupied(occ) => Ok(Some(occ.get().clone())),
@@ -144,7 +143,7 @@ impl BlocksState {
     /// - Return None if the block was not in the set.
     pub fn remove_block(&mut self, hash: &BlockId) -> Option<BlockStatus> {
         if let Some(block_status) = self.block_statuses.remove(hash) {
-            self.update_indexes(hash, &Some(block_status.clone()), &None);
+            self.update_indexes(hash, Some(&block_status), None);
             Some(block_status)
         } else {
             None
@@ -208,7 +207,7 @@ impl BlocksState {
     ) -> Result<(), ConsensusError> {
         match self.block_statuses.entry(*block_id) {
             Entry::Vacant(_vac) => {
-                // TODO: Determine what to do ? @damip ? Panic or warn and add
+                panic!("Block {:?} not found in block statuses", block_id);
             }
             Entry::Occupied(mut occ) => {
                 // All possible transitions
@@ -276,17 +275,13 @@ impl BlocksState {
                     // No possibility for discarded status
                     // All other possibilities are invalid
                     (_, _) => {
-                        warn!(
+                        panic!(
                             "Invalid transition from {:?} to {:?}",
                             value, new_block_status
                         );
-                        return Err(ConsensusError::InvalidTransition(format!(
-                            "Invalid transition from {:?} to {:?}",
-                            value, new_block_status
-                        )));
                     }
                 }
-                self.update_indexes(block_id, &Some(old_value), &Some(new_block_status));
+                self.update_indexes(block_id, Some(&old_value), Some(&new_block_status));
             }
         }
         Ok(())
