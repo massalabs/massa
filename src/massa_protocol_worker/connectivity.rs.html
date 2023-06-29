@@ -322,8 +322,6 @@
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -515,8 +513,6 @@
             </span><span class="kw">loop </span>{
                 <span class="macro">select! </span>{
                     recv(protocol_channels.connectivity_thread.<span class="number">1</span>) -&gt; msg =&gt; {
-                        <span class="comment">// update channel metrics
-                        </span>protocol_channels.connectivity_thread.<span class="number">1</span>.update_metrics();
                         <span class="kw">match </span>msg {
                             <span class="prelude-val">Ok</span>(ConnectivityCommand::Stop) =&gt; {
                                 <span class="macro">println!</span>(<span class="string">&quot;Stopping protocol&quot;</span>);

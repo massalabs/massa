@@ -648,6 +648,9 @@
 <a href="#648" id="648">648</a>
 <a href="#649" id="649">649</a>
 <a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -908,23 +911,26 @@
         now,
     );
 
-    <span class="kw">let </span>(cur_cycle, cur_slot) = <span class="kw">match </span>latest_block_slot_at_timestamp_result {
+    <span class="kw">let </span>(cur_cycle, cur_slot, in_downtime) = <span class="kw">match </span>latest_block_slot_at_timestamp_result {
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) <span class="kw">if </span>cur_slot.period &lt;= grpc.grpc_config.last_start_period =&gt; (
             Slot::new(grpc.grpc_config.last_start_period, <span class="number">0</span>)
                 .get_cycle(grpc.grpc_config.periods_per_cycle),
             cur_slot,
+            <span class="bool-val">true</span>,
         ),
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(cur_slot)) =&gt; (
             cur_slot.get_cycle(grpc.grpc_config.periods_per_cycle),
             cur_slot,
+            <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; (<span class="number">0</span>, Slot::new(<span class="number">0</span>, <span class="number">0</span>)),
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; (<span class="number">0</span>, Slot::new(<span class="number">0</span>, <span class="number">0</span>), <span class="bool-val">false</span>),
         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::ModelsError(e)),
     };
 
     <span class="comment">// Create the context for the response.
     </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc_api::LargestStakersContext {
         slot: <span class="prelude-val">Some</span>(cur_slot.into()),
+        in_downtime,
     });
 
     <span class="comment">// Get the list of stakers, filtered by the specified minimum and maximum roll counts.
