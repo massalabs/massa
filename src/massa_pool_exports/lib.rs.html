@@ -17,6 +17,8 @@
 <a href="#17" id="17">17</a>
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Pool of operation and endorsements waiting to be included in a block
@@ -36,4 +38,6 @@
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="doccomment">/// Exports related to tests as Mocks and configurations
 </span><span class="kw">pub mod </span>test_exports;
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+</span><span class="kw">pub use </span>controller_traits::MockPoolController <span class="kw">as </span>AutoMockPoolController;
 </code></pre></div></section></main></body></html>

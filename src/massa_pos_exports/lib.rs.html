@@ -49,7 +49,7 @@
 
 <span class="kw">pub use </span>config::PoSConfig;
 <span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-</span><span class="kw">pub use </span>controller_traits::MockSelectorController;
+</span><span class="kw">pub use </span>controller_traits::MockSelectorController <span class="kw">as </span>AutoMockSelectorController;
 <span class="kw">pub use </span>controller_traits::{Selection, SelectorController, SelectorManager};
 <span class="kw">pub use </span>cycle_info::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>deferred_credits::<span class="kw-2">*</span>;
