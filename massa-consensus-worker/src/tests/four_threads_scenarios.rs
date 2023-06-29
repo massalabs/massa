@@ -14,7 +14,7 @@ use super::tools::{
 fn test_fts_latest_blocks_as_parents() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
-        t0: MassaTime::from_millis(200),
+        t0: MassaTime::from_millis(100),
         thread_count: 4,
         genesis_timestamp: MassaTime::now().unwrap(),
         force_keep_final_periods_without_ops: 128,
