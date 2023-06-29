@@ -2375,8 +2375,6 @@
 <a href="#2375" id="2375">2375</a>
 <a href="#2376" id="2376">2376</a>
 <a href="#2377" id="2377">2377</a>
-<a href="#2378" id="2378">2378</a>
-<a href="#2379" id="2379">2379</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -2876,12 +2874,10 @@
 
     <span class="doccomment">/// Return True if state can not change anymore (e.g. Active, Failed or Error)
     </span><span class="kw">pub fn </span>is_final(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self</span>.state {
-            ComponentState::Active(..) =&gt; <span class="bool-val">true</span>,
-            ComponentState::Failed(..) =&gt; <span class="bool-val">true</span>,
-            ComponentState::Error =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>.state,
+            ComponentState::Active(..) | ComponentState::Failed(..) | ComponentState::Error
+        )
     }
 }
 
@@ -3326,9 +3322,9 @@
                 .get(<span class="kw-2">&amp;</span>mi.version)
                 .unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>);
             <span class="kw">let </span>block_count_considered = <span class="self">self</span>.stats.config.block_count_considered;
-            <span class="kw">let </span>vote_ratio_ = Amount::from_mantissa_scale(network_version_count, <span class="number">0</span>).and_then(|a| {
-                <span class="prelude-val">Ok</span>(a.saturating_mul_u64(<span class="number">100</span>)
-                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(<span class="number">0</span>)))
+            <span class="kw">let </span>vote_ratio_ = Amount::from_mantissa_scale(network_version_count, <span class="number">0</span>).map(|a| {
+                a.saturating_mul_u64(<span class="number">100</span>)
+                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(<span class="number">0</span>))
             });
 
             <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(vote_ratio)) = vote_ratio_ {
