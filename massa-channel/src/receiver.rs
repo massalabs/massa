@@ -37,7 +37,7 @@ impl<T> MassaReceiver<T> {
     /// increment manually the metrics
     /// Should be used when using the receiver with select! macro
     /// select! does not call recv()
-    pub fn inc_metrics(&self) {
+    pub fn update_metrics(&self) {
         // use the len of the channel for actual_len instead of actual_len.dec()
         // because for each send we call recv more than one time
         self.actual_len.set(self.receiver.len() as f64);
@@ -68,7 +68,7 @@ impl<T> MassaReceiver<T> {
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
         match self.receiver.try_recv() {
             Ok(msg) => {
-                self.inc_metrics();
+                self.update_metrics();
 
                 Ok(msg)
             }
@@ -84,7 +84,7 @@ impl<T> MassaReceiver<T> {
     pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
         match self.receiver.recv_deadline(deadline) {
             Ok(msg) => {
-                self.inc_metrics();
+                self.update_metrics();
                 Ok(msg)
             }
             Err(e) => {
@@ -97,7 +97,7 @@ impl<T> MassaReceiver<T> {
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
         match self.receiver.recv_timeout(timeout) {
             Ok(msg) => {
-                self.inc_metrics();
+                self.update_metrics();
                 Ok(msg)
             }
             Err(e) => {
@@ -110,7 +110,7 @@ impl<T> MassaReceiver<T> {
     pub fn recv(&self) -> Result<T, RecvError> {
         match self.receiver.recv() {
             Ok(msg) => {
-                self.inc_metrics();
+                self.update_metrics();
                 Ok(msg)
             }
             Err(e) => {
