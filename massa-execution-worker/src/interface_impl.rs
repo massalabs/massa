@@ -627,7 +627,11 @@ impl Interface for InterfaceImpl {
         Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
-    /// TORO remove
+    /// Transfer coins from the current address (top of the call stack) towards a target address.
+    ///
+    /// # Arguments
+    /// * `to_address`: string representation of the address to which the coins are sent
+    /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = Address::from_str(to_address)?;
         let amount = Amount::from_raw(raw_amount);
@@ -826,7 +830,7 @@ impl Interface for InterfaceImpl {
         Ok(slot.thread)
     }
 
-    /// TODO remove
+    /// Sets the bytecode of the current addres
     fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
         let mut execution_context = context_guard!(self);
         let address = execution_context.get_current_address()?;
