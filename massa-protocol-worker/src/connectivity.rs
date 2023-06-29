@@ -189,6 +189,8 @@ pub(crate) fn start_connectivity_thread(
             loop {
                 select! {
                     recv(protocol_channels.connectivity_thread.1) -> msg => {
+                        // update channel metrics
+                        protocol_channels.connectivity_thread.1.inc_metrics();
                         match msg {
                             Ok(ConnectivityCommand::Stop) => {
                                 println!("Stopping protocol");
