@@ -298,6 +298,10 @@ impl Output for ExecutionStats {
             "\tActive cursor: {}",
             Style::Protocol.style(self.active_cursor)
         );
+        println!(
+            "\tFinal cursor: {}",
+            Style::Protocol.style(self.final_cursor)
+        );
     }
 }
 
