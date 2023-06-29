@@ -1172,10 +1172,6 @@
 <a href="#1172" id="1172">1172</a>
 <a href="#1173" id="1173">1173</a>
 <a href="#1174" id="1174">1174</a>
-<a href="#1175" id="1175">1175</a>
-<a href="#1176" id="1176">1176</a>
-<a href="#1177" id="1177">1177</a>
-<a href="#1178" id="1178">1178</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -1875,23 +1871,19 @@
         <span class="comment">// compute prefix range
         </span><span class="kw">let </span>prefix_range = <span class="kw">if </span>!prefix.is_empty() {
             <span class="comment">// compute end of prefix range
-            </span><span class="kw">let </span>n_keep = prefix
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(i, v)| <span class="kw">if </span>v &lt; <span class="kw-2">&amp;</span><span class="number">255 </span>{ <span class="prelude-val">Some</span>(i + <span class="number">1</span>) } <span class="kw">else </span>{ <span class="prelude-val">None </span>})
-                .unwrap_or(<span class="number">0</span>);
-            <span class="kw">let </span><span class="kw-2">mut </span>prefix_end = prefix[..n_keep].to_vec();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>prefix_end = prefix.to_vec();
+            <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="number">255</span>) = prefix_end.last() {
+                prefix_end.pop();
+            }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = prefix_end.last_mut() {
                 <span class="kw-2">*</span>v += <span class="number">1</span>;
             }
             (
                 std::ops::Bound::Included(prefix.to_vec()),
-                <span class="kw">if </span>!prefix_end.is_empty() {
-                    std::ops::Bound::Excluded(prefix_end)
-                } <span class="kw">else </span>{
-                    std::ops::Bound::Unbounded
-                },
+                prefix_end
+                    .is_empty()
+                    .then(|| std::ops::Bound::Unbounded)
+                    .unwrap_or(std::ops::Bound::Excluded(prefix_end)),
             )
         } <span class="kw">else </span>{
             (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
