@@ -594,7 +594,7 @@
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
-                    <span class="self">self</span>.receiver.inc_metrics();
+                    <span class="self">self</span>.receiver.update_metrics();
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
                             <span class="kw">let </span>(rest, message) = <span class="kw">match </span>operation_message_deserializer
@@ -643,7 +643,7 @@
                     }
                 },
                 recv(<span class="self">self</span>.receiver_ext) -&gt; msg =&gt; {
-                    <span class="self">self</span>.receiver_ext.inc_metrics();
+                    <span class="self">self</span>.receiver_ext.update_metrics();
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>(cmd) =&gt; <span class="kw">match </span>cmd {
                             OperationHandlerRetrievalCommand::Stop =&gt; {

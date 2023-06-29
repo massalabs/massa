@@ -696,7 +696,7 @@
             <span class="kw">loop </span>{
                 <span class="macro">crossbeam::select! </span>{
                     recv(receiver) -&gt; res =&gt; {
-                        receiver.inc_metrics();
+                        receiver.update_metrics();
                         <span class="kw">match </span>res {
                             <span class="prelude-val">Ok</span>(listener) =&gt; {
                                 <span class="kw">if </span>listener.<span class="number">1</span>.is_empty() {
