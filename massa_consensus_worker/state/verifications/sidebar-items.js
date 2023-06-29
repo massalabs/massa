@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["EndorsementsCheckOutcome","HeaderCheckOutcome"]};
+window.SIDEBAR_ITEMS = {"enum":["BlockCheckOutcome","EndorsementsCheckOutcome","HeaderCheckOutcome"]};
