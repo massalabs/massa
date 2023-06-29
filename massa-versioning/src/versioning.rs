@@ -497,12 +497,10 @@ impl MipState {
 
     /// Return True if state can not change anymore (e.g. Active, Failed or Error)
     pub fn is_final(&self) -> bool {
-        match self.state {
-            ComponentState::Active(..) => true,
-            ComponentState::Failed(..) => true,
-            ComponentState::Error => true,
-            _ => false,
-        }
+        matches!(
+            self.state,
+            ComponentState::Active(..) | ComponentState::Failed(..) | ComponentState::Error
+        )
     }
 }
 
@@ -947,9 +945,9 @@ impl MipStoreRaw {
                 .get(&mi.version)
                 .unwrap_or(&0);
             let block_count_considered = self.stats.config.block_count_considered;
-            let vote_ratio_ = Amount::from_mantissa_scale(network_version_count, 0).and_then(|a| {
-                Ok(a.saturating_mul_u64(100)
-                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(0)))
+            let vote_ratio_ = Amount::from_mantissa_scale(network_version_count, 0).map(|a| {
+                a.saturating_mul_u64(100)
+                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(0))
             });
 
             if let Ok(Some(vote_ratio)) = vote_ratio_ {

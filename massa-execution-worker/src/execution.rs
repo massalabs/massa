@@ -14,7 +14,6 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
-use massa_db_exports::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
@@ -226,6 +225,7 @@ impl ExecutionState {
             );
         }
 
+        let exec_out_2 = exec_out.clone();
         // apply state changes to the final ledger
         self.final_state
             .write()
@@ -250,6 +250,26 @@ impl ExecutionState {
             .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
         self.massa_metrics
             .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
+
+        self.massa_metrics.inc_operations_final_counter(
+            exec_out_2.state_changes.executed_ops_changes.len() as u64,
+        );
+
+        // Broadcast a final slot execution output to active channel subscribers.
+        if self.config.broadcast_enabled {
+            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out_2);
+            if let Err(err) = self
+                .channels
+                .slot_execution_output_sender
+                .send(slot_exec_out)
+            {
+                trace!(
+                    "error, failed to broadcast final execution output for slot {} due to: {}",
+                    exec_out.slot,
+                    err
+                );
+            }
+        }
     }
 
     /// Applies an execution output to the active (non-final) state
@@ -1312,27 +1332,12 @@ impl ExecutionState {
             {
                 // speculative execution front result matches what we want to compute
 
+                // update versioning stats
+                // Note: This update the MIP Store and this must be done before apply_final_execution_output
+                //       as it will write the final state (and thus the MIP store) to the DB
+                self.update_versioning_stats(&exec_out.block_info, slot);
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
-
-                // update versioning stats
-                self.update_versioning_stats(&exec_out.block_info, slot);
-
-                // Broadcast a final slot execution output to active channel subscribers.
-                if self.config.broadcast_enabled {
-                    let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
-                    if let Err(err) = self
-                        .channels
-                        .slot_execution_output_sender
-                        .send(slot_exec_out)
-                    {
-                        trace!(
-                    "error, failed to broadcast final execution output(cached) for slot {} due to: {}",
-                    exec_out.slot,
-                    err
-                );
-                    }
-                }
                 return;
             } else {
                 // speculative cache mismatch
@@ -1357,33 +1362,16 @@ impl ExecutionState {
         debug!("execute_final_slot: execution started");
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
+        // update versioning stats
+        // Note: This update the MIP Store and this must be done before apply_final_execution_output
+        //       as it will write the final state (and thus the MIP store) to the DB
+        self.update_versioning_stats(&exec_out.block_info, slot);
         // apply execution output to final state
         self.apply_final_execution_output(exec_out.clone());
 
-        self.update_versioning_stats(&exec_out.block_info, slot);
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
         );
-
-        // update prometheus metrics
-        self.massa_metrics
-            .inc_operations_final_counter(exec_out.state_changes.executed_ops_changes.len() as u64);
-
-        // Broadcast a final slot execution output to active channel subscribers.
-        if self.config.broadcast_enabled {
-            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
-            if let Err(err) = self
-                .channels
-                .slot_execution_output_sender
-                .send(slot_exec_out)
-            {
-                trace!(
-                    "error, failed to broadcast final execution output for slot {} due to: {}",
-                    exec_out.slot,
-                    err
-                );
-            }
-        }
     }
 
     /// Runs a read-only execution request.
@@ -1862,38 +1850,5 @@ impl ExecutionState {
                 .as_ref()
                 .map(|i| (i.current_version, i.announced_version)),
         );
-
-        let slot_prev_ts = get_block_slot_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            slot.get_prev_slot(self.config.thread_count)
-                .expect("Cannot get prev slot"),
-        )
-        .expect("Cannot get timestamp for prev slot");
-
-        // Now write mip store changes to disk (if any)
-        let mut db_batch = DBBatch::new();
-        let mut db_versioning_batch = DBBatch::new();
-        self.mip_store
-            .update_batches(
-                &mut db_batch,
-                &mut db_versioning_batch,
-                Some((&slot_prev_ts, &slot_ts)),
-            )
-            .unwrap_or_else(|e| {
-                panic!(
-                    "Unable to get MIP store changes between {} and {}: {}",
-                    slot_prev_ts, slot_ts, e
-                )
-            });
-
-        if !db_batch.is_empty() || !db_versioning_batch.is_empty() {
-            self.final_state
-                .write()
-                .db
-                .write()
-                .write_batch(db_batch, db_versioning_batch, None);
-        }
     }
 }
