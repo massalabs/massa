@@ -94,6 +94,7 @@ pub trait ExecutionController: Send + Sync {
     ) -> Result<ReadOnlyExecutionOutput, ExecutionError>;
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
+    /// (speculative, final)
     fn get_denunciation_execution_status(
         &self,
         denunciation_index: &DenunciationIndex,

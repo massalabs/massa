@@ -227,9 +227,9 @@ impl ExecutionController for ExecutionControllerImpl {
                 }
                 ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) => {
                     let (speculative_v, _final_v) = execution_lock
-                        .get_ops_exec_status(&vec![id])
+                        .get_ops_exec_status(&[id])
                         .get(0)
-                        .map(|(s_v, f_v)| (s_v.clone(), f_v.clone()))
+                        .map(|(s_v, f_v)| (*s_v, *f_v))
                         .expect("expected one return value");
                     match speculative_v {
                         Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
@@ -245,9 +245,9 @@ impl ExecutionController for ExecutionControllerImpl {
                 }
                 ExecutionQueryRequestItem::OpExecutionStatusFinal(id) => {
                     let (_speculative_v, final_v) = execution_lock
-                        .get_ops_exec_status(&vec![id])
+                        .get_ops_exec_status(&[id])
                         .get(0)
-                        .map(|(s_v, f_v)| (s_v.clone(), f_v.clone()))
+                        .map(|(s_v, f_v)| (*s_v, *f_v))
                         .expect("expected one return value");
                     match final_v {
                         Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(

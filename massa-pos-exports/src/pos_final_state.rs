@@ -1076,7 +1076,7 @@ impl PoSFinalState {
         let key = complete_key!(self.cycle_history_cycle_prefix(cycle));
         let res = self.db.read().get_cf(STATE_CF, key);
         match res {
-            Ok(Some(complete_value)) => Some(complete_value.get(0) == Some(&1)),
+            Ok(Some(complete_value)) => Some(complete_value.first() == Some(&1)),
             Ok(None) => None,
             Err(err) => {
                 panic!(

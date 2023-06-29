@@ -228,6 +228,13 @@ impl Interface for InterfaceImpl {
         Ok(module)
     }
 
+    /// TODO remove
+    fn get_balance(&self) -> Result<u64> {
+        let ctx = context_guard!(self);
+        let addr = ctx.get_current_address()?;
+        Ok(ctx.get_balance(&addr).unwrap_or_default().to_raw())
+    }
+
     /// Gets the balance of arbitrary address passed as argument.
     ///
     /// # Arguments
@@ -236,7 +243,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
-    fn get_balance(&self, address: &str) -> Result<u64> {
+    fn get_balance_for(&self, address: &str) -> Result<u64> {
         let address = massa_models::address::Address::from_str(address)?;
         Ok(context_guard!(self)
             .get_balance(&address)
@@ -259,14 +266,34 @@ impl Interface for InterfaceImpl {
         }
     }
 
+    /// TODO remove
+    fn get_keys(&self, prefix: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        match context.get_keys(&addr, prefix.unwrap_or_default()) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
     /// Get the datastore keys (aka entries) for a given address
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_ds_keys(&self, address: &str, prefix: &[u8]) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_keys_for(&self, address: &str, prefix: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_keys(addr, prefix) {
+        match context.get_keys(addr, prefix.unwrap_or_default()) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// TODO remove
+    fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        match context.get_data_entry(&addr, key) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -280,13 +307,21 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    fn get_ds_value(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
+    fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
         let addr = &massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
         match context.get_data_entry(addr, key) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
+    }
+
+    /// TODO remove
+    fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        let mut context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
     }
 
     /// Sets a datastore entry for a given address.
@@ -297,10 +332,18 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
-    fn set_ds_value(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
+    fn raw_set_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address)?;
         let mut context = context_guard!(self);
         context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    /// TODO remove
+    fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        let mut ctx = context_guard!(self);
+        let addr = ctx.get_current_address()?;
+        ctx.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -311,9 +354,17 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    fn append_ds_value(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
+    fn raw_append_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let addr = massa_models::address::Address::from_str(address)?;
         context_guard!(self).append_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    /// TODO remove
+    fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
+        let mut ctx = context_guard!(self);
+        let addr = ctx.get_current_address()?;
+        ctx.delete_data_entry(&addr, key)?;
         Ok(())
     }
 
@@ -323,10 +374,17 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to delete
-    fn delete_ds_entry(&self, address: &str, key: &[u8]) -> Result<()> {
+    fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
         let addr = &massa_models::address::Address::from_str(address)?;
         context_guard!(self).delete_data_entry(addr, key)?;
         Ok(())
+    }
+
+    /// TODO remove
+    fn has_data(&self, key: &[u8]) -> Result<bool> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Checks if a datastore entry exists for a given address.
@@ -337,7 +395,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn ds_entry_exists(&self, address: &str, key: &[u8]) -> Result<bool> {
+    fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
         let addr = massa_models::address::Address::from_str(address)?;
         let context = context_guard!(self);
         Ok(context.has_data_entry(&addr, key))
@@ -363,8 +421,17 @@ impl Interface for InterfaceImpl {
         Ok(caller_owned_addresses.contains(&current_address))
     }
 
+    fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let address = context.get_current_address()?;
+        match context.get_bytecode(&address) {
+            Some(bytecode) => Ok(bytecode.0),
+            _ => bail!("bytecode not found"),
+        }
+    }
+
     /// Returns bytecode of the target address
-    fn get_bytecode(&self, address: &str) -> Result<Vec<u8>> {
+    fn raw_get_bytecode_for(&self, address: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = Address::from_str(address)?;
         match context.get_bytecode(&address) {
@@ -378,7 +445,12 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_op_keys(&self, prefix: &[u8]) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
+        // TODO return BTreeSet<Vec<u8>>
+
+        // TODO add prefix
+        let prefix: &[u8] = &[];
+
         // compute prefix range
         let prefix_range = if !prefix.is_empty() {
             // compute end of prefix range
@@ -426,7 +498,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
-    fn op_entry_exists(&self, key: &[u8]) -> Result<bool> {
+    fn has_op_key(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
@@ -445,7 +517,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The operation datastore value matching the provided key, if found, otherwise an error.
-    fn get_op_value(&self, key: &[u8]) -> Result<Vec<u8>> {
+    fn get_op_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
@@ -509,13 +581,28 @@ impl Interface for InterfaceImpl {
         Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
+    /// TORO remove
+    fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
+        let to_address = Address::from_str(to_address)?;
+        let amount = Amount::from_raw(raw_amount);
+        let mut context = context_guard!(self);
+        let from_address = context.get_current_address()?;
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        Ok(())
+    }
+
     /// Transfer coins from a given address towards a target address.
     ///
     /// # Arguments
     /// * `from_address`: string representation of the address that is sending the coins
     /// * `to_address`: string representation of the address to which the coins are sent
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
-    fn transfer_coins(&self, from_address: &str, to_address: &str, raw_amount: u64) -> Result<()> {
+    fn transfer_coins_for(
+        &self,
+        from_address: &str,
+        to_address: &str,
+        raw_amount: u64,
+    ) -> Result<()> {
         let from_address = Address::from_str(from_address)?;
         let to_address = Address::from_str(to_address)?;
         let amount = Amount::from_raw(raw_amount);
@@ -693,9 +780,19 @@ impl Interface for InterfaceImpl {
         Ok(slot.thread)
     }
 
+    /// TODO remove
+    fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
+        let mut execution_context = context_guard!(self);
+        let address = execution_context.get_current_address()?;
+        match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
+            Ok(()) => Ok(()),
+            Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
+        }
+    }
+
     /// Sets the bytecode of an arbitrary address.
     /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
-    fn set_bytecode(&self, address: &str, bytecode: &[u8]) -> Result<()> {
+    fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
         let address = massa_models::address::Address::from_str(address)?;
         let mut execution_context = context_guard!(self);
         match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {

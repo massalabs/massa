@@ -82,8 +82,8 @@ pub enum MockExecutionControllerMessage {
     IsDenunciationExecuted {
         /// denunciation index
         de_idx: DenunciationIndex,
-        /// response channel
-        response_tx: mpsc::Sender<bool>,
+        /// response channel: (speculative, final)
+        response_tx: mpsc::Sender<(bool, bool)>,
     },
     /// Get final and candidate balances by addresses
     GetFinalAndCandidateBalance {

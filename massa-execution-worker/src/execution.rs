@@ -1554,6 +1554,7 @@ impl ExecutionState {
     }
 
     /// Get every final and active datastore key of the given address
+    #[allow(clippy::type_complexity)]
     pub fn get_final_and_candidate_datastore_keys(
         &self,
         addr: &Address,
@@ -1735,7 +1736,7 @@ impl ExecutionState {
         let staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>;
         if let Some(addrs) = restrict_to_addresses {
             staker_infos = addrs
-                .into_iter()
+                .iter()
                 .map(|addr| {
                     let staker_info = ExecutionQueryStakerInfo {
                         active_rolls: lock

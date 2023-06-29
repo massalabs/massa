@@ -166,13 +166,7 @@ impl LedgerDB {
             self.key_serializer_db
                 .serialize(&key, &mut serialized_key)
                 .expect(KEY_SER_ERROR);
-            if db
-                .get_cf(STATE_CF, serialized_key)
-                .expect(CRUD_ERROR)
-                .is_none()
-            {
-                return None;
-            }
+            db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)?;
         }
 
         // collect keys starting with prefix
