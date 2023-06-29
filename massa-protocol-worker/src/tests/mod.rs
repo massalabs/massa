@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_metrics::MassaMetrics;
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
@@ -133,7 +133,6 @@ fn basic() {
     // Setup the MIP store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -281,7 +280,6 @@ fn stop_with_controller_still_exists() {
     // Setup the MIP store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
     let metrics = MassaMetrics::new(

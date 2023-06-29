@@ -165,23 +165,3 @@ impl Deserializer<BlockId> for BlockIdDeserializer {
         })(buffer)
     }
 }
-
-/// block id + network versions (found in block header)
-#[derive(Debug, Clone)]
-pub struct BlockInfo {
-    /// Block id
-    pub block_id: BlockId,
-    /// Current network version (see versioning doc)
-    pub current_version: u32,
-    /// Announced network version (see versioning doc)
-    pub announced_version: u32,
-}
-
-impl std::fmt::Display for BlockInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.block_id)?;
-        write!(f, "\tcurrent network version: {}", self.current_version)?;
-        write!(f, "\tannounced network version: {}", self.announced_version)?;
-        Ok(())
-    }
-}

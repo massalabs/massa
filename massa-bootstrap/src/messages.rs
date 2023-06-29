@@ -375,7 +375,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
-    ///     mip_store_stats_block_considered: 100, mip_store_stats_counters_max: 10,
+    ///     mip_store_stats_block_considered: 100,
     ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,};
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {

@@ -16,13 +16,13 @@ use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRo
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
-    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+    EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
+    ExecutionStackElement,
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::block_id::BlockInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -889,7 +889,7 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self, block_info: Option<BlockInfo>) -> ExecutionOutput {
+    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells

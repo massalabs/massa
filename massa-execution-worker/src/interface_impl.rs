@@ -70,9 +70,7 @@ impl InterfaceImpl {
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
-        use massa_models::config::{
-            MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
-        };
+        use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_versioning::versioning::{MipStatsConfig, MipStore};
         use parking_lot::RwLock;
@@ -103,7 +101,6 @@ impl InterfaceImpl {
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         let mip_store =
             MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");

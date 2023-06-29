@@ -6,6 +6,7 @@ use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
 use massa_hash::Hash;
+use massa_models::block_id::BlockId;
 use massa_models::block_id::BlockInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::Datastore;
@@ -203,13 +204,24 @@ pub enum SlotExecutionOutput {
     FinalizedSlot(ExecutionOutput),
 }
 
+/// structure storing a block id + network versions (from a block header)
+#[derive(Debug, Clone)]
+pub struct ExecutedBlockInfo {
+    /// Block id
+    pub block_id: BlockId,
+    /// Current network version (see Versioning doc)
+    pub current_version: u32,
+    /// Announced network version (see Versioning doc)
+    pub announced_version: u32,
+}
+
 /// structure describing the output of a single execution
 #[derive(Debug, Clone)]
 pub struct ExecutionOutput {
     /// slot
     pub slot: Slot,
-    /// optional block ID at that slot (None if miss)
-    pub block_info: Option<BlockInfo>,
+    /// optional executed block info at that slot (None if miss)
+    pub block_info: Option<ExecutedBlockInfo>,
     /// state changes caused by the execution step
     pub state_changes: StateChanges,
     /// events emitted by the execution step

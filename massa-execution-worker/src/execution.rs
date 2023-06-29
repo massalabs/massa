@@ -15,16 +15,14 @@ use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
-    ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
-    SlotExecutionOutput,
+    EventStore, ExecutedBlockInfo, ExecutionChannels, ExecutionConfig, ExecutionError,
+    ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
-use massa_models::block_id::BlockInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -224,6 +222,11 @@ impl ExecutionState {
                 exec_out.state_changes.executed_denunciations_changes.len(),
             );
         }
+
+        // Update versioning stats
+        // This will update the MIP store and must be called before final state write
+        // as it will also write the MIP store on disk
+        self.update_versioning_stats(&exec_out.block_info, &exec_out.slot);
 
         let exec_out_2 = exec_out.clone();
         // apply state changes to the final ledger
@@ -1050,7 +1053,7 @@ impl ExecutionState {
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
             *slot,
-            exec_target.map(|i| i.0), // .as_ref().map(|(b_id, _)| *b_id),
+            exec_target.as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
@@ -1073,7 +1076,7 @@ impl ExecutionState {
             }
         }
 
-        let mut block_info: Option<BlockInfo> = None;
+        let mut block_info: Option<ExecutedBlockInfo> = None;
 
         // Check if there is a block at this slot
         if let Some((block_id, block_store)) = exec_target {
@@ -1084,7 +1087,7 @@ impl ExecutionState {
                 .expect("Missing block in storage.")
                 .clone();
 
-            block_info = Some(BlockInfo {
+            block_info = Some(ExecutedBlockInfo {
                 block_id: *block_id,
                 current_version: stored_block.content.header.content.current_version,
                 announced_version: stored_block.content.header.content.announced_version,
@@ -1331,11 +1334,6 @@ impl ExecutionState {
                 && exec_out.block_info.as_ref().map(|i| i.block_id) == target_id
             {
                 // speculative execution front result matches what we want to compute
-
-                // update versioning stats
-                // Note: This update the MIP Store and this must be done before apply_final_execution_output
-                //       as it will write the final state (and thus the MIP store) to the DB
-                self.update_versioning_stats(&exec_out.block_info, slot);
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
                 return;
@@ -1343,7 +1341,7 @@ impl ExecutionState {
                 // speculative cache mismatch
                 warn!(
                     "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
-                    slot, target_id, exec_out.slot, exec_out.block_info
+                    slot, target_id, exec_out.slot, exec_out.block_info.map(|i| i.block_id)
                 );
             }
         } else {
@@ -1362,12 +1360,8 @@ impl ExecutionState {
         debug!("execute_final_slot: execution started");
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
-        // update versioning stats
-        // Note: This update the MIP Store and this must be done before apply_final_execution_output
-        //       as it will write the final state (and thus the MIP store) to the DB
-        self.update_versioning_stats(&exec_out.block_info, slot);
         // apply execution output to final state
-        self.apply_final_execution_output(exec_out.clone());
+        self.apply_final_execution_output(exec_out);
 
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
@@ -1835,7 +1829,7 @@ impl ExecutionState {
     }
 
     /// Update MipStore with block header stats
-    pub fn update_versioning_stats(&mut self, block_info: &Option<BlockInfo>, slot: &Slot) {
+    pub fn update_versioning_stats(&mut self, block_info: &Option<ExecutedBlockInfo>, slot: &Slot) {
         let slot_ts = get_block_slot_timestamp(
             self.config.thread_count,
             self.config.t0,

@@ -2742,6 +2742,7 @@ dependencies = [
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_channel",
+ "massa_db_exports",
  "massa_db_worker",
  "massa_executed_ops",
  "massa_execution_exports",
