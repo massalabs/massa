@@ -6,6 +6,7 @@ use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
 use massa_hash::Hash;
+use massa_models::block_id::BlockInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::Datastore;
 use massa_models::denunciation::DenunciationIndex;
@@ -14,8 +15,7 @@ use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
-    slot::Slot,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
 };
 use massa_pos_exports::ProductionStats;
 use std::collections::{BTreeMap, BTreeSet};
@@ -209,7 +209,7 @@ pub struct ExecutionOutput {
     /// slot
     pub slot: Slot,
     /// optional block ID at that slot (None if miss)
-    pub block_id: Option<BlockId>,
+    pub block_info: Option<BlockInfo>,
     /// state changes caused by the execution step
     pub state_changes: StateChanges,
     /// events emitted by the execution step

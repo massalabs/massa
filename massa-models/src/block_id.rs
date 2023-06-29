@@ -6,8 +6,10 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-use nom::error::{context, ContextError, ParseError};
-use nom::IResult;
+use nom::{
+    error::{context, ContextError, ParseError},
+    IResult,
+};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::collections::Bound::Included;
 use std::convert::TryInto;
@@ -161,5 +163,25 @@ impl Deserializer<BlockId> for BlockIdDeserializer {
             let (rest, hash) = self.hash_deserializer.deserialize(input)?;
             Ok((rest, BlockId(hash)))
         })(buffer)
+    }
+}
+
+/// block id + network versions (found in block header)
+#[derive(Debug, Clone)]
+pub struct BlockInfo {
+    /// Block id
+    pub block_id: BlockId,
+    /// Current network version (see versioning doc)
+    pub current_version: u32,
+    /// Announced network version (see versioning doc)
+    pub announced_version: u32,
+}
+
+impl std::fmt::Display for BlockInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.block_id)?;
+        write!(f, "\tcurrent network version: {}", self.current_version)?;
+        write!(f, "\tannounced network version: {}", self.announced_version)?;
+        Ok(())
     }
 }

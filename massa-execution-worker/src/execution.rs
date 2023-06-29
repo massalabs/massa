@@ -25,6 +25,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::block_id::BlockInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -215,7 +216,7 @@ impl ExecutionState {
         }
 
         // count stats
-        if exec_out.block_id.is_some() {
+        if exec_out.block_info.is_some() {
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
@@ -1029,7 +1030,7 @@ impl ExecutionState {
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
             *slot,
-            exec_target.as_ref().map(|(b_id, _)| *b_id),
+            exec_target.map(|i| i.0), // .as_ref().map(|(b_id, _)| *b_id),
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
@@ -1052,6 +1053,8 @@ impl ExecutionState {
             }
         }
 
+        let mut block_info: Option<BlockInfo> = None;
+
         // Check if there is a block at this slot
         if let Some((block_id, block_store)) = exec_target {
             // Retrieve the block from storage
@@ -1060,6 +1063,12 @@ impl ExecutionState {
                 .get(block_id)
                 .expect("Missing block in storage.")
                 .clone();
+
+            block_info = Some(BlockInfo {
+                block_id: *block_id,
+                current_version: stored_block.content.header.content.current_version,
+                announced_version: stored_block.content.header.content.announced_version,
+            });
 
             // gather all operations
             let operations = {
@@ -1212,7 +1221,7 @@ impl ExecutionState {
         }
 
         // Finish slot
-        let exec_out = context_guard!(self).settle_slot();
+        let exec_out = context_guard!(self).settle_slot(block_info);
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
@@ -1298,14 +1307,16 @@ impl ExecutionState {
         // check if the final slot execution result is already cached at the front of the speculative execution history
         let first_exec_output = self.active_history.write().0.pop_front();
         if let Some(exec_out) = first_exec_output {
-            if &exec_out.slot == slot && exec_out.block_id == target_id {
+            if &exec_out.slot == slot
+                && exec_out.block_info.as_ref().map(|i| i.block_id) == target_id
+            {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
                 self.apply_final_execution_output(exec_out.clone());
 
                 // update versioning stats
-                self.update_versioning_stats(exec_target, slot);
+                self.update_versioning_stats(&exec_out.block_info, slot);
 
                 // Broadcast a final slot execution output to active channel subscribers.
                 if self.config.broadcast_enabled {
@@ -1327,7 +1338,7 @@ impl ExecutionState {
                 // speculative cache mismatch
                 warn!(
                     "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
-                    slot, target_id, exec_out.slot, exec_out.block_id
+                    slot, target_id, exec_out.slot, exec_out.block_info
                 );
             }
         } else {
@@ -1349,7 +1360,7 @@ impl ExecutionState {
         // apply execution output to final state
         self.apply_final_execution_output(exec_out.clone());
 
-        self.update_versioning_stats(exec_target, slot);
+        self.update_versioning_stats(&exec_out.block_info, slot);
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
         );
@@ -1492,7 +1503,7 @@ impl ExecutionState {
         };
 
         // return the execution output
-        let execution_output = context_guard!(self).settle_slot();
+        let execution_output = context_guard!(self).settle_slot(None);
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
             gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
@@ -1836,68 +1847,53 @@ impl ExecutionState {
     }
 
     /// Update MipStore with block header stats
-    pub fn update_versioning_stats(
-        &mut self,
-        exec_target: Option<&(BlockId, Storage)>,
-        slot: &Slot,
-    ) {
-        // update versioning statistics
-        if let Some((block_id, storage)) = exec_target {
-            if let Some(block) = storage.read_blocks().get(block_id) {
-                let slot_ts_ = get_block_slot_timestamp(
-                    self.config.thread_count,
-                    self.config.t0,
-                    self.config.genesis_timestamp,
-                    *slot,
-                );
+    pub fn update_versioning_stats(&mut self, block_info: &Option<BlockInfo>, slot: &Slot) {
+        let slot_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            *slot,
+        )
+        .expect("Cannot get timestamp from slot");
 
-                let current_version = block.content.header.content.current_version;
-                let announced_version = block.content.header.content.announced_version;
-                if let Ok(slot_ts) = slot_ts_ {
-                    self.mip_store.update_network_version_stats(
-                        slot_ts,
-                        Some((current_version, announced_version)),
-                    );
+        self.mip_store.update_network_version_stats(
+            slot_ts,
+            block_info
+                .as_ref()
+                .map(|i| (i.current_version, i.announced_version)),
+        );
 
-                    // Now write mip store changes to disk (if any)
-                    let mut db_batch = DBBatch::new();
-                    let mut db_versioning_batch = DBBatch::new();
-                    // Unwrap/Expect because if something fails we can only panic here
-                    let slot_prev_ts = get_block_slot_timestamp(
-                        self.config.thread_count,
-                        self.config.t0,
-                        self.config.genesis_timestamp,
-                        slot.get_prev_slot(self.config.thread_count).unwrap(),
-                    )
-                    .unwrap();
+        let slot_prev_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot.get_prev_slot(self.config.thread_count)
+                .expect("Cannot get prev slot"),
+        )
+        .expect("Cannot get timestamp for prev slot");
 
-                    self.mip_store
-                        .update_batches(
-                            &mut db_batch,
-                            &mut db_versioning_batch,
-                            Some((&slot_prev_ts, &slot_ts)),
-                        )
-                        .unwrap_or_else(|e| {
-                            panic!(
-                                "Unable to get MIP store changes between {} and {}: {}",
-                                slot_prev_ts, slot_ts, e
-                            )
-                        });
+        // Now write mip store changes to disk (if any)
+        let mut db_batch = DBBatch::new();
+        let mut db_versioning_batch = DBBatch::new();
+        self.mip_store
+            .update_batches(
+                &mut db_batch,
+                &mut db_versioning_batch,
+                Some((&slot_prev_ts, &slot_ts)),
+            )
+            .unwrap_or_else(|e| {
+                panic!(
+                    "Unable to get MIP store changes between {} and {}: {}",
+                    slot_prev_ts, slot_ts, e
+                )
+            });
 
-                    self.final_state.write().db.write().write_batch(
-                        db_batch,
-                        db_versioning_batch,
-                        None,
-                    );
-                } else {
-                    warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);
-                }
-            } else {
-                warn!(
-                    "Could not find block id: {} in storage in order to update mip_store stats",
-                    block_id
-                );
-            }
+        if !db_batch.is_empty() || !db_versioning_batch.is_empty() {
+            self.final_state
+                .write()
+                .db
+                .write()
+                .write_batch(db_batch, db_versioning_batch, None);
         }
     }
 }
