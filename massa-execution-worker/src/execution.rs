@@ -192,7 +192,8 @@ impl ExecutionState {
 
     /// Get execution statistics
     pub fn get_stats(&self) -> ExecutionStats {
-        self.stats_counter.get_stats(self.active_cursor)
+        self.stats_counter
+            .get_stats(self.active_cursor, self.final_cursor)
     }
 
     /// Applies the output of an execution to the final execution state.
@@ -1733,7 +1734,7 @@ impl ExecutionState {
                         .update_batches(
                             &mut db_batch,
                             &mut db_versioning_batch,
-                            (&slot_prev_ts, &slot_ts),
+                            Some((&slot_prev_ts, &slot_ts)),
                         )
                         .unwrap_or_else(|e| {
                             panic!(

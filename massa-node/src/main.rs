@@ -784,6 +784,7 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        last_start_period: final_state.read().last_start_period,
     };
 
     // spawn Massa API
@@ -1205,6 +1206,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
+    #[cfg(feature = "resync_check")]
+    let mut resync_check = Some(std::time::Instant::now() + std::time::Duration::from_secs(10));
+
     loop {
         let (
             consensus_event_receiver,
@@ -1255,6 +1259,18 @@ async fn run(args: Args) -> anyhow::Result<()> {
             if *wake.0 {
                 info!("interrupt signal received");
                 break false;
+            }
+
+            // Elements of the system that involve stopping and restarting should be checked by forcing a relaunch.
+            // This check allows the system to start up as normal, wait 10s, then force a relaunch. If Things take too long
+            // to shutdown, or does not allow for a clean relaunch, this feature flag can expose those issues.
+            #[cfg(feature = "resync_check")]
+            if let Some(resync_moment) = resync_check {
+                if resync_moment < std::time::Instant::now() {
+                    warn!("resync check triggered");
+                    resync_check = None;
+                    break true;
+                }
             }
         };
         stop(

@@ -114,8 +114,7 @@ fn basic() {
     categories.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_pre_handshake: 1,
-            max_in_connections_post_handshake: 1,
+            max_in_connections: 1,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },
@@ -126,8 +125,7 @@ fn basic() {
     categories2.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_pre_handshake: 5,
-            max_in_connections_post_handshake: 5,
+            max_in_connections: 5,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },
@@ -277,8 +275,7 @@ fn stop_with_controller_still_exists() {
     categories.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_post_handshake: 1,
-            max_in_connections_pre_handshake: 1,
+            max_in_connections: 1,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },
@@ -289,8 +286,7 @@ fn stop_with_controller_still_exists() {
     categories2.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_post_handshake: 5,
-            max_in_connections_pre_handshake: 5,
+            max_in_connections: 5,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },

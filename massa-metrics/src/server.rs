@@ -5,25 +5,27 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Request, Response,
 };
-use massa_channel::MassaChannel;
 use prometheus::{Encoder, TextEncoder};
-use tokio::runtime::Runtime;
 use tracing::{error, info};
 
 use crate::MetricsStopper;
 
 #[allow(dead_code)]
 pub(crate) fn bind_metrics(addr: SocketAddr) -> MetricsStopper {
-    let (tx, rx) = MassaChannel::new("metrics_stopper".to_string(), Some(1));
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
     let handle = std::thread::spawn(move || {
-        let runtime = Runtime::new().unwrap();
-        runtime.block_on(async {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("error on build tokio runtime for metrics server");
+
+        rt.block_on(async {
             let server = hyper::Server::bind(&addr).serve(make_service_fn(|_| async {
                 Ok::<_, hyper::Error>(service_fn(serve_req))
             }));
 
             let graceful_server = server.with_graceful_shutdown(async {
-                rx.recv().unwrap();
+                rx.await.ok();
             });
             info!("METRICS | listening on http://{}", addr);
             if let Err(e) = graceful_server.await {
