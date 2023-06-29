@@ -228,11 +228,15 @@ impl Interface for InterfaceImpl {
         Ok(module)
     }
 
-    /// TODO remove
+    /// Gets the balance of the current address address (top of the stack).
+    ///
+    /// # Returns
+    /// The raw representation (no decimal factor) of the balance of the address,
+    /// or zero if the address is not found in the ledger.
     fn get_balance(&self) -> Result<u64> {
-        let ctx = context_guard!(self);
-        let addr = ctx.get_current_address()?;
-        Ok(ctx.get_balance(&addr).unwrap_or_default().to_raw())
+        let context = context_guard!(self);
+        let address = context.get_current_address()?;
+        Ok(context.get_balance(&address).unwrap_or_default().to_raw())
     }
 
     /// Gets the balance of arbitrary address passed as argument.
@@ -266,11 +270,14 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    /// TODO remove
-    fn get_keys(&self, prefix: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
+    /// Get the datastore keys (aka entries) for a given address
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays)
+    fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_keys(&addr, prefix.unwrap_or_default()) {
+        match context.get_keys(&addr, prefix_opt.unwrap_or_default()) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -280,16 +287,36 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys_for(&self, address: &str, prefix: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_keys(addr, prefix.unwrap_or_default()) {
+        match context.get_keys(addr, prefix_opt.unwrap_or_default()) {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
     }
 
-    /// TODO remove
+    /// Checks if a datastore entry exists for a given address.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
+    fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
+        let addr = massa_models::address::Address::from_str(address)?;
+        let context = context_guard!(self);
+        Ok(context.has_data_entry(&addr, key))
+    }
+
+    /// Gets a datastore value by key for the current address (top of the call stack).
+    ///
+    /// # Arguments
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
@@ -297,6 +324,59 @@ impl Interface for InterfaceImpl {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
+    }
+
+    /// Sets a datastore entry for the current address (top of the call stack).
+    /// Fails if the address does not exist.
+    /// Creates the entry if does not exist.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to set
+    /// * value: new value to set
+    fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        let mut context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    /// Appends data to a datastore entry for the current address (top of the call stack).
+    /// Fails if the address or entry does not exist.
+    ///
+    /// # Arguments
+    /// * key: string key of the datastore entry
+    /// * value: value to append
+    fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        let mut ctx = context_guard!(self);
+        let addr = ctx.get_current_address()?;
+        ctx.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    /// Deletes a datastore entry by key for the current address (top of the call stack).
+    /// Fails if the address or entry does not exist.
+    ///
+    /// # Arguments
+    /// * key: string key of the datastore entry to delete
+    fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
+        let mut ctx = context_guard!(self);
+        let addr = ctx.get_current_address()?;
+        ctx.delete_data_entry(&addr, key)?;
+        Ok(())
+    }
+
+    /// Checks if a datastore entry exists for the current address (top of the call stack).
+    ///
+    /// # Arguments
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
+    fn has_data(&self, key: &[u8]) -> Result<bool> {
+        let context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Gets a datastore value by key for a given address.
@@ -316,14 +396,6 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    /// TODO remove
-    fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        let mut context = context_guard!(self);
-        let addr = context.get_current_address()?;
-        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
-        Ok(())
-    }
-
     /// Sets a datastore entry for a given address.
     /// Fails if the address does not exist.
     /// Creates the entry if it does not exist.
@@ -336,14 +408,6 @@ impl Interface for InterfaceImpl {
         let addr = massa_models::address::Address::from_str(address)?;
         let mut context = context_guard!(self);
         context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
-        Ok(())
-    }
-
-    /// TODO remove
-    fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        let mut ctx = context_guard!(self);
-        let addr = ctx.get_current_address()?;
-        ctx.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -360,14 +424,6 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// TODO remove
-    fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
-        let mut ctx = context_guard!(self);
-        let addr = ctx.get_current_address()?;
-        ctx.delete_data_entry(&addr, key)?;
-        Ok(())
-    }
-
     /// Deletes a datastore entry by key for a given address.
     /// Fails if the address or entry does not exist.
     ///
@@ -378,27 +434,6 @@ impl Interface for InterfaceImpl {
         let addr = &massa_models::address::Address::from_str(address)?;
         context_guard!(self).delete_data_entry(addr, key)?;
         Ok(())
-    }
-
-    /// TODO remove
-    fn has_data(&self, key: &[u8]) -> Result<bool> {
-        let context = context_guard!(self);
-        let addr = context.get_current_address()?;
-        Ok(context.has_data_entry(&addr, key))
-    }
-
-    /// Checks if a datastore entry exists for a given address.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to retrieve
-    ///
-    /// # Returns
-    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
-        let addr = massa_models::address::Address::from_str(address)?;
-        let context = context_guard!(self);
-        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Check whether or not the caller has write access in the current context
