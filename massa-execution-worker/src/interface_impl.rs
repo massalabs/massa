@@ -416,9 +416,9 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry
     /// * value: value to append
     fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        let mut ctx = context_guard!(self);
-        let addr = ctx.get_current_address()?;
-        ctx.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        let mut context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        context.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -428,9 +428,9 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * key: string key of the datastore entry to delete
     fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
-        let mut ctx = context_guard!(self);
-        let addr = ctx.get_current_address()?;
-        ctx.delete_data_entry(&addr, key)?;
+        let mut context = context_guard!(self);
+        let addr = context.get_current_address()?;
+        context.delete_data_entry(&addr, key)?;
         Ok(())
     }
 
@@ -467,6 +467,7 @@ impl Interface for InterfaceImpl {
         Ok(caller_owned_addresses.contains(&current_address))
     }
 
+    /// Returns bytecode of the current address
     fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
@@ -830,7 +831,7 @@ impl Interface for InterfaceImpl {
         Ok(slot.thread)
     }
 
-    /// Sets the bytecode of the current addres
+    /// Sets the bytecode of the current address
     fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
         let mut execution_context = context_guard!(self);
         let address = execution_context.get_current_address()?;
