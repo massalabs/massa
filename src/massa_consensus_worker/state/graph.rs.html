@@ -304,6 +304,14 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -326,7 +334,7 @@
         </span><span class="kw">for </span>parent_h <span class="kw">in </span>parents_hash.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                 a_block: a_parent, ..
-            }) = <span class="self">self</span>.blocks_state.get_mut(parent_h)
+            }) = <span class="self">self</span>.block_statuses.get_mut(parent_h)
             {
                 a_parent.children[add_block_slot.thread <span class="kw">as </span>usize]
                     .insert(add_block_id, add_block_slot.period);
@@ -341,7 +349,7 @@
                 <span class="kw">continue</span>;
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block: ab, .. }) =
-                <span class="self">self</span>.blocks_state.get_mut(<span class="kw-2">&amp;</span>ancestor_h)
+                <span class="self">self</span>.block_statuses.get_mut(<span class="kw-2">&amp;</span>ancestor_h)
             {
                 ab.descendants.insert(add_block_id);
                 <span class="kw">for </span>(ancestor_parent_h, <span class="kw">_</span>) <span class="kw">in </span>ab.parents.iter() {
@@ -362,7 +370,7 @@
             clique.is_blockclique = <span class="bool-val">false</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>sum_hash = num::BigInt::default();
             <span class="kw">for </span>block_h <span class="kw">in </span>clique.block_ids.iter() {
-                <span class="kw">let </span>fitness = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_h) {
+                <span class="kw">let </span>fitness = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(block_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; a_block.fitness,
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses computing fitness while adding {} - missing {}&quot;</span>, add_block_id, block_h))),
                 };
@@ -398,16 +406,19 @@
         <span class="kw-2">&amp;</span>low_set - <span class="kw-2">&amp;</span>high_set
     }
 
-    <span class="kw">pub fn </span>remove_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, add_block_id: <span class="kw-2">&amp;</span>BlockId, block_id: <span class="kw-2">&amp;</span>BlockId) {
-        <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
-        <span class="self">self</span>.blocks_state.transition_map(block_id, |block_status, block_statuses| {
+    <span class="kw">pub fn </span>remove_block(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        add_block_id: <span class="kw-2">&amp;</span>BlockId,
+        block_id: <span class="kw-2">&amp;</span>BlockId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
             a_block: active_block,
             storage: _storage,
-        }) = block_status
+        }) = <span class="self">self</span>.block_statuses.remove(block_id)
         {
+            <span class="self">self</span>.active_index.remove(block_id);
             <span class="kw">if </span>active_block.is_final {
-               <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} was already final&quot;</span>, add_block_id, block_id);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} was already final&quot;</span>, add_block_id, block_id)));
             }
 
             <span class="comment">// remove from gi_head
@@ -441,7 +452,7 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                     a_block: parent_active_block,
                     ..
-                }) = block_statuses.get_mut(parent_h)
+                }) = <span class="self">self</span>.block_statuses.get_mut(parent_h)
                 {
                     parent_active_block.children[active_block.slot.thread <span class="kw">as </span>usize]
                         .remove(block_id);
@@ -455,19 +466,24 @@
             <span class="comment">// mark as stale
             </span><span class="self">self</span>.new_stale_blocks
                 .insert(<span class="kw-2">*</span>block_id, (active_block.creator_address, active_block.slot));
-            <span class="prelude-val">Some</span>(
+            <span class="self">self</span>.block_statuses.insert(
+                <span class="kw-2">*</span>block_id,
                 BlockStatus::Discarded {
                     slot: active_block.slot,
                     creator: active_block.creator_address,
                     parents: active_block.parents.iter().map(|(h, <span class="kw">_</span>)| <span class="kw-2">*</span>h).collect(),
                     reason: DiscardReason::Stale,
-                    sequence_number,
-                }
-            )
+                    sequence_number: {
+                        <span class="self">self</span>.sequence_counter += <span class="number">1</span>;
+                        <span class="self">self</span>.sequence_counter
+                    },
+                },
+            );
+            <span class="self">self</span>.discarded_index.insert(<span class="kw-2">*</span>block_id);
+            <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} is missing&quot;</span>, add_block_id, block_id);
+            <span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} is missing&quot;</span>, add_block_id, block_id)))
         }
-    });
     }
 
     <span class="kw">pub fn </span>list_final_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashSet&lt;BlockId&gt;, ConsensusError&gt; {
@@ -510,7 +526,7 @@
             <span class="comment">// compute the total fitness of all the descendants of the candidate within the clique
             </span><span class="kw">let </span>loc_candidates = final_candidates.clone();
             <span class="kw">for </span>candidate_h <span class="kw">in </span>loc_candidates.into_iter() {
-                <span class="kw">let </span>descendants = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>candidate_h) {
+                <span class="kw">let </span>descendants = <span class="kw">match </span><span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>candidate_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active {
                         a_block,
                         storage: <span class="kw">_</span>,
@@ -526,7 +542,7 @@
                     .intersection(<span class="kw-2">&amp;</span>clique.block_ids)
                     .map(|h| {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block: ab, .. }) =
-                            <span class="self">self</span>.blocks_state.get(h)
+                            <span class="self">self</span>.block_statuses.get(h)
                         {
                             <span class="kw">return </span>ab.fitness;
                         }
@@ -572,7 +588,7 @@
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                 a_block: final_block,
                 ..
-            }) = <span class="self">self</span>.blocks_state.get_mut(<span class="kw-2">&amp;</span>block_id)
+            }) = <span class="self">self</span>.block_statuses.get_mut(<span class="kw-2">&amp;</span>block_id)
             {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.add_block_to_graph.final&quot;</span>, {
                     <span class="string">&quot;hash&quot;</span>: block_id
