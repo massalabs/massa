@@ -300,7 +300,7 @@ impl ConsensusState {
                             .storage
                             .read_blocks()
                             .get(&block_id)
-                            .expect(&format!("block {} should be in storage", block_id))
+                            .unwrap_or_else(|| panic!("block {} should be in storage", block_id))
                             .content
                             .header
                             .clone()

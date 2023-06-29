@@ -254,6 +254,7 @@ impl BlocksState {
                         } else {
                             panic!("Unexpected block status for {}", block_id);
                         }
+                        self.block_statuses.insert(*block_id, new_state);
                     }
                     (
                         BlockStatusId::WaitingForDependencies,
