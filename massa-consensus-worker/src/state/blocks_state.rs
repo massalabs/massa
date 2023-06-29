@@ -201,6 +201,15 @@ impl BlocksState {
                 match (&old_state_id, &new_state_id) {
                     // From incoming status
                     (BlockStatusId::Incoming, BlockStatusId::WaitingForDependencies) => {
+                        if let BlockStatus::WaitingForDependencies {
+                            sequence_number, ..
+                        } = &mut new_state
+                        {
+                            self.sequence_counter += 1;
+                            *sequence_number = self.sequence_counter;
+                        } else {
+                            panic!("Unexpected block status for {}", block_id);
+                        }
                         self.block_statuses.insert(*block_id, new_state);
                         self.promote_dep_tree(*block_id);
                     }
@@ -266,6 +275,15 @@ impl BlocksState {
 
                     // From active status
                     (BlockStatusId::Active, BlockStatusId::Discarded) => {
+                        if let BlockStatus::Discarded {
+                            sequence_number, ..
+                        } = &mut new_state
+                        {
+                            self.sequence_counter += 1;
+                            *sequence_number = self.sequence_counter;
+                        } else {
+                            panic!("Unexpected block status for {}", block_id);
+                        }
                         self.block_statuses.insert(*block_id, new_state);
                     }
                     (BlockStatusId::Active, BlockStatusId::Active) => {

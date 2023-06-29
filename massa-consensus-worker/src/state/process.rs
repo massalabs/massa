@@ -36,14 +36,14 @@ pub(crate) struct BlockInfos {
     pub creator: PublicKey,
     /// The slot of the block
     pub slot: Slot,
-    /// Storage
-    pub storage: Storage,
     /// The list of the parents of the block (block_id, period) (one block per thread)
     pub parents_hash_period: Vec<(BlockId, u64)>,
     /// The list of the blocks that are incompatible with this block
     pub incompatibilities: PreHashSet<BlockId>,
     /// Number of incompatibilities this block inherit from his parents
     pub inherited_incompatibilities_count: usize,
+    /// The storage can the block himself and his operations and endorsements
+    pub storage: Storage,
     /// The fitness of the block
     pub fitness: u64,
 }

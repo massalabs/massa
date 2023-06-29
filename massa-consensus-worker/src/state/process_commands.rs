@@ -108,7 +108,7 @@ impl ConsensusState {
                                 })
                             }
                             BlockStatus::WaitingForDependencies {
-                                header_or_block,
+                                header_or_block: _,
                                 mut unsatisfied_dependencies,
                                 sequence_number,
                             } => {
@@ -118,7 +118,11 @@ impl ConsensusState {
                                     to_ack.insert((slot, block_id));
                                 }
                                 BlockStatus::WaitingForDependencies {
-                                    header_or_block,
+                                    header_or_block: HeaderOrBlock::Block {
+                                        id: block_id,
+                                        slot,
+                                        storage,
+                                    },
                                     unsatisfied_dependencies,
                                     sequence_number,
                                 }
