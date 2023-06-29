@@ -221,13 +221,15 @@ impl ConsensusWorker {
                 write_shared_state.best_parents = latest_final_blocks_periods.clone();
                 write_shared_state.latest_final_blocks_periods = latest_final_blocks_periods;
                 for (b, s) in final_blocks {
-                    write_shared_state.blocks_state.insert_block(
-                        b.block_id,
-                        BlockStatus::Active {
-                            a_block: Box::new(b),
-                            storage: s,
+                    write_shared_state.blocks_state.transition_map(
+                        &(b.block_id.clone()),
+                        |_, _| {
+                            Some(BlockStatus::Active {
+                                a_block: Box::new(b),
+                                storage: s,
+                            })
                         },
-                    )?;
+                    );
                 }
                 write_shared_state.final_block_stats = final_block_stats;
             }
@@ -243,7 +245,9 @@ impl ConsensusWorker {
                     genesis_block_ids.iter().map(|v| (*v, 0)).collect();
                 write_shared_state.genesis_hashes = genesis_block_ids;
                 for (b, s) in block_statuses {
-                    write_shared_state.blocks_state.insert_block(b, s)?;
+                    write_shared_state
+                        .blocks_state
+                        .transition_map(&b, |_, _| Some(s));
                 }
                 write_shared_state.final_block_stats = final_block_stats;
             }

@@ -44,12 +44,7 @@ impl ConsensusWorker {
                 write_shared_state.block_db_changed()
             }
             ConsensusCommand::MarkInvalidBlock(block_id, header) => {
-                if let Err(err) = write_shared_state.mark_invalid_block(&block_id, header) {
-                    warn!(
-                        "Failed to mark block {} as invalid. Error in consensus: {}",
-                        block_id, err
-                    );
-                }
+                write_shared_state.mark_invalid_block(&block_id, header);
                 Ok(())
             }
         }

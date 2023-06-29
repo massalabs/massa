@@ -92,18 +92,16 @@ impl ConsensusState {
         &low_set - &high_set
     }
 
-    pub fn remove_block(
-        &mut self,
-        add_block_id: &BlockId,
-        block_id: &BlockId,
-    ) -> Result<(), ConsensusError> {
+    pub fn remove_block(&mut self, add_block_id: &BlockId, block_id: &BlockId) {
+        let sequence_number = self.blocks_state.sequence_counter();
+        self.blocks_state.transition_map(block_id, |block_status, block_statuses| {
         if let Some(BlockStatus::Active {
             a_block: active_block,
             storage: _storage,
-        }) = self.blocks_state.get(block_id).cloned()
+        }) = block_status
         {
             if active_block.is_final {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, block_id)));
+               panic!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, block_id);
             }
 
             // remove from gi_head
@@ -137,7 +135,7 @@ impl ConsensusState {
                 if let Some(BlockStatus::Active {
                     a_block: parent_active_block,
                     ..
-                }) = self.blocks_state.get_mut(parent_h)
+                }) = block_statuses.get_mut(parent_h)
                 {
                     parent_active_block.children[active_block.slot.thread as usize]
                         .remove(block_id);
@@ -151,19 +149,19 @@ impl ConsensusState {
             // mark as stale
             self.new_stale_blocks
                 .insert(*block_id, (active_block.creator_address, active_block.slot));
-            self.blocks_state.update_block_state(
-                block_id,
+            Some(
                 BlockStatus::Discarded {
                     slot: active_block.slot,
                     creator: active_block.creator_address,
                     parents: active_block.parents.iter().map(|(h, _)| *h).collect(),
                     reason: DiscardReason::Stale,
-                    sequence_number: self.blocks_state.sequence_counter(),
-                },
+                    sequence_number,
+                }
             )
         } else {
-            Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id)))
+            panic!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id);
         }
+    });
     }
 
     pub fn list_final_blocks(&self) -> Result<PreHashSet<BlockId>, ConsensusError> {

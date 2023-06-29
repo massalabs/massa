@@ -1,9 +1,6 @@
 use super::{process::BlockInfos, ConsensusState};
 
-use massa_consensus_exports::{
-    block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
-    error::ConsensusError,
-};
+use massa_consensus_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 use massa_logging::massa_trace;
 use massa_models::{
     block::SecureShareBlock, block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet,
@@ -32,6 +29,12 @@ pub enum HeaderCheckOutcome {
     WaitForSlot,
     /// it must wait for these block ids to be fully processed
     WaitForDependencies(PreHashSet<BlockId>),
+}
+
+#[allow(clippy::large_enum_variant)]
+pub(crate) enum BlockCheckOutcome {
+    BlockInfos(BlockInfos),
+    BlockStatus(BlockStatus),
 }
 
 /// Possible outcomes of endorsements check
@@ -72,16 +75,16 @@ impl ConsensusState {
     ///
     /// # Returns:
     /// An option that contains data if the block can be processed and added to the graph, in any other case `None`
-    pub(crate) fn check_block_and_store(
+    pub(crate) fn convert_block(
         &mut self,
         block_id: BlockId,
         slot: Slot,
         storage: Storage,
         stored_block: SecureShareBlock,
         current_slot: Option<Slot>,
-    ) -> Result<Option<BlockInfos>, ConsensusError> {
+    ) -> Option<BlockCheckOutcome> {
         let header_outcome =
-            self.check_header(&block_id, &stored_block.content.header, current_slot)?;
+            self.check_header(&block_id, &stored_block.content.header, current_slot);
         match header_outcome {
             HeaderCheckOutcome::Proceed {
                 parents_hash_period,
@@ -90,28 +93,26 @@ impl ConsensusState {
                 fitness,
             } => {
                 if self.detect_multistake(&stored_block.content.header) {
-                    return Ok(None);
+                    return None;
                 }
                 // block is valid: remove it from Incoming and return it
                 massa_trace!("consensus.block_graph.process.incoming_block.valid", {
                     "block_id": block_id
                 });
-                return Ok(Some(BlockInfos {
+                Some(BlockCheckOutcome::BlockInfos(BlockInfos {
                     creator: stored_block.content.header.content_creator_pub_key,
                     parents_hash_period,
                     slot,
-                    storage,
                     incompatibilities,
                     inherited_incompatibilities_count,
                     fitness,
-                }));
+                }))
             }
             HeaderCheckOutcome::WaitForDependencies(dependencies) => {
                 if self.detect_multistake(&stored_block.content.header) {
-                    return Ok(None);
+                    return None;
                 }
-                self.blocks_state.update_block_state(
-                    &block_id,
+                Some(BlockCheckOutcome::BlockStatus(
                     BlockStatus::WaitingForDependencies {
                         header_or_block: HeaderOrBlock::Block {
                             id: block_id,
@@ -121,87 +122,74 @@ impl ConsensusState {
                         unsatisfied_dependencies: dependencies,
                         sequence_number: self.blocks_state.sequence_counter(),
                     },
-                )?;
+                ))
             }
             HeaderCheckOutcome::WaitForSlot => {
                 if self.detect_multistake(&stored_block.content.header) {
-                    return Ok(None);
+                    return None;
                 }
-                self.blocks_state.update_block_state(
-                    &block_id,
-                    BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
+                Some(BlockCheckOutcome::BlockStatus(BlockStatus::WaitingForSlot(
+                    HeaderOrBlock::Block {
                         id: block_id,
                         slot,
                         storage,
-                    }),
-                )?;
+                    },
+                )))
             }
-            HeaderCheckOutcome::Discard(reason) => {
-                self.store_discard_block_header(reason, block_id, stored_block.content.header)?;
-            }
+            HeaderCheckOutcome::Discard(reason) => Some(BlockCheckOutcome::BlockStatus(
+                self.convert_to_discard_block_header(reason, block_id, stored_block.content.header),
+            )),
         }
-        Ok(None)
     }
 
     /// Check if the header is valid and if it could be processed when we will receive the full block
-    pub(crate) fn check_block_header_and_store(
+    pub(crate) fn convert_block_header(
         &mut self,
         block_id: BlockId,
         header: SecuredHeader,
         current_slot: Option<Slot>,
-    ) -> Result<(), ConsensusError> {
-        let header_outcome = self.check_header(&block_id, &header, current_slot)?;
+    ) -> Option<BlockStatus> {
+        let header_outcome = self.check_header(&block_id, &header, current_slot);
         match header_outcome {
             HeaderCheckOutcome::Proceed { .. } => {
                 if self.detect_multistake(&header) {
-                    return Ok(());
+                    return None;
                 }
                 // set as waiting dependencies
                 let mut dependencies = PreHashSet::<BlockId>::default();
                 dependencies.insert(block_id); // add self as unsatisfied
-                self.blocks_state.update_block_state(
-                    &block_id,
-                    BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Header(header),
-                        unsatisfied_dependencies: dependencies,
-                        sequence_number: self.blocks_state.sequence_counter(),
-                    },
-                )?;
-
                 massa_trace!(
                     "consensus.block_graph.process.incoming_header.waiting_for_self",
                     { "block_id": block_id }
                 );
+                Some(BlockStatus::WaitingForDependencies {
+                    header_or_block: HeaderOrBlock::Header(header),
+                    unsatisfied_dependencies: dependencies,
+                    sequence_number: self.blocks_state.sequence_counter(),
+                })
             }
             HeaderCheckOutcome::WaitForDependencies(mut dependencies) => {
                 if self.detect_multistake(&header) {
-                    return Ok(());
+                    return None;
                 }
                 // set as waiting dependencies
                 dependencies.insert(block_id); // add self as unsatisfied
-                self.blocks_state.update_block_state(
-                    &block_id,
-                    BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Header(header),
-                        unsatisfied_dependencies: dependencies,
-                        sequence_number: self.blocks_state.sequence_counter(),
-                    },
-                )?;
+                Some(BlockStatus::WaitingForDependencies {
+                    header_or_block: HeaderOrBlock::Header(header),
+                    unsatisfied_dependencies: dependencies,
+                    sequence_number: self.blocks_state.sequence_counter(),
+                })
             }
             HeaderCheckOutcome::WaitForSlot => {
                 if self.detect_multistake(&header) {
-                    return Ok(());
+                    return None;
                 }
-                self.blocks_state.update_block_state(
-                    &block_id,
-                    BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)),
-                )?;
+                Some(BlockStatus::WaitingForSlot(HeaderOrBlock::Header(header)))
             }
             HeaderCheckOutcome::Discard(reason) => {
-                self.store_discard_block_header(reason, block_id, header)?;
+                Some(self.convert_to_discard_block_header(reason, block_id, header))
             }
-        };
-        Ok(())
+        }
     }
 
     /// Store in our indexes that we discarded this block or block header
@@ -210,12 +198,12 @@ impl ConsensusState {
     /// `reason`: Read of the discard
     /// `block_id`: ID of the block
     /// `header`: header to save
-    fn store_discard_block_header(
+    fn convert_to_discard_block_header(
         &mut self,
         reason: DiscardReason,
         block_id: BlockId,
         header: SecuredHeader,
-    ) -> Result<(), ConsensusError> {
+    ) -> BlockStatus {
         self.maybe_note_attack_attempt(&reason, &block_id);
         massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
         // count stales
@@ -226,16 +214,13 @@ impl ConsensusState {
             );
         }
         // discard
-        self.blocks_state.update_block_state(
-            &block_id,
-            BlockStatus::Discarded {
-                slot: header.content.slot,
-                creator: header.content_creator_address,
-                parents: header.content.parents,
-                reason,
-                sequence_number: self.blocks_state.sequence_counter(),
-            },
-        )
+        BlockStatus::Discarded {
+            slot: header.content.slot,
+            creator: header.content_creator_address,
+            parents: header.content.parents,
+            reason,
+            sequence_number: self.blocks_state.sequence_counter(),
+        }
     }
 
     /// Process an incoming header.
@@ -258,7 +243,7 @@ impl ConsensusState {
         block_id: &BlockId,
         header: &SecuredHeader,
         current_slot: Option<Slot>,
-    ) -> Result<HeaderCheckOutcome, ConsensusError> {
+    ) -> HeaderCheckOutcome {
         massa_trace!("consensus.block_graph.check_header", {
             "block_id": block_id
         });
@@ -273,7 +258,7 @@ impl ConsensusState {
         if header.content.slot.period
             <= self.latest_final_blocks_periods[header.content.slot.thread as usize].1
         {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
+            return HeaderCheckOutcome::Discard(DiscardReason::Stale);
         }
 
         // check if it was the creator's turn to create this block
@@ -284,12 +269,13 @@ impl ConsensusState {
             .get_producer(header.content.slot)
         {
             Ok(draw) => draw,
-            Err(_) => return Ok(HeaderCheckOutcome::WaitForSlot), // TODO properly handle PoS errors
+            Err(_) => return HeaderCheckOutcome::WaitForSlot, // TODO properly handle PoS errors
         };
         if creator_addr != slot_draw_address {
             // it was not the creator's turn to create a block for this slot
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                format!("Bad creator turn for the slot:{}", header.content.slot),
+            return HeaderCheckOutcome::Discard(DiscardReason::Invalid(format!(
+                "Bad creator turn for the slot:{}",
+                header.content.slot
             )));
         }
 
@@ -297,7 +283,7 @@ impl ConsensusState {
         // note: do it after testing signature + draw to prevent queue flooding/DoS
         // note: Some(x) > None
         if Some(header.content.slot) > current_slot {
-            return Ok(HeaderCheckOutcome::WaitForSlot);
+            return HeaderCheckOutcome::WaitForSlot;
         }
 
         // Note: here we will check if we already have a block for that slot
@@ -310,13 +296,13 @@ impl ConsensusState {
             match self.blocks_state.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
-                    return Ok(HeaderCheckOutcome::Discard(match reason {
+                    return HeaderCheckOutcome::Discard(match reason {
                         DiscardReason::Invalid(invalid_reason) => DiscardReason::Invalid(format!(
                             "discarded because a parent was discarded for the following reason: {}",
                             invalid_reason
                         )),
                         r => r.clone(),
-                    }));
+                    });
                 }
                 Some(BlockStatus::Active {
                     a_block: parent, ..
@@ -325,11 +311,9 @@ impl ConsensusState {
 
                     // check that the parent is from an earlier slot in the right thread
                     if parent.slot.thread != parent_thread || parent.slot >= header.content.slot {
-                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                            format!(
-                                "Bad parent {} in thread:{} or slot:{} for {}.",
-                                parent_hash, parent_thread, parent.slot, header.content.slot
-                            ),
+                        return HeaderCheckOutcome::Discard(DiscardReason::Invalid(format!(
+                            "Bad parent {} in thread:{} or slot:{} for {}.",
+                            parent_hash, parent_thread, parent.slot, header.content.slot
                         )));
                     }
 
@@ -337,9 +321,9 @@ impl ConsensusState {
                     // and ensure parents are mutually compatible
                     if let Some(p_incomp) = self.gi_head.get(&parent_hash) {
                         if !p_incomp.is_disjoint(&parent_set) {
-                            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                            return HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                                 "Parent not mutually compatible".to_string(),
-                            )));
+                            ));
                         }
                         incomp.extend(p_incomp);
                     }
@@ -350,14 +334,14 @@ impl ConsensusState {
                     // parent is missing or queued
                     if self.genesis_hashes.contains(&parent_hash) {
                         // forbid depending on discarded genesis block
-                        return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
+                        return HeaderCheckOutcome::Discard(DiscardReason::Stale);
                     }
                     missing_deps.insert(parent_hash);
                 }
             }
         }
         if !missing_deps.is_empty() {
-            return Ok(HeaderCheckOutcome::WaitForDependencies(missing_deps));
+            return HeaderCheckOutcome::WaitForDependencies(missing_deps);
         }
         let inherited_incomp_count = incomp.len();
 
@@ -372,18 +356,18 @@ impl ConsensusState {
                         storage: _,
                     }) => a_block,
                     _ => {
-                        return Err(ConsensusError::ContainerInconsistency(format!(
+                        panic!(
                             "inconsistency inside block statuses searching parent {} of block {}",
                             parent_h, block_id
-                        )))
+                        )
                     }
                 };
                 if parent_period < gp_max_slots[parent_i as usize] {
                     // a parent is earlier than a block known by another parent in that thread
-                    return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                    return HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                         "a parent is earlier than a block known by another parent in that thread"
                             .to_string(),
-                    )));
+                    ));
                 }
                 gp_max_slots[parent_i as usize] = parent_period;
                 if parent_period == self.config.last_start_period {
@@ -398,23 +382,21 @@ impl ConsensusState {
                     match self.blocks_state.get(&gp_h) {
                         // this grandpa is discarded
                         Some(BlockStatus::Discarded { reason, .. }) => {
-                            return Ok(HeaderCheckOutcome::Discard(reason.clone()));
+                            return HeaderCheckOutcome::Discard(reason.clone());
                         }
                         // this grandpa is active
                         Some(BlockStatus::Active { a_block: gp, .. }) => {
                             if gp.slot.period > gp_max_slots[gp_i as usize] {
                                 if gp_i < parent_i {
-                                    return Ok(HeaderCheckOutcome::Discard(
-                                        DiscardReason::Invalid(
-                                            "grandpa error: gp_i < parent_i".to_string(),
-                                        ),
+                                    return HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+                                        "grandpa error: gp_i < parent_i".to_string(),
                                     ));
                                 }
                                 gp_max_slots[gp_i as usize] = gp.slot.period;
                             }
                         }
                         // this grandpa is missing, assume stale
-                        _ => return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale)),
+                        _ => return HeaderCheckOutcome::Discard(DiscardReason::Stale),
                     }
                 }
             }
@@ -431,30 +413,29 @@ impl ConsensusState {
             }) => Some(a_block),
             _ => None,
         }
-        .ok_or_else(|| {
-            ConsensusError::ContainerInconsistency(format!(
+        .unwrap_or_else(|| {
+            panic!(
                 "inconsistency inside block statuses searching parent {} in own thread of block {}",
                 parents[header.content.slot.thread as usize].0, block_id
-            ))
-        })?;
+            )
+        });
 
         // check endorsements
-        match self.check_endorsements(header)? {
+        match self.check_endorsements(header) {
             EndorsementsCheckOutcome::Proceed => {}
             EndorsementsCheckOutcome::Discard(reason) => {
-                return Ok(HeaderCheckOutcome::Discard(reason))
+                return HeaderCheckOutcome::Discard(reason)
             }
-            EndorsementsCheckOutcome::WaitForSlot => return Ok(HeaderCheckOutcome::WaitForSlot),
+            EndorsementsCheckOutcome::WaitForSlot => return HeaderCheckOutcome::WaitForSlot,
         }
 
         // thread incompatibility test
         parent_in_own_thread.children[header.content.slot.thread as usize]
             .keys()
             .filter(|&sibling_h| sibling_h != block_id)
-            .try_for_each(|&sibling_h| {
-                incomp.extend(self.get_active_block_and_descendants(&sibling_h)?);
-                Result::<(), ConsensusError>::Ok(())
-            })?;
+            .for_each(|&sibling_h| {
+                incomp.extend(self.get_active_block_and_descendants(&sibling_h));
+            });
 
         // grandpa incompatibility test
         for tau in (0u8..self.config.thread_count).filter(|&t| t != header.content.slot.thread) {
@@ -465,7 +446,7 @@ impl ConsensusState {
                 let cur_b = match self.blocks_state.get(&cur_h) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
-                }.ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_h,  block_id)))?;
+                }.unwrap_or_else(|| panic!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_h,  block_id));
 
                 // traverse but do not check up to generation 1
                 if cur_gen <= 1 {
@@ -481,15 +462,12 @@ impl ConsensusState {
                     if let BlockStatus::Active {
                         a_block,
                         storage: _,
-                    } = self.blocks_state.get(&cur_b.block_id).ok_or_else(|| {
-                        ConsensusError::MissingBlock(format!(
-                            "missing block in grandpa incomp test: {}",
-                            cur_b.block_id
-                        ))
-                    })? {
+                    } = self.blocks_state.get(&cur_b.block_id).unwrap_or_else(|| {
+                        panic!("missing block in grandpa incomp test: {}", cur_b.block_id)
+                    }) {
                         a_block.parents[header.content.slot.thread as usize].0
                     } else {
-                        return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_b.block_id,  block_id)));
+                        panic!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_b.block_id,  block_id);
                     }
                 };
 
@@ -498,24 +476,23 @@ impl ConsensusState {
                 let parent_period = match self.blocks_state.get(&parent_id) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
                     _ => None,
-                }.ok_or_else(||
-                    ConsensusError::ContainerInconsistency(
-                        format!("inconsistency inside block statuses searching {} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking grandpa incompatibility of block {}",
+                }.unwrap_or_else(||
+                        panic!("inconsistency inside block statuses searching {} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking grandpa incompatibility of block {}",
                         parent_id,
                         block_id)
-                    ))?.slot.period;
+                    ).slot.period;
                 if parent_period < parent_in_own_thread.slot.period {
                     // GPI detected
-                    incomp.extend(self.get_active_block_and_descendants(&cur_h)?);
+                    incomp.extend(self.get_active_block_and_descendants(&cur_h));
                 } // otherwise, cur_b and its descendants cannot be GPI with the block: don't traverse
             }
         }
 
         // check if the block is incompatible with a parent
         if !incomp.is_disjoint(&parents.iter().map(|(h, _p)| *h).collect()) {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
+            return HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                 "Block incompatible with a parent".to_string(),
-            )));
+            ));
         }
 
         // check if the block is incompatible with a final block
@@ -534,27 +511,24 @@ impl ConsensusState {
                 })
                 .collect(),
         ) {
-            return Ok(HeaderCheckOutcome::Discard(DiscardReason::Stale));
+            return HeaderCheckOutcome::Discard(DiscardReason::Stale);
         }
         massa_trace!("consensus.block_graph.check_header.ok", {
             "block_id": block_id
         });
 
-        Ok(HeaderCheckOutcome::Proceed {
+        HeaderCheckOutcome::Proceed {
             parents_hash_period: parents,
             incompatibilities: incomp,
             inherited_incompatibilities_count: inherited_incomp_count,
             fitness: header.get_fitness(),
-        })
+        }
     }
 
     /// check endorsements:
     /// * endorser was selected for that (slot, index)
     /// * endorsed slot is `parent_in_own_thread` slot
-    pub fn check_endorsements(
-        &self,
-        header: &SecuredHeader,
-    ) -> Result<EndorsementsCheckOutcome, ConsensusError> {
+    pub fn check_endorsements(&self, header: &SecuredHeader) -> EndorsementsCheckOutcome {
         // check endorsements
         let endorsement_draws = match self
             .channels
@@ -562,18 +536,16 @@ impl ConsensusState {
             .get_selection(header.content.slot)
         {
             Ok(sel) => sel.endorsements,
-            Err(_) => return Ok(EndorsementsCheckOutcome::WaitForSlot),
+            Err(_) => return EndorsementsCheckOutcome::WaitForSlot,
         };
         for endorsement in header.content.endorsements.iter() {
             // check that the draw is correct
             if endorsement.content_creator_address
                 != endorsement_draws[endorsement.content.index as usize]
             {
-                return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
-                    format!(
-                        "endorser draw mismatch for header in slot: {}",
-                        header.content.slot
-                    ),
+                return EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(format!(
+                    "endorser draw mismatch for header in slot: {}",
+                    header.content.slot
                 )));
             }
 
@@ -584,6 +556,6 @@ impl ConsensusState {
             // * the endorsed block is the containing block's parent
         }
 
-        Ok(EndorsementsCheckOutcome::Proceed)
+        EndorsementsCheckOutcome::Proceed
     }
 }

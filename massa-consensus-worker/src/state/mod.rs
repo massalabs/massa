@@ -500,10 +500,7 @@ impl ConsensusState {
     ///
     /// # Argument
     /// * hash : hash of the given block
-    pub fn get_active_block_and_descendants(
-        &self,
-        block_id: &BlockId,
-    ) -> Result<PreHashSet<BlockId>, ConsensusError> {
+    pub fn get_active_block_and_descendants(&self, block_id: &BlockId) -> PreHashSet<BlockId> {
         let mut to_visit = vec![*block_id];
         let mut result = PreHashSet::<BlockId>::default();
         while let Some(visit_h) = to_visit.pop() {
@@ -516,9 +513,9 @@ impl ConsensusState {
                     .children.iter()
                     .for_each(|thread_children| to_visit.extend(thread_children.keys()))
                 },
-                _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h))),
+                _ => panic!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h),
             }
         }
-        Ok(result)
+        result
     }
 }

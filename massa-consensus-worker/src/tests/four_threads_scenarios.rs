@@ -203,7 +203,7 @@ fn test_fts_latest_blocks_as_parents() {
 fn test_fts_multiple_max_cliques_1() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
-        t0: MassaTime::from_millis(200),
+        t0: MassaTime::from_millis(500),
         thread_count: 4,
         genesis_timestamp: MassaTime::now().unwrap(),
         force_keep_final_periods_without_ops: 128,
@@ -561,7 +561,7 @@ fn test_fts_multiple_max_cliques_1() {
 fn test_fts_multiple_max_cliques_2() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
-        t0: MassaTime::from_millis(200),
+        t0: MassaTime::from_millis(500),
         thread_count: 4,
         genesis_timestamp: MassaTime::now().unwrap(),
         force_keep_final_periods_without_ops: 128,

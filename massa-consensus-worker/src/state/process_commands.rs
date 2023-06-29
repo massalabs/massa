@@ -8,7 +8,7 @@ use massa_logging::massa_trace;
 use massa_models::{block_header::SecuredHeader, block_id::BlockId, slot::Slot};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::{debug, log::warn};
+use tracing::debug;
 
 use super::ConsensusState;
 
@@ -39,40 +39,14 @@ impl ConsensusState {
         );
         massa_trace!("consensus.block_graph.incoming_header", {"block_id": block_id, "header": header});
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
-        match self.blocks_state.insert_block(
-            block_id,
-            BlockStatus::Incoming(HeaderOrBlock::Header(header.clone())),
-        ) {
-            Ok(None) => {
-                to_ack.insert((header.content.slot, block_id));
-            }
-            Ok(Some(_)) => {
-                let mut to_increase = false;
-                let sequence_counter = self.blocks_state.sequence_counter();
-                let occ = self.blocks_state.get_mut(&block_id).unwrap();
-                match occ {
-                    BlockStatus::Discarded {
-                        sequence_number, ..
-                    } => {
-                        // promote if discarded
-                        *sequence_number = sequence_counter + 1;
-                        to_increase = true;
-                    }
-                    BlockStatus::WaitingForDependencies { .. } => {
-                        // promote in dependencies
-                        self.blocks_state.promote_dep_tree(block_id)?;
-                    }
-                    _ => {}
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| match block_status {
+                None => {
+                    to_ack.insert((header.content.slot, block_id));
+                    Some(BlockStatus::Incoming(HeaderOrBlock::Header(header.clone())))
                 }
-                if to_increase {
-                    self.blocks_state.inc_sequence_counter();
-                }
-            }
-            Err(e) => {
-                warn!("couldn't store header {} received: {}", block_id, e);
-                return Err(e);
-            }
-        }
+                Some(block_status) => Some(block_status),
+            });
         // process
         self.rec_process(to_ack, current_slot)?;
 
@@ -112,69 +86,48 @@ impl ConsensusState {
         debug!("received block {} for slot {}", block_id, slot);
 
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
-        match self.blocks_state.insert_block(
-            block_id,
-            BlockStatus::Incoming(HeaderOrBlock::Block {
-                id: block_id,
-                slot,
-                storage: storage.clone(),
-            }),
-        ) {
-            Ok(None) => {
-                to_ack.insert((slot, block_id));
-            }
-            Ok(Some(_)) => {
-                let mut to_increase = false;
-                let sequence_counter = self.blocks_state.sequence_counter();
-                let occ = self.blocks_state.get_mut(&block_id).unwrap();
-                match occ {
-                    BlockStatus::Discarded {
-                        sequence_number, ..
-                    } => {
-                        // promote if discarded
-                        *sequence_number = sequence_counter + 1;
-                        to_increase = true;
-                    }
-                    BlockStatus::WaitingForSlot(header_or_block) => {
-                        // promote to full block
-                        *header_or_block = HeaderOrBlock::Block {
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| {
+                match block_status {
+                    None => {
+                        to_ack.insert((slot, block_id));
+                        Some(BlockStatus::Incoming(HeaderOrBlock::Block {
                             id: block_id,
                             slot,
                             storage,
-                        };
+                        }))
                     }
-                    BlockStatus::WaitingForDependencies {
-                        header_or_block,
-                        unsatisfied_dependencies,
-                        ..
-                    } => {
-                        // promote to full block and satisfy self-dependency
-                        if unsatisfied_dependencies.remove(&block_id) {
-                            // a dependency was satisfied: process
-                            to_ack.insert((slot, block_id));
-                        }
-                        *header_or_block = HeaderOrBlock::Block {
-                            id: block_id,
-                            slot,
-                            storage,
-                        };
-                        // promote in dependencies
-                        self.blocks_state.promote_dep_tree(block_id)?;
-                    }
-                    _ => {
-                        return Ok(());
+                    Some(block_status) => {
+                        Some(match block_status {
+                            BlockStatus::WaitingForSlot(_) => {
+                                // promote to full block
+                                BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
+                                    id: block_id,
+                                    slot,
+                                    storage,
+                                })
+                            }
+                            BlockStatus::WaitingForDependencies {
+                                header_or_block,
+                                mut unsatisfied_dependencies,
+                                sequence_number,
+                            } => {
+                                // promote to full block and satisfy self-dependency
+                                if unsatisfied_dependencies.remove(&block_id) {
+                                    // a dependency was satisfied: process
+                                    to_ack.insert((slot, block_id));
+                                }
+                                BlockStatus::WaitingForDependencies {
+                                    header_or_block,
+                                    unsatisfied_dependencies,
+                                    sequence_number,
+                                }
+                            }
+                            _ => block_status,
+                        })
                     }
                 }
-                if to_increase {
-                    self.blocks_state.inc_sequence_counter();
-                }
-            }
-            Err(e) => {
-                warn!("couldn't store block {} received: {}", block_id, e);
-                return Err(e);
-            }
-        }
-
+            });
         // process
         self.rec_process(to_ack, current_slot)?;
 
@@ -186,23 +139,19 @@ impl ConsensusState {
     /// # Arguments:
     /// * `block_id`: Block id of the block to mark as invalid
     /// * `header`: Header of the block to mark as invalid
-    pub fn mark_invalid_block(
-        &mut self,
-        block_id: &BlockId,
-        header: SecuredHeader,
-    ) -> Result<(), ConsensusError> {
+    pub fn mark_invalid_block(&mut self, block_id: &BlockId, header: SecuredHeader) {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
-        self.blocks_state.update_block_state(
-            block_id,
-            BlockStatus::Discarded {
+        let sequence_number = self.blocks_state.sequence_counter();
+        self.blocks_state.transition_map(block_id, |_, _| {
+            Some(BlockStatus::Discarded {
                 slot: header.content.slot,
                 creator: header.content_creator_address,
                 parents: header.content.parents,
                 reason,
-                sequence_number: self.blocks_state.sequence_counter(),
-            },
-        )
+                sequence_number,
+            })
+        });
     }
 }
