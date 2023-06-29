@@ -10,21 +10,24 @@ use nom::error::{ContextError, ParseError};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::ops::Bound::Included;
 
-pub const BALANCE_IDENT: u8 = 0u8;
-pub const BYTECODE_IDENT: u8 = 1u8;
-pub const DATASTORE_IDENT: u8 = 2u8;
+pub const VERSION_IDENT: u8 = 0u8;
+pub const BALANCE_IDENT: u8 = 1u8;
+pub const BYTECODE_IDENT: u8 = 2u8;
+pub const DATASTORE_IDENT: u8 = 3u8;
 pub const KEY_VERSION: u64 = 0;
 
 #[derive(PartialEq, Eq, Clone, IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
 enum KeyTypeId {
-    Balance = 0,
-    Bytecode = 1,
-    Datastore = 2,
+    Version = 0,
+    Balance = 1,
+    Bytecode = 2,
+    Datastore = 3,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum KeyType {
+    VERSION,
     BALANCE,
     BYTECODE,
     DATASTORE(Vec<u8>),
@@ -37,7 +40,7 @@ pub struct KeyTypeSerializer {
     // If true, we use the VecU8Serializer to serialize the key which will add the length at the beginning.
     // If false, we just serialize the key as is.
     // This allows us to store the datastore key length at the beginning of the key or not.
-    // The datastore key length is useful when transfering multiple keys, like in packets,
+    // The datastore key length is useful when transferring multiple keys, like in packets,
     // but isn't when storing a datastore key in the ledger.
     with_datastore_key_length: bool,
 }
@@ -56,6 +59,7 @@ impl KeyTypeSerializer {
 impl Serializer<KeyType> for KeyTypeSerializer {
     fn serialize(&self, value: &KeyType, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
+            KeyType::VERSION => buffer.extend(&[u8::from(KeyTypeId::Version)]),
             KeyType::BALANCE => buffer.extend(&[u8::from(KeyTypeId::Balance)]),
             KeyType::BYTECODE => buffer.extend(&[u8::from(KeyTypeId::Bytecode)]),
             KeyType::DATASTORE(data) => {
@@ -110,6 +114,7 @@ impl Deserializer<KeyType> for KeyTypeDeserializer {
                     Ok((&[], KeyType::DATASTORE(rest.to_vec())))
                 }
             }
+            Ok(KeyTypeId::Version) => Ok((rest, KeyType::VERSION)),
             Err(_) => Err(nom::Err::Error(E::from_error_kind(
                 rest,
                 nom::error::ErrorKind::Tag,

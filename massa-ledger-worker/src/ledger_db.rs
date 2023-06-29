@@ -12,7 +12,9 @@ use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_serialization::{
+    DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -21,6 +23,8 @@ use std::ops::Bound;
 
 /// Ledger sub entry enum
 pub enum LedgerSubEntry {
+    /// Version
+    Version,
     /// Balance
     Balance,
     /// Bytecode
@@ -32,6 +36,7 @@ pub enum LedgerSubEntry {
 impl LedgerSubEntry {
     fn derive_key(&self, addr: &Address) -> Key {
         match self {
+            LedgerSubEntry::Version => Key::new(addr, KeyType::VERSION),
             LedgerSubEntry::Balance => Key::new(addr, KeyType::BALANCE),
             LedgerSubEntry::Bytecode => Key::new(addr, KeyType::BYTECODE),
             LedgerSubEntry::Datastore(hash) => Key::new(addr, KeyType::DATASTORE(hash.to_vec())),
@@ -48,6 +53,8 @@ pub struct LedgerDB {
     key_serializer_db: KeySerializer,
     key_deserializer_db: KeyDeserializer,
     amount_serializer: AmountSerializer,
+    version_serializer: U64VarIntSerializer,
+    version_deserializer: U64VarIntDeserializer,
     bytecode_serializer: BytecodeSerializer,
     amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
@@ -84,6 +91,11 @@ impl LedgerDB {
                 Bound::Included(Amount::MAX),
             ),
             bytecode_deserializer: BytecodeDeserializer::new(max_datastore_value_length),
+            version_serializer: U64VarIntSerializer::new(),
+            version_deserializer: U64VarIntDeserializer::new(
+                Bound::Included(0),
+                Bound::Included(u64::MAX),
+            ),
             max_datastore_value_length,
         }
     }
@@ -213,6 +225,14 @@ impl LedgerDB {
         }
 
         match key.key_type {
+            KeyType::VERSION => {
+                let Ok((rest, _version)) = self.version_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                    return false;
+                };
+                if !rest.is_empty() {
+                    return false;
+                }
+            }
             KeyType::BALANCE => {
                 let Ok((rest, _amount)) = self.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
                     return false;
@@ -250,6 +270,18 @@ impl LedgerDB {
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
         let db = self.db.read();
+
+        // Version
+        //TODO: Get version number from parameters
+        let mut bytes_version = Vec::new();
+        self.version_serializer
+            .serialize(&0, &mut bytes_version)
+            .unwrap();
+        let mut serialized_key = Vec::new();
+        self.key_serializer_db
+            .serialize(&Key::new(addr, KeyType::VERSION), &mut serialized_key)
+            .expect(KEY_SER_ERROR);
+        db.put_or_update_entry_value(batch, serialized_key, &bytes_version);
 
         // Amount serialization never fails
         let mut bytes_balance = Vec::new();
@@ -351,6 +383,13 @@ impl LedgerDB {
     /// * batch: the given operation batch to update
     fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
         let db = self.db.read();
+
+        // version
+        let mut serialized_key = Vec::new();
+        self.key_serializer_db
+            .serialize(&Key::new(addr, KeyType::VERSION), &mut serialized_key)
+            .expect(KEY_SER_ERROR);
+        db.delete_key(batch, serialized_key);
 
         // balance
         let mut serialized_key = Vec::new();
@@ -480,7 +519,7 @@ mod tests {
     use super::*;
     use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
-    use massa_hash::Hash;
+    use massa_hash::HashXof;
     use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
     use massa_models::{
         address::Address,
@@ -554,6 +593,9 @@ mod tests {
         assert!(ledger_db
             .get_sub_entry(&addr, LedgerSubEntry::Balance)
             .is_some());
+        assert!(ledger_db
+            .get_sub_entry(&addr, LedgerSubEntry::Version)
+            .is_some());
         assert_eq!(
             amount_deserializer
                 .deserialize::<DeserializeError>(
@@ -568,8 +610,8 @@ mod tests {
         assert_eq!(data, ledger_db.get_entire_datastore(&addr));
 
         assert_ne!(
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
-            ledger_db.db.read().get_db_hash()
+            HashXof(*STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_xof_db_hash()
         );
 
         // delete entry
@@ -582,8 +624,8 @@ mod tests {
 
         // check deleted address and ledger hash
         assert_eq!(
-            Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
-            ledger_db.db.read().get_db_hash()
+            HashXof(*STATE_HASH_INITIAL_BYTES),
+            ledger_db.db.read().get_xof_db_hash()
         );
         assert!(ledger_db
             .get_sub_entry(&addr, LedgerSubEntry::Balance)

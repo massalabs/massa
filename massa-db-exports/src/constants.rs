@@ -6,7 +6,7 @@ pub const STATE_CF: &str = "state";
 pub const VERSIONING_CF: &str = "versioning";
 
 // Hash
-pub const STATE_HASH_BYTES_LEN: usize = 32;
+pub const STATE_HASH_BYTES_LEN: usize = 512;
 pub const STATE_HASH_KEY: &[u8; 1] = b"h";
 pub const STATE_HASH_INITIAL_BYTES: &[u8; STATE_HASH_BYTES_LEN] = &[0; STATE_HASH_BYTES_LEN];
 

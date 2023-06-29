@@ -4,7 +4,7 @@ use massa_db_exports::{
     CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
     STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
-use massa_hash::Hash;
+use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -321,7 +321,7 @@ where
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
-        let mut current_xor_hash = self.get_db_hash();
+        let mut current_xor_hash = self.get_xof_db_hash();
 
         *self.current_batch.lock() = WriteBatch::default();
 
@@ -331,19 +331,17 @@ where
 
                 // Compute the XOR in all cases
                 if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash =
-                        Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
+                    let prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
                     current_xor_hash ^= prev_hash;
                 };
-                let new_hash = Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
+                let new_hash = HashXof::compute_from_kv(key.as_slice(), value.as_slice());
                 current_xor_hash ^= new_hash;
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
 
                 // Compute the XOR in all cases
                 if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash =
-                        Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
+                    let prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
                     current_xor_hash ^= prev_hash;
                 };
             }
@@ -366,11 +364,9 @@ where
         }
 
         // Update the hash entry
-        self.current_batch.lock().put_cf(
-            handle_metadata,
-            STATE_HASH_KEY,
-            current_xor_hash.to_bytes(),
-        );
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
 
         {
             let mut current_batch_guard = self.current_batch.lock();
@@ -480,7 +476,7 @@ where
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
         versioning_changes.extend(
-            stream_changes
+            stream_changes_versioning
                 .new_elements
                 .iter()
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
@@ -501,7 +497,7 @@ where
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        let mut current_xor_hash = self.get_db_hash();
+        let mut current_xor_hash = self.get_xof_db_hash();
         *self.current_batch.lock() = WriteBatch::default();
 
         // Iterate over the whole db and compute the hash
@@ -512,16 +508,14 @@ where
         {
             // Compute the XOR in all cases
             let new_hash =
-                Hash::compute_from(&[key.to_vec().as_slice(), value.to_vec().as_slice()].concat());
+                HashXof::compute_from_kv(key.to_vec().as_slice(), value.to_vec().as_slice());
             current_xor_hash ^= new_hash;
         }
 
         // Update the hash entry
-        self.current_batch.lock().put_cf(
-            handle_metadata,
-            STATE_HASH_KEY,
-            current_xor_hash.to_bytes(),
-        );
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
 
         {
             let mut current_batch_guard = self.current_batch.lock();
@@ -536,22 +530,21 @@ where
         Ok(())
     }
 
-    /// Get the current state hash of the database
-    pub fn get_db_hash(&self) -> Hash {
-        self.get_db_hash_opt()
-            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    /// Get the current XOF state hash of the database
+    pub fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
+        self.get_xof_db_hash_opt()
+            .unwrap_or(HashXof(*STATE_HASH_INITIAL_BYTES))
     }
 
-    /// Get the current state hash of the database
-    fn get_db_hash_opt(&self) -> Option<Hash> {
+    /// Get the current XOF state hash of the database
+    fn get_xof_db_hash_opt(&self) -> Option<HashXof<HASH_XOF_SIZE_BYTES>> {
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
+
         db.get_cf(handle, STATE_HASH_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
-            .map(|state_hash_bytes| {
-                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
-            })
+            .map(|state_hash_bytes| HashXof(state_hash_bytes.try_into().expect(STATE_HASH_ERROR)))
     }
 }
 
@@ -728,10 +721,9 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         )
     }
 
-    /// Get the current state hash of the database
-    fn get_db_hash(&self) -> Hash {
-        self.get_db_hash_opt()
-            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    /// Get the current extended state hash of the database
+    fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
+        self.get_xof_db_hash()
     }
 
     /// Get the current change_id attached to the database.

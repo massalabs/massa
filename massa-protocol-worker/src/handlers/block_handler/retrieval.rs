@@ -1,7 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use crate::{
@@ -130,11 +130,11 @@ impl RetrievalThread {
                 last_start_period: Some(self.config.last_start_period),
             });
 
-        let tick_update_metrics = tick(Duration::from_secs(5));
+        let tick_update_metrics = tick(self.massa_metrics.tick_delay);
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
-                    self.receiver_network.inc_metrics();
+                    self.receiver_network.update_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match block_message_deserializer
@@ -198,7 +198,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver) -> msg => {
-                    self.receiver.inc_metrics();
+                    self.receiver.update_metrics();
                     match msg {
                         Ok(command) => {
                             match command {

@@ -183,8 +183,9 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 }
 
 #[test]
+#[cfg_attr(target_os = "macos", serial_test::serial)]
 fn test_bootstrap_whitelist() {
-    let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
+    let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let _bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
 
@@ -193,6 +194,7 @@ fn test_bootstrap_whitelist() {
 }
 
 #[test]
+#[cfg_attr(target_os = "macos", serial_test::serial)]
 fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
@@ -337,7 +339,7 @@ fn test_bootstrap_server() {
             .write()
             .write_batch(batch, Default::default(), Some(next));
 
-        let final_state_hash = final_write.db.read().get_db_hash();
+        let final_state_hash = final_write.db.read().get_xof_db_hash();
         let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
@@ -480,7 +482,7 @@ fn test_bootstrap_server() {
                     .write()
                     .write_batch(batch, Default::default(), Some(next));
 
-                let final_state_hash = final_write.db.read().get_db_hash();
+                let final_state_hash = final_write.db.read().get_xof_db_hash();
                 let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state

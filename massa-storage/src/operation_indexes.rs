@@ -27,8 +27,6 @@ impl OperationIndexes {
             .operations
             .try_insert(operation.id, Box::new(operation))
         {
-            massa_metrics::inc_operations_counter();
-
             // update creator index
             self.index_by_creator
                 .entry(o.content_creator_address)
@@ -39,6 +37,8 @@ impl OperationIndexes {
                 .entry(o.id.prefix())
                 .or_default()
                 .insert(o.id);
+
+            massa_metrics::set_operations_counter(self.operations.len());
         }
     }
 
@@ -50,7 +50,7 @@ impl OperationIndexes {
         operation_id: &OperationId,
     ) -> Option<Box<SecureShareOperation>> {
         if let Some(o) = self.operations.remove(operation_id) {
-            massa_metrics::dec_operations_counter();
+            massa_metrics::set_operations_counter(self.operations.len());
 
             // update creator index
             if let hash_map::Entry::Occupied(mut occ) =

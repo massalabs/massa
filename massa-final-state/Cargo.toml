@@ -1,6 +1,6 @@
 [package]
 name = "massa_final_state"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -44,3 +44,4 @@ testing = [
     "massa_pos_exports/testing",
 ]
 sandbox = ["massa_async_pool/sandbox"]
+bootstrap_server = []
