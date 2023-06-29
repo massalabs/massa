@@ -60,7 +60,7 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver) -> msg => {
-                    self.receiver.inc_metrics();
+                    self.receiver.update_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match endorsement_message_deserializer
@@ -101,7 +101,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver_ext) -> msg => {
-                    self.receiver_ext.inc_metrics();
+                    self.receiver_ext.update_metrics();
                     match msg {
                         Ok(msg) => {
                             match msg {

@@ -12,7 +12,7 @@
 //! # Warning
 //! care about use MassaReceiver with select! macro
 //! select! does not call recv() so metrics will not be updated
-//! you should call `your_receiver.inc_metrics()` manually
+//! you should call `your_receiver.update_metrics()` manually
 
 use std::sync::Arc;
 
