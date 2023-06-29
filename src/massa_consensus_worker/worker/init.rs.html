@@ -553,22 +553,19 @@
             </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
                 write_shared_state.genesis_hashes = genesis_block_ids;
-                write_shared_state.active_index =
-                    final_blocks.iter().map(|(b, <span class="kw">_</span>)| b.block_id).collect();
                 write_shared_state.best_parents = latest_final_blocks_periods.clone();
                 write_shared_state.latest_final_blocks_periods = latest_final_blocks_periods;
-                write_shared_state.block_statuses = final_blocks
-                    .into_iter()
-                    .map(|(b, s)| {
-                        <span class="prelude-val">Ok</span>((
-                            b.block_id,
-                            BlockStatus::Active {
+                <span class="kw">for </span>(b, s) <span class="kw">in </span>final_blocks {
+                    write_shared_state.blocks_state.transition_map(
+                        <span class="kw-2">&amp;</span>(b.block_id.clone()),
+                        |<span class="kw">_</span>, <span class="kw">_</span>| {
+                            <span class="prelude-val">Some</span>(BlockStatus::Active {
                                 a_block: Box::new(b),
                                 storage: s,
-                            },
-                        ))
-                    })
-                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, ConsensusError&gt;&gt;()<span class="question-mark">?</span>;
+                            })
+                        },
+                    );
+                }
                 write_shared_state.final_block_stats = final_block_stats;
             }
 
@@ -577,13 +574,16 @@
             <span class="comment">// Initialize the shared state between the worker and the interface used by the other modules.
             </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
-                write_shared_state.active_index = genesis_block_ids.iter().copied().collect();
                 write_shared_state.latest_final_blocks_periods =
                     genesis_block_ids.iter().map(|h| (<span class="kw-2">*</span>h, <span class="number">0</span>)).collect();
                 write_shared_state.best_parents =
                     genesis_block_ids.iter().map(|v| (<span class="kw-2">*</span>v, <span class="number">0</span>)).collect();
                 write_shared_state.genesis_hashes = genesis_block_ids;
-                write_shared_state.block_statuses = block_statuses;
+                <span class="kw">for </span>(b, s) <span class="kw">in </span>block_statuses {
+                    write_shared_state
+                        .blocks_state
+                        .transition_map(<span class="kw-2">&amp;</span>b, |<span class="kw">_</span>, <span class="kw">_</span>| <span class="prelude-val">Some</span>(s));
+                }
                 write_shared_state.final_block_stats = final_block_stats;
             }
         }
@@ -628,7 +628,7 @@
     <span class="doccomment">/// Internal function used at initialization of the `ConsensusWorker` to link blocks with their parents
     </span><span class="kw">fn </span>claim_parent_refs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = <span class="self">self</span>.shared_state.write();
-        <span class="kw">for </span>(_b_id, block_status) <span class="kw">in </span>write_shared_state.block_statuses.iter_mut() {
+        <span class="kw">for </span>(_b_id, block_status) <span class="kw">in </span>write_shared_state.blocks_state.iter_mut() {
             <span class="kw">if let </span>BlockStatus::Active {
                 a_block,
                 storage: block_storage,
@@ -652,7 +652,7 @@
 
         <span class="comment">// list active block parents
         </span><span class="kw">let </span>active_blocks_map: PreHashMap&lt;BlockId, (Slot, Vec&lt;BlockId&gt;)&gt; = write_shared_state
-            .block_statuses
+            .blocks_state
             .iter()
             .filter_map(|(h, s)| {
                 <span class="kw">if let </span>BlockStatus::Active { a_block: a, .. } = s {

@@ -322,8 +322,6 @@
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -601,17 +599,15 @@
                                     <span class="comment">//TODO: Adapt for multiple listeners
                                     </span><span class="kw">let </span>(addr, <span class="kw">_</span>) = peer_info.last_announce.listeners.iter().next().unwrap();
                                     <span class="kw">let </span>canonical_ip = addr.ip().to_canonical();
-                                    <span class="kw">let </span><span class="kw-2">mut </span>allowed_local_ips = <span class="bool-val">false</span>;
+                                    <span class="kw">if </span>!canonical_ip.is_global()  {
+                                        <span class="kw">continue</span>;
+                                    }
                                     <span class="comment">// Check if the peer is in a category and we didn&#39;t reached out target yet
                                     </span><span class="kw">let </span><span class="kw-2">mut </span>category_found = <span class="prelude-val">None</span>;
-                                    <span class="kw">for </span>(name, (ips, cat)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
+                                    <span class="kw">for </span>(name, (ips, <span class="kw">_</span>)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
                                         <span class="kw">if </span>ips.contains(<span class="kw-2">&amp;</span>canonical_ip) {
                                             category_found = <span class="prelude-val">Some</span>(name);
-                                            allowed_local_ips = cat.allow_local_peers;
                                         }
-                                    }
-                                    <span class="kw">if </span>!canonical_ip.is_global() &amp;&amp; !allowed_local_ips {
-                                        <span class="kw">continue</span>;
                                     }
 
                                     <span class="kw">if let </span><span class="prelude-val">Some</span>(category) = category_found {
