@@ -1756,10 +1756,6 @@
 <a href="#1756" id="1756">1756</a>
 <a href="#1757" id="1757">1757</a>
 <a href="#1758" id="1758">1758</a>
-<a href="#1759" id="1759">1759</a>
-<a href="#1760" id="1760">1760</a>
-<a href="#1761" id="1761">1761</a>
-<a href="#1762" id="1762">1762</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1786,6 +1782,7 @@
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
+<span class="kw">use </span>massa_models::block_id::BlockInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
 <span class="kw">use </span>massa_models::execution::EventFilter;
@@ -1969,7 +1966,7 @@
         }
 
         <span class="comment">// count stats
-        </span><span class="kw">if </span>exec_out.block_id.is_some() {
+        </span><span class="kw">if </span>exec_out.block_info.is_some() {
             <span class="self">self</span>.stats_counter.register_final_blocks(<span class="number">1</span>);
             <span class="self">self</span>.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
@@ -2783,8 +2780,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::active_slot(
             <span class="self">self</span>.config.clone(),
             <span class="kw-2">*</span>slot,
-            exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id),
-            <span class="self">self</span>.final_state.clone(),
+            exec_target.map(|i| i.<span class="number">0</span>), <span class="comment">// .as_ref().map(|(b_id, _)| *b_id),
+            </span><span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
             <span class="self">self</span>.vesting_manager.clone(),
@@ -2806,6 +2803,8 @@
             }
         }
 
+        <span class="kw">let </span><span class="kw-2">mut </span>block_info: <span class="prelude-ty">Option</span>&lt;BlockInfo&gt; = <span class="prelude-val">None</span>;
+
         <span class="comment">// Check if there is a block at this slot
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = exec_target {
             <span class="comment">// Retrieve the block from storage
@@ -2814,6 +2813,12 @@
                 .get(block_id)
                 .expect(<span class="string">&quot;Missing block in storage.&quot;</span>)
                 .clone();
+
+            block_info = <span class="prelude-val">Some</span>(BlockInfo {
+                block_id: <span class="kw-2">*</span>block_id,
+                current_version: stored_block.content.header.content.current_version,
+                announced_version: stored_block.content.header.content.announced_version,
+            });
 
             <span class="comment">// gather all operations
             </span><span class="kw">let </span>operations = {
@@ -2966,7 +2971,7 @@
         }
 
         <span class="comment">// Finish slot
-        </span><span class="kw">let </span>exec_out = <span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot();
+        </span><span class="kw">let </span>exec_out = <span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot(block_info);
 
         <span class="comment">// Broadcast a slot execution output to active channel subscribers.
         </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
@@ -3052,14 +3057,16 @@
         <span class="comment">// check if the final slot execution result is already cached at the front of the speculative execution history
         </span><span class="kw">let </span>first_exec_output = <span class="self">self</span>.active_history.write().<span class="number">0</span>.pop_front();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(exec_out) = first_exec_output {
-            <span class="kw">if </span><span class="kw-2">&amp;</span>exec_out.slot == slot &amp;&amp; exec_out.block_id == target_id {
+            <span class="kw">if </span><span class="kw-2">&amp;</span>exec_out.slot == slot
+                &amp;&amp; exec_out.block_info.as_ref().map(|i| i.block_id) == target_id
+            {
                 <span class="comment">// speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
                 </span><span class="self">self</span>.apply_final_execution_output(exec_out.clone());
 
                 <span class="comment">// update versioning stats
-                </span><span class="self">self</span>.update_versioning_stats(exec_target, slot);
+                </span><span class="self">self</span>.update_versioning_stats(<span class="kw-2">&amp;</span>exec_out.block_info, slot);
 
                 <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
@@ -3081,7 +3088,7 @@
                 <span class="comment">// speculative cache mismatch
                 </span><span class="macro">warn!</span>(
                     <span class="string">&quot;speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.&quot;</span>,
-                    slot, target_id, exec_out.slot, exec_out.block_id
+                    slot, target_id, exec_out.slot, exec_out.block_info
                 );
             }
         } <span class="kw">else </span>{
@@ -3103,7 +3110,7 @@
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out.clone());
 
-        <span class="self">self</span>.update_versioning_stats(exec_target, slot);
+        <span class="self">self</span>.update_versioning_stats(<span class="kw-2">&amp;</span>exec_out.block_info, slot);
         <span class="macro">debug!</span>(
             <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
         </span>);
@@ -3246,7 +3253,7 @@
         };
 
         <span class="comment">// return the execution output
-        </span><span class="kw">let </span>execution_output = <span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot();
+        </span><span class="kw">let </span>execution_output = <span class="macro">context_guard!</span>(<span class="self">self</span>).settle_slot(<span class="prelude-val">None</span>);
         <span class="prelude-val">Ok</span>(ReadOnlyExecutionOutput {
             out: execution_output,
             gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
@@ -3457,68 +3464,53 @@
     }
 
     <span class="doccomment">/// Update MipStore with block header stats
-    </span><span class="kw">pub fn </span>update_versioning_stats(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
-        slot: <span class="kw-2">&amp;</span>Slot,
-    ) {
-        <span class="comment">// update versioning statistics
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, storage)) = exec_target {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = storage.read_blocks().get(block_id) {
-                <span class="kw">let </span>slot_ts_ = get_block_slot_timestamp(
-                    <span class="self">self</span>.config.thread_count,
-                    <span class="self">self</span>.config.t0,
-                    <span class="self">self</span>.config.genesis_timestamp,
-                    <span class="kw-2">*</span>slot,
-                );
+    </span><span class="kw">pub fn </span>update_versioning_stats(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_info: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;BlockInfo&gt;, slot: <span class="kw-2">&amp;</span>Slot) {
+        <span class="kw">let </span>slot_ts = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            <span class="kw-2">*</span>slot,
+        )
+        .expect(<span class="string">&quot;Cannot get timestamp from slot&quot;</span>);
 
-                <span class="kw">let </span>current_version = block.content.header.content.current_version;
-                <span class="kw">let </span>announced_version = block.content.header.content.announced_version;
-                <span class="kw">if let </span><span class="prelude-val">Ok</span>(slot_ts) = slot_ts_ {
-                    <span class="self">self</span>.mip_store.update_network_version_stats(
-                        slot_ts,
-                        <span class="prelude-val">Some</span>((current_version, announced_version)),
-                    );
+        <span class="self">self</span>.mip_store.update_network_version_stats(
+            slot_ts,
+            block_info
+                .as_ref()
+                .map(|i| (i.current_version, i.announced_version)),
+        );
 
-                    <span class="comment">// Now write mip store changes to disk (if any)
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>db_batch = DBBatch::new();
-                    <span class="kw">let </span><span class="kw-2">mut </span>db_versioning_batch = DBBatch::new();
-                    <span class="comment">// Unwrap/Expect because if something fails we can only panic here
-                    </span><span class="kw">let </span>slot_prev_ts = get_block_slot_timestamp(
-                        <span class="self">self</span>.config.thread_count,
-                        <span class="self">self</span>.config.t0,
-                        <span class="self">self</span>.config.genesis_timestamp,
-                        slot.get_prev_slot(<span class="self">self</span>.config.thread_count).unwrap(),
-                    )
-                    .unwrap();
+        <span class="kw">let </span>slot_prev_ts = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            slot.get_prev_slot(<span class="self">self</span>.config.thread_count)
+                .expect(<span class="string">&quot;Cannot get prev slot&quot;</span>),
+        )
+        .expect(<span class="string">&quot;Cannot get timestamp for prev slot&quot;</span>);
 
-                    <span class="self">self</span>.mip_store
-                        .update_batches(
-                            <span class="kw-2">&amp;mut </span>db_batch,
-                            <span class="kw-2">&amp;mut </span>db_versioning_batch,
-                            <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>slot_prev_ts, <span class="kw-2">&amp;</span>slot_ts)),
-                        )
-                        .unwrap_or_else(|e| {
-                            <span class="macro">panic!</span>(
-                                <span class="string">&quot;Unable to get MIP store changes between {} and {}: {}&quot;</span>,
-                                slot_prev_ts, slot_ts, e
-                            )
-                        });
+        <span class="comment">// Now write mip store changes to disk (if any)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>db_batch = DBBatch::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>db_versioning_batch = DBBatch::new();
+        <span class="self">self</span>.mip_store
+            .update_batches(
+                <span class="kw-2">&amp;mut </span>db_batch,
+                <span class="kw-2">&amp;mut </span>db_versioning_batch,
+                <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>slot_prev_ts, <span class="kw-2">&amp;</span>slot_ts)),
+            )
+            .unwrap_or_else(|e| {
+                <span class="macro">panic!</span>(
+                    <span class="string">&quot;Unable to get MIP store changes between {} and {}: {}&quot;</span>,
+                    slot_prev_ts, slot_ts, e
+                )
+            });
 
-                    <span class="self">self</span>.final_state.write().db.write().write_batch(
-                        db_batch,
-                        db_versioning_batch,
-                        <span class="prelude-val">None</span>,
-                    );
-                } <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;Unable to get slot timestamp for slot: {} in order to update mip_store stats&quot;</span>, slot);
-                }
-            } <span class="kw">else </span>{
-                <span class="macro">warn!</span>(
-                    <span class="string">&quot;Could not find block id: {} in storage in order to update mip_store stats&quot;</span>,
-                    block_id
-                );
-            }
+        <span class="kw">if </span>!db_batch.is_empty() || !db_versioning_batch.is_empty() {
+            <span class="self">self</span>.final_state
+                .write()
+                .db
+                .write()
+                .write_batch(db_batch, db_versioning_batch, <span class="prelude-val">None</span>);
         }
     }
 }

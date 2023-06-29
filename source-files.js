@@ -7,7 +7,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_cipher":["",[],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]],\
 "massa_client":["",[],["cmds.rs","display.rs","main.rs","repl.rs","settings.rs"]],\
 "massa_consensus_exports":["",[],["block_graph_export.rs","block_status.rs","bootstrapable_graph.rs","channels.rs","controller_trait.rs","error.rs","events.rs","export_active_block.rs","lib.rs","settings.rs"]],\
-"massa_consensus_worker":["",[["state",[],["blocks_state.rs","clique_computation.rs","graph.rs","mod.rs","process.rs","process_commands.rs","prune.rs","stats.rs","tick.rs","verifications.rs"]],["worker",[],["init.rs","main_loop.rs","mod.rs"]]],["commands.rs","controller.rs","lib.rs","manager.rs"]],\
+"massa_consensus_worker":["",[["state",[],["clique_computation.rs","graph.rs","mod.rs","process.rs","process_commands.rs","prune.rs","stats.rs","tick.rs","verifications.rs"]],["worker",[],["init.rs","main_loop.rs","mod.rs"]]],["commands.rs","controller.rs","lib.rs","manager.rs"]],\
 "massa_db_exports":["",[],["constants.rs","controller.rs","db_batch.rs","error.rs","lib.rs","settings.rs"]],\
 "massa_db_worker":["",[],["lib.rs","massa_db.rs"]],\
 "massa_executed_ops":["",[],["config.rs","denunciations_changes.rs","executed_denunciations.rs","executed_ops.rs","lib.rs","ops_changes.rs"]],\
