@@ -371,15 +371,9 @@
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_consensus_exports::{
+</pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
+
+<span class="kw">use </span>massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
     error::ConsensusError,
 };
@@ -402,11 +396,11 @@
 
         <span class="comment">// retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
-        </span><span class="kw">for </span>a_block <span class="kw">in </span><span class="self">self</span>.active_index.iter() {
+        </span><span class="kw">for </span>a_block <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().clone().iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                 a_block: active_block,
                 storage,
-            }) = <span class="self">self</span>.block_statuses.get_mut(a_block)
+            }) = <span class="self">self</span>.blocks_state.get_mut(a_block)
             {
                 <span class="kw">let </span>(_b_id, latest_final_period) =
                     <span class="self">self</span>.latest_final_blocks_periods[active_block.slot.thread <span class="kw">as </span>usize];
@@ -432,7 +426,8 @@
         <span class="comment">// remove unused final active blocks
         </span><span class="kw">let </span><span class="kw-2">mut </span>discarded_finals: PreHashMap&lt;BlockId, ActiveBlock&gt; = PreHashMap::default();
         <span class="kw">let </span>to_remove: Vec&lt;BlockId&gt; = <span class="self">self
-            </span>.active_index
+            </span>.blocks_state
+            .active_blocks()
             .difference(<span class="kw-2">&amp;</span>retain_active)
             .copied()
             .collect();
@@ -453,65 +448,60 @@
                 block_parents = block.content.header.content.parents.clone();
             };
 
-            <span class="kw">let </span>discarded_active = <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
-                a_block: discarded_active,
-                ..
-            }) = <span class="self">self</span>.block_statuses.remove(<span class="kw-2">&amp;</span>discard_active_h)
-            {
-                <span class="self">self</span>.active_index.remove(<span class="kw-2">&amp;</span>discard_active_h);
-                discarded_active
-            } <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses pruning and removing unused final active blocks - {} is missing&quot;</span>, discard_active_h)));
-            };
+            <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
+            <span class="self">self</span>.blocks_state.transition_map(<span class="kw-2">&amp;</span>discard_active_h, |block_status, block_statuses| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(
+                    BlockStatus::Active {
+                        a_block: discarded_active,
+                        ..
+                    }
+                ) = block_status {
+                    <span class="comment">// remove from parent&#39;s children
+                    </span><span class="kw">for </span>(parent_h, _parent_period) <span class="kw">in </span>discarded_active.parents.iter() {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
+                            a_block: parent_active_block,
+                            ..
+                        }) = block_statuses.get_mut(parent_h)
+                        {
+                            parent_active_block.children[discarded_active.slot.thread <span class="kw">as </span>usize]
+                                .remove(<span class="kw-2">&amp;</span>discard_active_h);
+                        }
+                    }
 
-            <span class="comment">// remove from parent&#39;s children
-            </span><span class="kw">for </span>(parent_h, _parent_period) <span class="kw">in </span>discarded_active.parents.iter() {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
-                    a_block: parent_active_block,
-                    ..
-                }) = <span class="self">self</span>.block_statuses.get_mut(parent_h)
-                {
-                    parent_active_block.children[discarded_active.slot.thread <span class="kw">as </span>usize]
-                        .remove(<span class="kw-2">&amp;</span>discard_active_h);
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.prune_active&quot;</span>, {<span class="string">&quot;hash&quot;</span>: discard_active_h, <span class="string">&quot;reason&quot;</span>: DiscardReason::Final});
+                    discarded_finals.insert(discard_active_h, <span class="kw-2">*</span>discarded_active);
+
+                    <span class="comment">// mark as final
+                    </span><span class="prelude-val">Some</span>(BlockStatus::Discarded {
+                        slot: block_slot,
+                        creator: block_creator,
+                        parents: block_parents,
+                        reason: DiscardReason::Final,
+                        sequence_number,
+                    })
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses pruning and removing unused final active blocks - {} is missing&quot;</span>, discard_active_h);
                 }
-            }
-
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.prune_active&quot;</span>, {<span class="string">&quot;hash&quot;</span>: discard_active_h, <span class="string">&quot;reason&quot;</span>: DiscardReason::Final});
-
-            <span class="comment">// mark as final
-            </span><span class="self">self</span>.block_statuses.insert(
-                discard_active_h,
-                BlockStatus::Discarded {
-                    slot: block_slot,
-                    creator: block_creator,
-                    parents: block_parents,
-                    reason: DiscardReason::Final,
-                    sequence_number: {
-                        <span class="self">self</span>.sequence_counter += <span class="number">1</span>;
-                        <span class="self">self</span>.sequence_counter
-                    },
-                },
-            );
-            <span class="self">self</span>.discarded_index.insert(discard_active_h);
-
-            discarded_finals.insert(discard_active_h, <span class="kw-2">*</span>discarded_active);
+            });
         }
-
         <span class="prelude-val">Ok</span>(discarded_finals)
     }
 
     <span class="comment">// Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
     // to avoid high memory consumption
     </span><span class="kw">fn </span>prune_slot_waiting(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if </span><span class="self">self</span>.waiting_for_slot_index.len() &lt;= <span class="self">self</span>.config.max_future_processing_blocks {
+        <span class="kw">if </span><span class="self">self</span>.blocks_state.waiting_for_slot_blocks().len()
+            &lt;= <span class="self">self</span>.config.max_future_processing_blocks
+        {
             <span class="kw">return</span>;
         }
         <span class="kw">let </span><span class="kw-2">mut </span>slot_waiting: Vec&lt;(Slot, BlockId)&gt; = <span class="self">self
-            </span>.waiting_for_slot_index
+            </span>.blocks_state
+            .waiting_for_slot_blocks()
             .iter()
             .filter_map(|block_id| {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(header_or_block)) =
-                    <span class="self">self</span>.block_statuses.get(block_id)
+                    <span class="self">self</span>.blocks_state.get(block_id)
                 {
                     <span class="kw">return </span><span class="prelude-val">Some</span>((header_or_block.get_slot(), <span class="kw-2">*</span>block_id));
                 }
@@ -522,24 +512,24 @@
         <span class="kw">let </span>len_slot_waiting = slot_waiting.len();
         (<span class="self">self</span>.config.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             <span class="kw">let </span>(_slot, block_id) = <span class="kw-2">&amp;</span>slot_waiting[idx];
-            <span class="self">self</span>.block_statuses.remove(block_id);
-            <span class="self">self</span>.waiting_for_slot_index.remove(block_id);
+            <span class="self">self</span>.blocks_state.transition_map(block_id, |<span class="kw">_</span>, <span class="kw">_</span>| <span class="prelude-val">None</span>);
         });
     }
 
     <span class="comment">// Keep only a certain (`config.max_discarded_blocks`) number of blocks that are discarded
     // to avoid high memory consumption
     </span><span class="kw">fn </span>prune_discarded(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
-        <span class="kw">if </span><span class="self">self</span>.discarded_index.len() &lt;= <span class="self">self</span>.config.max_discarded_blocks {
+        <span class="kw">if </span><span class="self">self</span>.blocks_state.discarded_blocks().len() &lt;= <span class="self">self</span>.config.max_discarded_blocks {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
         <span class="kw">let </span><span class="kw-2">mut </span>discard_hashes: Vec&lt;(u64, BlockId)&gt; = <span class="self">self
-            </span>.discarded_index
+            </span>.blocks_state
+            .discarded_blocks()
             .iter()
             .filter_map(|block_id| {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Discarded {
                     sequence_number, ..
-                }) = <span class="self">self</span>.block_statuses.get(block_id)
+                }) = <span class="self">self</span>.blocks_state.get(block_id)
                 {
                     <span class="kw">return </span><span class="prelude-val">Some</span>((<span class="kw-2">*</span>sequence_number, <span class="kw-2">*</span>block_id));
                 }
@@ -547,10 +537,11 @@
             </span>})
             .collect();
         discard_hashes.sort_unstable();
-        discard_hashes.truncate(<span class="self">self</span>.discarded_index.len() - <span class="self">self</span>.config.max_discarded_blocks);
+        discard_hashes.truncate(
+            <span class="self">self</span>.blocks_state.discarded_blocks().len() - <span class="self">self</span>.config.max_discarded_blocks,
+        );
         <span class="kw">for </span>(<span class="kw">_</span>, block_id) <span class="kw">in </span>discard_hashes.iter() {
-            <span class="self">self</span>.block_statuses.remove(block_id);
-            <span class="self">self</span>.discarded_index.remove(block_id);
+            <span class="self">self</span>.blocks_state.transition_map(block_id, |<span class="kw">_</span>, <span class="kw">_</span>| <span class="prelude-val">None</span>);
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -561,19 +552,19 @@
 
         <span class="comment">// list items that are older than the latest final blocks in their threads or have deps that are discarded
         </span>{
-            <span class="kw">for </span>block_id <span class="kw">in </span><span class="self">self</span>.waiting_for_dependencies_index.iter() {
+            <span class="kw">for </span>block_id <span class="kw">in </span><span class="self">self</span>.blocks_state.waiting_for_dependencies_blocks().iter() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
                     sequence_number,
-                }) = <span class="self">self</span>.block_statuses.get(block_id)
+                }) = <span class="self">self</span>.blocks_state.get(block_id)
                 {
                     <span class="comment">// has already discarded dependencies =&gt; discard (choose worst reason)
                     </span><span class="kw">let </span><span class="kw-2">mut </span>discard_reason = <span class="prelude-val">None</span>;
                     <span class="kw">let </span><span class="kw-2">mut </span>discarded_dep_found = <span class="bool-val">false</span>;
                     <span class="kw">for </span>dep <span class="kw">in </span>unsatisfied_dependencies.iter() {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Discarded { reason, .. }) =
-                            <span class="self">self</span>.block_statuses.get(dep)
+                            <span class="self">self</span>.blocks_state.get(dep)
                         {
                             discarded_dep_found = <span class="bool-val">true</span>;
                             <span class="kw">match </span>reason {
@@ -611,7 +602,7 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                     unsatisfied_dependencies,
                     ..
-                }) = <span class="self">self</span>.block_statuses.get(<span class="kw-2">&amp;</span>hash)
+                }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>hash)
                 {
                     <span class="comment">// has dependencies that will be discarded =&gt; discard (choose worst reason)
                     </span><span class="kw">let </span><span class="kw-2">mut </span>discard_reason = <span class="prelude-val">None</span>;
@@ -651,7 +642,7 @@
                             header_or_block,
                             sequence_number,
                             ..
-                        }) = <span class="self">self</span>.block_statuses.get(hash)
+                        }) = <span class="self">self</span>.blocks_state.get(hash)
                         {
                             <span class="kw">return </span><span class="prelude-val">Some</span>((sequence_number, header_or_block.get_slot(), <span class="kw-2">*</span>hash));
                         }
@@ -671,54 +662,47 @@
 
         <span class="comment">// transition states to Discarded if there is a reason, otherwise just drop
         </span><span class="kw">for </span>(block_id, reason_opt) <span class="kw">in </span>to_discard.drain() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
-                header_or_block, ..
-            }) = <span class="self">self</span>.block_statuses.remove(<span class="kw-2">&amp;</span>block_id)
-            {
-                <span class="self">self</span>.waiting_for_dependencies_index.remove(<span class="kw-2">&amp;</span>block_id);
-                <span class="kw">let </span>header = <span class="kw">match </span>header_or_block {
-                    HeaderOrBlock::Header(h) =&gt; h,
-                    HeaderOrBlock::Block { id: block_id, .. } =&gt; <span class="self">self
-                        </span>.storage
-                        .read_blocks()
-                        .get(<span class="kw-2">&amp;</span>block_id)
-                        .ok_or_else(|| {
-                            ConsensusError::MissingBlock(<span class="macro">format!</span>(
-                                <span class="string">&quot;missing block when pruning waiting for deps: {}&quot;</span>,
-                                block_id
-                            ))
-                        })<span class="question-mark">?
-                        </span>.content
-                        .header
-                        .clone(),
-                };
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.prune_waiting_for_dependencies&quot;</span>, {<span class="string">&quot;hash&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason_opt});
-
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(reason) = reason_opt {
-                    <span class="comment">// add to stats if reason is Stale
-                    </span><span class="kw">if </span>reason == DiscardReason::Stale {
-                        <span class="self">self</span>.new_stale_blocks.insert(
-                            block_id,
-                            (header.content_creator_address, header.content.slot),
-                        );
-                    }
-                    <span class="comment">// transition to Discarded only if there is a reason
-                    </span><span class="self">self</span>.block_statuses.insert(
-                        block_id,
-                        BlockStatus::Discarded {
-                            slot: header.content.slot,
-                            creator: header.content_creator_address,
-                            parents: header.content.parents.clone(),
-                            reason,
-                            sequence_number: {
-                                <span class="self">self</span>.sequence_counter += <span class="number">1</span>;
-                                <span class="self">self</span>.sequence_counter
+            <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
+            <span class="self">self</span>.blocks_state.transition_map(<span class="kw-2">&amp;</span>block_id, |block_status, <span class="kw">_</span>| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
+                    header_or_block, ..
+                }) = block_status {
+                    <span class="kw">let </span>header = <span class="kw">match </span>header_or_block {
+                        HeaderOrBlock::Header(h) =&gt; h,
+                        HeaderOrBlock::Block { id: block_id, .. } =&gt; <span class="self">self
+                            </span>.storage
+                            .read_blocks()
+                            .get(<span class="kw-2">&amp;</span>block_id)
+                            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;block {} should be in storage&quot;</span>, block_id))
+                            .content
+                            .header
+                            .clone()
+                    };
+                    <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.prune_waiting_for_dependencies&quot;</span>, {<span class="string">&quot;hash&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason_opt});
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(reason) = reason_opt {
+                        <span class="comment">// add to stats if reason is Stale
+                        </span><span class="kw">if </span>reason == DiscardReason::Stale {
+                            <span class="self">self</span>.new_stale_blocks.insert(
+                                block_id,
+                                (header.content_creator_address, header.content.slot),
+                            );
+                        }
+                        <span class="comment">// transition to Discarded only if there is a reason
+                        </span><span class="prelude-val">Some</span>(BlockStatus::Discarded {
+                                slot: header.content.slot,
+                                creator: header.content_creator_address,
+                                parents: header.content.parents,
+                                reason,
+                                sequence_number,
                             },
-                        },
-                    );
-                    <span class="self">self</span>.discarded_index.insert(block_id);
+                        )
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">&quot;block {} should be in WaitingForDependencies state&quot;</span>, block_id);
                 }
-            }
+            });
         }
 
         <span class="prelude-val">Ok</span>(())

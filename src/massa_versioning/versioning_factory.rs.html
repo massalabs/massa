@@ -440,6 +440,8 @@
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::iter;
@@ -738,6 +740,7 @@
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            counters_max: <span class="number">5</span>,
         };
 
         <span class="kw">let </span>vs = MipStore::try_from((
@@ -828,6 +831,7 @@
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            counters_max: <span class="number">5</span>,
         };
 
         <span class="kw">let </span>vs = MipStore::try_from((

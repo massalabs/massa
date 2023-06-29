@@ -38,7 +38,7 @@
     max_datastore_entry_count: <span class="number">1000</span>, max_bootstrap_error_length: <span class="number">1000</span>, max_changes_slot_count: <span class="number">1000</span>,
     max_rolls_length: <span class="number">1000</span>, max_production_stats_length: <span class="number">1000</span>, max_credits_length: <span class="number">1000</span>,
     max_executed_ops_length: <span class="number">1000</span>, max_ops_changes_length: <span class="number">1000</span>,
-    mip_store_stats_block_considered: <span class="number">100</span>,
+    mip_store_stats_block_considered: <span class="number">100</span>, mip_store_stats_counters_max: <span class="number">10</span>,
     max_denunciations_per_block_header: <span class="number">128</span>, max_denunciation_changes_length: <span class="number">1000</span>,};
 <span class="kw">let </span>message_deserializer = BootstrapServerMessageDeserializer::new(args);
 <span class="kw">let </span>bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
