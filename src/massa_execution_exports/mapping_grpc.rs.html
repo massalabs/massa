@@ -65,7 +65,7 @@
     <span class="kw">fn </span>from(value: ExecutionOutput) -&gt; <span class="self">Self </span>{
         grpc_model::ExecutionOutput {
             slot: <span class="prelude-val">Some</span>(value.slot.into()),
-            block_id: value.block_info.map(|i| i.block_id.to_string()),
+            block_id: value.block_id.map(|id| id.to_string()),
             events: value
                 .events
                 .<span class="number">0

@@ -151,10 +151,10 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::event_store::EventStore;
 <span class="kw">use </span>massa_final_state::StateChanges;
-<span class="kw">use </span>massa_models::block_id::BlockInfo;
 <span class="kw">use </span>massa_models::datastore::Datastore;
 <span class="kw">use </span>massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
+    slot::Slot,
 };
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
@@ -199,7 +199,7 @@
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,
     <span class="doccomment">/// optional block ID at that slot (None if miss)
-    </span><span class="kw">pub </span>block_info: <span class="prelude-ty">Option</span>&lt;BlockInfo&gt;,
+    </span><span class="kw">pub </span>block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
     <span class="doccomment">/// state changes caused by the execution step
     </span><span class="kw">pub </span>state_changes: StateChanges,
     <span class="doccomment">/// events emitted by the execution step

@@ -1071,9 +1071,6 @@
 <a href="#1071" id="1071">1071</a>
 <a href="#1072" id="1072">1072</a>
 <a href="#1073" id="1073">1073</a>
-<a href="#1074" id="1074">1074</a>
-<a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1098,7 +1095,6 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
-<span class="kw">use </span>massa_models::block_id::BlockInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
@@ -1210,7 +1206,7 @@
     <span class="doccomment">/// counter of newly created messages so far during this execution
     </span><span class="kw">pub </span>created_message_index: u64,
 
-    <span class="doccomment">/// block Id, if one is present at the execution slot
+    <span class="doccomment">/// block ID, if one is present at the execution slot
     </span><span class="kw">pub </span>opt_block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
 
     <span class="doccomment">/// address call stack, most recent is at the back
@@ -1965,7 +1961,7 @@
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_info: <span class="prelude-ty">Option</span>&lt;BlockInfo&gt;) -&gt; ExecutionOutput {
+    </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ExecutionOutput {
         <span class="kw">let </span>slot = <span class="self">self</span>.slot;
 
         <span class="comment">// execute the deferred credits coming from roll sells
@@ -2013,11 +2009,9 @@
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
             executed_denunciations_changes: <span class="self">self</span>.speculative_executed_denunciations.take(),
         };
-
-        std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.opt_block_id);
         ExecutionOutput {
             slot,
-            block_info,
+            block_id: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.opt_block_id),
             state_changes,
             events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
         }
