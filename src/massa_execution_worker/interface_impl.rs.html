@@ -1173,6 +1173,9 @@
 <a href="#1173" id="1173">1173</a>
 <a href="#1174" id="1174">1174</a>
 <a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -1467,7 +1470,10 @@
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
-    </span><span class="kw">fn </span>get_balance_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;NativeAmount&gt; {
+    </span><span class="kw">fn </span>get_balance_wasmv1(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;massa_proto_rs::massa::model::v1::NativeAmount&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = get_address_from_opt_or_context(<span class="kw-2">&amp;</span>context, address)<span class="question-mark">?</span>;
 
