@@ -2326,57 +2326,6 @@
 <a href="#2326" id="2326">2326</a>
 <a href="#2327" id="2327">2327</a>
 <a href="#2328" id="2328">2328</a>
-<a href="#2329" id="2329">2329</a>
-<a href="#2330" id="2330">2330</a>
-<a href="#2331" id="2331">2331</a>
-<a href="#2332" id="2332">2332</a>
-<a href="#2333" id="2333">2333</a>
-<a href="#2334" id="2334">2334</a>
-<a href="#2335" id="2335">2335</a>
-<a href="#2336" id="2336">2336</a>
-<a href="#2337" id="2337">2337</a>
-<a href="#2338" id="2338">2338</a>
-<a href="#2339" id="2339">2339</a>
-<a href="#2340" id="2340">2340</a>
-<a href="#2341" id="2341">2341</a>
-<a href="#2342" id="2342">2342</a>
-<a href="#2343" id="2343">2343</a>
-<a href="#2344" id="2344">2344</a>
-<a href="#2345" id="2345">2345</a>
-<a href="#2346" id="2346">2346</a>
-<a href="#2347" id="2347">2347</a>
-<a href="#2348" id="2348">2348</a>
-<a href="#2349" id="2349">2349</a>
-<a href="#2350" id="2350">2350</a>
-<a href="#2351" id="2351">2351</a>
-<a href="#2352" id="2352">2352</a>
-<a href="#2353" id="2353">2353</a>
-<a href="#2354" id="2354">2354</a>
-<a href="#2355" id="2355">2355</a>
-<a href="#2356" id="2356">2356</a>
-<a href="#2357" id="2357">2357</a>
-<a href="#2358" id="2358">2358</a>
-<a href="#2359" id="2359">2359</a>
-<a href="#2360" id="2360">2360</a>
-<a href="#2361" id="2361">2361</a>
-<a href="#2362" id="2362">2362</a>
-<a href="#2363" id="2363">2363</a>
-<a href="#2364" id="2364">2364</a>
-<a href="#2365" id="2365">2365</a>
-<a href="#2366" id="2366">2366</a>
-<a href="#2367" id="2367">2367</a>
-<a href="#2368" id="2368">2368</a>
-<a href="#2369" id="2369">2369</a>
-<a href="#2370" id="2370">2370</a>
-<a href="#2371" id="2371">2371</a>
-<a href="#2372" id="2372">2372</a>
-<a href="#2373" id="2373">2373</a>
-<a href="#2374" id="2374">2374</a>
-<a href="#2375" id="2375">2375</a>
-<a href="#2376" id="2376">2376</a>
-<a href="#2377" id="2377">2377</a>
-<a href="#2378" id="2378">2378</a>
-<a href="#2379" id="2379">2379</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 <span class="kw">use </span>std::ops::Deref;
@@ -2386,7 +2335,7 @@
 <span class="kw">use </span>num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>thiserror::Error;
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, warn};
 
 <span class="kw">use </span>massa_db_exports::{
     DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
@@ -2687,12 +2636,13 @@
     <span class="doccomment">/// Advance the state
     /// Can be called as multiple times as it will only store what changes the state in history
     </span><span class="kw">pub fn </span>on_advance(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>Advance) {
+        <span class="kw">let </span>now = input.now;
         <span class="comment">// Check that input.now is after last item in history
         // We don&#39;t want to go backward
         </span><span class="kw">let </span>is_forward = <span class="self">self
             </span>.history
             .last_key_value()
-            .map(|(adv, <span class="kw">_</span>)| adv.now &lt; input.now)
+            .map(|(adv, <span class="kw">_</span>)| adv.now &lt; now)
             .unwrap_or(<span class="bool-val">false</span>);
 
         <span class="kw">if </span>is_forward {
@@ -2700,13 +2650,14 @@
             </span><span class="kw">let </span>state = <span class="self">self</span>.state.on_advance(input.clone());
             <span class="comment">// Update history as well
             </span><span class="kw">if </span>state != <span class="self">self</span>.state {
+                <span class="kw">let </span>state_id = ComponentStateTypeId::from(<span class="kw-2">&amp;</span>state);
+
                 <span class="comment">// Avoid storing too much things in history
                 // Here we avoid storing for every threshold update
                 </span><span class="kw">if </span>!(<span class="macro">matches!</span>(state, ComponentState::Started(Started { .. }))
                     &amp;&amp; <span class="macro">matches!</span>(<span class="self">self</span>.state, ComponentState::Started(Started { .. })))
                 {
-                    <span class="self">self</span>.history
-                        .insert(input.clone(), ComponentStateTypeId::from(<span class="kw-2">&amp;</span>state));
+                    <span class="self">self</span>.history.insert(input.clone(), state_id);
                 }
                 <span class="self">self</span>.state = state;
             }
@@ -2871,16 +2822,6 @@
                 <span class="prelude-val">Some</span>(at.saturating_add(mip_info.activation_delay))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        }
-    }
-
-    <span class="doccomment">/// Return True if state can not change anymore (e.g. Active, Failed or Error)
-    </span><span class="kw">pub fn </span>is_final(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self</span>.state {
-            ComponentState::Active(..) =&gt; <span class="bool-val">true</span>,
-            ComponentState::Failed(..) =&gt; <span class="bool-val">true</span>,
-            ComponentState::Error =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 }
@@ -3067,10 +3008,9 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MipStoreStats {
     <span class="comment">// config for max counters + block to consider when computing the vote ratio
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) config: MipStatsConfig,
-    <span class="comment">// Last network version announcements (in last block header)
-    // Used to clean up the field: network_version_counters (pop the oldest then subtract matching counter)
+    <span class="comment">// used to clean up the counters (pop the oldest then subtract matching counter)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) latest_announcements: VecDeque&lt;u32&gt;,
-    <span class="comment">// A map where key: network version, value: announcement for this network version count
+    <span class="comment">// counter per network version
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) network_version_counters: BTreeMap&lt;u32, u64&gt;,
 }
 
@@ -3260,108 +3200,75 @@
         network_versions: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
     ) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>((_current_network_version, announced_network_version)) = network_versions {
-            <span class="comment">// Check that we will not grow network_version_counters below the limit
-            </span><span class="kw">if </span><span class="self">self
+            <span class="kw">let </span>removed_version_ = <span class="kw">match </span><span class="self">self</span>.stats.latest_announcements.len() {
+                n <span class="kw">if </span>n &gt;= <span class="self">self</span>.stats.config.block_count_considered =&gt; {
+                    <span class="self">self</span>.stats.latest_announcements.pop_front()
+                }
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+            };
+            <span class="self">self</span>.stats
+                .latest_announcements
+                .push_back(announced_network_version);
+
+            <span class="comment">// We update the count of the received version
+            </span><span class="kw">let </span>entry_value = <span class="self">self
                 </span>.stats
                 .network_version_counters
-                .contains_key(<span class="kw-2">&amp;</span>announced_network_version)
-                || (!<span class="self">self
+                .entry(announced_network_version)
+                .or_default();
+            <span class="kw-2">*</span>entry_value = entry_value.saturating_add(<span class="number">1</span>);
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(removed_version) = removed_version_ {
+                <span class="kw">let </span>entry_value = <span class="self">self
                     </span>.stats
                     .network_version_counters
-                    .contains_key(<span class="kw-2">&amp;</span>announced_network_version)
-                    &amp;&amp; <span class="self">self</span>.stats.network_version_counters.len() &lt; <span class="self">self</span>.stats.config.counters_max)
-            {
-                <span class="kw">let </span>removed_version_ = <span class="kw">match </span><span class="self">self</span>.stats.latest_announcements.len() {
-                    n <span class="kw">if </span>n &gt;= <span class="self">self</span>.stats.config.block_count_considered =&gt; {
-                        <span class="self">self</span>.stats.latest_announcements.pop_front()
-                    }
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-                };
-                <span class="self">self</span>.stats
-                    .latest_announcements
-                    .push_back(announced_network_version);
-
-                <span class="comment">// We update the count of the received version (example: update counter for version 1)
-                </span><span class="self">self</span>.stats
-                    .network_version_counters
-                    .entry(announced_network_version)
-                    .and_modify(|v| <span class="kw-2">*</span>v = v.saturating_add(<span class="number">1</span>))
+                    .entry(removed_version)
                     .or_insert(<span class="number">1</span>);
+                <span class="kw-2">*</span>entry_value = entry_value.saturating_sub(<span class="number">1</span>);
+            }
 
-                <span class="comment">// If we removed a version announcement, we decrement the corresponding counter
-                // (example: remove a version 0, so decrement the corresponding counter)
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(removed_version) = removed_version_ {
-                    <span class="self">self</span>.stats
-                        .network_version_counters
-                        .entry(removed_version)
-                        .and_modify(|v| <span class="kw-2">*</span>v = v.saturating_sub(<span class="number">1</span>))
-                        .or_insert(<span class="number">0</span>);
+            <span class="comment">// Cleanup the counters
+            </span><span class="kw">if </span><span class="self">self</span>.stats.network_version_counters.len() &gt; <span class="self">self</span>.stats.config.counters_max {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>((version, count)) = <span class="self">self</span>.stats.network_version_counters.pop_first() {
+                    <span class="comment">// TODO: return version / count for unit tests?
+                    </span><span class="macro">warn!</span>(
+                        <span class="string">&quot;MipStoreStats removed counter for version {}, count was: {}&quot;</span>,
+                        version, count
+                    )
                 }
             }
 
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;[VERSIONING STATS] stats have {} counters and {} announcements&quot;</span>,
-                <span class="self">self</span>.stats.network_version_counters.len(),
-                <span class="self">self</span>.stats.latest_announcements.len()
-            )
+            <span class="self">self</span>.advance_states_on_updated_stats(slot_timestamp);
         }
-
-        <span class="comment">// Even if stats did not move, update the states (e.g. LockedIn -&gt; Active)
-        </span><span class="self">self</span>.advance_states_on_updated_stats(slot_timestamp);
     }
 
     <span class="doccomment">/// Used internally by `update_network_version_stats`
     </span><span class="kw">fn </span>advance_states_on_updated_stats(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot_timestamp: MassaTime) {
-        <span class="kw">let </span><span class="kw-2">mut </span>reset_stats = <span class="bool-val">false</span>;
-
         <span class="kw">for </span>(mi, state) <span class="kw">in </span><span class="self">self</span>.store.iter_mut() {
-            <span class="kw">if </span>state.is_final() {
-                <span class="comment">// State cannot change (ex: Active), no need to update
-                </span><span class="kw">continue</span>;
-            }
-
             <span class="kw">let </span>network_version_count = <span class="kw-2">*</span><span class="self">self
                 </span>.stats
                 .network_version_counters
                 .get(<span class="kw-2">&amp;</span>mi.version)
-                .unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>);
-            <span class="kw">let </span>block_count_considered = <span class="self">self</span>.stats.config.block_count_considered;
-            <span class="kw">let </span>vote_ratio_ = Amount::from_mantissa_scale(network_version_count, <span class="number">0</span>).and_then(|a| {
-                <span class="prelude-val">Ok</span>(a.saturating_mul_u64(<span class="number">100</span>)
-                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(<span class="number">0</span>)))
-            });
+                .unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>) <span class="kw">as </span>f32;
+            <span class="kw">let </span>block_count_considered = <span class="self">self</span>.stats.config.block_count_considered <span class="kw">as </span>f32;
 
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(vote_ratio)) = vote_ratio_ {
-                <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] vote ratio = {} (network version counter = {} - blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
+            <span class="kw">let </span>vote_ratio_ = <span class="number">100.0 </span>* network_version_count / block_count_considered;
 
-                <span class="kw">let </span>advance_msg = Advance {
-                    start_timestamp: mi.start,
-                    timeout: mi.timeout,
-                    threshold: vote_ratio,
-                    now: slot_timestamp,
-                    activation_delay: mi.activation_delay,
-                };
+            <span class="kw">let </span>vote_ratio = Amount::const_init(vote_ratio_.round() <span class="kw">as </span>u64, <span class="number">0</span>);
 
-                state.on_advance(<span class="kw-2">&amp;</span>advance_msg.clone());
+            <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
 
-                <span class="kw">if </span>vote_ratio &gt; VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
-                    <span class="comment">// A new version is going to be &#39;Active&#39; - reset stats
-                    </span>reset_stats = <span class="bool-val">true</span>;
-                }
-            }
+            <span class="kw">let </span>advance_msg = Advance {
+                start_timestamp: mi.start,
+                timeout: mi.timeout,
+                threshold: vote_ratio,
+                now: slot_timestamp,
+                activation_delay: mi.activation_delay,
+            };
+
+            <span class="comment">// TODO / OPTIM: filter the store to avoid advancing on failed and active versions
+            </span>state.on_advance(<span class="kw-2">&amp;</span>advance_msg.clone());
         }
-
-        <span class="kw">if </span>reset_stats {
-            <span class="comment">// Reset stats after loop as we can have 2 MIP
-            // One become LockedIn &amp; One become Started
-            // FIXME: is this true? Can we have LockedIn &amp; Started at the same time
-            //        can have LockedIn &amp; Defined at the same time
-
-            </span><span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] reset stats (threshold reached)&quot;</span>);
-            <span class="self">self</span>.stats.reset();
-            <span class="comment">// TODO: can we pass the latest accepted network version so we ensure to have
-            //       an increment in network_version_counters?
-        </span>}
     }
 
     <span class="comment">// Query
@@ -3562,13 +3469,12 @@
             }
         }
 
+        key.clear();
         value.clear();
+        key.extend(MIP_STORE_STATS_PREFIX.as_bytes().to_vec());
         <span class="kw">let </span>mip_stats_ser = MipStoreStatsSerializer::new();
         mip_stats_ser.serialize(<span class="kw-2">&amp;</span><span class="self">self</span>.stats, <span class="kw-2">&amp;mut </span>value)<span class="question-mark">?</span>;
-        versioning_batch.insert(
-            MIP_STORE_STATS_PREFIX.as_bytes().to_vec(),
-            <span class="prelude-val">Some</span>(value.clone()),
-        );
+        versioning_batch.insert(key.clone(), <span class="prelude-val">Some</span>(value.clone()));
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -3608,24 +3514,18 @@
             update_data.insert(mip_info, mip_state);
         }
 
-        <span class="kw">let </span>(<span class="kw-2">mut </span>updated, <span class="kw-2">mut </span>added) = <span class="kw">match </span>update_data.is_empty() {
-            <span class="bool-val">true </span>=&gt; (<span class="macro">vec!</span>[], BTreeMap::new()),
-            <span class="bool-val">false </span>=&gt; {
-                <span class="kw">let </span>store_raw_ = MipStoreRaw {
-                    store: update_data,
-                    stats: MipStoreStats {
-                        config: MipStatsConfig {
-                            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-                            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-                        },
-                        latest_announcements: Default::default(),
-                        network_version_counters: Default::default(),
-                    },
-                };
-                <span class="comment">// Only call update_with if update_data is not empty
-                </span><span class="self">self</span>.update_with(<span class="kw-2">&amp;</span>store_raw_)<span class="question-mark">?
-            </span>}
+        <span class="kw">let </span>store_raw_ = MipStoreRaw {
+            store: update_data,
+            stats: MipStoreStats {
+                config: MipStatsConfig {
+                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+                },
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
         };
+        <span class="kw">let </span>(<span class="kw-2">mut </span>updated, <span class="kw-2">mut </span>added) = <span class="self">self</span>.update_with(<span class="kw-2">&amp;</span>store_raw_)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>update_data: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
 
@@ -3660,23 +3560,20 @@
             }
         }
 
-        <span class="kw">if </span>!update_data.is_empty() {
-            <span class="kw">let </span>store_raw_ = MipStoreRaw {
-                store: update_data,
-                stats: MipStoreStats {
-                    config: MipStatsConfig {
-                        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-                        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-                    },
-                    latest_announcements: Default::default(),
-                    network_version_counters: Default::default(),
+        <span class="kw">let </span>store_raw_ = MipStoreRaw {
+            store: update_data,
+            stats: MipStoreStats {
+                config: MipStatsConfig {
+                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
                 },
-            };
-            <span class="comment">// Only call update_with if update_data is not empty
-            </span><span class="kw">let </span>(updated_2, added_2) = <span class="self">self</span>.update_with(<span class="kw-2">&amp;</span>store_raw_)<span class="question-mark">?</span>;
-            updated.extend(updated_2);
-            added.extend(added_2);
-        }
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
+        };
+        <span class="kw">let </span>(updated_2, added_2) = <span class="self">self</span>.update_with(<span class="kw-2">&amp;</span>store_raw_)<span class="question-mark">?</span>;
+        updated.extend(updated_2);
+        added.extend(added_2);
 
         <span class="prelude-val">Ok</span>((updated, added))
     }
@@ -4735,9 +4632,10 @@
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
 
         mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">1</span>)));
-        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">0</span>); <span class="comment">// reset as we reached the vote threshold
+        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>));
 
-        // Check that MipInfo is now
+        <span class="comment">// Check that MipInfo is now
         </span><span class="kw">let </span>(mi_, ms_) = mip_store.store.last_key_value().unwrap();
         <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>mi_, mi_1);
         <span class="macro">assert_matches!</span>(ms_.state, ComponentState::LockedIn(..));
