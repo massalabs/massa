@@ -23,7 +23,10 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::log::{debug, info};
 
-use crate::state::{clique_computation::compute_max_cliques, verifications::BlockCheckOutcome};
+use crate::state::{
+    clique_computation::compute_max_cliques,
+    verifications::{BlockCheckOutcome, HeaderCheckOutcome},
+};
 
 use super::ConsensusState;
 
@@ -33,6 +36,8 @@ pub(crate) struct BlockInfos {
     pub creator: PublicKey,
     /// The slot of the block
     pub slot: Slot,
+    /// Storage
+    pub storage: Storage,
     /// The list of the parents of the block (block_id, period) (one block per thread)
     pub parents_hash_period: Vec<(BlockId, u64)>,
     /// The list of the blocks that are incompatible with this block
@@ -144,38 +149,116 @@ impl ConsensusState {
                 massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
-                let new_state = if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
-                    slot,
-                    storage,
-                    ..
-                })) = self.blocks_state.get(&block_id)
-                {
-                    let stored_block = storage
-                        .read_blocks()
-                        .get(&block_id)
-                        .cloned()
-                        .expect("incoming block not found in storage");
-                    self.convert_block(block_id, *slot, storage.clone(), stored_block, current_slot)
-                } else {
-                    panic!(
-                        "inconsistency inside block statuses removing incoming block {}",
-                        block_id
-                    )
-                };
+                let header_check_outcome =
+                    if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
+                        slot: _,
+                        storage,
+                        ..
+                    })) = self.blocks_state.get(&block_id)
+                    {
+                        let stored_block = storage
+                            .read_blocks()
+                            .get(&block_id)
+                            .cloned()
+                            .expect("incoming block not found in storage");
+                        let res = self.check_header(
+                            &block_id,
+                            &stored_block.content.header,
+                            current_slot,
+                        );
+                        match &res {
+                            HeaderCheckOutcome::Discard(reason) => {
+                                self.maybe_note_attack_attempt(reason, &block_id)
+                            }
+                            _ => {
+                                if self.detect_multistake(&stored_block.content.header) {
+                                    return Ok(BTreeSet::new());
+                                }
+                            }
+                        }
+                        res
+                    } else {
+                        panic!(
+                            "inconsistency inside block statuses removing incoming block {}",
+                            block_id
+                        )
+                    };
                 let mut block_infos = None;
+                let sequence_number = self.blocks_state.sequence_counter();
                 self.blocks_state
                     .transition_map(&block_id, |block_status, _| {
                         if let Some(BlockStatus::Incoming(HeaderOrBlock::Block {
-                            slot: _,
-                            mut storage,
+                            slot,
+                            storage,
                             ..
                         })) = block_status
                         {
+                            let header = storage
+                                .read_blocks()
+                                .get(&block_id)
+                                .cloned()
+                                .expect("incoming block not found in storage")
+                                .content
+                                .header;
+                            let new_state = match header_check_outcome {
+                                HeaderCheckOutcome::Proceed {
+                                    parents_hash_period,
+                                    incompatibilities,
+                                    inherited_incompatibilities_count,
+                                    fitness,
+                                } => Some(BlockCheckOutcome::BlockInfos(BlockInfos {
+                                    creator: header.content_creator_pub_key,
+                                    parents_hash_period,
+                                    storage,
+                                    slot,
+                                    incompatibilities,
+                                    inherited_incompatibilities_count,
+                                    fitness,
+                                })),
+                                HeaderCheckOutcome::WaitForDependencies(dependencies) => {
+                                    Some(BlockCheckOutcome::BlockStatus(
+                                        BlockStatus::WaitingForDependencies {
+                                            header_or_block: HeaderOrBlock::Block {
+                                                id: block_id,
+                                                slot,
+                                                storage,
+                                            },
+                                            unsatisfied_dependencies: dependencies,
+                                            sequence_number,
+                                        },
+                                    ))
+                                }
+                                HeaderCheckOutcome::WaitForSlot => {
+                                    Some(BlockCheckOutcome::BlockStatus(
+                                        BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
+                                            id: block_id,
+                                            slot,
+                                            storage,
+                                        }),
+                                    ))
+                                }
+                                HeaderCheckOutcome::Discard(reason) => {
+                                    if reason == DiscardReason::Stale {
+                                        self.new_stale_blocks.insert(
+                                            block_id,
+                                            (header.content_creator_address, header.content.slot),
+                                        );
+                                    }
+                                    // discard
+                                    Some(BlockCheckOutcome::BlockStatus(BlockStatus::Discarded {
+                                        slot: header.content.slot,
+                                        creator: header.content_creator_address,
+                                        parents: header.content.parents,
+                                        reason,
+                                        sequence_number,
+                                    }))
+                                }
+                            };
                             match new_state {
-                                Some(BlockCheckOutcome::BlockInfos(infos)) => {
+                                Some(BlockCheckOutcome::BlockInfos(mut infos)) => {
                                     // Ensure block parents are claimed by the block's storage.
                                     // Note that operations and endorsements should already be there (claimed in Protocol).
-                                    storage.claim_block_refs(
+                                    infos.storage.claim_block_refs(
                                         &infos
                                             .parents_hash_period
                                             .iter()
@@ -206,7 +289,7 @@ impl ConsensusState {
                                             slot: infos.slot,
                                             fitness: infos.fitness,
                                         }),
-                                        storage,
+                                        storage: infos.storage,
                                     })
                                 }
                                 Some(BlockCheckOutcome::BlockStatus(status)) => Some(status),

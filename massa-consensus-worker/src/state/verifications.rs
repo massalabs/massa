@@ -3,10 +3,8 @@ use super::{process::BlockInfos, ConsensusState};
 use massa_consensus_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 use massa_logging::massa_trace;
 use massa_models::{
-    block::SecureShareBlock, block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet,
-    slot::Slot,
+    block_header::SecuredHeader, block_id::BlockId, prehash::PreHashSet, slot::Slot,
 };
-use massa_storage::Storage;
 use tracing::warn;
 
 /// Possible output of a header check
@@ -52,7 +50,7 @@ impl ConsensusState {
     // Verify that we haven't already received 2 blocks for this slot
     // If the block isn't already present two times we save it and return false
     // If the block is already present two times we return true
-    fn detect_multistake(&mut self, header: &SecuredHeader) -> bool {
+    pub(crate) fn detect_multistake(&mut self, header: &SecuredHeader) -> bool {
         let entry = self
             .nonfinal_active_blocks_per_slot
             .entry(header.content.slot)
@@ -69,77 +67,6 @@ impl ConsensusState {
             }
         }
         false
-    }
-
-    /// Check if the header of the block is valid and if it could be processed
-    ///
-    /// # Returns:
-    /// An option that contains data if the block can be processed and added to the graph, in any other case `None`
-    pub(crate) fn convert_block(
-        &mut self,
-        block_id: BlockId,
-        slot: Slot,
-        storage: Storage,
-        stored_block: SecureShareBlock,
-        current_slot: Option<Slot>,
-    ) -> Option<BlockCheckOutcome> {
-        let header_outcome =
-            self.check_header(&block_id, &stored_block.content.header, current_slot);
-        match header_outcome {
-            HeaderCheckOutcome::Proceed {
-                parents_hash_period,
-                incompatibilities,
-                inherited_incompatibilities_count,
-                fitness,
-            } => {
-                if self.detect_multistake(&stored_block.content.header) {
-                    return None;
-                }
-                // block is valid: remove it from Incoming and return it
-                massa_trace!("consensus.block_graph.process.incoming_block.valid", {
-                    "block_id": block_id
-                });
-                Some(BlockCheckOutcome::BlockInfos(BlockInfos {
-                    creator: stored_block.content.header.content_creator_pub_key,
-                    parents_hash_period,
-                    slot,
-                    incompatibilities,
-                    inherited_incompatibilities_count,
-                    fitness,
-                }))
-            }
-            HeaderCheckOutcome::WaitForDependencies(dependencies) => {
-                if self.detect_multistake(&stored_block.content.header) {
-                    return None;
-                }
-                Some(BlockCheckOutcome::BlockStatus(
-                    BlockStatus::WaitingForDependencies {
-                        header_or_block: HeaderOrBlock::Block {
-                            id: block_id,
-                            slot,
-                            storage,
-                        },
-                        unsatisfied_dependencies: dependencies,
-                        sequence_number: self.blocks_state.sequence_counter(),
-                    },
-                ))
-            }
-            HeaderCheckOutcome::WaitForSlot => {
-                if self.detect_multistake(&stored_block.content.header) {
-                    return None;
-                }
-                Some(BlockCheckOutcome::BlockStatus(BlockStatus::WaitingForSlot(
-                    HeaderOrBlock::Block {
-                        id: block_id,
-                        slot,
-                        storage,
-                    },
-                )))
-            }
-            HeaderCheckOutcome::Discard(reason) => Some(BlockCheckOutcome::BlockStatus(
-                self.convert_to_discard_block_header(reason, block_id, stored_block.content.header),
-            )),
-        }
     }
 
     /// Check if the header is valid and if it could be processed when we will receive the full block
@@ -238,7 +165,7 @@ impl ConsensusState {
     /// - Check grandpa incompatibility test.
     /// - Check if the block is incompatible with a parent.
     /// - Check if the block is incompatible with a final block.
-    fn check_header(
+    pub(crate) fn check_header(
         &self,
         block_id: &BlockId,
         header: &SecuredHeader,
