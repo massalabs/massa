@@ -173,7 +173,7 @@
     <span class="doccomment">/// increment manually the metrics
     /// Should be used when using the receiver with select! macro
     /// select! does not call recv()
-    </span><span class="kw">pub fn </span>inc_metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    </span><span class="kw">pub fn </span>update_metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="comment">// use the len of the channel for actual_len instead of actual_len.dec()
         // because for each send we call recv more than one time
         </span><span class="self">self</span>.actual_len.set(<span class="self">self</span>.receiver.len() <span class="kw">as </span>f64);
@@ -204,7 +204,7 @@
     </span><span class="kw">pub fn </span>try_recv(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;T, TryRecvError&gt; {
         <span class="kw">match </span><span class="self">self</span>.receiver.try_recv() {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
-                <span class="self">self</span>.inc_metrics();
+                <span class="self">self</span>.update_metrics();
 
                 <span class="prelude-val">Ok</span>(msg)
             }
@@ -220,7 +220,7 @@
     <span class="kw">pub fn </span>recv_deadline(<span class="kw-2">&amp;</span><span class="self">self</span>, deadline: Instant) -&gt; <span class="prelude-ty">Result</span>&lt;T, RecvTimeoutError&gt; {
         <span class="kw">match </span><span class="self">self</span>.receiver.recv_deadline(deadline) {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
-                <span class="self">self</span>.inc_metrics();
+                <span class="self">self</span>.update_metrics();
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -233,7 +233,7 @@
     <span class="kw">pub fn </span>recv_timeout(<span class="kw-2">&amp;</span><span class="self">self</span>, timeout: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;T, RecvTimeoutError&gt; {
         <span class="kw">match </span><span class="self">self</span>.receiver.recv_timeout(timeout) {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
-                <span class="self">self</span>.inc_metrics();
+                <span class="self">self</span>.update_metrics();
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -246,7 +246,7 @@
     <span class="kw">pub fn </span>recv(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;T, RecvError&gt; {
         <span class="kw">match </span><span class="self">self</span>.receiver.recv() {
             <span class="prelude-val">Ok</span>(msg) =&gt; {
-                <span class="self">self</span>.inc_metrics();
+                <span class="self">self</span>.update_metrics();
                 <span class="prelude-val">Ok</span>(msg)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
