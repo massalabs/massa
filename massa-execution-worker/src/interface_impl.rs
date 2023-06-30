@@ -838,6 +838,11 @@ impl Interface for InterfaceImpl {
         message_: &[u8],
         public_key_: &[u8],
     ) -> Result<bool> {
+        // check the signature length
+        if signature_.len() != 65 {
+            return Err(anyhow!("invalid signature length"));
+        }
+
         // parse the public key
         let public_key = libsecp256k1::PublicKey::parse_slice(
             public_key_,
@@ -847,8 +852,9 @@ impl Interface for InterfaceImpl {
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
         let to_hash = [prefix.as_bytes(), message_].concat();
-        let full_hash = sha3::Keccak256::digest(to_hash);
-        let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
+        let full_hash = sha3::Keccak256::digest(&to_hash);
+        let message = libsecp256k1::Message::parse_slice(&full_hash)
+            .expect("message could not be parsed from a hash slice");
 
         // parse the signature as being (r, s, v)
         // r is the R.x value of the signature's R point (32 bytes)
@@ -856,7 +862,7 @@ impl Interface for InterfaceImpl {
         // v is a recovery parameter used to ease the signature verification (1 byte)
         // we ignore the recovery parameter here
         // see test_evm_verify for an example of its usage
-        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
 
         // verify the signature
         Ok(libsecp256k1::verify(&message, &signature, &public_key))
