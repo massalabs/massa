@@ -1768,51 +1768,6 @@
 <a href="#1768" id="1768">1768</a>
 <a href="#1769" id="1769">1769</a>
 <a href="#1770" id="1770">1770</a>
-<a href="#1771" id="1771">1771</a>
-<a href="#1772" id="1772">1772</a>
-<a href="#1773" id="1773">1773</a>
-<a href="#1774" id="1774">1774</a>
-<a href="#1775" id="1775">1775</a>
-<a href="#1776" id="1776">1776</a>
-<a href="#1777" id="1777">1777</a>
-<a href="#1778" id="1778">1778</a>
-<a href="#1779" id="1779">1779</a>
-<a href="#1780" id="1780">1780</a>
-<a href="#1781" id="1781">1781</a>
-<a href="#1782" id="1782">1782</a>
-<a href="#1783" id="1783">1783</a>
-<a href="#1784" id="1784">1784</a>
-<a href="#1785" id="1785">1785</a>
-<a href="#1786" id="1786">1786</a>
-<a href="#1787" id="1787">1787</a>
-<a href="#1788" id="1788">1788</a>
-<a href="#1789" id="1789">1789</a>
-<a href="#1790" id="1790">1790</a>
-<a href="#1791" id="1791">1791</a>
-<a href="#1792" id="1792">1792</a>
-<a href="#1793" id="1793">1793</a>
-<a href="#1794" id="1794">1794</a>
-<a href="#1795" id="1795">1795</a>
-<a href="#1796" id="1796">1796</a>
-<a href="#1797" id="1797">1797</a>
-<a href="#1798" id="1798">1798</a>
-<a href="#1799" id="1799">1799</a>
-<a href="#1800" id="1800">1800</a>
-<a href="#1801" id="1801">1801</a>
-<a href="#1802" id="1802">1802</a>
-<a href="#1803" id="1803">1803</a>
-<a href="#1804" id="1804">1804</a>
-<a href="#1805" id="1805">1805</a>
-<a href="#1806" id="1806">1806</a>
-<a href="#1807" id="1807">1807</a>
-<a href="#1808" id="1808">1808</a>
-<a href="#1809" id="1809">1809</a>
-<a href="#1810" id="1810">1810</a>
-<a href="#1811" id="1811">1811</a>
-<a href="#1812" id="1812">1812</a>
-<a href="#1813" id="1813">1813</a>
-<a href="#1814" id="1814">1814</a>
-<a href="#1815" id="1815">1815</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2023,11 +1978,7 @@
         <span class="self">self</span>.cycle_history_cache = <span class="self">self</span>.get_cycle_history_cycles().into();
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>((cycle, <span class="kw">_</span>)) = <span class="self">self</span>.cycle_history_cache.back() {
-            <span class="self">self</span>.rng_seed_cache = <span class="prelude-val">Some</span>((
-                <span class="kw-2">*</span>cycle,
-                <span class="self">self</span>.get_cycle_history_rng_seed(<span class="kw-2">*</span>cycle)
-                    .expect(<span class="string">&quot;cycle RNG seed not found&quot;</span>),
-            ));
+            <span class="self">self</span>.rng_seed_cache = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>cycle, <span class="self">self</span>.get_cycle_history_rng_seed(<span class="kw-2">*</span>cycle)));
         } <span class="kw">else </span>{
             <span class="self">self</span>.rng_seed_cache = <span class="prelude-val">None</span>;
         }
@@ -2253,9 +2204,7 @@
         <span class="self">self</span>.put_cycle_history_complete(cycle, complete, batch);
 
         <span class="comment">// OPTIM: we could avoid reading the previous seed bits with a cache or with an update function
-        </span><span class="kw">let </span><span class="kw-2">mut </span>rng_seed = <span class="self">self
-            </span>.get_cycle_history_rng_seed(cycle)
-            .expect(<span class="string">&quot;missing RNG seed&quot;</span>);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>rng_seed = <span class="self">self</span>.get_cycle_history_rng_seed(cycle);
         rng_seed.extend(changes.seed_bits);
         <span class="self">self</span>.put_cycle_history_rng_seed(cycle, rng_seed.clone(), batch);
 
@@ -2266,7 +2215,7 @@
 
         <span class="comment">// extend production stats
         </span><span class="kw">for </span>(addr, stats) <span class="kw">in </span>changes.production_stats {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_production_stats) = <span class="self">self</span>.get_production_stats_for_address(cycle, <span class="kw-2">&amp;</span>addr)
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_production_stats) = <span class="self">self</span>.get_production_stats_for_address(cycle, addr)
             {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_production_stats = prev_production_stats;
                 new_production_stats.extend(<span class="kw-2">&amp;</span>stats);
@@ -2357,11 +2306,7 @@
                 <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
                 <span class="kw">let </span><span class="kw-2">mut </span>seed = Vec::new();
                 u64_ser.serialize(<span class="kw-2">&amp;</span>c, <span class="kw-2">&amp;mut </span>seed).unwrap();
-                seed.extend(
-                    <span class="self">self</span>.get_cycle_history_rng_seed(cycle_info.<span class="number">0</span>)
-                        .expect(<span class="string">&quot;missing RNG seed&quot;</span>)
-                        .into_vec(),
-                );
+                seed.extend(<span class="self">self</span>.get_cycle_history_rng_seed(cycle_info.<span class="number">0</span>).into_vec());
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(lookback_state_hash) = lookback_state_hash {
                     seed.extend(lookback_state_hash.to_bytes());
                 }
@@ -2433,8 +2378,10 @@
     </span><span class="kw">pub fn </span>get_address_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
         <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
             <span class="prelude-val">Some</span>(lookback_cycle) =&gt; {
-                <span class="kw">let </span>key = <span class="macro">roll_count_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(lookback_cycle), addr);
                 <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+
+                <span class="kw">let </span>key = <span class="macro">roll_count_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(lookback_cycle), addr);
+
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(serialized_value) =
                     db.get_cf(STATE_CF, key).expect(CYCLE_HISTORY_DESER_ERROR)
                 {
@@ -2452,17 +2399,6 @@
                 </span>}
             }
             <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.initial_rolls.get(addr).cloned(),
-        }
-    }
-
-    <span class="doccomment">/// Gets all active rolls for a given cycle
-    </span><span class="kw">pub fn </span>get_all_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
-        <span class="kw">match </span>cycle.checked_sub(<span class="number">3</span>) {
-            <span class="prelude-val">Some</span>(lookback_cycle) =&gt; {
-                <span class="comment">// get rolls
-                </span><span class="self">self</span>.get_all_roll_counts(lookback_cycle)
-            }
-            <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.initial_rolls.clone(),
         }
     }
 
@@ -2535,52 +2471,6 @@
         deferred_credits
     }
 
-    <span class="doccomment">/// Gets the deferred credits for an address
-    </span><span class="kw">pub fn </span>get_address_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; BTreeMap&lt;Slot, Amount&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>deferred_credits = BTreeMap::new();
-
-        <span class="kw">let </span>start_key_buffer = DEFERRED_CREDITS_PREFIX.as_bytes().to_vec();
-
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.iterator_cf(
-            STATE_CF,
-            MassaIteratorMode::From(<span class="kw-2">&amp;</span>start_key_buffer, MassaDirection::Forward),
-        ) {
-            <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
-                <span class="kw">break</span>;
-            }
-            <span class="kw">let </span>(rest, slot) = <span class="self">self
-                </span>.deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            <span class="kw">let </span>(<span class="kw">_</span>, addr): (<span class="kw">_</span>, Address) = <span class="self">self
-                </span>.deferred_credits_deserializer
-                .credit_deserializer
-                .address_deserializer
-                .deserialize::&lt;DeserializeError&gt;(rest)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            <span class="kw">if </span><span class="kw-2">&amp;</span>addr != address {
-                <span class="comment">// TODO improve performance
-                </span><span class="kw">continue</span>;
-            }
-
-            <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
-                </span>.deferred_credits_deserializer
-                .credit_deserializer
-                .amount_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_value)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            deferred_credits.insert(slot, amount);
-        }
-
-        deferred_credits
-    }
-
     <span class="doccomment">/// Gets the index of a cycle in history
     </span><span class="kw">pub fn </span>get_cycle_index(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>first_cycle = <span class="kw">match </span><span class="self">self</span>.cycle_history_cache.front() {
@@ -2609,6 +2499,7 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>roll_counts: BTreeMap&lt;Address, u64&gt; = BTreeMap::new();
+
         <span class="kw">let </span>prefix = <span class="macro">roll_count_prefix!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle));
         <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.prefix_iterator_cf(STATE_CF, <span class="kw-2">&amp;</span>prefix) {
             <span class="kw">if </span>!serialized_key.starts_with(prefix.as_bytes()) {
@@ -2654,7 +2545,10 @@
     }
 
     <span class="doccomment">/// Retrieves the productions statistics for all addresses on a given cycle
-    </span><span class="kw">fn </span>get_all_production_stats_private(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; PreHashMap&lt;Address, ProductionStats&gt; {
+    </span><span class="kw">pub fn </span>get_all_production_stats_private(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cycle: u64,
+    ) -&gt; PreHashMap&lt;Address, ProductionStats&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span><span class="kw-2">mut </span>production_stats: PreHashMap&lt;Address, ProductionStats&gt; = PreHashMap::default();
@@ -2709,23 +2603,22 @@
     }
 
     <span class="doccomment">/// Getter for the rng_seed of a given cycle, prioritizing the cache and querying the database as fallback.
-    </span><span class="kw">fn </span>get_cycle_history_rng_seed(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;BitVec&lt;u8&gt;&gt; {
+    ///
+    /// Panics if the cycle is not in the history.
+    </span><span class="kw">fn </span>get_cycle_history_rng_seed(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BitVec&lt;u8&gt; {
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+
         <span class="kw">if let </span><span class="prelude-val">Some</span>((cached_cycle, rng_seed)) = <span class="kw-2">&amp;</span><span class="self">self</span>.rng_seed_cache &amp;&amp; <span class="kw-2">*</span>cached_cycle == cycle {
-            <span class="kw">return </span><span class="prelude-val">Some</span>(rng_seed.clone());
+            <span class="kw">return </span>rng_seed.clone();
         }
 
-        <span class="kw">let </span>serialized_rng_seed = <span class="self">self
-            </span>.db
-            .read()
+        <span class="kw">let </span>serialized_rng_seed = db
             .get_cf(
                 STATE_CF,
                 <span class="macro">rng_seed_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle)),
             )
+            .expect(CYCLE_HISTORY_DESER_ERROR)
             .expect(CYCLE_HISTORY_DESER_ERROR);
-        <span class="kw">let </span>serialized_rng_seed = <span class="kw">match </span>serialized_rng_seed {
-            <span class="prelude-val">Some</span>(s) =&gt; s,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
-        };
 
         <span class="kw">let </span>(<span class="kw">_</span>, rng_seed) = <span class="self">self
             </span>.cycle_info_deserializer
@@ -2734,7 +2627,7 @@
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_rng_seed)
             .expect(CYCLE_HISTORY_DESER_ERROR);
 
-        <span class="prelude-val">Some</span>(rng_seed)
+        rng_seed
     }
 
     <span class="doccomment">/// Getter for the final_state_hash_snapshot of a given cycle.
@@ -2802,11 +2695,7 @@
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
-            found_cycles.push((
-                cycle,
-                <span class="self">self</span>.is_cycle_complete(cycle)
-                    .expect(<span class="string">&quot;could not get completeness info&quot;</span>),
-            ));
+            found_cycles.push((cycle, <span class="self">self</span>.is_cycle_complete(cycle)));
         }
 
         <span class="comment">// The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
@@ -2816,21 +2705,13 @@
     }
 
     <span class="doccomment">/// Queries a given cycle info in the database
-    </span><span class="kw">pub fn </span>get_cycle_info(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;CycleInfo&gt; {
-        <span class="comment">// TODO improve performance by not taking a lock and re-searching the key at every element
-
-        </span><span class="kw">let </span>complete = <span class="kw">match </span><span class="self">self</span>.is_cycle_complete(cycle) {
-            <span class="prelude-val">Some</span>(complete) =&gt; complete,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
-        };
-        <span class="kw">let </span>rng_seed = <span class="kw">match </span><span class="self">self</span>.get_cycle_history_rng_seed(cycle) {
-            <span class="prelude-val">Some</span>(rng_seed) =&gt; rng_seed,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
-        };
+    /// Panics if the cycle is not on disk
+    </span><span class="kw">pub fn </span>get_cycle_info(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; CycleInfo {
+        <span class="kw">let </span>complete = <span class="self">self</span>.is_cycle_complete(cycle);
+        <span class="kw">let </span>rng_seed = <span class="self">self</span>.get_cycle_history_rng_seed(cycle);
         <span class="kw">let </span>final_state_hash_snapshot = <span class="self">self</span>.get_cycle_history_final_state_hash_snapshot(cycle);
 
         <span class="kw">let </span>roll_counts = <span class="self">self</span>.get_all_roll_counts(cycle);
-
         <span class="kw">let </span>production_stats = <span class="self">self
             </span>.get_all_production_stats(cycle)
             .unwrap_or(PreHashMap::default());
@@ -2838,7 +2719,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>cycle_info =
             CycleInfo::new_with_hash(cycle, complete, roll_counts, rng_seed, production_stats);
         cycle_info.final_state_hash_snapshot = final_state_hash_snapshot;
-        <span class="prelude-val">Some</span>(cycle_info)
+        cycle_info
     }
 
     <span class="doccomment">/// Gets the deferred credits for a given address that will be credited at a given slot
@@ -2874,15 +2755,15 @@
     </span><span class="kw">pub fn </span>get_production_stats_for_address(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cycle: u64,
-        address: <span class="kw-2">&amp;</span>Address,
+        address: Address,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;ProductionStats&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
 
         <span class="kw">let </span>query = <span class="macro">vec!</span>[
-            (STATE_CF, <span class="macro">prod_stats_fail_key!</span>(prefix, <span class="kw-2">*</span>address)),
-            (STATE_CF, <span class="macro">prod_stats_success_key!</span>(prefix, <span class="kw-2">*</span>address)),
+            (STATE_CF, <span class="macro">prod_stats_fail_key!</span>(prefix, address)),
+            (STATE_CF, <span class="macro">prod_stats_success_key!</span>(prefix, address)),
         ];
 
         <span class="kw">let </span>results = db.multi_get_cf(query);
@@ -2913,20 +2794,16 @@
         }
     }
 
-    <span class="doccomment">/// Check if a cycle is complete (all slots finalized)
-    </span><span class="kw">pub fn </span>is_cycle_complete(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
-        <span class="kw">let </span>key = <span class="macro">complete_key!</span>(<span class="self">self</span>.cycle_history_cycle_prefix(cycle));
-        <span class="kw">let </span>res = <span class="self">self</span>.db.read().get_cf(STATE_CF, key);
-        <span class="kw">match </span>res {
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(complete_value)) =&gt; <span class="prelude-val">Some</span>(complete_value.first() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>)),
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">panic!</span>(
-                    <span class="string">&quot;Error while checking if cycle {} is complete: {}&quot;</span>,
-                    cycle, err
-                );
-            }
-        }
+    <span class="kw">fn </span>is_cycle_complete(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; bool {
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+
+        <span class="kw">let </span>prefix = <span class="self">self</span>.cycle_history_cycle_prefix(cycle);
+
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(complete_value)) = db.get_cf(STATE_CF, <span class="macro">complete_key!</span>(prefix)) {
+            complete_value.len() == <span class="number">1 </span>&amp;&amp; complete_value[<span class="number">0</span>] == <span class="number">1
+        </span>} <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
     }
 }
 
@@ -3486,6 +3363,7 @@
         };
         <span class="kw">use </span>massa_signature::KeyPair;
         <span class="kw">use </span>parking_lot::RwLock;
+        <span class="kw">use </span>std::collections::HashMap;
         <span class="kw">use </span>std::sync::Arc;
         <span class="kw">use </span>tempfile::TempDir;
 
@@ -3626,6 +3504,38 @@
         <span class="macro">assert_eq!</span>(cycles.len(), <span class="number">1</span>, <span class="string">&quot;wrong number of cycles&quot;</span>);
         <span class="macro">assert_eq!</span>(cycles[<span class="number">0</span>].<span class="number">0</span>, <span class="number">0</span>, <span class="string">&quot;cycle should be the 1st one&quot;</span>);
         <span class="macro">assert_eq!</span>(cycles[<span class="number">0</span>].<span class="number">1</span>, <span class="bool-val">false</span>, <span class="string">&quot;cycle should not be complete yet&quot;</span>);
+
+        <span class="kw">let </span>cycle_info_a = pos_state.get_cycle_info(<span class="number">0</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>prod_stats = HashMap::default();
+        prod_stats.insert(
+            addr,
+            ProductionStats {
+                block_success_count: <span class="number">12</span>,
+                block_failure_count: <span class="number">18</span>,
+            },
+        );
+
+        <span class="kw">let </span>cycle_info_b = CycleInfo::new_with_hash(
+            <span class="number">0</span>,
+            <span class="bool-val">false</span>,
+            BTreeMap::default(),
+            <span class="macro">bitvec!</span>[u8, Lsb0; <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>],
+            prod_stats,
+        );
+
+        <span class="macro">assert_eq!</span>(
+            cycle_info_a.roll_counts_hash, cycle_info_b.roll_counts_hash,
+            <span class="string">&quot;roll_counts_hash mismatch&quot;
+        </span>);
+        <span class="macro">assert_eq!</span>(
+            cycle_info_a.production_stats_hash, cycle_info_b.production_stats_hash,
+            <span class="string">&quot;production_stats_hash mismatch&quot;
+        </span>);
+        <span class="macro">assert_eq!</span>(
+            cycle_info_a.cycle_global_hash, cycle_info_b.cycle_global_hash,
+            <span class="string">&quot;global_hash mismatch&quot;
+        </span>);
     }
 }
 </code></pre></div></section></main></body></html>
