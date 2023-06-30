@@ -120,11 +120,18 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-</span><span class="kw">use </span><span class="kw">crate</span>::types::ReadOnlyExecutionRequest;
+</span><span class="kw">use </span><span class="kw">crate</span>::types::{ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest};
 <span class="kw">use </span><span class="kw">crate</span>::ExecutionError;
 <span class="kw">use crate</span>::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 <span class="kw">use </span>massa_models::address::Address;
@@ -156,6 +163,9 @@
         new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
         block_storage: PreHashMap&lt;BlockId, Storage&gt;,
     );
+
+    <span class="doccomment">/// Atomically query the execution state with multiple requests
+    </span><span class="kw">fn </span>query_state(<span class="kw-2">&amp;</span><span class="self">self</span>, req: ExecutionQueryRequest) -&gt; ExecutionQueryResponse;
 
     <span class="doccomment">/// Get execution events optionally filtered by:
     /// * start slot
@@ -213,7 +223,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ReadOnlyExecutionOutput, ExecutionError&gt;;
 
     <span class="doccomment">/// Check if a denunciation has been executed given a `DenunciationIndex`
-    </span><span class="kw">fn </span>is_denunciation_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation_index: <span class="kw-2">&amp;</span>DenunciationIndex) -&gt; bool;
+    /// (speculative, final)
+    </span><span class="kw">fn </span>get_denunciation_execution_status(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        denunciation_index: <span class="kw-2">&amp;</span>DenunciationIndex,
+    ) -&gt; (bool, bool);
 
     <span class="doccomment">/// Gets information about a batch of addresses
     </span><span class="kw">fn </span>get_addresses_infos(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: <span class="kw-2">&amp;</span>[Address]) -&gt; Vec&lt;ExecutionAddressInfo&gt;;
