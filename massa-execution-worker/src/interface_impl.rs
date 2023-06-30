@@ -303,7 +303,10 @@ impl Interface for InterfaceImpl {
         let (mantissa, scale) = self
             .amount_to_mantissa_scale(amount.to_raw())
             .unwrap_or_default();
-        let native_amount = NativeAmount { mantissa, scale };
+        let native_amount = NativeAmount {
+            mandatory_mantissa: Some(mantissa),
+            mandatory_scale: Some(scale),
+        };
 
         Ok(native_amount)
     }
@@ -915,7 +918,14 @@ impl Interface for InterfaceImpl {
         from_address: Option<String>,
     ) -> Result<()> {
         let to_address = Address::from_str(&to_address)?;
-        let amount = Amount::from_mantissa_scale(raw_amount.mantissa, raw_amount.scale)?;
+        let amount = Amount::from_mantissa_scale(
+            raw_amount
+                .mandatory_mantissa
+                .ok_or(anyhow!("No mantissa provided"))?,
+            raw_amount
+                .mandatory_scale
+                .ok_or(anyhow!("No scale provided"))?,
+        )?;
         let mut context = context_guard!(self);
         let from_address = match from_address {
             Some(from_address) => Address::from_str(&from_address)?,
