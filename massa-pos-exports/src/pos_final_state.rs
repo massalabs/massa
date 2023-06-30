@@ -795,7 +795,6 @@ impl PoSFinalState {
 
         let mut roll_counts: BTreeMap<Address, u64> = BTreeMap::new();
         let prefix = roll_count_prefix!(self.cycle_history_cycle_prefix(cycle));
-        let db = self.db.read();
         for (serialized_key, serialized_value) in db.prefix_iterator_cf(STATE_CF, &prefix) {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
