@@ -1540,6 +1540,8 @@ impl PoSFinalState {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use super::*;
 
     // This test checks that the recompute_pos_cache function recovers every cycle and does return correctly.
@@ -1811,5 +1813,37 @@ mod tests {
         assert_eq!(cycles.len(), 1, "wrong number of cycles");
         assert_eq!(cycles[0].0, 0, "cycle should be the 1st one");
         assert_eq!(cycles[0].1, false, "cycle should not be complete yet");
+
+        let cycle_info_a = pos_state.get_cycle_info(0);
+
+        let mut prod_stats = HashMap::default();
+        prod_stats.insert(
+            addr,
+            ProductionStats {
+                block_success_count: 12,
+                block_failure_count: 18,
+            },
+        );
+
+        let cycle_info_b = CycleInfo::new_with_hash(
+            0,
+            false,
+            BTreeMap::default(),
+            bitvec![u8, Lsb0; 0, 0, 0, 1, 1, 0, 0, 1],
+            prod_stats,
+        );
+
+        assert_eq!(
+            cycle_info_a.roll_counts_hash, cycle_info_b.roll_counts_hash,
+            "roll_counts_hash mismatch"
+        );
+        assert_eq!(
+            cycle_info_a.production_stats_hash, cycle_info_b.production_stats_hash,
+            "production_stats_hash mismatch"
+        );
+        assert_eq!(
+            cycle_info_a.cycle_global_hash, cycle_info_b.cycle_global_hash,
+            "global_hash mismatch"
+        );
     }
 }
