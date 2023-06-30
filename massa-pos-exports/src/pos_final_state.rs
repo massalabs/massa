@@ -1814,7 +1814,7 @@ mod tests {
         assert_eq!(cycles[0].0, 0, "cycle should be the 1st one");
         assert_eq!(cycles[0].1, false, "cycle should not be complete yet");
 
-        let cycle_info_a = pos_state.get_cycle_info(0);
+        let cycle_info_a = pos_state.get_cycle_info(0).unwrap();
 
         let mut prod_stats = HashMap::default();
         prod_stats.insert(
