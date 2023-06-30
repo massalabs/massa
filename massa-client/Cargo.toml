@@ -1,6 +1,6 @@
 [package]
 name = "massa-client"
-version = "0.23.0"
+version = "0.24.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -28,8 +28,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_sdk = { path = "../massa-sdk" }
 massa_wallet = { path = "../massa-wallet" }
-massa_proto = { path = "../massa-proto" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
 
 [dev-dependencies]
 toml_edit = "0.19"
-

@@ -233,8 +233,8 @@ impl FromStr for Address {
         };
 
         let res = match pref {
-            'U' => Address::User(UserAddress::from_str_without_prefixed_type(&s[2..])?),
-            'S' => Address::SC(SCAddress::from_str_without_prefixed_type(&s[2..])?),
+            'U' => Address::User(UserAddress::from_str_without_prefixed_type(chars.as_str())?),
+            'S' => Address::SC(SCAddress::from_str_without_prefixed_type(chars.as_str())?),
             _ => return err,
         };
         Ok(res)

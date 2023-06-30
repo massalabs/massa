@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use crossbeam::channel::{Receiver, Sender};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 use massa_protocol_exports::{PeerId, ProtocolError};
 use parking_lot::RwLock;
 use peernet::{
@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub struct MockActiveConnections {
-    pub connections: HashMap<PeerId, Sender<Message>>,
+    pub connections: HashMap<PeerId, MassaSender<Message>>,
 }
 
 impl MockActiveConnections {
@@ -94,6 +94,10 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     fn shutdown_connection(&mut self, peer_id: &PeerId) {
         self.write().connections.remove(peer_id);
     }
+
+    fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)> {
+        HashMap::new()
+    }
 }
 
 pub struct MockNetworkController {
@@ -131,8 +135,8 @@ impl MockNetworkController {
 }
 
 impl MockNetworkController {
-    pub fn create_fake_connection(&mut self, peer_id: PeerId) -> (PeerId, Receiver<Message>) {
-        let (sender, receiver) = crossbeam::channel::unbounded();
+    pub fn create_fake_connection(&mut self, peer_id: PeerId) -> (PeerId, MassaReceiver<Message>) {
+        let (sender, receiver) = MassaChannel::new("create_fake_connection".to_string(), None);
         self.connections
             .write()
             .connections
@@ -204,5 +208,13 @@ impl NetworkController for MockNetworkController {
 
     fn get_active_connections(&self) -> Box<dyn crate::wrap_network::ActiveConnectionsTrait> {
         Box::new(self.connections.clone())
+    }
+
+    fn get_total_bytes_received(&self) -> u64 {
+        0
+    }
+
+    fn get_total_bytes_sent(&self) -> u64 {
+        0
     }
 }

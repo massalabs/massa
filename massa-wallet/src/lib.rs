@@ -27,9 +27,9 @@ pub struct Wallet {
     /// Keypairs and addresses
     pub keys: PreHashMap<Address, KeyPair>,
     /// Path to the file containing the keypairs (encrypted)
-    pub wallet_path: PathBuf,
+    wallet_path: PathBuf,
     /// Password
-    pub password: String,
+    password: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

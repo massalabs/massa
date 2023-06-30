@@ -1,6 +1,6 @@
 [package]
 name = "massa_protocol_exports"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -11,7 +11,7 @@ nom = "=7.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 # TODO tag peernet version
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "bf8adf5" }
+peernet = { git = "https://github.com/massalabs/PeerNet", rev = "4929687ed69946482cc3bffddf2162fbe02f734f" }
 tempfile = { version = "3.3", optional = true } # use with testing feature
 mockall = "0.11.4"
 
@@ -20,6 +20,7 @@ massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
 massa_storage = { path = "../massa-storage" }
 massa_serialization = { path = "../massa-serialization" }
+massa_pos_exports = { path = "../massa-pos-exports" }
 massa_signature = { path = "../massa-signature"}
 massa_versioning = { path = "../massa-versioning" }
 massa_hash = { path = "../massa-hash"}

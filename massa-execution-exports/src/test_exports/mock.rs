@@ -129,6 +129,7 @@ impl ExecutionController for MockExecutionController {
             final_block_count: 0,
             final_executed_operations_count: 0,
             active_cursor: Slot::new(0, 0),
+            final_cursor: Slot::new(0, 0),
         }
     }
 
@@ -205,28 +206,6 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn unexecuted_ops_among(
-        &self,
-        ops: &PreHashSet<OperationId>,
-        thread: u8,
-    ) -> PreHashSet<OperationId> {
-        let (response_tx, response_rx) = mpsc::channel();
-        if let Err(err) = self
-            .0
-            .lock()
-            .send(MockExecutionControllerMessage::UnexecutedOpsAmong {
-                ops: ops.clone(),
-                thread,
-                response_tx,
-            })
-        {
-            println!("mock error {err}");
-        }
-        response_rx
-            .recv_timeout(Duration::from_millis(100))
-            .unwrap()
-    }
-
     fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
         let (response_tx, response_rx) = mpsc::channel();
         if let Err(err) =
@@ -248,7 +227,7 @@ impl ExecutionController for MockExecutionController {
         Box::new(self.clone())
     }
 
-    fn get_op_exec_status(&self) -> (HashMap<OperationId, bool>, HashMap<OperationId, bool>) {
-        (HashMap::new(), HashMap::new())
+    fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
+        vec![(None, None); batch.len()]
     }
 }

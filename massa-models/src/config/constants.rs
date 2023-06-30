@@ -103,15 +103,13 @@ pub fn get_period_from_args() -> u64 {
 }
 
 /// Price of a roll in the network
-pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
+pub const ROLL_PRICE: Amount = Amount::const_init(100, 0);
 /// Block reward is given for each block creation
-pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
+pub const BLOCK_REWARD: Amount = Amount::const_init(102, 2);
 /// Cost to store one byte in the ledger
-pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
-/// Address size in bytes
-pub const ADDRESS_SIZE_BYTES: usize = 32;
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 3);
 /// Cost for a base entry default 0.01 MASSA
-pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::from_mantissa_scale(1, 2);
+pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(1, 2);
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
 pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
@@ -300,7 +298,7 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
-pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::const_init(75, 0);
 /// Block count to process in MipStoreStats (for state change threshold)
 pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
 /// Max number of stats counters

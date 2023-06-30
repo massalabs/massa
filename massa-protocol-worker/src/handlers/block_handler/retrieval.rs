@@ -6,7 +6,10 @@ use std::{
 
 use crate::{
     handlers::{
-        endorsement_handler::cache::SharedEndorsementCache,
+        endorsement_handler::{
+            cache::SharedEndorsementCache,
+            commands_propagation::EndorsementHandlerPropagationCommand,
+        },
         operation_handler::{
             cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
         },
@@ -17,12 +20,14 @@ use crate::{
     wrap_network::ActiveConnectionsTrait,
 };
 use crossbeam::{
-    channel::{at, Receiver, Sender},
+    channel::{at, tick},
     select,
 };
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
@@ -31,14 +36,16 @@ use massa_models::{
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::{Id, SecureShare},
+    slot::Slot,
     timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
-use massa_time::TimeError;
+use massa_time::{MassaTime, TimeError};
 use massa_versioning::versioning::MipStore;
 use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
@@ -83,16 +90,18 @@ impl BlockInfo {
 
 pub struct RetrievalThread {
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    receiver_network: Receiver<PeerMessageTuple>,
-    _internal_sender: Sender<BlockHandlerPropagationCommand>,
-    receiver: Receiver<BlockHandlerRetrievalCommand>,
+    receiver_network: MassaReceiver<PeerMessageTuple>,
+    _internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+    receiver: MassaReceiver<BlockHandlerRetrievalCommand>,
     block_message_serializer: MessagesSerializer,
     block_wishlist: PreHashMap<BlockId, BlockInfo>,
     asked_blocks: HashMap<PeerId, PreHashMap<BlockId, Instant>>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
-    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    sender_propagation_ops: MassaSender<OperationHandlerPropagationCommand>,
+    sender_propagation_endorsements: MassaSender<EndorsementHandlerPropagationCommand>,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     next_timer_ask_block: Instant,
@@ -100,6 +109,7 @@ pub struct RetrievalThread {
     config: ProtocolConfig,
     storage: Storage,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 }
 
 impl RetrievalThread {
@@ -119,9 +129,12 @@ impl RetrievalThread {
                 max_denunciations_in_block_header: self.config.max_denunciations_in_block_header,
                 last_start_period: Some(self.config.last_start_period),
             });
+
+        let tick_update_metrics = tick(self.massa_metrics.tick_delay);
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
+                    self.receiver_network.update_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match block_message_deserializer
@@ -138,13 +151,11 @@ impl RetrievalThread {
                             }
                             match message {
                                 BlockMessage::AskForBlocks(block_infos) => {
-                                    debug!("Received block message: AskForBlocks from {}", peer_id);
                                     if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
-                                    debug!("Received block message: ReplyForBlocks from {}", peer_id);
                                     for (block_id, block_info) in block_infos.into_iter() {
                                         if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
@@ -155,7 +166,6 @@ impl RetrievalThread {
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
-                                    debug!("Received block message: BlockHeader from {}", peer_id);
                                     massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
                                     if let Ok(Some((block_id, is_new))) =
                                         self.note_header_from_peer(&header, &peer_id)
@@ -188,11 +198,11 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver) -> msg => {
+                    self.receiver.update_metrics();
                     match msg {
                         Ok(command) => {
                             match command {
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } => {
-                                    debug!("Received block message: command WishlistDelta");
                                     massa_trace!("protocol.protocol_worker.process_command.wishlist_delta.begin", { "new": new, "remove": remove });
                                     for (block_id, header) in new.into_iter() {
                                         self.block_wishlist.insert(
@@ -228,6 +238,26 @@ impl RetrievalThread {
                         }
                     }
                 },
+                recv(tick_update_metrics) -> _ => {
+                    // update metrics
+                    {
+                        let block_read = self.cache.read();
+
+                        self.massa_metrics.set_block_cache_metrics(
+                            block_read.checked_headers.len(),
+                            block_read.blocks_known_by_peer.len(),
+                        );
+                    }
+
+                    {
+                        let ope_read = self.operation_cache.read();
+                        self.massa_metrics.set_operations_cache_metrics(
+                            ope_read.checked_operations.len(),
+                            ope_read.checked_operations_prefix.len(),
+                            ope_read.ops_known_by_peer.len(),
+                        );
+                    }
+                }
                 recv(at(self.next_timer_ask_block)) -> _ => {
                     if let Err(err) = self.update_ask_block() {
                         warn!("Error in ask_blocks: {:?}", err);
@@ -488,7 +518,7 @@ impl RetrievalThread {
                         .get_or_insert(from_peer_id.clone(), || {
                             LruMap::new(ByLength::new(
                                 self.config
-                                    .max_node_known_blocks_size
+                                    .max_node_known_endorsements_size
                                     .try_into()
                                     .expect("max_node_known_blocks_size in config must be > 0"),
                             ))
@@ -560,7 +590,7 @@ impl RetrievalThread {
                     .get_or_insert(from_peer_id.clone(), || {
                         LruMap::new(ByLength::new(
                             self.config
-                                .max_node_known_blocks_size
+                                .max_node_known_endorsements_size
                                 .try_into()
                                 .expect("max_node_known_blocks_size in config must be > 0"),
                         ))
@@ -610,7 +640,7 @@ impl RetrievalThread {
         endorsements: Vec<SecureShareEndorsement>,
         from_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.note_endorsements_from_peer", { "peer": from_peer_id, "endorsements": endorsements});
+        massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": from_peer_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut new_endorsements = PreHashMap::with_capacity(length);
         let mut endorsement_ids = PreHashSet::with_capacity(length);
@@ -645,6 +675,27 @@ impl RetrievalThread {
                 .collect::<Vec<_>>(),
         )?;
 
+        // Check PoS draws
+        for endorsement in new_endorsements.values() {
+            let selection = self
+                .selector_controller
+                .get_selection(endorsement.content.slot)?;
+            let Some(address) = selection.endorsements.get(endorsement.content.index as usize) else {
+                return Err(ProtocolError::GeneralProtocolError(
+                    format!(
+                        "No selection on slot {} for index {}",
+                        endorsement.content.slot, endorsement.content.index
+                    )
+                ))
+            };
+            if address != &endorsement.content_creator_address {
+                return Err(ProtocolError::GeneralProtocolError(format!(
+                    "Invalid endorsement: expected address {}, got {}",
+                    address, endorsement.content_creator_address
+                )));
+            }
+        }
+
         'write_cache: {
             let mut cache_write = self.endorsement_cache.write();
             // add to verified signature cache
@@ -674,6 +725,49 @@ impl RetrievalThread {
         if !new_endorsements.is_empty() {
             let mut endorsements = self.storage.clone_without_refs();
             endorsements.store_endorsements(new_endorsements.into_values().collect());
+
+            // Propagate endorsements
+            // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
+            let mut endorsements_to_propagate = endorsements.clone();
+            let endorsements_to_not_propagate = {
+                let now = MassaTime::now()?;
+                let read_endorsements = endorsements_to_propagate.read_endorsements();
+                endorsements_to_propagate
+                    .get_endorsement_refs()
+                    .iter()
+                    .filter_map(|endorsement_id| {
+                        let slot_endorsed_block =
+                            read_endorsements.get(endorsement_id).unwrap().content.slot;
+                        let slot_timestamp = get_block_slot_timestamp(
+                            self.config.thread_count,
+                            self.config.t0,
+                            self.config.genesis_timestamp,
+                            slot_endorsed_block,
+                        );
+                        match slot_timestamp {
+                            Ok(slot_timestamp) => {
+                                if slot_timestamp
+                                    .saturating_add(self.config.max_endorsements_propagation_time)
+                                    < now
+                                {
+                                    Some(*endorsement_id)
+                                } else {
+                                    None
+                                }
+                            }
+                            Err(_) => Some(*endorsement_id),
+                        }
+                    })
+                    .collect()
+            };
+            endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
+            if let Err(err) = self.sender_propagation_endorsements.try_send(
+                EndorsementHandlerPropagationCommand::PropagateEndorsements(
+                    endorsements_to_propagate,
+                ),
+            ) {
+                warn!("Failed to send from block retrieval thread of endorsement handler to propagation: {:?}", err);
+            }
             // Add to pool
             self.pool_controller.add_endorsements(endorsements);
         }
@@ -1008,31 +1102,56 @@ impl RetrievalThread {
         source_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
-        let length = operations.len();
-        let mut new_operations = PreHashMap::with_capacity(length);
+        let now = MassaTime::now().expect("could not get current time");
+
+        let mut new_operations = PreHashMap::with_capacity(operations.len());
         for operation in operations {
-            let operation_id = operation.id;
+            // ignore if op is too old
+            let expire_period_timestamp = get_block_slot_timestamp(
+                self.config.thread_count,
+                self.config.t0,
+                self.config.genesis_timestamp,
+                Slot::new(
+                    operation.content.expire_period,
+                    operation
+                        .content_creator_address
+                        .get_thread(self.config.thread_count),
+                ),
+            );
+            match expire_period_timestamp {
+                Ok(slot_timestamp) => {
+                    if slot_timestamp.saturating_add(self.config.max_operations_propagation_time)
+                        < now
+                    {
+                        continue;
+                    }
+                }
+                Err(_) => continue,
+            }
+
+            // quit if op is too big
             if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
                 return Err(ProtocolError::InvalidOperationError(format!(
                     "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
-                    operation_id,
+                    operation.id,
                     operation.serialized_size(),
                     self.config.max_serialized_operations_size_per_block
                 )));
             };
 
-            // Check operation signature only if not already checked.
-            if self
-                .operation_cache
-                .read()
-                .checked_operations
-                .peek(&operation_id)
-                .is_none()
-            {
-                // check signature if the operation wasn't in `checked_operation`
-                new_operations.insert(operation_id, operation);
-            };
+            // add to new operations
+            new_operations.insert(operation.id, operation);
         }
+
+        // all valid received ids (not only new ones) for knowledge marking
+        let all_received_ids: PreHashSet<_> = new_operations.keys().copied().collect();
+
+        // retain only new ops that are not already known
+        {
+            let cache_read = self.operation_cache.read();
+            new_operations.retain(|op_id, _| cache_read.checked_operations.peek(op_id).is_none());
+        }
+
         // optimized signature verification
         verify_sigs_batch(
             &new_operations
@@ -1040,18 +1159,49 @@ impl RetrievalThread {
                 .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.content_creator_pub_key))
                 .collect::<Vec<_>>(),
         )?;
-        {
+
+        'write_cache: {
             // add to checked operations
             let mut cache_write = self.operation_cache.write();
             for op_id in new_operations.keys().copied() {
                 cache_write.insert_checked_operation(op_id);
             }
+
+            // add to known ops
+            let Ok(known_ops) = cache_write
+                .ops_known_by_peer
+                .get_or_insert(source_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        self.config
+                            .max_node_known_ops_size
+                            .try_into()
+                            .expect("max_node_known_ops_size in config must be > 0"),
+                    ))
+                })
+                .ok_or(()) else {
+                    warn!("ops_known_by_peer limitation reached");
+                    break 'write_cache;
+                };
+            for id in all_received_ids {
+                known_ops.insert(id.prefix(), ());
+            }
         }
-        self.sender_propagation_ops
-            .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
-                new_operations.keys().copied().collect(),
-            ))
-            .map_err(|err| ProtocolError::ChannelError(err.to_string()))?;
+
+        if !new_operations.is_empty() {
+            // Store new operations, claim locally
+            let mut ops = self.storage.clone_without_refs();
+            ops.store_operations(new_operations.into_values().collect());
+
+            self.sender_propagation_ops
+                .try_send(OperationHandlerPropagationCommand::PropagateOperations(
+                    ops.clone(),
+                ))
+                .map_err(|err| ProtocolError::SendError(err.to_string()))?;
+
+            // Add to pool
+            self.pool_controller.add_operations(ops);
+        }
+
         Ok(())
     }
 
@@ -1298,19 +1448,22 @@ impl RetrievalThread {
 // bookmark
 pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    receiver_network: Receiver<PeerMessageTuple>,
-    receiver: Receiver<BlockHandlerRetrievalCommand>,
-    _internal_sender: Sender<BlockHandlerPropagationCommand>,
-    sender_propagation_ops: Sender<OperationHandlerPropagationCommand>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    receiver_network: MassaReceiver<PeerMessageTuple>,
+    receiver: MassaReceiver<BlockHandlerRetrievalCommand>,
+    _internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+    sender_propagation_ops: MassaSender<OperationHandlerPropagationCommand>,
+    sender_propagation_endorsements: MassaSender<EndorsementHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
     config: ProtocolConfig,
     endorsement_cache: SharedEndorsementCache,
     operation_cache: SharedOperationCache,
     cache: SharedBlockCache,
     storage: Storage,
     mip_store: MipStore,
+    massa_metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
@@ -1319,6 +1472,7 @@ pub fn start_retrieval_thread(
         .spawn(move || {
             let mut retrieval_thread = RetrievalThread {
                 active_connections,
+                selector_controller,
                 consensus_controller,
                 pool_controller,
                 next_timer_ask_block: Instant::now() + config.ask_block_timeout.to_duration(),
@@ -1326,6 +1480,7 @@ pub fn start_retrieval_thread(
                 asked_blocks: HashMap::default(),
                 peer_cmd_sender,
                 sender_propagation_ops,
+                sender_propagation_endorsements,
                 receiver_network,
                 block_message_serializer,
                 receiver,
@@ -1336,6 +1491,7 @@ pub fn start_retrieval_thread(
                 config,
                 storage,
                 mip_store,
+                massa_metrics,
             };
             retrieval_thread.run();
         })

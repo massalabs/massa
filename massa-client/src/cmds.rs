@@ -22,7 +22,8 @@ use massa_models::{
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_sdk::Client;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -685,6 +686,9 @@ impl Command {
             }
 
             Command::wallet_get_public_key => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let addresses = parse_vec::<Address>(parameters)?;
@@ -706,6 +710,9 @@ impl Command {
             }
 
             Command::wallet_get_secret_key => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 if !json {
@@ -731,6 +738,9 @@ impl Command {
             }
 
             Command::node_start_staking => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let addresses = parse_vec::<Address>(parameters)?;
@@ -756,6 +766,9 @@ impl Command {
             }
 
             Command::node_stop_staking => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let addresses = parse_vec::<Address>(parameters)?;
                 match client.private.remove_staking_addresses(addresses).await {
                     Ok(()) => {
@@ -773,13 +786,13 @@ impl Command {
 
                 // In order to generate a KeyPair we need to get the MIP statuses and use the latest
                 // active version
-                let req = grpc::GetMipStatusRequest { id: "".to_string() };
+                let req = grpc_api::GetMipStatusRequest { id: "".to_string() };
 
                 if let Some(ref mut grpc) = client.grpc {
                     let versioning_status = match grpc.get_mip_status(req).await {
                         Ok(resp_) => {
                             let resp = resp_.into_inner();
-                            resp.entry
+                            resp.entries
                         }
                         Err(e) => {
                             grpc_error!(e)
@@ -795,16 +808,16 @@ impl Command {
                             let is_about_keypair = match entry.mip_info {
                                 None => false,
                                 Some(mip_info) => mip_info.components.iter().any(|st_entry| {
-                                    grpc::MipComponent::from_i32(st_entry.kind)
-                                        .unwrap_or(grpc::MipComponent::Unspecified)
-                                        == grpc::MipComponent::Keypair
+                                    grpc_model::MipComponent::from_i32(st_entry.kind)
+                                        .unwrap_or(grpc_model::MipComponent::Unspecified)
+                                        == grpc_model::MipComponent::Keypair
                                 }),
                             };
 
-                            let state = grpc::ComponentStateId::from_i32(entry.state_id)
-                                .unwrap_or(grpc::ComponentStateId::Error);
+                            let state = grpc_model::ComponentStateId::from_i32(entry.state_id)
+                                .unwrap_or(grpc_model::ComponentStateId::Error);
 
-                            if is_about_keypair && state == grpc::ComponentStateId::Active {
+                            if is_about_keypair && state == grpc_model::ComponentStateId::Active {
                                 Some(entry.state_id)
                             } else {
                                 None
@@ -820,16 +833,19 @@ impl Command {
                     } else {
                         println!("Generated {} address and added it to the wallet", ad);
                         println!(
-                            "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_add_staking_secret_keys <your secret key>` to start staking with this key.\n"
+                            "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking <your address>` to start staking.\n"
                         );
                         Ok(Box::new(()))
                     }
                 } else {
-                    bail!("GRPC is not enabled");
+                    bail!("Failed to establish connection. Please ensure that the gRPC API is enabled and accessible.");
                 }
             }
 
             Command::wallet_add_secret_keys => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let keypairs = parse_vec::<KeyPair>(parameters)?;
@@ -846,6 +862,9 @@ impl Command {
             }
 
             Command::wallet_remove_addresses => {
+                if parameters.is_empty() {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let mut res = "".to_string();

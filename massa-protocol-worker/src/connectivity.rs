@@ -1,10 +1,11 @@
-use crossbeam::{
-    channel::{Receiver, Sender},
-    select,
-};
+use crossbeam::channel::tick;
+use crossbeam::select;
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
+use massa_metrics::MassaMetrics;
 use massa_models::stats::NetworkStats;
 use massa_pool_exports::PoolController;
+use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
@@ -31,11 +32,12 @@ use crate::{
     wrap_network::NetworkController,
 };
 
+#[derive(Clone)]
 pub enum ConnectivityCommand {
     Stop,
     GetStats {
         #[allow(clippy::type_complexity)]
-        responder: Sender<(
+        responder: MassaSender<(
             NetworkStats,
             HashMap<PeerId, (SocketAddr, PeerConnectionType)>,
         )>,
@@ -45,13 +47,26 @@ pub enum ConnectivityCommand {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn start_connectivity_thread(
     peer_id: PeerId,
+    selector_controller: Box<dyn SelectorController>,
     mut network_controller: Box<dyn NetworkController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
-    channel_blocks: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    channel_endorsements: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    channel_operations: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-    channel_peers: (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
+    channel_blocks: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
+    channel_endorsements: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
+    channel_operations: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
+    channel_peers: (
+        MassaSender<PeerMessageTuple>,
+        MassaReceiver<PeerMessageTuple>,
+    ),
     initial_peers: InitialPeers,
     peer_db: SharedPeerDB,
     storage: Storage,
@@ -61,7 +76,8 @@ pub(crate) fn start_connectivity_thread(
     _default_category: PeerCategoryInfo,
     config: ProtocolConfig,
     mip_store: MipStore,
-) -> Result<(Sender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
+    massa_metrics: MassaMetrics,
+) -> Result<(MassaSender<ConnectivityCommand>, JoinHandle<()>), ProtocolError> {
     let handle = std::thread::Builder::new()
     .name("protocol-connectivity".to_string())
     .spawn({
@@ -83,10 +99,11 @@ pub(crate) fn start_connectivity_thread(
             std::thread::sleep(Duration::from_millis(100));
 
             // Create cache outside of the op handler because it could be used by other handlers
-            let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections_post_handshake).sum::<usize>() + config.default_category_info.max_in_connections_post_handshake;
-            let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections;
+            let total_in_slots = config.peers_categories.values().map(|v| v.max_in_connections).sum::<usize>() + config.default_category_info.max_in_connections + 1;
+            let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections + 1;
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
-                config.max_known_blocks_size.try_into().unwrap(),
+                config.max_known_ops_size.try_into().unwrap(),
+                config.max_node_known_ops_size.try_into().unwrap(),
                 (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
@@ -97,6 +114,7 @@ pub(crate) fn start_connectivity_thread(
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
                 config.max_known_blocks_size.try_into().unwrap(),
                 (total_in_slots + total_out_slots).try_into().unwrap(),
+                config.max_node_known_blocks_size.try_into().unwrap(),
             )));
 
             // Start handlers
@@ -125,22 +143,26 @@ pub(crate) fn start_connectivity_thread(
                 sender_operations_propagation_ext.clone(),
                 protocol_channels.operation_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
+                massa_metrics.clone(),
             );
             let mut endorsement_handler = EndorsementHandler::new(
                 pool_controller.clone(),
+                selector_controller.clone(),
                 endorsement_cache.clone(),
                 storage.clone_without_refs(),
                 config.clone(),
                 network_controller.get_active_connections(),
                 channel_endorsements.1,
-                protocol_channels.endorsement_handler_retrieval.0.clone(),
-                protocol_channels.endorsement_handler_retrieval.1.clone(),
-                sender_endorsements_propagation_ext,
+                protocol_channels.endorsement_handler_retrieval.0,
+                protocol_channels.endorsement_handler_retrieval.1,
+                sender_endorsements_propagation_ext.clone(),
                 protocol_channels.endorsement_handler_propagation.1.clone(),
                 peer_management_handler.sender.command_sender.clone(),
+                massa_metrics.clone(),
             );
             let mut block_handler = BlockHandler::new(
                 network_controller.get_active_connections(),
+                selector_controller,
                 consensus_controller,
                 pool_controller,
                 channel_blocks.1,
@@ -149,6 +171,7 @@ pub(crate) fn start_connectivity_thread(
                 protocol_channels.block_handler_propagation.1.clone(),
                 sender_blocks_propagation_ext,
                 sender_operations_propagation_ext,
+                sender_endorsements_propagation_ext,
                 peer_management_handler.sender.command_sender.clone(),
                 config.clone(),
                 endorsement_cache,
@@ -156,55 +179,72 @@ pub(crate) fn start_connectivity_thread(
                 block_cache,
                 storage.clone_without_refs(),
                 mip_store,
+                massa_metrics.clone(),
             );
+
+            let tick_metrics = tick(massa_metrics.tick_delay);
+            let tick_try_connect = tick(config.try_connection_timer.to_duration());
 
             //Try to connect to peers
             loop {
                 select! {
-                        recv(protocol_channels.connectivity_thread.1) -> msg => {
-                            match msg {
-                                Ok(ConnectivityCommand::Stop) => {
-                                    println!("Stopping protocol");
-                                    drop(network_controller);
-                                    println!("Stoppeed network controller");
-                                    operation_handler.stop();
-                                    println!("Stopped operation handler");
-                                    endorsement_handler.stop();
-                                    println!("Stopped endorsement handler");
-                                    block_handler.stop();
-                                    println!("Stopped block handler");
-                                    peer_management_handler.stop();
-                                    println!("Stopped peer handler");
-                                    break;
-                                },
-                                Ok(ConnectivityCommand::GetStats { responder }) => {
-                                    let active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() as u64;
-                                    let in_connection_count = network_controller.get_active_connections().get_nb_in_connections() as u64;
-                                    let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
-                                    let (banned_peer_count, known_peer_count) = {
-                                        let peer_db_read = peer_db.read();
-                                        (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() as u64)
-                                    };
-                                    let stats = NetworkStats {
-                                        active_node_count,
-                                        in_connection_count,
-                                        out_connection_count,
-                                        banned_peer_count,
-                                        known_peer_count,
-                                    };
-                                    let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
-                                        (peer_id, (peer.0, peer.1))
-                                    }).collect();
-                                    responder.try_send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
-                                }
-                                Err(_) => {
-                                    warn!("Channel to connectivity thread is closed. Stopping the protocol");
-                                    break;
-                                }
+                    recv(protocol_channels.connectivity_thread.1) -> msg => {
+                        // update channel metrics
+                        protocol_channels.connectivity_thread.1.update_metrics();
+                        match msg {
+                            Ok(ConnectivityCommand::Stop) => {
+                                println!("Stopping protocol");
+                                drop(network_controller);
+                                println!("Stoppeed network controller");
+                                operation_handler.stop();
+                                println!("Stopped operation handler");
+                                endorsement_handler.stop();
+                                println!("Stopped endorsement handler");
+                                block_handler.stop();
+                                println!("Stopped block handler");
+                                peer_management_handler.stop();
+                                println!("Stopped peer handler");
+                                break;
+                            },
+                            Ok(ConnectivityCommand::GetStats { responder }) => {
+                                let active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() as u64;
+                                let in_connection_count = network_controller.get_active_connections().get_nb_in_connections() as u64;
+                                let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
+                                let (banned_peer_count, known_peer_count) = {
+                                    let peer_db_read = peer_db.read();
+                                    (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() as u64)
+                                };
+                                let stats = NetworkStats {
+                                    active_node_count,
+                                    in_connection_count,
+                                    out_connection_count,
+                                    banned_peer_count,
+                                    known_peer_count,
+                                };
+                                let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
+                                    (peer_id, (peer.0, peer.1))
+                                }).collect();
+                                responder.try_send((stats, peers)).unwrap_or_else(|_| warn!("Failed to send stats to responder"));
+                            }
+                            Err(_) => {
+                                warn!("Channel to connectivity thread is closed. Stopping the protocol");
+                                break;
                             }
                         }
-                    default(config.try_connection_timer.to_duration()) => {
-                        let peers_connected = network_controller.get_active_connections().get_peers_connected();
+                    },
+                    recv(tick_metrics) -> _ => {
+                        massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
+
+                        massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
+
+                        let active_conn = network_controller.get_active_connections();
+                        massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
+                        let peers_map = active_conn.get_peers_connections_bandwidth();
+                        massa_metrics.update_peers_tx_rx(peers_map);
+                    },
+                    recv(tick_try_connect) -> _ => {
+                        let active_conn = network_controller.get_active_connections();
+                        let peers_connected = active_conn.get_peers_connected();
                         let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                                 if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {

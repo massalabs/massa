@@ -1,6 +1,6 @@
 [package]
 name = "massa_models"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -18,13 +18,13 @@ config = "0.13"
 bs58 = { version = "=0.4", features = ["check"] }
 bitvec = { version = "=1.0", features = ["serde"] }
 nom = "=7.1"
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
-massa_proto = { path = "../massa-proto" }
 # TODO tag transition crate with a version number
 transition = { git = "https://github.com/massalabs/transition.git", rev = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
 

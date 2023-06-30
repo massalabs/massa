@@ -3,7 +3,7 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
-use massa_proto::massa::api::v1 as grpc;
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -14,7 +14,7 @@ use tracing::log::{error, warn};
 /// Type declaration for NewFilledBlocks
 pub type NewFilledBlocksStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc::NewFilledBlocksResponse, tonic::Status>>
+        dyn futures_core::Stream<Item = Result<grpc_api::NewFilledBlocksResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -23,7 +23,7 @@ pub type NewFilledBlocksStreamType = Pin<
 /// Creates a new stream of new produced and received filled blocks
 pub(crate) async fn new_filled_blocks(
     grpc: &MassaGrpc,
-    request: Request<Streaming<grpc::NewFilledBlocksRequest>>,
+    request: Request<Streaming<grpc_api::NewFilledBlocksRequest>>,
 ) -> Result<NewFilledBlocksStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
@@ -42,7 +42,7 @@ pub(crate) async fn new_filled_blocks(
                     match event {
                         Ok(massa_filled_block) => {
                             // Send the new filled block through the channel
-                            if let Err(e) = tx.send(Ok(grpc::NewFilledBlocksResponse {
+                            if let Err(e) = tx.send(Ok(grpc_api::NewFilledBlocksResponse {
                                     id: request_id.clone(),
                                     filled_block: Some(massa_filled_block.into())
                             })).await {

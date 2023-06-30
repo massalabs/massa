@@ -28,7 +28,6 @@ impl Default for ProtocolConfig {
             max_operation_storage_time: MassaTime::from_millis(60000),
             operation_batch_proc_period: MassaTime::from_millis(200),
             asked_operations_buffer_capacity: 10000,
-            asked_operations_pruning_period: MassaTime::from_millis(500),
             operation_announcement_interval: MassaTime::from_millis(150),
             max_operations_per_message: 1024,
             max_operations_per_block: 5000,
@@ -38,6 +37,7 @@ impl Default for ProtocolConfig {
             event_channel_size: 1024,
             genesis_timestamp: MassaTime::now().unwrap(),
             t0: MassaTime::from_millis(16000),
+            max_ops_kept_for_propagation: 10000,
             max_operations_propagation_time: MassaTime::from_millis(30000),
             max_endorsements_propagation_time: MassaTime::from_millis(60000),
             initial_peers: NamedTempFile::new()
@@ -81,12 +81,11 @@ impl Default for ProtocolConfig {
             debug: true,
             peers_categories: HashMap::default(),
             default_category_info: PeerCategoryInfo {
-                max_in_connections_pre_handshake: 10,
-                max_in_connections_post_handshake: 10,
+                max_in_connections: 10,
                 target_out_connections: 10,
                 max_in_connections_per_ip: 0,
             },
-            version: "TEST.22.2".parse().unwrap(),
+            version: "TEST.23.2".parse().unwrap(),
         }
     }
 }

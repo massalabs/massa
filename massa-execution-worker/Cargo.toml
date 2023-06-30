@@ -1,6 +1,6 @@
 [package]
 name = "massa_execution_worker"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -22,12 +22,14 @@ massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
 massa_pos_worker = { path = "../massa-pos-worker", optional = true }
 # custom modules
 massa_async_pool = { path = "../massa-async-pool" }
+massa_channel = { path = "../massa-channel" }
 massa_executed_ops = { path = "../massa-executed-ops" }
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
+massa_metrics = { path = "../massa-metrics" }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
@@ -35,7 +37,9 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
 massa_versioning = { path = "../massa-versioning" }
-massa_db = { path = "../massa-db" }
+massa_db_exports = { path = "../massa-db-exports" }
+massa_db_worker = { path = "../massa-db-worker", optional = true }
+massa_wallet = { path = "../massa-wallet" }
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }
@@ -70,9 +74,13 @@ testing = [
     "massa_pos_exports/testing",
     "massa_final_state/testing",
     "massa-sc-runtime/testing",
+    "massa_wallet/testing",
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
+    "massa_metrics/testing",
+    "massa_db_worker",
+    "massa_metrics/testing"
 ]
 
 # This feature is useful as we want to have code that is compiled only when running benchmarks
@@ -83,3 +91,5 @@ benchmarking = [
     "massa_ledger_worker",
     "tempfile",
 ]
+
+metrics = []

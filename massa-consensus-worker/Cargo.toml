@@ -1,6 +1,6 @@
 [package]
 name = "massa_consensus_worker"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -10,7 +10,10 @@ edition = "2021"
 num = { version = "0.4", features = ["serde"] }
 tracing = { version = "0.1", features = ["log"] }
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
+crossbeam = "0.8"
 #custom modules
+massa_channel = { path = "../massa-channel" }
+massa_metrics = { path = "../massa-metrics"}
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
@@ -26,3 +29,5 @@ itertools = "0.10"
 [features]
 sandbox = []
 bootstrap_server = []
+testing = ["massa_metrics/testing"]
+

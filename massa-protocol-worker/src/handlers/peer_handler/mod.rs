@@ -3,10 +3,8 @@ use std::net::IpAddr;
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
 use crossbeam::channel::tick;
-use crossbeam::{
-    channel::{Receiver, Sender},
-    select,
-};
+use crossbeam::select;
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_hash::Hash;
 use massa_models::config::SIGNATURE_DESER_SIZE;
 use massa_models::version::{VersionDeserializer, VersionSerializer};
@@ -71,8 +69,14 @@ impl PeerManagementHandler {
         initial_peers: InitialPeers,
         peer_id: PeerId,
         peer_db: SharedPeerDB,
-        (sender_msg, receiver_msg): (Sender<PeerMessageTuple>, Receiver<PeerMessageTuple>),
-        (sender_cmd, receiver_cmd): (Sender<PeerManagementCmd>, Receiver<PeerManagementCmd>),
+        (sender_msg, receiver_msg): (
+            MassaSender<PeerMessageTuple>,
+            MassaReceiver<PeerMessageTuple>,
+        ),
+        (sender_cmd, receiver_cmd): (
+            MassaSender<PeerManagementCmd>,
+            MassaReceiver<PeerManagementCmd>,
+        ),
         messages_handler: MessagesHandler,
         mut active_connections: Box<dyn ActiveConnectionsTrait>,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
@@ -122,6 +126,7 @@ impl PeerManagementHandler {
                             }
                         }
                         recv(receiver_cmd) -> cmd => {
+                            receiver_cmd.update_metrics();
                             // internal command
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_ids)) => {
@@ -163,6 +168,7 @@ impl PeerManagementHandler {
                            }
                         },
                         recv(receiver_msg) -> msg => {
+                            receiver_msg.update_metrics();
                             let (peer_id, message) = match msg {
                                 Ok((peer_id, message)) => (peer_id, message),
                                 Err(_) => {

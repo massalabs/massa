@@ -14,12 +14,14 @@ use massa_execution_exports::{
     ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
+use massa_metrics::MassaMetrics;
 use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
+use massa_wallet::Wallet;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
 use std::thread;
@@ -198,13 +200,13 @@ impl ExecutionThread {
                             slot,
                             content,
                             self.selector.clone(),
-                        )
+                        );
                     } else {
                         self.execution_state.write().execute_candidate_slot(
                             slot,
                             content,
                             self.selector.clone(),
-                        )
+                        );
                     }
                 },
             );
@@ -248,6 +250,8 @@ pub fn start_execution_worker(
     selector: Box<dyn SelectorController>,
     mip_store: MipStore,
     channels: ExecutionChannels,
+    wallet: Arc<RwLock<Wallet>>,
+    massa_metrics: MassaMetrics,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
@@ -256,6 +260,8 @@ pub fn start_execution_worker(
         mip_store,
         selector.clone(),
         channels,
+        wallet,
+        massa_metrics,
     )));
 
     // define the input data interface

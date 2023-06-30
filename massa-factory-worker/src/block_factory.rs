@@ -1,5 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_channel::receiver::MassaReceiver;
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
 use massa_hash::Hash;
 use massa_models::{
@@ -16,19 +17,15 @@ use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::{
-    sync::{mpsc, Arc},
-    thread,
-    time::Instant,
-};
-use tracing::{debug, info, warn};
+use std::{sync::Arc, thread, time::Instant};
+use tracing::{info, warn};
 
 /// Structure gathering all elements needed by the factory thread
 pub(crate) struct BlockFactoryWorker {
     cfg: FactoryConfig,
     wallet: Arc<RwLock<Wallet>>,
     channels: FactoryChannels,
-    factory_receiver: mpsc::Receiver<()>,
+    factory_receiver: MassaReceiver<()>,
     mip_store: MipStore,
 }
 
@@ -39,7 +36,7 @@ impl BlockFactoryWorker {
         cfg: FactoryConfig,
         wallet: Arc<RwLock<Wallet>>,
         channels: FactoryChannels,
-        factory_receiver: mpsc::Receiver<()>,
+        factory_receiver: MassaReceiver<()>,
         mip_store: MipStore,
     ) -> thread::JoinHandle<()> {
         thread::Builder::new()
@@ -116,9 +113,9 @@ impl BlockFactoryWorker {
             // message received => quit main loop
             Ok(()) => false,
             // timeout => continue main loop
-            Err(mpsc::RecvTimeoutError::Timeout) => true,
+            Err(crossbeam_channel::RecvTimeoutError::Timeout) => true,
             // channel disconnected (sender dropped) => quit main loop
-            Err(mpsc::RecvTimeoutError::Disconnected) => false,
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => false,
         }
     }
 
@@ -136,11 +133,6 @@ impl BlockFactoryWorker {
             }
         };
 
-        debug!(
-            "block factory selected block producer address for slot {}: {}",
-            slot, block_producer_addr
-        );
-
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();
         let block_producer_keypair = if let Some(kp) =
@@ -152,10 +144,34 @@ impl BlockFactoryWorker {
             // the selected block producer is not managed locally => quit
             return;
         };
+        let mut block_storage = self.channels.storage.clone_without_refs();
+        {
+            let block_lock = block_storage.read_blocks();
+            if let Some(block_ids) = block_lock.get_blocks_by_slot(&slot) {
+                for block_id in block_ids {
+                    if let Some(block) = block_lock.get(block_id) {
+                        if block.content_creator_address == block_producer_addr {
+                            panic!("You already created a block for slot {} with address {}, node is stopping to prevent you from losing all your stake due to double staking protection", slot, block_producer_addr);
+                        }
+                    }
+                }
+            }
+        }
+
+        // check if we need to have connections to produce a block and in this case, check if we have enough.
+        #[cfg(not(feature = "sandbox"))]
+        if self.cfg.stop_production_when_zero_connections {
+            if let Ok(stats) = self.channels.protocol.get_stats() {
+                if stats.1.is_empty() {
+                    warn!("block factory could not produce block for slot {} because there are no connections", slot);
+                    return;
+                }
+            }
+        }
+
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
-        let mut block_storage = self.channels.storage.clone_without_refs();
 
         // claim block parents in local storage
         {
@@ -180,7 +196,6 @@ impl BlockFactoryWorker {
             .channels
             .pool
             .get_block_endorsements(&same_thread_parent_id, &slot);
-
         //TODO: Do we want ot populate only with endorsement id in the future ?
         let endorsements: Vec<SecureShareEndorsement> = {
             let endo_read = endo_storage.read_endorsements();
@@ -199,7 +214,6 @@ impl BlockFactoryWorker {
 
         // gather operations and compute global operations hash
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
-
         if op_ids.len() > self.cfg.max_operations_per_block as usize {
             warn!("Too many operations returned");
             return;
@@ -230,7 +244,6 @@ impl BlockFactoryWorker {
             block_producer_keypair,
         )
         .expect("error while producing block header");
-
         // create block
         let block_ = Block {
             header,

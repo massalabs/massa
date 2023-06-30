@@ -1,16 +1,11 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    thread::JoinHandle,
-    time::Instant,
-};
+use std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
-use crossbeam::{
-    channel::{tick, Receiver, Sender},
-    select,
-};
+use crossbeam::{channel::tick, select};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
-    operation::{OperationId, OperationPrefixId, OperationPrefixIds, SecureShareOperation},
+    operation::{OperationPrefixId, OperationPrefixIds, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::Id,
     slot::Slot,
@@ -53,19 +48,19 @@ pub struct OperationBatchItem {
 }
 
 pub struct RetrievalThread {
-    receiver: Receiver<PeerMessageTuple>,
+    receiver: MassaReceiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     cache: SharedOperationCache,
     asked_operations: LruMap<OperationPrefixId, (Instant, Vec<PeerId>)>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     op_batch_buffer: VecDeque<OperationBatchItem>,
-    stored_operations: HashMap<Instant, PreHashSet<OperationId>>,
     storage: Storage,
     config: ProtocolConfig,
-    internal_sender: Sender<OperationHandlerPropagationCommand>,
-    receiver_ext: Receiver<OperationHandlerRetrievalCommand>,
+    internal_sender: MassaSender<OperationHandlerPropagationCommand>,
+    receiver_ext: MassaReceiver<OperationHandlerRetrievalCommand>,
     operation_message_serializer: MessagesSerializer,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    _massa_metrics: MassaMetrics,
 }
 
 impl RetrievalThread {
@@ -82,10 +77,11 @@ impl RetrievalThread {
                 max_op_datastore_value_length: self.config.max_op_datastore_value_length,
             });
         let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
-        let tick_clear_storage = tick(self.config.asked_operations_pruning_period.to_duration());
+
         loop {
             select! {
                 recv(self.receiver) -> msg => {
+                    self.receiver.update_metrics();
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match operation_message_deserializer
@@ -134,6 +130,7 @@ impl RetrievalThread {
                     }
                 },
                 recv(self.receiver_ext) -> msg => {
+                    self.receiver_ext.update_metrics();
                     match msg {
                         Ok(cmd) => match cmd {
                             OperationHandlerRetrievalCommand::Stop => {
@@ -151,23 +148,9 @@ impl RetrievalThread {
                     if let Err(err) = self.update_ask_operation() {
                         warn!("Error in update_ask_operation: {}", err);
                     };
-                },
-                recv(tick_clear_storage) -> _ => {
-                    self.clear_storage();
                 }
             }
         }
-    }
-
-    fn clear_storage(&mut self) {
-        self.stored_operations.retain(|instant, operations| {
-            if instant.elapsed() > self.config.asked_operations_pruning_period.to_duration() {
-                self.storage.drop_operation_refs(operations);
-                false
-            } else {
-                true
-            }
-        });
     }
 
     fn note_operations_from_peer(
@@ -176,32 +159,54 @@ impl RetrievalThread {
         source_peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
-        let length = operations.len();
-        let mut new_operations = PreHashMap::with_capacity(length);
-        let mut received_ids = PreHashSet::with_capacity(length);
+        let now = MassaTime::now().expect("could not get current time");
+
+        let mut new_operations = PreHashMap::with_capacity(operations.len());
         for operation in operations {
-            let operation_id = operation.id;
+            // ignore if op is too old
+            let expire_period_timestamp = get_block_slot_timestamp(
+                self.config.thread_count,
+                self.config.t0,
+                self.config.genesis_timestamp,
+                Slot::new(
+                    operation.content.expire_period,
+                    operation
+                        .content_creator_address
+                        .get_thread(self.config.thread_count),
+                ),
+            );
+            match expire_period_timestamp {
+                Ok(slot_timestamp) => {
+                    if slot_timestamp.saturating_add(self.config.max_operations_propagation_time)
+                        < now
+                    {
+                        continue;
+                    }
+                }
+                Err(_) => continue,
+            }
+
+            // quit if op is too big
             if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
                 return Err(ProtocolError::InvalidOperationError(format!(
                     "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
-                    operation_id,
+                    operation.id,
                     operation.serialized_size(),
                     self.config.max_serialized_operations_size_per_block
                 )));
             };
-            received_ids.insert(operation_id);
 
-            // Check operation signature only if not already checked.
-            if self
-                .cache
-                .read()
-                .checked_operations
-                .peek(&operation_id)
-                .is_none()
-            {
-                // check signature if the operation wasn't in `checked_operation`
-                new_operations.insert(operation_id, operation);
-            };
+            // add to new operations
+            new_operations.insert(operation.id, operation);
+        }
+
+        // all valid received ids (not only new ones) for knowledge marking
+        let all_received_ids: PreHashSet<_> = new_operations.keys().copied().collect();
+
+        // retain only new ops that are not already known
+        {
+            let cache_read = self.cache.read();
+            new_operations.retain(|op_id, _| cache_read.checked_operations.peek(op_id).is_none());
         }
 
         // optimized signature verification
@@ -234,56 +239,22 @@ impl RetrievalThread {
                     warn!("ops_known_by_peer limitation reached");
                     break 'write_cache;
                 };
-            for id in received_ids {
+            for id in all_received_ids {
                 known_ops.insert(id.prefix(), ());
             }
         }
 
         if !new_operations.is_empty() {
-            // Store operation, claim locally
+            // Store new operations, claim locally
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            // Propagate operations when their expire period isn't `max_operations_propagation_time` old.
-            let mut ops_to_propagate = ops.clone();
-            let operations_to_not_propagate = {
-                let now = MassaTime::now()?;
-                let read_operations = ops_to_propagate.read_operations();
-                ops_to_propagate
-                    .get_op_refs()
-                    .iter()
-                    .filter(|op_id| {
-                        let expire_period =
-                            read_operations.get(op_id).unwrap().content.expire_period;
-                        let expire_period_timestamp = get_block_slot_timestamp(
-                            self.config.thread_count,
-                            self.config.t0,
-                            self.config.genesis_timestamp,
-                            Slot::new(expire_period, 0),
-                        );
-                        match expire_period_timestamp {
-                            Ok(slot_timestamp) => {
-                                slot_timestamp
-                                    .saturating_add(self.config.max_operations_propagation_time)
-                                    < now
-                            }
-                            Err(_) => true,
-                        }
-                    })
-                    .copied()
-                    .collect()
-            };
-            ops_to_propagate.drop_operation_refs(&operations_to_not_propagate);
-            let to_announce: PreHashSet<OperationId> =
-                ops_to_propagate.get_op_refs().iter().copied().collect();
-            self.stored_operations
-                .insert(Instant::now(), to_announce.clone());
-            self.storage.extend(ops_to_propagate);
             self.internal_sender
-                .try_send(OperationHandlerPropagationCommand::AnnounceOperations(
-                    to_announce,
+                .try_send(OperationHandlerPropagationCommand::PropagateOperations(
+                    ops.clone(),
                 ))
                 .map_err(|err| ProtocolError::SendError(err.to_string()))?;
+
             // Add to pool
             self.pool_controller.add_operations(ops);
         }
@@ -501,15 +472,16 @@ impl RetrievalThread {
 
 #[allow(clippy::too_many_arguments)]
 pub fn start_retrieval_thread(
-    receiver: Receiver<PeerMessageTuple>,
+    receiver: MassaReceiver<PeerMessageTuple>,
     pool_controller: Box<dyn PoolController>,
     storage: Storage,
     config: ProtocolConfig,
     cache: SharedOperationCache,
     active_connections: Box<dyn ActiveConnectionsTrait>,
-    receiver_ext: Receiver<OperationHandlerRetrievalCommand>,
-    internal_sender: Sender<OperationHandlerPropagationCommand>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    receiver_ext: MassaReceiver<OperationHandlerRetrievalCommand>,
+    internal_sender: MassaSender<OperationHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    massa_metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
         .name("protocol-operation-handler-retrieval".to_string())
@@ -517,7 +489,6 @@ pub fn start_retrieval_thread(
             let mut retrieval_thread = RetrievalThread {
                 receiver,
                 pool_controller,
-                stored_operations: HashMap::new(),
                 storage,
                 internal_sender,
                 receiver_ext,
@@ -534,6 +505,7 @@ pub fn start_retrieval_thread(
                     .with_operation_message_serializer(OperationMessageSerializer::new()),
                 op_batch_buffer: VecDeque::new(),
                 peer_cmd_sender,
+                _massa_metrics: massa_metrics,
             };
             retrieval_thread.run();
         })

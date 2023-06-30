@@ -5,7 +5,8 @@ use crate::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
-use massa_db::{DBBatch, MassaDB, MassaDBConfig};
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
+use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
@@ -39,7 +40,9 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         max_new_elements: 100,
         thread_count,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
 
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
 
@@ -204,15 +207,15 @@ fn test_final_state() {
 
         fs.write().finalize(slot, state_changes);
 
-        hash = fs.read().db.read().get_db_hash();
+        hash = fs.read().db.read().get_xof_db_hash();
 
-        fs.write().db.write().db.flush().unwrap();
+        fs.write().db.write().flush().unwrap();
     }
 
     copy_dir_all(temp_dir.path(), &temp_dir2.path()).unwrap();
 
     let fs2 = create_final_state(&temp_dir2, false);
-    let hash2 = fs2.read().db.read().get_db_hash();
+    let hash2 = fs2.read().db.read().get_xof_db_hash();
 
     assert_eq!(hash, hash2);
 }

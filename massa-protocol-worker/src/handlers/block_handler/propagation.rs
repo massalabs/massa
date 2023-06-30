@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, thread::JoinHandle};
 
-use crossbeam::channel::{Receiver, Sender};
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
 use massa_models::{block_id::BlockId, prehash::PreHashSet};
 use massa_protocol_exports::PeerId;
@@ -20,13 +20,13 @@ use super::{
 };
 
 pub struct PropagationThread {
-    receiver: Receiver<BlockHandlerPropagationCommand>,
+    receiver: MassaReceiver<BlockHandlerPropagationCommand>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
     storage: Storage,
     saved_blocks: VecDeque<BlockId>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
     block_serializer: MessagesSerializer,
 }
 
@@ -144,8 +144,8 @@ impl PropagationThread {
 
 pub fn start_propagation_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
-    receiver: Receiver<BlockHandlerPropagationCommand>,
-    peer_cmd_sender: Sender<PeerManagementCmd>,
+    receiver: MassaReceiver<BlockHandlerPropagationCommand>,
+    peer_cmd_sender: MassaSender<PeerManagementCmd>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
     storage: Storage,

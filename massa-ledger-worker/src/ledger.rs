@@ -3,7 +3,7 @@
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
 use crate::ledger_db::{LedgerDB, LedgerSubEntry};
-use massa_db::{DBBatch, MassaDB};
+use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerController, LedgerEntry, LedgerError,
 };
@@ -13,12 +13,8 @@ use massa_models::{
     bytecode::{Bytecode, BytecodeDeserializer},
 };
 use massa_serialization::{DeserializeError, Deserializer};
-use parking_lot::RwLock;
+use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound::Included;
-use std::{
-    collections::{BTreeSet, HashMap},
-    sync::Arc,
-};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -34,7 +30,7 @@ pub struct FinalLedger {
 
 impl FinalLedger {
     /// Initializes a new `FinalLedger` by reading its initial state from file.
-    pub fn new(config: LedgerConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+    pub fn new(config: LedgerConfig, db: ShareableMassaDBController) -> Self {
         // create and initialize the disk ledger
         let sorted_ledger = LedgerDB::new(
             db,
@@ -121,7 +117,7 @@ impl LedgerController for FinalLedger {
     /// true if it exists, false otherwise.
     fn entry_exists(&self, addr: &Address) -> bool {
         self.sorted_ledger
-            .get_sub_entry(addr, LedgerSubEntry::Balance)
+            .get_sub_entry(addr, LedgerSubEntry::Version)
             .is_some()
     }
 
