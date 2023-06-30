@@ -275,6 +275,8 @@ pub(crate) fn get_largest_stakers(
     // Create the context for the response.
     let context = Some(grpc_api::LargestStakersContext {
         slot: Some(cur_slot.into()),
+        // IMPORTANT TODO: tmp value because testnet_24 and massa proto latest are not synced atm
+        in_downtime: false,
     });
 
     // Get the list of stakers, filtered by the specified minimum and maximum roll counts.

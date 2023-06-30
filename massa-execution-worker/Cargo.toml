@@ -30,7 +30,7 @@ massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "feature/Improve_ABI_types_in_wasmv1_thomas2" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "feature/Improve_ABI_types_in_wasmv1" }
 massa_metrics = { path = "../massa-metrics" }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_signature = { path = "../massa-signature" }
