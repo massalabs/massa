@@ -4701,7 +4701,7 @@ version = "0.9.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9d684e3ec7de3bf5466b32bd75303ac16f0736426e5a4e0d6e489559ce1249c"
 dependencies = [
- "indexmap",
+ "indexmap 1.9.3",
  "itoa",
  "ryu",
  "serde",

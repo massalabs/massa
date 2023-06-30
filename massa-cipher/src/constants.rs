@@ -17,6 +17,6 @@ pub const SALT_SIZE: usize = 16;
 
 /// `PBKDF2` hash parameters.
 pub const HASH_PARAMS: Params = Params {
-    rounds: 10_000,
+    rounds: 600_000,
     output_length: 32,
 };
