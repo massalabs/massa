@@ -68,6 +68,8 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # Overview
@@ -126,14 +128,16 @@
 <span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
 </span><span class="kw">pub use </span>controller_traits::MockExecutionController;
 <span class="kw">pub use </span>controller_traits::{ExecutionController, ExecutionManager};
-<span class="kw">pub use </span>error::ExecutionError;
+<span class="kw">pub use </span>error::{ExecutionError, ExecutionQueryError};
 <span class="kw">pub use </span>event_store::EventStore;
 <span class="kw">pub use </span>massa_sc_runtime::GasCosts;
 <span class="kw">pub use </span>settings::{ExecutionConfig, StorageCostsConstants};
 <span class="kw">pub use </span>types::{
-    ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
-    SlotExecutionOutput,
+    ExecutionAddressInfo, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryExecutionStatus,
+    ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
+    ExecutionQueryResponseItem, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyCallRequest, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;testing&quot;</span>, feature = <span class="string">&quot;gas_calibration&quot;</span>))]
