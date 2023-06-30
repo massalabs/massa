@@ -4,7 +4,7 @@ use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use itertools::izip;
 use massa_models::address::Address;
-use massa_models::block::BlockGraphStatus;
+use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
 use massa_models::execution::EventFilter;
 use massa_models::operation::{OperationId, SecureShareOperation};
@@ -12,8 +12,9 @@ use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::model::v1 as grpc_model;
+use massa_proto_rs::massa::model::v1::{self as grpc_model, Slot};
 use massa_time::MassaTime;
+use std::fs::read;
 use std::str::FromStr;
 use tracing::log::warn;
 
@@ -29,138 +30,166 @@ pub(crate) fn get_blocks(
 ) -> Result<grpc_api::GetBlocksResponse, GrpcError> {
     let inner_req = request.into_inner();
 
-    // Get the block IDs from the request.
-    let blocks_ids: Vec<BlockId> = inner_req
-        .queries
-        .into_iter()
-        .take(grpc.grpc_config.max_block_ids_per_request as usize + 1)
-        .map(|query| {
-            // Get the block ID from the query.
-            query
-                .filter
-                .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
-                .and_then(|filter| {
-                    BlockId::from_str(filter.id.as_str()).map_err(|_| {
-                        GrpcError::InvalidArgument(format!("invalid block id: {}", filter.id))
-                    })
-                })
-        })
-        .collect::<Result<_, _>>()?;
+    let mut blocks_ids: Option<Vec<BlockId>> = None;
+    let (slot_min, slot_max) = (None, None);
+    let mut addresses: Option<Vec<String>> = None;
 
-    if blocks_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
-        return Err(GrpcError::InvalidArgument(format!(
-            "too many block ids received. Only a maximum of {} block ids are accepted per request",
-            grpc.grpc_config.max_block_ids_per_request
-        )));
+    // Get params filter from the request.
+    for query in inner_req.filters.into_iter() {
+        query
+            .filter
+            .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
+            .and_then(|filter| match filter {
+                grpc_api::get_blocks_filter::Filter::Addresses(addresses) => {
+                    for addr in addresses.addresses {
+                        if addresses.is_none() {
+                            addresses = Some(Vec::new());
+                        }
+                        addresses.push(addr);
+                    }
+                }
+                grpc_api::get_blocks_filter::Filter::BlockIds(ids) => {
+                    for id in ids {
+                        if blocks_ids.len()
+                            < grpc.grpc_config.max_block_ids_per_request as usize + 1
+                        {
+                            if blocks_ids.is_none() {
+                                blocks_ids = Some(Vec::new());
+                            }
+                            blocks_ids.push(BlockId::from_str(&id).map_err(|_| {
+                                GrpcError::InvalidArgument(format!("invalid block id: {}", id))
+                            }));
+                        }
+                    }
+                }
+                grpc_api::get_blocks_filter::Filter::Slots(slot_range) => {
+                    slot_max = slot_range.start_slot;
+                    slot_min = slot_range.end_slot;
+                }
+            })?;
     }
 
-    // Get the current slot.
-    let now: MassaTime = MassaTime::now()?;
-    let current_slot = get_latest_block_slot_at_timestamp(
-        grpc.grpc_config.thread_count,
-        grpc.grpc_config.t0,
-        grpc.grpc_config.genesis_timestamp,
-        now,
-    )?
-    .unwrap_or_else(|| Slot::new(0, 0));
-
-    // Create the context for the response.
-    let context = Some(grpc_api::BlocksContext {
-        slot: Some(current_slot.into()),
-    });
-
     let storage = grpc.storage.clone_without_refs();
-    let blocks = blocks_ids
-        .into_iter()
-        .filter_map(|id| {
-            let content = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
-                wrapped_block.content.clone()
-            } else {
-                return None;
-            };
+    let read_blocks = storage.read_blocks();
 
-            if let Some(graph_status) = grpc
-                .consensus_controller
-                .get_block_statuses(&[id])
-                .into_iter()
-                .next()
-            {
-                let mut status = Vec::new();
+    let blocks = if let Some(blocks_ids) = blocks_ids {
+        if blocks_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
+            return Err(GrpcError::InvalidArgument(format!(
+                "too many block ids received. Only a maximum of {} block ids are accepted per request",
+                grpc.grpc_config.max_block_ids_per_request
+            )));
+        }
 
-                if graph_status == BlockGraphStatus::Final {
-                    status.push(grpc_model::BlockStatus::Final.into());
+        blocks_ids
+            .into_iter()
+            .filter_map(|id| {
+                let content = if let Some(wrapped_block) = read_blocks.get(&id) {
+                    wrapped_block.content.clone()
+                } else {
+                    return None;
                 };
-                if graph_status == BlockGraphStatus::ActiveInBlockclique {
-                    status.push(grpc_model::BlockStatus::InBlockclique.into());
-                };
-                if graph_status == BlockGraphStatus::ActiveInBlockclique
-                    || graph_status == BlockGraphStatus::ActiveInAlternativeCliques
+
+                // check addresses filter
+                if let Some(filter_addresses) = addresses {
+                    if !filter_addresses
+                        .iter()
+                        .any(|addr| content.header.content_creator_address.to_string() == addr)
+                    {
+                        return None;
+                    }
+                }
+                // check slot filter
+                if let Some(slot_min) = slot_min {
+                    if content.header.slot < slot_min {
+                        return None;
+                    }
+                }
+                if let Some(slot_max) = slot_max {
+                    if content.header.slot > slot_max {
+                        return None;
+                    }
+                }
+
+                Some(content)
+            })
+            .collect::<Vec<Block>>()
+    } else if let Some(addrs) = addresses {
+        addrs
+            .into_iter()
+            .filter_map(|addr| {
+                if let Some(hash_set) =
+                    read_blocks.get_blocks_created_by(&Address::from_str(&addr).map_err(|_| {
+                        GrpcError::InvalidArgument(format!("invalid address: {}", addr))
+                    })?)
                 {
-                    status.push(grpc_model::BlockStatus::Candidate.into());
-                };
-                if graph_status == BlockGraphStatus::Discarded {
-                    status.push(grpc_model::BlockStatus::Discarded.into());
-                };
+                    for block_id in hash_set.block_ids.iter() {
+                        if blocks.len() < grpc.grpc_config.max_block_ids_per_request as usize + 1 {
+                            let block = read_blocks
+                                .get(&block_id)
+                                .map(|wrapped_block| wrapped_block.content.clone())
+                                .ok_or(None)
+                                .unwrap_or(None);
 
-                return Some(grpc_model::BlockWrapper {
-                    id: id.to_string(),
-                    block: Some(content.into()),
-                    status,
-                });
-            }
+                            // check slot filter
+                            if let Some(slot_min) = slot_min {
+                                if block.header.slot < slot_min {
+                                    return None;
+                                }
+                            }
+                            if let Some(slot_max) = slot_max {
+                                if block.header.slot > slot_max {
+                                    return None;
+                                }
+                            }
 
-            None
+                            Some(block)
+                        }
+                    }
+                }
+            })
+            .collect::<Vec<Block>>()
+    } else {
+        // only slot range is provided
+        let graph = grpc
+            .consensus_controller
+            .get_block_graph_status(slot_min, slot_max)?;
+
+        graph
+            .active_blocks
+            .iter()
+            .filter_map(|b| {
+                if blocks.len() < grpc.grpc_config.max_block_ids_per_request as usize + 1 {
+                    let block = read_blocks
+                        .get(&b)
+                        .map(|wrapped_block| wrapped_block.content.clone())
+                        .ok_or(None)
+                        .unwrap_or(None);
+
+                    Some(block)
+                }
+            })
+            .collect::<Vec<Block>>()
+    };
+
+    let blocks_ids = blocks
+        .iter()
+        .map(|block| block.header.id.to_string())
+        .collect::<Vec<String>>();
+
+    let blocks_status = grpc.consensus_controller.get_block_statuses(&blocks_ids);
+
+    let result = blocks
+        .iter()
+        .zip(blocks_status)
+        .map(|(block, status)| grpc_model::BlockWrapper {
+            block_id: block.header.id.to_string(),
+            block: Some(block.clone()),
+            status: status.clone(),
         })
-        .collect::<Vec<grpc_model::BlockWrapper>>();
+        .collect();
 
     Ok(grpc_api::GetBlocksResponse {
-        id: inner_req.id,
-        context,
-        blocks,
-    })
-}
-
-/// get blocks by slots
-pub(crate) fn get_blocks_by_slots(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetBlocksBySlotsRequest>,
-) -> Result<grpc_api::GetBlocksBySlotsResponse, GrpcError> {
-    let inner_req = request.into_inner();
-    let storage = grpc.storage.clone_without_refs();
-
-    let mut blocks = Vec::new();
-
-    for slot in inner_req.slots.into_iter() {
-        let Some(block_id) = grpc.consensus_controller.get_blockclique_block_at_slot(Slot {
-            period: slot.period,
-            thread: slot.thread as u8,
-        }) else {
-            continue;
-        };
-
-        let res = storage.read_blocks().get(&block_id).map(|b| {
-            let massa_header = b.clone().content.header;
-            let operations: Vec<String> = b
-                .content
-                .operations
-                .iter()
-                .map(|ope| ope.to_string())
-                .collect();
-
-            (massa_header.into(), operations)
-        });
-
-        if let Some(block) = res {
-            blocks.push(grpc_model::Block {
-                header: Some(block.0),
-                operations: block.1,
-            });
-        }
-    }
-
-    Ok(grpc_api::GetBlocksBySlotsResponse {
-        id: inner_req.id,
-        blocks,
+        wrapped_blocks: result,
     })
 }
 
