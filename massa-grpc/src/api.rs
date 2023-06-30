@@ -197,12 +197,11 @@ pub(crate) fn get_datastore_entries(
 }
 
 /// Get the largest stakers
-pub(crate) fn get_largest_stakers(
+pub(crate) fn get_stakers(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetLargestStakersRequest>,
-) -> Result<grpc_api::GetLargestStakersResponse, GrpcError> {
+    request: tonic::Request<grpc_api::GetStakersRequest>,
+) -> Result<grpc_api::GetStakersResponse, GrpcError> {
     let inner_req = request.into_inner();
-    let id = inner_req.id;
 
     // Parse the query parameters, if provided.
     let query_res: Result<(u64, u64, Option<grpc_api::LargestStakersFilter>), GrpcError> =
@@ -272,11 +271,6 @@ pub(crate) fn get_largest_stakers(
         Err(e) => return Err(GrpcError::ModelsError(e)),
     };
 
-    // Create the context for the response.
-    let context = Some(grpc_api::LargestStakersContext {
-        slot: Some(cur_slot.into()),
-    });
-
     // Get the list of stakers, filtered by the specified minimum and maximum roll counts.
     let mut staker_vec = grpc
         .execution_controller
@@ -306,17 +300,13 @@ pub(crate) fn get_largest_stakers(
     // Paginate the stakers based on the specified offset and limit.
     let stakers = staker_vec
         .into_iter()
-        .map(|(address, rolls)| grpc_api::LargestStakerEntry { address, rolls })
+        .map(|(address, rolls)| grpc_api::StakerEntry { address, rolls })
         .skip(offset as usize)
         .take(limit as usize)
         .collect();
 
     // Return a response with the given id, context, and the collected stakers.
-    Ok(grpc_api::GetLargestStakersResponse {
-        id,
-        context,
-        stakers,
-    })
+    Ok(grpc_api::GetStakersResponse { stakers })
 }
 
 // Get node version
