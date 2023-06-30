@@ -349,10 +349,10 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         addresses: &[Address],
     ) -> Vec<(Option<Amount>, Option<Amount>)> {
-        let lock = self.execution_state.read();
+        let execution_state_lock = self.execution_state.read();
         let mut result = Vec::with_capacity(addresses.len());
         for addr in addresses {
-            result.push(lock.get_final_and_candidate_balance(addr));
+            result.push(execution_state_lock.get_final_and_candidate_balance(addr));
         }
         result
     }
@@ -366,9 +366,9 @@ impl ExecutionController for ExecutionControllerImpl {
         input: Vec<(Address, Vec<u8>)>,
     ) -> Vec<(Option<Vec<u8>>, Option<Vec<u8>>)> {
         let mut result = Vec::with_capacity(input.len());
-        let lock = self.execution_state.read();
+        let execution_state_lock = self.execution_state.read();
         for (addr, key) in input {
-            result.push(lock.get_final_and_active_data_entry(&addr, &key));
+            result.push(execution_state_lock.get_final_and_active_data_entry(&addr, &key));
         }
         result
     }

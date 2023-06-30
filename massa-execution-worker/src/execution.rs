@@ -1708,10 +1708,10 @@ impl ExecutionState {
         cycle: u64,
         restrict_to_addresses: Option<&PreHashSet<Address>>,
     ) -> Option<ExecutionQueryCycleInfos> {
-        let lock = self.final_state.read();
+        let final_state_lock = self.final_state.read();
 
         // check if cycle is complete
-        let is_final = match lock.pos_state.is_cycle_complete(cycle) {
+        let is_final = match final_state_lock.pos_state.is_cycle_complete(cycle) {
             Some(v) => v,
             None => return None,
         };
@@ -1723,11 +1723,11 @@ impl ExecutionState {
                 .iter()
                 .map(|addr| {
                     let staker_info = ExecutionQueryStakerInfo {
-                        active_rolls: lock
+                        active_rolls: final_state_lock
                             .pos_state
                             .get_address_active_rolls(addr, cycle)
                             .unwrap_or(0),
-                        production_stats: lock
+                        production_stats: final_state_lock
                             .pos_state
                             .get_production_stats_for_address(cycle, addr)
                             .unwrap_or_default(),
@@ -1736,8 +1736,8 @@ impl ExecutionState {
                 })
                 .collect()
         } else {
-            let active_rolls = lock.pos_state.get_all_roll_counts(cycle);
-            let production_stats = lock
+            let active_rolls = final_state_lock.pos_state.get_all_roll_counts(cycle);
+            let production_stats = final_state_lock
                 .pos_state
                 .get_all_production_stats(cycle)
                 .unwrap_or_default();
