@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_prefix_bounds"],"struct":["DatastoreDeserializer","DatastoreSerializer"],"type":["Datastore"]};
+window.SIDEBAR_ITEMS = {"struct":["DatastoreDeserializer","DatastoreSerializer"],"type":["Datastore"]};

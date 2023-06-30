@@ -208,32 +208,6 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::serialization::{VecU8Deserializer, VecU8Serializer};
@@ -377,32 +351,6 @@
         .map(|elements| elements.into_iter().collect())
         .parse(buffer)
     }
-}
-
-<span class="doccomment">/// For lexicographically ordered keys,
-/// gets the upper and lower bound of keys matching a prefix.
-</span><span class="kw">pub fn </span>get_prefix_bounds(prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; (std::ops::Bound&lt;Vec&lt;u8&gt;&gt;, std::ops::Bound&lt;Vec&lt;u8&gt;&gt;) {
-    <span class="kw">if </span>prefix.is_empty() {
-        <span class="kw">return </span>(std::ops::Bound::Unbounded, std::ops::Bound::Unbounded);
-    }
-    <span class="kw">let </span>n_keep = prefix
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(i, v)| <span class="kw">if </span>v &lt; <span class="kw-2">&amp;</span><span class="number">255 </span>{ <span class="prelude-val">Some</span>(i + <span class="number">1</span>) } <span class="kw">else </span>{ <span class="prelude-val">None </span>})
-        .unwrap_or(<span class="number">0</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>prefix_end = prefix[..n_keep].to_vec();
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = prefix_end.last_mut() {
-        <span class="kw-2">*</span>v += <span class="number">1</span>;
-    }
-    (
-        std::ops::Bound::Included(prefix.to_vec()),
-        <span class="kw">if </span>!prefix_end.is_empty() {
-            std::ops::Bound::Excluded(prefix_end)
-        } <span class="kw">else </span>{
-            std::ops::Bound::Unbounded
-        },
-    )
 }
 
 <span class="attr">#[cfg(test)]

@@ -648,6 +648,8 @@
 <a href="#648" id="648">648</a>
 <a href="#649" id="649">649</a>
 <a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -925,6 +927,8 @@
     <span class="comment">// Create the context for the response.
     </span><span class="kw">let </span>context = <span class="prelude-val">Some</span>(grpc_api::LargestStakersContext {
         slot: <span class="prelude-val">Some</span>(cur_slot.into()),
+        <span class="comment">// IMPORTANT TODO: tmp value because testnet_24 and massa proto latest are not synced atm
+        </span>in_downtime: <span class="bool-val">false</span>,
     });
 
     <span class="comment">// Get the list of stakers, filtered by the specified minimum and maximum roll counts.
