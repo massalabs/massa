@@ -463,6 +463,23 @@ impl RetrievalThread {
                 received: header.content.current_version,
             })
         } else {
+            // announced version == 0 -> No announce
+            if header.content.announced_version != 0 {
+                if header.content.announced_version <= version {
+                    // Received block, announced an old version (already accepted)
+                    return Err(ProtocolError::InvalidAnnouncedNetworkVersion {
+                        local: version,
+                        announced_received: header.content.announced_version,
+                    });
+                }
+
+                let version_to_announce = self.mip_store.get_network_version_to_announce();
+                if header.content.announced_version != version_to_announce {
+                    warn!("Please update your node if you want to support this update (network version: {})", 
+                        header.content.announced_version);
+                }
+            }
+
             Ok(())
         }
     }

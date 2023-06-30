@@ -43,12 +43,19 @@ pub enum ProtocolError {
     InvalidOperationError(String),
     /// Listener error: {0}
     ListenerError(String),
-    /// Incompatible newtork version: local current is {local} received is {received}
+    /// Incompatible network version: local current is {local} received is {received}
     IncompatibleNetworkVersion {
         /// local current version
         local: u32,
-        /// received version from incoming header
+        /// received current network version from incoming header
         received: u32,
+    },
+    /// Invalid announced network version
+    InvalidAnnouncedNetworkVersion {
+        /// local current version
+        local: u32,
+        /// received announced network version
+        announced_received: u32,
     },
     /// Versioned factory error: {0}
     FactoryError(#[from] FactoryError),
