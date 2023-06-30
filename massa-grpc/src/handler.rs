@@ -2,6 +2,13 @@
 
 use massa_proto_rs::massa::api::v1 as grpc_api;
 
+use crate::private::{
+    add_staking_secret_keys, add_to_bootstrap_blacklist, add_to_bootstrap_whitelist,
+    add_to_peers_whitelist, allow_everyone_to_bootstrap, get_bootstrap_blacklist,
+    get_bootstrap_whitelist, get_node_status, get_peers_whitelist, remove_from_bootstrap_blacklist,
+    remove_from_bootstrap_whitelist, remove_from_peers_whitelist, remove_staking_addresses,
+    shutdown_gracefully, sign_messages,
+};
 use crate::public::{
     get_blocks, get_datastore_entries, get_mip_status, get_next_block_best_parents, get_operations,
     get_sc_execution_events, get_selector_draws, get_stakers, get_transactions_throughput,
@@ -49,7 +56,7 @@ impl grpc_api::public_service_server::PublicService for MassaGrpc {
     /// handler for get satatus
     async fn get_status(
         &self,
-        request: tonic::Request<grpc_api::GetStatusRequest>,
+        _request: tonic::Request<grpc_api::GetStatusRequest>,
     ) -> Result<tonic::Response<grpc_api::GetStatusResponse>, tonic::Status> {
         // Ok(tonic::Response::new(get_status(self, request)?))
         unimplemented!("get_status is not implemented yet")
@@ -219,5 +226,117 @@ impl grpc_api::public_service_server::PublicService for MassaGrpc {
         Ok(tonic::Response::new(
             transactions_throughput(self, request).await?,
         ))
+    }
+}
+
+#[tonic::async_trait]
+impl grpc_api::private_service_server::PrivateService for MassaGrpc {
+    /// Add IP addresses to node bootstrap blacklist
+    async fn add_to_bootstrap_blacklist(
+        &self,
+        request: tonic::Request<grpc_api::AddToBootstrapBlacklistRequest>,
+    ) -> Result<tonic::Response<grpc_api::AddToBootstrapBlacklistResponse>, tonic::Status> {
+        Ok(add_to_bootstrap_blacklist(self, request)?)
+    }
+    /// Add IP addresses to node bootstrap whitelist
+    async fn add_to_bootstrap_whitelist(
+        &self,
+        request: tonic::Request<grpc_api::AddToBootstrapWhitelistRequest>,
+    ) -> Result<tonic::Response<grpc_api::AddToBootstrapWhitelistResponse>, tonic::Status> {
+        Ok(add_to_bootstrap_whitelist(self, request)?)
+    }
+    /// Add IP addresses to node peers whitelist. No confirmation to expect.
+    /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
+    async fn add_to_peers_whitelist(
+        &self,
+        request: tonic::Request<grpc_api::AddToPeersWhitelistRequest>,
+    ) -> Result<tonic::Response<grpc_api::AddToPeersWhitelistResponse>, tonic::Status> {
+        Ok(add_to_peers_whitelist(self, request)?)
+    }
+    /// Add staking secret keys to wallet
+    async fn add_staking_secret_keys(
+        &self,
+        request: tonic::Request<grpc_api::AddStakingSecretKeysRequest>,
+    ) -> Result<tonic::Response<grpc_api::AddStakingSecretKeysResponse>, tonic::Status> {
+        Ok(add_staking_secret_keys(self, request)?)
+    }
+    /// Get node bootstrap blacklist IP addresses
+    async fn get_bootstrap_blacklist(
+        &self,
+        request: tonic::Request<grpc_api::GetBootstrapBlacklistRequest>,
+    ) -> Result<tonic::Response<grpc_api::GetBootstrapBlacklistResponse>, tonic::Status> {
+        Ok(get_bootstrap_blacklist(self, request)?)
+    }
+    /// Get node bootstrap whitelist IP addresses
+    async fn get_bootstrap_whitelist(
+        &self,
+        request: tonic::Request<grpc_api::GetBootstrapWhitelistRequest>,
+    ) -> Result<tonic::Response<grpc_api::GetBootstrapWhitelistResponse>, tonic::Status> {
+        Ok(get_bootstrap_whitelist(self, request)?)
+    }
+    /// Allow everyone to bootstrap from the node by removing bootstrap whitelist configuration file
+    async fn allow_everyone_to_bootstrap(
+        &self,
+        request: tonic::Request<grpc_api::AllowEveryoneToBootstrapRequest>,
+    ) -> Result<tonic::Response<grpc_api::AllowEveryoneToBootstrapResponse>, tonic::Status> {
+        Ok(allow_everyone_to_bootstrap(self, request)?)
+    }
+    /// Get node status
+    async fn get_node_status(
+        &self,
+        request: tonic::Request<grpc_api::GetNodeStatusRequest>,
+    ) -> Result<tonic::Response<grpc_api::GetNodeStatusResponse>, tonic::Status> {
+        Ok(get_node_status(self, request)?)
+    }
+    /// Get node peers whitelist IP addresses
+    async fn get_peers_whitelist(
+        &self,
+        request: tonic::Request<grpc_api::GetPeersWhitelistRequest>,
+    ) -> Result<tonic::Response<grpc_api::GetPeersWhitelistResponse>, tonic::Status> {
+        Ok(get_peers_whitelist(self, request)?)
+    }
+    /// Remove from bootstrap blacklist given IP addresses
+    async fn remove_from_bootstrap_blacklist(
+        &self,
+        request: tonic::Request<grpc_api::RemoveFromBootstrapBlacklistRequest>,
+    ) -> Result<tonic::Response<grpc_api::RemoveFromBootstrapBlacklistResponse>, tonic::Status>
+    {
+        Ok(remove_from_bootstrap_blacklist(self, request)?)
+    }
+    /// Remove from bootstrap whitelist given IP addresses
+    async fn remove_from_bootstrap_whitelist(
+        &self,
+        request: tonic::Request<grpc_api::RemoveFromBootstrapWhitelistRequest>,
+    ) -> Result<tonic::Response<grpc_api::RemoveFromBootstrapWhitelistResponse>, tonic::Status>
+    {
+        Ok(remove_from_bootstrap_whitelist(self, request)?)
+    }
+    /// Remove from peers whitelist given IP addresses
+    async fn remove_from_peers_whitelist(
+        &self,
+        request: tonic::Request<grpc_api::RemoveFromPeersWhitelistRequest>,
+    ) -> Result<tonic::Response<grpc_api::RemoveFromPeersWhitelistResponse>, tonic::Status> {
+        Ok(remove_from_peers_whitelist(self, request)?)
+    }
+    /// Remove addresses from staking
+    async fn remove_staking_addresses(
+        &self,
+        request: tonic::Request<grpc_api::RemoveStakingAddressesRequest>,
+    ) -> Result<tonic::Response<grpc_api::RemoveStakingAddressesResponse>, tonic::Status> {
+        Ok(remove_staking_addresses(self, request)?)
+    }
+    /// Sign messages with node's key
+    async fn sign_messages(
+        &self,
+        request: tonic::Request<grpc_api::SignMessagesRequest>,
+    ) -> Result<tonic::Response<grpc_api::SignMessagesResponse>, tonic::Status> {
+        Ok(sign_messages(self, request)?)
+    }
+    /// Shutdown the node gracefully
+    async fn shutdown_gracefully(
+        &self,
+        request: tonic::Request<grpc_api::ShutdownGracefullyRequest>,
+    ) -> Result<tonic::Response<grpc_api::ShutdownGracefullyResponse>, tonic::Status> {
+        Ok(shutdown_gracefully(self, request)?)
     }
 }
