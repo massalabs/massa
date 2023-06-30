@@ -130,7 +130,6 @@ impl PeerDB {
                     .listeners
                     .clone()
                     .into_iter()
-                    .filter(|(addr, _)| addr.ip().to_canonical().is_global())
                     .collect();
                 if listeners.is_empty() {
                     continue;

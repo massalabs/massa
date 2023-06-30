@@ -102,6 +102,7 @@ fn basic() {
     categories.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
+            allow_local_peers: true,
             max_in_connections: 1,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
@@ -113,6 +114,7 @@ fn basic() {
     categories2.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
+            allow_local_peers: true,
             max_in_connections: 5,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
@@ -251,6 +253,7 @@ fn stop_with_controller_still_exists() {
     categories.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
+            allow_local_peers: true,
             max_in_connections: 1,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
@@ -262,6 +265,7 @@ fn stop_with_controller_still_exists() {
     categories2.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
+            allow_local_peers: true,
             max_in_connections: 5,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,

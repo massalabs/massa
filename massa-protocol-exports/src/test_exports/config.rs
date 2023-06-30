@@ -81,6 +81,7 @@ impl Default for ProtocolConfig {
             debug: true,
             peers_categories: HashMap::default(),
             default_category_info: PeerCategoryInfo {
+                allow_local_peers: true,
                 max_in_connections: 10,
                 target_out_connections: 10,
                 max_in_connections_per_ip: 0,

@@ -124,6 +124,7 @@ pub fn start_protocol_controller_with_mock_network(
         message_handlers,
         HashMap::default(),
         PeerCategoryInfo {
+            allow_local_peers: true,
             max_in_connections: 10,
             target_out_connections: 10,
             max_in_connections_per_ip: 10,

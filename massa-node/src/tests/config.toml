@@ -56,9 +56,9 @@
     max_send_wait = 500
     ban_timeout = 3600000
     [network.peer_types_config]
-    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5}
-    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
-    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2}
+    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5, allow_local_peers = true }
+    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1, allow_local_peers = true }
+    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2, allow_local_peers = true }
 
 
 [bootstrap]
