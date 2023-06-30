@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ReadOnlyExecutionTarget","SlotExecutionOutput"],"struct":["ExecutionAddressInfo","ExecutionOutput","ExecutionStackElement","ReadOnlyCallRequest","ReadOnlyExecutionOutput","ReadOnlyExecutionRequest"]};
+window.SIDEBAR_ITEMS = {"enum":["ReadOnlyExecutionTarget","SlotExecutionOutput"],"struct":["ExecutedBlockInfo","ExecutionAddressInfo","ExecutionOutput","ExecutionStackElement","ReadOnlyCallRequest","ReadOnlyExecutionOutput","ReadOnlyExecutionRequest"]};

@@ -430,7 +430,6 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -767,7 +766,7 @@
                                         }
                                         <span class="comment">// TODO:  Don&#39;t launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                        </span><span class="kw">if </span>!active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
+                                        </span><span class="kw">if </span>ip_canonical.is_global() &amp;&amp; !active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
                                             <span class="comment">//Don&#39;t test our local addresses
                                             </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
                                                 <span class="kw">if </span>addr == local_addr {
@@ -819,10 +818,9 @@
                             db.tested_addresses.insert(listener, MassaTime::now().unwrap());
                         }
 
-
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
                         </span><span class="kw">let </span>ip_canonical = listener.ip().to_canonical();
-                        <span class="kw">if </span>active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
+                        <span class="kw">if </span>!ip_canonical.is_global() || active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
                             <span class="kw">continue</span>;
                         }
                         <span class="comment">//Don&#39;t test our local addresses

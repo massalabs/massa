@@ -154,8 +154,6 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -288,10 +286,8 @@
                     .listeners
                     .clone()
                     .into_iter()
-                    <span class="comment">// .filter(|(addr, _)|
-                    //     addr.ip().to_canonical().is_global()
-                    // )
-                    </span>.collect();
+                    .filter(|(addr, <span class="kw">_</span>)| addr.ip().to_canonical().is_global())
+                    .collect();
                 <span class="kw">if </span>listeners.is_empty() {
                     <span class="kw">continue</span>;
                 }
