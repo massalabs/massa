@@ -26,6 +26,8 @@ pub mod config;
 pub mod error;
 /// gRPC API implementation
 pub mod handler;
+/// business code for node management methods
+pub mod private;
 /// business code for non stream methods
 pub mod public;
 /// gRPC service initialization and serve
