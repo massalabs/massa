@@ -1,10 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::ops::Deref;
+use std::ops::{Deref, Div, Mul};
 use std::sync::Arc;
 
 use machine::{machine, transitions};
+use num::{rational::Ratio, Zero};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
@@ -15,10 +16,10 @@ use massa_db_exports::{
     VERSIONING_CF,
 };
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
-use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
 
@@ -109,7 +110,7 @@ machine!(
         /// Initial state
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
-        Started { pub(crate) threshold: Amount },
+        Started { pub(crate) threshold: Ratio<u64> },
         /// Locked but wait for some time before going to active (to let users the time to upgrade)
         LockedIn { pub(crate) at: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
@@ -161,7 +162,7 @@ pub struct Advance {
     pub activation_delay: MassaTime,
 
     /// % of past blocks with this version
-    pub threshold: Amount,
+    pub threshold: Ratio<u64>,
     /// Current time (timestamp)
     pub now: MassaTime,
 }
@@ -206,7 +207,7 @@ impl Defined {
     pub fn on_advance(self, input: Advance) -> ComponentState {
         match input.now {
             n if n >= input.timeout => ComponentState::failed(),
-            n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
+            n if n >= input.start_timestamp => ComponentState::started(Ratio::zero()),
             _ => ComponentState::Defined(Defined {}),
         }
     }
@@ -219,7 +220,7 @@ impl Started {
             return ComponentState::failed();
         }
 
-        if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
+        if input.threshold >= *VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
             debug!("(VERSIONING LOG) transition accepted, locking in");
             ComponentState::locked_in(input.now)
         } else {
@@ -372,7 +373,7 @@ impl MipState {
         let mut advance_msg = Advance {
             start_timestamp: mip_info.start,
             timeout: mip_info.timeout,
-            threshold: Amount::zero(),
+            threshold: Ratio::zero(),
             now: initial_ts.now,
             activation_delay: mip_info.activation_delay,
         };
@@ -458,7 +459,7 @@ impl MipState {
             }
             (Some((adv, st_id)), None) => {
                 // After the last state in history -> need to advance the state and return
-                let threshold_for_transition = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
+                let threshold_for_transition = *VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
                 // Note: Please update this if MipState transitions change as it might not hold true
                 if *st_id == ComponentStateTypeId::Started
                     && adv.threshold < threshold_for_transition
@@ -937,25 +938,28 @@ impl MipStoreRaw {
                 .network_version_counters
                 .get(&mi.version)
                 .unwrap_or(&0);
-            let block_count_considered = self.stats.config.block_count_considered;
-            let vote_ratio_ = Amount::from_mantissa_scale(network_version_count, 0).map(|a| {
-                a.saturating_mul_u64(100)
-                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(0))
-            });
 
-            if let Ok(Some(vote_ratio)) = vote_ratio_ {
-                debug!("[VERSIONING STATS] vote ratio = {} (network version counter = {} - blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            let vote_ratio = Ratio::new(100, 1);
+            vote_ratio.mul(Ratio::new(network_version_count, 1));
+            vote_ratio.div(Ratio::new(
+                u64::try_from(self.stats.config.block_count_considered).unwrap_or(0),
+                1,
+            ));
 
-                let advance_msg = Advance {
-                    start_timestamp: mi.start,
-                    timeout: mi.timeout,
-                    threshold: vote_ratio,
-                    now: slot_timestamp,
-                    activation_delay: mi.activation_delay,
-                };
+            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})",
+                vote_ratio,
+                network_version_count,
+                self.stats.config.block_count_considered);
 
-                state.on_advance(&advance_msg.clone());
-            }
+            let advance_msg = Advance {
+                start_timestamp: mi.start,
+                timeout: mi.timeout,
+                threshold: vote_ratio,
+                now: slot_timestamp,
+                activation_delay: mi.activation_delay,
+            };
+
+            state.on_advance(&advance_msg.clone());
         }
     }
 

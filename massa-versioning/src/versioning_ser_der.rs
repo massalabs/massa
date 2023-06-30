@@ -15,11 +15,10 @@ use crate::versioning::{
     MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
-use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, RatioDeserializer, RatioSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
@@ -224,7 +223,7 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
 /// Serializer for `ComponentState`
 pub struct ComponentStateSerializer {
     u32_serializer: U32VarIntSerializer,
-    amount_serializer: AmountSerializer,
+    ratio_serializer: RatioSerializer<u64, U64VarIntSerializer>,
     time_serializer: MassaTimeSerializer,
 }
 
@@ -233,7 +232,7 @@ impl ComponentStateSerializer {
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
-            amount_serializer: AmountSerializer::new(),
+            ratio_serializer: RatioSerializer::new(U64VarIntSerializer::new()),
             time_serializer: MassaTimeSerializer::new(),
         }
     }
@@ -255,7 +254,8 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         self.u32_serializer.serialize(&state_id, buffer)?;
         match value {
             ComponentState::Started(Started { threshold }) => {
-                self.amount_serializer.serialize(threshold, buffer)?;
+                // self.amount_serializer.serialize(threshold, buffer)?;
+                self.ratio_serializer.serialize(threshold, buffer)?;
             }
             ComponentState::LockedIn(LockedIn { at }) => {
                 self.time_serializer.serialize(at, buffer)?;
@@ -272,7 +272,7 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
 /// A Deserializer for ComponentState`
 pub struct ComponentStateDeserializer {
     state_deserializer: U32VarIntDeserializer,
-    amount_deserializer: AmountDeserializer,
+    ratio_deserializer: RatioDeserializer<u64, U64VarIntDeserializer>,
     time_deserializer: MassaTimeDeserializer,
 }
 
@@ -284,10 +284,10 @@ impl ComponentStateDeserializer {
                 Included(0),
                 Excluded(COMPONENT_STATE_VARIANT_COUNT),
             ),
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
-            ),
+            ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
+                Included(0),
+                Included(u64::MAX),
+            )),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(0)),
                 Included(MassaTime::from_millis(u64::MAX)),
@@ -322,7 +322,7 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
             ComponentStateTypeId::Defined => (rem, ComponentState::defined()),
             ComponentStateTypeId::Started => {
                 let (rem2, threshold) = context("Failed threshold value der", |input| {
-                    self.amount_deserializer.deserialize(input)
+                    self.ratio_deserializer.deserialize(input)
                 })
                 .parse(rem)?;
                 (rem2, ComponentState::started(threshold))
@@ -355,7 +355,7 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
 
 /// Serializer for `Advance`
 pub struct AdvanceSerializer {
-    amount_serializer: AmountSerializer,
+    ratio_serializer: RatioSerializer<u64, U64VarIntSerializer>,
     time_serializer: MassaTimeSerializer,
 }
 
@@ -363,7 +363,7 @@ impl AdvanceSerializer {
     /// Creates a new `Serializer`
     pub fn new() -> Self {
         Self {
-            amount_serializer: AmountSerializer::new(),
+            ratio_serializer: RatioSerializer::new(U64VarIntSerializer::new()),
             time_serializer: MassaTimeSerializer::new(),
         }
     }
@@ -383,7 +383,7 @@ impl Serializer<Advance> for AdvanceSerializer {
         // timeout
         self.time_serializer.serialize(&value.timeout, buffer)?;
         // threshold
-        self.amount_serializer.serialize(&value.threshold, buffer)?;
+        self.ratio_serializer.serialize(&value.threshold, buffer)?;
         // now
         self.time_serializer.serialize(&value.now, buffer)?;
         // activation delay
@@ -395,7 +395,7 @@ impl Serializer<Advance> for AdvanceSerializer {
 
 /// A Deserializer for `Advance`
 pub struct AdvanceDeserializer {
-    amount_deserializer: AmountDeserializer,
+    ratio_deserializer: RatioDeserializer<u64, U64VarIntDeserializer>,
     time_deserializer: MassaTimeDeserializer,
 }
 
@@ -403,10 +403,10 @@ impl AdvanceDeserializer {
     /// Creates a new `AdvanceDeserializer`
     pub fn new() -> Self {
         Self {
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
-            ),
+            ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
+                Included(0),
+                Included(u64::MAX),
+            )),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(0)),
                 Included(MassaTime::from_millis(u64::MAX)),
@@ -436,7 +436,7 @@ impl Deserializer<Advance> for AdvanceDeserializer {
                     self.time_deserializer.deserialize(input)
                 }),
                 context("Failed threshold deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
+                    self.ratio_deserializer.deserialize(input)
                 }),
                 context("Failed now deserialization", |input| {
                     self.time_deserializer.deserialize(input)
