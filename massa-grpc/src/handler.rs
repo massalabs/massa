@@ -3,9 +3,9 @@
 use massa_proto_rs::massa::api::v1 as grpc_api;
 
 use crate::api::{
-    get_blocks, get_blocks_by_slots, get_datastore_entries, get_largest_stakers, get_mip_status,
+    get_blocks, get_blocks_by_slots, get_datastore_entries, get_mip_status,
     get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
-    get_transactions_throughput, get_version,
+    get_stakers, get_transactions_throughput, get_version,
 };
 use crate::server::MassaGrpc;
 use crate::stream::{
@@ -48,11 +48,11 @@ impl grpc_api::massa_service_server::MassaService for MassaGrpc {
     }
 
     /// handler for get largest stakers
-    async fn get_largest_stakers(
+    async fn get_stakers(
         &self,
-        request: tonic::Request<grpc_api::GetLargestStakersRequest>,
-    ) -> Result<tonic::Response<grpc_api::GetLargestStakersResponse>, tonic::Status> {
-        Ok(tonic::Response::new(get_largest_stakers(self, request)?))
+        request: tonic::Request<grpc_api::GetStakersRequest>,
+    ) -> Result<tonic::Response<grpc_api::GetStakersResponse>, tonic::Status> {
+        Ok(tonic::Response::new(get_stakers(self, request)?))
     }
 
     /// handler for get mip status (versioning)
