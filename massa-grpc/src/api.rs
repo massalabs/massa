@@ -199,16 +199,23 @@ pub(crate) fn get_datastore_entries(
     let inner_req = request.into_inner();
     let id = inner_req.id;
 
-    let filters = inner_req
-        .queries
+    let filters: Vec<(String, Vec<u8>)> = inner_req
+        .filters
         .into_iter()
-        .map(|query| match query.filter {
-            Some(filter) => Address::from_str(filter.address.as_str())
-                .map(|address| (address, filter.key))
-                .map_err(|e| e.into()),
-            None => Err(GrpcError::InvalidArgument("filter is missing".to_string())),
+        .filter_map(|filter| {
+            filter.filter.and_then(|filter| match filter {
+                grpc_api::get_datastore_entry_filter::Filter::AddressKey(addrs) => {
+                    Some((addrs.address, addrs.key))
+                }
+                _ => None,
+            })
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect();
+
+    // return error if entry are empty
+    if entry.is_empty() {
+        return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
+    }
 
     let entries = grpc
         .execution_controller
@@ -220,7 +227,9 @@ pub(crate) fn get_datastore_entries(
         })
         .collect();
 
-    Ok(grpc_api::GetDatastoreEntriesResponse { id, entries })
+    Ok(grpc_api::GetDatastoreEntriesResponse {
+        datastore_entries: entries,
+    })
 }
 
 /// Get the largest stakers
