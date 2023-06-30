@@ -5,6 +5,7 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 use crate::public::{
     get_blocks, get_datastore_entries, get_mip_status, get_next_block_best_parents, get_operations,
     get_sc_execution_events, get_selector_draws, get_stakers, get_transactions_throughput,
+    query_state,
 };
 use crate::server::MassaGrpc;
 use crate::stream::{
@@ -113,8 +114,7 @@ impl grpc_api::public_service_server::PublicService for MassaGrpc {
         &self,
         request: tonic::Request<grpc_api::QueryStateRequest>,
     ) -> Result<tonic::Response<grpc_api::QueryStateResponse>, tonic::Status> {
-        // Ok(tonic::Response::new(query_state(self, request)?))
-        unimplemented!("query_state not implemented yet")
+        Ok(tonic::Response::new(query_state(self, request)?))
     }
 
     // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
