@@ -3230,7 +3230,6 @@ dependencies = [
  "bs58",
  "displaydoc",
  "ed25519-dalek",
- "massa-proto-rs",
  "massa_hash",
  "massa_serialization",
  "nom",

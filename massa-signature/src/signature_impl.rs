@@ -5,7 +5,6 @@ use crate::error::MassaSignatureError;
 use ed25519_dalek::{Signer, Verifier};
 
 use massa_hash::Hash;
-use massa_proto_rs::massa::model::v1::{NativePubKey, NativeSig};
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -648,22 +647,6 @@ impl PublicKey {
             ))),
         }
     }
-
-    /// Create a massa Public Key from a proto NativePubKey
-    pub fn from_native_public_key(pubkey: &NativePubKey) -> Result<PublicKey, MassaSignatureError> {
-        match pubkey.version {
-            <PublicKey!["0"]>::VERSION => Ok(PublicKeyVariant!["0"](
-                <PublicKey!["0"]>::from_bytes(&pubkey.content)?,
-            )),
-            <PublicKey!["1"]>::VERSION => Ok(PublicKeyVariant!["1"](
-                <PublicKey!["1"]>::from_bytes(&pubkey.content)?,
-            )),
-            _ => Err(MassaSignatureError::InvalidVersionError(format!(
-                "Unknown PublicKey version: {}",
-                pubkey.version
-            ))),
-        }
-    }
 }
 
 #[transition::impl_version(versions("0", "1"))]
@@ -1034,22 +1017,6 @@ impl Signature {
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown signature version: {}",
                 version
-            ))),
-        }
-    }
-
-    /// Create a massa Signature from a proto NativeSig
-    pub fn from_native_sig(sig: &NativeSig) -> Result<Self, MassaSignatureError> {
-        match sig.version {
-            <Signature!["0"]>::VERSION => Ok(SignatureVariant!["0"](
-                <Signature!["0"]>::from_bytes(&sig.content)?,
-            )),
-            <Signature!["1"]>::VERSION => Ok(SignatureVariant!["1"](
-                <Signature!["1"]>::from_bytes(&sig.content)?,
-            )),
-            _ => Err(MassaSignatureError::InvalidVersionError(format!(
-                "Unknown signature version: {}",
-                sig.version
             ))),
         }
     }
