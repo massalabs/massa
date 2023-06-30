@@ -277,15 +277,17 @@ pub(crate) fn start_connectivity_thread(
                                     //TODO: Adapt for multiple listeners
                                     let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
                                     let canonical_ip = addr.ip().to_canonical();
-                                    if !canonical_ip.is_global()  {
-                                        continue;
-                                    }
+                                    let mut allowed_local_ips = false;
                                     // Check if the peer is in a category and we didn't reached out target yet
                                     let mut category_found = None;
-                                    for (name, (ips, _)) in &peer_categories {
+                                    for (name, (ips, cat)) in &peer_categories {
                                         if ips.contains(&canonical_ip) {
                                             category_found = Some(name);
+                                            allowed_local_ips = cat.allow_local_peers;
                                         }
+                                    }
+                                    if !canonical_ip.is_global() && !allowed_local_ips {
+                                        continue;
                                     }
 
                                     if let Some(category) = category_found {
