@@ -3,9 +3,9 @@
 use massa_proto_rs::massa::api::v1 as grpc_api;
 
 use crate::api::{
-    get_blocks, get_blocks_by_slots, get_datastore_entries, get_mip_status,
-    get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
-    get_stakers, get_transactions_throughput, get_version,
+    get_blocks, get_datastore_entries, get_mip_status, get_next_block_best_parents, get_operations,
+    get_sc_execution_events, get_selector_draws, get_stakers, get_transactions_throughput,
+    get_version,
 };
 use crate::server::MassaGrpc;
 use crate::stream::{
@@ -29,14 +29,6 @@ impl grpc_api::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<grpc_api::GetBlocksRequest>,
     ) -> Result<tonic::Response<grpc_api::GetBlocksResponse>, tonic::Status> {
         Ok(tonic::Response::new(get_blocks(self, request)?))
-    }
-
-    /// handler for get blocks by slots
-    async fn get_blocks_by_slots(
-        &self,
-        request: tonic::Request<grpc_api::GetBlocksBySlotsRequest>,
-    ) -> Result<tonic::Response<grpc_api::GetBlocksBySlotsResponse>, tonic::Status> {
-        Ok(tonic::Response::new(get_blocks_by_slots(self, request)?))
     }
 
     /// handler for get multiple datastore entries

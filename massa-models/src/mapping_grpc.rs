@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 use crate::address::Address;
-use crate::block::{Block, FilledBlock, SecureShareBlock};
+use crate::block::{Block, BlockGraphStatus, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
 use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
@@ -25,6 +25,22 @@ impl From<Block> for grpc_model::Block {
                 .into_iter()
                 .map(|operation| operation.to_string())
                 .collect(),
+        }
+    }
+}
+
+impl From<BlockGraphStatus> for i32 {
+    fn from(value: BlockGraphStatus) -> Self {
+        match value {
+            BlockGraphStatus::ActiveInBlockclique => {
+                grpc_model::BlockStatus::NonFinalBlockclique.into()
+            }
+            BlockGraphStatus::ActiveInAlternativeCliques => {
+                grpc_model::BlockStatus::NonFinalAlternateClique.into()
+            }
+            BlockGraphStatus::Final => grpc_model::BlockStatus::Final.into(),
+            BlockGraphStatus::Discarded => grpc_model::BlockStatus::Discarded.into(),
+            _ => grpc_model::BlockStatus::Unspecified.into(),
         }
     }
 }
