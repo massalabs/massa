@@ -626,19 +626,6 @@
 <a href="#626" id="626">626</a>
 <a href="#627" id="627">627</a>
 <a href="#628" id="628">628</a>
-<a href="#629" id="629">629</a>
-<a href="#630" id="630">630</a>
-<a href="#631" id="631">631</a>
-<a href="#632" id="632">632</a>
-<a href="#633" id="633">633</a>
-<a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
-<a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -809,43 +796,36 @@
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    </span><span class="kw">pub fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
-        <span class="comment">// check if address exists, return None if it does not
-        </span>{
-            <span class="kw">let </span>key = LedgerSubEntry::Balance.derive_key(addr);
-            <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
-            <span class="self">self</span>.key_serializer_db
-                .serialize(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;mut </span>serialized_key)
-                .expect(KEY_SER_ERROR);
-            db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)<span class="question-mark">?</span>;
-        }
+        <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
 
-        <span class="comment">// collect keys starting with prefix
-        </span><span class="kw">let </span>start_prefix = datastore_prefix_from_address(addr, prefix);
-        <span class="kw">let </span>end_prefix = end_prefix(<span class="kw-2">&amp;</span>start_prefix);
-        <span class="prelude-val">Some</span>(
-            db.iterator_cf(
+        <span class="kw">let </span><span class="kw-2">mut </span>iter = db
+            .iterator_cf(
                 STATE_CF,
-                MassaIteratorMode::From(<span class="kw-2">&amp;</span>start_prefix, MassaDirection::Forward),
+                MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, <span class="kw">_</span>)| <span class="kw">match </span><span class="kw-2">&amp;</span>end_prefix {
-                <span class="prelude-val">Some</span>(end) =&gt; key &lt; end,
-                <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>,
-            })
-            .filter_map(|(key, <span class="kw">_</span>)| {
+            .take_while(|(key, <span class="kw">_</span>)| key &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
+            .map(|(key, <span class="kw">_</span>)| {
                 <span class="kw">let </span>(_rest, key) = <span class="self">self
                     </span>.key_deserializer_db
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
-                    .expect(<span class="string">&quot;could not deserialize datastore key from state db&quot;</span>);
+                    .unwrap();
                 <span class="kw">match </span>key.key_type {
-                    KeyType::DATASTORE(datastore_vec) =&gt; <span class="prelude-val">Some</span>(datastore_vec),
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                    KeyType::DATASTORE(datastore_vec) =&gt; datastore_vec,
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="macro">vec!</span>[]
+                    }
                 }
             })
-            .collect(),
-        )
+            .peekable();
+
+        <span class="comment">// Return None if empty
+        // TODO: function should return None if complete entry does not exist
+        // and Some([]) if it does but datastore is empty
+        </span>iter.peek()<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(iter.collect())
     }
 
     <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;</span><span class="self">self</span>) {
@@ -1047,7 +1027,7 @@
         db.delete_key(batch, serialized_key);
 
         <span class="comment">// datastore
-        </span><span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>[]);
+        </span><span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
 
         <span class="kw">for </span>(serialized_key, <span class="kw">_</span>) <span class="kw">in </span>db
             .iterator_cf(
@@ -1111,7 +1091,7 @@
     ) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
-        <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>[]);
+        <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr);
 
         db.iterator_cf(
             STATE_CF,
@@ -1137,19 +1117,13 @@
 /// Since key length is not limited, for some case we return `None` because there is
 /// no bounded limit (every keys in the series `[]`, `[255]`, `[255, 255]` ...).
 </span><span class="kw">fn </span>end_prefix(prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
-    <span class="comment">// compute end of prefix range
-    </span><span class="kw">let </span>n_keep = prefix
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(i, v)| <span class="kw">if </span>v &lt; <span class="kw-2">&amp;</span>u8::MAX { <span class="prelude-val">Some</span>(i + <span class="number">1</span>) } <span class="kw">else </span>{ <span class="prelude-val">None </span>})
-        .unwrap_or(<span class="number">0</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>prefix_end = prefix[..n_keep].to_vec();
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = prefix_end.last_mut() {
-        <span class="kw-2">*</span>v += <span class="number">1</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>end_range = prefix.to_vec();
+    <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="number">0xff</span>) = end_range.last() {
+        end_range.pop();
     }
-    <span class="kw">if </span>!prefix_end.is_empty() {
-        <span class="prelude-val">Some</span>(prefix_end)
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(byte) = end_range.last_mut() {
+        <span class="kw-2">*</span>byte += <span class="number">1</span>;
+        <span class="prelude-val">Some</span>(end_range)
     } <span class="kw">else </span>{
         <span class="prelude-val">None
     </span>}

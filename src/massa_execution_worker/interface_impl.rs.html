@@ -841,31 +841,6 @@
 <a href="#841" id="841">841</a>
 <a href="#842" id="842">842</a>
 <a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -1156,8 +1131,12 @@
     </span><span class="kw">fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>addr, prefix_opt.unwrap_or_default()) {
-            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
+        <span class="kw">match </span>(context.get_keys(<span class="kw-2">&amp;</span>addr), prefix_opt) {
+            (<span class="prelude-val">Some</span>(value), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Ok</span>(value),
+            (<span class="prelude-val">Some</span>(<span class="kw-2">mut </span>value), <span class="prelude-val">Some</span>(prefix)) =&gt; {
+                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
+                <span class="prelude-val">Ok</span>(value)
+            }
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
         }
     }
@@ -1169,8 +1148,12 @@
     </span><span class="kw">fn </span>get_keys_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">match </span>context.get_keys(addr, prefix_opt.unwrap_or_default()) {
-            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
+        <span class="kw">match </span>(context.get_keys(addr), prefix_opt) {
+            (<span class="prelude-val">Some</span>(value), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Ok</span>(value),
+            (<span class="prelude-val">Some</span>(<span class="kw-2">mut </span>value), <span class="prelude-val">Some</span>(prefix)) =&gt; {
+                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
+                <span class="prelude-val">Ok</span>(value)
+            }
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
         }
     }
@@ -1257,7 +1240,7 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_data_entry(<span class="kw-2">&amp;</span>addr, key) {
-            <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
+            <span class="prelude-val">Some</span>(data) =&gt; <span class="prelude-val">Ok</span>(data),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
         }
     }
@@ -1281,6 +1264,7 @@
     /// Fails if the address or entry does not exist.
     ///
     /// # Arguments
+    /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
     </span><span class="kw">fn </span>raw_append_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1361,47 +1345,13 @@
     /// # Returns
     /// A list of keys (keys are byte arrays)
     </span><span class="kw">fn </span>get_op_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="comment">// TODO return BTreeSet&lt;Vec&lt;u8&gt;&gt;
-
-        // TODO add prefix
-        </span><span class="kw">let </span>prefix: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>[];
-
-        <span class="comment">// compute prefix range
-        </span><span class="kw">let </span>prefix_range = <span class="kw">if </span>!prefix.is_empty() {
-            <span class="comment">// compute end of prefix range
-            </span><span class="kw">let </span>n_keep = prefix
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(i, v)| <span class="kw">if </span>v &lt; <span class="kw-2">&amp;</span><span class="number">255 </span>{ <span class="prelude-val">Some</span>(i + <span class="number">1</span>) } <span class="kw">else </span>{ <span class="prelude-val">None </span>})
-                .unwrap_or(<span class="number">0</span>);
-            <span class="kw">let </span><span class="kw-2">mut </span>prefix_end = prefix[..n_keep].to_vec();
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = prefix_end.last_mut() {
-                <span class="kw-2">*</span>v += <span class="number">1</span>;
-            }
-            (
-                std::ops::Bound::Included(prefix.to_vec()),
-                <span class="kw">if </span>!prefix_end.is_empty() {
-                    std::ops::Bound::Excluded(prefix_end)
-                } <span class="kw">else </span>{
-                    std::ops::Bound::Unbounded
-                },
-            )
-        } <span class="kw">else </span>{
-            (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
-        };
-        <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
-
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
             .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let </span>keys = datastore
-            .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
-            .map(|(k, _v)| k.clone())
-            .collect();
+        <span class="kw">let </span>keys: Vec&lt;Vec&lt;u8&gt;&gt; = datastore.keys().cloned().collect();
         <span class="prelude-val">Ok</span>(keys)
     }
 

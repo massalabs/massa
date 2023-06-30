@@ -262,7 +262,6 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::LEDGER_PREFIX;
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
@@ -404,18 +403,17 @@
     }
 }
 
-<span class="doccomment">/// Gives the general prefix of the datastore of an address while respecting a provided key prefix
-</span><span class="kw">pub fn </span>datastore_prefix_from_address(address: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>res_prefix = LEDGER_PREFIX.as_bytes().to_vec();
+<span class="kw">pub fn </span>datastore_prefix_from_address(address: <span class="kw-2">&amp;</span>Address) -&gt; Vec&lt;u8&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>prefix = Vec::new();
+    prefix.extend(LEDGER_PREFIX.as_bytes());
     U64VarIntSerializer::new()
-        .serialize(<span class="kw-2">&amp;</span>KEY_VERSION, <span class="kw-2">&amp;mut </span>res_prefix)
+        .serialize(<span class="kw-2">&amp;</span>KEY_VERSION, <span class="kw-2">&amp;mut </span>prefix)
         .unwrap();
     AddressSerializer::new()
-        .serialize(address, <span class="kw-2">&amp;mut </span>res_prefix)
+        .serialize(address, <span class="kw-2">&amp;mut </span>prefix)
         .unwrap();
-    res_prefix.push(DATASTORE_IDENT);
-    res_prefix.extend(prefix);
-    res_prefix
+    prefix.extend([DATASTORE_IDENT]);
+    prefix
 }
 
 <span class="doccomment">/// Basic key serializer

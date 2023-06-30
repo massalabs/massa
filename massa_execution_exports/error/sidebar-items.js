@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_ExecutionError","_DERIVE_Display_FOR_ExecutionQueryError"],"enum":["ExecutionError","ExecutionQueryError"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_ExecutionError"],"enum":["ExecutionError"]};
