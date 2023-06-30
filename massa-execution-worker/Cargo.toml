@@ -1,6 +1,6 @@
 [package]
 name = "massa_execution_worker"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -80,6 +80,7 @@ testing = [
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
+    "massa_metrics/testing",
     "massa_db_worker",
     "massa_metrics/testing"
 ]

@@ -264,7 +264,7 @@ impl Tester {
             loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
-                        receiver.inc_metrics();
+                        receiver.update_metrics();
                         match res {
                             Ok(listener) => {
                                 if listener.1.is_empty() {

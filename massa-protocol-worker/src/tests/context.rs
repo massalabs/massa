@@ -124,14 +124,19 @@ pub fn start_protocol_controller_with_mock_network(
         message_handlers,
         HashMap::default(),
         PeerCategoryInfo {
-            max_in_connections_pre_handshake: 10,
-            max_in_connections_post_handshake: 10,
+            max_in_connections: 10,
             target_out_connections: 10,
             max_in_connections_per_ip: 10,
         },
         config,
         mip_store,
-        MassaMetrics::new(false, 32),
+        MassaMetrics::new(
+            false,
+            "0.0.0.0:9898".parse().unwrap(),
+            32,
+            std::time::Duration::from_secs(5),
+        )
+        .0,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

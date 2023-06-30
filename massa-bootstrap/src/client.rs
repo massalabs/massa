@@ -433,6 +433,7 @@ pub fn get_state(
 
             // create the initial cycle of PoS cycle_history
             let mut batch = DBBatch::new();
+            let mut db_versioning_batch = DBBatch::new();
             final_state_guard.pos_state.create_initial_cycle(&mut batch);
 
             let slot = Slot::new(
@@ -440,11 +441,16 @@ pub fn get_state(
                 bootstrap_config.thread_count.saturating_sub(1),
             );
 
-            // TODO: should receive ver batch here?
+            // Need to write MIP store to Db if we want to bootstrap it to others
+            final_state_guard
+                .mip_store
+                .update_batches(&mut batch, &mut db_versioning_batch, None)
+                .map_err(|e| BootstrapError::GeneralError(e.to_string()))?;
+
             final_state_guard
                 .db
                 .write()
-                .write_batch(batch, Default::default(), Some(slot));
+                .write_batch(batch, db_versioning_batch, Some(slot));
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }

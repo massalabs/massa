@@ -16,11 +16,13 @@ use massa_db_exports::{
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
-use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
+
+#[cfg(feature = "bootstrap_server")]
+use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -65,7 +67,7 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
-        mut mip_store: MipStore,
+        mip_store: MipStore,
         reset_final_state: bool,
     ) -> Result<Self, FinalStateError> {
         let db_slot = db
@@ -100,11 +102,6 @@ impl FinalState {
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
-        // init MIP store by reading from the db
-        mip_store
-            .extend_from_db(db.clone())
-            .map_err(FinalStateError::from)?;
-
         let mut final_state = FinalState {
             ledger,
             async_pool,
@@ -129,7 +126,7 @@ impl FinalState {
         info!(
             "final_state hash at slot {}: {}",
             slot,
-            final_state.db.read().get_db_hash()
+            final_state.db.read().get_xof_db_hash()
         );
 
         // create the final state
@@ -221,7 +218,7 @@ impl FinalState {
         info!(
             "final_state hash at slot {}: {}",
             recovered_slot,
-            final_state.db.read().get_db_hash()
+            final_state.db.read().get_xof_db_hash()
         );
 
         // Then, interpolate the downtime, to attach at end_slot;
@@ -252,6 +249,11 @@ impl FinalState {
         );
         let end_slot_cycle = end_slot.get_cycle(self.config.periods_per_cycle);
 
+        debug!(
+            "Interpolating downtime between slots {} and {}",
+            current_slot, end_slot
+        );
+
         if current_slot_cycle == end_slot_cycle {
             // In that case, we just complete the gap in the same cycle
             self.interpolate_single_cycle(current_slot, end_slot)?;
@@ -266,7 +268,7 @@ impl FinalState {
         }
 
         // Recompute the hash with the updated data and feed it to POS_state.
-        let final_state_hash = self.db.read().get_db_hash();
+        let final_state_hash = self.db.read().get_xof_db_hash();
 
         info!(
             "final_state hash at slot {}: {}",
@@ -288,18 +290,22 @@ impl FinalState {
         current_slot: Slot,
         end_slot: Slot,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle =
-            self.pos_state
-                .cycle_history_cache
-                .pop_back()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    "Invalid cycle_history",
-                )))?;
+        let latest_snapshot_cycle = self.pos_state.cycle_history_cache.back().cloned().ok_or(
+            FinalStateError::SnapshotError(String::from(
+                "Impossible to interpolate the downtime: no cycle in the given snapshot",
+            )),
+        )?;
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
 
         let mut batch = DBBatch::new();
 
+        self.pos_state
+            .cycle_history_cache
+            .pop_back()
+            .ok_or(FinalStateError::SnapshotError(String::from(
+                "Impossible to interpolate the downtime: no cycle in the given snapshot",
+            )))?;
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
@@ -337,18 +343,22 @@ impl FinalState {
         current_slot_cycle: u64,
         end_slot_cycle: u64,
     ) -> Result<(), FinalStateError> {
-        let latest_snapshot_cycle =
-            self.pos_state
-                .cycle_history_cache
-                .pop_back()
-                .ok_or(FinalStateError::SnapshotError(String::from(
-                    "Invalid cycle_history",
-                )))?;
+        let latest_snapshot_cycle = self.pos_state.cycle_history_cache.back().cloned().ok_or(
+            FinalStateError::SnapshotError(String::from(
+                "Impossible to interpolate the downtime: no cycle in the given snapshot",
+            )),
+        )?;
 
         let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
 
         let mut batch = DBBatch::new();
 
+        self.pos_state
+            .cycle_history_cache
+            .pop_back()
+            .ok_or(FinalStateError::SnapshotError(String::from(
+                "Impossible to interpolate the downtime: no cycle in the given snapshot",
+            )))?;
         self.pos_state
             .delete_cycle_info(latest_snapshot_cycle.0, &mut batch);
 
@@ -484,7 +494,7 @@ impl FinalState {
         &mut self,
         cycle: u64,
     ) -> Result<(), FinalStateError> {
-        let final_state_hash = self.db.read().get_db_hash();
+        let final_state_hash = self.db.read().get_xof_db_hash();
 
         self.pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
@@ -568,12 +578,13 @@ impl FinalState {
             .write()
             .write_batch(db_batch, Default::default(), Some(slot));
 
-        let final_state_hash = self.db.read().get_db_hash();
+        let final_state_hash = self.db.read().get_xof_db_hash();
 
         // compute the final state hash
         info!("final_state hash at slot {}: {}", slot, final_state_hash);
 
         // Backup DB if needed
+        #[cfg(feature = "bootstrap_server")]
         if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {
             let state_slot = self.db.read().get_change_id();
             match state_slot {

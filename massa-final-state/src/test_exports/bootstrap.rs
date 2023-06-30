@@ -113,8 +113,8 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
 /// asserts that two `FinalState` hashes are equal
 pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
     assert_eq!(
-        v1.db.read().get_db_hash(),
-        v2.db.read().get_db_hash(),
+        v1.db.read().get_xof_db_hash(),
+        v2.db.read().get_xof_db_hash(),
         "rocks_db hash mismatch"
     );
 }

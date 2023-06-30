@@ -4,7 +4,6 @@
 .idea
 .vscode
 .fleet
-*.zst*
 *.swp*
 **/Cargo.lock
 **/target

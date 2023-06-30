@@ -210,15 +210,21 @@
     # Nb max in connections that we accept
     max_in_connections = 100
     # Peer default category limits
-    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections_pre_handshake = 70, max_in_connections_post_handshake = 15}
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 70}
     # Peer categories limits
     [protocol.peers_categories]
-    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections_pre_handshake = 8, max_in_connections_post_handshake = 1}
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 8}
 
 [network]
 
 [metrics]
+    # enable prometheus metrics
     enabled = true
+    # port on which to listen for prometheus metrics
+    bind = "[::]:31248"
+    # interval at which to update metrics
+    tick_delay = 5000
+
 
 [bootstrap]
     # list of bootstrap (ip, node id)
@@ -291,6 +297,7 @@
     # operations channel capacity
     broadcast_operations_channel_capacity = 5000
 
+
 [selector]
     # path to the initial roll distribution
     initial_rolls_path = "base_config/initial_rolls.json"
@@ -300,3 +307,5 @@
     initial_delay = 100
     # path to your staking wallet
     staking_wallet_path = "config/staking_wallet.dat"
+    # stop or not the production in case we are not connected to anyone
+    stop_production_when_zero_connections = true
