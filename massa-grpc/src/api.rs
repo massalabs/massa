@@ -30,32 +30,24 @@ pub(crate) fn get_blocks(
 ) -> Result<grpc_api::GetBlocksResponse, GrpcError> {
     let inner_req = request.into_inner();
 
-    let mut blocks_ids: Option<Vec<BlockId>> = None;
+    let mut blocks_ids: Vec<BlockId> = Vec::new();
+    let mut addresses: Vec<String> = Vec::new();
     let (slot_min, slot_max) = (None, None);
-    let mut addresses: Option<Vec<String>> = None;
 
     // Get params filter from the request.
     for query in inner_req.filters.into_iter() {
-        query
-            .filter
-            .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
-            .and_then(|filter| match filter {
+        if let Some(filter) = query.filter {
+            match filter {
                 grpc_api::get_blocks_filter::Filter::Addresses(addresses) => {
                     for addr in addresses.addresses {
-                        if addresses.is_none() {
-                            addresses = Some(Vec::new());
-                        }
                         addresses.push(addr);
                     }
                 }
                 grpc_api::get_blocks_filter::Filter::BlockIds(ids) => {
-                    for id in ids {
+                    for id in ids.block_ids {
                         if blocks_ids.len()
                             < grpc.grpc_config.max_block_ids_per_request as usize + 1
                         {
-                            if blocks_ids.is_none() {
-                                blocks_ids = Some(Vec::new());
-                            }
                             blocks_ids.push(BlockId::from_str(&id).map_err(|_| {
                                 GrpcError::InvalidArgument(format!("invalid block id: {}", id))
                             }));
@@ -66,13 +58,19 @@ pub(crate) fn get_blocks(
                     slot_max = slot_range.start_slot;
                     slot_min = slot_range.end_slot;
                 }
-            })?;
+            }
+        }
+    }
+
+    // if no filter provided return an error
+    if blocks_ids.is_empty() && addresses.is_none() && slot_min.is_none() && slot_max.is_none() {
+        return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
     }
 
     let storage = grpc.storage.clone_without_refs();
     let read_blocks = storage.read_blocks();
 
-    let blocks = if let Some(blocks_ids) = blocks_ids {
+    let blocks = if !blocks_ids.is_empty() {
         if blocks_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
             return Err(GrpcError::InvalidArgument(format!(
                 "too many block ids received. Only a maximum of {} block ids are accepted per request",
@@ -113,8 +111,8 @@ pub(crate) fn get_blocks(
                 Some(content)
             })
             .collect::<Vec<Block>>()
-    } else if let Some(addrs) = addresses {
-        addrs
+    } else if !addresses.is_empty() {
+        addresses
             .into_iter()
             .filter_map(|addr| {
                 if let Some(hash_set) =
