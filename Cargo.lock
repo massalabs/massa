@@ -2819,6 +2819,7 @@ dependencies = [
  "criterion",
  "hex-literal",
  "libsecp256k1",
+ "massa-proto-rs",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_channel",

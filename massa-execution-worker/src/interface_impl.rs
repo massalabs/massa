@@ -15,8 +15,10 @@ use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
+use massa_proto_rs::massa::model::v1::NativeAmount;
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
+
 use parking_lot::Mutex;
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -140,6 +142,18 @@ impl InterfaceClone for InterfaceImpl {
     }
 }
 
+/// Helper function to get the address from the option given as argument to some ABIs
+/// Fallback to the current context address if not provided.
+fn get_address_from_opt_or_context(
+    context: &ExecutionContext,
+    option_address_string: Option<String>,
+) -> Result<Address> {
+    match option_address_string {
+        Some(address_string) => Address::from_str(&address_string).map_err(|e| e.into()),
+        None => context.get_current_address().map_err(|e| e.into()),
+    }
+}
+
 /// Implementation of the Interface trait providing functions for massa-sc-runtime to call
 /// in order to interact with the execution context during bytecode execution.
 /// See the massa-sc-runtime crate for a functional description of the trait and its methods.
@@ -244,6 +258,8 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
@@ -258,12 +274,41 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     fn get_balance_for(&self, address: &str) -> Result<u64> {
         let address = massa_models::address::Address::from_str(address)?;
         Ok(context_guard!(self)
             .get_balance(&address)
             .unwrap_or_default()
             .to_raw())
+    }
+
+    /// Gets the balance of arbitrary address passed as argument, or the balance of the current address if no argument is passed.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address for which to get the balance
+    ///
+    /// # Returns
+    /// The raw representation (no decimal factor) of the balance of the address,
+    /// or zero if the address is not found in the ledger.
+    fn get_balance_wasmv1(
+        &self,
+        address: Option<String>,
+    ) -> Result<massa_proto_rs::massa::model::v1::NativeAmount> {
+        let context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        let amount = context.get_balance(&address).unwrap_or_default();
+        let (mantissa, scale) = self
+            .amount_to_mantissa_scale(amount.to_raw())
+            .unwrap_or_default();
+        let native_amount = NativeAmount {
+            mandatory_mantissa: Some(mantissa),
+            mandatory_scale: Some(scale),
+        };
+
+        Ok(native_amount)
     }
 
     /// Creates a new ledger entry with the initial bytecode given as argument.
@@ -285,6 +330,8 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
@@ -302,6 +349,8 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
@@ -315,75 +364,22 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    /// Gets a datastore value by key for a given address.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to retrieve
+    /// Get the datastore keys (aka entries) for a given address, or the current address if none is provided
     ///
     /// # Returns
-    /// The datastore value matching the provided key, if found, otherwise an error.
-    fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
-        let addr = &massa_models::address::Address::from_str(address)?;
+    /// A list of keys (keys are byte arrays)
+    fn get_keys_wasmv1(&self, prefix: &[u8], address: Option<String>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
-        match context.get_data_entry(addr, key) {
-            Some(value) => Ok(value),
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        match (context.get_keys(&address), prefix) {
+            (Some(mut value), prefix) if !prefix.is_empty() => {
+                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
+                Ok(value)
+            }
+            (Some(value), _) => Ok(value),
             _ => bail!("data entry not found"),
         }
-    }
-
-    /// Sets a datastore entry for a given address.
-    /// Fails if the address does not exist.
-    /// Creates the entry if it does not exist.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to set
-    /// * value: new value to set
-    fn raw_set_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
-        let addr = massa_models::address::Address::from_str(address)?;
-        let mut context = context_guard!(self);
-        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
-        Ok(())
-    }
-
-    /// Appends a value to a datastore entry for a given address.
-    /// Fails if the entry or address does not exist.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry
-    /// * value: value to append
-    fn raw_append_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
-        let addr = massa_models::address::Address::from_str(address)?;
-        context_guard!(self).append_data_entry(&addr, key.to_vec(), value.to_vec())?;
-        Ok(())
-    }
-
-    /// Deletes a datastore entry by key for a given address.
-    /// Fails if the address or entry does not exist.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to delete
-    fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
-        let addr = &massa_models::address::Address::from_str(address)?;
-        context_guard!(self).delete_data_entry(addr, key)?;
-        Ok(())
-    }
-
-    /// Checks if a datastore entry exists for a given address.
-    ///
-    /// # Arguments
-    /// * address: string representation of the address
-    /// * key: string key of the datastore entry to retrieve
-    ///
-    /// # Returns
-    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
-        let addr = massa_models::address::Address::from_str(address)?;
-        let context = context_guard!(self);
-        Ok(context.has_data_entry(&addr, key))
     }
 
     /// Gets a datastore value by key for the current address (top of the call stack).
@@ -393,11 +389,50 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
     fn raw_get_data(&self, key: &[u8]) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         match context.get_data_entry(&addr, key) {
             Some(data) => Ok(data),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// Gets a datastore value by key for a given address.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// The datastore value matching the provided key, if found, otherwise an error.
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
+    fn raw_get_data_for(&self, address: &str, key: &[u8]) -> Result<Vec<u8>> {
+        let addr = &massa_models::address::Address::from_str(address)?;
+        let context = context_guard!(self);
+        match context.get_data_entry(addr, key) {
+            Some(value) => Ok(value),
+            _ => bail!("data entry not found"),
+        }
+    }
+
+    /// Gets a datastore value by key for a given address, or the current address if none is provided.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// The datastore value matching the provided key, if found, otherwise an error.
+    fn raw_get_data_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        match context.get_data_entry(&address, key) {
+            Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
     }
@@ -410,10 +445,37 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
     fn raw_set_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
         context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    /// Sets a datastore entry for a given address.
+    /// Fails if the address does not exist.
+    /// Creates the entry if it does not exist.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to set
+    /// * value: new value to set
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
+    fn raw_set_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
+        let addr = massa_models::address::Address::from_str(address)?;
+        let mut context = context_guard!(self);
+        context.set_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    fn raw_set_data_wasmv1(&self, key: &[u8], value: &[u8], address: Option<String>) -> Result<()> {
+        let mut context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        context.set_data_entry(&address, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -424,10 +486,47 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
     fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
         context.append_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    /// Appends a value to a datastore entry for a given address.
+    /// Fails if the entry or address does not exist.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry
+    /// * value: value to append
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
+    fn raw_append_data_for(&self, address: &str, key: &[u8], value: &[u8]) -> Result<()> {
+        let addr = massa_models::address::Address::from_str(address)?;
+        context_guard!(self).append_data_entry(&addr, key.to_vec(), value.to_vec())?;
+        Ok(())
+    }
+
+    /// Appends a value to a datastore entry for a given address, or the current address if none is provided
+    /// Fails if the entry or address does not exist.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry
+    /// * value: value to append
+    fn raw_append_data_wasmv1(
+        &self,
+        key: &[u8],
+        value: &[u8],
+        address: Option<String>,
+    ) -> Result<()> {
+        let mut context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        context.append_data_entry(&address, key.to_vec(), value.to_vec())?;
         Ok(())
     }
 
@@ -436,10 +535,40 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * key: string key of the datastore entry to delete
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
     fn raw_delete_data(&self, key: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
         context.delete_data_entry(&addr, key)?;
+        Ok(())
+    }
+
+    /// Deletes a datastore entry by key for a given address.
+    /// Fails if the address or entry does not exist.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to delete
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
+    fn raw_delete_data_for(&self, address: &str, key: &[u8]) -> Result<()> {
+        let addr = &massa_models::address::Address::from_str(address)?;
+        context_guard!(self).delete_data_entry(addr, key)?;
+        Ok(())
+    }
+
+    /// Deletes a datastore entry by key for a given address, or the current address if none is provided.
+    /// Fails if the address or entry does not exist.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to delete
+    fn raw_delete_data_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<()> {
+        let mut context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        context.delete_data_entry(&address, key)?;
         Ok(())
     }
 
@@ -450,10 +579,43 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
     fn has_data(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         Ok(context.has_data_entry(&addr, key))
+    }
+
+    /// Checks if a datastore entry exists for a given address.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
+    fn has_data_for(&self, address: &str, key: &[u8]) -> Result<bool> {
+        let addr = massa_models::address::Address::from_str(address)?;
+        let context = context_guard!(self);
+        Ok(context.has_data_entry(&addr, key))
+    }
+
+    /// Checks if a datastore entry exists for a given address, or the current address if none is provided.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
+    fn has_data_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<bool> {
+        let context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        Ok(context.has_data_entry(&address, key))
     }
 
     /// Check whether or not the caller has write access in the current context
@@ -477,6 +639,8 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns bytecode of the current address
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     fn raw_get_bytecode(&self) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
@@ -487,9 +651,22 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns bytecode of the target address
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     fn raw_get_bytecode_for(&self, address: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = Address::from_str(address)?;
+        match context.get_bytecode(&address) {
+            Some(bytecode) => Ok(bytecode.0),
+            _ => bail!("bytecode not found"),
+        }
+    }
+
+    /// Returns bytecode of the target address, or the current address if not provided
+    fn raw_get_bytecode_wasmv1(&self, address: Option<String>) -> Result<Vec<u8>> {
+        let context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
         match context.get_bytecode(&address) {
             Some(bytecode) => Ok(bytecode.0),
             _ => bail!("bytecode not found"),
@@ -501,6 +678,8 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `get_op_keys_wasmv1`
     fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
@@ -509,6 +688,48 @@ impl Interface for InterfaceImpl {
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
         let keys: Vec<Vec<u8>> = datastore.keys().cloned().collect();
+        Ok(keys)
+    }
+
+    /// Get the operation datastore keys (aka entries).
+    /// Note that the datastore is only accessible to the initial caller level.
+    ///
+    /// # Returns
+    /// A list of keys (keys are byte arrays) that match the given prefix
+    fn get_op_keys_wasmv1(&self, prefix: &[u8]) -> Result<Vec<Vec<u8>>> {
+        // compute prefix range
+        let prefix_range = if !prefix.is_empty() {
+            // compute end of prefix range
+            let mut prefix_end = prefix.to_vec();
+            while let Some(255) = prefix_end.last() {
+                prefix_end.pop();
+            }
+            if let Some(v) = prefix_end.last_mut() {
+                *v += 1;
+            }
+            (
+                std::ops::Bound::Included(prefix.to_vec()),
+                if prefix_end.is_empty() {
+                    std::ops::Bound::Unbounded
+                } else {
+                    std::ops::Bound::Excluded(prefix_end)
+                },
+            )
+        } else {
+            (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
+        };
+        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
+
+        let context = context_guard!(self);
+        let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
+        let datastore = stack
+            .operation_datastore
+            .as_ref()
+            .ok_or_else(|| anyhow!("No datastore in stack"))?;
+        let keys = datastore
+            .range::<Vec<u8>, _>(range_ref)
+            .map(|(k, _v)| k.clone())
+            .collect();
         Ok(keys)
     }
 
@@ -651,6 +872,8 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * `to_address`: string representation of the address to which the coins are sent
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = Address::from_str(to_address)?;
         let amount = Amount::from_raw(raw_amount);
@@ -666,6 +889,8 @@ impl Interface for InterfaceImpl {
     /// * `from_address`: string representation of the address that is sending the coins
     /// * `to_address`: string representation of the address to which the coins are sent
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
     fn transfer_coins_for(
         &self,
         from_address: &str,
@@ -676,6 +901,36 @@ impl Interface for InterfaceImpl {
         let to_address = Address::from_str(to_address)?;
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
+        context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        Ok(())
+    }
+
+    /// Transfer coins from a given address (or the current address if not specified) towards a target address.
+    ///
+    /// # Arguments
+    /// * `to_address`: string representation of the address to which the coins are sent
+    /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
+    /// * `from_address`: string representation of the address that is sending the coins
+    fn transfer_coins_wasmv1(
+        &self,
+        to_address: String,
+        raw_amount: NativeAmount,
+        from_address: Option<String>,
+    ) -> Result<()> {
+        let to_address = Address::from_str(&to_address)?;
+        let amount = Amount::from_mantissa_scale(
+            raw_amount
+                .mandatory_mantissa
+                .ok_or(anyhow!("No mantissa provided"))?,
+            raw_amount
+                .mandatory_scale
+                .ok_or(anyhow!("No scale provided"))?,
+        )?;
+        let mut context = context_guard!(self);
+        let from_address = match from_address {
+            Some(from_address) => Address::from_str(&from_address)?,
+            None => context.get_current_address()?,
+        };
         context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
@@ -838,18 +1093,30 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns the period of the current execution slot
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn get_current_period(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
         Ok(slot.period)
     }
 
     /// Returns the thread of the current execution slot
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn get_current_thread(&self) -> Result<u8> {
         let slot = context_guard!(self).slot;
         Ok(slot.thread)
     }
 
+    /// Returns the current execution slot
+    fn get_current_slot(&self) -> Result<massa_proto_rs::massa::model::v1::Slot> {
+        let slot_models = context_guard!(self).slot;
+        Ok(slot_models.into())
+    }
+
     /// Sets the bytecode of the current address
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
         let mut execution_context = context_guard!(self);
         let address = execution_context.get_current_address()?;
@@ -861,10 +1128,24 @@ impl Interface for InterfaceImpl {
 
     /// Sets the bytecode of an arbitrary address.
     /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
+    ///
+    /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
-        let address = massa_models::address::Address::from_str(address)?;
+        let address: Address = massa_models::address::Address::from_str(address)?;
         let mut execution_context = context_guard!(self);
         match execution_context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
+            Ok(()) => Ok(()),
+            Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
+        }
+    }
+
+    /// Sets the bytecode of an arbitrary address, or the current address if not provided.
+    /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
+    fn raw_set_bytecode_wasmv1(&self, bytecode: &[u8], address: Option<String>) -> Result<()> {
+        let mut context = context_guard!(self);
+        let address = get_address_from_opt_or_context(&context, address)?;
+
+        match context.set_bytecode(&address, Bytecode(bytecode.to_vec())) {
             Ok(()) => Ok(()),
             Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
         }
@@ -876,12 +1157,73 @@ impl Interface for InterfaceImpl {
     /// * bytes: byte array to hash
     ///
     /// # Returns
-    /// The vector of bytes representation of the resulting hash
+    /// The byte array of the resulting hash
     fn hash_sha256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         let mut hasher = Sha256::new();
         hasher.update(bytes);
         let hash = hasher.finalize().into();
         Ok(hash)
+    }
+
+    /// Hashes givens byte array with blake3
+    ///
+    /// # Arguments
+    /// * bytes: byte array to hash
+    ///
+    /// # Returns
+    /// The byte array of the resulting hash
+    fn blake3_hash(&self, bytes: &[u8]) -> Result<[u8; 32]> {
+        let hash = massa_hash::Hash::compute_from(bytes);
+        Ok(hash.into_bytes())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use massa_models::address::Address;
+    use massa_signature::KeyPair;
+
+    // Tests the get_keys_wasmv1 interface method used by the updated get_keys abi.
+    #[test]
+    fn test_get_keys() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None);
+
+        interface
+            .raw_set_data_wasmv1(b"k1", b"v1", Some(sender_addr.to_string()))
+            .unwrap();
+        interface
+            .raw_set_data_wasmv1(b"k2", b"v2", Some(sender_addr.to_string()))
+            .unwrap();
+        interface
+            .raw_set_data_wasmv1(b"l3", b"v3", Some(sender_addr.to_string()))
+            .unwrap();
+
+        let keys = interface.get_keys_wasmv1(b"k", None).unwrap();
+
+        assert_eq!(keys.len(), 2);
+        assert!(keys.contains(b"k1".as_slice()));
+        assert!(keys.contains(b"k2".as_slice()));
+    }
+
+    // Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.
+    #[test]
+    fn test_get_op_keys() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+
+        let mut operation_datastore = Datastore::new();
+        operation_datastore.insert(b"k1".to_vec(), b"v1".to_vec());
+        operation_datastore.insert(b"k2".to_vec(), b"v2".to_vec());
+        operation_datastore.insert(b"l3".to_vec(), b"v3".to_vec());
+
+        let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore));
+
+        let op_keys = interface.get_op_keys_wasmv1(b"k").unwrap();
+
+        assert_eq!(op_keys.len(), 2);
+        assert!(op_keys.contains(&b"k1".to_vec()));
+        assert!(op_keys.contains(&b"k2".to_vec()));
     }
 }
 
