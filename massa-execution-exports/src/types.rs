@@ -134,14 +134,16 @@ pub enum ExecutionQueryResponseItem {
 
 /// Execution status of an operation or denunciation
 pub enum ExecutionQueryExecutionStatus {
-    /// The operation or denunciation was executed recently with success
+    /// The operation or denunciation was found as successfully executed in the active history
     AlreadyExecutedWithSuccess,
-    /// The operation or denunciation was executed recently with failure
+    /// The operation or denunciation was found as executed with errors in the active history
     AlreadyExecutedWithFailure,
-    /// The operation or denunciation was not executed recently,
-    /// but might have been executed a longer time ago and forgotten.
-    /// Technically it means that the operation or denunciation
-    /// can still be executed unless it has expired.
+    /// No information about the operation or denunciation execution were found in the node.
+    /// However the node only keeps execution information until the operation or denunciation expires
+    /// in order to prevent it from being re-executed during its validity time.
+    /// ExecutableOrExpired means that the operation or denunciations was either never executed,
+    /// or was executed previously and ran out of its validify period.
+    /// In other terms, the operation or denunciation can still be executed unless it has expired.
     ExecutableOrExpired,
 }
 
