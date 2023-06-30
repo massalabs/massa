@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::ops::Deref;
+use std::ops::{Deref, Div, Mul};
 use std::sync::Arc;
 
 use machine::{machine, transitions};
@@ -220,7 +220,7 @@ impl Started {
             return ComponentState::failed();
         }
 
-        if input.threshold >= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
+        if input.threshold >= *VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
             debug!("(VERSIONING LOG) transition accepted, locking in");
             ComponentState::locked_in(input.now)
         } else {
@@ -459,7 +459,7 @@ impl MipState {
             }
             (Some((adv, st_id)), None) => {
                 // After the last state in history -> need to advance the state and return
-                let threshold_for_transition = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
+                let threshold_for_transition = *VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
                 // Note: Please update this if MipState transitions change as it might not hold true
                 if *st_id == ComponentStateTypeId::Started
                     && adv.threshold < threshold_for_transition
