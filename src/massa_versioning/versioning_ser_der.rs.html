@@ -1230,10 +1230,11 @@
     MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
+<span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 <span class="kw">use </span>massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 <span class="kw">use </span>massa_serialization::{
-    Deserializer, RatioDeserializer, RatioSerializer, SerializeError, Serializer,
-    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
@@ -1438,7 +1439,7 @@
 </span><span class="doccomment">/// Serializer for `ComponentState`
 </span><span class="kw">pub struct </span>ComponentStateSerializer {
     u32_serializer: U32VarIntSerializer,
-    ratio_serializer: RatioSerializer&lt;u64, U64VarIntSerializer&gt;,
+    amount_serializer: AmountSerializer,
     time_serializer: MassaTimeSerializer,
 }
 
@@ -1447,7 +1448,7 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
-            ratio_serializer: RatioSerializer::new(U64VarIntSerializer::new()),
+            amount_serializer: AmountSerializer::new(),
             time_serializer: MassaTimeSerializer::new(),
         }
     }
@@ -1469,8 +1470,7 @@
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state_id, buffer)<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
             ComponentState::Started(Started { threshold }) =&gt; {
-                <span class="comment">// self.amount_serializer.serialize(threshold, buffer)?;
-                </span><span class="self">self</span>.ratio_serializer.serialize(threshold, buffer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.amount_serializer.serialize(threshold, buffer)<span class="question-mark">?</span>;
             }
             ComponentState::LockedIn(LockedIn { at }) =&gt; {
                 <span class="self">self</span>.time_serializer.serialize(at, buffer)<span class="question-mark">?</span>;
@@ -1487,7 +1487,7 @@
 <span class="doccomment">/// A Deserializer for ComponentState`
 </span><span class="kw">pub struct </span>ComponentStateDeserializer {
     state_deserializer: U32VarIntDeserializer,
-    ratio_deserializer: RatioDeserializer&lt;u64, U64VarIntDeserializer&gt;,
+    amount_deserializer: AmountDeserializer,
     time_deserializer: MassaTimeDeserializer,
 }
 
@@ -1499,10 +1499,10 @@
                 Included(<span class="number">0</span>),
                 Excluded(COMPONENT_STATE_VARIANT_COUNT),
             ),
-            ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
-                Included(<span class="number">0</span>),
-                Included(u64::MAX),
-            )),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(<span class="number">0</span>)),
                 Included(MassaTime::from_millis(u64::MAX)),
@@ -1537,7 +1537,7 @@
             ComponentStateTypeId::Defined =&gt; (rem, ComponentState::defined()),
             ComponentStateTypeId::Started =&gt; {
                 <span class="kw">let </span>(rem2, threshold) = context(<span class="string">&quot;Failed threshold value der&quot;</span>, |input| {
-                    <span class="self">self</span>.ratio_deserializer.deserialize(input)
+                    <span class="self">self</span>.amount_deserializer.deserialize(input)
                 })
                 .parse(rem)<span class="question-mark">?</span>;
                 (rem2, ComponentState::started(threshold))
@@ -1570,7 +1570,7 @@
 
 </span><span class="doccomment">/// Serializer for `Advance`
 </span><span class="kw">pub struct </span>AdvanceSerializer {
-    ratio_serializer: RatioSerializer&lt;u64, U64VarIntSerializer&gt;,
+    amount_serializer: AmountSerializer,
     time_serializer: MassaTimeSerializer,
 }
 
@@ -1578,7 +1578,7 @@
     <span class="doccomment">/// Creates a new `Serializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            ratio_serializer: RatioSerializer::new(U64VarIntSerializer::new()),
+            amount_serializer: AmountSerializer::new(),
             time_serializer: MassaTimeSerializer::new(),
         }
     }
@@ -1598,7 +1598,7 @@
         <span class="comment">// timeout
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.timeout, buffer)<span class="question-mark">?</span>;
         <span class="comment">// threshold
-        </span><span class="self">self</span>.ratio_serializer.serialize(<span class="kw-2">&amp;</span>value.threshold, buffer)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.threshold, buffer)<span class="question-mark">?</span>;
         <span class="comment">// now
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.now, buffer)<span class="question-mark">?</span>;
         <span class="comment">// activation delay
@@ -1610,7 +1610,7 @@
 
 <span class="doccomment">/// A Deserializer for `Advance`
 </span><span class="kw">pub struct </span>AdvanceDeserializer {
-    ratio_deserializer: RatioDeserializer&lt;u64, U64VarIntDeserializer&gt;,
+    amount_deserializer: AmountDeserializer,
     time_deserializer: MassaTimeDeserializer,
 }
 
@@ -1618,10 +1618,10 @@
     <span class="doccomment">/// Creates a new `AdvanceDeserializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
-                Included(<span class="number">0</span>),
-                Included(u64::MAX),
-            )),
+            amount_deserializer: AmountDeserializer::new(
+                Included(Amount::MIN),
+                Included(Amount::MAX),
+            ),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(<span class="number">0</span>)),
                 Included(MassaTime::from_millis(u64::MAX)),
@@ -1651,7 +1651,7 @@
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed threshold deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.ratio_deserializer.deserialize(input)
+                    <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed now deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
