@@ -15,6 +15,8 @@ tracing = "0.1"
 serde_json = "1.0"
 num = { version = "0.4", features = ["serde"] }
 sha2 = "0.10.6"
+sha3 = "0.10.8"
+libsecp256k1 = "0.7.1"
 # use with features
 criterion = { version = "0.4", optional = true }
 tempfile = { version = "3.3", optional = true }
@@ -28,7 +30,7 @@ massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "feature/Improve_ABI_types_in_wasmv1" }
 massa_metrics = { path = "../massa-metrics" }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_signature = { path = "../massa-signature" }

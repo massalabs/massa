@@ -47,7 +47,7 @@ resolver = "2"
 
 # From https://doc.rust-lang.org/cargo/reference/profiles.html#overrides
 [profile.dev.package."*"]
-opt-level = 3 # Speed-up the
+opt-level = 3 # Speed-up the CI
 
 # # Features
 #
