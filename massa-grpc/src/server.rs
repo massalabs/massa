@@ -8,7 +8,7 @@ use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_proto_rs::massa::api::v1::massa_service_server::MassaServiceServer;
+use massa_proto_rs::massa::api::v1::public_service_server::PublicServiceServer;
 use massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_protocol_exports::ProtocolController;
 use massa_storage::Storage;
@@ -55,7 +55,7 @@ pub struct MassaGrpc {
 impl MassaGrpc {
     /// Start the gRPC API
     pub async fn serve(self, config: &GrpcConfig) -> Result<StopHandle, GrpcError> {
-        let mut svc = MassaServiceServer::new(self)
+        let mut svc = PublicServiceServer::new(self)
             .max_decoding_message_size(config.max_decoding_message_size)
             .max_encoding_message_size(config.max_encoding_message_size);
 
@@ -122,7 +122,7 @@ impl MassaGrpc {
         let health_service_opt = if config.enable_health {
             let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
             health_reporter
-                .set_serving::<MassaServiceServer<MassaGrpc>>()
+                .set_serving::<PublicServiceServer<MassaGrpc>>()
                 .await;
             tokio::spawn(massa_service_status(health_reporter.clone()));
             info!("gRPC health service enabled");
@@ -198,6 +198,6 @@ impl StopHandle {
 async fn massa_service_status(mut reporter: HealthReporter) {
     //TODO add a complete health check based on Massa modules health
     reporter
-        .set_serving::<MassaServiceServer<MassaGrpc>>()
+        .set_serving::<PublicServiceServer<MassaGrpc>>()
         .await;
 }

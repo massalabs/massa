@@ -8,13 +8,13 @@ impl From<SlotExecutionOutput> for grpc_model::SlotExecutionOutput {
         match value {
             SlotExecutionOutput::ExecutedSlot(execution_output) => {
                 grpc_model::SlotExecutionOutput {
-                    status: vec![grpc_model::ExecutionOutputStatus::Candidate as i32],
+                    status: grpc_model::ExecutionOutputStatus::Candidate as i32,
                     execution_output: Some(execution_output.into()),
                 }
             }
             SlotExecutionOutput::FinalizedSlot(execution_output) => {
                 grpc_model::SlotExecutionOutput {
-                    status: vec![grpc_model::ExecutionOutputStatus::Final as i32],
+                    status: grpc_model::ExecutionOutputStatus::Final as i32,
                     execution_output: Some(execution_output.into()),
                 }
             }

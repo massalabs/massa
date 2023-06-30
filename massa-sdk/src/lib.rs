@@ -42,7 +42,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
-use massa_proto_rs::massa::api::v1::massa_service_client::MassaServiceClient;
+use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 use thiserror::Error;
@@ -70,7 +70,7 @@ pub struct Client {
     /// private component
     pub private: RpcClient,
     /// grpc client
-    pub grpc: Option<MassaServiceClient<tonic::transport::Channel>>,
+    pub grpc: Option<PublicServiceClient<tonic::transport::Channel>>,
 }
 
 impl Client {
@@ -94,7 +94,7 @@ impl Client {
             .connect()
             .await
         {
-            Ok(channel) => Some(MassaServiceClient::new(channel)),
+            Ok(channel) => Some(PublicServiceClient::new(channel)),
             Err(e) => {
                 tracing::warn!("unable to connect to grpc server {}", e);
                 None

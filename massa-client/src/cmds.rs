@@ -786,13 +786,13 @@ impl Command {
 
                 // In order to generate a KeyPair we need to get the MIP statuses and use the latest
                 // active version
-                let req = grpc_api::GetMipStatusRequest { id: "".to_string() };
+                let req = grpc_api::GetMipStatusRequest {};
 
                 if let Some(ref mut grpc) = client.grpc {
                     let versioning_status = match grpc.get_mip_status(req).await {
                         Ok(resp_) => {
                             let resp = resp_.into_inner();
-                            resp.entries
+                            resp.mipstatus_entries
                         }
                         Err(e) => {
                             grpc_error!(e)
