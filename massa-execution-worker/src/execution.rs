@@ -1335,7 +1335,7 @@ impl ExecutionState {
             {
                 // speculative execution front result matches what we want to compute
                 // apply the cached output and return
-                self.apply_final_execution_output(exec_out.clone());
+                self.apply_final_execution_output(exec_out);
                 return;
             } else {
                 // speculative cache mismatch
