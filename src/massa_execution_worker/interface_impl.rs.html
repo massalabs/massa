@@ -1553,7 +1553,7 @@
         <span class="comment">// build the message
         </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">&quot;\x19Ethereum Signed Message:\n{}&quot;</span>, message_.len());
         <span class="kw">let </span>to_hash = [prefix.as_bytes(), message_].concat();
-        <span class="kw">let </span>full_hash = sha3::Keccak256::digest(<span class="kw-2">&amp;</span>to_hash);
+        <span class="kw">let </span>full_hash = sha3::Keccak256::digest(to_hash);
         <span class="kw">let </span>message = libsecp256k1::Message::parse_slice(<span class="kw-2">&amp;</span>full_hash).unwrap();
 
         <span class="comment">// parse the signature as being (r, s, v)
