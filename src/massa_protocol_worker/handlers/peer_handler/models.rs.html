@@ -149,11 +149,6 @@
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -281,13 +276,8 @@
                 </span><span class="kw">if </span>peer.last_announce.timestamp &lt; min_time {
                     <span class="kw">continue</span>;
                 }
-                <span class="kw">let </span>listeners: HashMap&lt;SocketAddr, TransportType&gt; = peer
-                    .last_announce
-                    .listeners
-                    .clone()
-                    .into_iter()
-                    .filter(|(addr, <span class="kw">_</span>)| addr.ip().to_canonical().is_global())
-                    .collect();
+                <span class="kw">let </span>listeners: HashMap&lt;SocketAddr, TransportType&gt; =
+                    peer.last_announce.listeners.clone().into_iter().collect();
                 <span class="kw">if </span>listeners.is_empty() {
                     <span class="kw">continue</span>;
                 }
