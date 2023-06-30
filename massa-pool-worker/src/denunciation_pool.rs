@@ -206,7 +206,8 @@ impl DenunciationPool {
                 if !self
                     .channels
                     .execution_controller
-                    .is_denunciation_executed(de_idx)
+                    .get_denunciation_execution_status(de_idx)
+                    .0
                     && de_slot <= target_slot
                     && !Denunciation::is_expired(
                         &de_slot.period,

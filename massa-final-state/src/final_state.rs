@@ -296,7 +296,10 @@ impl FinalState {
             )),
         )?;
 
-        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        let latest_snapshot_cycle_info = self
+            .pos_state
+            .get_cycle_info(latest_snapshot_cycle.0)
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from("Missing cycle info")))?;
 
         let mut batch = DBBatch::new();
 
@@ -349,7 +352,10 @@ impl FinalState {
             )),
         )?;
 
-        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        let latest_snapshot_cycle_info = self
+            .pos_state
+            .get_cycle_info(latest_snapshot_cycle.0)
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from("Missing cycle info")))?;
 
         let mut batch = DBBatch::new();
 
@@ -554,22 +560,19 @@ impl FinalState {
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
         self.pos_state
-            .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
+            .apply_changes_to_batch(changes.pos_changes, slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
 
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
         self.ledger
-            .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
-        self.executed_ops.apply_changes_to_batch(
-            changes.executed_ops_changes.clone(),
-            slot,
-            &mut db_batch,
-        );
+            .apply_changes_to_batch(changes.ledger_changes, &mut db_batch);
+        self.executed_ops
+            .apply_changes_to_batch(changes.executed_ops_changes, slot, &mut db_batch);
 
         self.executed_denunciations.apply_changes_to_batch(
-            changes.executed_denunciations_changes.clone(),
+            changes.executed_denunciations_changes,
             slot,
             &mut db_batch,
         );

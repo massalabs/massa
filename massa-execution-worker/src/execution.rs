@@ -17,17 +17,20 @@ use massa_async_pool::AsyncMessage;
 use massa_db_exports::DBBatch;
 use massa_execution_exports::{
     EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -1509,6 +1512,21 @@ impl ExecutionState {
         )
     }
 
+    /// Gets a balance both at the latest final and candidate executed slots
+    pub fn get_final_and_active_bytecode(
+        &self,
+        address: &Address,
+    ) -> (Option<Bytecode>, Option<Bytecode>) {
+        let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
+        let search_result = self.active_history.read().fetch_bytecode(address);
+        let speculative_v = match search_result {
+            HistorySearchResult::Present(active_bytecode) => Some(active_bytecode),
+            HistorySearchResult::NoInfo => final_bytecode.clone(),
+            HistorySearchResult::Absent => None,
+        };
+        (final_bytecode, speculative_v)
+    }
+
     /// Gets roll counts both at the latest final and active executed slots
     pub fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
         let final_rolls = self.final_state.read().pos_state.get_rolls_for(address);
@@ -1542,21 +1560,27 @@ impl ExecutionState {
     }
 
     /// Get every final and active datastore key of the given address
+    #[allow(clippy::type_complexity)]
     pub fn get_final_and_candidate_datastore_keys(
         &self,
         addr: &Address,
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
+        prefix: &[u8],
+    ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
         let final_keys = self
             .final_state
             .read()
             .ledger
-            .get_datastore_keys(addr)
-            .unwrap_or_default();
+            .get_datastore_keys(addr, prefix);
+
         let mut candidate_keys = final_keys.clone();
 
-        // here, traverse the history from oldest to newest, applying additions and deletions
+        // compute prefix range
+        let prefix_range = get_prefix_bounds(prefix);
+        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
+
+        // traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
             match output.state_changes.ledger_changes.get(addr) {
                 // address absent from the changes
@@ -1564,22 +1588,31 @@ impl ExecutionState {
 
                 // address ledger entry being reset to an absolute new list of keys
                 Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = new_ledger_entry.datastore.keys().cloned().collect();
+                    candidate_keys = Some(
+                        new_ledger_entry
+                            .datastore
+                            .range::<Vec<u8>, _>(range_ref)
+                            .map(|(k, _v)| k.clone())
+                            .collect(),
+                    );
                 }
 
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    for (ds_key, ds_update) in &entry_updates.datastore {
+                    let c_k = candidate_keys.get_or_insert_default();
+                    for (ds_key, ds_update) in
+                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
+                    {
                         match ds_update {
-                            SetOrDelete::Set(_) => candidate_keys.insert(ds_key.clone()),
-                            SetOrDelete::Delete => candidate_keys.remove(ds_key),
+                            SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
+                            SetOrDelete::Delete => c_k.remove(ds_key),
                         };
                     }
                 }
 
                 // address ledger entry being deleted
                 Some(SetUpdateOrDelete::Delete) => {
-                    candidate_keys.clear();
+                    candidate_keys = None;
                 }
             }
         }
@@ -1587,20 +1620,19 @@ impl ExecutionState {
         (final_keys, candidate_keys)
     }
 
+    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
+        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
+    }
+
     /// Returns for a given cycle the stakers taken into account
     /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
-        let final_state = self.final_state.read();
-
-        match cycle.checked_sub(3) {
-            Some(lookback_cycle) => {
-                // get rolls
-                final_state.pos_state.get_all_roll_counts(lookback_cycle)
-            }
-            None => final_state.pos_state.initial_rolls.clone(),
-        }
+        self.final_state
+            .read()
+            .pos_state
+            .get_all_active_rolls(cycle)
     }
 
     /// Gets execution events optionally filtered by:
@@ -1640,32 +1672,136 @@ impl ExecutionState {
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
-        // check active history
-        let history = self.active_history.read();
-
-        if matches!(
-            history.fetch_executed_denunciation(denunciation_index),
-            HistorySearchResult::Present(())
-        ) {
-            return true;
+    /// Returns a tuple of booleans:
+    /// * first boolean is true if the denunciation has been executed speculatively
+    /// * second boolean is true if the denunciation has been executed in the final state
+    pub fn get_denunciation_execution_status(
+        &self,
+        denunciation_index: &DenunciationIndex,
+    ) -> (bool, bool) {
+        // check final state
+        let executed_final = self
+            .final_state
+            .read()
+            .executed_denunciations
+            .contains(denunciation_index);
+        if executed_final {
+            return (true, true);
         }
 
-        // check final state
-        let final_state = self.final_state.read();
-        final_state
-            .executed_denunciations
-            .contains(denunciation_index)
+        // check active history
+        let executed_candidate = {
+            matches!(
+                self.active_history
+                    .read()
+                    .fetch_executed_denunciation(denunciation_index),
+                HistorySearchResult::Present(())
+            )
+        };
+
+        (executed_candidate, false)
     }
 
-    /// Gets the production stats for an address at all cycles
-    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
-        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
+    /// Get cycle infos
+    pub fn get_cycle_infos(
+        &self,
+        cycle: u64,
+        restrict_to_addresses: Option<&PreHashSet<Address>>,
+    ) -> Option<ExecutionQueryCycleInfos> {
+        let final_state_lock = self.final_state.read();
+
+        // check if cycle is complete
+        let is_final = match final_state_lock.pos_state.is_cycle_complete(cycle) {
+            Some(v) => v,
+            None => return None,
+        };
+
+        // active rolls
+        let staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>;
+        if let Some(addrs) = restrict_to_addresses {
+            staker_infos = addrs
+                .iter()
+                .map(|addr| {
+                    let staker_info = ExecutionQueryStakerInfo {
+                        active_rolls: final_state_lock
+                            .pos_state
+                            .get_address_active_rolls(addr, cycle)
+                            .unwrap_or(0),
+                        production_stats: final_state_lock
+                            .pos_state
+                            .get_production_stats_for_address(cycle, addr)
+                            .unwrap_or_default(),
+                    };
+                    (*addr, staker_info)
+                })
+                .collect()
+        } else {
+            let active_rolls = final_state_lock.pos_state.get_all_roll_counts(cycle);
+            let production_stats = final_state_lock
+                .pos_state
+                .get_all_production_stats(cycle)
+                .unwrap_or_default();
+            let all_addrs: BTreeSet<Address> = active_rolls
+                .keys()
+                .chain(production_stats.keys())
+                .copied()
+                .collect();
+            staker_infos = all_addrs
+                .into_iter()
+                .map(|addr| {
+                    let staker_info = ExecutionQueryStakerInfo {
+                        active_rolls: active_rolls.get(&addr).copied().unwrap_or(0),
+                        production_stats: production_stats.get(&addr).copied().unwrap_or_default(),
+                    };
+                    (addr, staker_info)
+                })
+                .collect()
+        }
+
+        // build result
+        Some(ExecutionQueryCycleInfos {
+            cycle,
+            is_final,
+            staker_infos,
+        })
     }
 
     /// Get future deferred credits of an address
     pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    }
+
+    /// Get future deferred credits of an address
+    /// Returns tuple: (speculative, final)
+    pub fn get_address_deferred_credits(
+        &self,
+        address: &Address,
+    ) -> (BTreeMap<Slot, Amount>, BTreeMap<Slot, Amount>) {
+        // get values from final state
+        let res_final = self
+            .final_state
+            .read()
+            .pos_state
+            .get_address_deferred_credits(address);
+
+        // get values from active history, backwards
+        let mut res_speculative: BTreeMap<Slot, Amount> = BTreeMap::default();
+        for hist_item in self.active_history.read().0.iter().rev() {
+            for (slot, addr_amount) in &hist_item.state_changes.pos_changes.deferred_credits.credits
+            {
+                if let Some(amount) = addr_amount.get(address) {
+                    let _ = res_speculative.try_insert(*slot, *amount);
+                };
+            }
+        }
+        // fill missing speculative entries with final entries
+        for (s, v) in res_final.iter() {
+            let _ = res_speculative.try_insert(*s, *v);
+        }
+        // remove zero entries from speculative
+        res_speculative.retain(|_s, a| !a.is_zero());
+
+        (res_speculative, res_final)
     }
 
     /// Get the execution status of a batch of operations.
