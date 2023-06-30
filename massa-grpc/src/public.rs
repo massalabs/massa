@@ -24,8 +24,8 @@ const DEFAULT_LIMIT: u64 = 50;
 
 /// Get blocks
 pub(crate) fn get_blocks(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetBlocksRequest>,
+    _grpc: &MassaGrpc,
+    _request: tonic::Request<grpc_api::GetBlocksRequest>,
 ) -> Result<grpc_api::GetBlocksResponse, GrpcError> {
     // let inner_req = request.into_inner();
 
@@ -123,8 +123,8 @@ pub(crate) fn get_blocks(
 
 /// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetDatastoreEntriesRequest>,
+    _grpc: &MassaGrpc,
+    _request: tonic::Request<grpc_api::GetDatastoreEntriesRequest>,
 ) -> Result<grpc_api::GetDatastoreEntriesResponse, GrpcError> {
     // let inner_req = request.into_inner();
     // let id = inner_req.id;
@@ -156,8 +156,8 @@ pub(crate) fn get_datastore_entries(
 
 /// Get the stakers
 pub(crate) fn get_stakers(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetStakersRequest>,
+    _grpc: &MassaGrpc,
+    _request: tonic::Request<grpc_api::GetStakersRequest>,
 ) -> Result<grpc_api::GetStakersResponse, GrpcError> {
     // let inner_req = request.into_inner();
 
@@ -271,53 +271,46 @@ pub(crate) fn get_stakers(
 // Get node version
 pub(crate) fn get_mip_status(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetMipStatusRequest>,
+    _request: tonic::Request<grpc_api::GetMipStatusRequest>,
 ) -> Result<grpc_api::GetMipStatusResponse, GrpcError> {
-    // let mip_store_status_ = grpc.mip_store.get_mip_status();
-    // let mip_store_status: Result<Vec<grpc_model::MipStatusEntry>, GrpcError> = mip_store_status_
-    //     .iter()
-    //     .map(|(mip_info, state_id_)| {
-    //         let state_id = grpc_model::ComponentStateId::from(state_id_);
-    //         Ok(grpc_model::MipStatusEntry {
-    //             mip_info: Some(grpc_model::MipInfo::from(mip_info)),
-    //             state_id: i32::from(state_id),
-    //         })
-    //     })
-    //     .collect();
+    let mip_store_status_ = grpc.mip_store.get_mip_status();
+    let mip_store_status: Result<Vec<grpc_model::MipStatusEntry>, GrpcError> = mip_store_status_
+        .iter()
+        .map(|(mip_info, state_id_)| {
+            let state_id = grpc_model::ComponentStateId::from(state_id_);
+            Ok(grpc_model::MipStatusEntry {
+                mip_info: Some(grpc_model::MipInfo::from(mip_info)),
+                state_id: i32::from(state_id),
+            })
+        })
+        .collect();
 
-    // Ok(grpc_api::GetMipStatusResponse {
-    //     id: request.into_inner().id,
-    //     entries: mip_store_status?,
-    // })
-    unimplemented!("get_mip_status not implemented yet")
+    Ok(grpc_api::GetMipStatusResponse {
+        mipstatus_entries: mip_store_status?,
+    })
 }
 
 /// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetNextBlockBestParentsRequest>,
+    massa_modelsrequest: tonic::Request<grpc_api::GetNextBlockBestParentsRequest>,
 ) -> Result<grpc_api::GetNextBlockBestParentsResponse, GrpcError> {
-    // let inner_req = request.into_inner();
-    // let parents = grpc
-    //     .consensus_controller
-    //     .get_best_parents()
-    //     .into_iter()
-    //     .map(|p| grpc_api::BlockParent {
-    //         block_id: p.0.to_string(),
-    //         period: p.1,
-    //     })
-    //     .collect();
-    // Ok(grpc_api::GetNextBlockBestParentsResponse {
-    //     id: inner_req.id,
-    //     parents,
-    // })
-    unimplemented!("get_next_block_best_parents not implemented yet")
+    let block_parents = grpc
+        .consensus_controller
+        .get_best_parents()
+        .into_iter()
+        .map(|p| grpc_model::BlockParent {
+            block_id: p.0.to_string(),
+            period: p.1,
+        })
+        .collect();
+    Ok(grpc_api::GetNextBlockBestParentsResponse { block_parents })
 }
 
 /// Get operations
 pub(crate) fn get_operations(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetOperationsRequest>,
+    _grpc: &MassaGrpc,
+    _request: tonic::Request<grpc_api::GetOperationsRequest>,
 ) -> Result<grpc_api::GetOperationsResponse, GrpcError> {
     // let storage = grpc.storage.clone_without_refs();
     // let inner_req: grpc_api::GetOperationsRequest = request.into_inner();
@@ -494,8 +487,8 @@ pub(crate) fn get_sc_execution_events(
 
 //  Get selector draws
 pub(crate) fn get_selector_draws(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
+    _grpc: &MassaGrpc,
+    _request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
 ) -> Result<grpc_api::GetSelectorDrawsResponse, GrpcError> {
     // let inner_req = request.into_inner();
     // let id = inner_req.id;
@@ -571,32 +564,28 @@ pub(crate) fn get_selector_draws(
 /// Get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetTransactionsThroughputRequest>,
+    _request: tonic::Request<grpc_api::GetTransactionsThroughputRequest>,
 ) -> Result<grpc_api::GetTransactionsThroughputResponse, GrpcError> {
-    // let stats = grpc.execution_controller.get_stats();
-    // let nb_sec_range = stats
-    //     .time_window_end
-    //     .saturating_sub(stats.time_window_start)
-    //     .to_duration()
-    //     .as_secs();
+    let stats = grpc.execution_controller.get_stats();
+    let nb_sec_range = stats
+        .time_window_end
+        .saturating_sub(stats.time_window_start)
+        .to_duration()
+        .as_secs();
 
-    // // checked_div
-    // let throughput = stats
-    //     .final_executed_operations_count
-    //     .checked_div(nb_sec_range as usize)
-    //     .unwrap_or_default() as u32;
+    // checked_div
+    let throughput = stats
+        .final_executed_operations_count
+        .checked_div(nb_sec_range as usize)
+        .unwrap_or_default() as u32;
 
-    // Ok(grpc_api::GetTransactionsThroughputResponse {
-    //     id: request.into_inner().id,
-    //     throughput,
-    // })
-    unimplemented!("get_transactions_throughput is not implemented yet")
+    Ok(grpc_api::GetTransactionsThroughputResponse { throughput })
 }
 
 /// Get query state
 pub(crate) fn query_state(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::QueryStateRequest>,
+    _grpc: &MassaGrpc,
+    _request: tonic::Request<grpc_api::QueryStateRequest>,
 ) -> Result<grpc_api::QueryStateResponse, GrpcError> {
     unimplemented!("query_state is not implemented yet")
 }
