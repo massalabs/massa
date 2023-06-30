@@ -23,6 +23,8 @@
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
 <a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
@@ -35,14 +37,16 @@
 </span><span class="kw">pub enum </span>WalletError {
     <span class="doccomment">/// IO error: {0}
     </span>IOError(<span class="attr">#[from] </span>std::io::Error),
-    <span class="doccomment">/// JSON error: {0}
-    </span>JSONError(<span class="attr">#[from] </span>serde_json::Error),
+    <span class="doccomment">/// YAML error: {0}
+    </span>YAMLError(<span class="attr">#[from] </span>serde_yaml::Error),
     <span class="doccomment">/// Serde Sq error: {0}
     </span>SerdeqsError(<span class="attr">#[from] </span>serde_qs::Error),
     <span class="doccomment">/// Models error: {0}
     </span>ModelsError(<span class="attr">#[from] </span>massa_models::error::ModelsError),
     <span class="doccomment">/// `MassaHash` error: {0}
     </span>MassaHashError(<span class="attr">#[from] </span>massa_hash::MassaHashError),
+    <span class="doccomment">/// `MassaSignature` error: {0}
+    </span>MassaSignatureError(<span class="attr">#[from] </span>massa_signature::MassaSignatureError),
     <span class="doccomment">/// Missing key error: {0}
     </span>MissingKeyError(Address),
     <span class="doccomment">/// `MassaCipher` error: {0}

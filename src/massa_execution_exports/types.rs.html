@@ -145,27 +145,16 @@
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
 
 </span><span class="kw">use </span><span class="kw">crate</span>::event_store::EventStore;
 <span class="kw">use </span>massa_final_state::StateChanges;
-<span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::datastore::Datastore;
 <span class="kw">use </span>massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
+    slot::Slot,
 };
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
@@ -204,24 +193,13 @@
     </span>FinalizedSlot(ExecutionOutput),
 }
 
-<span class="doccomment">/// structure storing a block id + network versions (from a block header)
-</span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>ExecutedBlockInfo {
-    <span class="doccomment">/// Block id
-    </span><span class="kw">pub </span>block_id: BlockId,
-    <span class="doccomment">/// Current network version (see Versioning doc)
-    </span><span class="kw">pub </span>current_version: u32,
-    <span class="doccomment">/// Announced network version (see Versioning doc)
-    </span><span class="kw">pub </span>announced_version: u32,
-}
-
 <span class="doccomment">/// structure describing the output of a single execution
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ExecutionOutput {
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,
-    <span class="doccomment">/// optional executed block info at that slot (None if miss)
-    </span><span class="kw">pub </span>block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt;,
+    <span class="doccomment">/// optional block ID at that slot (None if miss)
+    </span><span class="kw">pub </span>block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
     <span class="doccomment">/// state changes caused by the execution step
     </span><span class="kw">pub </span>state_changes: StateChanges,
     <span class="doccomment">/// events emitted by the execution step
