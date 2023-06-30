@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["context_guard"],"struct":["InterfaceImpl"]};
+window.SIDEBAR_ITEMS = {"fn":["get_address_from_opt_or_context"],"macro":["context_guard"],"struct":["InterfaceImpl"]};
