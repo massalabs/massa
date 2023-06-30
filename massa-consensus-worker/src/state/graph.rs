@@ -20,7 +20,7 @@ impl ConsensusState {
         for parent_h in parents_hash.iter() {
             if let Some(BlockStatus::Active {
                 a_block: a_parent, ..
-            }) = self.block_statuses.get_mut(parent_h)
+            }) = self.blocks_state.get_mut(parent_h)
             {
                 a_parent.children[add_block_slot.thread as usize]
                     .insert(add_block_id, add_block_slot.period);
@@ -35,7 +35,7 @@ impl ConsensusState {
                 continue;
             }
             if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                self.block_statuses.get_mut(&ancestor_h)
+                self.blocks_state.get_mut(&ancestor_h)
             {
                 ab.descendants.insert(add_block_id);
                 for (ancestor_parent_h, _) in ab.parents.iter() {
@@ -56,7 +56,7 @@ impl ConsensusState {
             clique.is_blockclique = false;
             let mut sum_hash = num::BigInt::default();
             for block_h in clique.block_ids.iter() {
-                let fitness = match self.block_statuses.get(block_h) {
+                let fitness = match self.blocks_state.get(block_h) {
                     Some(BlockStatus::Active { a_block, storage: _ }) => a_block.fitness,
                     _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h))),
                 };
@@ -92,19 +92,16 @@ impl ConsensusState {
         &low_set - &high_set
     }
 
-    pub fn remove_block(
-        &mut self,
-        add_block_id: &BlockId,
-        block_id: &BlockId,
-    ) -> Result<(), ConsensusError> {
+    pub fn remove_block(&mut self, add_block_id: &BlockId, block_id: &BlockId) {
+        let sequence_number = self.blocks_state.sequence_counter();
+        self.blocks_state.transition_map(block_id, |block_status, block_statuses| {
         if let Some(BlockStatus::Active {
             a_block: active_block,
             storage: _storage,
-        }) = self.block_statuses.remove(block_id)
+        }) = block_status
         {
-            self.active_index.remove(block_id);
             if active_block.is_final {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, block_id)));
+               panic!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, block_id);
             }
 
             // remove from gi_head
@@ -138,7 +135,7 @@ impl ConsensusState {
                 if let Some(BlockStatus::Active {
                     a_block: parent_active_block,
                     ..
-                }) = self.block_statuses.get_mut(parent_h)
+                }) = block_statuses.get_mut(parent_h)
                 {
                     parent_active_block.children[active_block.slot.thread as usize]
                         .remove(block_id);
@@ -152,24 +149,19 @@ impl ConsensusState {
             // mark as stale
             self.new_stale_blocks
                 .insert(*block_id, (active_block.creator_address, active_block.slot));
-            self.block_statuses.insert(
-                *block_id,
+            Some(
                 BlockStatus::Discarded {
                     slot: active_block.slot,
                     creator: active_block.creator_address,
                     parents: active_block.parents.iter().map(|(h, _)| *h).collect(),
                     reason: DiscardReason::Stale,
-                    sequence_number: {
-                        self.sequence_counter += 1;
-                        self.sequence_counter
-                    },
-                },
-            );
-            self.discarded_index.insert(*block_id);
-            Ok(())
+                    sequence_number,
+                }
+            )
         } else {
-            Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id)))
+            panic!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, block_id);
         }
+    });
     }
 
     pub fn list_final_blocks(&self) -> Result<PreHashSet<BlockId>, ConsensusError> {
@@ -212,7 +204,7 @@ impl ConsensusState {
             // compute the total fitness of all the descendants of the candidate within the clique
             let loc_candidates = final_candidates.clone();
             for candidate_h in loc_candidates.into_iter() {
-                let descendants = match self.block_statuses.get(&candidate_h) {
+                let descendants = match self.blocks_state.get(&candidate_h) {
                     Some(BlockStatus::Active {
                         a_block,
                         storage: _,
@@ -228,7 +220,7 @@ impl ConsensusState {
                     .intersection(&clique.block_ids)
                     .map(|h| {
                         if let Some(BlockStatus::Active { a_block: ab, .. }) =
-                            self.block_statuses.get(h)
+                            self.blocks_state.get(h)
                         {
                             return ab.fitness;
                         }
@@ -274,7 +266,7 @@ impl ConsensusState {
             if let Some(BlockStatus::Active {
                 a_block: final_block,
                 ..
-            }) = self.block_statuses.get_mut(&block_id)
+            }) = self.blocks_state.get_mut(&block_id)
             {
                 massa_trace!("consensus.block_graph.add_block_to_graph.final", {
                     "hash": block_id

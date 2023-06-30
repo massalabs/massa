@@ -157,7 +157,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
         for b_id in &current_ids {
             if let Some(BlockStatus::Active { a_block, storage }) =
-                read_shared_state.block_statuses.get(b_id)
+                read_shared_state.blocks_state.get(b_id)
             {
                 if final_blocks.len() as u64 >= self.bootstrap_part_size {
                     break;

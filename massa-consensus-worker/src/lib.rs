@@ -27,6 +27,7 @@
 
 #![feature(deadline_api)]
 #![feature(let_chains)]
+#![feature(async_closure)]
 
 mod commands;
 mod controller;
@@ -35,3 +36,6 @@ mod state;
 mod worker;
 
 pub use worker::start_consensus_worker;
+
+#[cfg(test)]
+pub mod tests;

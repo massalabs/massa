@@ -37,6 +37,27 @@ pub enum DiscardReason {
     Final,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockStatusId {
+    Incoming = 0,
+    WaitingForSlot = 1,
+    WaitingForDependencies = 2,
+    Active = 3,
+    Discarded = 4,
+}
+
+impl From<&BlockStatus> for BlockStatusId {
+    fn from(status: &BlockStatus) -> Self {
+        match status {
+            BlockStatus::Incoming(_) => BlockStatusId::Incoming,
+            BlockStatus::WaitingForSlot(_) => BlockStatusId::WaitingForSlot,
+            BlockStatus::WaitingForDependencies { .. } => BlockStatusId::WaitingForDependencies,
+            BlockStatus::Active { .. } => BlockStatusId::Active,
+            BlockStatus::Discarded { .. } => BlockStatusId::Discarded,
+        }
+    }
+}
+
 /// Enum used in `BlockGraph`'s state machine
 #[derive(Debug, Clone)]
 pub enum BlockStatus {
