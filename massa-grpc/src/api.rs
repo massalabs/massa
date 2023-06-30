@@ -363,8 +363,7 @@ pub(crate) fn get_mip_status(
         .collect();
 
     Ok(grpc_api::GetMipStatusResponse {
-        id: request.into_inner().id,
-        entries: mip_store_status?,
+        mipstatus_entries: mip_store_status?,
     })
 }
 
@@ -384,8 +383,7 @@ pub(crate) fn get_next_block_best_parents(
         })
         .collect();
     Ok(grpc_api::GetNextBlockBestParentsResponse {
-        id: inner_req.id,
-        parents,
+        block_parents: parents,
     })
 }
 
@@ -396,7 +394,6 @@ pub(crate) fn get_operations(
 ) -> Result<grpc_api::GetOperationsResponse, GrpcError> {
     let storage = grpc.storage.clone_without_refs();
     let inner_req: grpc_api::GetOperationsRequest = request.into_inner();
-    let id = inner_req.id;
 
     let operations_ids: Vec<OperationId> = inner_req
         .queries
@@ -512,9 +509,7 @@ pub(crate) fn get_operations(
     }
 
     Ok(grpc_api::GetOperationsResponse {
-        id,
-        context,
-        operations,
+        wrapped_operations: operations,
     })
 }
 
@@ -524,7 +519,6 @@ pub(crate) fn get_sc_execution_events(
     request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
 ) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
     let inner_req: grpc_api::GetScExecutionEventsRequest = request.into_inner();
-    let id = inner_req.id;
 
     let event_filter = inner_req
         .query
@@ -558,11 +552,7 @@ pub(crate) fn get_sc_execution_events(
         .map(|event| event.into())
         .collect();
 
-    Ok(grpc_api::GetScExecutionEventsResponse {
-        id,
-        context,
-        events,
-    })
+    Ok(grpc_api::GetScExecutionEventsResponse { events })
 }
 
 //  Get selector draws
@@ -624,20 +614,19 @@ pub(crate) fn get_selector_draws(
     };
 
     // Compile results
-    let mut res = Vec::with_capacity(addresses.len());
-    let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
-    for (address, (next_block_draws, next_endorsement_draws)) in iterator {
-        res.push(grpc_model::SelectorDraws {
-            address: address.to_string(),
-            next_block_draws,
-            next_endorsement_draws,
-        });
-    }
+    let res: Vec<grpc_model::SelectorDraws> = addresses
+        .into_iter()
+        .zip(selection_draws.into_iter())
+        .map(
+            |(address, (next_block_draws, next_endorsement_draws))| grpc_model::SlotDraw {
+                block_producer: address.to_string(),
+                slot: next_block_draws,
+                endorsement_draws: next_endorsement_draws,
+            },
+        )
+        .collect();
 
-    Ok(grpc_api::GetSelectorDrawsResponse {
-        id,
-        selector_draws: res,
-    })
+    Ok(grpc_api::GetSelectorDrawsResponse { draws: res })
 }
 
 /// Get transactions throughput
@@ -658,10 +647,7 @@ pub(crate) fn get_transactions_throughput(
         .checked_div(nb_sec_range as usize)
         .unwrap_or_default() as u32;
 
-    Ok(grpc_api::GetTransactionsThroughputResponse {
-        id: request.into_inner().id,
-        throughput,
-    })
+    Ok(grpc_api::GetTransactionsThroughputResponse { throughput })
 }
 
 // Get node version
