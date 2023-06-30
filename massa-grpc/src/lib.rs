@@ -20,14 +20,14 @@ use tonic_health as _;
 use tonic_reflection as _;
 use tonic_web as _;
 
-/// business code for non stream methods
-pub mod api;
 /// gRPC configuration
 pub mod config;
 /// models error
 pub mod error;
 /// gRPC API implementation
 pub mod handler;
+/// business code for non stream methods
+pub mod public;
 /// gRPC service initialization and serve
 pub mod server;
 /// business code for stream methods

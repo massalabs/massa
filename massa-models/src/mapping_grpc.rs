@@ -3,6 +3,7 @@
 use std::str::FromStr;
 
 use crate::address::Address;
+use crate::amount::Amount;
 use crate::block::{Block, BlockGraphStatus, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
 use crate::denunciation::DenunciationIndex;
@@ -15,6 +16,16 @@ use crate::slot::{IndexedSlot, Slot};
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_signature::{PublicKey, Signature};
+
+//TODO to be updated
+impl From<Amount> for grpc_model::NativeAmount {
+    fn from(_value: Amount) -> Self {
+        grpc_model::NativeAmount {
+            mantissa: 0,
+            scale: 0,
+        }
+    }
+}
 
 impl From<Block> for grpc_model::Block {
     fn from(value: Block) -> Self {
@@ -56,8 +67,11 @@ impl From<BlockHeader> for grpc_model::BlockHeader {
                 .into_iter()
                 .map(|parent| parent.to_string())
                 .collect(),
-            operation_merkle_root: value.operation_merkle_root.to_string(),
             endorsements: res,
+            current_version: value.current_version,
+            announced_version: value.announced_version,
+            //TODO to be updated
+            operations_hash: value.operation_merkle_root.to_string(),
         }
     }
 }
@@ -69,7 +83,7 @@ impl From<FilledBlock> for grpc_model::FilledBlock {
             operations: value
                 .operations
                 .into_iter()
-                .map(|tuple| grpc_model::FilledOperationTuple {
+                .map(|tuple| grpc_model::FilledOperationEntry {
                     operation_id: tuple.0.to_string(),
                     operation: tuple.1.map(|op| op.into()),
                 })
@@ -86,7 +100,7 @@ impl From<SecureShareBlock> for grpc_model::SignedBlock {
             signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
-            id: value.id.to_string(),
+            secure_hash: value.id.to_string(),
             serialized_size,
         }
     }
@@ -100,7 +114,7 @@ impl From<SecuredHeader> for grpc_model::SignedBlockHeader {
             signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
-            id: value.id.to_string(),
+            secure_hash: value.id.to_string(),
             serialized_size,
         }
     }
@@ -124,7 +138,7 @@ impl From<SecureShareEndorsement> for grpc_model::SignedEndorsement {
             signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
-            id: value.id.to_string(),
+            secure_hash: value.id.to_string(),
             serialized_size,
         }
     }
@@ -140,7 +154,7 @@ impl From<OperationType> for grpc_model::OperationType {
             } => {
                 let transaction = grpc_model::Transaction {
                     recipient_address: recipient_address.to_string(),
-                    amount: amount.to_raw(),
+                    amount: Some(amount.into()),
                 };
                 grpc_operation_type.r#type =
                     Some(grpc_model::operation_type::Type::Transaction(transaction));
@@ -185,7 +199,7 @@ impl From<OperationType> for grpc_model::OperationType {
                     target_func,
                     param,
                     max_gas,
-                    coins: coins.to_raw(),
+                    coins: Some(coins.into()),
                 };
                 grpc_operation_type.r#type =
                     Some(grpc_model::operation_type::Type::CallSc(call_sc));
@@ -199,21 +213,21 @@ impl From<OperationType> for grpc_model::OperationType {
 impl From<Operation> for grpc_model::Operation {
     fn from(op: Operation) -> Self {
         grpc_model::Operation {
-            fee: op.fee.to_raw(),
+            fee: Some(op.fee.into()),
             expire_period: op.expire_period,
             op: Some(op.op.into()),
         }
     }
 }
 
-impl From<OperationType> for grpc_api::OpType {
+impl From<OperationType> for grpc_model::OpType {
     fn from(value: OperationType) -> Self {
         match value {
-            OperationType::Transaction { .. } => grpc_api::OpType::Transaction,
-            OperationType::RollBuy { .. } => grpc_api::OpType::RollBuy,
-            OperationType::RollSell { .. } => grpc_api::OpType::RollSell,
-            OperationType::ExecuteSC { .. } => grpc_api::OpType::ExecuteSc,
-            OperationType::CallSC { .. } => grpc_api::OpType::CallSc,
+            OperationType::Transaction { .. } => grpc_model::OpType::Transaction,
+            OperationType::RollBuy { .. } => grpc_model::OpType::RollBuy,
+            OperationType::RollSell { .. } => grpc_model::OpType::RollSell,
+            OperationType::ExecuteSC { .. } => grpc_model::OpType::ExecuteSc,
+            OperationType::CallSC { .. } => grpc_model::OpType::CallSc,
         }
     }
 }
@@ -226,7 +240,7 @@ impl From<SecureShareOperation> for grpc_model::SignedOperation {
             signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
-            id: value.id.to_string(),
+            secure_hash: value.id.to_string(),
             serialized_size,
         }
     }
@@ -259,15 +273,16 @@ impl From<grpc_model::Slot> for Slot {
     }
 }
 
-impl TryFrom<grpc_api::GetScExecutionEventsFilter> for EventFilter {
+impl TryFrom<grpc_api::ScExecutionEventsFilter> for EventFilter {
     type Error = crate::error::ModelsError;
 
-    fn try_from(filter: grpc_api::GetScExecutionEventsFilter) -> Result<Self, Self::Error> {
+    fn try_from(filter: grpc_api::ScExecutionEventsFilter) -> Result<Self, Self::Error> {
         let status_final = grpc_model::ScExecutionEventStatus::Final as i32;
         let status_error = grpc_model::ScExecutionEventStatus::Failure as i32;
+        // TODO add SlotRange Mapping
         Ok(Self {
-            start: filter.start_slot.map(|slot| slot.into()),
-            end: filter.end_slot.map(|slot| slot.into()),
+            start: None,
+            end: None,
             emitter_address: filter
                 .emitter_address
                 .map(|address| Address::from_str(&address))
@@ -290,20 +305,15 @@ impl From<SCOutputEvent> for grpc_model::ScExecutionEvent {
     fn from(value: SCOutputEvent) -> Self {
         grpc_model::ScExecutionEvent {
             context: Some(value.context.into()),
-            data: value.data,
+            //TODO to be updated
+            data: value.data.as_bytes().to_vec(),
         }
     }
 }
 
 impl From<EventExecutionContext> for grpc_model::ScExecutionEventContext {
     fn from(value: EventExecutionContext) -> Self {
-        let id_str = format!(
-            "{}{}{}",
-            &value.slot.period, &value.slot.thread, &value.index_in_slot
-        );
-        let id = bs58::encode(id_str.as_bytes()).with_check().into_string();
         Self {
-            id,
             origin_slot: Some(value.slot.into()),
             block_id: value.block.map(|id| id.to_string()),
             index_in_slot: value.index_in_slot,
@@ -313,19 +323,15 @@ impl From<EventExecutionContext> for grpc_model::ScExecutionEventContext {
                 .map(|a| a.to_string())
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
-            status: {
-                let mut status = Vec::new();
-                if value.read_only {
-                    status.push(grpc_model::ScExecutionEventStatus::ReadOnly as i32);
-                }
-                if value.is_error {
-                    status.push(grpc_model::ScExecutionEventStatus::Failure as i32);
-                }
-                if value.is_final {
-                    status.push(grpc_model::ScExecutionEventStatus::Final as i32);
-                }
-
-                status
+            //TODO to be inspected
+            status: if value.read_only {
+                grpc_model::ScExecutionEventStatus::ReadOnly as i32
+            } else if value.is_error {
+                grpc_model::ScExecutionEventStatus::Failure as i32
+            } else if value.is_final {
+                grpc_model::ScExecutionEventStatus::Final as i32
+            } else {
+                grpc_model::ScExecutionEventStatus::Unspecified as i32
             },
         }
     }

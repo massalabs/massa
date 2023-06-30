@@ -1,5 +1,5 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
-
+//TODO to be removed after migration to public.rs
 use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use itertools::izip;
@@ -648,15 +648,4 @@ pub(crate) fn get_transactions_throughput(
         .unwrap_or_default() as u32;
 
     Ok(grpc_api::GetTransactionsThroughputResponse { throughput })
-}
-
-// Get node version
-pub(crate) fn get_version(
-    grpc: &MassaGrpc,
-    request: tonic::Request<grpc_api::GetVersionRequest>,
-) -> Result<grpc_api::GetVersionResponse, GrpcError> {
-    Ok(grpc_api::GetVersionResponse {
-        id: request.into_inner().id,
-        version: grpc.version.to_string(),
-    })
 }

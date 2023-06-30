@@ -2,8 +2,6 @@
 
 /// stream new blocks
 pub mod new_blocks;
-/// stream new blocks with operations content
-pub mod new_blocks_headers;
 /// stream new endorsements
 pub mod new_endorsements;
 /// stream new blocks headers

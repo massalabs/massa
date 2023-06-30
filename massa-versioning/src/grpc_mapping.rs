@@ -39,7 +39,7 @@ impl From<&MipInfo> for grpc_model::MipInfo {
             name: value.name.clone(),
             version: value.version,
             start: value.start.to_millis(),
-            timeout: value.start.to_millis(),
+            timeout: Some(value.timeout.into()),
             activation_delay: value.activation_delay.to_millis(),
             components,
         }

@@ -2,15 +2,13 @@
 
 use massa_proto_rs::massa::api::v1 as grpc_api;
 
-use crate::api::{
+use crate::public::{
     get_blocks, get_datastore_entries, get_mip_status, get_next_block_best_parents, get_operations,
     get_sc_execution_events, get_selector_draws, get_stakers, get_transactions_throughput,
-    get_version,
 };
 use crate::server::MassaGrpc;
 use crate::stream::{
     new_blocks::{new_blocks, NewBlocksStreamType},
-    new_blocks_headers::{new_blocks_headers, NewBlocksHeadersStreamType},
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
     new_filled_blocks::{new_filled_blocks, NewFilledBlocksStreamType},
     new_operations::{new_operations, NewOperationsStreamType},
@@ -22,7 +20,7 @@ use crate::stream::{
 };
 
 #[tonic::async_trait]
-impl grpc_api::massa_service_server::MassaService for MassaGrpc {
+impl grpc_api::public_service_server::PublicService for MassaGrpc {
     /// handler for get blocks
     async fn get_blocks(
         &self,
@@ -45,6 +43,15 @@ impl grpc_api::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<grpc_api::GetStakersRequest>,
     ) -> Result<tonic::Response<grpc_api::GetStakersResponse>, tonic::Status> {
         Ok(tonic::Response::new(get_stakers(self, request)?))
+    }
+
+    /// handler for get satatus
+    async fn get_status(
+        &self,
+        request: tonic::Request<grpc_api::GetStatusRequest>,
+    ) -> Result<tonic::Response<grpc_api::GetStatusResponse>, tonic::Status> {
+        // Ok(tonic::Response::new(get_status(self, request)?))
+        unimplemented!("get_status is not implemented yet")
     }
 
     /// handler for get mip status (versioning)
@@ -102,11 +109,12 @@ impl grpc_api::massa_service_server::MassaService for MassaGrpc {
     }
 
     /// handler for get version
-    async fn get_version(
+    async fn query_state(
         &self,
-        request: tonic::Request<grpc_api::GetVersionRequest>,
-    ) -> Result<tonic::Response<grpc_api::GetVersionResponse>, tonic::Status> {
-        Ok(tonic::Response::new(get_version(self, request)?))
+        request: tonic::Request<grpc_api::QueryStateRequest>,
+    ) -> Result<tonic::Response<grpc_api::QueryStateResponse>, tonic::Status> {
+        // Ok(tonic::Response::new(query_state(self, request)?))
+        unimplemented!("query_state not implemented yet")
     }
 
     // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗
@@ -123,18 +131,6 @@ impl grpc_api::massa_service_server::MassaService for MassaGrpc {
         request: tonic::Request<tonic::Streaming<grpc_api::NewBlocksRequest>>,
     ) -> Result<tonic::Response<Self::NewBlocksStream>, tonic::Status> {
         Ok(tonic::Response::new(new_blocks(self, request).await?))
-    }
-
-    type NewBlocksHeadersStream = NewBlocksHeadersStreamType;
-
-    /// handler for subscribe new blocks headers
-    async fn new_blocks_headers(
-        &self,
-        request: tonic::Request<tonic::Streaming<grpc_api::NewBlocksHeadersRequest>>,
-    ) -> Result<tonic::Response<Self::NewBlocksHeadersStream>, tonic::Status> {
-        Ok(tonic::Response::new(
-            new_blocks_headers(self, request).await?,
-        ))
     }
 
     type NewEndorsementsStream = NewEndorsementsStreamType;
