@@ -184,7 +184,7 @@ pub(crate) fn get_blocks(
         .map(|(block, status)| grpc_model::BlockWrapper {
             block_id: block.header.id.to_string(),
             block: Some(block.clone()),
-            status: status.clone(),
+            status: grpc_model::BlockStatus::from(status),
         })
         .collect();
 
