@@ -74,3 +74,10 @@ pub enum ExecutionError {
     /// Factory error: {0}
     FactoryError(#[from] FactoryError),
 }
+
+/// Execution query errors
+#[derive(Clone, Display, Error, Debug)]
+pub enum ExecutionQueryError {
+    /// Not found: {0}
+    NotFound(String),
+}

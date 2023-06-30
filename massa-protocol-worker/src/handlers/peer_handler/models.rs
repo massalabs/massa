@@ -125,13 +125,8 @@ impl PeerDB {
                 if peer.last_announce.timestamp < min_time {
                     continue;
                 }
-                let listeners: HashMap<SocketAddr, TransportType> = peer
-                    .last_announce
-                    .listeners
-                    .clone()
-                    .into_iter()
-                    .filter(|(addr, _)| addr.ip().to_canonical().is_global())
-                    .collect();
+                let listeners: HashMap<SocketAddr, TransportType> =
+                    peer.last_announce.listeners.clone().into_iter().collect();
                 if listeners.is_empty() {
                     continue;
                 }

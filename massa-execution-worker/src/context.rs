@@ -540,8 +540,8 @@ impl ExecutionContext {
     }
 
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    pub fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
-        self.speculative_ledger.get_keys(address)
+    pub fn get_keys(&self, address: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
+        self.speculative_ledger.get_keys(address, prefix)
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None

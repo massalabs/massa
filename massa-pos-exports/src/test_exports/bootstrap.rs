@@ -37,8 +37,8 @@ pub fn assert_eq_pos_state(s1: &PoSFinalState, s2: &PoSFinalState) {
     );
     for cycle in s1.cycle_history_cache.clone() {
         assert_eq!(
-            s1.get_cycle_info(cycle.0),
-            s2.get_cycle_info(cycle.0),
+            s1.get_cycle_info(cycle.0).expect("cycle missing"),
+            s2.get_cycle_info(cycle.0).expect("cycle missing"),
             "PoS cycle_history mismatching"
         );
     }

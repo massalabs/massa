@@ -210,10 +210,10 @@
     # Nb max in connections that we accept
     max_in_connections = 100
     # Peer default category limits
-    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 70}
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 70, allow_local_peers = false }
     # Peer categories limits
     [protocol.peers_categories]
-    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 8}
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 8, allow_local_peers = false }
 
 [network]
 
