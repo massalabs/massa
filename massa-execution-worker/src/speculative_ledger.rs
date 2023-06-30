@@ -11,6 +11,7 @@ use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 use massa_models::bytecode::Bytecode;
+use massa_models::datastore::get_prefix_bounds;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
@@ -388,29 +389,7 @@ impl SpeculativeLedger {
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
     pub fn get_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
         // compute prefix range
-        let prefix_range = if !prefix.is_empty() {
-            // compute end of prefix range
-            let n_keep = prefix
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(i, v)| if v < &255 { Some(i + 1) } else { None })
-                .unwrap_or(0);
-            let mut prefix_end = prefix[..n_keep].to_vec();
-            if let Some(v) = prefix_end.last_mut() {
-                *v += 1;
-            }
-            (
-                std::ops::Bound::Included(prefix.to_vec()),
-                if !prefix_end.is_empty() {
-                    std::ops::Bound::Excluded(prefix_end)
-                } else {
-                    std::ops::Bound::Unbounded
-                },
-            )
-        } else {
-            (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
-        };
+        let prefix_range = get_prefix_bounds(prefix);
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         // init keys with final state

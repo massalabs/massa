@@ -9,6 +9,7 @@ use massa_db_exports::{
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
+use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
@@ -496,21 +497,10 @@ impl LedgerDB {
 /// Since key length is not limited, for some case we return `None` because there is
 /// no bounded limit (every keys in the series `[]`, `[255]`, `[255, 255]` ...).
 fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
-    // compute end of prefix range
-    let n_keep = prefix
-        .iter()
-        .enumerate()
-        .rev()
-        .find_map(|(i, v)| if v < &u8::MAX { Some(i + 1) } else { None })
-        .unwrap_or(0);
-    let mut prefix_end = prefix[..n_keep].to_vec();
-    if let Some(v) = prefix_end.last_mut() {
-        *v += 1;
-    }
-    if !prefix_end.is_empty() {
-        Some(prefix_end)
-    } else {
-        None
+    match get_prefix_bounds(prefix).1 {
+        std::ops::Bound::Excluded(end) => Some(end),
+        std::ops::Bound::Unbounded => None,
+        _ => panic!("unexpected key bound"),
     }
 }
 
