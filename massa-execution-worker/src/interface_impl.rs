@@ -694,27 +694,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A list of keys (keys are byte arrays) that match the given prefix
     fn get_op_keys_wasmv1(&self, prefix: &[u8]) -> Result<Vec<Vec<u8>>> {
-        // compute prefix range
-        let prefix_range = if !prefix.is_empty() {
-            // compute end of prefix range
-            let mut prefix_end = prefix.to_vec();
-            while let Some(255) = prefix_end.last() {
-                prefix_end.pop();
-            }
-            if let Some(v) = prefix_end.last_mut() {
-                *v += 1;
-            }
-            (
-                std::ops::Bound::Included(prefix.to_vec()),
-                if prefix_end.is_empty() {
-                    std::ops::Bound::Unbounded
-                } else {
-                    std::ops::Bound::Excluded(prefix_end)
-                },
-            )
-        } else {
-            (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded)
-        };
+        let prefix_range = get_prefix_bounds(prefix);
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         let context = context_guard!(self);
