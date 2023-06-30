@@ -301,13 +301,10 @@ impl Interface for InterfaceImpl {
         let address = get_address_from_opt_or_context(&context, address)?;
 
         let amount = context.get_balance(&address).unwrap_or_default();
-        let (mantissa, scale) = self
-            .amount_to_mantissa_scale(amount.to_raw())
+
+        let native_amount = self
+            .native_amount_from_str_wasmv1(&amount.to_string())
             .unwrap_or_default();
-        let native_amount = NativeAmount {
-            mandatory_mantissa: Some(mantissa),
-            mandatory_scale: Some(scale),
-        };
 
         Ok(native_amount)
     }
@@ -365,12 +362,8 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
-        match (context.get_keys(&address), prefix) {
-            (Some(mut value), prefix) if !prefix.is_empty() => {
-                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
-                Ok(value)
-            }
-            (Some(value), _) => Ok(value),
+        match context.get_keys(&address, prefix) {
+            Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
     }
@@ -856,7 +849,7 @@ impl Interface for InterfaceImpl {
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
         let to_hash = [prefix.as_bytes(), message_].concat();
-        let full_hash = sha3::Keccak256::digest(&to_hash);
+        let full_hash = sha3::Keccak256::digest(to_hash);
         let message = libsecp256k1::Message::parse_slice(&full_hash)
             .expect("message could not be parsed from a hash slice");
 
