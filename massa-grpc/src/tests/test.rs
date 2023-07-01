@@ -16,7 +16,7 @@ use massa_models::config::{
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
-use massa_proto_rs::massa::api::v1::massa_service_client::PublicServiceClient;
+use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_protocol_exports::MockProtocolController;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use std::{

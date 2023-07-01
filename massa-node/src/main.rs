@@ -807,37 +807,39 @@ async fn launch(
     let mut api_config = api_config.clone();
     api_config.enable_ws = false;
 
-    // Whether to spawn gRPC API
-    let grpc_handle = if SETTINGS.grpc.enabled {
+    // Whether to spawn gRPC PUBLIC API
+    let grpc_public_handle = if SETTINGS.grpc.public.enabled {
         let grpc_config = GrpcConfig {
-            enabled: SETTINGS.grpc.enabled,
-            accept_http1: SETTINGS.grpc.accept_http1,
-            enable_cors: SETTINGS.grpc.enable_cors,
-            enable_health: SETTINGS.grpc.enable_health,
-            enable_reflection: SETTINGS.grpc.enable_reflection,
-            enable_mtls: SETTINGS.grpc.enable_mtls,
-            bind: SETTINGS.grpc.bind,
-            accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
-            send_compressed: SETTINGS.grpc.send_compressed.clone(),
-            max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
-            max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
-            concurrency_limit_per_connection: SETTINGS.grpc.concurrency_limit_per_connection,
-            timeout: SETTINGS.grpc.timeout.to_duration(),
-            initial_stream_window_size: SETTINGS.grpc.initial_stream_window_size,
-            initial_connection_window_size: SETTINGS.grpc.initial_connection_window_size,
-            max_concurrent_streams: SETTINGS.grpc.max_concurrent_streams,
-            tcp_keepalive: SETTINGS.grpc.tcp_keepalive.map(|t| t.to_duration()),
-            tcp_nodelay: SETTINGS.grpc.tcp_nodelay,
+            enabled: SETTINGS.grpc.public.enabled,
+            accept_http1: SETTINGS.grpc.public.accept_http1,
+            enable_cors: SETTINGS.grpc.public.enable_cors,
+            enable_health: SETTINGS.grpc.public.enable_health,
+            enable_reflection: SETTINGS.grpc.public.enable_reflection,
+            enable_mtls: SETTINGS.grpc.public.enable_mtls,
+            bind: SETTINGS.grpc.public.bind,
+            accept_compressed: SETTINGS.grpc.public.accept_compressed.clone(),
+            send_compressed: SETTINGS.grpc.public.send_compressed.clone(),
+            max_decoding_message_size: SETTINGS.grpc.public.max_decoding_message_size,
+            max_encoding_message_size: SETTINGS.grpc.public.max_encoding_message_size,
+            concurrency_limit_per_connection: SETTINGS.grpc.public.concurrency_limit_per_connection,
+            timeout: SETTINGS.grpc.public.timeout.to_duration(),
+            initial_stream_window_size: SETTINGS.grpc.public.initial_stream_window_size,
+            initial_connection_window_size: SETTINGS.grpc.public.initial_connection_window_size,
+            max_concurrent_streams: SETTINGS.grpc.public.max_concurrent_streams,
+            tcp_keepalive: SETTINGS.grpc.public.tcp_keepalive.map(|t| t.to_duration()),
+            tcp_nodelay: SETTINGS.grpc.public.tcp_nodelay,
             http2_keepalive_interval: SETTINGS
                 .grpc
+                .public
                 .http2_keepalive_interval
                 .map(|t| t.to_duration()),
             http2_keepalive_timeout: SETTINGS
                 .grpc
+                .public
                 .http2_keepalive_timeout
                 .map(|t| t.to_duration()),
-            http2_adaptive_window: SETTINGS.grpc.http2_adaptive_window,
-            max_frame_size: SETTINGS.grpc.max_frame_size,
+            http2_adaptive_window: SETTINGS.grpc.public.http2_adaptive_window,
+            max_frame_size: SETTINGS.grpc.public.max_frame_size,
             thread_count: THREAD_COUNT,
             max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
             endorsement_count: ENDORSEMENT_COUNT,
@@ -852,16 +854,17 @@ async fn launch(
             genesis_timestamp: *GENESIS_TIMESTAMP,
             t0: T0,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            max_channel_size: SETTINGS.grpc.max_channel_size,
-            draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
+            max_channel_size: SETTINGS.grpc.public.max_channel_size,
+            draw_lookahead_period_count: SETTINGS.grpc.public.draw_lookahead_period_count,
             last_start_period: final_state.read().last_start_period,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-            max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
-            max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
+            max_block_ids_per_request: SETTINGS.grpc.public.max_block_ids_per_request,
+            max_operation_ids_per_request: SETTINGS.grpc.public.max_operation_ids_per_request,
+            server_certificate_path: SETTINGS.grpc.public.server_certificate_path.clone(),
+            server_private_key_path: SETTINGS.grpc.public.server_private_key_path.clone(),
             client_certificate_authority_root_path: SETTINGS
                 .grpc
+                .public
                 .client_certificate_authority_root_path
                 .clone(),
         };
@@ -994,7 +997,7 @@ async fn launch(
         api_private_handle,
         api_public_handle,
         api_handle,
-        grpc_handle,
+        grpc_public_handle,
         metrics_stopper,
     )
 }
@@ -1023,7 +1026,7 @@ async fn stop(
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
-    grpc_handle: Option<massa_grpc::server::StopHandle>,
+    grpc_public_handle: Option<massa_grpc::server::StopHandle>,
     mut metrics_stopper: MetricsStopper,
 ) {
     // stop bootstrap
@@ -1036,7 +1039,7 @@ async fn stop(
     info!("Start stopping API's: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE");
 
     // stop Massa gRPC API
-    if let Some(handle) = grpc_handle {
+    if let Some(handle) = grpc_public_handle {
         handle.stop();
     }
 
@@ -1219,7 +1222,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
+            grpc_public_handle,
             metrics_stopper,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
 
@@ -1284,7 +1287,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
+            grpc_public_handle,
             metrics_stopper,
         )
         .await;

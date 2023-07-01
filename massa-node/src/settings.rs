@@ -136,7 +136,7 @@ pub struct Settings {
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
-    pub grpc: GrpcSettings,
+    pub grpc: GrpcApiSettings,
     pub metrics: MetricsSettings,
 }
 
@@ -314,6 +314,15 @@ pub struct GrpcSettings {
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+}
+
+/// gRPC API settings.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcApiSettings {
+    /// Public server gRPC configuration.
+    pub public: GrpcSettings,
+    /// Private server gRPC configuration.
+    pub private: GrpcSettings,
 }
 
 #[cfg(test)]

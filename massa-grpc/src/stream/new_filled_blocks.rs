@@ -33,8 +33,6 @@ pub(crate) async fn new_filled_blocks(
     let mut subscriber = grpc.consensus_channels.filled_block_sender.subscribe();
 
     tokio::spawn(async move {
-        // Initialize the request_id string
-        let mut request_id = String::new();
         loop {
             select! {
                 // Receive a new filled block from the subscriber
