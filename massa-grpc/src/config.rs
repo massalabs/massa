@@ -99,3 +99,12 @@ pub struct GrpcConfig {
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
 }
+
+/// gRPC API configuration.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcApiConfig {
+    /// Public server gRPC configuration.
+    pub public: GrpcConfig,
+    /// Private server gRPC configuration.
+    pub private: GrpcConfig,
+}
