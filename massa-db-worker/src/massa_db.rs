@@ -331,17 +331,19 @@ where
 
                 // Compute the XOR in all cases
                 if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    let prev_hash =
+                        HashXof::compute_from_tuple(&[key.as_slice(), prev_value.as_slice()]);
                     current_xor_hash ^= prev_hash;
                 };
-                let new_hash = HashXof::compute_from_kv(key.as_slice(), value.as_slice());
+                let new_hash = HashXof::compute_from_tuple(&[key.as_slice(), value.as_slice()]);
                 current_xor_hash ^= new_hash;
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
 
                 // Compute the XOR in all cases
                 if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                    let prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    let prev_hash =
+                        HashXof::compute_from_tuple(&[key.as_slice(), prev_value.as_slice()]);
                     current_xor_hash ^= prev_hash;
                 };
             }
@@ -508,7 +510,7 @@ where
         {
             // Compute the XOR in all cases
             let new_hash =
-                HashXof::compute_from_kv(key.to_vec().as_slice(), value.to_vec().as_slice());
+                HashXof::compute_from_tuple(&[key.to_vec().as_slice(), value.to_vec().as_slice()]);
             current_xor_hash ^= new_hash;
         }
 

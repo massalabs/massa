@@ -86,7 +86,7 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use massa_hash::Hash;
-    /// let hash = Hash::compute_from_tuple([&"hello".as_bytes(), &"world".as_bytes()]);
+    /// let hash = Hash::compute_from_tuple(&[&"hello".as_bytes(), &"world".as_bytes()]);
     /// ```
     pub fn compute_from_tuple(data: &[&[u8]]) -> Self {
         let mut hasher = blake3::Hasher::new();

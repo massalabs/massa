@@ -46,18 +46,6 @@ impl<const SIZE: usize> HashXof<SIZE> {
         HashXof(hash)
     }
 
-    /// Compute from key and value
-    pub fn compute_from_kv(key: &[u8], value: &[u8]) -> HashXof<SIZE> {
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(&(key.len() as u64).to_be_bytes());
-        hasher.update(key);
-        hasher.update(value);
-        let mut hash = [0u8; SIZE];
-        let mut output_reader = hasher.finalize_xof();
-        output_reader.fill(&mut hash);
-        HashXof(hash)
-    }
-
     /// Serialize a Hash using `bs58` encoding with checksum.
     /// Motivations for using base58 encoding:
     ///
