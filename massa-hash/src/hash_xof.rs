@@ -33,6 +33,19 @@ impl<const SIZE: usize> HashXof<SIZE> {
         HashXof(hash)
     }
 
+    /// Compute from tuple of byte arrays
+    pub fn compute_from_tuple(data: &[&[u8]]) -> Self {
+        let mut hasher = blake3::Hasher::new();
+        for d in data {
+            hasher.update(&(d.len() as u64).to_be_bytes());
+            hasher.update(d);
+        }
+        let mut hash = [0u8; SIZE];
+        let mut output_reader = hasher.finalize_xof();
+        output_reader.fill(&mut hash);
+        HashXof(hash)
+    }
+
     /// Compute from key and value
     pub fn compute_from_kv(key: &[u8], value: &[u8]) -> HashXof<SIZE> {
         let mut hasher = blake3::Hasher::new();

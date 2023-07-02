@@ -81,6 +81,22 @@ impl Hash {
         Hash(blake3::hash(data))
     }
 
+    /// Compute a hash from tuple of byte arrays.
+    ///
+    /// # Example
+    ///  ```
+    /// # use massa_hash::Hash;
+    /// let hash = Hash::compute_from_tuple([&"hello".as_bytes(), &"world".as_bytes()]);
+    /// ```
+    pub fn compute_from_tuple(data: &[&[u8]]) -> Self {
+        let mut hasher = blake3::Hasher::new();
+        for d in data {
+            hasher.update(&(d.len() as u64).to_be_bytes());
+            hasher.update(d);
+        }
+        Hash(hasher.finalize())
+    }
+
     /// Serialize a Hash using `bs58` encoding with checksum.
     ///
     /// # Example

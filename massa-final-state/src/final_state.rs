@@ -136,14 +136,7 @@ impl FinalState {
     /// Get the fingerprint (hash) of the final state
     pub fn get_fingerprint(&self) -> massa_hash::Hash {
         let internal_hash = self.db.read().get_xof_db_hash();
-        let internal_hash_bytes = internal_hash.to_bytes();
-        massa_hash::Hash::compute_from(
-            &[
-                &(internal_hash_bytes.len() as u64).to_be_bytes(),
-                &internal_hash_bytes[..],
-            ]
-            .concat(),
-        )
+        massa_hash::Hash::compute_from(internal_hash.to_bytes())
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
