@@ -779,6 +779,8 @@
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1112,17 +1114,19 @@
 
                 <span class="comment">// Compute the XOR in all cases
                 </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(prev_value)) = <span class="self">self</span>.db.get_cf(handle_state, key) {
-                    <span class="kw">let </span>prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    <span class="kw">let </span>prev_hash =
+                        HashXof::compute_from_tuple(<span class="kw-2">&amp;</span>[key.as_slice(), prev_value.as_slice()]);
                     current_xor_hash ^= prev_hash;
                 };
-                <span class="kw">let </span>new_hash = HashXof::compute_from_kv(key.as_slice(), value.as_slice());
+                <span class="kw">let </span>new_hash = HashXof::compute_from_tuple(<span class="kw-2">&amp;</span>[key.as_slice(), value.as_slice()]);
                 current_xor_hash ^= new_hash;
             } <span class="kw">else </span>{
                 <span class="self">self</span>.current_batch.lock().delete_cf(handle_state, key);
 
                 <span class="comment">// Compute the XOR in all cases
                 </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(prev_value)) = <span class="self">self</span>.db.get_cf(handle_state, key) {
-                    <span class="kw">let </span>prev_hash = HashXof::compute_from_kv(key.as_slice(), prev_value.as_slice());
+                    <span class="kw">let </span>prev_hash =
+                        HashXof::compute_from_tuple(<span class="kw-2">&amp;</span>[key.as_slice(), prev_value.as_slice()]);
                     current_xor_hash ^= prev_hash;
                 };
             }
@@ -1289,7 +1293,7 @@
         {
             <span class="comment">// Compute the XOR in all cases
             </span><span class="kw">let </span>new_hash =
-                HashXof::compute_from_kv(key.to_vec().as_slice(), value.to_vec().as_slice());
+                HashXof::compute_from_tuple(<span class="kw-2">&amp;</span>[key.to_vec().as_slice(), value.to_vec().as_slice()]);
             current_xor_hash ^= new_hash;
         }
 

@@ -299,6 +299,9 @@
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -306,6 +309,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ExecutionQueryError;
 <span class="kw">use </span><span class="kw">crate</span>::event_store::EventStore;
 <span class="kw">use </span>massa_final_state::StateChanges;
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::datastore::Datastore;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
@@ -330,10 +334,12 @@
 </span><span class="kw">pub struct </span>ExecutionQueryResponse {
     <span class="doccomment">/// List of responses
     </span><span class="kw">pub </span>responses: Vec&lt;<span class="prelude-ty">Result</span>&lt;ExecutionQueryResponseItem, ExecutionQueryError&gt;&gt;,
-    <span class="doccomment">/// Last executed final slot
-    </span><span class="kw">pub </span>final_cursor: Slot,
     <span class="doccomment">/// Last executed candidate slot
     </span><span class="kw">pub </span>candidate_cursor: Slot,
+    <span class="doccomment">/// Last executed final slot
+    </span><span class="kw">pub </span>final_cursor: Slot,
+    <span class="doccomment">/// Final state hash
+    </span><span class="kw">pub </span>final_state_fingerprint: Hash,
 }
 
 <span class="doccomment">/// Execution state query item

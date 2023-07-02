@@ -499,6 +499,7 @@
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -637,6 +638,7 @@
             responses: Vec::with_capacity(req.requests.len()),
             candidate_cursor: execution_lock.active_cursor,
             final_cursor: execution_lock.final_cursor,
+            final_state_fingerprint: execution_lock.get_final_state_fingerprint(),
         };
         <span class="kw">for </span>req_item <span class="kw">in </span>req.requests {
             <span class="kw">let </span>resp_item = <span class="kw">match </span>req_item {
