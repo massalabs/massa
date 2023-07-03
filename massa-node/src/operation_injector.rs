@@ -83,7 +83,6 @@ pub fn start_operation_injector(
         use rand::Rng;
         let mut rng = rand::thread_rng();
         loop {
-            let now = std::time::Instant::now();
             let mut storage = storage.clone_without_refs();
             let txps = nb_op / 32;
             let final_slot = get_closest_slot_to_timestamp(
@@ -114,7 +113,7 @@ pub fn start_operation_injector(
             protocol_controller
                 .propagate_operations(storage.clone())
                 .unwrap();
-            std::thread::sleep(Duration::from_secs(1).saturating_sub(now.elapsed()));
+            std::thread::sleep(Duration::from_secs(1));
         }
     });
 }
