@@ -253,7 +253,9 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         let state_id = u32::from(ComponentStateTypeId::from(value));
         self.u32_serializer.serialize(&state_id, buffer)?;
         match value {
-            ComponentState::Started(Started { vote_ratio: threshold }) => {
+            ComponentState::Started(Started {
+                vote_ratio: threshold,
+            }) => {
                 // self.amount_serializer.serialize(threshold, buffer)?;
                 self.ratio_serializer.serialize(threshold, buffer)?;
             }

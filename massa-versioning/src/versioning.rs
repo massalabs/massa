@@ -398,7 +398,9 @@ impl MipState {
         // Advance state if both are at 'Started' (to have the same threshold)
         // Note: because in history we do not add entries for every threshold update
         if let (
-            ComponentState::Started(Started { vote_ratio: threshold }),
+            ComponentState::Started(Started {
+                vote_ratio: threshold,
+            }),
             ComponentState::Started(Started {
                 vote_ratio: threshold_2,
             }),
