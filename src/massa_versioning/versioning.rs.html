@@ -2329,22 +2329,6 @@
 <a href="#2329" id="2329">2329</a>
 <a href="#2330" id="2330">2330</a>
 <a href="#2331" id="2331">2331</a>
-<a href="#2332" id="2332">2332</a>
-<a href="#2333" id="2333">2333</a>
-<a href="#2334" id="2334">2334</a>
-<a href="#2335" id="2335">2335</a>
-<a href="#2336" id="2336">2336</a>
-<a href="#2337" id="2337">2337</a>
-<a href="#2338" id="2338">2338</a>
-<a href="#2339" id="2339">2339</a>
-<a href="#2340" id="2340">2340</a>
-<a href="#2341" id="2341">2341</a>
-<a href="#2342" id="2342">2342</a>
-<a href="#2343" id="2343">2343</a>
-<a href="#2344" id="2344">2344</a>
-<a href="#2345" id="2345">2345</a>
-<a href="#2346" id="2346">2346</a>
-<a href="#2347" id="2347">2347</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
@@ -2457,12 +2441,10 @@
         <span class="doccomment">/// Initial state
         </span>Defined,
         <span class="doccomment">/// Past start, can only go to LockedIn after the threshold is above a given value
-        </span>Started { <span class="kw">pub</span>(<span class="kw">crate</span>) vote_ratio: Ratio&lt;u64&gt; },
+        </span>Started { <span class="kw">pub</span>(<span class="kw">crate</span>) threshold: Ratio&lt;u64&gt; },
         <span class="doccomment">/// Locked but wait for some time before going to active (to let users the time to upgrade)
-        /// &#39;at&#39; is the timestamp where the transition from &#39;Started&#39; to &#39;LockedIn&#39; happened
         </span>LockedIn { <span class="kw">pub</span>(<span class="kw">crate</span>) at: MassaTime },
         <span class="doccomment">/// After LockedIn, deployment is considered successful (after activation delay)
-        /// &#39;at&#39; is the timestamp where the transition from &#39;LockedIn&#39; to &#39;Active&#39; happened
         </span>Active { <span class="kw">pub</span>(<span class="kw">crate</span>) at: MassaTime },
         <span class="doccomment">/// Past the timeout, if LockedIn is not reach
         </span>Failed,
@@ -2472,15 +2454,6 @@
 <span class="kw">impl </span>Default <span class="kw">for </span>ComponentState {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Defined(Defined {})
-    }
-}
-
-<span class="kw">impl </span>ComponentState {
-    <span class="kw">fn </span>is_final(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="macro">matches!</span>(
-            <span class="self">self</span>,
-            ComponentState::Active(..) | ComponentState::Failed(..) | ComponentState::Error
-        )
     }
 }
 
@@ -2613,18 +2586,18 @@
     }
 }
 
-<span class="doccomment">/// Error returned by `MipState::is_consistent_with`
+<span class="doccomment">/// Error returned by `MipState::is_coherent_with`
 </span><span class="attr">#[derive(Error, Debug, PartialEq)]
-</span><span class="kw">pub enum </span>IsConsistentError {
-    <span class="comment">// State is not consistent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+</span><span class="kw">pub enum </span>IsCoherentError {
+    <span class="comment">// State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
     </span><span class="attr">#[error(<span class="string">&quot;MipState history is empty&quot;</span>)]
     </span>EmptyHistory,
     <span class="attr">#[error(<span class="string">&quot;MipState is at state Error&quot;</span>)]
     </span>AtError,
     <span class="attr">#[error(<span class="string">&quot;History must start at state &#39;Defined&#39; and not {0:?}&quot;</span>)]
     </span>InvalidHistory(ComponentStateTypeId),
-    <span class="attr">#[error(<span class="string">&quot;Non consistent state: {0:?} versus rebuilt state: {1:?}&quot;</span>)]
-    </span>NonConsistent(ComponentState, ComponentState),
+    <span class="attr">#[error(<span class="string">&quot;Non coherent state: {0:?} versus rebuilt state: {1:?}&quot;</span>)]
+    </span>NonCoherent(ComponentState, ComponentState),
     <span class="attr">#[error(<span class="string">&quot;Invalid data in MIP info, start &gt;= timeout&quot;</span>)]
     </span>Invalid,
 }
@@ -2694,35 +2667,35 @@
         }
     }
 
-    <span class="doccomment">/// Given a corresponding MipInfo, check if state is consistent
-    /// it is consistent
+    <span class="doccomment">/// Given a corresponding MipInfo, check if state is coherent
+    /// it is coherent
     ///   if state can be at this position (e.g. can it be at state &quot;Started&quot; according to given time range)
-    ///   if history is consistent with current state
+    ///   if history is coherent with current state
     /// Return false for state == ComponentState::Error
-    </span><span class="kw">pub fn </span>is_consistent_with(<span class="kw-2">&amp;</span><span class="self">self</span>, mip_info: <span class="kw-2">&amp;</span>MipInfo) -&gt; <span class="prelude-ty">Result</span>&lt;(), IsConsistentError&gt; {
+    </span><span class="kw">pub fn </span>is_coherent_with(<span class="kw-2">&amp;</span><span class="self">self</span>, mip_info: <span class="kw-2">&amp;</span>MipInfo) -&gt; <span class="prelude-ty">Result</span>&lt;(), IsCoherentError&gt; {
         <span class="comment">// Always return false for state Error or if history is empty
         </span><span class="kw">if </span><span class="macro">matches!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.state, <span class="kw-2">&amp;</span>ComponentState::Error) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(IsConsistentError::AtError);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::AtError);
         }
 
         <span class="kw">if </span>mip_info.start &gt;= mip_info.timeout {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(IsConsistentError::Invalid);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::Invalid);
         }
 
         <span class="kw">if </span><span class="self">self</span>.history.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(IsConsistentError::EmptyHistory);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::EmptyHistory);
         }
 
         <span class="comment">// safe to unwrap (already tested if empty or not)
         </span><span class="kw">let </span>(initial_ts, initial_state_id) = <span class="self">self</span>.history.first_key_value().unwrap();
         <span class="kw">if </span><span class="kw-2">*</span>initial_state_id != ComponentStateTypeId::Defined {
             <span class="comment">// self.history does not start with Defined -&gt; (always) false
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(IsConsistentError::InvalidHistory(initial_state_id.clone()));
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
         <span class="kw">if </span>mip_info.start &lt; initial_ts.now || mip_info.timeout &lt; initial_ts.now {
             <span class="comment">// MIP info start (or timeout) is before Defined timestamp??
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(IsConsistentError::InvalidHistory(initial_state_id.clone()));
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(IsCoherentError::InvalidHistory(initial_state_id.clone()));
         }
 
         <span class="comment">// Build a new MipStateHistory from initial state, replaying the whole history
@@ -2745,11 +2718,9 @@
         <span class="comment">// Advance state if both are at &#39;Started&#39; (to have the same threshold)
         // Note: because in history we do not add entries for every threshold update
         </span><span class="kw">if let </span>(
+            ComponentState::Started(Started { threshold }),
             ComponentState::Started(Started {
-                vote_ratio: threshold,
-            }),
-            ComponentState::Started(Started {
-                vote_ratio: threshold_2,
+                threshold: threshold_2,
             }),
         ) = (vsh.state, <span class="self">self</span>.state)
         {
@@ -2764,7 +2735,7 @@
         <span class="kw">if </span>vsh == <span class="kw-2">*</span><span class="self">self </span>{
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(IsConsistentError::NonConsistent(<span class="self">self</span>.state, vsh.state))
+            <span class="prelude-val">Err</span>(IsCoherentError::NonCoherent(<span class="self">self</span>.state, vsh.state))
         }
     }
 
@@ -2859,7 +2830,10 @@
 
     <span class="doccomment">/// Return True if state can not change anymore (e.g. Active, Failed or Error)
     </span><span class="kw">pub fn </span>is_final(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.state.is_final()
+        <span class="macro">matches!</span>(
+            <span class="self">self</span>.state,
+            ComponentState::Active(..) | ComponentState::Failed(..) | ComponentState::Error
+        )
     }
 }
 
@@ -2912,30 +2886,25 @@
 
     <span class="doccomment">/// Retrieve the network version number to announce in block header
     /// return 0 is there is nothing to announce
-    </span><span class="kw">pub fn </span>get_network_version_to_announce(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">pub fn </span>get_network_version_to_announce(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u32&gt; {
         <span class="kw">let </span>lock = <span class="self">self</span>.<span class="number">0</span>.read();
         <span class="kw">let </span>store = lock.deref();
         <span class="comment">// Announce the latest versioning info in Started / LockedIn state
         // Defined == Not yet ready to announce
         // Active == current version
-        </span>store
-            .store
-            .iter()
-            .rev()
-            .find_map(|(k, v)| {
-                <span class="macro">matches!</span>(
-                    <span class="kw-2">&amp;</span>v.state,
-                    <span class="kw-2">&amp;</span>ComponentState::Started(<span class="kw">_</span>) | <span class="kw-2">&amp;</span>ComponentState::LockedIn(<span class="kw">_</span>)
-                )
-                .then_some(k.version)
-            })
-            .unwrap_or(<span class="number">0</span>)
+        </span>store.store.iter().rev().find_map(|(k, v)| {
+            <span class="macro">matches!</span>(
+                <span class="kw-2">&amp;</span>v.state,
+                <span class="kw-2">&amp;</span>ComponentState::Started(<span class="kw">_</span>) | <span class="kw-2">&amp;</span>ComponentState::LockedIn(<span class="kw">_</span>)
+            )
+            .then_some(k.version)
+        })
     }
 
     <span class="kw">pub fn </span>update_network_version_stats(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot_timestamp: MassaTime,
-        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
+        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>lock = <span class="self">self</span>.<span class="number">0</span>.write();
         lock.update_network_version_stats(slot_timestamp, network_versions);
@@ -2976,7 +2945,7 @@
     }
 
     <span class="comment">// Network restart
-    </span><span class="kw">pub fn </span>is_consistent_with_shutdown_period(
+    </span><span class="kw">pub fn </span>is_coherent_with_shutdown_period(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         shutdown_start: Slot,
         shutdown_end: Slot,
@@ -2985,7 +2954,7 @@
         genesis_timestamp: MassaTime,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ModelsError&gt; {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
-        guard.is_consistent_with_shutdown_period(
+        guard.is_coherent_with_shutdown_period(
             shutdown_start,
             shutdown_end,
             thread_count,
@@ -3072,9 +3041,9 @@
 <span class="doccomment">/// Error returned by `MipStoreRaw::update_with`
 </span><span class="attr">#[derive(Error, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>UpdateWithError {
-    <span class="comment">// State is not consistent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:#?} is not consistent with state: {1:#?}, error: {2}&quot;</span>)]
-    </span>NonConsistent(MipInfo, MipState, IsConsistentError),
+    <span class="comment">// State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+    </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:#?} is not coherent with state: {1:#?}, error: {2}&quot;</span>)]
+    </span>NonCoherent(MipInfo, MipState, IsCoherentError),
     <span class="comment">// ex: State is already started but received state is only defined
     </span><span class="attr">#[error(<span class="string">&quot;For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}&quot;</span>)]
     </span>Downgrade(MipInfo, ComponentState, ComponentState),
@@ -3134,9 +3103,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>has_error: <span class="prelude-ty">Option</span>&lt;UpdateWithError&gt; = <span class="prelude-val">None</span>;
 
         <span class="kw">for </span>(v_info, v_state) <span class="kw">in </span>store_raw.store.iter() {
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = v_state.is_consistent_with(v_info) {
-                <span class="comment">// As soon as we found one non consistent state we abort the merge
-                </span>has_error = <span class="prelude-val">Some</span>(UpdateWithError::NonConsistent(
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = v_state.is_coherent_with(v_info) {
+                <span class="comment">// As soon as we found one non coherent state we abort the merge
+                </span>has_error = <span class="prelude-val">Some</span>(UpdateWithError::NonCoherent(
                     v_info.clone(),
                     v_state.clone(),
                     e,
@@ -3236,9 +3205,11 @@
     <span class="kw">fn </span>update_network_version_stats(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot_timestamp: MassaTime,
-        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
+        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
     ) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((_current_network_version, announced_network_version)) = network_versions {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((_current_network_version, announced_network_version_)) = network_versions {
+            <span class="kw">let </span>announced_network_version = announced_network_version_.unwrap_or(<span class="number">0</span>);
+
             <span class="kw">let </span>removed_version_ = <span class="kw">match </span><span class="self">self</span>.stats.latest_announcements.len() {
                 n <span class="kw">if </span>n &gt;= <span class="self">self</span>.stats.config.block_count_considered =&gt; {
                     <span class="self">self</span>.stats.latest_announcements.pop_front()
@@ -3345,9 +3316,9 @@
 
     <span class="comment">// Network restart
 
-    </span><span class="doccomment">/// Check if store is consistent with given last network shutdown
-    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is consistent
-    </span><span class="kw">fn </span>is_consistent_with_shutdown_period(
+    </span><span class="doccomment">/// Check if store is coherent with given last network shutdown
+    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
+    </span><span class="kw">fn </span>is_coherent_with_shutdown_period(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         shutdown_start: Slot,
         shutdown_end: Slot,
@@ -3355,7 +3326,7 @@
         t0: MassaTime,
         genesis_timestamp: MassaTime,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>is_consistent = <span class="bool-val">true</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>is_coherent = <span class="bool-val">true</span>;
 
         <span class="kw">let </span>shutdown_start_ts =
             get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_start)<span class="question-mark">?</span>;
@@ -3370,13 +3341,13 @@
                     </span><span class="kw">if </span>shutdown_range.contains(<span class="kw-2">&amp;</span>mip_info.start)
                         || shutdown_range.contains(<span class="kw-2">&amp;</span>mip_info.timeout)
                     {
-                        is_consistent = <span class="bool-val">false</span>;
+                        is_coherent = <span class="bool-val">false</span>;
                         <span class="kw">break</span>;
                     }
                 }
                 ComponentState::Started(..) =&gt; {
                     <span class="comment">// assume this should have been reset
-                    </span>is_consistent = <span class="bool-val">false</span>;
+                    </span>is_coherent = <span class="bool-val">false</span>;
                     <span class="kw">break</span>;
                 }
                 <span class="kw">_ </span>=&gt; {
@@ -3386,7 +3357,7 @@
             }
         }
 
-        <span class="prelude-val">Ok</span>(is_consistent)
+        <span class="prelude-val">Ok</span>(is_coherent)
     }
 
     <span class="attr">#[allow(dead_code)]
@@ -3744,7 +3715,7 @@
         </span><span class="macro">assert_eq!</span>(
             state,
             ComponentState::Started(Started {
-                vote_ratio: Ratio::zero()
+                threshold: Ratio::zero()
             })
         );
     }
@@ -3946,7 +3917,7 @@
         </span><span class="kw">let </span>vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
         <span class="macro">assert_eq!</span>(vs.get_network_version_current(), mi.version);
-        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), mi_2.version);
+        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), <span class="prelude-val">Some</span>(mi_2.version));
 
         <span class="comment">// Test also an empty versioning store
         </span><span class="kw">let </span>vs_raw = MipStoreRaw {
@@ -3955,12 +3926,12 @@
         };
         <span class="kw">let </span>vs = MipStore(Arc::new(RwLock::new(vs_raw)));
         <span class="macro">assert_eq!</span>(vs.get_network_version_current(), <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), <span class="prelude-val">None</span>);
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_is_consistent_with() {
-        <span class="comment">// Test MipStateHistory::is_consistent_with (consistency of MIP state against its MIP info)
+    </span><span class="kw">fn </span>test_is_coherent_with() {
+        <span class="comment">// Test MipStateHistory::is_coherent_with (coherence of MIP state against its MIP info)
 
         // Given the following MIP info, we expect state
         // Defined @ time &lt;= 2
@@ -3990,23 +3961,20 @@
             history: Default::default(),
         };
         <span class="comment">// At state Error -&gt; (always) false
-        </span><span class="macro">assert_eq!</span>(
-            vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1),
-            <span class="prelude-val">Err</span>(IsConsistentError::AtError)
-        );
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1), <span class="prelude-val">Err</span>(IsCoherentError::AtError));
 
         <span class="kw">let </span>vsh = MipState {
             state: ComponentState::defined(),
             history: Default::default(),
         };
         <span class="comment">// At state Defined but no history -&gt; false
-        </span><span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">false</span>);
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">false</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>vsh = MipState::new(MassaTime::from_millis(<span class="number">1</span>));
         <span class="comment">// At state Defined at time 1 -&gt; true, given vi_1 @ time 1
-        </span><span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
         <span class="comment">// At state Defined at time 1 -&gt; false given vi_1 @ time 3 (state should be Started)
-        // assert_eq!(vsh.is_consistent_with(&amp;vi_1, MassaTime::from_millis(3)), false);
+        // assert_eq!(vsh.is_coherent_with(&amp;vi_1, MassaTime::from_millis(3)), false);
 
         // Advance to Started
         </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">3</span>);
@@ -4018,9 +3986,9 @@
 
         <span class="comment">// At state Started at time now -&gt; true
         </span><span class="macro">assert_eq!</span>(vsh.state, ComponentState::started(Ratio::new_raw(<span class="number">14</span>, <span class="number">100</span>)));
-        <span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
+        <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
         <span class="comment">// Now with another versioning info
-        </span><span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_2).is_ok(), <span class="bool-val">false</span>);
+        </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_2).is_ok(), <span class="bool-val">false</span>);
 
         <span class="comment">// Advance to LockedIn
         </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">4</span>);
@@ -4029,7 +3997,7 @@
 
         <span class="comment">// At state LockedIn at time now -&gt; true
         </span><span class="macro">assert_eq!</span>(vsh.state, ComponentState::locked_in(now));
-        <span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
+        <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
 
         <span class="comment">// edge cases
         // TODO: history all good but does not start with Defined, start with Started
@@ -4220,7 +4188,7 @@
 
             <span class="kw">let </span>mip_store =
                 MipStoreRaw::try_from(([(mi_1_1, ms_1.clone())], mip_stats_cfg.clone()));
-            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonConsistent(..)));
+            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonCoherent(..)));
         }
         {
             <span class="kw">let </span>ms_1_2 = MipState::new(MassaTime::from_millis(<span class="number">15</span>));
@@ -4230,7 +4198,7 @@
             mi_1_2.timeout = MassaTime::from_millis(<span class="number">5</span>);
 
             <span class="kw">let </span>mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg.clone()));
-            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonConsistent(..)));
+            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonCoherent(..)));
         }
         {
             <span class="kw">let </span>ms_1_2 = MipState::new(MassaTime::from_millis(<span class="number">15</span>));
@@ -4240,7 +4208,7 @@
             mi_1_2.timeout = MassaTime::from_millis(<span class="number">5</span>);
 
             <span class="kw">let </span>mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg));
-            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonConsistent(..)));
+            <span class="macro">assert_matches!</span>(mip_store, <span class="prelude-val">Err</span>(UpdateWithError::NonCoherent(..)));
         }
     }
 
@@ -4291,7 +4259,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_mip_store_network_restart() {
-        <span class="comment">// Test if we can get a consistent MipStore after a network shutdown
+        <span class="comment">// Test if we can get a coherent MipStore after a network shutdown
 
         </span><span class="kw">let </span>genesis_timestamp = MassaTime::from_millis(<span class="number">0</span>);
 
@@ -4301,9 +4269,9 @@
         <span class="comment">// helper functions so the test code is easy to read
         </span><span class="kw">let </span>get_slot_ts =
             |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
-        <span class="kw">let </span>is_consistent = |store: <span class="kw-2">&amp;</span>MipStoreRaw, shutdown_start, shutdown_end| {
+        <span class="kw">let </span>is_coherent = |store: <span class="kw-2">&amp;</span>MipStoreRaw, shutdown_start, shutdown_end| {
             store
-                .is_consistent_with_shutdown_period(
+                .is_coherent_with_shutdown_period(
                     shutdown_start,
                     shutdown_end,
                     THREAD_COUNT,
@@ -4383,9 +4351,9 @@
             ))
             .unwrap();
 
-            <span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">false</span>);
+            <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">false</span>);
             update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
-            <span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
+            <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
             <span class="comment">// _dump_store(&amp;store);
         </span>}
 
@@ -4406,10 +4374,10 @@
             <span class="kw">let </span>store_orig = store.clone();
 
             <span class="comment">// Already ok even with a shutdown but let&#39;s check it
-            </span><span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
+            </span><span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
             <span class="comment">// _dump_store(&amp;store);
             </span>update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
-            <span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
+            <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
             <span class="comment">// _dump_store(&amp;store);
 
             // Check that nothing has changed
@@ -4431,9 +4399,9 @@
             ))
             .unwrap();
 
-            <span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">false</span>);
+            <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">false</span>);
             update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
-            <span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
+            <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
             <span class="comment">// _dump_store(&amp;store);
         </span>}
 
@@ -4467,16 +4435,16 @@
             ))
             .unwrap();
 
-            <span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">false</span>);
+            <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">false</span>);
             <span class="comment">// _dump_store(&amp;store);
             </span>update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
-            <span class="macro">assert_eq!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
+            <span class="macro">assert_eq!</span>(is_coherent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end), <span class="bool-val">true</span>);
             <span class="comment">// _dump_store(&amp;store);
 
             // Update stats - so should force transitions if any
             </span>store.update_network_version_stats(
                 get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
-                <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">0</span>)),
+                <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="prelude-val">None</span>)),
             );
 
             <span class="kw">let </span>(first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
@@ -4663,11 +4631,11 @@
             MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
 
         <span class="comment">// Current network version is 0, next one is 1
-        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">1</span>)));
+        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="prelude-val">Some</span>(<span class="number">1</span>))));
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
 
-        mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">1</span>)));
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="prelude-val">Some</span>(<span class="number">1</span>))));
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>));
 
@@ -4684,7 +4652,7 @@
         );
 
         <span class="comment">// Now network version is 1, next one is 2
-        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">2</span>)));
+        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="prelude-val">Some</span>(<span class="number">2</span>))));
         <span class="comment">// Counter for announced version: 1 &amp; 2
         </span><span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">2</span>);
         <span class="comment">// First announced version 1 was removed and so the counter decremented
