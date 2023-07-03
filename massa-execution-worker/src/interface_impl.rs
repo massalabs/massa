@@ -6,6 +6,7 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
+use anyhow::Ok;
 use anyhow::{anyhow, bail, Result};
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
@@ -1171,6 +1172,139 @@ impl Interface for InterfaceImpl {
     fn blake3_hash(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         let hash = massa_hash::Hash::compute_from(bytes);
         Ok(hash.into_bytes())
+    }
+
+    fn init_call_wasmv1(&self, address: &str, raw_coins: NativeAmount) -> Result<Vec<u8>> {
+        unimplemented!("init_call")
+    }
+
+    /// Returns a NativeAmount from a string
+    fn native_amount_from_str_wasmv1(&self, amount: &str) -> Result<NativeAmount> {
+        let amount = Amount::from_str(amount).map_err(|err| anyhow!(format!("{}", err)))?;
+        let amount = amount
+            .to_native_amount()
+            .map_err(|err| anyhow!(format!("{}", err)))?;
+
+        Ok(amount)
+    }
+
+    /// Returns a string from a NativeAmount
+    fn native_amount_to_string_wasmv1(&self, amount: &NativeAmount) -> Result<String> {
+        let amount = Amount::from_native_amount(amount)
+            .map_err(|err| anyhow!(format!("Couldn't convert native amount to Amount: {}", err)))?;
+
+        Ok(amount.to_string())
+    }
+
+    /// Checks if the given native amount is valid
+    fn check_native_amount_wasmv1(&self, amount: &NativeAmount) -> Result<bool> {
+        Ok(Amount::from_native_amount(amount).is_ok())
+    }
+
+    /// Adds two native amounts, saturating at the numeric bounds instead of overflowing.
+    fn add_native_amounts_wasmv1(
+        &self,
+        amount1: &NativeAmount,
+        amount2: &NativeAmount,
+    ) -> Result<NativeAmount> {
+        let amount1 = Amount::from_native_amount(amount1)?;
+        let amount2 = Amount::from_native_amount(amount2)?;
+        let amount = amount1
+            .saturating_add(amount2)
+            .to_native_amount()
+            .map_err(|err| anyhow!(format!("Couldn't add native amounts: {}", err)))?;
+        Ok(amount)
+    }
+
+    /// Subtracts two native amounts, saturating at the numeric bounds instead of overflowing.
+    fn sub_native_amounts_wasmv1(
+        &self,
+        amount1: &NativeAmount,
+        amount2: &NativeAmount,
+    ) -> Result<NativeAmount> {
+        let amount1 = Amount::from_native_amount(amount1)?;
+        let amount2 = Amount::from_native_amount(amount2)?;
+        let amount = amount1
+            .saturating_sub(amount2)
+            .to_native_amount()
+            .map_err(|err| anyhow!(format!("Couldn't sub native amounts: {}", err)))?;
+        Ok(amount)
+    }
+
+    /// Multiplies a native amount by a factor, saturating at the numeric bounds instead of overflowing.
+    fn mul_native_amount_wasmv1(&self, amount: &NativeAmount, factor: u64) -> Result<NativeAmount> {
+        let amount = Amount::from_native_amount(amount)?;
+        let amount = amount
+            .saturating_mul_u64(factor)
+            .to_native_amount()
+            .map_err(|err| anyhow!(format!("Couldn't mul native amount: {}", err)))?;
+        Ok(amount)
+    }
+
+    /// Divides a native amount by a divisor, return an error if the divisor is 0.
+    fn div_rem_native_amount_wasmv1(
+        &self,
+        dividend: &NativeAmount,
+        divisor: u64,
+    ) -> Result<(NativeAmount, NativeAmount)> {
+        if divisor == 0 {
+            return Err(anyhow!("Divisor can't be 0"));
+        }
+
+        let dividend = Amount::from_native_amount(dividend)?;
+
+        let quotient = dividend
+            .checked_div_u64(divisor)
+            .ok_or_else(|| anyhow!(format!("Couldn't div_rem native amount")))?;
+        let quotient = Amount::to_native_amount(&quotient).map_err(|err| {
+            anyhow!(format!(
+                "Couldn't convert quotient to native amount: {}",
+                err
+            ))
+        })?;
+
+        let remainder = dividend.to_raw().rem_euclid(divisor);
+        let remainder = Amount::from_raw(remainder)
+            .to_native_amount()
+            .map_err(|err| {
+                anyhow!(format!(
+                    "Couldn't convert remainder to native amount: {}",
+                    err
+                ))
+            })?;
+
+        return Ok((quotient, remainder));
+    }
+
+    /// Divides a native amount by a divisor, return an error if the divisor is 0.
+    fn div_rem_native_amounts_wasmv1(
+        &self,
+        dividend: &NativeAmount,
+        divisor: &NativeAmount,
+    ) -> Result<(u64, NativeAmount)> {
+        let dividend = Amount::from_native_amount(dividend)?;
+        let divisor = Amount::from_native_amount(divisor)?.to_raw();
+
+        if divisor == 0 {
+            return Err(anyhow!("Divisor can't be 0"));
+        }
+
+        let quotient = dividend
+            .checked_div_u64(divisor)
+            .ok_or_else(|| anyhow!(format!("Couldn't div_rem native amount")))?
+            .to_raw();
+
+        let remainder = dividend.to_raw().rem_euclid(divisor);
+        let remainder = Amount::from_raw(remainder)
+            .to_native_amount()
+            .map_err(|err| {
+                anyhow!(format!(
+                    "Couldn't convert remainder to native amount: {}",
+                    err
+                ))
+            })?;
+
+        return Ok((quotient, remainder));
     }
 }
 
