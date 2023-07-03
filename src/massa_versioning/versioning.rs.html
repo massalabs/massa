@@ -2329,6 +2329,9 @@
 <a href="#2329" id="2329">2329</a>
 <a href="#2330" id="2330">2330</a>
 <a href="#2331" id="2331">2331</a>
+<a href="#2332" id="2332">2332</a>
+<a href="#2333" id="2333">2333</a>
+<a href="#2334" id="2334">2334</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
@@ -2886,25 +2889,30 @@
 
     <span class="doccomment">/// Retrieve the network version number to announce in block header
     /// return 0 is there is nothing to announce
-    </span><span class="kw">pub fn </span>get_network_version_to_announce(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u32&gt; {
+    </span><span class="kw">pub fn </span>get_network_version_to_announce(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">let </span>lock = <span class="self">self</span>.<span class="number">0</span>.read();
         <span class="kw">let </span>store = lock.deref();
         <span class="comment">// Announce the latest versioning info in Started / LockedIn state
         // Defined == Not yet ready to announce
         // Active == current version
-        </span>store.store.iter().rev().find_map(|(k, v)| {
-            <span class="macro">matches!</span>(
-                <span class="kw-2">&amp;</span>v.state,
-                <span class="kw-2">&amp;</span>ComponentState::Started(<span class="kw">_</span>) | <span class="kw-2">&amp;</span>ComponentState::LockedIn(<span class="kw">_</span>)
-            )
-            .then_some(k.version)
-        })
+        </span>store
+            .store
+            .iter()
+            .rev()
+            .find_map(|(k, v)| {
+                <span class="macro">matches!</span>(
+                    <span class="kw-2">&amp;</span>v.state,
+                    <span class="kw-2">&amp;</span>ComponentState::Started(<span class="kw">_</span>) | <span class="kw-2">&amp;</span>ComponentState::LockedIn(<span class="kw">_</span>)
+                )
+                .then_some(k.version)
+            })
+            .unwrap_or(<span class="number">0</span>)
     }
 
     <span class="kw">pub fn </span>update_network_version_stats(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot_timestamp: MassaTime,
-        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
+        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>lock = <span class="self">self</span>.<span class="number">0</span>.write();
         lock.update_network_version_stats(slot_timestamp, network_versions);
@@ -3205,11 +3213,9 @@
     <span class="kw">fn </span>update_network_version_stats(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot_timestamp: MassaTime,
-        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
+        network_versions: <span class="prelude-ty">Option</span>&lt;(u32, u32)&gt;,
     ) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((_current_network_version, announced_network_version_)) = network_versions {
-            <span class="kw">let </span>announced_network_version = announced_network_version_.unwrap_or(<span class="number">0</span>);
-
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((_current_network_version, announced_network_version)) = network_versions {
             <span class="kw">let </span>removed_version_ = <span class="kw">match </span><span class="self">self</span>.stats.latest_announcements.len() {
                 n <span class="kw">if </span>n &gt;= <span class="self">self</span>.stats.config.block_count_considered =&gt; {
                     <span class="self">self</span>.stats.latest_announcements.pop_front()
@@ -3917,7 +3923,7 @@
         </span><span class="kw">let </span>vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
         <span class="macro">assert_eq!</span>(vs.get_network_version_current(), mi.version);
-        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), <span class="prelude-val">Some</span>(mi_2.version));
+        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), mi_2.version);
 
         <span class="comment">// Test also an empty versioning store
         </span><span class="kw">let </span>vs_raw = MipStoreRaw {
@@ -3926,7 +3932,7 @@
         };
         <span class="kw">let </span>vs = MipStore(Arc::new(RwLock::new(vs_raw)));
         <span class="macro">assert_eq!</span>(vs.get_network_version_current(), <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(vs.get_network_version_to_announce(), <span class="number">0</span>);
     }
 
     <span class="attr">#[test]
@@ -4444,7 +4450,7 @@
             // Update stats - so should force transitions if any
             </span>store.update_network_version_stats(
                 get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
-                <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="prelude-val">None</span>)),
+                <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">0</span>)),
             );
 
             <span class="kw">let </span>(first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
@@ -4631,11 +4637,11 @@
             MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
 
         <span class="comment">// Current network version is 0, next one is 1
-        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="prelude-val">Some</span>(<span class="number">1</span>))));
+        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">1</span>)));
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">1</span>));
 
-        mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="prelude-val">Some</span>(<span class="number">1</span>))));
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">0</span>, <span class="number">1</span>)));
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.get(<span class="kw-2">&amp;</span><span class="number">1</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="number">2</span>));
 
@@ -4652,7 +4658,7 @@
         );
 
         <span class="comment">// Now network version is 1, next one is 2
-        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="prelude-val">Some</span>(<span class="number">2</span>))));
+        </span>mip_store.update_network_version_stats(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">0</span>)), <span class="prelude-val">Some</span>((<span class="number">1</span>, <span class="number">2</span>)));
         <span class="comment">// Counter for announced version: 1 &amp; 2
         </span><span class="macro">assert_eq!</span>(mip_store.stats.network_version_counters.len(), <span class="number">2</span>);
         <span class="comment">// First announced version 1 was removed and so the counter decremented
