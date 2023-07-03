@@ -70,6 +70,11 @@ impl std::fmt::Debug for Hash {
 }
 
 impl Hash {
+    /// Creates a hash full of zeros bytes.
+    pub fn zero() -> Self {
+        Hash(blake3::Hash::from([0; HASH_SIZE_BYTES]))
+    }
+
     /// Compute a hash from data.
     ///
     /// # Example
