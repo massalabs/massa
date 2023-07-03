@@ -2332,6 +2332,8 @@
 <a href="#2332" id="2332">2332</a>
 <a href="#2333" id="2333">2333</a>
 <a href="#2334" id="2334">2334</a>
+<a href="#2335" id="2335">2335</a>
+<a href="#2336" id="2336">2336</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
@@ -2339,7 +2341,6 @@
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>machine::{machine, transitions};
-<span class="kw">use </span>num::{rational::Ratio, Zero};
 <span class="kw">use </span>num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>thiserror::Error;
@@ -2350,10 +2351,10 @@
     VERSIONING_CF,
 };
 <span class="kw">use </span>massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
-<span class="kw">use </span>massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
+<span class="kw">use </span>massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>massa_time::MassaTime;
 
@@ -2444,7 +2445,7 @@
         <span class="doccomment">/// Initial state
         </span>Defined,
         <span class="doccomment">/// Past start, can only go to LockedIn after the threshold is above a given value
-        </span>Started { <span class="kw">pub</span>(<span class="kw">crate</span>) threshold: Ratio&lt;u64&gt; },
+        </span>Started { <span class="kw">pub</span>(<span class="kw">crate</span>) threshold: Amount },
         <span class="doccomment">/// Locked but wait for some time before going to active (to let users the time to upgrade)
         </span>LockedIn { <span class="kw">pub</span>(<span class="kw">crate</span>) at: MassaTime },
         <span class="doccomment">/// After LockedIn, deployment is considered successful (after activation delay)
@@ -2496,7 +2497,7 @@
     </span><span class="kw">pub </span>activation_delay: MassaTime,
 
     <span class="doccomment">/// % of past blocks with this version
-    </span><span class="kw">pub </span>threshold: Ratio&lt;u64&gt;,
+    </span><span class="kw">pub </span>threshold: Amount,
     <span class="doccomment">/// Current time (timestamp)
     </span><span class="kw">pub </span>now: MassaTime,
 }
@@ -2541,7 +2542,7 @@
     </span><span class="kw">pub fn </span>on_advance(<span class="self">self</span>, input: Advance) -&gt; ComponentState {
         <span class="kw">match </span>input.now {
             n <span class="kw">if </span>n &gt;= input.timeout =&gt; ComponentState::failed(),
-            n <span class="kw">if </span>n &gt;= input.start_timestamp =&gt; ComponentState::started(Ratio::zero()),
+            n <span class="kw">if </span>n &gt;= input.start_timestamp =&gt; ComponentState::started(Amount::zero()),
             <span class="kw">_ </span>=&gt; ComponentState::Defined(Defined {}),
         }
     }
@@ -2707,7 +2708,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance {
             start_timestamp: mip_info.start,
             timeout: mip_info.timeout,
-            threshold: Ratio::zero(),
+            threshold: Amount::zero(),
             now: initial_ts.now,
             activation_delay: mip_info.activation_delay,
         };
@@ -3272,26 +3273,25 @@
                 .network_version_counters
                 .get(<span class="kw-2">&amp;</span>mi.version)
                 .unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>);
+            <span class="kw">let </span>block_count_considered = <span class="self">self</span>.stats.config.block_count_considered;
+            <span class="kw">let </span>vote_ratio_ = Amount::from_mantissa_scale(network_version_count, <span class="number">0</span>).map(|a| {
+                a.saturating_mul_u64(<span class="number">100</span>)
+                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(<span class="number">0</span>))
+            });
 
-            <span class="kw">let </span>vote_ratio = Ratio::new(
-                network_version_count,
-                <span class="self">self</span>.stats.config.block_count_considered <span class="kw">as </span>u64,
-            );
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(vote_ratio)) = vote_ratio_ {
+                <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] vote ratio = {} (network version counter = {} - blocks considered = {})&quot;</span>, vote_ratio, network_version_count, block_count_considered);
 
-            <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})&quot;</span>,
-                vote_ratio,
-                network_version_count,
-                <span class="self">self</span>.stats.config.block_count_considered);
+                <span class="kw">let </span>advance_msg = Advance {
+                    start_timestamp: mi.start,
+                    timeout: mi.timeout,
+                    threshold: vote_ratio,
+                    now: slot_timestamp,
+                    activation_delay: mi.activation_delay,
+                };
 
-            <span class="kw">let </span>advance_msg = Advance {
-                start_timestamp: mi.start,
-                timeout: mi.timeout,
-                threshold: vote_ratio,
-                now: slot_timestamp,
-                activation_delay: mi.activation_delay,
-            };
-
-            state.on_advance(<span class="kw-2">&amp;</span>advance_msg.clone());
+                state.on_advance(<span class="kw-2">&amp;</span>advance_msg.clone());
+            }
         }
     }
 
@@ -3649,7 +3649,7 @@
     <span class="kw">use </span>more_asserts::assert_le;
     <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>std::assert_matches::assert_matches;
-    <span class="kw">use </span>std::ops::{Add, Sub};
+    <span class="kw">use </span>std::str::FromStr;
     <span class="kw">use </span>std::sync::Arc;
     <span class="kw">use </span>tempfile::tempdir;
 
@@ -3666,8 +3666,8 @@
     }
 
     <span class="comment">// helper
-    </span><span class="kw">impl </span>From&lt;(<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Ratio&lt;u64&gt;, <span class="kw-2">&amp;</span>MassaTime)&gt; <span class="kw">for </span>Advance {
-        <span class="kw">fn </span>from((mip_info, threshold, now): (<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Ratio&lt;u64&gt;, <span class="kw-2">&amp;</span>MassaTime)) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">impl </span>From&lt;(<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Amount, <span class="kw-2">&amp;</span>MassaTime)&gt; <span class="kw">for </span>Advance {
+        <span class="kw">fn </span>from((mip_info, threshold, now): (<span class="kw-2">&amp;</span>MipInfo, <span class="kw-2">&amp;</span>Amount, <span class="kw-2">&amp;</span>MassaTime)) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
                 start_timestamp: mip_info.start,
                 timeout: mip_info.timeout,
@@ -3708,7 +3708,7 @@
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
         <span class="kw">let </span>now = mi.start.saturating_sub(MassaTime::from_millis(<span class="number">1</span>));
-        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Ratio::zero(), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
@@ -3721,7 +3721,7 @@
         </span><span class="macro">assert_eq!</span>(
             state,
             ComponentState::Started(Started {
-                threshold: Ratio::zero()
+                threshold: Amount::zero()
             })
         );
     }
@@ -3733,10 +3733,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = ComponentState::started(Default::default());
 
         <span class="kw">let </span>now = mi.start;
-        <span class="kw">let </span>threshold_too_low =
-            VERSIONING_THRESHOLD_TRANSITION_ACCEPTED.sub(Ratio::new_raw(<span class="number">10</span>, <span class="number">100</span>));
-        <span class="kw">let </span>threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED.add(Ratio::new_raw(<span class="number">1</span>, <span class="number">100</span>));
-        <span class="macro">assert_le!</span>(threshold_ok, Ratio::from_integer(<span class="number">1</span>));
+        <span class="kw">let </span>threshold_too_low = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_sub(Amount::from_str(<span class="string">&quot;0.1&quot;</span>).unwrap());
+        <span class="kw">let </span>threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
+            .saturating_add(Amount::from_str(<span class="string">&quot;5.42&quot;</span>).unwrap());
+        <span class="macro">assert_le!</span>(threshold_ok, Amount::from_str(<span class="string">&quot;100.0&quot;</span>).unwrap());
         <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>threshold_too_low, <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
@@ -3755,7 +3756,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = ComponentState::locked_in(locked_in_at);
 
         <span class="kw">let </span>now = mi.start;
-        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Ratio::zero(), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance_msg.clone());
         <span class="macro">assert_eq!</span>(state, ComponentState::locked_in(locked_in_at));
@@ -3773,7 +3774,7 @@
         </span><span class="kw">let </span>(start, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::active(start);
         <span class="kw">let </span>now = mi.start;
-        <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Ratio::zero(), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         state = state.on_advance(advance);
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(state, ComponentState::Active(<span class="kw">_</span>)));
@@ -3785,7 +3786,7 @@
         </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span><span class="kw-2">mut </span>state = ComponentState::failed();
         <span class="kw">let </span>now = mi.start;
-        <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Ratio::zero(), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span>advance = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
         state = state.on_advance(advance);
         <span class="macro">assert_eq!</span>(state, ComponentState::failed());
     }
@@ -3795,7 +3796,7 @@
         <span class="comment">// Test Versioning state transition (to state: Failed)
         </span><span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, mi) = get_a_version_info();
         <span class="kw">let </span>now = mi.timeout.saturating_add(MassaTime::from_millis(<span class="number">1</span>));
-        <span class="kw">let </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Ratio::zero(), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         <span class="kw">let </span><span class="kw-2">mut </span>state: ComponentState = Default::default(); <span class="comment">// Defined
         </span>state = state.on_advance(advance_msg.clone());
@@ -3817,11 +3818,11 @@
         <span class="macro">assert_eq!</span>(state, ComponentState::defined());
 
         <span class="kw">let </span>now = mi.start.saturating_add(MassaTime::from_millis(<span class="number">15</span>));
-        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Ratio::zero(), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span><span class="kw-2">mut </span>advance_msg = Advance::from((<span class="kw-2">&amp;</span>mi, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
 
         <span class="comment">// Move from Defined -&gt; Started
         </span>state.on_advance(<span class="kw-2">&amp;</span>advance_msg);
-        <span class="macro">assert_eq!</span>(state, ComponentState::started(Ratio::zero()));
+        <span class="macro">assert_eq!</span>(state, ComponentState::started(Amount::zero()));
 
         <span class="comment">// Check history
         </span><span class="macro">assert_eq!</span>(state.history.len(), <span class="number">2</span>);
@@ -3867,7 +3868,7 @@
 
         <span class="comment">// Move from Started to LockedIn
         </span><span class="kw">let </span>threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
-        advance_msg.threshold = threshold.add(Ratio::from_integer(<span class="number">1</span>));
+        advance_msg.threshold = threshold.saturating_add(Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap());
         advance_msg.now = now.saturating_add(MassaTime::from_millis(<span class="number">1</span>));
         state.on_advance(<span class="kw-2">&amp;</span>advance_msg);
         <span class="macro">assert_eq!</span>(state, ComponentState::locked_in(advance_msg.now));
@@ -3907,7 +3908,7 @@
             history: Default::default(),
         };
         <span class="kw">let </span>vs_2 = MipState {
-            state: ComponentState::started(Ratio::zero()),
+            state: ComponentState::started(Amount::zero()),
             history: Default::default(),
         };
 
@@ -3984,14 +3985,17 @@
 
         // Advance to Started
         </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">3</span>);
-        <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Ratio::zero(), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Amount::zero(), <span class="kw-2">&amp;</span>now));
         vsh.on_advance(<span class="kw-2">&amp;</span>adv);
         <span class="kw">let </span>now = MassaTime::from_millis(<span class="number">4</span>);
-        <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Ratio::new_raw(<span class="number">14</span>, <span class="number">100</span>), <span class="kw-2">&amp;</span>now));
+        <span class="kw">let </span>adv = Advance::from((<span class="kw-2">&amp;</span>vi_1, <span class="kw-2">&amp;</span>Amount::from_str(<span class="string">&quot;14.42&quot;</span>).unwrap(), <span class="kw-2">&amp;</span>now));
         vsh.on_advance(<span class="kw-2">&amp;</span>adv);
 
         <span class="comment">// At state Started at time now -&gt; true
-        </span><span class="macro">assert_eq!</span>(vsh.state, ComponentState::started(Ratio::new_raw(<span class="number">14</span>, <span class="number">100</span>)));
+        </span><span class="macro">assert_eq!</span>(
+            vsh.state,
+            ComponentState::started(Amount::from_str(<span class="string">&quot;14.42&quot;</span>).unwrap())
+        );
         <span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
         <span class="comment">// Now with another versioning info
         </span><span class="macro">assert_eq!</span>(vsh.is_coherent_with(<span class="kw-2">&amp;</span>vi_2).is_ok(), <span class="bool-val">false</span>);
@@ -4397,7 +4401,7 @@
             mi_2.start = get_slot_ts(Slot::new(<span class="number">7</span>, <span class="number">7</span>));
             mi_2.timeout = get_slot_ts(Slot::new(<span class="number">10</span>, <span class="number">7</span>));
 
-            <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), <span class="kw-2">&amp;</span>mi_1);
+            <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::started(Amount::zero()), <span class="kw-2">&amp;</span>mi_1);
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
             <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
@@ -4631,7 +4635,7 @@
             timeout,
             activation_delay,
         };
-        <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), <span class="kw-2">&amp;</span>mi_1);
+        <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::started(Amount::zero()), <span class="kw-2">&amp;</span>mi_1);
 
         <span class="kw">let </span><span class="kw-2">mut </span>mip_store =
             MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
