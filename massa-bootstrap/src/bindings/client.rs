@@ -49,9 +49,8 @@ impl BootstrapClientBinder {
         cfg: BootstrapClientConfig,
         limit: Option<u64>,
     ) -> Self {
-        let limit_opts = limit.map(|limit| {
-            LimiterOptions::new(limit, Duration::from_millis(1000), limit)
-        });
+        let limit_opts =
+            limit.map(|limit| LimiterOptions::new(limit, Duration::from_millis(1000), limit));
         let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapClientBinder {
             remote_pubkey,
