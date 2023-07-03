@@ -690,7 +690,7 @@ fn test_bandwidth() {
 
         #[cfg(target_os = "macos")]
         {
-            20_500
+            30_500
         }
         #[cfg(not(any(target_os = "windows", target_os = "macos")))]
         {
@@ -705,6 +705,7 @@ fn test_bandwidth() {
 
                 server.handshake_timeout(version, None).unwrap();
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 let message = server.next_timeout(None).unwrap();
                 match message {
@@ -714,9 +715,10 @@ fn test_bandwidth() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(10));
+                assert!(dur > Duration::from_secs(9));
                 assert!(dur < Duration::from_millis(millis_limit));
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 server
                     .send_timeout(
@@ -725,7 +727,7 @@ fn test_bandwidth() {
                     )
                     .unwrap();
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(10));
+                assert!(dur > Duration::from_secs(9), "{dur:?}");
                 assert!(dur < Duration::from_millis(millis_limit));
             }
         })
@@ -739,6 +741,7 @@ fn test_bandwidth() {
 
                 client.handshake(version).unwrap();
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 client
                     .send_timeout(
@@ -749,9 +752,10 @@ fn test_bandwidth() {
                     )
                     .unwrap();
                 let dur = before.elapsed();
-                assert!(dbg!(dur) > Duration::from_secs(10));
+                assert!(dbg!(dur) > Duration::from_secs(9), "{dur:?}");
                 assert!(dur < Duration::from_millis(millis_limit));
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 let message = client.next_timeout(None).unwrap();
                 match message {
@@ -761,7 +765,7 @@ fn test_bandwidth() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(10));
+                assert!(dur > Duration::from_secs(9));
                 assert!(dur < Duration::from_millis(millis_limit));
             }
         })

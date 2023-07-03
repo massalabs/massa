@@ -296,6 +296,7 @@ pub fn start_protocol_controller(
                     PeerNetCategoryInfo {
                         max_in_connections: infos.max_in_connections,
                         max_in_connections_per_ip: infos.max_in_connections_per_ip,
+                        max_out_connections: infos.target_out_connections,
                     },
                 ),
             )
@@ -305,6 +306,7 @@ pub fn start_protocol_controller(
     peernet_config.default_category_info = PeerNetCategoryInfo {
         max_in_connections: config.default_category_info.max_in_connections,
         max_in_connections_per_ip: config.default_category_info.max_in_connections_per_ip,
+        max_out_connections: config.default_category_info.target_out_connections,
     };
     peernet_config.max_in_connections = config.max_in_connections;
 

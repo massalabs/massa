@@ -74,7 +74,7 @@ impl BootstrapServerBinder {
         } = cfg;
 
         let limit_opts = rw_limit.map(|limit| -> LimiterOptions {
-            LimiterOptions::new(limit, Duration::from_millis(1000), limit.saturating_mul(2))
+            LimiterOptions::new(limit, Duration::from_millis(1000), limit)
         });
         let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {

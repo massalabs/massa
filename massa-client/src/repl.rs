@@ -129,7 +129,13 @@ pub(crate) async fn run(
                                     _ => ask_password(wallet_path),
                                 };
 
-                            let wallet = Wallet::new(wallet_path.to_path_buf(), password)?;
+                            let wallet = match Wallet::new(wallet_path.to_path_buf(), password) {
+                                Ok(wallet) => wallet,
+                                Err(e) => {
+                                    println!("Could not open wallet: {}", e);
+                                    continue;
+                                }
+                            };
                             wallet_opt = Some(wallet);
                         }
 

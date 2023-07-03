@@ -2586,7 +2586,7 @@ dependencies = [
  "serde_json",
  "serial_test 2.0.0",
  "socket2",
- "stream_limiter 3.0.1",
+ "stream_limiter",
  "substruct",
  "tempfile",
  "thiserror",
@@ -3141,6 +3141,7 @@ version = "0.24.0"
 dependencies = [
  "displaydoc",
  "nom",
+ "num",
  "thiserror",
  "unsigned-varint",
 ]
@@ -3201,6 +3202,7 @@ dependencies = [
  "massa_time",
  "more-asserts 0.3.1",
  "nom",
+ "num",
  "num_enum",
  "parking_lot",
  "tempfile",
@@ -3711,16 +3713,17 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?rev=4929687ed69946482cc3bffddf2162fbe02f734f#4929687ed69946482cc3bffddf2162fbe02f734f"
+source = "git+https://github.com/massalabs/PeerNet?rev=7b2a1a9#7b2a1a93e993df61b8b1288c2847be2d6488e805"
 dependencies = [
  "crossbeam",
  "enum_delegate",
+ "log",
  "mio",
  "parking_lot",
  "quiche",
  "rand 0.8.5",
  "serde",
- "stream_limiter 2.0.0",
+ "stream_limiter",
  "thiserror",
 ]
 
@@ -4906,15 +4909,9 @@ checksum = "9e08d8363704e6c71fc928674353e6b7c23dcea9d82d7012c8faf2a3a025f8d0"
 
 [[package]]
 name = "stream_limiter"
-version = "2.0.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92b85d49eee44700a8dc9a3e2d316e8e1f7d661d3eccd606ad9d02e9969e04bc"
-
-[[package]]
-name = "stream_limiter"
-version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69948d952569e5ba3c6a3ab4a373cb53a13b7d505a17344380acdf98d9846dab"
+checksum = "89acdb288f530d175bbeb1344aab11cfa0e0ee5b4e63d75c204001568dcf90cf"
 
 [[package]]
 name = "strsim"
