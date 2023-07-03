@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
@@ -80,6 +81,8 @@ pub struct GrpcConfig {
     pub t0: MassaTime,
     /// periods per cycle
     pub periods_per_cycle: u64,
+    /// keypair file
+    pub keypair: KeyPair,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`

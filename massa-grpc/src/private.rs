@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use crate::error::GrpcError;
 use crate::server::MassaPrivateGrpc;
+use massa_hash::Hash;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_signature::KeyPair;
 // use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
@@ -45,7 +46,7 @@ pub(crate) fn add_staking_secret_keys(
 
     if secret_keys.is_empty() {
         return Err(GrpcError::InvalidArgument(
-            "no secret keys received".to_string(),
+            "no secret key received".to_string(),
         ));
     }
 
@@ -61,13 +62,12 @@ pub(crate) fn add_staking_secret_keys(
         Ok(keypairs) => keypairs,
         Err(e) => return Err(GrpcError::InvalidArgument(e.to_string()).into()),
     };
-    let node_wallet = grpc.node_wallet.clone();
-    let mut w_wallet = node_wallet.write();
 
-    w_wallet
-        .add_keypairs(keypairs)
-        .map(|_| tonic::Response::new(grpc_api::AddStakingSecretKeysResponse {}))
-        .map_err(|e| GrpcError::WalletError(e))
+    grpc.node_wallet.write().add_keypairs(keypairs)?;
+
+    Ok(tonic::Response::new(
+        grpc_api::AddStakingSecretKeysResponse {},
+    ))
 }
 
 /// Get node bootstrap blacklist IP addresses
@@ -147,10 +147,39 @@ pub(crate) fn remove_staking_addresses(
 }
 /// Sign messages with node's key
 pub(crate) fn sign_messages(
-    _grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::SignMessagesRequest>,
+    grpc: &MassaPrivateGrpc,
+    request: tonic::Request<grpc_api::SignMessagesRequest>,
 ) -> Result<tonic::Response<grpc_api::SignMessagesResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented("shutdown_gracefully".to_string()))
+    let messages = request.into_inner().messages;
+
+    if messages.is_empty() {
+        return Err(GrpcError::InvalidArgument(
+            "no message received".to_string(),
+        ));
+    }
+
+    //TODO customize number of accepted parameters
+    if messages.len() as u32 > grpc.grpc_config.max_parameter_size {
+        return Err(GrpcError::InvalidArgument(format!(
+            "too many messages received. Only a maximum of {} messages are accepted per request",
+            grpc.grpc_config.max_parameter_size
+        )));
+    }
+
+    let keypair = grpc.grpc_config.keypair.clone();
+    let signatures = messages
+        .into_iter()
+        .map(|message| {
+            keypair
+                .sign(&Hash::compute_from(&message))
+                .map(|signature| signature.to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(tonic::Response::new(grpc_api::SignMessagesResponse {
+        public_key: keypair.get_public_key().to_string(),
+        signatures,
+    }))
 }
 /// Shutdown the node gracefully
 pub(crate) fn shutdown_gracefully(
