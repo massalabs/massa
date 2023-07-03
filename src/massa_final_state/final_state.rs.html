@@ -932,7 +932,7 @@
 
         final_state.last_slot_before_downtime = <span class="prelude-val">Some</span>(recovered_slot);
 
-        <span class="comment">// Check that MIP store is consistent with the network shutdown time range
+        <span class="comment">// Check that MIP store is coherent with the network shutdown time range
         // Assume that the final state has been edited during network shutdown
         </span><span class="kw">let </span>shutdown_start = recovered_slot
             .get_next_slot(config.thread_count)
@@ -951,13 +951,13 @@
                 ))
             })<span class="question-mark">?</span>;
         <span class="macro">debug!</span>(
-            <span class="string">&quot;Checking if MIP store is consistent against shutdown period: {} - {}&quot;</span>,
+            <span class="string">&quot;Checking if MIP store is coherent against shutdown period: {} - {}&quot;</span>,
             shutdown_start, shutdown_end
         );
 
         <span class="kw">if </span>!final_state
             .mip_store
-            .is_consistent_with_shutdown_period(
+            .is_coherent_with_shutdown_period(
                 shutdown_start,
                 shutdown_end,
                 config.thread_count,
@@ -967,7 +967,7 @@
             .unwrap_or(<span class="bool-val">false</span>)
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(FinalStateError::InvalidSlot(
-                <span class="string">&quot;MIP store is Not consistent&quot;</span>.to_string(),
+                <span class="string">&quot;MIP store is Not coherent&quot;</span>.to_string(),
             ));
         }
 
