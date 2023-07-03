@@ -17,11 +17,6 @@ use massa_time::MassaTime;
 use std::str::FromStr;
 use tracing::log::warn;
 
-/// Default offset
-const DEFAULT_OFFSET: u64 = 1;
-/// Default limit
-const DEFAULT_LIMIT: u64 = 50;
-
 /// Get blocks
 pub(crate) fn get_blocks(
     grpc: &MassaGrpc,
@@ -240,116 +235,91 @@ pub(crate) fn get_datastore_entries(
 
 /// Get the stakers
 pub(crate) fn get_stakers(
-    _grpc: &MassaGrpc,
-    _request: tonic::Request<grpc_api::GetStakersRequest>,
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc_api::GetStakersRequest>,
 ) -> Result<grpc_api::GetStakersResponse, GrpcError> {
-    // let inner_req = request.into_inner();
+    let inner_req = request.into_inner();
 
-    // // Parse the query parameters, if provided.
-    // let query_res: Result<(u64, u64, Option<grpc_api::LargestStakersFilter>), GrpcError> =
-    //     inner_req
-    //         .query
-    //         .map_or(Ok((DEFAULT_OFFSET, DEFAULT_LIMIT, None)), |query| {
-    //             let limit = if query.limit == 0 {
-    //                 DEFAULT_LIMIT
-    //             } else {
-    //                 query.limit
-    //             };
-    //             let filter = query.filter;
-    //             // If the filter is provided, validate the minimum and maximum roll counts.
-    //             let filter_opt = filter
-    //                 .map(|filter| {
-    //                     if let Some(min_rolls) = filter.min_rolls {
-    //                         if min_rolls == 0 {
-    //                             return Err(GrpcError::InvalidArgument(
-    //                                 "min_rolls should be a positive number".into(),
-    //                             ));
-    //                         }
-    //                         if let Some(max_rolls) = filter.max_rolls {
-    //                             if max_rolls == 0 {
-    //                                 return Err(GrpcError::InvalidArgument(
-    //                                     "max_rolls should be a positive number".into(),
-    //                                 ));
-    //                             }
-    //                             if min_rolls > max_rolls {
-    //                                 return Err(GrpcError::InvalidArgument(format!(
-    //                                     "min_rolls {} cannot be greater than max_rolls {}",
-    //                                     min_rolls, max_rolls
-    //                                 )));
-    //                             }
-    //                         }
-    //                     }
+    // min_roll, max_roll, limit
+    let mut filter_opt = (None, None, None);
 
-    //                     Ok(filter)
-    //                 })
-    //                 .transpose()?; // Convert `Option<Result>` to `Result<Option>`.
+    // Parse the query parameters, if provided.
+    inner_req
+        .filters
+        .iter()
+        .for_each(|filter| match filter.filter {
+            Some(grpc_api::stakers_filter::Filter::MinRolls(min_rolls)) => {
+                filter_opt.0 = Some(min_rolls);
+            }
+            Some(grpc_api::stakers_filter::Filter::MaxRolls(max_rolls)) => {
+                filter_opt.1 = Some(max_rolls);
+            }
+            Some(grpc_api::stakers_filter::Filter::Limit(limit)) => {
+                filter_opt.2 = Some(limit);
+            }
+            None => {}
+        });
 
-    //             Ok((query.offset, limit, filter_opt))
-    //         });
+    // Get the current cycle and slot.
+    let now: MassaTime = MassaTime::now()?;
 
-    // let (offset, limit, filter_opt) = query_res?;
+    let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    );
 
-    // // Get the current cycle and slot.
-    // let now: MassaTime = MassaTime::now()?;
+    let (cur_cycle, _cur_slot) = match latest_block_slot_at_timestamp_result {
+        Ok(Some(cur_slot)) if cur_slot.period <= grpc.grpc_config.last_start_period => (
+            Slot::new(grpc.grpc_config.last_start_period, 0)
+                .get_cycle(grpc.grpc_config.periods_per_cycle),
+            cur_slot,
+        ),
+        Ok(Some(cur_slot)) => (
+            cur_slot.get_cycle(grpc.grpc_config.periods_per_cycle),
+            cur_slot,
+        ),
+        Ok(None) => (0, Slot::new(0, 0)),
+        Err(e) => return Err(GrpcError::ModelsError(e)),
+    };
 
-    // let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
-    //     grpc.grpc_config.thread_count,
-    //     grpc.grpc_config.t0,
-    //     grpc.grpc_config.genesis_timestamp,
-    //     now,
-    // );
+    // Get the list of stakers, filtered by the specified minimum and maximum roll counts.
+    let mut staker_vec = grpc
+        .execution_controller
+        .get_cycle_active_rolls(cur_cycle)
+        .into_iter()
+        .filter_map(|(addr, rolls)| {
+            if let Some(min_rolls) = filter_opt.0 {
+                if rolls < min_rolls {
+                    return None;
+                }
+            }
+            if let Some(max_rolls) = filter_opt.1 {
+                if rolls > max_rolls {
+                    return None;
+                }
+            }
+            Some((addr.to_string(), rolls))
+        })
+        .collect::<Vec<(String, u64)>>();
 
-    // let (cur_cycle, cur_slot) = match latest_block_slot_at_timestamp_result {
-    //     Ok(Some(cur_slot)) if cur_slot.period <= grpc.grpc_config.last_start_period => (
-    //         Slot::new(grpc.grpc_config.last_start_period, 0)
-    //             .get_cycle(grpc.grpc_config.periods_per_cycle),
-    //         cur_slot,
-    //     ),
-    //     Ok(Some(cur_slot)) => (
-    //         cur_slot.get_cycle(grpc.grpc_config.periods_per_cycle),
-    //         cur_slot,
-    //     ),
-    //     Ok(None) => (0, Slot::new(0, 0)),
-    //     Err(e) => return Err(GrpcError::ModelsError(e)),
-    // };
+    // Sort the stakers by their roll counts in descending order.
+    staker_vec.sort_by_key(|&(_, roll_counts)| std::cmp::Reverse(roll_counts));
 
-    // // Get the list of stakers, filtered by the specified minimum and maximum roll counts.
-    // let mut staker_vec = grpc
-    //     .execution_controller
-    //     .get_cycle_active_rolls(cur_cycle)
-    //     .into_iter()
-    //     .filter(|(_, rolls)| {
-    //         filter_opt.as_ref().map_or(true, |filter| {
-    //             if let Some(min_rolls) = filter.min_rolls {
-    //                 if *rolls < min_rolls {
-    //                     return false;
-    //                 }
-    //             }
-    //             if let Some(max_rolls) = filter.max_rolls {
-    //                 if *rolls > max_rolls {
-    //                     return false;
-    //                 }
-    //             }
-    //             true
-    //         })
-    //     })
-    //     .map(|(address, roll_counts)| (address.to_string(), roll_counts))
-    //     .collect::<Vec<(String, u64)>>();
+    if let Some(limit) = filter_opt.2 {
+        staker_vec = staker_vec
+            .into_iter()
+            .take(limit as usize)
+            .collect::<Vec<(String, u64)>>();
+    }
 
-    // // Sort the stakers by their roll counts in descending order.
-    // staker_vec.sort_by_key(|&(_, roll_counts)| std::cmp::Reverse(roll_counts));
+    let stakers = staker_vec
+        .into_iter()
+        .map(|(address, rolls)| grpc_model::StakerEntry { address, rolls })
+        .collect();
 
-    // // Paginate the stakers based on the specified offset and limit.
-    // let stakers = staker_vec
-    //     .into_iter()
-    //     .map(|(address, rolls)| grpc_api::StakerEntry { address, rolls })
-    //     .skip(offset as usize)
-    //     .take(limit as usize)
-    //     .collect();
-
-    // // Return a response with the given id, context, and the collected stakers.
-    // Ok(grpc_api::GetStakersResponse { stakers })
-    unimplemented!("get_stakers not implemented yet")
+    Ok(grpc_api::GetStakersResponse { stakers })
 }
 
 // Get node version
