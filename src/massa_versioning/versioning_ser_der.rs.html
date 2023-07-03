@@ -1424,7 +1424,7 @@
         <span class="kw">let </span>state_id = u32::from(ComponentStateTypeId::from(value));
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state_id, buffer)<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
-            ComponentState::Started(Started { threshold }) =&gt; {
+            ComponentState::Started(Started { vote_ratio: threshold }) =&gt; {
                 <span class="comment">// self.amount_serializer.serialize(threshold, buffer)?;
                 </span><span class="self">self</span>.ratio_serializer.serialize(threshold, buffer)<span class="question-mark">?</span>;
             }
@@ -2123,7 +2123,7 @@ impl Default for MipStoreRawDeserializer {
     </span><span class="kw">fn </span>test_component_state_ser_der() {
         <span class="kw">let </span>st_1 = ComponentState::failed();
         <span class="kw">let </span>st_2 = ComponentState::Started(Started {
-            threshold: Ratio::from_f32(<span class="number">0.9842</span>).unwrap(),
+            vote_ratio: Ratio::from_f32(<span class="number">0.9842</span>).unwrap(),
         });
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
