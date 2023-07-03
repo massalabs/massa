@@ -10,8 +10,11 @@ use nom::{
     combinator::value,
     error::{ContextError, ParseError},
     sequence::preceded,
+    sequence::tuple,
     IResult, Parser,
 };
+use num::rational::Ratio;
+use num::Integer;
 use thiserror::Error;
 
 #[non_exhaustive]
@@ -390,5 +393,89 @@ impl Deserializer<bool> for BoolDeserializer {
                 }
             }?))
         })(buffer)
+    }
+}
+
+/// Serializer for Ratio
+#[derive(Clone, Debug, Default)]
+pub struct RatioSerializer<T, ST>
+where
+    T: Integer + Clone,
+    ST: Serializer<T>,
+{
+    data_serializer: ST,
+    phantom_data: std::marker::PhantomData<T>,
+}
+
+impl<T, ST> RatioSerializer<T, ST>
+where
+    T: Integer + Clone,
+    ST: Serializer<T>,
+{
+    pub fn new(data_serializer: ST) -> Self {
+        Self {
+            data_serializer,
+            phantom_data: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T, ST> Serializer<Ratio<T>> for RatioSerializer<T, ST>
+where
+    T: Integer + Clone,
+    ST: Serializer<T>,
+{
+    fn serialize(&self, value: &Ratio<T>, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.data_serializer.serialize(value.numer(), buffer)?;
+        self.data_serializer.serialize(value.denom(), buffer)?;
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub struct RatioDeserializer<T, DT>
+where
+    T: Integer + Clone,
+    DT: Deserializer<T>,
+{
+    data_deserializer: DT,
+    phantom_data: std::marker::PhantomData<T>,
+}
+
+impl<T, DT> RatioDeserializer<T, DT>
+where
+    T: Integer + Clone,
+    DT: Deserializer<T>,
+{
+    pub fn new(data_deserializer: DT) -> Self {
+        Self {
+            data_deserializer,
+            phantom_data: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T, DT> Deserializer<Ratio<T>> for RatioDeserializer<T, DT>
+where
+    T: Integer + Clone,
+    DT: Deserializer<T>,
+{
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Ratio<T>, E> {
+        context(
+            "Ratio<_> deserializer failed",
+            tuple((
+                context("numer deser failed", |input| {
+                    self.data_deserializer.deserialize(input)
+                }),
+                context("denom deser failed", |input| {
+                    self.data_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(numer, denom)| Ratio::new(numer, denom))
+        .parse(buffer)
     }
 }

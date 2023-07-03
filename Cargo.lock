@@ -3141,6 +3141,7 @@ version = "0.24.0"
 dependencies = [
  "displaydoc",
  "nom",
+ "num",
  "thiserror",
  "unsigned-varint",
 ]
@@ -3201,6 +3202,7 @@ dependencies = [
  "massa_time",
  "more-asserts 0.3.1",
  "nom",
+ "num",
  "num_enum",
  "parking_lot",
  "tempfile",
