@@ -5,6 +5,7 @@
 use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
+use massa_hash::Hash;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::Datastore;
 use massa_models::denunciation::DenunciationIndex;
@@ -29,10 +30,12 @@ pub struct ExecutionQueryRequest {
 pub struct ExecutionQueryResponse {
     /// List of responses
     pub responses: Vec<Result<ExecutionQueryResponseItem, ExecutionQueryError>>,
-    /// Last executed final slot
-    pub final_cursor: Slot,
     /// Last executed candidate slot
     pub candidate_cursor: Slot,
+    /// Last executed final slot
+    pub final_cursor: Slot,
+    /// Final state hash
+    pub final_state_fingerprint: Hash,
 }
 
 /// Execution state query item

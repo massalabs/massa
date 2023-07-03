@@ -133,6 +133,13 @@ impl FinalState {
         Ok(final_state)
     }
 
+    /// Get the fingerprint (hash) of the final state.
+    /// Note that only one atomic write per final slot occurs, so this can be safely queried at any time.
+    pub fn get_fingerprint(&self) -> massa_hash::Hash {
+        let internal_hash = self.db.read().get_xof_db_hash();
+        massa_hash::Hash::compute_from(internal_hash.to_bytes())
+    }
+
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
     /// we just create a new one. This will be changed in the follow-up.
     ///

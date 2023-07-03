@@ -193,6 +193,11 @@ impl ExecutionState {
         }
     }
 
+    /// Get the fingerprint of the final state
+    pub fn get_final_state_fingerprint(&self) -> massa_hash::Hash {
+        self.final_state.read().get_fingerprint()
+    }
+
     /// Get execution statistics
     pub fn get_stats(&self) -> ExecutionStats {
         self.stats_counter
