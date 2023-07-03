@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::config::AMOUNT_DECIMAL_SCALE;
 use crate::error::ModelsError;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
@@ -89,6 +90,21 @@ impl Amount {
         let res = raw_mantissa / scale_factor;
         assert!(res <= (u64::MAX as u128));
         Self(res as u64)
+    }
+
+    /// Returns the value in the (mantissa, scale) format where
+    /// amount = mantissa * 10^(-scale)
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use massa_models::config::AMOUNT_DECIMAL_SCALE;
+    /// # use std::str::FromStr;
+    /// let amount = Amount::from_str("0.123456789").unwrap();
+    /// let (mantissa, scale) = amount.to_mantissa_scale();
+    /// assert_eq!(mantissa, 123456789);
+    /// assert_eq!(scale, AMOUNT_DECIMAL_SCALE);
+    /// ```
+    pub fn to_mantissa_scale(&self) -> (u64, u32) {
+        (self.0, AMOUNT_DECIMAL_SCALE)
     }
 
     /// Creates an amount in the format mantissa*10^(-scale).

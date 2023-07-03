@@ -101,6 +101,10 @@ pub fn get_period_from_args() -> u64 {
     last_start_period
 }
 
+/// Decimals scale for the amount
+pub const AMOUNT_DECIMAL_SCALE: u32 = 9;
+/// Decimals factor for the amount
+pub const AMOUNT_DECIMAL_FACTOR: u64 = 10u64.pow(AMOUNT_DECIMAL_SCALE);
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::const_init(100, 0);
 /// Block reward is given for each block creation
