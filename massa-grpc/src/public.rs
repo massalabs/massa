@@ -196,35 +196,46 @@ pub(crate) fn get_blocks(
 
 /// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
-    _grpc: &MassaGrpc,
-    _request: tonic::Request<grpc_api::GetDatastoreEntriesRequest>,
+    grpc: &MassaGrpc,
+    request: tonic::Request<grpc_api::GetDatastoreEntriesRequest>,
 ) -> Result<grpc_api::GetDatastoreEntriesResponse, GrpcError> {
-    // let inner_req = request.into_inner();
-    // let id = inner_req.id;
+    let inner_req = request.into_inner();
 
-    // let filters = inner_req
-    //     .queries
-    //     .into_iter()
-    //     .map(|query| match query.filter {
-    //         Some(filter) => Address::from_str(filter.address.as_str())
-    //             .map(|address| (address, filter.key))
-    //             .map_err(|e| e.into()),
-    //         None => Err(GrpcError::InvalidArgument("filter is missing".to_string())),
-    //     })
-    //     .collect::<Result<Vec<_>, _>>()?;
+    let filters: Vec<(Address, Vec<u8>)> = inner_req
+        .filters
+        .into_iter()
+        .filter_map(|filter| {
+            filter.filter.and_then(|filter| match filter {
+                grpc_api::get_datastore_entry_filter::Filter::AddressKey(addrs) => {
+                    if let Ok(add) = &Address::from_str(&addrs.address) {
+                        return Some((add.clone(), addrs.key));
+                    } else {
+                        return None;
+                    }
+                }
+                _ => None,
+            })
+        })
+        .collect();
 
-    // let entries = grpc
-    //     .execution_controller
-    //     .get_final_and_active_data_entry(filters)
-    //     .into_iter()
-    //     .map(|output| grpc_api::DatastoreEntry {
-    //         final_value: output.0.unwrap_or_default(),
-    //         candidate_value: output.1.unwrap_or_default(),
-    //     })
-    //     .collect();
+    // return error if entry are empty
+    if filters.is_empty() {
+        return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
+    }
 
-    // Ok(grpc_api::GetDatastoreEntriesResponse { id, entries })
-    unimplemented!("get_datastore_entries not implemented yet")
+    let entries = grpc
+        .execution_controller
+        .get_final_and_active_data_entry(filters)
+        .into_iter()
+        .map(|output| grpc_model::DatastoreEntry {
+            final_value: output.0.unwrap_or_default(),
+            candidate_value: output.1.unwrap_or_default(),
+        })
+        .collect();
+
+    Ok(grpc_api::GetDatastoreEntriesResponse {
+        datastore_entries: entries,
+    })
 }
 
 /// Get the stakers
