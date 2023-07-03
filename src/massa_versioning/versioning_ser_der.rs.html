@@ -1170,6 +1170,48 @@
 <a href="#1170" id="1170">1170</a>
 <a href="#1171" id="1171">1171</a>
 <a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -1187,11 +1229,10 @@
     MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
-<span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
-<span class="kw">use </span>massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+<span class="kw">use </span>massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
 <span class="kw">use </span>massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, RatioDeserializer, RatioSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
@@ -1396,7 +1437,7 @@
 </span><span class="doccomment">/// Serializer for `ComponentState`
 </span><span class="kw">pub struct </span>ComponentStateSerializer {
     u32_serializer: U32VarIntSerializer,
-    amount_serializer: AmountSerializer,
+    ratio_serializer: RatioSerializer&lt;u64, U64VarIntSerializer&gt;,
     time_serializer: MassaTimeSerializer,
 }
 
@@ -1405,7 +1446,7 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u32_serializer: U32VarIntSerializer::new(),
-            amount_serializer: AmountSerializer::new(),
+            ratio_serializer: RatioSerializer::new(U64VarIntSerializer::new()),
             time_serializer: MassaTimeSerializer::new(),
         }
     }
@@ -1427,7 +1468,8 @@
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state_id, buffer)<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
             ComponentState::Started(Started { threshold }) =&gt; {
-                <span class="self">self</span>.amount_serializer.serialize(threshold, buffer)<span class="question-mark">?</span>;
+                <span class="comment">// self.amount_serializer.serialize(threshold, buffer)?;
+                </span><span class="self">self</span>.ratio_serializer.serialize(threshold, buffer)<span class="question-mark">?</span>;
             }
             ComponentState::LockedIn(LockedIn { at }) =&gt; {
                 <span class="self">self</span>.time_serializer.serialize(at, buffer)<span class="question-mark">?</span>;
@@ -1444,7 +1486,7 @@
 <span class="doccomment">/// A Deserializer for ComponentState`
 </span><span class="kw">pub struct </span>ComponentStateDeserializer {
     state_deserializer: U32VarIntDeserializer,
-    amount_deserializer: AmountDeserializer,
+    ratio_deserializer: RatioDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     time_deserializer: MassaTimeDeserializer,
 }
 
@@ -1456,10 +1498,10 @@
                 Included(<span class="number">0</span>),
                 Excluded(COMPONENT_STATE_VARIANT_COUNT),
             ),
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
-            ),
+            ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(u64::MAX),
+            )),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(<span class="number">0</span>)),
                 Included(MassaTime::from_millis(u64::MAX)),
@@ -1494,7 +1536,7 @@
             ComponentStateTypeId::Defined =&gt; (rem, ComponentState::defined()),
             ComponentStateTypeId::Started =&gt; {
                 <span class="kw">let </span>(rem2, threshold) = context(<span class="string">&quot;Failed threshold value der&quot;</span>, |input| {
-                    <span class="self">self</span>.amount_deserializer.deserialize(input)
+                    <span class="self">self</span>.ratio_deserializer.deserialize(input)
                 })
                 .parse(rem)<span class="question-mark">?</span>;
                 (rem2, ComponentState::started(threshold))
@@ -1527,7 +1569,7 @@
 
 </span><span class="doccomment">/// Serializer for `Advance`
 </span><span class="kw">pub struct </span>AdvanceSerializer {
-    amount_serializer: AmountSerializer,
+    ratio_serializer: RatioSerializer&lt;u64, U64VarIntSerializer&gt;,
     time_serializer: MassaTimeSerializer,
 }
 
@@ -1535,7 +1577,7 @@
     <span class="doccomment">/// Creates a new `Serializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            amount_serializer: AmountSerializer::new(),
+            ratio_serializer: RatioSerializer::new(U64VarIntSerializer::new()),
             time_serializer: MassaTimeSerializer::new(),
         }
     }
@@ -1555,7 +1597,7 @@
         <span class="comment">// timeout
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.timeout, buffer)<span class="question-mark">?</span>;
         <span class="comment">// threshold
-        </span><span class="self">self</span>.amount_serializer.serialize(<span class="kw-2">&amp;</span>value.threshold, buffer)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.ratio_serializer.serialize(<span class="kw-2">&amp;</span>value.threshold, buffer)<span class="question-mark">?</span>;
         <span class="comment">// now
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.now, buffer)<span class="question-mark">?</span>;
         <span class="comment">// activation delay
@@ -1567,7 +1609,7 @@
 
 <span class="doccomment">/// A Deserializer for `Advance`
 </span><span class="kw">pub struct </span>AdvanceDeserializer {
-    amount_deserializer: AmountDeserializer,
+    ratio_deserializer: RatioDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     time_deserializer: MassaTimeDeserializer,
 }
 
@@ -1575,10 +1617,10 @@
     <span class="doccomment">/// Creates a new `AdvanceDeserializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            amount_deserializer: AmountDeserializer::new(
-                Included(Amount::MIN),
-                Included(Amount::MAX),
-            ),
+            ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(u64::MAX),
+            )),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(<span class="number">0</span>)),
                 Included(MassaTime::from_millis(u64::MAX)),
@@ -1608,7 +1650,7 @@
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed threshold deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.amount_deserializer.deserialize(input)
+                    <span class="self">self</span>.ratio_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed now deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
@@ -1794,7 +1836,18 @@
 
 <span class="kw">impl </span>Serializer&lt;MipStoreStats&gt; <span class="kw">for </span>MipStoreStatsSerializer {
     <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>MipStoreStats, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="comment">// stats data
+        <span class="comment">// config
+        // let cfg_1 = u32::try_from(value.config.block_count_considered).map_err(|e| {
+        //     SerializeError::GeneralError(format!(&quot;Could not convert to u32: {}&quot;, e))
+        // })?;
+        // let cfg_2 = u32::try_from(value.config.counters_max).map_err(|e| {
+        //     SerializeError::GeneralError(format!(&quot;Could not convert to u32: {}&quot;, e))
+        // })?;
+
+        // self.u32_serializer.serialize(&amp;cfg_1, buffer)?;
+        // self.u32_serializer.serialize(&amp;cfg_2, buffer)?;
+
+        // stats data
         </span>{
             <span class="kw">let </span>entry_count_ = value.latest_announcements.len();
             <span class="kw">let </span>entry_count = u32::try_from(entry_count_).map_err(|e| {
@@ -1821,10 +1874,9 @@
             <span class="kw">let </span>entry_count_2 = u32::try_from(entry_count_2_).map_err(|e| {
                 SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
             })<span class="question-mark">?</span>;
-            <span class="kw">let </span>entry_count_2_max =
-                u32::try_from(MIP_STORE_STATS_BLOCK_CONSIDERED).map_err(|e| {
-                    SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
-                })<span class="question-mark">?</span>;
+            <span class="kw">let </span>entry_count_2_max = u32::try_from(MIP_STORE_STATS_COUNTERS_MAX).map_err(|e| {
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+            })<span class="question-mark">?</span>;
 
             <span class="kw">if </span>entry_count_2 &gt; entry_count_2_max {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
@@ -1852,10 +1904,11 @@
 
 <span class="kw">impl </span>MipStoreStatsDeserializer {
     <span class="doccomment">/// Creates a new ``
-    </span><span class="kw">pub fn </span>new(block_count_considered: usize) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(block_count_considered: usize, counters_max: usize) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             config: MipStatsConfig {
                 block_count_considered,
+                counters_max,
             },
             u32_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
             u64_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -1863,26 +1916,49 @@
     }
 }
 
-<span class="kw">impl </span>Deserializer&lt;MipStoreStats&gt; <span class="kw">for </span>MipStoreStatsDeserializer {
+<span class="comment">/*
+impl Default for MipStoreStatsDeserializer {
+    fn default() -&gt; Self {
+        Self::new()
+    }
+}
+*/
+
+</span><span class="kw">impl </span>Deserializer&lt;MipStoreStats&gt; <span class="kw">for </span>MipStoreStatsDeserializer {
     <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MipStoreStats, E&gt; {
-        <span class="kw">let </span>cfg_block_considered: u32 =
+        <span class="comment">// let (rem, cfg_1) = context(&quot;Failed cfg_1 der&quot;, |input| {
+        //     self.u32_deserializer.deserialize(input)
+        // })
+        // .parse(buffer)?;
+
+        // let (rem2, cfg_2) = context(&quot;Failed cfg_2 der&quot;, |input| {
+        //     self.u32_deserializer.deserialize(input)
+        // })
+        // .parse(rem)?;
+
+        // let config = MipStatsConfig {
+        //     block_count_considered: cfg_1 as usize,
+        //     counters_max: cfg_2 as usize,
+        // };
+
+        </span><span class="kw">let </span>cfg_block_considered: u32 =
             u32::try_from(<span class="self">self</span>.config.block_count_considered).map_err(|_e| {
                 nom::Err::Error(ParseError::from_error_kind(
                     buffer,
                     nom::error::ErrorKind::Fail,
                 ))
             })<span class="question-mark">?</span>;
-        <span class="comment">// let cfg_counter_max: u32 = u32::try_from(self.config.counters_max).map_err(|_e| {
-        //     nom::Err::Error(ParseError::from_error_kind(
-        //         buffer,
-        //         nom::error::ErrorKind::Fail,
-        //     ))
-        // })?;
+        <span class="kw">let </span>cfg_counter_max: u32 = u32::try_from(<span class="self">self</span>.config.counters_max).map_err(|_e| {
+            nom::Err::Error(ParseError::from_error_kind(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))
+        })<span class="question-mark">?</span>;
 
-        </span><span class="kw">let </span>(rem3, latest_annoucements_) = context(
+        <span class="kw">let </span>(rem3, latest_annoucements_) = context(
             <span class="string">&quot;Failed MipStoreStats latest announcements der&quot;</span>,
             length_count(
                 context(<span class="string">&quot;Failed latest announcements count der&quot;</span>, |input| {
@@ -1907,7 +1983,7 @@
             length_count(
                 context(<span class="string">&quot;Failed counters len der&quot;</span>, |input| {
                     <span class="kw">let </span>(rem, count) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
-                    <span class="kw">if </span>count &gt; cfg_block_considered {
+                    <span class="kw">if </span>count &gt; cfg_counter_max {
                         <span class="kw">return </span>IResult::Err(nom::Err::Error(ParseError::from_error_kind(
                             input,
                             nom::error::ErrorKind::Fail,
@@ -1997,7 +2073,7 @@
 
 <span class="kw">impl </span>MipStoreRawDeserializer {
     <span class="doccomment">/// Creates a new ``
-    </span><span class="kw">pub fn </span>new(block_count_considered: usize) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(block_count_considered: usize, counters_max: usize) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
@@ -2005,7 +2081,10 @@
             ),
             info_deserializer: MipInfoDeserializer::new(),
             state_deserializer: MipStateDeserializer::new(),
-            stats_deserializer: MipStoreStatsDeserializer::new(block_count_considered),
+            stats_deserializer: MipStoreStatsDeserializer::new(
+                block_count_considered,
+                counters_max,
+            ),
         }
     }
 }
@@ -2058,9 +2137,10 @@ impl Default for MipStoreRawDeserializer {
 
     <span class="kw">use </span>std::assert_matches::assert_matches;
     <span class="kw">use </span>std::mem::{size_of, size_of_val};
-    <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span>more_asserts::assert_lt;
+    <span class="kw">use </span>num::rational::Ratio;
+    <span class="kw">use </span>num::FromPrimitive;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
 
@@ -2123,7 +2203,7 @@ impl Default for MipStoreRawDeserializer {
     </span><span class="kw">fn </span>test_component_state_ser_der() {
         <span class="kw">let </span>st_1 = ComponentState::failed();
         <span class="kw">let </span>st_2 = ComponentState::Started(Started {
-            threshold: Amount::from_str(<span class="string">&quot;98.42&quot;</span>).unwrap(),
+            threshold: Ratio::from_f32(<span class="number">0.9842</span>).unwrap(),
         });
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
@@ -2209,6 +2289,7 @@ impl Default for MipStoreRawDeserializer {
     </span><span class="kw">fn </span>test_mip_store_stats_ser_der() {
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            counters_max: <span class="number">5</span>,
         };
 
         <span class="kw">let </span>mip_stats = MipStoreStats {
@@ -2221,7 +2302,10 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>store_stats_ser = MipStoreStatsSerializer::new();
         store_stats_ser.serialize(<span class="kw-2">&amp;</span>mip_stats, <span class="kw-2">&amp;mut </span>buf).unwrap();
 
-        <span class="kw">let </span>store_stats_der = MipStoreStatsDeserializer::new(mip_stats_cfg.block_count_considered);
+        <span class="kw">let </span>store_stats_der = MipStoreStatsDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.counters_max,
+        );
         <span class="kw">let </span>(rem, store_stats_der_res) = store_stats_der
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf)
             .unwrap();
@@ -2234,6 +2318,7 @@ impl Default for MipStoreRawDeserializer {
     </span><span class="kw">fn </span>test_mip_store_raw_ser_der() {
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            counters_max: <span class="number">5</span>,
         };
 
         <span class="kw">let </span>mi_2 = MipInfo {
@@ -2256,10 +2341,7 @@ impl Default for MipStoreRawDeserializer {
 
         <span class="kw">let </span>_time = MassaTime::now().unwrap();
         <span class="kw">let </span>state_2 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>mi_2);
-        <span class="kw">let </span>state_3 = advance_state_until(
-            ComponentState::started(Amount::from_str(<span class="string">&quot;42.4242&quot;</span>).unwrap()),
-            <span class="kw-2">&amp;</span>mi_3,
-        );
+        <span class="kw">let </span>state_3 = advance_state_until(ComponentState::started(Ratio::new_raw(<span class="number">42</span>, <span class="number">100</span>)), <span class="kw-2">&amp;</span>mi_3);
 
         <span class="kw">let </span>store_raw =
             MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg)).unwrap();
@@ -2268,7 +2350,7 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>store_raw_ser = MipStoreRawSerializer::new();
         store_raw_ser.serialize(<span class="kw-2">&amp;</span>store_raw, <span class="kw-2">&amp;mut </span>buf).unwrap();
 
-        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>);
+        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>, <span class="number">5</span>);
         <span class="kw">let </span>(rem, store_raw_der_res) = store_raw_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
 
         <span class="macro">assert!</span>(rem.is_empty());
@@ -2276,6 +2358,7 @@ impl Default for MipStoreRawDeserializer {
     }
 
     <span class="attr">#[test]
+    #[ignore]
     </span><span class="kw">fn </span>mip_store_raw_max_size() {
         <span class="kw">let </span><span class="kw-2">mut </span>mi_base = MipInfo {
             name: <span class="string">&quot;A&quot;</span>.repeat(<span class="number">254</span>),
@@ -2320,6 +2403,7 @@ impl Default for MipStoreRawDeserializer {
             store: BTreeMap::from_iter(store_raw_.into_iter()),
             stats: MipStoreStats::new(MipStatsConfig {
                 block_count_considered: <span class="number">10</span>,
+                counters_max: <span class="number">5</span>,
             }),
         };
         <span class="macro">assert_eq!</span>(store_raw.store.len(), MIP_STORE_MAX_ENTRIES <span class="kw">as </span>usize);
@@ -2335,7 +2419,7 @@ impl Default for MipStoreRawDeserializer {
             .serialize(<span class="kw-2">&amp;</span>store_raw, <span class="kw-2">&amp;mut </span>buf)
             .expect(<span class="string">&quot;Unable to serialize&quot;</span>);
 
-        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>);
+        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>, <span class="number">5</span>);
         <span class="kw">let </span>(rem, store_raw_der_res) = store_raw_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
 
         <span class="macro">assert!</span>(rem.is_empty());

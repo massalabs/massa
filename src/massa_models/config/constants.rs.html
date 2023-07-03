@@ -322,6 +322,7 @@
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -409,7 +410,6 @@
         .parse()
         .unwrap()
     };
-
 }
 
 <span class="doccomment">/// Helper function to parse args for lazy_static evaluations
@@ -622,9 +622,11 @@
 // Constants used in versioning
 //
 </span><span class="doccomment">/// Threshold to accept a new versioning
-</span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::const_init(<span class="number">75</span>, <span class="number">0</span>);
+</span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio&lt;u64&gt; = Ratio::new_raw(<span class="number">75</span>, <span class="number">100</span>);
 <span class="doccomment">/// Block count to process in MipStoreStats (for state change threshold)
 </span><span class="kw">pub const </span>MIP_STORE_STATS_BLOCK_CONSIDERED: usize = <span class="number">1000</span>;
+<span class="doccomment">/// Max number of stats counters
+</span><span class="kw">pub const </span>MIP_STORE_STATS_COUNTERS_MAX: usize = <span class="number">10</span>;
 
 <span class="comment">//
 // Constants for denunciation factory
