@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use machine::{machine, transitions};
+use num::{rational::Ratio, Zero};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
@@ -15,10 +16,10 @@ use massa_db_exports::{
     VERSIONING_CF,
 };
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
-use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
 
@@ -109,7 +110,7 @@ machine!(
         /// Initial state
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
-        Started { pub(crate) threshold: Amount },
+        Started { pub(crate) threshold: Ratio<u64> },
         /// Locked but wait for some time before going to active (to let users the time to upgrade)
         LockedIn { pub(crate) at: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
@@ -161,7 +162,7 @@ pub struct Advance {
     pub activation_delay: MassaTime,
 
     /// % of past blocks with this version
-    pub threshold: Amount,
+    pub threshold: Ratio<u64>,
     /// Current time (timestamp)
     pub now: MassaTime,
 }
@@ -206,7 +207,7 @@ impl Defined {
     pub fn on_advance(self, input: Advance) -> ComponentState {
         match input.now {
             n if n >= input.timeout => ComponentState::failed(),
-            n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
+            n if n >= input.start_timestamp => ComponentState::started(Ratio::zero()),
             _ => ComponentState::Defined(Defined {}),
         }
     }
@@ -372,7 +373,7 @@ impl MipState {
         let mut advance_msg = Advance {
             start_timestamp: mip_info.start,
             timeout: mip_info.timeout,
-            threshold: Amount::zero(),
+            threshold: Ratio::zero(),
             now: initial_ts.now,
             activation_delay: mip_info.activation_delay,
         };
@@ -937,25 +938,26 @@ impl MipStoreRaw {
                 .network_version_counters
                 .get(&mi.version)
                 .unwrap_or(&0);
-            let block_count_considered = self.stats.config.block_count_considered;
-            let vote_ratio_ = Amount::from_mantissa_scale(network_version_count, 0).map(|a| {
-                a.saturating_mul_u64(100)
-                    .checked_div_u64(u64::try_from(block_count_considered).unwrap_or(0))
-            });
 
-            if let Ok(Some(vote_ratio)) = vote_ratio_ {
-                debug!("[VERSIONING STATS] vote ratio = {} (network version counter = {} - blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            let vote_ratio = Ratio::new(
+                network_version_count,
+                self.stats.config.block_count_considered as u64,
+            );
 
-                let advance_msg = Advance {
-                    start_timestamp: mi.start,
-                    timeout: mi.timeout,
-                    threshold: vote_ratio,
-                    now: slot_timestamp,
-                    activation_delay: mi.activation_delay,
-                };
+            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})",
+                vote_ratio,
+                network_version_count,
+                self.stats.config.block_count_considered);
 
-                state.on_advance(&advance_msg.clone());
-            }
+            let advance_msg = Advance {
+                start_timestamp: mi.start,
+                timeout: mi.timeout,
+                threshold: vote_ratio,
+                now: slot_timestamp,
+                activation_delay: mi.activation_delay,
+            };
+
+            state.on_advance(&advance_msg.clone());
         }
     }
 
@@ -1313,7 +1315,7 @@ mod test {
     use more_asserts::assert_le;
     use parking_lot::RwLock;
     use std::assert_matches::assert_matches;
-    use std::str::FromStr;
+    use std::ops::{Add, Sub};
     use std::sync::Arc;
     use tempfile::tempdir;
 
@@ -1330,8 +1332,8 @@ mod test {
     }
 
     // helper
-    impl From<(&MipInfo, &Amount, &MassaTime)> for Advance {
-        fn from((mip_info, threshold, now): (&MipInfo, &Amount, &MassaTime)) -> Self {
+    impl From<(&MipInfo, &Ratio<u64>, &MassaTime)> for Advance {
+        fn from((mip_info, threshold, now): (&MipInfo, &Ratio<u64>, &MassaTime)) -> Self {
             Self {
                 start_timestamp: mip_info.start,
                 timeout: mip_info.timeout,
@@ -1372,7 +1374,7 @@ mod test {
         assert_eq!(state, ComponentState::defined());
 
         let now = mi.start.saturating_sub(MassaTime::from_millis(1));
-        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let mut advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::defined());
@@ -1385,7 +1387,7 @@ mod test {
         assert_eq!(
             state,
             ComponentState::Started(Started {
-                threshold: Amount::zero()
+                threshold: Ratio::zero()
             })
         );
     }
@@ -1397,11 +1399,10 @@ mod test {
         let mut state: ComponentState = ComponentState::started(Default::default());
 
         let now = mi.start;
-        let threshold_too_low = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
-            .saturating_sub(Amount::from_str("0.1").unwrap());
-        let threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
-            .saturating_add(Amount::from_str("5.42").unwrap());
-        assert_le!(threshold_ok, Amount::from_str("100.0").unwrap());
+        let threshold_too_low =
+            VERSIONING_THRESHOLD_TRANSITION_ACCEPTED.sub(Ratio::new_raw(10, 100));
+        let threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED.add(Ratio::new_raw(1, 100));
+        assert_le!(threshold_ok, Ratio::from_integer(1));
         let mut advance_msg = Advance::from((&mi, &threshold_too_low, &now));
 
         state = state.on_advance(advance_msg.clone());
@@ -1420,7 +1421,7 @@ mod test {
         let mut state: ComponentState = ComponentState::locked_in(locked_in_at);
 
         let now = mi.start;
-        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let mut advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::locked_in(locked_in_at));
@@ -1438,7 +1439,7 @@ mod test {
         let (start, _, mi) = get_a_version_info();
         let mut state = ComponentState::active(start);
         let now = mi.start;
-        let advance = Advance::from((&mi, &Amount::zero(), &now));
+        let advance = Advance::from((&mi, &Ratio::zero(), &now));
 
         state = state.on_advance(advance);
         assert!(matches!(state, ComponentState::Active(_)));
@@ -1450,7 +1451,7 @@ mod test {
         let (_, _, mi) = get_a_version_info();
         let mut state = ComponentState::failed();
         let now = mi.start;
-        let advance = Advance::from((&mi, &Amount::zero(), &now));
+        let advance = Advance::from((&mi, &Ratio::zero(), &now));
         state = state.on_advance(advance);
         assert_eq!(state, ComponentState::failed());
     }
@@ -1460,7 +1461,7 @@ mod test {
         // Test Versioning state transition (to state: Failed)
         let (_, _, mi) = get_a_version_info();
         let now = mi.timeout.saturating_add(MassaTime::from_millis(1));
-        let advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         let mut state: ComponentState = Default::default(); // Defined
         state = state.on_advance(advance_msg.clone());
@@ -1482,11 +1483,11 @@ mod test {
         assert_eq!(state, ComponentState::defined());
 
         let now = mi.start.saturating_add(MassaTime::from_millis(15));
-        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let mut advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         // Move from Defined -> Started
         state.on_advance(&advance_msg);
-        assert_eq!(state, ComponentState::started(Amount::zero()));
+        assert_eq!(state, ComponentState::started(Ratio::zero()));
 
         // Check history
         assert_eq!(state.history.len(), 2);
@@ -1532,7 +1533,7 @@ mod test {
 
         // Move from Started to LockedIn
         let threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
-        advance_msg.threshold = threshold.saturating_add(Amount::from_str("1.0").unwrap());
+        advance_msg.threshold = threshold.add(Ratio::from_integer(1));
         advance_msg.now = now.saturating_add(MassaTime::from_millis(1));
         state.on_advance(&advance_msg);
         assert_eq!(state, ComponentState::locked_in(advance_msg.now));
@@ -1572,7 +1573,7 @@ mod test {
             history: Default::default(),
         };
         let vs_2 = MipState {
-            state: ComponentState::started(Amount::zero()),
+            state: ComponentState::started(Ratio::zero()),
             history: Default::default(),
         };
 
@@ -1649,17 +1650,14 @@ mod test {
 
         // Advance to Started
         let now = MassaTime::from_millis(3);
-        let adv = Advance::from((&vi_1, &Amount::zero(), &now));
+        let adv = Advance::from((&vi_1, &Ratio::zero(), &now));
         vsh.on_advance(&adv);
         let now = MassaTime::from_millis(4);
-        let adv = Advance::from((&vi_1, &Amount::from_str("14.42").unwrap(), &now));
+        let adv = Advance::from((&vi_1, &Ratio::new_raw(14, 100), &now));
         vsh.on_advance(&adv);
 
         // At state Started at time now -> true
-        assert_eq!(
-            vsh.state,
-            ComponentState::started(Amount::from_str("14.42").unwrap())
-        );
+        assert_eq!(vsh.state, ComponentState::started(Ratio::new_raw(14, 100)));
         assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // Now with another versioning info
         assert_eq!(vsh.is_coherent_with(&vi_2).is_ok(), false);
@@ -2065,7 +2063,7 @@ mod test {
             mi_2.start = get_slot_ts(Slot::new(7, 7));
             mi_2.timeout = get_slot_ts(Slot::new(10, 7));
 
-            let ms_1 = advance_state_until(ComponentState::started(Amount::zero()), &mi_1);
+            let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
@@ -2299,7 +2297,7 @@ mod test {
             timeout,
             activation_delay,
         };
-        let ms_1 = advance_state_until(ComponentState::started(Amount::zero()), &mi_1);
+        let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
 
         let mut mip_store =
             MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();

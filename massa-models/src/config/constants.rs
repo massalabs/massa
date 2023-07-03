@@ -85,7 +85,6 @@ lazy_static::lazy_static! {
         .parse()
         .unwrap()
     };
-
 }
 
 /// Helper function to parse args for lazy_static evaluations
@@ -298,7 +297,7 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
-pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::const_init(75, 0);
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio<u64> = Ratio::new_raw(75, 100);
 /// Block count to process in MipStoreStats (for state change threshold)
 pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
 
