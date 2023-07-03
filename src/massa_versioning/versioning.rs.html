@@ -2343,6 +2343,8 @@
 <a href="#2343" id="2343">2343</a>
 <a href="#2344" id="2344">2344</a>
 <a href="#2345" id="2345">2345</a>
+<a href="#2346" id="2346">2346</a>
+<a href="#2347" id="2347">2347</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
@@ -2743,7 +2745,9 @@
         <span class="comment">// Advance state if both are at &#39;Started&#39; (to have the same threshold)
         // Note: because in history we do not add entries for every threshold update
         </span><span class="kw">if let </span>(
-            ComponentState::Started(Started { vote_ratio: threshold }),
+            ComponentState::Started(Started {
+                vote_ratio: threshold,
+            }),
             ComponentState::Started(Started {
                 vote_ratio: threshold_2,
             }),
