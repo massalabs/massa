@@ -2946,6 +2946,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_protocol_exports",
  "massa_serialization",
+ "massa_signature",
  "massa_storage",
  "massa_time",
  "massa_versioning",
