@@ -1106,22 +1106,22 @@ impl ExecutionContext {
 
 /// Generate the execution trail hash
 fn generate_execution_trail_hash(
-    previout_execution_trail_hash: &massa_hash::Hash,
+    previous_execution_trail_hash: &massa_hash::Hash,
     slot: &Slot,
     opt_block_id: Option<&BlockId>,
     read_only: bool,
 ) -> massa_hash::Hash {
     match opt_block_id {
-        Some(block_id) => massa_hash::Hash::compute_from_tuple(&[
-            previout_execution_trail_hash.to_bytes(),
-            &slot.to_bytes_key(),
-            &[1u8, if read_only { 1u8 } else { 0u8 }],
-            block_id.to_bytes(),
-        ]),
         None => massa_hash::Hash::compute_from_tuple(&[
-            previout_execution_trail_hash.to_bytes(),
+            previous_execution_trail_hash.to_bytes(),
             &slot.to_bytes_key(),
-            &[0u8, if read_only { 1u8 } else { 0u8 }],
+            &[if read_only { 1u8 } else { 0u8 }, 0u8],
+        ]),
+        Some(block_id) => massa_hash::Hash::compute_from_tuple(&[
+            previous_execution_trail_hash.to_bytes(),
+            &slot.to_bytes_key(),
+            &[if read_only { 1u8 } else { 0u8 }, 1u8],
+            block_id.to_bytes(),
         ]),
     }
 }
