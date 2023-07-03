@@ -16,7 +16,8 @@ use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRo
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
-    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+    EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
+    ExecutionStackElement,
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
@@ -133,7 +134,7 @@ pub struct ExecutionContext {
     /// counter of newly created messages so far during this execution
     pub created_message_index: u64,
 
-    /// block ID, if one is present at the execution slot
+    /// block Id, if one is present at the execution slot
     pub opt_block_id: Option<BlockId>,
 
     /// address call stack, most recent is at the back
@@ -888,7 +889,7 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self) -> ExecutionOutput {
+    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -936,9 +937,11 @@ impl ExecutionContext {
             executed_ops_changes: self.speculative_executed_ops.take(),
             executed_denunciations_changes: self.speculative_executed_denunciations.take(),
         };
+
+        std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
             slot,
-            block_id: std::mem::take(&mut self.opt_block_id),
+            block_info,
             state_changes,
             events: std::mem::take(&mut self.events),
         }

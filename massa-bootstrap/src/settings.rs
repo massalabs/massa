@@ -125,8 +125,6 @@ pub struct BootstrapConfig {
     pub max_consensus_block_ids: u64,
     /// block count to check / process for versioning stats
     pub mip_store_stats_block_considered: usize,
-    /// max number of counters for versioning stats
-    pub mip_store_stats_counters_max: usize,
     /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
     /// max executed denunciations changes
@@ -175,7 +173,6 @@ pub struct BootstrapClientConfig {
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
     pub mip_store_stats_block_considered: usize,
-    pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
     pub max_denunciation_changes_length: u64,
 }
@@ -207,7 +204,6 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
     pub mip_store_stats_block_considered: usize,
-    pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
     pub max_denunciation_changes_length: u64,
 }

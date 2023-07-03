@@ -6,8 +6,10 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-use nom::error::{context, ContextError, ParseError};
-use nom::IResult;
+use nom::{
+    error::{context, ContextError, ParseError},
+    IResult,
+};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::collections::Bound::Included;
 use std::convert::TryInto;
