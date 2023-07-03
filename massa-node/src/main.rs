@@ -408,7 +408,7 @@ async fn launch(
         if !final_state
             .read()
             .mip_store
-            .is_coherent_with_shutdown_period(
+            .is_consistent_with_shutdown_period(
                 last_shutdown_start,
                 last_shutdown_end,
                 THREAD_COUNT,
@@ -418,7 +418,7 @@ async fn launch(
             .unwrap_or(false)
         {
             panic!(
-                "MIP store is not coherent with last shutdown period ({} - {})",
+                "MIP store is not consistent with last shutdown period ({} - {})",
                 last_shutdown_start, last_shutdown_end
             );
         }

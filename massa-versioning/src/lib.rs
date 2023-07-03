@@ -13,13 +13,13 @@
 //! # Notes on MipInfo versions
 //!
 //! There is 2 different 'versions':
-//! * version == Network version -> This is the network version to announce and thus to store in block header
+//! * version == Network version -> This is the network version to announce and thus is stored in block header
 //! * component_version -> This is the version for the associated component and is used in VersioningFactory (e.g KeyPair, Address, VM)
 //!
 //! # Notes on MipInfo timings and stats
 //!
 //! So in the execution module and after a block become final, we update the MipStore stats (in a blocking way).
-//! By updating the stats, we mean sending: (Slot timestamp, Option<(current: u32, advertising: Option)>).
+//! By updating the stats, we mean sending: (Slot timestamp, Option<(current: u32, announced: Option)>).
 //! Using the slot timestamp, ensure that the trigger (and the trigger timeout) is a consensus by all nodes
 //! (This means that the trigger and the trigger timeout are not timer based).
 //! In order to have all nodes in sync (because of node various delays), the state is set to active
@@ -39,17 +39,26 @@
 //! * Query the state at any time, so you can query MipStore and ask the best version at any time
 //! * Used a lot when merging 2 MipStore:
 //!   * By replaying the history of the states of the received MipStore (bootstrap), we can safely updates in the bootstrap process
-//!   * + When we init MipStore (at startup), this ensures that we have a time ranges & versions coherent list of MipInfo
+//!   * + When we init MipStore (at startup), this ensures that we have a time ranges & versions consistent list of MipInfo
 //!     * For instance, this can avoid to have 2 MipInfo with the same name
 //!
 //! # Versioning Factory
 //!
-//! A Factory trait is there to ease the development of factory for Versioned component (e.g. address, block)
+//! A Factory trait is there to ease the development of factory for Versioned components (e.g. address, block)
 //!
 //! All factories should query MIPStore in order to create a component with correct version; default implementation
 //! are provided by the trait to avoid re writing these query functions.
 //!
 //! Unit tests in versioning_factory.rs shows a basic but realistic implementation of a AddressFactory (impl the Factory trait)
+//!
+//! # MipStore and Final state hash
+//!
+//! MipStore is written on disk after each block finalization. Writes are done in two separate column:
+//! * STATE_CF: 'Active' MIP info list
+//! * VERSIONING_CF: other MIP info + stats
+//!
+//! By writing only 'Active' MIP in state_cf column, we ensure that the final state hash remains the same between
+//! the versioning transition (e.g. User 1 has upgraded to network version 1 while User 2 has not yet upgraded)
 
 pub mod address_factory;
 pub mod grpc_mapping;
