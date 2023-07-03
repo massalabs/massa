@@ -2586,7 +2586,7 @@ dependencies = [
  "serde_json",
  "serial_test 2.0.0",
  "socket2",
- "stream_limiter 3.2.0",
+ "stream_limiter",
  "substruct",
  "tempfile",
  "thiserror",
@@ -3723,7 +3723,7 @@ dependencies = [
  "quiche",
  "rand 0.8.5",
  "serde",
- "stream_limiter 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stream_limiter",
  "thiserror",
 ]
 
@@ -4906,10 +4906,6 @@ name = "str-buf"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e08d8363704e6c71fc928674353e6b7c23dcea9d82d7012c8faf2a3a025f8d0"
-
-[[package]]
-name = "stream_limiter"
-version = "3.2.0"
 
 [[package]]
 name = "stream_limiter"
