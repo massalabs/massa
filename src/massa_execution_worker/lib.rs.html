@@ -120,6 +120,7 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # General description
@@ -223,6 +224,7 @@
 <span class="kw">mod </span>vesting_manager;
 <span class="kw">mod </span>worker;
 
+<span class="kw">use </span>massa_db_exports <span class="kw">as _</span>;
 <span class="kw">pub use </span>worker::start_execution_worker;
 
 <span class="attr">#[cfg(any(
