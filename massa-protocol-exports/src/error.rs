@@ -51,9 +51,14 @@ pub enum ProtocolError {
         received: u32,
     },
     /// Invalid announced network version
-    InvalidAnnouncedNetworkVersion {
+    OutdatedAnnouncedNetworkVersion {
         /// local current version
         local: u32,
+        /// received announced network version
+        announced_received: u32,
+    },
+    /// Invalid announced network version (expected None)
+    InvalidAnnouncedNetworkVersion {
         /// received announced network version
         announced_received: u32,
     },
