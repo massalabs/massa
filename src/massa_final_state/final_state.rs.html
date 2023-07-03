@@ -718,6 +718,7 @@
 <a href="#718" id="718">718</a>
 <a href="#719" id="719">719</a>
 <a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -853,7 +854,8 @@
         </span><span class="prelude-val">Ok</span>(final_state)
     }
 
-    <span class="doccomment">/// Get the fingerprint (hash) of the final state
+    <span class="doccomment">/// Get the fingerprint (hash) of the final state.
+    /// Note that only one atomic write per final slot occurs, so this can be safely queried at any time.
     </span><span class="kw">pub fn </span>get_fingerprint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; massa_hash::Hash {
         <span class="kw">let </span>internal_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
         massa_hash::Hash::compute_from(internal_hash.to_bytes())
