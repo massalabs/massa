@@ -38,12 +38,15 @@ def inline_dict_fmt(d):
     tail = ""
     if "flag" in d:
         if d["flag"]:
-            tail += "   # TODO BOM UPGRADE     Revert to {} if problem".format(
+            tail += "   # BOM UPGRADE     Revert to {} if problem".format(
                 json.dumps(d["old"])
             )
         del d["flag"]
         del d["old"]
         
+    if not isinstance(d, dict):
+        return json.dumps(d)
+    
     inldict = json.dumps(d).replace(": ", " = ")
     res = ""
     is_val = False
