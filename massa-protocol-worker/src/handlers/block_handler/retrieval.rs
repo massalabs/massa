@@ -456,28 +456,37 @@ impl RetrievalThread {
             self.config.genesis_timestamp,
             slot,
         )?;
-        let version = self.mip_store.get_network_version_active_at(ts);
-        if header.content.current_version != version {
+        let current_version = self.mip_store.get_network_version_active_at(ts);
+        if header.content.current_version != current_version {
+            // Received a current version different from current version (given by mip store)
             Err(ProtocolError::IncompatibleNetworkVersion {
-                local: version,
+                local: current_version,
                 received: header.content.current_version,
             })
         } else {
-            // announced version == 0 -> No announce
-            if header.content.announced_version != 0 {
-                if header.content.announced_version <= version {
+            if let Some(announced_version) = header.content.announced_version {
+                if announced_version <= current_version {
                     // Received block, announced an old version (already accepted)
-                    return Err(ProtocolError::InvalidAnnouncedNetworkVersion {
-                        local: version,
-                        announced_received: header.content.announced_version,
+                    return Err(ProtocolError::OutdatedAnnouncedNetworkVersion {
+                        local: current_version,
+                        announced_received: announced_version,
                     });
                 }
 
-                let version_to_announce = self.mip_store.get_network_version_to_announce();
-                if header.content.announced_version != version_to_announce {
-                    warn!("Please update your node if you want to support this update (network version: {})", 
-                        header.content.announced_version);
-                }
+                match self.mip_store.get_network_version_to_announce() {
+                    Some(version_to_announce) => {
+                        // Unknown/new announced version -> user might need to upgrade
+                        if announced_version > version_to_announce {
+                            warn!("Please update your node if you want to support this update (new network version: {})", announced_version);
+                        }
+                    }
+                    None => {
+                        // Received an announced version but none should be announced
+                        return Err(ProtocolError::InvalidAnnouncedNetworkVersion {
+                            announced_received: announced_version,
+                        });
+                    }
+                };
             }
 
             Ok(())

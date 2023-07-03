@@ -159,7 +159,7 @@ impl Serializer<Block> for BlockSerializer {
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         current_version: 0,
-    ///         announced_version: 0,
+    ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -262,7 +262,7 @@ impl Deserializer<Block> for BlockDeserializer {
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         current_version: 0,
-    ///         announced_version: 0,
+    ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents: parents.clone(),
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -476,7 +476,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -560,7 +560,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -648,7 +648,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -710,7 +710,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -762,7 +762,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents: vec![],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -817,7 +817,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -894,7 +894,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -951,7 +951,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -1020,7 +1020,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -1094,7 +1094,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -1180,7 +1180,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),

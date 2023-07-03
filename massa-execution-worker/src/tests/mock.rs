@@ -172,7 +172,7 @@ pub fn create_block(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: vec![],
             operation_merkle_root,
