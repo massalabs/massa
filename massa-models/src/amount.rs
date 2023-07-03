@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
-use massa_proto_rs::massa::model::v1::NativeAmount;
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
@@ -122,25 +121,6 @@ impl Amount {
         let res = Decimal::try_from_i128_with_scale(mantissa as i128, scale)
             .map_err(|err| ModelsError::AmountParseError(err.to_string()))?;
         Amount::from_decimal(res)
-    }
-
-    /// Creates an amount from a NativeAmount
-    pub fn from_native_amount(amount: &NativeAmount) -> Result<Self, ModelsError> {
-        let mantissa = amount.mandatory_mantissa.ok_or_else(|| {
-            ModelsError::AddressParseError("Missing mandantory_mantissa".to_string())
-        })?;
-        let scale = amount
-            .mandatory_scale
-            .ok_or_else(|| ModelsError::AddressParseError("Missing mandatory_scale".to_string()))?;
-        let amount = Amount::from_mantissa_scale(mantissa, scale)
-            .map_err(|err| ModelsError::AddressParseError(format!("{}", err)))?;
-
-        Ok(amount)
-    }
-
-    /// Creates a NativeAmount from the internal representation
-    pub fn to_native_amount(&self) -> Result<NativeAmount, ModelsError> {
-        Ok(todo!())
     }
 
     /// Obtains the underlying raw `u64` representation

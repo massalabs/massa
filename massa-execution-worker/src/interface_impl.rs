@@ -6,7 +6,6 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
-use anyhow::Ok;
 use anyhow::{anyhow, bail, Result};
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
@@ -139,6 +138,29 @@ impl InterfaceClone for InterfaceImpl {
     fn clone_box(&self) -> Box<dyn Interface> {
         Box::new(self.clone())
     }
+}
+
+/// Helper function that creates an amount from a NativeAmount
+fn amount_from_native_amount(amount: &NativeAmount) -> Result<Amount> {
+    let mantissa = amount
+        .mandatory_mantissa
+        .ok_or_else(|| anyhow!("Missing mantissa".to_string()))?;
+    let scale = amount
+        .mandatory_scale
+        .ok_or_else(|| anyhow!("Missing scale".to_string()))?;
+    let amount =
+        Amount::from_mantissa_scale(mantissa, scale).map_err(|err| anyhow!(format!("{}", err)))?;
+
+    Ok(amount)
+}
+
+/// Helper function that creates a NativeAmount from the amount internal representation
+fn amount_to_native_amount(amount: &Amount) -> Result<NativeAmount> {
+    let (mantissa, scale) = amount.to_mantissa_scale();
+    Ok(NativeAmount {
+        mandatory_mantissa: Some(mantissa),
+        mandatory_scale: Some(scale),
+    })
 }
 
 /// Helper function to get the address from the option given as argument to some ABIs
@@ -1181,16 +1203,14 @@ impl Interface for InterfaceImpl {
     /// Returns a NativeAmount from a string
     fn native_amount_from_str_wasmv1(&self, amount: &str) -> Result<NativeAmount> {
         let amount = Amount::from_str(amount).map_err(|err| anyhow!(format!("{}", err)))?;
-        let amount = amount
-            .to_native_amount()
-            .map_err(|err| anyhow!(format!("{}", err)))?;
+        let amount = amount_to_native_amount(&amount).map_err(|err| anyhow!(format!("{}", err)))?;
 
         Ok(amount)
     }
 
     /// Returns a string from a NativeAmount
     fn native_amount_to_string_wasmv1(&self, amount: &NativeAmount) -> Result<String> {
-        let amount = Amount::from_native_amount(amount)
+        let amount = amount_from_native_amount(amount)
             .map_err(|err| anyhow!(format!("Couldn't convert native amount to Amount: {}", err)))?;
 
         Ok(amount.to_string())
@@ -1198,7 +1218,7 @@ impl Interface for InterfaceImpl {
 
     /// Checks if the given native amount is valid
     fn check_native_amount_wasmv1(&self, amount: &NativeAmount) -> Result<bool> {
-        Ok(Amount::from_native_amount(amount).is_ok())
+        Ok(amount_from_native_amount(amount).is_ok())
     }
 
     /// Adds two native amounts, saturating at the numeric bounds instead of overflowing.
@@ -1207,13 +1227,12 @@ impl Interface for InterfaceImpl {
         amount1: &NativeAmount,
         amount2: &NativeAmount,
     ) -> Result<NativeAmount> {
-        let amount1 = Amount::from_native_amount(amount1)?;
-        let amount2 = Amount::from_native_amount(amount2)?;
-        let amount = amount1
-            .saturating_add(amount2)
-            .to_native_amount()
+        let amount1 = amount_from_native_amount(amount1)?;
+        let amount2 = amount_from_native_amount(amount2)?;
+        let sum = amount1.saturating_add(amount2);
+        let sum = amount_to_native_amount(&sum)
             .map_err(|err| anyhow!(format!("Couldn't add native amounts: {}", err)))?;
-        Ok(amount)
+        Ok(sum)
     }
 
     /// Subtracts two native amounts, saturating at the numeric bounds instead of overflowing.
@@ -1222,23 +1241,21 @@ impl Interface for InterfaceImpl {
         amount1: &NativeAmount,
         amount2: &NativeAmount,
     ) -> Result<NativeAmount> {
-        let amount1 = Amount::from_native_amount(amount1)?;
-        let amount2 = Amount::from_native_amount(amount2)?;
-        let amount = amount1
-            .saturating_sub(amount2)
-            .to_native_amount()
+        let amount1 = amount_from_native_amount(amount1)?;
+        let amount2 = amount_from_native_amount(amount2)?;
+        let sub = amount1.saturating_sub(amount2);
+        let sub = amount_to_native_amount(&sub)
             .map_err(|err| anyhow!(format!("Couldn't sub native amounts: {}", err)))?;
-        Ok(amount)
+        Ok(sub)
     }
 
     /// Multiplies a native amount by a factor, saturating at the numeric bounds instead of overflowing.
     fn mul_native_amount_wasmv1(&self, amount: &NativeAmount, factor: u64) -> Result<NativeAmount> {
-        let amount = Amount::from_native_amount(amount)?;
-        let amount = amount
-            .saturating_mul_u64(factor)
-            .to_native_amount()
+        let amount = amount_from_native_amount(amount)?;
+        let mul = amount.saturating_mul_u64(factor);
+        let mul = amount_to_native_amount(&mul)
             .map_err(|err| anyhow!(format!("Couldn't mul native amount: {}", err)))?;
-        Ok(amount)
+        Ok(mul)
     }
 
     /// Divides a native amount by a divisor, return an error if the divisor is 0.
@@ -1251,12 +1268,12 @@ impl Interface for InterfaceImpl {
             return Err(anyhow!("Divisor can't be 0"));
         }
 
-        let dividend = Amount::from_native_amount(dividend)?;
+        let dividend = amount_from_native_amount(dividend)?;
 
         let quotient = dividend
             .checked_div_u64(divisor)
             .ok_or_else(|| anyhow!(format!("Couldn't div_rem native amount")))?;
-        let quotient = Amount::to_native_amount(&quotient).map_err(|err| {
+        let quotient = amount_to_native_amount(&quotient).map_err(|err| {
             anyhow!(format!(
                 "Couldn't convert quotient to native amount: {}",
                 err
@@ -1264,14 +1281,13 @@ impl Interface for InterfaceImpl {
         })?;
 
         let remainder = dividend.to_raw().rem_euclid(divisor);
-        let remainder = Amount::from_raw(remainder)
-            .to_native_amount()
-            .map_err(|err| {
-                anyhow!(format!(
-                    "Couldn't convert remainder to native amount: {}",
-                    err
-                ))
-            })?;
+        let remainder = Amount::from_raw(remainder);
+        let remainder = amount_to_native_amount(&remainder).map_err(|err| {
+            anyhow!(format!(
+                "Couldn't convert remainder to native amount: {}",
+                err
+            ))
+        })?;
 
         return Ok((quotient, remainder));
     }
@@ -1282,8 +1298,8 @@ impl Interface for InterfaceImpl {
         dividend: &NativeAmount,
         divisor: &NativeAmount,
     ) -> Result<(u64, NativeAmount)> {
-        let dividend = Amount::from_native_amount(dividend)?;
-        let divisor = Amount::from_native_amount(divisor)?.to_raw();
+        let dividend = amount_from_native_amount(dividend)?;
+        let divisor = amount_from_native_amount(divisor)?.to_raw();
 
         if divisor == 0 {
             return Err(anyhow!("Divisor can't be 0"));
@@ -1295,14 +1311,12 @@ impl Interface for InterfaceImpl {
             .to_raw();
 
         let remainder = dividend.to_raw().rem_euclid(divisor);
-        let remainder = Amount::from_raw(remainder)
-            .to_native_amount()
-            .map_err(|err| {
-                anyhow!(format!(
-                    "Couldn't convert remainder to native amount: {}",
-                    err
-                ))
-            })?;
+        let remainder = amount_to_native_amount(&Amount::from_raw(remainder)).map_err(|err| {
+            anyhow!(format!(
+                "Couldn't convert remainder to native amount: {}",
+                err
+            ))
+        })?;
 
         return Ok((quotient, remainder));
     }
@@ -1354,6 +1368,70 @@ mod tests {
         assert_eq!(op_keys.len(), 2);
         assert!(op_keys.contains(&b"k1".to_vec()));
         assert!(op_keys.contains(&b"k2".to_vec()));
+    }
+
+    #[test]
+    fn test_native_amount() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None);
+
+        let amount1 = interface.native_amount_from_str_wasmv1("100").unwrap();
+        let amount2 = interface.native_amount_from_str_wasmv1("100").unwrap();
+        let amount3 = interface.native_amount_from_str_wasmv1("200").unwrap();
+
+        let sum = interface
+            .add_native_amounts_wasmv1(&amount1, &amount2)
+            .unwrap();
+
+        assert_eq!(amount3, sum);
+        println!(
+            "sum: {}",
+            interface.native_amount_to_string_wasmv1(&sum).unwrap()
+        );
+        assert_eq!(
+            "200",
+            interface.native_amount_to_string_wasmv1(&sum).unwrap()
+        );
+
+        let diff = interface.sub_native_amounts_wasmv1(&sum, &amount2).unwrap();
+        assert_eq!(amount1, diff);
+
+        let amount4 = NativeAmount {
+            mandatory_mantissa: Some(1),
+            mandatory_scale: Some(9),
+        };
+
+        let is_valid = interface.check_native_amount_wasmv1(&amount4).unwrap();
+        assert_eq!(is_valid, true);
+
+        let mul = interface.mul_native_amount_wasmv1(&amount1, 2).unwrap();
+        assert_eq!(mul, amount3);
+
+        let (quotient, remainder) = interface.div_rem_native_amount_wasmv1(&amount1, 2).unwrap();
+        let quotient_res_50 = interface.native_amount_from_str_wasmv1("50").unwrap();
+        let remainder_res_0 = interface.native_amount_from_str_wasmv1("0").unwrap();
+        assert_eq!(quotient, quotient_res_50);
+        assert_eq!(remainder, remainder_res_0);
+
+        let (quotient, remainder) = interface.div_rem_native_amount_wasmv1(&amount1, 3).unwrap();
+        let verif_div = interface.mul_native_amount_wasmv1(&quotient, 3).unwrap();
+        let verif_dif = interface.add_native_amounts_wasmv1(&verif_div, &remainder).unwrap();
+        assert_eq!(verif_dif, amount1);
+
+        let amount5 = interface.native_amount_from_str_wasmv1("2").unwrap();
+        let (quotient, remainder) = interface
+            .div_rem_native_amounts_wasmv1(&amount1, &amount5)
+            .unwrap();
+        assert_eq!(quotient, 50);
+        assert_eq!(remainder, remainder_res_0);
+
+        let amount6 = interface.native_amount_from_str_wasmv1("3").unwrap();
+        let (quotient, remainder) = interface
+            .div_rem_native_amounts_wasmv1(&amount1, &amount6)
+            .unwrap();
+        let verif_div = interface.mul_native_amount_wasmv1(&amount6, quotient).unwrap();
+        let verif_dif = interface.add_native_amounts_wasmv1(&verif_div, &remainder).unwrap();
+        assert_eq!(verif_dif, amount1);
     }
 }
 
