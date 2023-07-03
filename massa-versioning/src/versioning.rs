@@ -679,7 +679,6 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStatsConfig {
     pub block_count_considered: usize,
-    // pub counters_max: usize,
 }
 
 /// In order for a MIP to be accepted, we compute statistics about other node 'network' version announcement
