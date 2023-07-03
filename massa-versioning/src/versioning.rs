@@ -876,8 +876,9 @@ impl MipStoreRaw {
         slot_timestamp: MassaTime,
         network_versions: Option<(u32, Option<u32>)>,
     ) {
-        if let Some((_current_network_version, Some(announced_network_version))) = network_versions
-        {
+        if let Some((_current_network_version, announced_network_version_)) = network_versions {
+            let announced_network_version = announced_network_version_.unwrap_or(0);
+
             let removed_version_ = match self.stats.latest_announcements.len() {
                 n if n >= self.stats.config.block_count_considered => {
                     self.stats.latest_announcements.pop_front()
