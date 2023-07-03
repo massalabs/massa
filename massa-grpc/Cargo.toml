@@ -40,6 +40,7 @@ massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_serialization = { path = "../massa-serialization" }
 massa_versioning = { path = "../massa-versioning" }
+massa_signature = { path = "../massa-signature" }
 
 [dev-dependencies]
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
