@@ -36,7 +36,7 @@ use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_grpc::config::GrpcConfig;
-use massa_grpc::server::MassaGrpc;
+use massa_grpc::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
@@ -119,6 +119,7 @@ async fn launch(
     StopHandle,
     StopHandle,
     StopHandle,
+    Option<massa_grpc::server::StopHandle>,
     Option<massa_grpc::server::StopHandle>,
     MetricsStopper,
 ) {
@@ -809,7 +810,7 @@ async fn launch(
 
     // Whether to spawn gRPC PUBLIC API
     let grpc_public_handle = if SETTINGS.grpc.public.enabled {
-        let grpc_config = GrpcConfig {
+        let grpc_public_config = GrpcConfig {
             enabled: SETTINGS.grpc.public.enabled,
             accept_http1: SETTINGS.grpc.public.accept_http1,
             enable_cors: SETTINGS.grpc.public.enable_cors,
@@ -869,39 +870,118 @@ async fn launch(
                 .clone(),
         };
 
-        let grpc_api = MassaGrpc {
+        let grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             execution_controller: execution_controller.clone(),
             execution_channels,
             pool_channels,
-            pool_command_sender: pool_controller.clone(),
-            protocol_command_sender: protocol_controller.clone(),
+            pool_controller: pool_controller.clone(),
+            protocol_controller: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),
             storage: shared_storage.clone(),
-            grpc_config: grpc_config.clone(),
+            grpc_config: grpc_public_config.clone(),
             version: *VERSION,
             mip_store: mip_store.clone(),
         };
 
-        // HACK maybe should remove timeout later
-        if let Ok(result) =
-            tokio::time::timeout(Duration::from_secs(3), grpc_api.serve(&grpc_config)).await
-        {
-            match result {
-                Ok(stop) => {
-                    info!("API | gRPC | listening on: {}", grpc_config.bind);
-                    Some(stop)
-                }
-                Err(e) => {
-                    error!("{}", e);
-                    None
-                }
-            }
-        } else {
-            error!("Timeout on start grpc API");
-            None
-        }
+        // Spawn gRPC PUBLIC API
+        let grpc_public_stop_handle = grpc_public_api
+            .serve(&grpc_public_config)
+            .await
+            .expect("failed to start gRPC PUBLIC API");
+        info!("gRPC | PUBLIC | listening on: {}", grpc_public_config.bind);
+
+        Some(grpc_public_stop_handle)
+    } else {
+        None
+    };
+
+    // Whether to spawn gRPC PRIVATE API
+    let grpc_private_handle = if SETTINGS.grpc.private.enabled {
+        let grpc_private_config = GrpcConfig {
+            enabled: SETTINGS.grpc.private.enabled,
+            accept_http1: SETTINGS.grpc.private.accept_http1,
+            enable_cors: SETTINGS.grpc.private.enable_cors,
+            enable_health: SETTINGS.grpc.private.enable_health,
+            enable_reflection: SETTINGS.grpc.private.enable_reflection,
+            enable_mtls: SETTINGS.grpc.private.enable_mtls,
+            bind: SETTINGS.grpc.private.bind,
+            accept_compressed: SETTINGS.grpc.private.accept_compressed.clone(),
+            send_compressed: SETTINGS.grpc.private.send_compressed.clone(),
+            max_decoding_message_size: SETTINGS.grpc.private.max_decoding_message_size,
+            max_encoding_message_size: SETTINGS.grpc.private.max_encoding_message_size,
+            concurrency_limit_per_connection: SETTINGS
+                .grpc
+                .private
+                .concurrency_limit_per_connection,
+            timeout: SETTINGS.grpc.private.timeout.to_duration(),
+            initial_stream_window_size: SETTINGS.grpc.private.initial_stream_window_size,
+            initial_connection_window_size: SETTINGS.grpc.private.initial_connection_window_size,
+            max_concurrent_streams: SETTINGS.grpc.private.max_concurrent_streams,
+            tcp_keepalive: SETTINGS.grpc.private.tcp_keepalive.map(|t| t.to_duration()),
+            tcp_nodelay: SETTINGS.grpc.private.tcp_nodelay,
+            http2_keepalive_interval: SETTINGS
+                .grpc
+                .private
+                .http2_keepalive_interval
+                .map(|t| t.to_duration()),
+            http2_keepalive_timeout: SETTINGS
+                .grpc
+                .private
+                .http2_keepalive_timeout
+                .map(|t| t.to_duration()),
+            http2_adaptive_window: SETTINGS.grpc.private.http2_adaptive_window,
+            max_frame_size: SETTINGS.grpc.private.max_frame_size,
+            thread_count: THREAD_COUNT,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+            max_parameter_size: MAX_PARAMETERS_SIZE,
+            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            t0: T0,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            max_channel_size: SETTINGS.grpc.private.max_channel_size,
+            draw_lookahead_period_count: SETTINGS.grpc.private.draw_lookahead_period_count,
+            last_start_period: final_state.read().last_start_period,
+            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            max_block_ids_per_request: SETTINGS.grpc.private.max_block_ids_per_request,
+            max_operation_ids_per_request: SETTINGS.grpc.private.max_operation_ids_per_request,
+            server_certificate_path: SETTINGS.grpc.private.server_certificate_path.clone(),
+            server_private_key_path: SETTINGS.grpc.private.server_private_key_path.clone(),
+            client_certificate_authority_root_path: SETTINGS
+                .grpc
+                .private
+                .client_certificate_authority_root_path
+                .clone(),
+        };
+
+        let grpc_private_api = MassaPrivateGrpc {
+            execution_controller: execution_controller.clone(),
+            protocol_controller: protocol_controller.clone(),
+            grpc_config: grpc_private_config.clone(),
+            version: *VERSION,
+            stop_cv: sig_int_toggled.clone(),
+            node_wallet: node_wallet.clone(),
+        };
+
+        // Spawn gRPC PRIVATE API
+        let grpc_private_stop_handle = grpc_private_api
+            .serve(&grpc_private_config)
+            .await
+            .expect("failed to start gRPC PRIVATE API");
+        info!(
+            "gRPC | PRIVATE | listening on: {}",
+            grpc_private_config.bind
+        );
+
+        Some(grpc_private_stop_handle)
     } else {
         None
     };
@@ -997,6 +1077,7 @@ async fn launch(
         api_private_handle,
         api_public_handle,
         api_handle,
+        grpc_private_handle,
         grpc_public_handle,
         metrics_stopper,
     )
@@ -1026,6 +1107,7 @@ async fn stop(
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
+    grpc_private_handle: Option<massa_grpc::server::StopHandle>,
     grpc_public_handle: Option<massa_grpc::server::StopHandle>,
     mut metrics_stopper: MetricsStopper,
 ) {
@@ -1036,12 +1118,19 @@ async fn stop(
             .expect("bootstrap server shutdown failed")
     }
 
-    info!("Start stopping API's: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE");
+    info!("Start stopping API's: gRPC(PUBLIC, PRIVATE), EXPERIMENTAL, PUBLIC, PRIVATE");
 
-    // stop Massa gRPC API
+    // stop Massa gRPC PUBLIC API
     if let Some(handle) = grpc_public_handle {
         handle.stop();
     }
+    info!("API | PUBLIC gRPC | stopped");
+
+    // stop Massa gRPC PRIVATE API
+    if let Some(handle) = grpc_private_handle {
+        handle.stop();
+    }
+    info!("API | PRIVATE gRPC | stopped");
 
     // stop Massa API
     api_handle.stop().await;
@@ -1222,6 +1311,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
+            grpc_private_handle,
             grpc_public_handle,
             metrics_stopper,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
@@ -1287,6 +1377,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_private_handle,
             api_public_handle,
             api_handle,
+            grpc_private_handle,
             grpc_public_handle,
             metrics_stopper,
         )

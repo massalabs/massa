@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::config::GrpcConfig;
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
@@ -103,7 +103,7 @@ async fn test_start_grpc_server() {
 
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-    let service = MassaGrpc {
+    let service = MassaPublicGrpc {
         consensus_controller: Box::new(consensus_controller),
         consensus_channels,
         execution_controller: execution_ctrl.0.clone(),
@@ -116,8 +116,8 @@ async fn test_start_grpc_server() {
             selector: selector_ctrl.0.clone(),
             execution_controller: execution_ctrl.0.clone(),
         },
-        pool_command_sender: pool_ctrl.0,
-        protocol_command_sender: Box::new(MockProtocolController::new()),
+        pool_controller: pool_ctrl.0,
+        protocol_controller: Box::new(MockProtocolController::new()),
         selector_controller: selector_ctrl.0,
         storage: shared_storage,
         grpc_config: grpc_config.clone(),

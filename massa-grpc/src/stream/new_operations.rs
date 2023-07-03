@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::GrpcError;
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::pin::Pin;
@@ -21,7 +21,7 @@ pub type NewOperationsStreamType = Pin<
 
 /// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: Request<Streaming<grpc_api::NewOperationsRequest>>,
 ) -> Result<NewOperationsStreamType, GrpcError> {
     //     // Create a channel to handle communication with the client

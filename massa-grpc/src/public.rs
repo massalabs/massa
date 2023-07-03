@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::GrpcError;
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use itertools::izip;
 use massa_models::address::Address;
 use massa_models::block::{Block, BlockGraphStatus};
@@ -19,7 +19,7 @@ use tracing::log::warn;
 
 /// Get blocks
 pub(crate) fn get_blocks(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetBlocksRequest>,
 ) -> Result<grpc_api::GetBlocksResponse, GrpcError> {
     let inner_req = request.into_inner();
@@ -191,7 +191,7 @@ pub(crate) fn get_blocks(
 
 /// Get multiple datastore entries
 pub(crate) fn get_datastore_entries(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetDatastoreEntriesRequest>,
 ) -> Result<grpc_api::GetDatastoreEntriesResponse, GrpcError> {
     let inner_req = request.into_inner();
@@ -235,7 +235,7 @@ pub(crate) fn get_datastore_entries(
 
 /// Get the stakers
 pub(crate) fn get_stakers(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetStakersRequest>,
 ) -> Result<grpc_api::GetStakersResponse, GrpcError> {
     let inner_req = request.into_inner();
@@ -324,7 +324,7 @@ pub(crate) fn get_stakers(
 
 // Get node version
 pub(crate) fn get_mip_status(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::GetMipStatusRequest>,
 ) -> Result<grpc_api::GetMipStatusResponse, GrpcError> {
     let mip_store_status_ = grpc.mip_store.get_mip_status();
@@ -346,7 +346,7 @@ pub(crate) fn get_mip_status(
 
 /// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     massa_modelsrequest: tonic::Request<grpc_api::GetNextBlockBestParentsRequest>,
 ) -> Result<grpc_api::GetNextBlockBestParentsResponse, GrpcError> {
     let block_parents = grpc
@@ -363,7 +363,7 @@ pub(crate) fn get_next_block_best_parents(
 
 /// Get operations
 pub(crate) fn get_operations(
-    _grpc: &MassaGrpc,
+    _grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::GetOperationsRequest>,
 ) -> Result<grpc_api::GetOperationsResponse, GrpcError> {
     // let storage = grpc.storage.clone_without_refs();
@@ -493,7 +493,7 @@ pub(crate) fn get_operations(
 
 /// Get smart contract execution events
 pub(crate) fn get_sc_execution_events(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
 ) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
     // let inner_req: grpc_api::GetScExecutionEventsRequest = request.into_inner();
@@ -541,7 +541,7 @@ pub(crate) fn get_sc_execution_events(
 
 //  Get selector draws
 pub(crate) fn get_selector_draws(
-    _grpc: &MassaGrpc,
+    _grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
 ) -> Result<grpc_api::GetSelectorDrawsResponse, GrpcError> {
     // let inner_req = request.into_inner();
@@ -617,7 +617,7 @@ pub(crate) fn get_selector_draws(
 
 /// Get transactions throughput
 pub(crate) fn get_transactions_throughput(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::GetTransactionsThroughputRequest>,
 ) -> Result<grpc_api::GetTransactionsThroughputResponse, GrpcError> {
     let stats = grpc.execution_controller.get_stats();
@@ -638,7 +638,7 @@ pub(crate) fn get_transactions_throughput(
 
 /// Get query state
 pub(crate) fn query_state(
-    _grpc: &MassaGrpc,
+    _grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::QueryStateRequest>,
 ) -> Result<grpc_api::QueryStateResponse, GrpcError> {
     unimplemented!("query_state is not implemented yet")

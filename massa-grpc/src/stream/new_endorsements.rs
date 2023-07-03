@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::io::ErrorKind;
@@ -22,7 +22,7 @@ pub type NewEndorsementsStreamType = Pin<
 
 /// Creates a new stream of new produced and received endorsements
 pub(crate) async fn new_endorsements(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: Request<Streaming<grpc_api::NewEndorsementsRequest>>,
 ) -> Result<NewEndorsementsStreamType, GrpcError> {
     // Create a channel to handle communication with the client

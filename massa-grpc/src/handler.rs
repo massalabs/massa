@@ -14,7 +14,7 @@ use crate::public::{
     get_sc_execution_events, get_selector_draws, get_stakers, get_transactions_throughput,
     query_state,
 };
-use crate::server::MassaGrpc;
+use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{
     new_blocks::{new_blocks, NewBlocksStreamType},
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
@@ -28,7 +28,7 @@ use crate::stream::{
 };
 
 #[tonic::async_trait]
-impl grpc_api::public_service_server::PublicService for MassaGrpc {
+impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     /// handler for get blocks
     async fn get_blocks(
         &self,
@@ -230,7 +230,7 @@ impl grpc_api::public_service_server::PublicService for MassaGrpc {
 }
 
 #[tonic::async_trait]
-impl grpc_api::private_service_server::PrivateService for MassaGrpc {
+impl grpc_api::private_service_server::PrivateService for MassaPrivateGrpc {
     /// Add IP addresses to node bootstrap blacklist
     async fn add_to_bootstrap_blacklist(
         &self,
