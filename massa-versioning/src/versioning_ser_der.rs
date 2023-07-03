@@ -253,7 +253,9 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         let state_id = u32::from(ComponentStateTypeId::from(value));
         self.u32_serializer.serialize(&state_id, buffer)?;
         match value {
-            ComponentState::Started(Started { threshold }) => {
+            ComponentState::Started(Started {
+                vote_ratio: threshold,
+            }) => {
                 // self.amount_serializer.serialize(threshold, buffer)?;
                 self.ratio_serializer.serialize(threshold, buffer)?;
             }
@@ -952,7 +954,7 @@ mod test {
     fn test_component_state_ser_der() {
         let st_1 = ComponentState::failed();
         let st_2 = ComponentState::Started(Started {
-            threshold: Ratio::from_f32(0.9842).unwrap(),
+            vote_ratio: Ratio::from_f32(0.9842).unwrap(),
         });
 
         let mut buf = Vec::new();
