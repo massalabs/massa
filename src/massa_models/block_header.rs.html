@@ -703,6 +703,14 @@
 <a href="#703" id="703">703</a>
 <a href="#704" id="704">704</a>
 <a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -715,7 +723,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::slot::{Slot, SlotDeserializer, SlotSerializer};
 <span class="kw">use </span>massa_hash::{Hash, HashDeserializer};
 <span class="kw">use </span>massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer,
 };
 <span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>nom::branch::alt;
@@ -735,7 +744,7 @@
     <span class="doccomment">/// current network version
     </span><span class="kw">pub </span>current_version: u32,
     <span class="doccomment">/// announced network version
-    </span><span class="kw">pub </span>announced_version: u32,
+    </span><span class="kw">pub </span>announced_version: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,
     <span class="doccomment">/// parents
@@ -844,6 +853,7 @@
     endorsement_content_serializer: EndorsementSerializerLW,
     denunciation_serializer: DenunciationSerializer,
     u32_serializer: U32VarIntSerializer,
+    opt_serializer: OptionSerializer&lt;u32, U32VarIntSerializer&gt;,
 }
 
 <span class="kw">impl </span>BlockHeaderSerializer {
@@ -853,6 +863,7 @@
             slot_serializer: SlotSerializer::new(),
             endorsement_serializer: SecureShareSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
+            opt_serializer: OptionSerializer::new(U32VarIntSerializer),
             endorsement_content_serializer: EndorsementSerializerLW::new(),
             denunciation_serializer: DenunciationSerializer::new(),
         }
@@ -882,7 +893,7 @@
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
-    ///   announced_version: 0,
+    ///   announced_version: None,
     ///   slot: Slot::new(1, 1),
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
@@ -917,7 +928,7 @@
         <span class="comment">// network versions
         </span><span class="self">self</span>.u32_serializer
             .serialize(<span class="kw-2">&amp;</span>value.current_version, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.u32_serializer
+        <span class="self">self</span>.opt_serializer
             .serialize(<span class="kw-2">&amp;</span>value.announced_version, buffer)<span class="question-mark">?</span>;
 
         <span class="comment">// slot
@@ -977,6 +988,7 @@
     denunciation_len_deserializer: U32VarIntDeserializer,
     denunciation_deserializer: DenunciationDeserializer,
     network_versions_deserializer: U32VarIntDeserializer,
+    opt_deserializer: OptionDeserializer&lt;u32, U32VarIntDeserializer&gt;,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
@@ -1007,6 +1019,10 @@
                 Included(<span class="number">0</span>),
                 Included(u32::MAX),
             ),
+            opt_deserializer: OptionDeserializer::new(U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(u32::MAX),
+            )),
             denunciation_deserializer: DenunciationDeserializer::new(
                 thread_count,
                 endorsement_count,
@@ -1035,7 +1051,7 @@
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
-    ///   announced_version: 0,
+    ///   announced_version: None,
     ///   slot: Slot::new(1, 1),
     ///   parents: parents.clone(),
     ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
@@ -1078,14 +1094,14 @@
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeader, E&gt; {
         <span class="kw">let </span>(rest, (current_version, announced_version, slot, parents, operation_merkle_root)): (
             <span class="kw-2">&amp;</span>[u8],
-            (u32, u32, Slot, Vec&lt;BlockId&gt;, Hash),
+            (u32, <span class="prelude-ty">Option</span>&lt;u32&gt;, Slot, Vec&lt;BlockId&gt;, Hash),
         ) = context(<span class="string">&quot;Failed BlockHeader deserialization&quot;</span>, |input| {
             <span class="kw">let </span>(rest, (current_version, announced_version, slot, parents)) = tuple((
                 context(<span class="string">&quot;Failed current_version deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.network_versions_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed announced_version deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.network_versions_deserializer.deserialize(input)
+                    <span class="self">self</span>.opt_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
@@ -1350,7 +1366,7 @@
 
         <span class="kw">let </span>block_header_1 = BlockHeader {
             current_version: <span class="number">0</span>,
-            announced_version: <span class="number">0</span>,
+            announced_version: <span class="prelude-val">None</span>,
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
