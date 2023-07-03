@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_execution_exports::SlotExecutionOutput;
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -25,7 +25,7 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
 
 /// Creates a new stream of new produced and received slot execution outputs
 pub(crate) async fn new_slot_execution_outputs(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: Request<Streaming<grpc_api::NewSlotExecutionOutputsRequest>>,
 ) -> Result<NewSlotExecutionOutputsStreamType, GrpcError> {
     //     // Create a channel to handle communication with the client

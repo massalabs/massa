@@ -20,7 +20,7 @@ massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_hash = { path = "../massa-hash" }
 massa_signature = { path = "../massa-signature" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "9a92b1f", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "d52e7d5", features = ["tonic"] }
 massa_db_exports = { path = "../massa-db-exports" }
 
 [dev-dependencies]

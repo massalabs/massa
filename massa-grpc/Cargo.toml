@@ -10,7 +10,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [dependencies]
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "9a92b1f", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "d52e7d5", features = ["tonic"] }
 displaydoc = "0.2"
 thiserror = "1.0"
 tonic = { version = "0.9.2", features = ["gzip", "tls"] }
@@ -26,6 +26,7 @@ tokio-stream = "0.1.12"
 itertools = "0.10"
 h2 = "0.3.17"
 tracing = "0.1"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_hash = { path = "../massa-hash" }

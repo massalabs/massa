@@ -17,11 +17,11 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_signature::{PublicKey, Signature};
 
-//TODO to be updated
+//TODO to be checked
 impl From<Amount> for grpc_model::NativeAmount {
-    fn from(_value: Amount) -> Self {
+    fn from(value: Amount) -> Self {
         grpc_model::NativeAmount {
-            mantissa: 0,
+            mantissa: value.to_raw(),
             scale: 0,
         }
     }
@@ -276,27 +276,33 @@ impl From<grpc_model::Slot> for Slot {
 impl TryFrom<grpc_api::ScExecutionEventsFilter> for EventFilter {
     type Error = crate::error::ModelsError;
 
-    fn try_from(filter: grpc_api::ScExecutionEventsFilter) -> Result<Self, Self::Error> {
+    fn try_from(value: grpc_api::ScExecutionEventsFilter) -> Result<Self, Self::Error> {
         let status_final = grpc_model::ScExecutionEventStatus::Final as i32;
         let status_error = grpc_model::ScExecutionEventStatus::Failure as i32;
-        // TODO add SlotRange Mapping
         Ok(Self {
-            start: None,
-            end: None,
-            emitter_address: filter
+            start: value
+                .slot_range
+                .clone()
+                .map(|range| range.start_slot.map(|slot| slot.into()))
+                .unwrap_or_default(),
+            end: value
+                .slot_range
+                .map(|range| range.end_slot.map(|slot| slot.into()))
+                .unwrap_or_default(),
+            emitter_address: value
                 .emitter_address
                 .map(|address| Address::from_str(&address))
                 .transpose()?,
-            original_caller_address: filter
+            original_caller_address: value
                 .caller_address
                 .map(|address| Address::from_str(&address))
                 .transpose()?,
-            original_operation_id: filter
+            original_operation_id: value
                 .original_operation_id
                 .map(|operation_id| OperationId::from_str(&operation_id))
                 .transpose()?,
-            is_final: Some(filter.status.contains(&status_final)),
-            is_error: Some(filter.status.contains(&status_error)),
+            is_final: Some(value.status.contains(&status_final)),
+            is_error: Some(value.status.contains(&status_error)),
         })
     }
 }
@@ -305,7 +311,7 @@ impl From<SCOutputEvent> for grpc_model::ScExecutionEvent {
     fn from(value: SCOutputEvent) -> Self {
         grpc_model::ScExecutionEvent {
             context: Some(value.context.into()),
-            //TODO to be updated
+            //TODO to be updated when ready
             data: value.data.as_bytes().to_vec(),
         }
     }
@@ -323,7 +329,7 @@ impl From<EventExecutionContext> for grpc_model::ScExecutionEventContext {
                 .map(|a| a.to_string())
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
-            //TODO to be inspected
+            //TODO to be checked
             status: if value.read_only {
                 grpc_model::ScExecutionEventStatus::ReadOnly as i32
             } else if value.is_error {
@@ -331,7 +337,7 @@ impl From<EventExecutionContext> for grpc_model::ScExecutionEventContext {
             } else if value.is_final {
                 grpc_model::ScExecutionEventStatus::Final as i32
             } else {
-                grpc_model::ScExecutionEventStatus::Unspecified as i32
+                grpc_model::ScExecutionEventStatus::Unknown as i32
             },
         }
     }

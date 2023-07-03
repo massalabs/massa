@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::operation::{OperationDeserializer, SecureShareOperation};
@@ -27,7 +27,7 @@ pub type SendOperationsStreamType = Pin<
 /// verifies, saves and propagates the operations received in each message, and sends back a stream of
 /// operations ids messages
 pub(crate) async fn send_operations(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<tonic::Streaming<grpc_api::SendOperationsRequest>>,
 ) -> Result<SendOperationsStreamType, GrpcError> {
     // let mut pool_command_sender = grpc.pool_command_sender.clone();
