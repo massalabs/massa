@@ -371,6 +371,8 @@
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
@@ -669,6 +671,7 @@
                     PeerNetCategoryInfo {
                         max_in_connections: infos.max_in_connections,
                         max_in_connections_per_ip: infos.max_in_connections_per_ip,
+                        max_out_connections: infos.target_out_connections,
                     },
                 ),
             )
@@ -678,6 +681,7 @@
     peernet_config.default_category_info = PeerNetCategoryInfo {
         max_in_connections: config.default_category_info.max_in_connections,
         max_in_connections_per_ip: config.default_category_info.max_in_connections_per_ip,
+        max_out_connections: config.default_category_info.target_out_connections,
     };
     peernet_config.max_in_connections = config.max_in_connections;
 

@@ -241,6 +241,11 @@
 <a href="#241" id="241">241</a>
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::{BindingReadExact, BindingWriteExact};
@@ -292,9 +297,8 @@
         cfg: BootstrapClientConfig,
         limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>limit_opts = limit.map(|limit| {
-            LimiterOptions::new(limit, Duration::from_millis(<span class="number">1000</span>), limit.saturating_mul(<span class="number">2</span>))
-        });
+        <span class="kw">let </span>limit_opts =
+            limit.map(|limit| LimiterOptions::new(limit, Duration::from_millis(<span class="number">1000</span>), limit));
         <span class="kw">let </span>duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapClientBinder {
             remote_pubkey,
@@ -459,6 +463,9 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingReadExact <span class="kw">for </span>BootstrapClientBinder {
     <span class="kw">fn </span>set_read_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>opts) = <span class="self">self</span>.duplex.read_opt {
+            opts.timeout = duration;
+        }
         <span class="self">self</span>.duplex.stream.set_read_timeout(duration)
     }
 }
@@ -471,6 +478,9 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingWriteExact <span class="kw">for </span>BootstrapClientBinder {
     <span class="kw">fn </span>set_write_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>opts) = <span class="self">self</span>.duplex.write_opt {
+            opts.timeout = duration;
+        }
         <span class="self">self</span>.duplex.stream.set_write_timeout(duration)
     }
 }

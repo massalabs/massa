@@ -421,7 +421,7 @@
         } = cfg;
 
         <span class="kw">let </span>limit_opts = rw_limit.map(|limit| -&gt; LimiterOptions {
-            LimiterOptions::new(limit, Duration::from_millis(<span class="number">1000</span>), limit.saturating_mul(<span class="number">2</span>))
+            LimiterOptions::new(limit, Duration::from_millis(<span class="number">1000</span>), limit)
         });
         <span class="kw">let </span>duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
         BootstrapServerBinder {
