@@ -349,6 +349,7 @@ impl ExecutionContext {
                 module_cache,
                 vesting_manager,
                 mip_store,
+                execution_trail_hash,
             )
         }
     }

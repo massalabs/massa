@@ -16,6 +16,7 @@ use massa_db_exports::{
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
+use massa_ledger_exports::SetOrKeep;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
@@ -24,6 +25,8 @@ use tracing::{debug, info, warn};
 #[cfg(feature = "bootstrap_server")]
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
 use massa_models::timeslots::get_block_slot_timestamp;
+
+// TODO when creating a final ledger at genesis, initialize the execution hash trail to Hash::zero()
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -139,6 +142,20 @@ impl FinalState {
     pub fn get_fingerprint(&self) -> massa_hash::Hash {
         let internal_hash = self.db.read().get_xof_db_hash();
         massa_hash::Hash::compute_from(internal_hash.to_bytes())
+    }
+
+    /// Get the slot at the end of which the final state is attached
+    pub fn get_slot(&self) -> Slot {
+        self.db
+            .read()
+            .get_change_id()
+            .expect("Critical error: Final state has no slot attached")
+    }
+
+    /// Gets the hash of the execution trail
+    pub fn get_execution_trail_hash(&self) -> massa_hash::Hash {
+        // TODO  return the execution trail hash
+        unimplemented!()
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
@@ -615,6 +632,10 @@ impl FinalState {
                     slot_prev_ts, slot_ts, e
                 )
             });
+
+        if let SetOrKeep::Set(new_hash) = changes.execution_trail_hash_change {
+            // TODO update execution trail hash in batch
+        }
 
         self.db
             .write()
