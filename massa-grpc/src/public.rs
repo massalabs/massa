@@ -399,9 +399,6 @@ pub(crate) fn get_operations(
         }
     });
 
-    dbg!(&operations_ids);
-    dbg!(&filter_ope_types);
-
     if operations_ids.is_empty() {
         return Err(GrpcError::InvalidArgument(
             "no operations ids specified".to_string(),
@@ -474,8 +471,17 @@ pub(crate) fn get_operations(
         .into_iter()
         .zip(storage_info.into_iter())
         .zip(exec_statuses.into_iter())
-        .map(
-            |((id, (operation, in_blocks)), exec_status)| grpc_model::OperationWrapper {
+        .filter_map(|((id, (operation, in_blocks)), exec_status)| {
+            // check the operation status with provided filter
+            // if !filter_ope_types.iter().any(|f| exec_status.contains(f)) {
+            //     return None;
+            // }
+            let ope_type: grpc_model::OpType = operation.content.op.clone().into();
+            if !filter_ope_types.contains(&(ope_type as i32)) {
+                return None;
+            }
+
+            Some(grpc_model::OperationWrapper {
                 id: id.to_string(),
                 thread: operation
                     .content_creator_address
@@ -483,8 +489,8 @@ pub(crate) fn get_operations(
                 operation: Some((*operation).clone().into()),
                 block_ids: in_blocks.into_iter().map(|id| id.to_string()).collect(),
                 status: exec_status,
-            },
-        )
+            })
+        })
         .collect();
 
     Ok(grpc_api::GetOperationsResponse {
