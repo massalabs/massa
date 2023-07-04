@@ -13,9 +13,9 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct PeerCategoryInfo {
+    pub allow_local_peers: bool,
     pub target_out_connections: usize,
-    pub max_in_connections_pre_handshake: usize,
-    pub max_in_connections_post_handshake: usize,
+    pub max_in_connections: usize,
     pub max_in_connections_per_ip: usize,
 }
 

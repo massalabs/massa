@@ -7,12 +7,7 @@ use nom::{
     error::{context, ContextError, ParseError},
     IResult,
 };
-use std::{
-    cmp::Ordering,
-    convert::TryInto,
-    ops::{BitXor, BitXorAssign},
-    str::FromStr,
-};
+use std::{cmp::Ordering, convert::TryInto, str::FromStr};
 
 /// Hash wrapper, the underlying hash type is `Blake3`
 ///
@@ -74,38 +69,6 @@ impl std::fmt::Debug for Hash {
     }
 }
 
-/// Previously, the final state hash was a XOR of various hashses.
-/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
-/// As a result, we use lsmtree's Sparse Merkle Tree instead, which is not vulnerable to this.
-/// We still use bitwise XOR for fingerprinting on some structures.
-/// TODO: Remove every usage if this?
-impl BitXorAssign for Hash {
-    fn bitxor_assign(&mut self, rhs: Self) {
-        *self = *self ^ rhs;
-    }
-}
-
-/// Previously, the final state hash was a XOR of various hashses.
-/// However, this is vulnerable: https://github.com/massalabs/massa/discussions/3852
-/// As a result, we use lsmtree's Sparse Merkle Tree instead, which is not vulnerable to this.
-/// We still use bitwise XOR for fingerprinting on some structures.
-/// TODO: Remove every usage if this?
-impl BitXor for Hash {
-    type Output = Self;
-
-    fn bitxor(self, other: Self) -> Self {
-        let xored_bytes: Vec<u8> = self
-            .to_bytes()
-            .iter()
-            .zip(other.to_bytes())
-            .map(|(x, y)| x ^ y)
-            .collect();
-        // unwrap won't fail because of the initial byte arrays size
-        let input_bytes: [u8; HASH_SIZE_BYTES] = xored_bytes.try_into().unwrap();
-        Hash::from_bytes(&input_bytes)
-    }
-}
-
 impl Hash {
     /// Compute a hash from data.
     ///
@@ -116,6 +79,22 @@ impl Hash {
     /// ```
     pub fn compute_from(data: &[u8]) -> Self {
         Hash(blake3::hash(data))
+    }
+
+    /// Compute a hash from tuple of byte arrays.
+    ///
+    /// # Example
+    ///  ```
+    /// # use massa_hash::Hash;
+    /// let hash = Hash::compute_from_tuple(&[&"hello".as_bytes(), &"world".as_bytes()]);
+    /// ```
+    pub fn compute_from_tuple(data: &[&[u8]]) -> Self {
+        let mut hasher = blake3::Hasher::new();
+        for d in data {
+            hasher.update(&(d.len() as u64).to_be_bytes());
+            hasher.update(d);
+        }
+        Hash(hasher.finalize())
     }
 
     /// Serialize a Hash using `bs58` encoding with checksum.

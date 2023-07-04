@@ -394,8 +394,8 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
 #[derive(IntoPrimitive, Debug, TryFromPrimitive)]
 #[repr(u32)]
 pub enum DenunciationTypeId {
-    Endorsement = 0,
-    BlockHeader = 1,
+    BlockHeader = 0,
+    Endorsement = 1,
 }
 
 impl From<&Denunciation> for DenunciationTypeId {

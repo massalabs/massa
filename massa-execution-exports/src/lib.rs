@@ -56,14 +56,16 @@ pub use channels::ExecutionChannels;
 #[cfg(any(test, feature = "testing"))]
 pub use controller_traits::MockExecutionController;
 pub use controller_traits::{ExecutionController, ExecutionManager};
-pub use error::ExecutionError;
+pub use error::{ExecutionError, ExecutionQueryError};
 pub use event_store::EventStore;
 pub use massa_sc_runtime::GasCosts;
 pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
-    ExecutionAddressInfo, ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
-    SlotExecutionOutput,
+    ExecutedBlockInfo, ExecutionAddressInfo, ExecutionOutput, ExecutionQueryCycleInfos,
+    ExecutionQueryExecutionStatus, ExecutionQueryRequest, ExecutionQueryRequestItem,
+    ExecutionQueryResponse, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
+    ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 
 #[cfg(any(feature = "testing", feature = "gas_calibration"))]

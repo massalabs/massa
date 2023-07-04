@@ -1,6 +1,6 @@
 [package]
 name = "massa_final_state"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -11,8 +11,7 @@ nom = "=7.1"
 bs58 = { version = "0.4", features = ["check"] }
 thiserror = "1.0"
 tracing = "0.1"
-parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-rocksdb = { version = "0.20" }
+num = "0.4"
 
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
@@ -22,10 +21,11 @@ massa_models = { path = "../massa-models" }
 massa_async_pool = { path = "../massa-async-pool" }
 massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
-massa_db = { path = "../massa-db" }
+massa_db_exports = { path = "../massa-db-exports" }
 massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
 massa_versioning = { path = "../massa-versioning" }
 massa_time = { path = "../massa-time" }
+massa_hash = { path = "../massa-hash" }
 
 [dev-dependencies]
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
@@ -34,6 +34,8 @@ massa_ledger_worker = { path = "../massa-ledger-worker", features = [
 ] }
 massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
 massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
+massa_db_worker = { path = "../massa-db-worker"}
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 tempfile = "3.3"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
@@ -44,3 +46,4 @@ testing = [
     "massa_pos_exports/testing",
 ]
 sandbox = ["massa_async_pool/sandbox"]
+bootstrap_server = []

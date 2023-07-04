@@ -1,6 +1,6 @@
 [package]
 name = "massa_async_pool"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -9,7 +9,6 @@ nom = "=7.1"
 num = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 rand = "0.8"
-rocksdb = "0.20"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 
 # custom modules
@@ -18,7 +17,7 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
-massa_db = { path = "../massa-db" }
+massa_db_exports = { path = "../massa-db-exports" }
 massa_time = { path = "../massa-time" }
 massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
 

@@ -11,7 +11,6 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 
 use crossbeam_channel::TryRecvError;
-use ctrlc as _;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
 use massa_api_exports::config::APIConfig;
@@ -26,7 +25,8 @@ use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_db::{MassaDB, MassaDBConfig};
+use massa_db_exports::{MassaDBConfig, MassaDBController};
+use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -40,7 +40,7 @@ use massa_grpc::server::MassaGrpc;
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
-use massa_metrics::MassaMetrics;
+use massa_metrics::{MassaMetrics, MetricsStopper};
 use massa_models::address::Address;
 use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
@@ -66,10 +66,10 @@ use massa_models::config::constants::{
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS, MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
-    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE,
-    SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
+    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
+    VERSION,
 };
 use massa_models::config::{
     MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
@@ -80,26 +80,24 @@ use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
+use massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::versioning::{MipComponent, MipInfo, MipState};
+use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
+use num::rational::Ratio;
 use parking_lot::RwLock;
-use peernet::transports::TransportType;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
-use std::thread::sleep;
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
-use tokio::signal;
-use tokio::sync::{broadcast, mpsc};
-use tracing::{error, info, warn};
+use tokio::sync::broadcast;
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 #[cfg(feature = "op_spammer")]
@@ -119,11 +117,11 @@ async fn launch(
     Box<dyn PoolManager>,
     Box<dyn ProtocolManager>,
     Box<dyn FactoryManager>,
-    mpsc::Receiver<()>,
     StopHandle,
     StopHandle,
     StopHandle,
     Option<massa_grpc::server::StopHandle>,
+    MetricsStopper,
 ) {
     info!("Node version : {}", *VERSION);
     let now = MassaTime::now().expect("could not get now time");
@@ -231,7 +229,12 @@ async fn launch(
     };
 
     // Start massa metrics
-    let metrics = MassaMetrics::new(SETTINGS.metrics.enabled, THREAD_COUNT);
+    let (massa_metrics, metrics_stopper) = MassaMetrics::new(
+        SETTINGS.metrics.enabled,
+        SETTINGS.metrics.bind,
+        THREAD_COUNT,
+        SETTINGS.metrics.tick_delay.to_duration(),
+    );
 
     // Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
@@ -254,7 +257,9 @@ async fn launch(
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
         thread_count: THREAD_COUNT,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
 
     // Create final ledger
     let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
@@ -273,45 +278,17 @@ async fn launch(
     // Creates an empty default store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        warn_announced_version_ratio: Ratio::new(
+            u64::from(SETTINGS.versioning.mip_stats_warn_announced_version),
+            100,
+        ),
     };
-    let mip_0001_start = MassaTime::from_utc_ymd_hms(2023, 6, 14, 15, 0, 0).unwrap();
-    let mip_0001_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 14, 16, 0, 0).unwrap();
-    let mip_0001_defined_start = MassaTime::from_utc_ymd_hms(2023, 2, 14, 14, 30, 0).unwrap();
-    let mip_0002_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 13, 0, 0).unwrap();
-    let mip_0002_timeout = MassaTime::from_utc_ymd_hms(2023, 6, 19, 14, 0, 0).unwrap();
-    let mip_0002_defined_start = MassaTime::from_utc_ymd_hms(2023, 6, 16, 10, 0, 0).unwrap();
-    let mip_list_1: [(MipInfo, MipState); 2] = [
-        (
-            MipInfo {
-                name: "MIP-0001".to_string(),
-                version: 1,
-                components: BTreeMap::from([
-                    (MipComponent::Address, 1),
-                    (MipComponent::KeyPair, 1),
-                ]),
-                start: mip_0001_start,
-                timeout: mip_0001_timeout,
-                activation_delay: MassaTime::from_millis(100),
-            },
-            MipState::new(mip_0001_defined_start),
-        ),
-        (
-            MipInfo {
-                name: "MIP-0002".to_string(),
-                version: 2,
-                components: BTreeMap::from([(MipComponent::FinalStateHashKind, 1)]),
-                start: mip_0002_start,
-                timeout: mip_0002_timeout,
-                activation_delay: T0
-                    .saturating_mul(PERIODS_PER_CYCLE.saturating_add(1))
-                    .saturating_mul(40),
-            },
-            MipState::new(mip_0002_defined_start),
-        ),
-    ];
+    // Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
+
+    let mip_list = get_mip_list();
+    debug!("MIP list: {:?}", mip_list);
     let mip_store =
-        MipStore::try_from((mip_list_1, mip_stats_config)).expect("mip store creation failed");
+        MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
 
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
@@ -389,7 +366,6 @@ async fn launch(
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };
@@ -402,7 +378,7 @@ async fn launch(
         *GENESIS_TIMESTAMP,
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
-        sig_int_toggled,
+        sig_int_toggled.clone(),
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {
@@ -517,7 +493,8 @@ async fn launch(
         selector_controller.clone(),
         mip_store.clone(),
         execution_channels.clone(),
-        metrics.clone(),
+        node_wallet.clone(),
+        massa_metrics.clone(),
     );
 
     // launch pool controller
@@ -713,7 +690,7 @@ async fn launch(
         consensus_channels.clone(),
         bootstrap_state.graph,
         shared_storage.clone(),
-        metrics.clone(),
+        massa_metrics.clone(),
     );
 
     let (protocol_manager, keypair, node_id) = start_protocol_controller(
@@ -725,7 +702,7 @@ async fn launch(
         shared_storage.clone(),
         protocol_channels,
         mip_store.clone(),
-        metrics,
+        massa_metrics.clone(),
     )
     .expect("could not start protocol controller");
 
@@ -741,6 +718,9 @@ async fn launch(
         last_start_period: final_state.read().last_start_period,
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+        stop_production_when_zero_connections: SETTINGS
+            .factory
+            .stop_production_when_zero_connections,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -757,14 +737,16 @@ async fn launch(
     );
 
     let bootstrap_manager = bootstrap_config.listen_addr.map(|addr| {
-        let (waker, listener) = BootstrapTcpListener::new(&addr).unwrap_or_else(|_| {
-            panic!(
-                "{}",
-                format!("Could not bind to address: {}", addr).as_str()
-            )
-        });
-        let mut manager = start_bootstrap_server(
+        let (listener_stopper, listener) =
+            BootstrapTcpListener::create(&addr).unwrap_or_else(|_| {
+                panic!(
+                    "{}",
+                    format!("Could not bind to address: {}", addr).as_str()
+                )
+            });
+        start_bootstrap_server(
             listener,
+            listener_stopper,
             consensus_controller.clone(),
             protocol_controller.clone(),
             final_state.clone(),
@@ -772,9 +754,7 @@ async fn launch(
             keypair.clone(),
             *VERSION,
         )
-        .expect("Could not start bootstrap server");
-        manager.set_listener_stopper(waker);
-        manager
+        .expect("Could not start bootstrap server")
     });
 
     let api_config: APIConfig = APIConfig {
@@ -807,6 +787,7 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        last_start_period: final_state.read().last_start_period,
     };
 
     // spawn Massa API
@@ -939,10 +920,11 @@ async fn launch(
     );
 
     // spawn private API
-    let (api_private, api_private_stop_rx) = API::<Private>::new(
+    let api_private = API::<Private>::new(
         protocol_controller.clone(),
         execution_controller.clone(),
         api_config.clone(),
+        sig_int_toggled,
         node_wallet,
     );
     let api_private_handle = api_private
@@ -1015,11 +997,11 @@ async fn launch(
         pool_manager,
         protocol_manager,
         factory_manager,
-        api_private_stop_rx,
         api_private_handle,
         api_public_handle,
         api_handle,
         grpc_handle,
+        metrics_stopper,
     )
 }
 
@@ -1048,6 +1030,7 @@ async fn stop(
     api_public_handle: StopHandle,
     api_handle: StopHandle,
     grpc_handle: Option<massa_grpc::server::StopHandle>,
+    mut metrics_stopper: MetricsStopper,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -1074,6 +1057,9 @@ async fn stop(
     // stop private API
     api_private_handle.stop().await;
     info!("API | PRIVATE JsonRPC | stopped");
+
+    // stop metrics
+    metrics_stopper.stop();
 
     // stop factory
     factory_manager.stop();
@@ -1213,17 +1199,18 @@ async fn run(args: Args) -> anyhow::Result<()> {
     // interrupt signal listener
     let sig_int_toggled = Arc::new((Mutex::new(false), Condvar::new()));
 
-    // TODO: re-enable and fix this (remove use ctrlc as _; when done)
-    // let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
-    // currently used by the bootstrap client to break out of the to preempt the retry wait
-    // ctrlc::set_handler(move || {
-    //     *sig_int_toggled_clone
-    //         .0
-    //         .lock()
-    //         .expect("double-lock on interupt bool in ctrl-c handler") = true;
-    //     sig_int_toggled_clone.1.notify_all();
-    // })
-    // .expect("Error setting Ctrl-C handler");
+    let sig_int_toggled_clone = Arc::clone(&sig_int_toggled);
+    ctrlc::set_handler(move || {
+        *sig_int_toggled_clone
+            .0
+            .lock()
+            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+        sig_int_toggled_clone.1.notify_all();
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    #[cfg(feature = "resync_check")]
+    let mut resync_check = Some(std::time::Instant::now() + std::time::Duration::from_secs(10));
 
     loop {
         let (
@@ -1235,19 +1222,12 @@ async fn run(args: Args) -> anyhow::Result<()> {
             pool_manager,
             protocol_manager,
             factory_manager,
-            mut api_private_stop_rx,
             api_private_handle,
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
-
-        // interrupt signal listener
-        let (tx, rx) = crossbeam_channel::bounded(1);
-        let interrupt_signal_listener = tokio::spawn(async move {
-            signal::ctrl_c().await.unwrap();
-            tx.send(()).unwrap();
-        });
 
         // loop over messages
         let restart = loop {
@@ -1269,29 +1249,32 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 _ => {}
             };
 
-            match api_private_stop_rx.try_recv() {
-                Ok(_) => {
-                    info!("stop command received from private API");
-                    break false;
-                }
-                Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
-                    error!("api_private_stop_rx disconnected");
-                    break false;
-                }
-                _ => {}
+            // every 100ms/or when alerted, check if sigint toggled
+            // if toggled, break loop
+            let int_sig = sig_int_toggled
+                .0
+                .lock()
+                .expect("double-lock() on interupted signal mutex");
+            let wake = sig_int_toggled
+                .1
+                .wait_timeout(int_sig, Duration::from_millis(100))
+                .expect("interupt signal mutex poisoned");
+            if *wake.0 {
+                info!("interrupt signal received");
+                break false;
             }
-            match rx.try_recv() {
-                Ok(_) => {
-                    info!("interrupt signal received");
-                    break false;
+
+            // Elements of the system that involve stopping and restarting should be checked by forcing a relaunch.
+            // This check allows the system to start up as normal, wait 10s, then force a relaunch. If Things take too long
+            // to shutdown, or does not allow for a clean relaunch, this feature flag can expose those issues.
+            #[cfg(feature = "resync_check")]
+            if let Some(resync_moment) = resync_check {
+                if resync_moment < std::time::Instant::now() {
+                    warn!("resync check triggered");
+                    resync_check = None;
+                    break true;
                 }
-                Err(crossbeam_channel::TryRecvError::Disconnected) => {
-                    error!("interrupt_signal_listener disconnected");
-                    break false;
-                }
-                _ => {}
             }
-            sleep(Duration::from_millis(100));
         };
         stop(
             consensus_event_receiver,
@@ -1308,6 +1291,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_public_handle,
             api_handle,
             grpc_handle,
+            metrics_stopper,
         )
         .await;
 
@@ -1316,7 +1300,6 @@ async fn run(args: Args) -> anyhow::Result<()> {
         }
         // If we restart because of a desync, then we do not want to restart from a snapshot
         cur_args.restart_from_snapshot_at_period = None;
-        interrupt_signal_listener.abort();
     }
     Ok(())
 }

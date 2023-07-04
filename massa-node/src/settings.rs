@@ -69,7 +69,7 @@ pub struct BootstrapSettings {
     pub max_simultaneous_bootstraps: u32,
     pub per_ip_min_interval: MassaTime,
     pub ip_list_max_size: usize,
-    pub max_bytes_read_write: f64,
+    pub max_bytes_read_write: u64,
     /// Allocated time with which to manage the bootstrap process
     pub bootstrap_timeout: MassaTime,
 }
@@ -81,6 +81,8 @@ pub struct FactorySettings {
     pub initial_delay: MassaTime,
     /// Staking wallet file
     pub staking_wallet_path: PathBuf,
+    /// stop the production in case we are not connected to anyone
+    pub stop_production_when_zero_connections: bool,
 }
 
 /// Pool configuration, read from a file configuration
@@ -136,6 +138,7 @@ pub struct Settings {
     pub factory: FactorySettings,
     pub grpc: GrpcSettings,
     pub metrics: MetricsSettings,
+    pub versioning: VersioningSettings,
 }
 
 /// Consensus configuration
@@ -173,7 +176,12 @@ pub struct NetworkSettings {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MetricsSettings {
+    /// enable prometheus metrics
     pub enabled: bool,
+    /// port on which to listen for prometheus metrics
+    pub bind: SocketAddr,
+    /// interval at which to update metrics
+    pub tick_delay: MassaTime,
 }
 
 /// Protocol Configuration, read from toml user configuration file
@@ -307,6 +315,12 @@ pub struct GrpcSettings {
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct VersioningSettings {
+    // Warn user to update its node if we reach this percentage for announced network versions
+    pub(crate) mip_stats_warn_announced_version: u32,
 }
 
 #[cfg(test)]

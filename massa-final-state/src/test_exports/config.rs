@@ -2,11 +2,13 @@
 
 //! This file defines testing tools related to the configuration
 
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
+
+use num::rational::Ratio;
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
-use massa_db::MassaDB;
+use massa_db_exports::ShareableMassaDBController;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };
@@ -20,14 +22,13 @@ use massa_models::config::{
 use massa_models::config::{PERIODS_PER_CYCLE, POS_SAVED_CYCLES, THREAD_COUNT};
 use massa_pos_exports::{PoSConfig, PoSFinalState};
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
-use parking_lot::RwLock;
 
 impl FinalState {
     /// Create a final state
     pub fn create_final_state(
         pos_state: PoSFinalState,
         config: FinalStateConfig,
-        db: Arc<RwLock<MassaDB>>,
+        db: ShareableMassaDBController,
     ) -> Self {
         FinalState {
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),
@@ -42,7 +43,7 @@ impl FinalState {
                 [],
                 MipStatsConfig {
                     block_count_considered: 10,
-                    counters_max: 10,
+                    warn_announced_version_ratio: Ratio::new(30, 100),
                 },
             ))
             .unwrap(),

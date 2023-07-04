@@ -143,6 +143,32 @@ impl Deserializer<Datastore> for DatastoreDeserializer {
     }
 }
 
+/// For lexicographically ordered keys,
+/// gets the upper and lower bound of keys matching a prefix.
+pub fn get_prefix_bounds(prefix: &[u8]) -> (std::ops::Bound<Vec<u8>>, std::ops::Bound<Vec<u8>>) {
+    if prefix.is_empty() {
+        return (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded);
+    }
+    let n_keep = prefix
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(i, v)| if v < &255 { Some(i + 1) } else { None })
+        .unwrap_or(0);
+    let mut prefix_end = prefix[..n_keep].to_vec();
+    if let Some(v) = prefix_end.last_mut() {
+        *v += 1;
+    }
+    (
+        std::ops::Bound::Included(prefix.to_vec()),
+        if !prefix_end.is_empty() {
+            std::ops::Bound::Excluded(prefix_end)
+        } else {
+            std::ops::Bound::Unbounded
+        },
+    )
+}
+
 #[cfg(test)]
 mod tests {
 

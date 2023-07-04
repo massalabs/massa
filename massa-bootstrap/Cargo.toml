@@ -1,6 +1,6 @@
 [package]
 name = "massa_bootstrap"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -21,6 +21,7 @@ substruct = { git = "https://github.com/sydhds/substruct" }
 socket2 = "0.4.7"
 crossbeam = "0.8.2"
 mio =  { version = "0.8", features = ["net", "os-poll"] }
+stream_limiter = "3.2.0"
 
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
@@ -33,7 +34,7 @@ massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_time = { path = "../massa-time" }
-massa_db = { path = "../massa-db" }
+massa_db_exports = { path = "../massa-db-exports" }
 massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
@@ -41,6 +42,8 @@ mockall = "0.11.4"
 bitvec = { version = "1.0", features = ["serde"] }
 lazy_static = "1.4"
 tempfile = "3.3"
+serial_test = "2.0.0"
+num = "0.4"
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
@@ -53,6 +56,7 @@ massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = [
     "testing",
 ] }
+massa_db_worker = { path = "../massa-db-worker" }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

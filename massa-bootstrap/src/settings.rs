@@ -62,7 +62,7 @@ pub struct BootstrapConfig {
     /// Max size of the IP list
     pub ip_list_max_size: usize,
     /// Read-Write limitation for a connection in bytes per seconds
-    pub max_bytes_read_write: f64,
+    pub max_bytes_read_write: u64,
     /// thread count
     pub thread_count: u8,
     /// period per cycle
@@ -125,8 +125,6 @@ pub struct BootstrapConfig {
     pub max_consensus_block_ids: u64,
     /// block count to check / process for versioning stats
     pub mip_store_stats_block_considered: usize,
-    /// max number of counters for versioning stats
-    pub mip_store_stats_counters_max: usize,
     /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
     /// max executed denunciations changes
@@ -138,7 +136,7 @@ pub struct BootstrapConfig {
 #[derive(Debug, Deserialize, Clone, SubStruct)]
 #[parent(type = "BootstrapConfig")]
 pub struct BootstrapSrvBindCfg {
-    pub max_bytes_read_write: f64,
+    pub max_bytes_read_write: u64,
     pub thread_count: u8,
     pub max_datastore_key_length: u8,
     pub randomness_size_bytes: usize,
@@ -151,7 +149,7 @@ pub struct BootstrapSrvBindCfg {
 #[derive(Debug, Deserialize, Clone, SubStruct)]
 #[parent(type = "BootstrapConfig")]
 pub struct BootstrapClientConfig {
-    pub max_bytes_read_write: f64,
+    pub max_bytes_read_write: u64,
     pub endorsement_count: u32,
     pub max_listeners_per_peer: u32,
     pub max_advertise_length: u32,
@@ -175,7 +173,6 @@ pub struct BootstrapClientConfig {
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
     pub mip_store_stats_block_considered: usize,
-    pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
     pub max_denunciation_changes_length: u64,
 }
@@ -207,7 +204,6 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub max_executed_ops_length: u64,
     pub max_ops_changes_length: u64,
     pub mip_store_stats_block_considered: usize,
-    pub mip_store_stats_counters_max: usize,
     pub max_denunciations_per_block_header: u32,
     pub max_denunciation_changes_length: u64,
 }

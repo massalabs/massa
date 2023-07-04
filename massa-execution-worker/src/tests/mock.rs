@@ -1,4 +1,5 @@
-use massa_db::{DBBatch, MassaDB, MassaDBConfig};
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
+use massa_db_worker::MassaDB;
 use massa_execution_exports::ExecutionError;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -23,6 +24,7 @@ use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::str::FromStr;
 use std::{
@@ -86,10 +88,12 @@ pub fn get_sample_state(
         max_new_elements: 100,
         thread_count: THREAD_COUNT,
     };
-    let db = Arc::new(RwLock::new(MassaDB::new(db_config)));
+    let db = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
 
     let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
-    ledger.load_initial_ledger(false).unwrap();
+    ledger.load_initial_ledger().unwrap();
     let default_config = FinalStateConfig::default();
     let cfg = FinalStateConfig {
         ledger_config,
@@ -114,7 +118,7 @@ pub fn get_sample_state(
         [],
         MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         },
     ))
     .unwrap();
@@ -145,7 +149,7 @@ pub fn get_sample_state(
     final_state
         .db
         .write()
-        .write_batch(batch, Default::default(), None, false);
+        .write_batch(batch, Default::default(), None);
     final_state.compute_initial_draws().unwrap();
     Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
 }
@@ -170,7 +174,7 @@ pub fn create_block(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: vec![],
             operation_merkle_root,

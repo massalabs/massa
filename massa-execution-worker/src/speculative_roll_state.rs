@@ -403,7 +403,7 @@ impl SpeculativeRollState {
                 };
                 if let Some(prod_stats) = final_state
                     .pos_state
-                    .get_production_stats_for_address(c.0, *address)
+                    .get_production_stats_for_address(c.0, address)
                 {
                     cur_item.ok_count = prod_stats.block_success_count;
                     cur_item.nok_count = prod_stats.block_failure_count;
