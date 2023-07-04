@@ -614,8 +614,8 @@ impl Interface for InterfaceImpl {
     ///   Length: 65 bytes
     fn verify_evm_signature(
         &self,
-        signature_: &[u8],
         message_: &[u8],
+        signature_: &[u8],
         public_key_: &[u8],
     ) -> Result<bool> {
         // check the signature length
