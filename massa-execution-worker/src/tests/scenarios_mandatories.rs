@@ -62,6 +62,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -101,6 +102,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -148,6 +150,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
@@ -258,6 +261,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
@@ -425,6 +429,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
@@ -587,6 +592,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -704,6 +710,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -812,6 +819,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -942,6 +950,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1061,6 +1070,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1221,6 +1231,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1326,6 +1337,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1446,6 +1458,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1549,6 +1562,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1654,6 +1668,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1865,6 +1880,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2033,6 +2049,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2208,6 +2225,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2303,6 +2321,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2395,6 +2414,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2487,6 +2507,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2640,6 +2661,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2756,6 +2778,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2907,6 +2930,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
@@ -3008,6 +3032,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage

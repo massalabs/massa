@@ -1,3 +1,4 @@
+use num::rational::Ratio;
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
@@ -133,6 +134,7 @@ fn basic() {
     // Setup the MIP store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -280,6 +282,7 @@ fn stop_with_controller_still_exists() {
     // Setup the MIP store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
     let metrics = MassaMetrics::new(
