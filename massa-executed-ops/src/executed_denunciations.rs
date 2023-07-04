@@ -149,7 +149,7 @@ impl ExecutedDenunciations {
     fn prune_to_batch(&mut self, slot: Slot, batch: &mut DBBatch) {
         let drained: Vec<(Slot, HashSet<DenunciationIndex>)> = self
             .sorted_denunciations
-            .drain_filter(|de_idx_slot, _| {
+            .extract_if(|de_idx_slot, _| {
                 Denunciation::is_expired(
                     &de_idx_slot.period,
                     &slot.period,
