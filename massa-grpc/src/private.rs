@@ -70,6 +70,22 @@ pub(crate) fn add_staking_secret_keys(
     ))
 }
 
+/// Ban multiple nodes by their individual ids
+pub(crate) fn ban_nodes_by_ids(
+    _grpc: &MassaPrivateGrpc,
+    _request: tonic::Request<grpc_api::BanNodesByIdsRequest>,
+) -> Result<tonic::Response<grpc_api::BanNodesByIdsResponse>, GrpcError> {
+    Err(GrpcError::Unimplemented("ban_nodes_by_ids".to_string()))
+}
+
+/// Ban multiple nodes by their individual IP addresses
+pub(crate) fn ban_nodes_by_ips(
+    _grpc: &MassaPrivateGrpc,
+    _request: tonic::Request<grpc_api::BanNodesByIpsRequest>,
+) -> Result<tonic::Response<grpc_api::BanNodesByIpsResponse>, GrpcError> {
+    Err(GrpcError::Unimplemented("ban_nodes_by_ips".to_string()))
+}
+
 /// Get node bootstrap blacklist IP addresses
 pub(crate) fn get_bootstrap_blacklist(
     _grpc: &MassaPrivateGrpc,
@@ -187,4 +203,20 @@ pub(crate) fn shutdown_gracefully(
     _request: tonic::Request<grpc_api::ShutdownGracefullyRequest>,
 ) -> Result<tonic::Response<grpc_api::ShutdownGracefullyResponse>, GrpcError> {
     Err(GrpcError::Unimplemented("shutdown_gracefully".to_string()))
+}
+
+/// Unban multiple nodes by their individual ids
+pub(crate) fn unban_nodes_by_ids(
+    _grpc: &MassaPrivateGrpc,
+    _request: tonic::Request<grpc_api::UnbanNodesByIdsRequest>,
+) -> Result<tonic::Response<grpc_api::UnbanNodesByIdsResponse>, GrpcError> {
+    Err(GrpcError::Unimplemented("unban_nodes_by_ids".to_string()))
+}
+
+/// Unban multiple nodes by their individual IP addresses
+pub(crate) fn unban_nodes_by_ips(
+    _grpc: &MassaPrivateGrpc,
+    _request: tonic::Request<grpc_api::UnbanNodesByIpsRequest>,
+) -> Result<tonic::Response<grpc_api::UnbanNodesByIpsResponse>, GrpcError> {
+    Err(GrpcError::Unimplemented("unban_nodes_by_ips".to_string()))
 }

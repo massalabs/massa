@@ -4,15 +4,16 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 
 use crate::private::{
     add_staking_secret_keys, add_to_bootstrap_blacklist, add_to_bootstrap_whitelist,
-    add_to_peers_whitelist, allow_everyone_to_bootstrap, get_bootstrap_blacklist,
-    get_bootstrap_whitelist, get_node_status, get_peers_whitelist, remove_from_bootstrap_blacklist,
-    remove_from_bootstrap_whitelist, remove_from_peers_whitelist, remove_staking_addresses,
-    shutdown_gracefully, sign_messages,
+    add_to_peers_whitelist, allow_everyone_to_bootstrap, ban_nodes_by_ids, ban_nodes_by_ips,
+    get_bootstrap_blacklist, get_bootstrap_whitelist, get_node_status, get_peers_whitelist,
+    remove_from_bootstrap_blacklist, remove_from_bootstrap_whitelist, remove_from_peers_whitelist,
+    remove_staking_addresses, shutdown_gracefully, sign_messages, unban_nodes_by_ids,
+    unban_nodes_by_ips,
 };
 use crate::public::{
-    get_blocks, get_datastore_entries, get_mip_status, get_next_block_best_parents, get_operations,
-    get_sc_execution_events, get_selector_draws, get_stakers, get_transactions_throughput,
-    query_state,
+    execute_read_only_call, get_blocks, get_datastore_entries, get_mip_status,
+    get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
+    get_stakers, get_transactions_throughput, query_state,
 };
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{
@@ -29,6 +30,15 @@ use crate::stream::{
 
 #[tonic::async_trait]
 impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
+    /// Execute read only call
+    async fn execute_read_only_call(
+        &self,
+        request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
+    ) -> std::result::Result<tonic::Response<grpc_api::ExecuteReadOnlyCallResponse>, tonic::Status>
+    {
+        Ok(tonic::Response::new(execute_read_only_call(self, request)?))
+    }
+
     /// handler for get blocks
     async fn get_blocks(
         &self,
@@ -260,6 +270,23 @@ impl grpc_api::private_service_server::PrivateService for MassaPrivateGrpc {
     ) -> Result<tonic::Response<grpc_api::AddStakingSecretKeysResponse>, tonic::Status> {
         Ok(add_staking_secret_keys(self, request)?)
     }
+
+    /// Ban multiple nodes by their individual ids
+    async fn ban_nodes_by_ids(
+        &self,
+        request: tonic::Request<grpc_api::BanNodesByIdsRequest>,
+    ) -> Result<tonic::Response<grpc_api::BanNodesByIdsResponse>, tonic::Status> {
+        Ok(ban_nodes_by_ids(self, request)?)
+    }
+
+    /// Ban multiple nodes by their individual IP addresses
+    async fn ban_nodes_by_ips(
+        &self,
+        request: tonic::Request<grpc_api::BanNodesByIpsRequest>,
+    ) -> Result<tonic::Response<grpc_api::BanNodesByIpsResponse>, tonic::Status> {
+        Ok(ban_nodes_by_ips(self, request)?)
+    }
+
     /// Get node bootstrap blacklist IP addresses
     async fn get_bootstrap_blacklist(
         &self,
@@ -338,5 +365,21 @@ impl grpc_api::private_service_server::PrivateService for MassaPrivateGrpc {
         request: tonic::Request<grpc_api::ShutdownGracefullyRequest>,
     ) -> Result<tonic::Response<grpc_api::ShutdownGracefullyResponse>, tonic::Status> {
         Ok(shutdown_gracefully(self, request)?)
+    }
+
+    /// Unban multiple nodes by their individual ids
+    async fn unban_nodes_by_ids(
+        &self,
+        request: tonic::Request<grpc_api::UnbanNodesByIdsRequest>,
+    ) -> Result<tonic::Response<grpc_api::UnbanNodesByIdsResponse>, tonic::Status> {
+        Ok(unban_nodes_by_ids(self, request)?)
+    }
+
+    /// Unban multiple nodes by their individual IP addresses
+    async fn unban_nodes_by_ips(
+        &self,
+        request: tonic::Request<grpc_api::UnbanNodesByIpsRequest>,
+    ) -> Result<tonic::Response<grpc_api::UnbanNodesByIpsResponse>, tonic::Status> {
+        Ok(unban_nodes_by_ips(self, request)?)
     }
 }
