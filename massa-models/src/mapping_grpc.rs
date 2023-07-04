@@ -291,33 +291,34 @@ impl TryFrom<grpc_api::ScExecutionEventsFilter> for EventFilter {
     type Error = crate::error::ModelsError;
 
     fn try_from(value: grpc_api::ScExecutionEventsFilter) -> Result<Self, Self::Error> {
-        let status_final = grpc_model::ScExecutionEventStatus::Final as i32;
-        let status_error = grpc_model::ScExecutionEventStatus::Failure as i32;
-        Ok(Self {
-            start: value
-                .slot_range
-                .clone()
-                .map(|range| range.start_slot.map(|slot| slot.into()))
-                .unwrap_or_default(),
-            end: value
-                .slot_range
-                .map(|range| range.end_slot.map(|slot| slot.into()))
-                .unwrap_or_default(),
-            emitter_address: value
-                .emitter_address
-                .map(|address| Address::from_str(&address))
-                .transpose()?,
-            original_caller_address: value
-                .caller_address
-                .map(|address| Address::from_str(&address))
-                .transpose()?,
-            original_operation_id: value
-                .original_operation_id
-                .map(|operation_id| OperationId::from_str(&operation_id))
-                .transpose()?,
-            is_final: Some(value.status.contains(&status_final)),
-            is_error: Some(value.status.contains(&status_error)),
-        })
+        unimplemented!("TODO");
+        // let status_final = grpc_model::ScExecutionEventStatus::Final as i32;
+        // let status_error = grpc_model::ScExecutionEventStatus::Failure as i32;
+        // Ok(Self {
+        //     start: value
+        //         .slot_range
+        //         .clone()
+        //         .map(|range| range.start_slot.map(|slot| slot.into()))
+        //         .unwrap_or_default(),
+        //     end: value
+        //         .slot_range
+        //         .map(|range| range.end_slot.map(|slot| slot.into()))
+        //         .unwrap_or_default(),
+        //     emitter_address: value
+        //         .emitter_address
+        //         .map(|address| Address::from_str(&address))
+        //         .transpose()?,
+        //     original_caller_address: value
+        //         .caller_address
+        //         .map(|address| Address::from_str(&address))
+        //         .transpose()?,
+        //     original_operation_id: value
+        //         .original_operation_id
+        //         .map(|operation_id| OperationId::from_str(&operation_id))
+        //         .transpose()?,
+        //     is_final: Some(value.status.contains(&status_final)),
+        //     is_error: Some(value.status.contains(&status_error)),
+        // })
     }
 }
 
@@ -343,15 +344,14 @@ impl From<EventExecutionContext> for grpc_model::ScExecutionEventContext {
                 .map(|a| a.to_string())
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
+            is_failure: value.is_error,
             //TODO to be checked
             status: if value.read_only {
                 grpc_model::ScExecutionEventStatus::ReadOnly as i32
-            } else if value.is_error {
-                grpc_model::ScExecutionEventStatus::Failure as i32
             } else if value.is_final {
                 grpc_model::ScExecutionEventStatus::Final as i32
             } else {
-                grpc_model::ScExecutionEventStatus::Unknown as i32
+                grpc_model::ScExecutionEventStatus::Unspecified as i32
             },
         }
     }
