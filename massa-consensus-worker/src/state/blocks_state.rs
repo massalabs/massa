@@ -6,6 +6,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     slot::Slot,
 };
+use tracing::warn;
 
 #[derive(Debug, Clone)]
 pub struct BlocksState {
@@ -179,6 +180,17 @@ impl BlocksState {
         self.block_statuses.len()
     }
 
+    fn get_state_name(&self, id: Option<&BlockStatusId>) -> &str {
+        match id {
+            Some(BlockStatusId::Incoming) => "Incoming",
+            Some(BlockStatusId::WaitingForSlot )=> "WaitingForSlot",
+            Some(BlockStatusId::WaitingForDependencies) => "WaitingForDependencies",
+            Some(BlockStatusId::Discarded )=> "Discarded",
+            Some(BlockStatusId::Active) => "Active",
+            None => "Absent"
+        }
+    }
+
     /// Change the state of a block
     /// Steps are:
     /// 1. Remove the block from state
@@ -196,8 +208,15 @@ impl BlocksState {
             Some(block) => {
                 let old_state_id = BlockStatusId::from(&block);
                 self.update_indexes(block_id, Some(&old_state_id), None);
-                let Some(mut new_state) = callback(Some(block), &mut self.block_statuses) else { return; };
+                let Some(mut new_state) = callback(Some(block), &mut self.block_statuses) else {
+                    warn!(">>>>>>>>>>>> BLOCK STATUS CHANGE {} : {} => {}", block_id, self.get_state_name(Some(&old_state_id)), self.get_state_name(None));
+                    return;
+                };
                 let new_state_id = BlockStatusId::from(&new_state);
+
+
+                warn!(">>>>>>>>>>>> BLOCK STATUS CHANGE {} : {} => {}", block_id, self.get_state_name(Some(&old_state_id)), self.get_state_name(Some(&new_state_id)));
+
                 match (&old_state_id, &new_state_id) {
                     // From incoming status
                     (BlockStatusId::Incoming, BlockStatusId::WaitingForDependencies) => {
@@ -315,6 +334,9 @@ impl BlocksState {
             }
             None => {
                 let new_state = callback(None, &mut self.block_statuses);
+                let new_state_id = new_state.as_ref().map(|s| BlockStatusId::from(s) );
+                warn!(">>>>>>>>>>>> BLOCK STATUS CHANGE {} : {} => {}", block_id, self.get_state_name(None), self.get_state_name(new_state_id.as_ref()));
+
                 if let Some(new_state) = new_state {
                     let state = BlockStatusId::from(&new_state);
                     if state != BlockStatusId::Incoming && state != BlockStatusId::Active {

@@ -8,7 +8,7 @@ use massa_logging::massa_trace;
 use massa_models::{block_header::SecuredHeader, block_id::BlockId, slot::Slot};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::debug;
+use tracing::{warn, debug};
 
 use super::ConsensusState;
 
@@ -28,6 +28,9 @@ impl ConsensusState {
         header: SecuredHeader,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
+
+        warn!(">>>>>>>>>>>> Register block header {}", block_id);
+
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
@@ -72,6 +75,8 @@ impl ConsensusState {
         storage: Storage,
         created: bool,
     ) -> Result<(), ConsensusError> {
+        warn!(">>>>>>>>>>>> Register block {}", block_id);
+
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
