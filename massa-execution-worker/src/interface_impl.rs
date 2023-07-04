@@ -12,6 +12,7 @@ use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
+use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
@@ -69,9 +70,7 @@ impl InterfaceImpl {
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
-        use massa_models::config::{
-            MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX,
-        };
+        use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_versioning::versioning::{MipStatsConfig, MipStore};
         use parking_lot::RwLock;
@@ -102,7 +101,6 @@ impl InterfaceImpl {
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         let mip_store =
             MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
@@ -288,12 +286,8 @@ impl Interface for InterfaceImpl {
     fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match (context.get_keys(&addr), prefix_opt) {
-            (Some(value), None) => Ok(value),
-            (Some(mut value), Some(prefix)) => {
-                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
-                Ok(value)
-            }
+        match context.get_keys(&addr, prefix_opt.unwrap_or_default()) {
+            Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
     }
@@ -305,12 +299,8 @@ impl Interface for InterfaceImpl {
     fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
-        match (context.get_keys(addr), prefix_opt) {
-            (Some(value), None) => Ok(value),
-            (Some(mut value), Some(prefix)) => {
-                value.retain(|key| key.iter().zip(prefix.iter()).all(|(k, p)| k == p));
-                Ok(value)
-            }
+        match context.get_keys(addr, prefix_opt.unwrap_or_default()) {
+            Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
     }
@@ -397,7 +387,7 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         match context.get_data_entry(&addr, key) {
-            Some(data) => Ok(data),
+            Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
     }
@@ -421,7 +411,6 @@ impl Interface for InterfaceImpl {
     /// Fails if the address or entry does not exist.
     ///
     /// # Arguments
-    /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
     fn raw_append_data(&self, key: &[u8], value: &[u8]) -> Result<()> {
@@ -502,13 +491,25 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A list of keys (keys are byte arrays)
     fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
+        // TODO return BTreeSet<Vec<u8>>
+
+        // TODO add prefix
+        let prefix: &[u8] = &[];
+
+        // compute prefix range
+        let prefix_range = get_prefix_bounds(prefix);
+        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
+
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
             .operation_datastore
             .as_ref()
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
-        let keys: Vec<Vec<u8>> = datastore.keys().cloned().collect();
+        let keys = datastore
+            .range::<Vec<u8>, _>(range_ref)
+            .map(|(k, _v)| k.clone())
+            .collect();
         Ok(keys)
     }
 

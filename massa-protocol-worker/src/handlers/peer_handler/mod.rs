@@ -126,7 +126,7 @@ impl PeerManagementHandler {
                             }
                         }
                         recv(receiver_cmd) -> cmd => {
-                            receiver_cmd.inc_metrics();
+                            receiver_cmd.update_metrics();
                             // internal command
                            match cmd {
                              Ok(PeerManagementCmd::Ban(peer_ids)) => {
@@ -168,7 +168,7 @@ impl PeerManagementHandler {
                            }
                         },
                         recv(receiver_msg) -> msg => {
-                            receiver_msg.inc_metrics();
+                            receiver_msg.update_metrics();
                             let (peer_id, message) = match msg {
                                 Ok((peer_id, message)) => (peer_id, message),
                                 Err(_) => {

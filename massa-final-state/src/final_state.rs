@@ -23,6 +23,7 @@ use tracing::{debug, info, warn};
 
 #[cfg(feature = "bootstrap_server")]
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
+use massa_models::timeslots::get_block_slot_timestamp;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -131,6 +132,13 @@ impl FinalState {
 
         // create the final state
         Ok(final_state)
+    }
+
+    /// Get the fingerprint (hash) of the final state.
+    /// Note that only one atomic write per final slot occurs, so this can be safely queried at any time.
+    pub fn get_fingerprint(&self) -> massa_hash::Hash {
+        let internal_hash = self.db.read().get_xof_db_hash();
+        massa_hash::Hash::compute_from(internal_hash.to_bytes())
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
@@ -296,7 +304,10 @@ impl FinalState {
             )),
         )?;
 
-        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        let latest_snapshot_cycle_info = self
+            .pos_state
+            .get_cycle_info(latest_snapshot_cycle.0)
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from("Missing cycle info")))?;
 
         let mut batch = DBBatch::new();
 
@@ -349,7 +360,10 @@ impl FinalState {
             )),
         )?;
 
-        let latest_snapshot_cycle_info = self.pos_state.get_cycle_info(latest_snapshot_cycle.0);
+        let latest_snapshot_cycle_info = self
+            .pos_state
+            .get_cycle_info(latest_snapshot_cycle.0)
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from("Missing cycle info")))?;
 
         let mut batch = DBBatch::new();
 
@@ -548,35 +562,63 @@ impl FinalState {
         );
 
         let mut db_batch = DBBatch::new();
+        let mut db_versioning_batch = DBBatch::new();
 
         // apply the state changes to the batch
 
         self.async_pool
             .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
         self.pos_state
-            .apply_changes_to_batch(changes.pos_changes.clone(), slot, true, &mut db_batch)
+            .apply_changes_to_batch(changes.pos_changes, slot, true, &mut db_batch)
             .expect("could not settle slot in final state proof-of-stake");
 
         // TODO:
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
         self.ledger
-            .apply_changes_to_batch(changes.ledger_changes.clone(), &mut db_batch);
-        self.executed_ops.apply_changes_to_batch(
-            changes.executed_ops_changes.clone(),
+            .apply_changes_to_batch(changes.ledger_changes, &mut db_batch);
+        self.executed_ops
+            .apply_changes_to_batch(changes.executed_ops_changes, slot, &mut db_batch);
+
+        self.executed_denunciations.apply_changes_to_batch(
+            changes.executed_denunciations_changes,
             slot,
             &mut db_batch,
         );
 
-        self.executed_denunciations.apply_changes_to_batch(
-            changes.executed_denunciations_changes.clone(),
+        let slot_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
             slot,
-            &mut db_batch,
-        );
+        )
+        .expect("Cannot get timestamp from slot");
+
+        let slot_prev_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot.get_prev_slot(self.config.thread_count)
+                .expect("Cannot get prev slot"),
+        )
+        .expect("Cannot get timestamp for prev slot");
+
+        self.mip_store
+            .update_batches(
+                &mut db_batch,
+                &mut db_versioning_batch,
+                Some((&slot_prev_ts, &slot_ts)),
+            )
+            .unwrap_or_else(|e| {
+                panic!(
+                    "Unable to get MIP store changes between {} and {}: {}",
+                    slot_prev_ts, slot_ts, e
+                )
+            });
 
         self.db
             .write()
-            .write_batch(db_batch, Default::default(), Some(slot));
+            .write_batch(db_batch, db_versioning_batch, Some(slot));
 
         let final_state_hash = self.db.read().get_xof_db_hash();
 

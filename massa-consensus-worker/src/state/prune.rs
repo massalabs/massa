@@ -1,3 +1,5 @@
+use core::panic;
+
 use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
     error::ConsensusError,
@@ -21,11 +23,11 @@ impl ConsensusState {
 
         // retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
-        for a_block in self.active_index.iter() {
+        for a_block in self.blocks_state.active_blocks().clone().iter() {
             if let Some(BlockStatus::Active {
                 a_block: active_block,
                 storage,
-            }) = self.block_statuses.get_mut(a_block)
+            }) = self.blocks_state.get_mut(a_block)
             {
                 let (_b_id, latest_final_period) =
                     self.latest_final_blocks_periods[active_block.slot.thread as usize];
@@ -51,7 +53,8 @@ impl ConsensusState {
         // remove unused final active blocks
         let mut discarded_finals: PreHashMap<BlockId, ActiveBlock> = PreHashMap::default();
         let to_remove: Vec<BlockId> = self
-            .active_index
+            .blocks_state
+            .active_blocks()
             .difference(&retain_active)
             .copied()
             .collect();
@@ -72,65 +75,60 @@ impl ConsensusState {
                 block_parents = block.content.header.content.parents.clone();
             };
 
-            let discarded_active = if let Some(BlockStatus::Active {
-                a_block: discarded_active,
-                ..
-            }) = self.block_statuses.remove(&discard_active_h)
-            {
-                self.active_index.remove(&discard_active_h);
-                discarded_active
-            } else {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and removing unused final active blocks - {} is missing", discard_active_h)));
-            };
+            let sequence_number = self.blocks_state.sequence_counter();
+            self.blocks_state.transition_map(&discard_active_h, |block_status, block_statuses| {
+                if let Some(
+                    BlockStatus::Active {
+                        a_block: discarded_active,
+                        ..
+                    }
+                ) = block_status {
+                    // remove from parent's children
+                    for (parent_h, _parent_period) in discarded_active.parents.iter() {
+                        if let Some(BlockStatus::Active {
+                            a_block: parent_active_block,
+                            ..
+                        }) = block_statuses.get_mut(parent_h)
+                        {
+                            parent_active_block.children[discarded_active.slot.thread as usize]
+                                .remove(&discard_active_h);
+                        }
+                    }
 
-            // remove from parent's children
-            for (parent_h, _parent_period) in discarded_active.parents.iter() {
-                if let Some(BlockStatus::Active {
-                    a_block: parent_active_block,
-                    ..
-                }) = self.block_statuses.get_mut(parent_h)
-                {
-                    parent_active_block.children[discarded_active.slot.thread as usize]
-                        .remove(&discard_active_h);
+                    massa_trace!("consensus.block_graph.prune_active", {"hash": discard_active_h, "reason": DiscardReason::Final});
+                    discarded_finals.insert(discard_active_h, *discarded_active);
+
+                    // mark as final
+                    Some(BlockStatus::Discarded {
+                        slot: block_slot,
+                        creator: block_creator,
+                        parents: block_parents,
+                        reason: DiscardReason::Final,
+                        sequence_number,
+                    })
+                } else {
+                    panic!("inconsistency inside block statuses pruning and removing unused final active blocks - {} is missing", discard_active_h);
                 }
-            }
-
-            massa_trace!("consensus.block_graph.prune_active", {"hash": discard_active_h, "reason": DiscardReason::Final});
-
-            // mark as final
-            self.block_statuses.insert(
-                discard_active_h,
-                BlockStatus::Discarded {
-                    slot: block_slot,
-                    creator: block_creator,
-                    parents: block_parents,
-                    reason: DiscardReason::Final,
-                    sequence_number: {
-                        self.sequence_counter += 1;
-                        self.sequence_counter
-                    },
-                },
-            );
-            self.discarded_index.insert(discard_active_h);
-
-            discarded_finals.insert(discard_active_h, *discarded_active);
+            });
         }
-
         Ok(discarded_finals)
     }
 
     // Keep only a certain (`config.max_future_processing_blocks`) number of blocks that have slots in the future
     // to avoid high memory consumption
     fn prune_slot_waiting(&mut self) {
-        if self.waiting_for_slot_index.len() <= self.config.max_future_processing_blocks {
+        if self.blocks_state.waiting_for_slot_blocks().len()
+            <= self.config.max_future_processing_blocks
+        {
             return;
         }
         let mut slot_waiting: Vec<(Slot, BlockId)> = self
-            .waiting_for_slot_index
+            .blocks_state
+            .waiting_for_slot_blocks()
             .iter()
             .filter_map(|block_id| {
                 if let Some(BlockStatus::WaitingForSlot(header_or_block)) =
-                    self.block_statuses.get(block_id)
+                    self.blocks_state.get(block_id)
                 {
                     return Some((header_or_block.get_slot(), *block_id));
                 }
@@ -141,24 +139,24 @@ impl ConsensusState {
         let len_slot_waiting = slot_waiting.len();
         (self.config.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             let (_slot, block_id) = &slot_waiting[idx];
-            self.block_statuses.remove(block_id);
-            self.waiting_for_slot_index.remove(block_id);
+            self.blocks_state.transition_map(block_id, |_, _| None);
         });
     }
 
     // Keep only a certain (`config.max_discarded_blocks`) number of blocks that are discarded
     // to avoid high memory consumption
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
-        if self.discarded_index.len() <= self.config.max_discarded_blocks {
+        if self.blocks_state.discarded_blocks().len() <= self.config.max_discarded_blocks {
             return Ok(());
         }
         let mut discard_hashes: Vec<(u64, BlockId)> = self
-            .discarded_index
+            .blocks_state
+            .discarded_blocks()
             .iter()
             .filter_map(|block_id| {
                 if let Some(BlockStatus::Discarded {
                     sequence_number, ..
-                }) = self.block_statuses.get(block_id)
+                }) = self.blocks_state.get(block_id)
                 {
                     return Some((*sequence_number, *block_id));
                 }
@@ -166,10 +164,11 @@ impl ConsensusState {
             })
             .collect();
         discard_hashes.sort_unstable();
-        discard_hashes.truncate(self.discarded_index.len() - self.config.max_discarded_blocks);
+        discard_hashes.truncate(
+            self.blocks_state.discarded_blocks().len() - self.config.max_discarded_blocks,
+        );
         for (_, block_id) in discard_hashes.iter() {
-            self.block_statuses.remove(block_id);
-            self.discarded_index.remove(block_id);
+            self.blocks_state.transition_map(block_id, |_, _| None);
         }
         Ok(())
     }
@@ -180,19 +179,19 @@ impl ConsensusState {
 
         // list items that are older than the latest final blocks in their threads or have deps that are discarded
         {
-            for block_id in self.waiting_for_dependencies_index.iter() {
+            for block_id in self.blocks_state.waiting_for_dependencies_blocks().iter() {
                 if let Some(BlockStatus::WaitingForDependencies {
                     header_or_block,
                     unsatisfied_dependencies,
                     sequence_number,
-                }) = self.block_statuses.get(block_id)
+                }) = self.blocks_state.get(block_id)
                 {
                     // has already discarded dependencies => discard (choose worst reason)
                     let mut discard_reason = None;
                     let mut discarded_dep_found = false;
                     for dep in unsatisfied_dependencies.iter() {
                         if let Some(BlockStatus::Discarded { reason, .. }) =
-                            self.block_statuses.get(dep)
+                            self.blocks_state.get(dep)
                         {
                             discarded_dep_found = true;
                             match reason {
@@ -230,7 +229,7 @@ impl ConsensusState {
                 if let Some(BlockStatus::WaitingForDependencies {
                     unsatisfied_dependencies,
                     ..
-                }) = self.block_statuses.get(&hash)
+                }) = self.blocks_state.get(&hash)
                 {
                     // has dependencies that will be discarded => discard (choose worst reason)
                     let mut discard_reason = None;
@@ -270,7 +269,7 @@ impl ConsensusState {
                             header_or_block,
                             sequence_number,
                             ..
-                        }) = self.block_statuses.get(hash)
+                        }) = self.blocks_state.get(hash)
                         {
                             return Some((sequence_number, header_or_block.get_slot(), *hash));
                         }
@@ -290,54 +289,47 @@ impl ConsensusState {
 
         // transition states to Discarded if there is a reason, otherwise just drop
         for (block_id, reason_opt) in to_discard.drain() {
-            if let Some(BlockStatus::WaitingForDependencies {
-                header_or_block, ..
-            }) = self.block_statuses.remove(&block_id)
-            {
-                self.waiting_for_dependencies_index.remove(&block_id);
-                let header = match header_or_block {
-                    HeaderOrBlock::Header(h) => h,
-                    HeaderOrBlock::Block { id: block_id, .. } => self
-                        .storage
-                        .read_blocks()
-                        .get(&block_id)
-                        .ok_or_else(|| {
-                            ConsensusError::MissingBlock(format!(
-                                "missing block when pruning waiting for deps: {}",
-                                block_id
-                            ))
-                        })?
-                        .content
-                        .header
-                        .clone(),
-                };
-                massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
-
-                if let Some(reason) = reason_opt {
-                    // add to stats if reason is Stale
-                    if reason == DiscardReason::Stale {
-                        self.new_stale_blocks.insert(
-                            block_id,
-                            (header.content_creator_address, header.content.slot),
-                        );
-                    }
-                    // transition to Discarded only if there is a reason
-                    self.block_statuses.insert(
-                        block_id,
-                        BlockStatus::Discarded {
-                            slot: header.content.slot,
-                            creator: header.content_creator_address,
-                            parents: header.content.parents.clone(),
-                            reason,
-                            sequence_number: {
-                                self.sequence_counter += 1;
-                                self.sequence_counter
+            let sequence_number = self.blocks_state.sequence_counter();
+            self.blocks_state.transition_map(&block_id, |block_status, _| {
+                if let Some(BlockStatus::WaitingForDependencies {
+                    header_or_block, ..
+                }) = block_status {
+                    let header = match header_or_block {
+                        HeaderOrBlock::Header(h) => h,
+                        HeaderOrBlock::Block { id: block_id, .. } => self
+                            .storage
+                            .read_blocks()
+                            .get(&block_id)
+                            .unwrap_or_else(|| panic!("block {} should be in storage", block_id))
+                            .content
+                            .header
+                            .clone()
+                    };
+                    massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
+                    if let Some(reason) = reason_opt {
+                        // add to stats if reason is Stale
+                        if reason == DiscardReason::Stale {
+                            self.new_stale_blocks.insert(
+                                block_id,
+                                (header.content_creator_address, header.content.slot),
+                            );
+                        }
+                        // transition to Discarded only if there is a reason
+                        Some(BlockStatus::Discarded {
+                                slot: header.content.slot,
+                                creator: header.content_creator_address,
+                                parents: header.content.parents,
+                                reason,
+                                sequence_number,
                             },
-                        },
-                    );
-                    self.discarded_index.insert(block_id);
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    panic!("block {} should be in WaitingForDependencies state", block_id);
                 }
-            }
+            });
         }
 
         Ok(())

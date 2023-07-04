@@ -117,7 +117,6 @@ pub fn get_sample_state(
         [],
         MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 10,
         },
     ))
     .unwrap();

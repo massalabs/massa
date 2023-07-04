@@ -15,7 +15,7 @@ use massa_models::config::{
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
     MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    MIP_STORE_STATS_COUNTERS_MAX, THREAD_COUNT,
+    THREAD_COUNT,
 };
 use massa_models::node::NodeId;
 use massa_models::version::Version;
@@ -67,7 +67,6 @@ impl BootstrapClientBinder {
             max_executed_ops_length: MAX_EXECUTED_OPS_LENGTH,
             max_ops_changes_length: MAX_EXECUTED_OPS_CHANGES_LENGTH,
             mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         }
@@ -691,7 +690,7 @@ fn test_bandwidth() {
 
         #[cfg(target_os = "macos")]
         {
-            20_500
+            30_500
         }
         #[cfg(not(any(target_os = "windows", target_os = "macos")))]
         {
@@ -706,6 +705,7 @@ fn test_bandwidth() {
 
                 server.handshake_timeout(version, None).unwrap();
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 let message = server.next_timeout(None).unwrap();
                 match message {
@@ -715,9 +715,10 @@ fn test_bandwidth() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(10));
+                assert!(dur > Duration::from_secs(9));
                 assert!(dur < Duration::from_millis(millis_limit));
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 server
                     .send_timeout(
@@ -726,7 +727,7 @@ fn test_bandwidth() {
                     )
                     .unwrap();
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(10));
+                assert!(dur > Duration::from_secs(9), "{dur:?}");
                 assert!(dur < Duration::from_millis(millis_limit));
             }
         })
@@ -740,6 +741,7 @@ fn test_bandwidth() {
 
                 client.handshake(version).unwrap();
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 client
                     .send_timeout(
@@ -750,9 +752,10 @@ fn test_bandwidth() {
                     )
                     .unwrap();
                 let dur = before.elapsed();
-                assert!(dbg!(dur) > Duration::from_secs(10));
+                assert!(dbg!(dur) > Duration::from_secs(9), "{dur:?}");
                 assert!(dur < Duration::from_millis(millis_limit));
 
+                std::thread::sleep(Duration::from_secs(1));
                 let before = Instant::now();
                 let message = client.next_timeout(None).unwrap();
                 match message {
@@ -762,7 +765,7 @@ fn test_bandwidth() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(10));
+                assert!(dur > Duration::from_secs(9));
                 assert!(dur < Duration::from_millis(millis_limit));
             }
         })

@@ -66,10 +66,10 @@ use massa_models::config::constants::{
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_OPERATIONS, MAX_SIZE_CHANNEL_NETWORK_TO_BLOCK_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_ENDORSEMENT_HANDLER, MAX_SIZE_CHANNEL_NETWORK_TO_OPERATION_HANDLER,
     MAX_SIZE_CHANNEL_NETWORK_TO_PEER_HANDLER, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    MIP_STORE_STATS_COUNTERS_MAX, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE,
-    POS_MISS_RATE_DEACTIVATION_THRESHOLD, POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE,
-    PROTOCOL_EVENT_CHANNEL_SIZE, ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE,
-    SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT, VERSION,
+    OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+    POS_SAVED_CYCLES, PROTOCOL_CONTROLLER_CHANNEL_SIZE, PROTOCOL_EVENT_CHANNEL_SIZE,
+    ROLL_COUNT_TO_SLASH_ON_DENUNCIATION, ROLL_PRICE, SELECTOR_DRAW_CACHE_SIZE, T0, THREAD_COUNT,
+    VERSION,
 };
 use massa_models::config::{
     MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
@@ -80,7 +80,7 @@ use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
-use massa_protocol_exports::{ProtocolConfig, ProtocolManager};
+use massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -88,7 +88,6 @@ use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use peernet::transports::TransportType;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -278,7 +277,6 @@ async fn launch(
     // Creates an empty default store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
 
     let mip_list = get_mip_list();
@@ -362,7 +360,6 @@ async fn launch(
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     };

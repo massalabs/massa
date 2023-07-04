@@ -296,7 +296,6 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 5,
         };
 
         let vs = MipStore::try_from((
@@ -387,7 +386,6 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 5,
         };
 
         let vs = MipStore::try_from((

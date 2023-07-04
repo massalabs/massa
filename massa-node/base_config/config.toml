@@ -96,7 +96,7 @@
     # duration of the statistics time window in milliseconds
     stats_time_window_duration = 60000
     # maximum allowed gas for read only executions
-    max_read_only_gas = 100_000_000
+    max_read_only_gas = 4_294_967_295
     # gas cost for ABIs
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
@@ -210,10 +210,10 @@
     # Nb max in connections that we accept
     max_in_connections = 100
     # Peer default category limits
-    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 70}
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 70, allow_local_peers = false }
     # Peer categories limits
     [protocol.peers_categories]
-    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 8}
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 8, allow_local_peers = false }
 
 [network]
 

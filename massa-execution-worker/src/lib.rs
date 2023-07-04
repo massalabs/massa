@@ -101,6 +101,7 @@ mod stats;
 mod vesting_manager;
 mod worker;
 
+use massa_db_exports as _;
 pub use worker::start_execution_worker;
 
 #[cfg(any(

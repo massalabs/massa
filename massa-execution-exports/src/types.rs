@@ -2,14 +2,171 @@
 
 //! This file exports useful types used to interact with the execution worker
 
+use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
 use massa_final_state::StateChanges;
+use massa_hash::Hash;
+use massa_models::block_id::BlockId;
+use massa_models::bytecode::Bytecode;
 use massa_models::datastore::Datastore;
+use massa_models::denunciation::DenunciationIndex;
+use massa_models::execution::EventFilter;
+use massa_models::operation::OperationId;
+use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::PreHashSet;
 use massa_models::{
-    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, block_id::BlockId,
-    slot::Slot,
+    address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
 };
+use massa_pos_exports::ProductionStats;
 use std::collections::{BTreeMap, BTreeSet};
+
+/// Request to atomically execute a batch of execution state queries
+pub struct ExecutionQueryRequest {
+    /// List of requests
+    pub requests: Vec<ExecutionQueryRequestItem>,
+}
+
+/// Response to a list of execution queries
+pub struct ExecutionQueryResponse {
+    /// List of responses
+    pub responses: Vec<Result<ExecutionQueryResponseItem, ExecutionQueryError>>,
+    /// Last executed candidate slot
+    pub candidate_cursor: Slot,
+    /// Last executed final slot
+    pub final_cursor: Slot,
+    /// Final state hash
+    pub final_state_fingerprint: Hash,
+}
+
+/// Execution state query item
+pub enum ExecutionQueryRequestItem {
+    /// checks if address exists (candidate) returns ExecutionQueryResponseItem::Boolean(true) if it does
+    AddressExistsCandidate(Address),
+    /// checks if address exists (finak) returns ExecutionQueryResponseItem::Boolean(true) if it does
+    AddressExistsFinal(Address),
+    /// gets the balance (candidate) of an address, returns ExecutionQueryResponseItem::Amount(balance) or an error if the address is not found
+    AddressBalanceCandidate(Address),
+    /// gets the balance (final) of an address, returns ExecutionQueryResponseItem::Amount(balance) or an error if the address is not found
+    AddressBalanceFinal(Address),
+    /// gets the bytecode (candidate) of an address, returns ExecutionQueryResponseItem::Bytecode(bytecode) or an error if the address is not found
+    AddressBytecodeCandidate(Address),
+    /// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytecode(bytecode) or an error if the address is not found
+    AddressBytecodeFinal(Address),
+    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    AddressDatastoreKeysCandidate {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Filter only entries whose key starts with a prefix
+        prefix: Vec<u8>,
+    },
+    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    AddressDatastoreKeysFinal {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Filter only entries whose key starts with a prefix
+        prefix: Vec<u8>,
+    },
+    /// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::DatastoreValue(keys) or an error if the address or key is not found
+    AddressDatastoreValueCandidate {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Key of the entry
+        key: Vec<u8>,
+    },
+    /// gets a datastore value (final) for an address, returns ExecutionQueryResponseItem::DatastoreValue(keys) or an error if the address or key is not found
+    AddressDatastoreValueFinal {
+        /// Address for which to query the datastore
+        addr: Address,
+        /// Key of the entry
+        key: Vec<u8>,
+    },
+
+    /// gets the execution status (candidate) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    OpExecutionStatusCandidate(OperationId),
+    /// gets the execution status (final) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    OpExecutionStatusFinal(OperationId),
+    /// gets the execution status (candidate) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    DenunciationExecutionStatusCandidate(DenunciationIndex),
+    /// gets the execution status (final) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
+    DenunciationExecutionStatusFinal(DenunciationIndex),
+
+    /// gets the roll count (candidate) of an address, returns ExecutionQueryResponseItem::RollCount(rolls) or an error if the address is not found
+    AddressRollsCandidate(Address),
+    /// gets the roll count (final) of an address, returns ExecutionQueryResponseItem::RollCount(rolls) or an error if the address is not found
+    AddressRollsFinal(Address),
+    /// gets the deferred credits (candidate) of an address, returns ExecutionQueryResponseItem::DeferredCredits(deferred_credits) or an error if the address is not found
+    AddressDeferredCreditsCandidate(Address),
+    /// gets the deferred credits (final) of an address, returns ExecutionQueryResponseItem::DeferredCredits(deferred_credits) or an error if the address is not found
+    AddressDeferredCreditsFinal(Address),
+
+    /// get all information for a given cycle, returns ExecutionQueryResponseItem::CycleInfos(cycle_infos) or an error if the cycle is not found
+    CycleInfos {
+        /// cycle to query
+        cycle: u64,
+        /// optionally restrict the query to a set of addresses. If None, the info for all addresses will be returned.
+        restrict_to_addresses: Option<PreHashSet<Address>>,
+    },
+
+    /// get filtered events. Returns ExecutionQueryResponseItem::Events
+    Events(EventFilter),
+}
+
+/// Execution state query response item
+pub enum ExecutionQueryResponseItem {
+    /// boolean value
+    Boolean(bool),
+    /// roll counts value
+    RollCount(u64),
+    /// amount value
+    Amount(Amount),
+    /// bytecode
+    Bytecode(Bytecode),
+    /// datastore value
+    DatastoreValue(Vec<u8>),
+    /// list of keys
+    KeyList(BTreeSet<Vec<u8>>),
+    /// deferred credits value
+    DeferredCredits(BTreeMap<Slot, Amount>),
+    /// execution status value
+    ExecutionStatus(ExecutionQueryExecutionStatus),
+    /// cycle infos value
+    CycleInfos(ExecutionQueryCycleInfos),
+    /// Events
+    Events(Vec<SCOutputEvent>),
+}
+
+/// Execution status of an operation or denunciation
+pub enum ExecutionQueryExecutionStatus {
+    /// The operation or denunciation was found as successfully executed in the active history
+    AlreadyExecutedWithSuccess,
+    /// The operation or denunciation was found as executed with errors in the active history
+    AlreadyExecutedWithFailure,
+    /// No information about the operation or denunciation execution were found in the node.
+    /// However the node only keeps execution information until the operation or denunciation expires
+    /// in order to prevent it from being re-executed during its validity time.
+    /// ExecutableOrExpired means that the operation or denunciations was either never executed,
+    /// or was executed previously and ran out of its validify period.
+    /// In other terms, the operation or denunciation can still be executed unless it has expired.
+    ExecutableOrExpired,
+}
+
+/// Information about cycles
+pub struct ExecutionQueryCycleInfos {
+    /// cycle number
+    pub cycle: u64,
+    /// whether the cycle is final
+    pub is_final: bool,
+    /// infos for each PoS-participating address among the ones that were asked
+    pub staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>,
+}
+
+/// Staker information for a given cycle
+pub struct ExecutionQueryStakerInfo {
+    /// active roll count
+    pub active_rolls: u64,
+    /// production stats
+    pub production_stats: ProductionStats,
+}
 
 /// Execution info about an address
 #[derive(Clone, Debug)]
@@ -46,13 +203,24 @@ pub enum SlotExecutionOutput {
     FinalizedSlot(ExecutionOutput),
 }
 
+/// structure storing a block id + network versions (from a block header)
+#[derive(Debug, Clone)]
+pub struct ExecutedBlockInfo {
+    /// Block id
+    pub block_id: BlockId,
+    /// Current network version (see Versioning doc)
+    pub current_version: u32,
+    /// Announced network version (see Versioning doc)
+    pub announced_version: u32,
+}
+
 /// structure describing the output of a single execution
 #[derive(Debug, Clone)]
 pub struct ExecutionOutput {
     /// slot
     pub slot: Slot,
-    /// optional block ID at that slot (None if miss)
-    pub block_id: Option<BlockId>,
+    /// optional executed block info at that slot (None if miss)
+    pub block_info: Option<ExecutedBlockInfo>,
     /// state changes caused by the execution step
     pub state_changes: StateChanges,
     /// events emitted by the execution step

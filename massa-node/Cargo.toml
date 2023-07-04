@@ -17,7 +17,6 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
 ] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "4929687ed69946482cc3bffddf2162fbe02f734f" }
 tracing-subscriber = "0.3"
 paw = "1.0"
 rand = { version = "0.8.5", optional = true }
@@ -67,5 +66,5 @@ resync_check = []
 deadlock_detection = []
 op_spammer = ["rand", "massa_signature"]
 bootstrap_server = ["massa_consensus_worker/bootstrap_server", "massa_final_state/bootstrap_server"]
-sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox", "massa_metrics/sandbox"]
+sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_factory_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox", "massa_metrics/sandbox"]
 testing = ["massa_metrics/testing"]
