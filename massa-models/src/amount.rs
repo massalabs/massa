@@ -97,7 +97,7 @@ impl Amount {
     /// amount = mantissa * 10^(-scale)
     /// ```
     /// # use massa_models::amount::Amount;
-    /// # use massa_models::config::AMOUNT_DECIMAL_SCALE;
+    /// # use massa_models::amount::AMOUNT_DECIMAL_SCALE;
     /// # use std::str::FromStr;
     /// let amount = Amount::from_str("0.123456789").unwrap();
     /// let (mantissa, scale) = amount.to_mantissa_scale();
