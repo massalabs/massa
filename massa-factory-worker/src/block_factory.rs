@@ -133,6 +133,11 @@ impl BlockFactoryWorker {
             }
         };
 
+        info!(
+            "AURELIEN: 1: block producer address: {}",
+            block_producer_addr
+        );
+
         // check if the block producer address is handled by the wallet
         let block_producer_keypair_ref = self.wallet.read();
         let block_producer_keypair = if let Some(kp) =
@@ -157,6 +162,7 @@ impl BlockFactoryWorker {
                 }
             }
         }
+        info!("AURELIEN: 2: after load wallet");
 
         // check if we need to have connections to produce a block and in this case, check if we have enough.
         #[cfg(not(feature = "sandbox"))]
@@ -169,6 +175,7 @@ impl BlockFactoryWorker {
             }
         }
 
+        info!("AURELIEN: 3: before choice parents");
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
@@ -186,11 +193,13 @@ impl BlockFactoryWorker {
                 return;
             }
         }
+        info!("AURELIEN: 4: after choice parents");
 
         // get the parent in the same thread, with its period
         // will not panic because the thread is validated before the call
         let (same_thread_parent_id, _) = parents[slot.thread as usize];
 
+        info!("AURELIEN: 5: before choice endorsements");
         // gather endorsements
         let (endorsements_ids, endo_storage) = self
             .channels
@@ -211,7 +220,9 @@ impl BlockFactoryWorker {
                 .collect()
         };
         block_storage.extend(endo_storage);
+        info!("AURELIEN: 6: after choice endorsements");
 
+        info!("AURELIEN: 7: before choice operations");
         // gather operations and compute global operations hash
         let (op_ids, op_storage) = self.channels.pool.get_block_operations(&slot);
         if op_ids.len() > self.cfg.max_operations_per_block as usize {
@@ -226,9 +237,12 @@ impl BlockFactoryWorker {
                 .flat_map(|op_id| *op_id.to_bytes())
                 .collect::<Vec<u8>>(),
         );
+        info!("AURELIEN: 8: after choice operations");
 
         // create header
+        info!("AURELIEN: 9: get current version");
         let current_version = self.mip_store.get_network_version_current();
+        info!("AURELIEN: 10: get version to announce");
         let announced_version = self.mip_store.get_network_version_to_announce();
         let header: SecuredHeader = BlockHeader::new_verifiable::<BlockHeaderSerializer, BlockId>(
             BlockHeader {
