@@ -295,9 +295,6 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -521,29 +518,26 @@
         <span class="kw">let </span>pool_changes_clone = <span class="self">self</span>.pool_changes.clone();
 
         <span class="comment">// First, look in speculative pool
-        </span><span class="kw">let _ </span>=
-            wanted_ids.extract_if(
-                |<span class="kw-2">&amp;mut </span>message_id| <span class="kw">match </span>pool_changes_clone.<span class="number">0</span>.get(message_id) {
-                    <span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(msg)) =&gt; {
-                        <span class="kw">if </span>delete_existing {
-                            <span class="self">self</span>.pool_changes.push_delete(<span class="kw-2">*</span>message_id);
-                        }
-                        msgs.push((<span class="kw-2">*</span>message_id, msg.clone()));
-                        <span class="bool-val">true
-                    </span>}
-                    <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(msg_update)) =&gt; {
-                        current_changes.entry(message_id).and_modify(|e| {
-                            e.apply(msg_update.clone());
-                        });
-                        <span class="bool-val">false
-                    </span>}
-                    <span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="bool-val">false</span>,
-                    <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
-                },
-            );
+        </span>wanted_ids.retain(|<span class="kw-2">&amp;</span>message_id| <span class="kw">match </span>pool_changes_clone.<span class="number">0</span>.get(message_id) {
+            <span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(msg)) =&gt; {
+                <span class="kw">if </span>delete_existing {
+                    <span class="self">self</span>.pool_changes.push_delete(<span class="kw-2">*</span>message_id);
+                }
+                msgs.push((<span class="kw-2">*</span>message_id, msg.clone()));
+                <span class="bool-val">false
+            </span>}
+            <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(msg_update)) =&gt; {
+                current_changes.entry(message_id).and_modify(|e| {
+                    e.apply(msg_update.clone());
+                });
+                <span class="bool-val">true
+            </span>}
+            <span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="bool-val">true</span>,
+            <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>,
+        });
 
         <span class="comment">// Then, search the active history
-        </span><span class="kw">let _ </span>= wanted_ids.extract_if(|<span class="kw-2">&amp;mut </span>message_id| {
+        </span>wanted_ids.retain(|<span class="kw-2">&amp;</span>message_id| {
             <span class="kw">match </span><span class="self">self</span>.active_history.read().fetch_message(
                 message_id,
                 current_changes.get(message_id).cloned().unwrap_or_default(),
@@ -554,17 +548,17 @@
                         <span class="self">self</span>.pool_changes.push_delete(<span class="kw-2">*</span>message_id);
                     }
                     msgs.push((<span class="kw-2">*</span>message_id, msg));
-                    <span class="kw">return </span><span class="bool-val">true</span>;
+                    <span class="kw">return </span><span class="bool-val">false</span>;
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) =&gt; {
                     current_changes.entry(message_id).and_modify(|e| {
                         e.apply(msg_update.clone());
                     });
-                    <span class="kw">return </span><span class="bool-val">false</span>;
+                    <span class="kw">return </span><span class="bool-val">true</span>;
                 }
                 <span class="kw">_ </span>=&gt; {}
             }
-            <span class="bool-val">false
+            <span class="bool-val">true
         </span>});
 
         <span class="comment">// Then, fetch all the remaining messages from the final state
