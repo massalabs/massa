@@ -12,6 +12,7 @@ use crate::error::ModelsError;
 use crate::execution::EventFilter;
 use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
 use crate::output_event::{EventExecutionContext, SCOutputEvent};
+use crate::secure_share::SecureShare;
 use crate::slot::{IndexedSlot, Slot};
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
@@ -232,16 +233,29 @@ impl From<OperationType> for grpc_model::OpType {
     }
 }
 
-impl From<SecureShareOperation> for grpc_model::SignedOperation {
-    fn from(value: SecureShareOperation) -> Self {
-        let serialized_size = value.serialized_size() as u64;
+// impl From<SecureShareOperation> for grpc_model::SignedOperation {
+//     fn from(value: SecureShareOperation) -> Self {
+//         let serialized_size = value.serialized_size() as u64;
+//         grpc_model::SignedOperation {
+//             content: Some(value.content.into()),
+//             signature: value.signature.to_string(),
+//             content_creator_pub_key: value.content_creator_pub_key.to_string(),
+//             content_creator_address: value.content_creator_address.to_string(),
+//             secure_hash: value.id.to_string(),
+//             serialized_size,
+//         }
+//     }
+// }
+
+impl From<SecureShare<Operation, OperationId>> for grpc_model::SignedOperation {
+    fn from(value: SecureShare<Operation, OperationId>) -> Self {
         grpc_model::SignedOperation {
+            serialized_size: value.serialized_size() as u64,
             content: Some(value.content.into()),
             signature: value.signature.to_string(),
             content_creator_pub_key: value.content_creator_pub_key.to_string(),
             content_creator_address: value.content_creator_address.to_string(),
             secure_hash: value.id.to_string(),
-            serialized_size,
         }
     }
 }

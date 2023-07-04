@@ -3,6 +3,7 @@
 use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
 use itertools::izip;
+use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
@@ -14,6 +15,7 @@ use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_time::MassaTime;
+use std::collections::HashSet;
 use std::str::FromStr;
 use tracing::log::warn;
 
@@ -363,132 +365,131 @@ pub(crate) fn get_next_block_best_parents(
 
 /// Get operations
 pub(crate) fn get_operations(
-    _grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::GetOperationsRequest>,
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetOperationsRequest>,
 ) -> Result<grpc_api::GetOperationsResponse, GrpcError> {
-    // let storage = grpc.storage.clone_without_refs();
-    // let inner_req: grpc_api::GetOperationsRequest = request.into_inner();
-    // let id = inner_req.id;
+    let storage = grpc.storage.clone_without_refs();
+    let inner_req: grpc_api::GetOperationsRequest = request.into_inner();
 
-    // let operations_ids: Vec<OperationId> = inner_req
-    //     .queries
-    //     .into_iter()
-    //     .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
-    //     .map(|query| {
-    //         query
-    //             .filter
-    //             .ok_or_else(|| GrpcError::InvalidArgument("filter is missing".to_string()))
-    //             .and_then(|filter| {
-    //                 OperationId::from_str(filter.id.as_str()).map_err(|_| {
-    //                     GrpcError::InvalidArgument(format!("invalid operation id: {}", filter.id))
-    //                 })
-    //             })
-    //     })
-    //     .collect::<Result<_, _>>()?;
+    let mut operations_ids = Vec::new();
+    let mut filter_ope_types = Vec::new();
 
-    // if operations_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
-    //     return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
-    // }
+    inner_req.filters.into_iter().for_each(|query| {
+        if let Some(filter) = query.filter {
+            match filter {
+                grpc_api::get_operations_filter::Filter::OperationIds(ids) => {
+                    let ids = ids
+                        .operation_ids
+                        .into_iter()
+                        .filter_map(|id| match OperationId::from_str(id.as_str()) {
+                            Ok(ope) => Some(ope),
+                            Err(e) => {
+                                warn!("Invalid operation id: {}", e);
+                                None
+                            }
+                        })
+                        .collect::<Vec<OperationId>>();
 
-    // // Get the current slot.
-    // let now: MassaTime = MassaTime::now()?;
-    // let current_slot = get_latest_block_slot_at_timestamp(
-    //     grpc.grpc_config.thread_count,
-    //     grpc.grpc_config.t0,
-    //     grpc.grpc_config.genesis_timestamp,
-    //     now,
-    // )?
-    // .unwrap_or_else(|| Slot::new(0, 0));
+                    operations_ids.extend(ids.iter().map(|id| id.clone()));
+                }
+                grpc_api::get_operations_filter::Filter::OperationTypes(ope_types) => {
+                    filter_ope_types.extend_from_slice(&ope_types.op_types);
+                }
+            }
+        }
+    });
 
-    // // Create the context for the response.
-    // let context = Some(grpc_api::OperationsContext {
-    //     slot: Some(current_slot.into()),
-    // });
+    dbg!(&operations_ids);
+    dbg!(&filter_ope_types);
 
-    // // Get the operations and the list of blocks that contain them from storage
-    // let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
-    //     let read_blocks = storage.read_blocks();
-    //     let read_ops = storage.read_operations();
-    //     operations_ids
-    //         .iter()
-    //         .filter_map(|id| {
-    //             read_ops.get(id).cloned().map(|op| {
-    //                 (
-    //                     op,
-    //                     read_blocks
-    //                         .get_blocks_by_operation(id)
-    //                         .cloned()
-    //                         .unwrap_or_default(),
-    //                 )
-    //             })
-    //         })
-    //         .collect()
-    // };
+    if operations_ids.is_empty() {
+        return Err(GrpcError::InvalidArgument(
+            "no operations ids specified".to_string(),
+        ));
+    }
 
-    // // Keep only the ops id (found in storage)
-    // let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
+    if operations_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
+        return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
+    }
 
-    // // Get the speculative and final execution status of the operations
-    // let exec_statuses: Vec<_> = grpc
-    //     .execution_controller
-    //     .get_ops_exec_status(&ops)
-    //     .into_iter()
-    //     .map(|(spec_exec, final_exec)| match (spec_exec, final_exec) {
-    //         (Some(true), Some(true)) => {
-    //             vec![
-    //                 grpc_model::OperationStatus::Success.into(),
-    //                 grpc_model::OperationStatus::Final.into(),
-    //             ]
-    //         }
-    //         (Some(false), Some(false)) => {
-    //             vec![
-    //                 grpc_model::OperationStatus::Failure.into(),
-    //                 grpc_model::OperationStatus::Final.into(),
-    //             ]
-    //         }
-    //         (Some(true), None) => {
-    //             vec![
-    //                 grpc_model::OperationStatus::Success.into(),
-    //                 grpc_model::OperationStatus::Pending.into(),
-    //             ]
-    //         }
-    //         (Some(false), None) => {
-    //             vec![
-    //                 grpc_model::OperationStatus::Failure.into(),
-    //                 grpc_model::OperationStatus::Pending.into(),
-    //             ]
-    //         }
-    //         _ => {
-    //             vec![grpc_model::OperationStatus::Unknown.into()]
-    //         }
-    //     })
-    //     .collect();
+    let read_blocks = storage.read_blocks();
+    let read_ops = storage.read_operations();
 
-    // // Gather all values into a vector of OperationWrapper instances
-    // let mut operations: Vec<grpc_model::OperationWrapper> = Vec::with_capacity(ops.len());
-    // let zipped_iterator = izip!(
-    //     ops.into_iter(),
-    //     storage_info.into_iter(),
-    //     exec_statuses.into_iter(),
-    // );
-    // for (id, (operation, in_blocks), exec_status) in zipped_iterator {
-    //     operations.push(grpc_model::OperationWrapper {
-    //         id: id.to_string(),
-    //         thread: operation
-    //             .content_creator_address
-    //             .get_thread(grpc.grpc_config.thread_count) as u32,
-    //         operation: Some(operation.into()),
-    //         block_ids: in_blocks.into_iter().map(|id| id.to_string()).collect(),
-    //         status: exec_status,
-    //     });
-    // }
+    // Get the operations and the list of blocks that contain them from storage
+    let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operations_ids
+        .iter()
+        .filter_map(|ope_id| {
+            read_ops.get(ope_id).map(|secure_share| {
+                let block_ids = read_blocks
+                    .get_blocks_by_operation(ope_id)
+                    .map(|hashset| hashset.iter().cloned().collect::<HashSet<BlockId>>())
+                    .unwrap_or_default();
 
-    // Ok(grpc_api::GetOperationsResponse {
-    //     id,
-    //     context,
-    //     operations,
-    // })
-    unimplemented!("get_operations not implemented yet")
+                (secure_share, block_ids)
+            })
+        })
+        .collect();
+
+    // Keep only the ops id (found in storage)
+    let ops: Vec<OperationId> = storage_info.iter().map(|(op, _)| op.id).collect();
+
+    // Get the speculative and final execution status of the operations
+    let exec_statuses: Vec<_> = grpc
+        .execution_controller
+        .get_ops_exec_status(&ops)
+        .into_iter()
+        .map(|(spec_exec, final_exec)| match (spec_exec, final_exec) {
+            (Some(true), Some(true)) => {
+                vec![
+                    grpc_model::OperationStatus::Success.into(),
+                    grpc_model::OperationStatus::Final.into(),
+                ]
+            }
+            (Some(false), Some(false)) => {
+                vec![
+                    grpc_model::OperationStatus::Failure.into(),
+                    grpc_model::OperationStatus::Final.into(),
+                ]
+            }
+            (Some(true), None) => {
+                vec![
+                    grpc_model::OperationStatus::Success.into(),
+                    grpc_model::OperationStatus::Pending.into(),
+                ]
+            }
+            (Some(false), None) => {
+                vec![
+                    grpc_model::OperationStatus::Failure.into(),
+                    grpc_model::OperationStatus::Pending.into(),
+                ]
+            }
+            _ => {
+                vec![grpc_model::OperationStatus::Unknown.into()]
+            }
+        })
+        .collect();
+
+    // Gather all values into a vector of OperationWrapper instances
+    let operations: Vec<grpc_model::OperationWrapper> = ops
+        .into_iter()
+        .zip(storage_info.into_iter())
+        .zip(exec_statuses.into_iter())
+        .map(
+            |((id, (operation, in_blocks)), exec_status)| grpc_model::OperationWrapper {
+                id: id.to_string(),
+                thread: operation
+                    .content_creator_address
+                    .get_thread(grpc.grpc_config.thread_count) as u32,
+                operation: Some((*operation).clone().into()),
+                block_ids: in_blocks.into_iter().map(|id| id.to_string()).collect(),
+                status: exec_status,
+            },
+        )
+        .collect();
+
+    Ok(grpc_api::GetOperationsResponse {
+        wrapped_operations: operations,
+    })
 }
 
 /// Get smart contract execution events
