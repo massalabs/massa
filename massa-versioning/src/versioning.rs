@@ -227,7 +227,7 @@ impl Defined {
 impl Started {
     /// Update state from state Started
     pub fn on_advance(self, input: Advance) -> ComponentState {
-        if input.now > input.timeout {
+        if input.now >= input.timeout {
             return ComponentState::failed();
         }
 
