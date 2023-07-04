@@ -11,8 +11,8 @@ use nom::{
 };
 
 use crate::versioning::{
-    Active, Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
-    MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
+    Active, Advance, AdvanceLW, ComponentState, ComponentStateTypeId, LockedIn, MipComponent,
+    MipInfo, MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
@@ -355,13 +355,13 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
 
 // Advance
 
-/// Serializer for `Advance`
-pub struct AdvanceSerializer {
+/// Serializer for `AdvanceLW`
+pub struct AdvanceLWSerializer {
     ratio_serializer: RatioSerializer<u64, U64VarIntSerializer>,
     time_serializer: MassaTimeSerializer,
 }
 
-impl AdvanceSerializer {
+impl AdvanceLWSerializer {
     /// Creates a new `Serializer`
     pub fn new() -> Self {
         Self {
@@ -371,19 +371,19 @@ impl AdvanceSerializer {
     }
 }
 
-impl Default for AdvanceSerializer {
+impl Default for AdvanceLWSerializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Serializer<Advance> for AdvanceSerializer {
-    fn serialize(&self, value: &Advance, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+impl Serializer<AdvanceLW> for AdvanceLWSerializer {
+    fn serialize(&self, value: &AdvanceLW, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         // start
-        self.time_serializer
-            .serialize(&value.start_timestamp, buffer)?;
+        // self.time_serializer
+        //     .serialize(&value.start_timestamp, buffer)?;
         // timeout
-        self.time_serializer.serialize(&value.timeout, buffer)?;
+        // self.time_serializer.serialize(&value.timeout, buffer)?;
         // threshold
         self.ratio_serializer.serialize(&value.threshold, buffer)?;
         // now
@@ -395,14 +395,14 @@ impl Serializer<Advance> for AdvanceSerializer {
     }
 }
 
-/// A Deserializer for `Advance`
-pub struct AdvanceDeserializer {
+/// A Deserializer for `AdvanceLW`
+pub struct AdvanceLWDeserializer {
     ratio_deserializer: RatioDeserializer<u64, U64VarIntDeserializer>,
     time_deserializer: MassaTimeDeserializer,
 }
 
-impl AdvanceDeserializer {
-    /// Creates a new `AdvanceDeserializer`
+impl AdvanceLWDeserializer {
+    /// Creates a new `AdvanceLWDeserializer`
     pub fn new() -> Self {
         Self {
             ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
@@ -417,26 +417,28 @@ impl AdvanceDeserializer {
     }
 }
 
-impl Default for AdvanceDeserializer {
+impl Default for AdvanceLWDeserializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Deserializer<Advance> for AdvanceDeserializer {
+impl Deserializer<AdvanceLW> for AdvanceLWDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Advance, E> {
+    ) -> IResult<&'a [u8], AdvanceLW, E> {
         context(
             "Failed Advance deserialization",
             tuple((
+                /*
                 context("Failed start_timestamp deserialization", |input| {
                     self.time_deserializer.deserialize(input)
                 }),
                 context("Failed timeout deserialization", |input| {
                     self.time_deserializer.deserialize(input)
                 }),
+                */
                 context("Failed threshold deserialization", |input| {
                     self.ratio_deserializer.deserialize(input)
                 }),
@@ -448,15 +450,11 @@ impl Deserializer<Advance> for AdvanceDeserializer {
                 }),
             )),
         )
-        .map(
-            |(start_timestamp, timeout, threshold, now, activation_delay)| Advance {
-                start_timestamp,
-                timeout,
-                threshold,
-                now,
-                activation_delay,
-            },
-        )
+        .map(|(threshold, now, activation_delay)| AdvanceLW {
+            threshold,
+            now,
+            activation_delay,
+        })
         .parse(buffer)
     }
 }
@@ -468,7 +466,7 @@ impl Deserializer<Advance> for AdvanceDeserializer {
 /// Serializer for `MipState`
 pub struct MipStateSerializer {
     state_serializer: ComponentStateSerializer,
-    advance_serializer: AdvanceSerializer,
+    advance_serializer: AdvanceLWSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
@@ -512,7 +510,7 @@ impl Serializer<MipState> for MipStateSerializer {
 /// A Deserializer for `MipState`
 pub struct MipStateDeserializer {
     state_deserializer: ComponentStateDeserializer,
-    advance_deserializer: AdvanceDeserializer,
+    advance_deserializer: AdvanceLWDeserializer,
     state_id_deserializer: U32VarIntDeserializer,
     u32_deserializer: U32VarIntDeserializer,
 }
@@ -522,7 +520,7 @@ impl MipStateDeserializer {
     pub fn new() -> Self {
         Self {
             state_deserializer: ComponentStateDeserializer::new(),
-            advance_deserializer: AdvanceDeserializer::new(),
+            advance_deserializer: AdvanceLWDeserializer::new(),
             state_id_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Excluded(COMPONENT_STATE_ID_VARIANT_COUNT),
@@ -582,7 +580,7 @@ impl Deserializer<MipState> for MipStateDeserializer {
         .map(|items| {
             items
                 .into_iter()
-                .collect::<BTreeMap<Advance, ComponentStateTypeId>>()
+                .collect::<BTreeMap<AdvanceLW, ComponentStateTypeId>>()
         })
         .parse(rem)?;
 
@@ -978,28 +976,26 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
-        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
+        // let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
+        // let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
         let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
 
-        let adv = Advance {
-            start_timestamp: start,
-            timeout,
+        let adv_lw = AdvanceLW {
             threshold: Default::default(),
             now,
             activation_delay: MassaTime::from_millis(20),
         };
 
         let mut buf = Vec::new();
-        let adv_ser = AdvanceSerializer::new();
-        adv_ser.serialize(&adv, &mut buf).unwrap();
+        let adv_ser = AdvanceLWSerializer::new();
+        adv_ser.serialize(&adv_lw, &mut buf).unwrap();
 
-        let state_der = AdvanceDeserializer::new();
+        let state_der = AdvanceLWDeserializer::new();
 
         let (rem, adv_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());
-        assert_eq!(adv, adv_der);
+        assert_eq!(adv_lw, adv_der);
     }
 
     #[test]

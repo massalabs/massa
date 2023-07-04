@@ -183,6 +183,7 @@ pub struct Advance {
 
 impl Ord for Advance {
     fn cmp(&self, other: &Self) -> Ordering {
+        // FIXME
         (self.now).cmp(&other.now)
     }
 }
@@ -199,10 +200,54 @@ impl PartialEq for Advance {
             && self.timeout == other.timeout
             && self.threshold == other.threshold
             && self.now == other.now
+            && self.activation_delay == other.activation_delay
     }
 }
 
 impl Eq for Advance {}
+
+#[derive(Clone, Debug)]
+pub struct AdvanceLW {
+    /// from MipInfo.activation_delay
+    pub activation_delay: MassaTime,
+    /// % of past blocks with this version
+    pub threshold: Ratio<u64>,
+    /// Current time (timestamp)
+    pub now: MassaTime,
+}
+
+impl From<&Advance> for AdvanceLW {
+    fn from(value: &Advance) -> Self {
+        Self {
+            activation_delay: value.activation_delay,
+            threshold: value.threshold,
+            now: value.now,
+        }
+    }
+}
+
+impl Ord for AdvanceLW {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // FIXME
+        (self.now).cmp(&other.now)
+    }
+}
+
+impl PartialOrd for AdvanceLW {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for AdvanceLW {
+    fn eq(&self, other: &Self) -> bool {
+        self.threshold == other.threshold
+            && self.now == other.now
+            && self.activation_delay == other.activation_delay
+    }
+}
+
+impl Eq for AdvanceLW {}
 
 transitions!(ComponentState,
     [
@@ -287,7 +332,7 @@ pub enum IsConsistentError {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
     pub(crate) state: ComponentState,
-    pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
+    pub(crate) history: BTreeMap<AdvanceLW, ComponentStateTypeId>,
 }
 
 impl MipState {
@@ -297,9 +342,7 @@ impl MipState {
         let state_id = ComponentStateTypeId::from(&state);
         // Build a 'dummy' advance msg for state Defined, this is to avoid using an
         // Option<Advance> in MipStateHistory::history
-        let advance = Advance {
-            start_timestamp: MassaTime::from_millis(0),
-            timeout: MassaTime::from_millis(0),
+        let advance = AdvanceLW {
             threshold: Default::default(),
             now: defined,
             activation_delay: MassaTime::from_millis(0),
@@ -341,7 +384,7 @@ impl MipState {
                     && matches!(self.state, ComponentState::Started(Started { .. })))
                 {
                     self.history
-                        .insert(input.clone(), ComponentStateTypeId::from(&state));
+                        .insert(input.into(), ComponentStateTypeId::from(&state));
                 }
                 self.state = state;
             }
@@ -477,7 +520,8 @@ impl MipState {
                 // Note: Please update this if MipState transitions change as it might not hold true
                 if *st_id == ComponentStateTypeId::Started
                     && adv.threshold < threshold_for_transition
-                    && ts < adv.timeout
+                    && ts < timeout
+                // adv.timeout - TODO: test this
                 {
                     Err(StateAtError::Unpredictable)
                 } else {
@@ -1550,11 +1594,11 @@ mod test {
         assert_eq!(state.history.len(), 2);
         assert!(matches!(
             state.history.first_key_value(),
-            Some((&Advance { .. }, &ComponentStateTypeId::Defined))
+            Some((&AdvanceLW { .. }, &ComponentStateTypeId::Defined))
         ));
         assert!(matches!(
             state.history.last_key_value(),
-            Some((&Advance { .. }, &ComponentStateTypeId::Started))
+            Some((&AdvanceLW { .. }, &ComponentStateTypeId::Started))
         ));
 
         // Query with timestamp
