@@ -43,6 +43,7 @@ bitvec = { version = "1.0", features = ["serde"] }
 lazy_static = "1.4"
 tempfile = "3.3"
 serial_test = "2.0.0"
+num = "0.4"
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_exports = { path = "../massa-ledger-exports" }

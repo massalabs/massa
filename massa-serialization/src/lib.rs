@@ -306,7 +306,7 @@ where
     T: Clone,
     DT: Deserializer<T>,
 {
-    pub fn new(data_deserializer: DT) -> Self {
+    pub const fn new(data_deserializer: DT) -> Self {
         OptionDeserializer {
             data_deserializer,
             phantom_t: std::marker::PhantomData,

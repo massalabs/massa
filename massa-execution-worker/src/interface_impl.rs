@@ -18,6 +18,8 @@ use massa_models::{
 };
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
+#[cfg(feature = "testing")]
+use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -101,6 +103,7 @@ impl InterfaceImpl {
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store =
             MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
@@ -604,6 +607,50 @@ impl Interface for InterfaceImpl {
         Ok(public_key.verify_signature(&h, &signature).is_ok())
     }
 
+    /// Verify an EVM signature
+    ///
+    /// Information:
+    /// * Expects a SECP256K1 signature in full ETH format.
+    ///   Format: (r, s, v) v will be ignored
+    ///   Length: 65 bytes
+    /// * Expects a public key in full ETH format.
+    ///   Length: 65 bytes
+    fn verify_evm_signature(
+        &self,
+        signature_: &[u8],
+        message_: &[u8],
+        public_key_: &[u8],
+    ) -> Result<bool> {
+        // check the signature length
+        if signature_.len() != 65 {
+            return Err(anyhow!("invalid signature length"));
+        }
+
+        // parse the public key
+        let public_key = libsecp256k1::PublicKey::parse_slice(
+            public_key_,
+            Some(libsecp256k1::PublicKeyFormat::Full),
+        )?;
+
+        // build the message
+        let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
+        let to_hash = [prefix.as_bytes(), message_].concat();
+        let full_hash = sha3::Keccak256::digest(to_hash);
+        let message = libsecp256k1::Message::parse_slice(&full_hash)
+            .expect("message could not be parsed from a hash slice");
+
+        // parse the signature as being (r, s, v)
+        // r is the R.x value of the signature's R point (32 bytes)
+        // s is the signature proof for R.x (32 bytes)
+        // v is a recovery parameter used to ease the signature verification (1 byte)
+        // we ignore the recovery parameter here
+        // see test_evm_verify for an example of its usage
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+
+        // verify the signature
+        Ok(libsecp256k1::verify(&message, &signature, &public_key))
+    }
+
     /// Transfer coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments
@@ -841,4 +888,50 @@ impl Interface for InterfaceImpl {
         let hash = hasher.finalize().into();
         Ok(hash)
     }
+
+    /// Keccak256 hash function
+    fn hash_keccak256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
+        Ok(sha3::Keccak256::digest(bytes).into())
+    }
+}
+
+#[test]
+fn test_evm_verify() {
+    use hex_literal::hex;
+
+    // corresponding address is 0x807a7Bb5193eDf9898b9092c1597bB966fe52514
+    let message_ = b"test";
+    let signature_ = hex!("d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b");
+    let private_key_ = hex!("ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3");
+
+    // build original public key
+    let private_key = libsecp256k1::SecretKey::parse_slice(&private_key_).unwrap();
+    let public_key = libsecp256k1::PublicKey::from_secret_key(&private_key);
+
+    // build the message
+    let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
+    let to_hash = [prefix.as_bytes(), message_].concat();
+    let full_hash = sha3::Keccak256::digest(&to_hash);
+    let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
+
+    // parse the signature as being (r, s, v)
+    // r is the R.x value of the signature's R point (32 bytes)
+    // s is the signature proof for R.x (32 bytes)
+    // v is a recovery parameter used to ease the signature verification (1 byte)
+    let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+    let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
+
+    // check 1
+    // verify the signature
+    assert!(libsecp256k1::verify(&message, &signature, &public_key));
+
+    // check 2
+    // recover the public key using v and match it with the derived one
+    let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+    assert_eq!(public_key, recovered);
+
+    // check 3
+    // sign the message and match it with the original signature
+    let (second_signature, _) = libsecp256k1::sign(&message, &private_key);
+    assert_eq!(signature, second_signature);
 }

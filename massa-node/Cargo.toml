@@ -13,6 +13,7 @@ lazy_static = "1.4"
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["full"] }
+num = "0.4"
 tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
