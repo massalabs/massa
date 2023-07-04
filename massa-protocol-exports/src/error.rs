@@ -57,11 +57,6 @@ pub enum ProtocolError {
         /// received announced network version
         announced_received: u32,
     },
-    /// Invalid announced network version (expected None)
-    InvalidAnnouncedNetworkVersion {
-        /// received announced network version
-        announced_received: u32,
-    },
     /// Versioned factory error: {0}
     FactoryError(#[from] FactoryError),
     /// PoS error: {0}

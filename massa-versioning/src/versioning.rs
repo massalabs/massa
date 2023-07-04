@@ -9,14 +9,16 @@ use num::{rational::Ratio, Zero};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
     VERSIONING_CF,
 };
-use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
+use massa_models::config::{
+    MIP_STATS_RATIO_WARN_ANNOUNCED_VERSION, MIP_STORE_STATS_BLOCK_CONSIDERED,
+};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -890,7 +892,8 @@ impl MipStoreRaw {
                 .push_back(announced_network_version);
 
             // We update the count of the received version (example: update counter for version 1)
-            self.stats
+            let mut network_version_count = *self
+                .stats
                 .network_version_counters
                 .entry(announced_network_version)
                 .and_modify(|v| *v = v.saturating_add(1))
@@ -905,8 +908,29 @@ impl MipStoreRaw {
                 {
                     let entry_value = e.get_mut();
                     *entry_value = entry_value.saturating_sub(1);
+                    network_version_count = *entry_value;
                     if *entry_value == 0 {
                         self.stats.network_version_counters.remove(&removed_version);
+                    }
+                }
+            }
+
+            if announced_network_version != 0 {
+                let vote_ratio = Ratio::new(
+                    network_version_count,
+                    self.stats.config.block_count_considered as u64,
+                );
+
+                if vote_ratio > MIP_STATS_RATIO_WARN_ANNOUNCED_VERSION {
+                    let last_key_value = self.store.last_key_value();
+                    if let Some((mi, _ms)) = last_key_value {
+                        if announced_network_version > mi.version {
+                            // Vote ratio is > 30%
+                            // announced version is not known (not in MIP store)
+                            // announced version is > to the last known network version in MIP store
+                            // -> Warn the user to update
+                            warn!("Please update your node if you want to support this update (new network version: {})", announced_network_version);
+                        }
                     }
                 }
             }
@@ -982,6 +1006,8 @@ impl MipStoreRaw {
 
         version
     }
+
+    // fn contains_network_version(&self, current_network_version: u32, announced)
 
     // Network restart
 
