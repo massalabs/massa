@@ -1,4 +1,4 @@
-#![feature(btree_drain_filter)]
+#![feature(btree_extract_if)]
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 mod config;

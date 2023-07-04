@@ -7,7 +7,7 @@
 //! When no instance of `Storage` claims a reference to a given object anymore, that object is automatically removed from storage.
 
 #![warn(missing_docs)]
-#![feature(hash_drain_filter)]
+#![feature(hash_extract_if)]
 #![feature(map_try_insert)]
 
 mod block_indexes;
@@ -137,21 +137,21 @@ impl Storage {
         self.local_used_ops.extend(
             &other
                 .local_used_ops
-                .drain_filter(|id| !self.local_used_ops.contains(id))
+                .extract_if(|id| !self.local_used_ops.contains(id))
                 .collect::<Vec<_>>(),
         );
 
         self.local_used_blocks.extend(
             &other
                 .local_used_blocks
-                .drain_filter(|id| !self.local_used_blocks.contains(id))
+                .extract_if(|id| !self.local_used_blocks.contains(id))
                 .collect::<Vec<_>>(),
         );
 
         self.local_used_endorsements.extend(
             &other
                 .local_used_endorsements
-                .drain_filter(|id| !self.local_used_endorsements.contains(id))
+                .extract_if(|id| !self.local_used_endorsements.contains(id))
                 .collect::<Vec<_>>(),
         );
     }
