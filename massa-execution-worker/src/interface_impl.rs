@@ -18,6 +18,8 @@ use massa_models::{
 };
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
+#[cfg(feature = "testing")]
+use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -101,6 +103,7 @@ impl InterfaceImpl {
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store =
             MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");

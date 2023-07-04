@@ -317,7 +317,7 @@ mod tests {
         let de_status_iter = (1..bound_1).map(|i| {
             let block_header_1 = BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(i, 0),
                 parents: vec![],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),

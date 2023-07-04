@@ -10,7 +10,8 @@ use crate::secure_share::{
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer,
 };
 use massa_signature::PublicKey;
 use nom::branch::alt;
@@ -30,7 +31,7 @@ pub struct BlockHeader {
     /// current network version
     pub current_version: u32,
     /// announced network version
-    pub announced_version: u32,
+    pub announced_version: Option<u32>,
     /// slot
     pub slot: Slot,
     /// parents
@@ -139,6 +140,7 @@ pub struct BlockHeaderSerializer {
     endorsement_content_serializer: EndorsementSerializerLW,
     denunciation_serializer: DenunciationSerializer,
     u32_serializer: U32VarIntSerializer,
+    opt_serializer: OptionSerializer<u32, U32VarIntSerializer>,
 }
 
 impl BlockHeaderSerializer {
@@ -148,6 +150,7 @@ impl BlockHeaderSerializer {
             slot_serializer: SlotSerializer::new(),
             endorsement_serializer: SecureShareSerializer::new(),
             u32_serializer: U32VarIntSerializer::new(),
+            opt_serializer: OptionSerializer::new(U32VarIntSerializer),
             endorsement_content_serializer: EndorsementSerializerLW::new(),
             denunciation_serializer: DenunciationSerializer::new(),
         }
@@ -177,7 +180,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
-    ///   announced_version: 0,
+    ///   announced_version: None,
     ///   slot: Slot::new(1, 1),
     ///   parents,
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -212,7 +215,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
         // network versions
         self.u32_serializer
             .serialize(&value.current_version, buffer)?;
-        self.u32_serializer
+        self.opt_serializer
             .serialize(&value.announced_version, buffer)?;
 
         // slot
@@ -272,6 +275,7 @@ pub struct BlockHeaderDeserializer {
     denunciation_len_deserializer: U32VarIntDeserializer,
     denunciation_deserializer: DenunciationDeserializer,
     network_versions_deserializer: U32VarIntDeserializer,
+    opt_deserializer: OptionDeserializer<u32, U32VarIntDeserializer>,
 }
 
 impl BlockHeaderDeserializer {
@@ -302,6 +306,10 @@ impl BlockHeaderDeserializer {
                 Included(0),
                 Included(u32::MAX),
             ),
+            opt_deserializer: OptionDeserializer::new(U32VarIntDeserializer::new(
+                Included(0),
+                Included(u32::MAX),
+            )),
             denunciation_deserializer: DenunciationDeserializer::new(
                 thread_count,
                 endorsement_count,
@@ -330,7 +338,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
-    ///   announced_version: 0,
+    ///   announced_version: None,
     ///   slot: Slot::new(1, 1),
     ///   parents: parents.clone(),
     ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -373,14 +381,14 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ) -> IResult<&'a [u8], BlockHeader, E> {
         let (rest, (current_version, announced_version, slot, parents, operation_merkle_root)): (
             &[u8],
-            (u32, u32, Slot, Vec<BlockId>, Hash),
+            (u32, Option<u32>, Slot, Vec<BlockId>, Hash),
         ) = context("Failed BlockHeader deserialization", |input| {
             let (rest, (current_version, announced_version, slot, parents)) = tuple((
                 context("Failed current_version deserialization", |input| {
                     self.network_versions_deserializer.deserialize(input)
                 }),
                 context("Failed announced_version deserialization", |input| {
-                    self.network_versions_deserializer.deserialize(input)
+                    self.opt_deserializer.deserialize(input)
                 }),
                 context("Failed slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
@@ -645,7 +653,7 @@ mod test {
 
         let block_header_1 = BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from("mno".as_bytes()),

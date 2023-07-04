@@ -211,7 +211,7 @@ pub struct ExecutedBlockInfo {
     /// Current network version (see Versioning doc)
     pub current_version: u32,
     /// Announced network version (see Versioning doc)
-    pub announced_version: u32,
+    pub announced_version: Option<u32>,
 }
 
 /// structure describing the output of a single execution

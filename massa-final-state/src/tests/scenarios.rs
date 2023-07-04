@@ -105,6 +105,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         [],
         MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         },
     ))
     .unwrap();
@@ -129,6 +130,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
 }
 
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use std::{fs, io};
 
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {

@@ -9,7 +9,7 @@ use num::{rational::Ratio, Zero};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
@@ -555,30 +555,25 @@ impl MipStore {
 
     /// Retrieve the network version number to announce in block header
     /// return 0 is there is nothing to announce
-    pub fn get_network_version_to_announce(&self) -> u32 {
+    pub fn get_network_version_to_announce(&self) -> Option<u32> {
         let lock = self.0.read();
         let store = lock.deref();
         // Announce the latest versioning info in Started / LockedIn state
         // Defined == Not yet ready to announce
         // Active == current version
-        store
-            .store
-            .iter()
-            .rev()
-            .find_map(|(k, v)| {
-                matches!(
-                    &v.state,
-                    &ComponentState::Started(_) | &ComponentState::LockedIn(_)
-                )
-                .then_some(k.version)
-            })
-            .unwrap_or(0)
+        store.store.iter().rev().find_map(|(k, v)| {
+            matches!(
+                &v.state,
+                &ComponentState::Started(_) | &ComponentState::LockedIn(_)
+            )
+            .then_some(k.version)
+        })
     }
 
     pub fn update_network_version_stats(
         &mut self,
         slot_timestamp: MassaTime,
-        network_versions: Option<(u32, u32)>,
+        network_versions: Option<(u32, Option<u32>)>,
     ) {
         let mut lock = self.0.write();
         lock.update_network_version_stats(slot_timestamp, network_versions);
@@ -680,12 +675,13 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStatsConfig {
     pub block_count_considered: usize,
+    pub warn_announced_version_ratio: Ratio<u64>,
 }
 
 /// In order for a MIP to be accepted, we compute statistics about other node 'network' version announcement
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct MipStoreStats {
-    // config for max counters + block to consider when computing the vote ratio
+    // config for block count to consider when computing the vote ratio
     pub(crate) config: MipStatsConfig,
     // Last network version announcements (in last block header)
     // Used to clean up the field: network_version_counters (pop the oldest then subtract matching counter)
@@ -879,9 +875,11 @@ impl MipStoreRaw {
     fn update_network_version_stats(
         &mut self,
         slot_timestamp: MassaTime,
-        network_versions: Option<(u32, u32)>,
+        network_versions: Option<(u32, Option<u32>)>,
     ) {
-        if let Some((_current_network_version, announced_network_version)) = network_versions {
+        if let Some((_current_network_version, announced_network_version_)) = network_versions {
+            let announced_network_version = announced_network_version_.unwrap_or(0);
+
             let removed_version_ = match self.stats.latest_announcements.len() {
                 n if n >= self.stats.config.block_count_considered => {
                     self.stats.latest_announcements.pop_front()
@@ -893,7 +891,8 @@ impl MipStoreRaw {
                 .push_back(announced_network_version);
 
             // We update the count of the received version (example: update counter for version 1)
-            self.stats
+            let mut network_version_count = *self
+                .stats
                 .network_version_counters
                 .entry(announced_network_version)
                 .and_modify(|v| *v = v.saturating_add(1))
@@ -908,8 +907,33 @@ impl MipStoreRaw {
                 {
                     let entry_value = e.get_mut();
                     *entry_value = entry_value.saturating_sub(1);
+                    network_version_count = *entry_value;
                     if *entry_value == 0 {
                         self.stats.network_version_counters.remove(&removed_version);
+                    }
+                }
+            }
+
+            if announced_network_version != 0 {
+                let vote_ratio = Ratio::new(
+                    network_version_count,
+                    self.stats.config.block_count_considered as u64,
+                );
+
+                if vote_ratio > self.stats.config.warn_announced_version_ratio {
+                    let last_key_value = self.store.last_key_value();
+                    if let Some((mi, _ms)) = last_key_value {
+                        if announced_network_version > mi.version {
+                            // Vote ratio is > 30%
+                            // announced version is not known (not in MIP store)
+                            // announced version is > to the last known network version in MIP store
+                            // -> Warn the user to update
+                            warn!("{} our of {} last blocks advertised that they are willing to transition to version {}. You should update your node if you wish to move to that version.",
+                                network_version_count,
+                                self.stats.config.block_count_considered,
+                                announced_network_version
+                            );
+                        }
                     }
                 }
             }
@@ -1177,8 +1201,10 @@ impl MipStoreRaw {
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mip_info_deser = MipInfoDeserializer::new();
         let mip_state_deser = MipStateDeserializer::new();
-        let mip_store_stats_deser =
-            MipStoreStatsDeserializer::new(MIP_STORE_STATS_BLOCK_CONSIDERED);
+        let mip_store_stats_deser = MipStoreStatsDeserializer::new(
+            MIP_STORE_STATS_BLOCK_CONSIDERED,
+            self.stats.config.warn_announced_version_ratio,
+        );
 
         let db = db.read();
 
@@ -1211,6 +1237,10 @@ impl MipStoreRaw {
                     stats: MipStoreStats {
                         config: MipStatsConfig {
                             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                            warn_announced_version_ratio: self
+                                .stats
+                                .config
+                                .warn_announced_version_ratio,
                         },
                         latest_announcements: Default::default(),
                         network_version_counters: Default::default(),
@@ -1260,6 +1290,10 @@ impl MipStoreRaw {
                 stats: MipStoreStats {
                     config: MipStatsConfig {
                         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                        warn_announced_version_ratio: self
+                            .stats
+                            .config
+                            .warn_announced_version_ratio,
                     },
                     latest_announcements: Default::default(),
                     network_version_counters: Default::default(),
@@ -1580,6 +1614,7 @@ mod test {
         // TODO: Have VersioningStore::from ?
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let vs_raw = MipStoreRaw {
             store: BTreeMap::from([(mi.clone(), vs_1), (mi_2.clone(), vs_2)]),
@@ -1589,7 +1624,7 @@ mod test {
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
 
         assert_eq!(vs.get_network_version_current(), mi.version);
-        assert_eq!(vs.get_network_version_to_announce(), mi_2.version);
+        assert_eq!(vs.get_network_version_to_announce(), Some(mi_2.version));
 
         // Test also an empty versioning store
         let vs_raw = MipStoreRaw {
@@ -1598,7 +1633,7 @@ mod test {
         };
         let vs = MipStore(Arc::new(RwLock::new(vs_raw)));
         assert_eq!(vs.get_network_version_current(), 0);
-        assert_eq!(vs.get_network_version_to_announce(), 0);
+        assert_eq!(vs.get_network_version_to_announce(), None);
     }
 
     #[test]
@@ -1704,6 +1739,7 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mut vs_raw_1 = MipStoreRaw::try_from((
             [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -1763,6 +1799,7 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         // case 1
@@ -1840,6 +1877,7 @@ mod test {
         // part 0 - defines data for the test
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
@@ -1890,6 +1928,7 @@ mod test {
 
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let mip_store = MipStore::try_from(([], mip_stats_config));
@@ -1903,6 +1942,7 @@ mod test {
         // data
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let mut mip_store_raw_1 = MipStoreRaw::try_from(([], mip_stats_config.clone())).unwrap();
@@ -1990,6 +2030,7 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mut mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
@@ -2116,7 +2157,7 @@ mod test {
             // Update stats - so should force transitions if any
             store.update_network_version_stats(
                 get_slot_ts(shutdown_end.get_next_slot(THREAD_COUNT).unwrap()),
-                Some((1, 0)),
+                Some((1, None)),
             );
 
             let (first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
@@ -2188,6 +2229,7 @@ mod test {
 
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mut mip_store = MipStore::try_from((
             [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
@@ -2284,6 +2326,7 @@ mod test {
 
         let mip_stats_config = MipStatsConfig {
             block_count_considered: 2,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let activation_delay = MassaTime::from_millis(100);
         let timeout = MassaTime::now()
@@ -2303,11 +2346,11 @@ mod test {
             MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
 
         // Current network version is 0, next one is 1
-        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, Some(1))));
         assert_eq!(mip_store.stats.network_version_counters.len(), 1);
         assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&1));
 
-        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, Some(1))));
         assert_eq!(mip_store.stats.network_version_counters.len(), 1);
         assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&2));
 
@@ -2324,7 +2367,7 @@ mod test {
         );
 
         // Now network version is 1, next one is 2
-        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((1, 2)));
+        mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((1, Some(2))));
         // Counter for announced version: 1 & 2
         assert_eq!(mip_store.stats.network_version_counters.len(), 2);
         // First announced version 1 was removed and so the counter decremented
