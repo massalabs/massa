@@ -607,7 +607,7 @@ impl MipStore {
 
     // Query
 
-    /// Get all versions in 'Active state' for the given MipComponent
+    /// Get latest version at given timestamp (e.g. slot) for the given MipComponent
     pub fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
         let guard = self.0.read();
         guard.get_latest_component_version_at(component, ts)
@@ -992,7 +992,7 @@ impl MipStoreRaw {
 
     // Query
 
-    /// Get all versions in 'Active state' for the given MipComponent
+    /// Get latest version at given timestamp (e.g. slot)
     fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
         let version = self
             .store
