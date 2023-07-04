@@ -374,81 +374,11 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
-<span class="kw">use </span>std::iter;
 <span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use </span><span class="kw">crate</span>::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipStore};
+<span class="kw">use </span><span class="kw">crate</span>::versioning::{ComponentStateTypeId, MipComponent, MipStore};
 
 <span class="doccomment">/// Factory error
 </span><span class="attr">#[allow(missing_docs)]
@@ -499,92 +429,28 @@
     <span class="doccomment">/// Access to the MipStore
     </span><span class="kw">fn </span>get_versioning_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MipStore;
 
-    <span class="comment">/*
-    /// Get latest component version (aka last active for the factory component)
-    fn get_latest_component_version(&amp;self) -&gt; u32 {
-        let component = Self::get_component();
-        let vi_store_ = self.get_versioning_store();
-        let vi_store = vi_store_.0.read();
-
-        vi_store
-            .store
-            .iter()
-            .rev()
-            .find_map(|(vi, vsh)| {
-                if matches!(vsh.state, ComponentState::Active(_)) {
-                    vi.components.get(&amp;component).copied()
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(0)
-    }
-    */
-
-    </span><span class="doccomment">/// Get latest version at given timestamp (e.g. slot)
+    <span class="doccomment">/// Get latest version at given timestamp (e.g. slot)
     </span><span class="kw">fn </span>get_latest_component_version_at(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;u32, FactoryError&gt; {
         <span class="kw">let </span>component = <span class="self">Self</span>::get_component();
-        <span class="kw">let </span>vi_store_ = <span class="self">self</span>.get_versioning_store();
-        <span class="kw">let </span>vi_store = vi_store_.<span class="number">0</span>.read();
-
-        <span class="comment">// Iter backward, filter component + state active,
-        </span><span class="kw">let </span>version = vi_store
-            .store
-            .iter()
-            .rev()
-            .filter(|(vi, vsh)| {
-                vi.components.get(<span class="kw-2">&amp;</span>component).is_some()
-                    &amp;&amp; <span class="macro">matches!</span>(vsh.state, ComponentState::Active(<span class="kw">_</span>))
-            })
-            .find_map(|(vi, vsh)| {
-                <span class="kw">let </span>res = vsh.state_at(ts, vi.start, vi.timeout);
-                <span class="kw">match </span>res {
-                    <span class="prelude-val">Ok</span>(ComponentStateTypeId::Active) =&gt; vi.components.get(<span class="kw-2">&amp;</span>component).copied(),
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-                }
-            })
-            .unwrap_or(<span class="number">0</span>);
-
-        <span class="prelude-val">Ok</span>(version)
+        <span class="kw">let </span>mi_store_ = <span class="self">self</span>.get_versioning_store();
+        <span class="prelude-val">Ok</span>(mi_store_.get_latest_component_version_at(<span class="kw-2">&amp;</span>component, ts))
     }
 
     <span class="doccomment">/// Get all versions in &#39;Active state&#39; for the associated MipComponent
     </span><span class="kw">fn </span>get_all_active_component_versions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u32&gt; {
         <span class="kw">let </span>component = <span class="self">Self</span>::get_component();
-        <span class="kw">let </span>vi_store_ = <span class="self">self</span>.get_versioning_store();
-        <span class="kw">let </span>vi_store = vi_store_.<span class="number">0</span>.read();
-
-        <span class="kw">let </span>versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
-            <span class="kw">if </span><span class="macro">matches!</span>(vsh.state, ComponentState::Active(<span class="kw">_</span>)) {
-                vi.components.get(<span class="kw-2">&amp;</span>component).copied()
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        });
-        <span class="kw">let </span>versions: Vec&lt;u32&gt; = iter::once(<span class="number">0</span>).chain(versions_iter).collect();
-        versions
+        <span class="kw">let </span>mip_store = <span class="self">self</span>.get_versioning_store();
+        mip_store.get_all_active_component_versions(<span class="kw-2">&amp;</span>component)
     }
 
     <span class="doccomment">/// Get all versions (at any state) for the associated MipComponent
     </span><span class="kw">fn </span>get_all_component_versions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;u32, ComponentStateTypeId&gt; {
         <span class="kw">let </span>component = <span class="self">Self</span>::get_component();
-        <span class="kw">let </span>vi_store_ = <span class="self">self</span>.get_versioning_store();
-        <span class="kw">let </span>vi_store = vi_store_.<span class="number">0</span>.read();
-
-        <span class="kw">let </span>versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
-            vi.components
-                .get(<span class="kw-2">&amp;</span>component)
-                .copied()
-                .map(|component_version| {
-                    (component_version, ComponentStateTypeId::from(<span class="kw-2">&amp;</span>vsh.state))
-                })
-        });
-        iter::once((<span class="number">0</span>, ComponentStateTypeId::Active))
-            .chain(versions_iter)
-            .collect()
+        <span class="kw">let </span>mip_store = <span class="self">self</span>.get_versioning_store();
+        mip_store.get_all_component_versions(<span class="kw-2">&amp;</span>component)
     }
 
-    <span class="doccomment">/// Get the version the current component with the given startegy
+    <span class="doccomment">/// Get the version the current component with the given strategy
     </span><span class="kw">fn </span>get_component_version_with_strategy(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         strategy: FactoryStrategy,
@@ -598,8 +464,7 @@
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(FactoryError::UnknownVersion(v)),
             },
             FactoryStrategy::At(ts) =&gt; <span class="self">self</span>.get_latest_component_version_at(ts),
-            <span class="comment">// None | Some(FactoryStrategy::Latest) =&gt; Ok(self.get_latest_component_version()),
-        </span>}
+        }
     }
 
     <span class="doccomment">/// Create an object of type Self::Output
@@ -614,11 +479,10 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use </span>num::rational::Ratio;
     <span class="kw">use </span>std::collections::BTreeMap;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
-    <span class="kw">use </span><span class="kw">crate</span>::versioning::{MipInfo, MipState, MipStatsConfig};
+    <span class="kw">use </span><span class="kw">crate</span>::versioning::{ComponentState, MipInfo, MipState, MipStatsConfig};
 
     <span class="kw">use </span>massa_time::MassaTime;
 
@@ -742,7 +606,6 @@
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
-            warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
 
         <span class="kw">let </span>vs = MipStore::try_from((
@@ -833,7 +696,6 @@
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
-            warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
 
         <span class="kw">let </span>vs = MipStore::try_from((
