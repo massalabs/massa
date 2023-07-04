@@ -110,10 +110,12 @@ machine!(
         /// Initial state
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
-        Started { pub(crate) threshold: Ratio<u64> },
+        Started { pub(crate) vote_ratio: Ratio<u64> },
         /// Locked but wait for some time before going to active (to let users the time to upgrade)
+        /// 'at' is the timestamp where the transition from 'Started' to 'LockedIn' happened
         LockedIn { pub(crate) at: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
+        /// 'at' is the timestamp where the transition from 'LockedIn' to 'Active' happened
         Active { pub(crate) at: MassaTime },
         /// Past the timeout, if LockedIn is not reach
         Failed,
@@ -123,6 +125,15 @@ machine!(
 impl Default for ComponentState {
     fn default() -> Self {
         Self::Defined(Defined {})
+    }
+}
+
+impl ComponentState {
+    fn is_final(&self) -> bool {
+        matches!(
+            self,
+            ComponentState::Active(..) | ComponentState::Failed(..) | ComponentState::Error
+        )
     }
 }
 
@@ -255,18 +266,18 @@ impl Failed {
     }
 }
 
-/// Error returned by `MipState::is_coherent_with`
+/// Error returned by `MipState::is_consistent_with`
 #[derive(Error, Debug, PartialEq)]
-pub enum IsCoherentError {
-    // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+pub enum IsConsistentError {
+    // State is not consistent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
     #[error("MipState history is empty")]
     EmptyHistory,
     #[error("MipState is at state Error")]
     AtError,
     #[error("History must start at state 'Defined' and not {0:?}")]
     InvalidHistory(ComponentStateTypeId),
-    #[error("Non coherent state: {0:?} versus rebuilt state: {1:?}")]
-    NonCoherent(ComponentState, ComponentState),
+    #[error("Non consistent state: {0:?} versus rebuilt state: {1:?}")]
+    NonConsistent(ComponentState, ComponentState),
     #[error("Invalid data in MIP info, start >= timeout")]
     Invalid,
 }
@@ -336,35 +347,35 @@ impl MipState {
         }
     }
 
-    /// Given a corresponding MipInfo, check if state is coherent
-    /// it is coherent
+    /// Given a corresponding MipInfo, check if state is consistent
+    /// it is consistent
     ///   if state can be at this position (e.g. can it be at state "Started" according to given time range)
-    ///   if history is coherent with current state
+    ///   if history is consistent with current state
     /// Return false for state == ComponentState::Error
-    pub fn is_coherent_with(&self, mip_info: &MipInfo) -> Result<(), IsCoherentError> {
+    pub fn is_consistent_with(&self, mip_info: &MipInfo) -> Result<(), IsConsistentError> {
         // Always return false for state Error or if history is empty
         if matches!(&self.state, &ComponentState::Error) {
-            return Err(IsCoherentError::AtError);
+            return Err(IsConsistentError::AtError);
         }
 
         if mip_info.start >= mip_info.timeout {
-            return Err(IsCoherentError::Invalid);
+            return Err(IsConsistentError::Invalid);
         }
 
         if self.history.is_empty() {
-            return Err(IsCoherentError::EmptyHistory);
+            return Err(IsConsistentError::EmptyHistory);
         }
 
         // safe to unwrap (already tested if empty or not)
         let (initial_ts, initial_state_id) = self.history.first_key_value().unwrap();
         if *initial_state_id != ComponentStateTypeId::Defined {
             // self.history does not start with Defined -> (always) false
-            return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
+            return Err(IsConsistentError::InvalidHistory(initial_state_id.clone()));
         }
 
         if mip_info.start < initial_ts.now || mip_info.timeout < initial_ts.now {
             // MIP info start (or timeout) is before Defined timestamp??
-            return Err(IsCoherentError::InvalidHistory(initial_state_id.clone()));
+            return Err(IsConsistentError::InvalidHistory(initial_state_id.clone()));
         }
 
         // Build a new MipStateHistory from initial state, replaying the whole history
@@ -387,9 +398,11 @@ impl MipState {
         // Advance state if both are at 'Started' (to have the same threshold)
         // Note: because in history we do not add entries for every threshold update
         if let (
-            ComponentState::Started(Started { threshold }),
             ComponentState::Started(Started {
-                threshold: threshold_2,
+                vote_ratio: threshold,
+            }),
+            ComponentState::Started(Started {
+                vote_ratio: threshold_2,
             }),
         ) = (vsh.state, self.state)
         {
@@ -404,7 +417,7 @@ impl MipState {
         if vsh == *self {
             Ok(())
         } else {
-            Err(IsCoherentError::NonCoherent(self.state, vsh.state))
+            Err(IsConsistentError::NonConsistent(self.state, vsh.state))
         }
     }
 
@@ -499,10 +512,7 @@ impl MipState {
 
     /// Return True if state can not change anymore (e.g. Active, Failed or Error)
     pub fn is_final(&self) -> bool {
-        matches!(
-            self.state,
-            ComponentState::Active(..) | ComponentState::Failed(..) | ComponentState::Error
-        )
+        self.state.is_final()
     }
 }
 
@@ -619,7 +629,7 @@ impl MipStore {
     }
 
     // Network restart
-    pub fn is_coherent_with_shutdown_period(
+    pub fn is_consistent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
         shutdown_end: Slot,
@@ -628,7 +638,7 @@ impl MipStore {
         genesis_timestamp: MassaTime,
     ) -> Result<bool, ModelsError> {
         let guard = self.0.read();
-        guard.is_coherent_with_shutdown_period(
+        guard.is_consistent_with_shutdown_period(
             shutdown_start,
             shutdown_end,
             thread_count,
@@ -715,9 +725,9 @@ impl MipStoreStats {
 /// Error returned by `MipStoreRaw::update_with`
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateWithError {
-    // State is not coherent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    #[error("MipInfo {0:#?} is not coherent with state: {1:#?}, error: {2}")]
-    NonCoherent(MipInfo, MipState, IsCoherentError),
+    // State is not consistent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
+    #[error("MipInfo {0:#?} is not consistent with state: {1:#?}, error: {2}")]
+    NonConsistent(MipInfo, MipState, IsConsistentError),
     // ex: State is already started but received state is only defined
     #[error("For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}")]
     Downgrade(MipInfo, ComponentState, ComponentState),
@@ -777,9 +787,9 @@ impl MipStoreRaw {
         let mut has_error: Option<UpdateWithError> = None;
 
         for (v_info, v_state) in store_raw.store.iter() {
-            if let Err(e) = v_state.is_coherent_with(v_info) {
-                // As soon as we found one non coherent state we abort the merge
-                has_error = Some(UpdateWithError::NonCoherent(
+            if let Err(e) = v_state.is_consistent_with(v_info) {
+                // As soon as we found one non consistent state we abort the merge
+                has_error = Some(UpdateWithError::NonConsistent(
                     v_info.clone(),
                     v_state.clone(),
                     e,
@@ -988,9 +998,9 @@ impl MipStoreRaw {
 
     // Network restart
 
-    /// Check if store is coherent with given last network shutdown
-    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is coherent
-    fn is_coherent_with_shutdown_period(
+    /// Check if store is consistent with given last network shutdown
+    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is consistent
+    fn is_consistent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
         shutdown_end: Slot,
@@ -998,7 +1008,7 @@ impl MipStoreRaw {
         t0: MassaTime,
         genesis_timestamp: MassaTime,
     ) -> Result<bool, ModelsError> {
-        let mut is_coherent = true;
+        let mut is_consistent = true;
 
         let shutdown_start_ts =
             get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_start)?;
@@ -1013,13 +1023,13 @@ impl MipStoreRaw {
                     if shutdown_range.contains(&mip_info.start)
                         || shutdown_range.contains(&mip_info.timeout)
                     {
-                        is_coherent = false;
+                        is_consistent = false;
                         break;
                     }
                 }
                 ComponentState::Started(..) => {
                     // assume this should have been reset
-                    is_coherent = false;
+                    is_consistent = false;
                     break;
                 }
                 _ => {
@@ -1029,7 +1039,7 @@ impl MipStoreRaw {
             }
         }
 
-        Ok(is_coherent)
+        Ok(is_consistent)
     }
 
     #[allow(dead_code)]
@@ -1387,7 +1397,7 @@ mod test {
         assert_eq!(
             state,
             ComponentState::Started(Started {
-                threshold: Ratio::zero()
+                vote_ratio: Ratio::zero()
             })
         );
     }
@@ -1602,8 +1612,8 @@ mod test {
     }
 
     #[test]
-    fn test_is_coherent_with() {
-        // Test MipStateHistory::is_coherent_with (coherence of MIP state against its MIP info)
+    fn test_is_consistent_with() {
+        // Test MipStateHistory::is_consistent_with (consistency of MIP state against its MIP info)
 
         // Given the following MIP info, we expect state
         // Defined @ time <= 2
@@ -1633,20 +1643,23 @@ mod test {
             history: Default::default(),
         };
         // At state Error -> (always) false
-        assert_eq!(vsh.is_coherent_with(&vi_1), Err(IsCoherentError::AtError));
+        assert_eq!(
+            vsh.is_consistent_with(&vi_1),
+            Err(IsConsistentError::AtError)
+        );
 
         let vsh = MipState {
             state: ComponentState::defined(),
             history: Default::default(),
         };
         // At state Defined but no history -> false
-        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), false);
+        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), false);
 
         let mut vsh = MipState::new(MassaTime::from_millis(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
-        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
+        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
-        // assert_eq!(vsh.is_coherent_with(&vi_1, MassaTime::from_millis(3)), false);
+        // assert_eq!(vsh.is_consistent_with(&vi_1, MassaTime::from_millis(3)), false);
 
         // Advance to Started
         let now = MassaTime::from_millis(3);
@@ -1658,9 +1671,9 @@ mod test {
 
         // At state Started at time now -> true
         assert_eq!(vsh.state, ComponentState::started(Ratio::new_raw(14, 100)));
-        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
+        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
         // Now with another versioning info
-        assert_eq!(vsh.is_coherent_with(&vi_2).is_ok(), false);
+        assert_eq!(vsh.is_consistent_with(&vi_2).is_ok(), false);
 
         // Advance to LockedIn
         let now = MassaTime::from_millis(4);
@@ -1669,7 +1682,7 @@ mod test {
 
         // At state LockedIn at time now -> true
         assert_eq!(vsh.state, ComponentState::locked_in(now));
-        assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
+        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
 
         // edge cases
         // TODO: history all good but does not start with Defined, start with Started
@@ -1860,7 +1873,7 @@ mod test {
 
             let mip_store =
                 MipStoreRaw::try_from(([(mi_1_1, ms_1.clone())], mip_stats_cfg.clone()));
-            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+            assert_matches!(mip_store, Err(UpdateWithError::NonConsistent(..)));
         }
         {
             let ms_1_2 = MipState::new(MassaTime::from_millis(15));
@@ -1870,7 +1883,7 @@ mod test {
             mi_1_2.timeout = MassaTime::from_millis(5);
 
             let mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg.clone()));
-            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+            assert_matches!(mip_store, Err(UpdateWithError::NonConsistent(..)));
         }
         {
             let ms_1_2 = MipState::new(MassaTime::from_millis(15));
@@ -1880,7 +1893,7 @@ mod test {
             mi_1_2.timeout = MassaTime::from_millis(5);
 
             let mip_store = MipStoreRaw::try_from(([(mi_1_2, ms_1_2)], mip_stats_cfg));
-            assert_matches!(mip_store, Err(UpdateWithError::NonCoherent(..)));
+            assert_matches!(mip_store, Err(UpdateWithError::NonConsistent(..)));
         }
     }
 
@@ -1931,7 +1944,7 @@ mod test {
 
     #[test]
     fn test_mip_store_network_restart() {
-        // Test if we can get a coherent MipStore after a network shutdown
+        // Test if we can get a consistent MipStore after a network shutdown
 
         let genesis_timestamp = MassaTime::from_millis(0);
 
@@ -1941,9 +1954,9 @@ mod test {
         // helper functions so the test code is easy to read
         let get_slot_ts =
             |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
-        let is_coherent = |store: &MipStoreRaw, shutdown_start, shutdown_end| {
+        let is_consistent = |store: &MipStoreRaw, shutdown_start, shutdown_end| {
             store
-                .is_coherent_with_shutdown_period(
+                .is_consistent_with_shutdown_period(
                     shutdown_start,
                     shutdown_end,
                     THREAD_COUNT,
@@ -2023,9 +2036,9 @@ mod test {
             ))
             .unwrap();
 
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), false);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), false);
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
         }
 
@@ -2046,10 +2059,10 @@ mod test {
             let store_orig = store.clone();
 
             // Already ok even with a shutdown but let's check it
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
 
             // Check that nothing has changed
@@ -2071,9 +2084,9 @@ mod test {
             ))
             .unwrap();
 
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), false);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), false);
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
         }
 
@@ -2107,10 +2120,10 @@ mod test {
             ))
             .unwrap();
 
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), false);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), false);
             // _dump_store(&store);
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_coherent(&store, shutdown_start, shutdown_end), true);
+            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
             // _dump_store(&store);
 
             // Update stats - so should force transitions if any
