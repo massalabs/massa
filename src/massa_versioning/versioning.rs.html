@@ -3188,7 +3188,7 @@
                     })
             })
             .collect();
-        <span class="kw">let </span><span class="kw-2">mut </span>names: HashSet&lt;String&gt; = <span class="self">self</span>.store.iter().map(|(mi, <span class="kw">_</span>)| mi.name.clone()).collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>names: HashSet&lt;String&gt; = <span class="self">self</span>.store.keys().map(|mi| mi.name.clone()).collect();
         <span class="kw">let </span><span class="kw-2">mut </span>to_update: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
         <span class="kw">let </span><span class="kw-2">mut </span>to_add: BTreeMap&lt;MipInfo, MipState&gt; = Default::default();
         <span class="kw">let </span><span class="kw-2">mut </span>has_error: <span class="prelude-ty">Option</span>&lt;UpdateWithError&gt; = <span class="prelude-val">None</span>;
