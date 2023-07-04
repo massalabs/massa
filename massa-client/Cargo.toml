@@ -28,7 +28,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_sdk = { path = "../massa-sdk" }
 massa_wallet = { path = "../massa-wallet" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "8873f96", features = ["tonic"]}
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "feature/Improve_ABI_types_in_wasmv1", features = ["tonic"]}
 
 [dev-dependencies]
 toml_edit = "0.19"
