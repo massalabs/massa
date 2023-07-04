@@ -369,23 +369,6 @@
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -399,10 +382,8 @@
 <span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>std::str::FromStr;
 
-<span class="doccomment">/// Decimals scale for the amount
-</span><span class="kw">pub const </span>AMOUNT_DECIMAL_SCALE: u32 = <span class="number">9</span>;
-<span class="doccomment">/// Decimals factor for the amount
-</span><span class="kw">pub const </span>AMOUNT_DECIMAL_FACTOR: u64 = <span class="number">10u64</span>.pow(AMOUNT_DECIMAL_SCALE);
+<span class="doccomment">/// decimal factor for the internal representation
+</span><span class="kw">pub const </span>AMOUNT_DECIMAL_FACTOR: u64 = <span class="number">1_000_000_000</span>;
 
 <span class="doccomment">/// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
@@ -479,21 +460,6 @@
         <span class="kw">let </span>res = raw_mantissa / scale_factor;
         <span class="macro">assert!</span>(res &lt;= (u64::MAX <span class="kw">as </span>u128));
         <span class="self">Self</span>(res <span class="kw">as </span>u64)
-    }
-
-    <span class="doccomment">/// Returns the value in the (mantissa, scale) format where
-    /// amount = mantissa * 10^(-scale)
-    /// ```
-    /// # use massa_models::amount::Amount;
-    /// # use massa_models::amount::AMOUNT_DECIMAL_SCALE;
-    /// # use std::str::FromStr;
-    /// let amount = Amount::from_str(&quot;0.123456789&quot;).unwrap();
-    /// let (mantissa, scale) = amount.to_mantissa_scale();
-    /// assert_eq!(mantissa, 123456789);
-    /// assert_eq!(scale, AMOUNT_DECIMAL_SCALE);
-    /// ```
-    </span><span class="kw">pub fn </span>to_mantissa_scale(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (u64, u32) {
-        (<span class="self">self</span>.<span class="number">0</span>, AMOUNT_DECIMAL_SCALE)
     }
 
     <span class="doccomment">/// Creates an amount in the format mantissa*10^(-scale).
