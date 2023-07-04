@@ -18,7 +18,7 @@ use massa_models::{
 };
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
-#[cfg(any(feature = "testing"))]
+#[cfg(feature = "testing")]
 use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
