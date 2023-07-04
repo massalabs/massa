@@ -29,6 +29,7 @@ use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
@@ -103,6 +104,7 @@ pub fn start_protocol_controller_with_mock_network(
 
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
