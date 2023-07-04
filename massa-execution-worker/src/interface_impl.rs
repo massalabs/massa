@@ -632,7 +632,7 @@ impl Interface for InterfaceImpl {
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
         let to_hash = [prefix.as_bytes(), message_].concat();
-        let full_hash = sha3::Keccak256::digest(&to_hash);
+        let full_hash = sha3::Keccak256::digest(to_hash);
         let message = libsecp256k1::Message::parse_slice(&full_hash)
             .expect("message could not be parsed from a hash slice");
 
