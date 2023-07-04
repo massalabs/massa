@@ -800,7 +800,7 @@ impl MipStoreRaw {
                     })
             })
             .collect();
-        let mut names: HashSet<String> = self.store.iter().map(|(mi, _)| mi.name.clone()).collect();
+        let mut names: HashSet<String> = self.store.keys().map(|mi| mi.name.clone()).collect();
         let mut to_update: BTreeMap<MipInfo, MipState> = Default::default();
         let mut to_add: BTreeMap<MipInfo, MipState> = Default::default();
         let mut has_error: Option<UpdateWithError> = None;
