@@ -385,10 +385,10 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::config::AMOUNT_DECIMAL_SCALE;
-<span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
+</span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
@@ -399,8 +399,10 @@
 <span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>std::str::FromStr;
 
-<span class="doccomment">/// decimal factor for the internal representation
-</span><span class="kw">pub const </span>AMOUNT_DECIMAL_FACTOR: u64 = <span class="number">1_000_000_000</span>;
+<span class="doccomment">/// Decimals scale for the amount
+</span><span class="kw">pub const </span>AMOUNT_DECIMAL_SCALE: u32 = <span class="number">9</span>;
+<span class="doccomment">/// Decimals factor for the amount
+</span><span class="kw">pub const </span>AMOUNT_DECIMAL_FACTOR: u64 = <span class="number">10u64</span>.pow(AMOUNT_DECIMAL_SCALE);
 
 <span class="doccomment">/// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
