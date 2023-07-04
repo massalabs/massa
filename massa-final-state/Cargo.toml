@@ -11,6 +11,7 @@ nom = "=7.1"
 bs58 = { version = "0.4", features = ["check"] }
 thiserror = "1.0"
 tracing = "0.1"
+num = "0.4"
 
 # custom modules
 massa_ledger_exports = { path = "../massa-ledger-exports" }
