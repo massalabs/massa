@@ -1433,6 +1433,7 @@ impl RetrievalThread {
         // send AskBlockEvents
         if !ask_block_list.is_empty() {
             for (peer_id, list) in ask_block_list.iter() {
+                warn!("ASKING {} FOR BLOCKS {:?}", peer_id, list.iter().map(|(v, _)| v).collect::<Vec<_>>());
                 for sub_list in list.chunks(self.config.max_size_block_infos as usize) {
                     debug!("Send ask for blocks of len {} to {}", list.len(), peer_id);
                     if let Err(err) = self.active_connections.send_to_peer(
