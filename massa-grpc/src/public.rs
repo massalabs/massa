@@ -469,49 +469,42 @@ pub(crate) fn get_sc_execution_events(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
 ) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
-    // let inner_req: grpc_api::GetScExecutionEventsRequest = request.into_inner();
-    // let id = inner_req.id;
+    let inner_req: grpc_api::GetScExecutionEventsRequest = request.into_inner();
 
-    // let event_filter = inner_req
-    //     .query
-    //     .map_or(Ok(EventFilter::default()), |query| {
-    //         query.filter.map_or(Ok(EventFilter::default()), |filter| {
-    //             filter.try_into().map_err(|e| {
-    //                 GrpcError::InvalidArgument(format!("failed to parse filter due to: {}", e))
-    //             })
-    //         })
-    //     })?;
+    let mut event_filter: EventFilter = EventFilter::default();
 
-    // // Get the current slot.
-    // let now: MassaTime = MassaTime::now()?;
-    // let current_slot = get_latest_block_slot_at_timestamp(
-    //     grpc.grpc_config.thread_count,
-    //     grpc.grpc_config.t0,
-    //     grpc.grpc_config.genesis_timestamp,
-    //     now,
-    // )?
-    // .unwrap_or_else(|| Slot::new(0, 0));
+    inner_req.filters.into_iter().for_each(|query| {
+        if let Some(filter) = query {
+            match filter {
+                grpc_api::sc_execution_events_filter::Filter::SlotRange(range) => {
+                    event_filter.start = range.start as u64;
+                    event_filter.end = range.end as u64;
+                }
+                grpc_api::sc_execution_events_filter::Filter::CallerAddress(address) => {
+                    event_filter.original_caller_address = Some(address);
+                }
+                grpc_api::sc_execution_events_filter::Filter::EmitterAddress(address) => {
+                    event_filter.emitter_address = Some(address);
+                }
+                grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(id) => {
+                    event_filter.original_operation_id = Some(id);
+                }
+                grpc_api::sc_execution_events_filter::Filter::Status(status) => {
+                    event_filter.is_final = Some(status.is_final);
+                    event_filter.is_error = Some(status.is_error);
+                }
+            }
+        }
+    });
 
-    // // Create the context for the response.
-    // let context = Some(grpc_api::GetScExecutionEventsContext {
-    //     slot: Some(current_slot.into()),
-    // });
+    let events: Vec<grpc_model::ScExecutionEvent> = grpc
+        .execution_controller
+        .get_filtered_sc_output_event(event_filter)
+        .into_iter()
+        .map(|event| event.into())
+        .collect();
 
-    // let events: Vec<grpc_model::ScExecutionEvent> = grpc
-    //     .execution_controller
-    //     .get_filtered_sc_output_event(event_filter)
-    //     .into_iter()
-    //     .map(|event| event.into())
-    //     .collect();
-
-    // Ok(grpc_api::GetScExecutionEventsResponse {
-    //     id,
-    //     context,
-    //     events,
-    // })
-    Err(GrpcError::Unimplemented(
-        "get_sc_execution_events".to_string(),
-    ))
+    Ok(grpc_api::GetScExecutionEventsResponse { events })
 }
 
 //  Get selector draws
