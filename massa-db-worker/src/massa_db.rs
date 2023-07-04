@@ -1,75 +1,33 @@
-use crate::{
-    MassaDBError, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY, CHANGE_ID_SER_ERROR, CRUD_ERROR,
-    LSMTREE_ERROR, LSMTREE_NODES_CF, LSMTREE_VALUES_CF, METADATA_CF, OPEN_ERROR, STATE_CF,
-    STATE_HASH_ERROR, STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, STATE_HASH_KEY_IS_XOR_KEY,
-    STATE_HASH_XOR_KEY, VERSIONING_CF,
+use massa_db_exports::{
+    DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
+    MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
+    CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
+    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
 };
-use lsmtree::{bytes::Bytes, BadProof, KVStore, SparseMerkleTree};
-use massa_hash::{Hash, SmtHasher};
+use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use parking_lot::{Mutex, RwLock};
+use parking_lot::Mutex;
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
     DB,
 };
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     format,
     ops::Bound::{self, Excluded, Included, Unbounded},
-    path::PathBuf,
     sync::Arc,
 };
-
-type Key = Vec<u8>;
-type Value = Vec<u8>;
 
 /// Wrapped RocksDB database
 ///
 /// In our instance, we use Slot as the ChangeID
 pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
 
-/// We use batching to reduce the number of writes to the database
-///
-/// Here, a DBBatch is a map from Key to Some(Value) for a new or updated value, or None for a deletion
-pub type DBBatch = BTreeMap<Key, Option<Value>>;
-
-/// Config structure for a `MassaDBRaw`
-#[derive(Debug, Clone)]
-pub struct MassaDBConfig {
-    /// The path to the database, used in the wrapped RocksDB instance
-    pub path: PathBuf,
-    /// Change history to keep (indexed by ChangeID)
-    pub max_history_length: usize,
-    /// max_new_elements for bootstrap
-    pub max_new_elements: usize,
-    /// Thread count for slot serialization
-    pub thread_count: u8,
-}
-
-/// A Batch of elements from the database, used by a bootstrap server.
-#[derive(Debug, Clone)]
-pub struct StreamBatch<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> {
-    /// New elements to be streamed to the client.
-    pub new_elements: BTreeMap<Key, Value>,
-    /// The changes made to previously streamed keys. Note that a None value can delete a given key.
-    pub updates_on_previous_elements: BTreeMap<Key, Option<Value>>,
-    /// The ChangeID associated with this batch, useful for syncing the changes not streamed yet to the client.
-    pub change_id: ChangeID,
-}
-
-impl<ChangeID: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug> StreamBatch<ChangeID> {
-    /// Helper function used to know if the main bootstrap state step is finished.
-    ///
-    /// Note: even after having an empty StreamBatch, we still need to send the updates on previous elements while bootstrap has not finished.
-    pub fn is_empty(&self) -> bool {
-        self.updates_on_previous_elements.is_empty() && self.new_elements.is_empty()
-    }
-}
 /// A generic wrapped RocksDB database.
 ///
 /// The added features are:
@@ -84,97 +42,17 @@ pub struct RawMassaDB<
     /// The rocksdb instance
     pub db: Arc<DB>,
     /// configuration for the `RawMassaDB`
-    config: MassaDBConfig,
+    pub config: MassaDBConfig,
     /// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
     pub change_history: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     /// same as change_history but for versioning
     pub change_history_versioning: BTreeMap<ChangeID, BTreeMap<Key, Option<Value>>>,
     /// A serializer for the ChangeID type
-    change_id_serializer: ChangeIDSerializer,
+    pub change_id_serializer: ChangeIDSerializer,
     /// A deserializer for the ChangeID type
     change_id_deserializer: ChangeIDDeserializer,
-    /// The Sparse Merkle Tree instance used to keep track of the global hash of the database
-    lsmtree: SparseMerkleTree<MassaDbLsmtree>,
     /// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
     current_batch: Arc<Mutex<WriteBatch>>,
-    /// The current RocksDB cache for this batch, useful for lsmtree
-    current_hashmap: SharedSmtCache,
-}
-
-type SharedSmtCache = Arc<RwLock<HashMap<[u8; 32], Option<Bytes>>>>;
-
-/// Wrapper for the Lsm-tree database type
-struct MassaDbLsmtree {
-    pub cf: &'static str,
-    pub db: Arc<DB>,
-    pub current_batch: Arc<Mutex<WriteBatch>>,
-    pub current_hashmap: SharedSmtCache,
-}
-
-impl MassaDbLsmtree {
-    /// Constructor for `MassaDbLsmtree`
-    pub fn new(
-        cf: &'static str,
-        db: Arc<DB>,
-        current_batch: Arc<Mutex<WriteBatch>>,
-        current_hashmap: SharedSmtCache,
-    ) -> Self {
-        Self {
-            cf,
-            db,
-            current_batch,
-            current_hashmap,
-        }
-    }
-}
-
-/// Implementation of the Database trait of Lsm-tree for our wrapper.
-impl KVStore for MassaDbLsmtree {
-    type Hasher = SmtHasher;
-    type Error = BadProof;
-
-    /// Get a value from the database, prioritizing the cache
-    fn get(&self, key: &[u8]) -> Result<Option<Bytes>, Self::Error> {
-        let key: [u8; 32] = key.try_into().expect(LSMTREE_ERROR);
-        if let Some(val) = self.current_hashmap.read().get(&key) {
-            return Ok(val.clone());
-        }
-        let handle_lsmtree = self.db.cf_handle(self.cf).expect(CF_ERROR);
-        let value = self
-            .db
-            .get_cf(handle_lsmtree, key)
-            .expect(CRUD_ERROR)
-            .map(Bytes::from);
-        self.current_hashmap.write().insert(key, value.clone());
-        Ok(value)
-    }
-
-    /// Set a value to the database (in a batch), and updating the cache
-    fn set(&mut self, key: Bytes, value: Bytes) -> Result<(), Self::Error> {
-        let key: [u8; 32] = key.to_vec().try_into().expect(LSMTREE_ERROR);
-        let handle_lsmtree = self.db.cf_handle(self.cf).expect(CF_ERROR);
-        self.current_batch
-            .lock()
-            .put_cf(handle_lsmtree, key, value.clone());
-        self.current_hashmap.write().insert(key, Some(value));
-        Ok(())
-    }
-
-    /// Remove a value from the database (in a batch), and updating the cache
-    fn remove(&mut self, key: &[u8]) -> Result<Bytes, Self::Error> {
-        let key: [u8; 32] = key.to_vec().try_into().expect(LSMTREE_ERROR);
-        let handle_lsmtree = self.db.cf_handle(self.cf).expect(CF_ERROR);
-        let val = self.get(&key)?.expect(LSMTREE_ERROR);
-        self.current_batch.lock().delete_cf(handle_lsmtree, key);
-        self.current_hashmap.write().insert(key, None);
-        Ok(val)
-    }
-
-    /// Check if a key is in the database
-    fn contains(&self, key: &[u8]) -> Result<bool, Self::Error> {
-        let key: [u8; 32] = key.try_into().expect(LSMTREE_ERROR);
-        Ok(self.get(&key)?.is_some())
-    }
 }
 
 impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> std::fmt::Debug
@@ -200,7 +78,7 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_batch_to_stream(
@@ -310,7 +188,7 @@ where
         })
     }
 
-    /// Used for bootstrap servers (get a new batch to stream to the client)
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
     pub fn get_versioning_batch_to_stream(
@@ -430,8 +308,6 @@ where
         versioning_changes: BTreeMap<Key, Option<Value>>,
         change_id: Option<ChangeID>,
         reset_history: bool,
-        only_use_xor: bool,
-        compute_hash: bool,
     ) -> Result<(), MassaDBError> {
         if let Some(change_id) = change_id.clone() {
             if change_id < self.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
@@ -445,7 +321,7 @@ where
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
 
-        let mut current_xor_hash = self.get_db_hash_xor();
+        let mut current_xor_hash = self.get_xof_db_hash();
 
         *self.current_batch.lock() = WriteBatch::default();
 
@@ -453,49 +329,23 @@ where
             if let Some(value) = value {
                 self.current_batch.lock().put_cf(handle_state, key, value);
 
-                if compute_hash {
-                    // Compute LSM TREE if we need to
-                    if !only_use_xor {
-                        let key_hash = Hash::compute_from(key);
-                        let value_hash = Hash::compute_from(value);
-
-                        self.lsmtree
-                            .update(
-                                key_hash.to_bytes(),
-                                Bytes::from(value_hash.to_bytes().to_vec()),
-                            )
-                            .expect(LSMTREE_ERROR);
-                    }
-
-                    // Compute the XOR in all cases
-                    if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                        let prev_hash =
-                            Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
-                        current_xor_hash ^= prev_hash;
-                    };
-
-                    let new_hash = Hash::compute_from(&[key.as_slice(), value.as_slice()].concat());
-                    current_xor_hash ^= new_hash;
-                }
+                // Compute the XOR in all cases
+                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                    let prev_hash =
+                        HashXof::compute_from_tuple(&[key.as_slice(), prev_value.as_slice()]);
+                    current_xor_hash ^= prev_hash;
+                };
+                let new_hash = HashXof::compute_from_tuple(&[key.as_slice(), value.as_slice()]);
+                current_xor_hash ^= new_hash;
             } else {
                 self.current_batch.lock().delete_cf(handle_state, key);
 
-                if compute_hash {
-                    // Compute LSM TREE if we need to
-                    if !only_use_xor {
-                        let key_hash = Hash::compute_from(key);
-                        self.lsmtree
-                            .remove(key_hash.to_bytes())
-                            .expect(LSMTREE_ERROR);
-                    }
-
-                    // Compute the XOR in all cases
-                    if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
-                        let prev_hash =
-                            Hash::compute_from(&[key.as_slice(), prev_value.as_slice()].concat());
-                        current_xor_hash ^= prev_hash;
-                    };
-                }
+                // Compute the XOR in all cases
+                if let Ok(Some(prev_value)) = self.db.get_cf(handle_state, key) {
+                    let prev_hash =
+                        HashXof::compute_from_tuple(&[key.as_slice(), prev_value.as_slice()]);
+                    current_xor_hash ^= prev_hash;
+                };
             }
         }
 
@@ -515,33 +365,10 @@ where
             self.set_change_id_to_batch(change_id);
         }
 
-        // Update the hash entries:
-        // - always update the STATE_HASH_XOR_KEY
-        // - if only_use_xor, we update the STATE_HASH_KEY with the xor hash
-        // - if not only_use_xor, we update the STATE_HASH_KEY with the lsm tree root
-        if compute_hash {
-            self.current_batch.lock().put_cf(
-                handle_metadata,
-                STATE_HASH_XOR_KEY,
-                current_xor_hash.to_bytes(),
-            );
-            if only_use_xor {
-                self.current_batch.lock().put_cf(
-                    handle_metadata,
-                    STATE_HASH_KEY,
-                    current_xor_hash.to_bytes(),
-                );
-                self.current_batch
-                    .lock()
-                    .put_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY, [1]);
-            } else {
-                self.current_batch.lock().put_cf(
-                    handle_metadata,
-                    STATE_HASH_KEY,
-                    self.lsmtree.root(),
-                );
-            }
-        }
+        // Update the hash entry
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
 
         {
             let mut current_batch_guard = self.current_batch.lock();
@@ -552,8 +379,6 @@ where
                 MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
             })?;
         }
-
-        self.current_hashmap.write().clear();
 
         self.change_history
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
@@ -653,7 +478,7 @@ where
 
         versioning_changes.extend(stream_changes_versioning.updates_on_previous_elements);
         versioning_changes.extend(
-            stream_changes
+            stream_changes_versioning
                 .new_elements
                 .iter()
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
@@ -664,19 +489,17 @@ where
             versioning_changes,
             Some(stream_changes.change_id),
             true,
-            false,
-            false,
         )?;
 
         Ok((new_cursor, new_cursor_versioning))
     }
 
     /// To be called just after bootstrap
-    pub fn recompute_db_hash(&mut self, only_use_xor: bool) -> Result<(), MassaDBError> {
+    pub fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
-        let mut current_xor_hash = self.get_db_hash_xor();
+        let mut current_xor_hash = self.get_xof_db_hash();
         *self.current_batch.lock() = WriteBatch::default();
 
         // Iterate over the whole db and compute the hash
@@ -685,47 +508,16 @@ where
             .iterator_cf(handle_state, IteratorMode::Start)
             .flatten()
         {
-            if !only_use_xor {
-                let key_hash = Hash::compute_from(&key);
-                let value_hash = Hash::compute_from(&value);
-
-                self.lsmtree
-                    .update(
-                        key_hash.to_bytes(),
-                        Bytes::from(value_hash.to_bytes().to_vec()),
-                    )
-                    .expect(LSMTREE_ERROR);
-            }
-
             // Compute the XOR in all cases
             let new_hash =
-                Hash::compute_from(&[key.to_vec().as_slice(), value.to_vec().as_slice()].concat());
+                HashXof::compute_from_tuple(&[key.to_vec().as_slice(), value.to_vec().as_slice()]);
             current_xor_hash ^= new_hash;
         }
 
-        // Update the hash entries:
-        // - always update the STATE_HASH_XOR_KEY
-        // - if only_use_xor, we update the STATE_HASH_KEY with the xor hash
-        // - if not only_use_xor, we update the STATE_HASH_KEY with the lsm tree root
-        self.current_batch.lock().put_cf(
-            handle_metadata,
-            STATE_HASH_XOR_KEY,
-            current_xor_hash.to_bytes(),
-        );
-        if only_use_xor {
-            self.current_batch.lock().put_cf(
-                handle_metadata,
-                STATE_HASH_KEY,
-                current_xor_hash.to_bytes(),
-            );
-            self.current_batch
-                .lock()
-                .put_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY, [1]);
-        } else {
-            self.current_batch
-                .lock()
-                .put_cf(handle_metadata, STATE_HASH_KEY, self.lsmtree.root());
-        }
+        // Update the hash entry
+        self.current_batch
+            .lock()
+            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
 
         {
             let mut current_batch_guard = self.current_batch.lock();
@@ -740,42 +532,21 @@ where
         Ok(())
     }
 
-    /// Get the current state hash of the database
-    pub fn get_db_hash(&self) -> Hash {
-        self.get_db_hash_opt()
-            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
+    /// Get the current XOF state hash of the database
+    pub fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
+        self.get_xof_db_hash_opt()
+            .unwrap_or(HashXof(*STATE_HASH_INITIAL_BYTES))
     }
 
-    /// Get the current state hash of the database
-    fn get_db_hash_opt(&self) -> Option<Hash> {
+    /// Get the current XOF state hash of the database
+    fn get_xof_db_hash_opt(&self) -> Option<HashXof<HASH_XOF_SIZE_BYTES>> {
         let db = &self.db;
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         db.get_cf(handle, STATE_HASH_KEY)
             .expect(CRUD_ERROR)
             .as_deref()
-            .map(|state_hash_bytes| {
-                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
-            })
-    }
-
-    /// Get the current state hash xor of the database
-    pub fn get_db_hash_xor(&self) -> Hash {
-        self.get_db_hash_opt_xor()
-            .unwrap_or(Hash::from_bytes(STATE_HASH_INITIAL_BYTES))
-    }
-
-    /// Get the current state hash xor of the database
-    fn get_db_hash_opt_xor(&self) -> Option<Hash> {
-        let db = &self.db;
-        let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        db.get_cf(handle, STATE_HASH_XOR_KEY)
-            .expect(CRUD_ERROR)
-            .as_deref()
-            .map(|state_hash_bytes| {
-                Hash::from_bytes(state_hash_bytes.try_into().expect(STATE_HASH_ERROR))
-            })
+            .map(|state_hash_bytes| HashXof(state_hash_bytes.try_into().expect(STATE_HASH_ERROR)))
     }
 }
 
@@ -792,8 +563,6 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             vec![
                 ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
                 ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-                ColumnFamilyDescriptor::new(LSMTREE_NODES_CF, Options::default()),
-                ColumnFamilyDescriptor::new(LSMTREE_VALUES_CF, Options::default()),
                 ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
             ],
         )
@@ -801,45 +570,11 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
         let db = Arc::new(db);
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
-        let current_hashmap = Arc::new(RwLock::new(HashMap::new()));
 
         let change_id_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
         );
-
-        let nodes_store = MassaDbLsmtree::new(
-            LSMTREE_NODES_CF,
-            db.clone(),
-            current_batch.clone(),
-            current_hashmap.clone(),
-        );
-        let values_store = MassaDbLsmtree::new(
-            LSMTREE_VALUES_CF,
-            db.clone(),
-            current_batch.clone(),
-            current_hashmap.clone(),
-        );
-
-        let handle_metadata = db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        let lsmtree = match db
-            .get_cf(handle_metadata, STATE_HASH_KEY_IS_XOR_KEY)
-            .expect(CRUD_ERROR)
-        {
-            Some(_value) => SparseMerkleTree::new_with_stores(nodes_store, values_store),
-            _ => {
-                match db
-                    .get_cf(handle_metadata, STATE_HASH_KEY)
-                    .expect(CRUD_ERROR)
-                {
-                    Some(hash_bytes) => {
-                        SparseMerkleTree::import(nodes_store, values_store, hash_bytes)
-                    }
-                    _ => SparseMerkleTree::new_with_stores(nodes_store, values_store),
-                }
-            }
-        };
 
         let massa_db = Self {
             db,
@@ -848,9 +583,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             change_history_versioning: BTreeMap::new(),
             change_id_serializer: SlotSerializer::new(),
             change_id_deserializer,
-            lsmtree,
             current_batch,
-            current_hashmap,
         };
 
         if massa_db.get_change_id().is_err() {
@@ -862,9 +595,11 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
         massa_db
     }
+}
 
+impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
-    pub fn backup_db(&self, slot: Slot) {
+    fn backup_db(&self, slot: Slot) {
         let db = &self.db;
 
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
@@ -876,42 +611,23 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Writes the batch to the DB
-    pub fn write_batch(
-        &mut self,
-        batch: DBBatch,
-        versioning_batch: DBBatch,
-        change_id: Option<Slot>,
-        only_use_xor: bool,
-    ) {
-        self.write_changes(
-            batch,
-            versioning_batch,
-            change_id,
-            false,
-            only_use_xor,
-            true,
-        )
-        .expect(CRUD_ERROR);
+    fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>) {
+        self.write_changes(batch, versioning_batch, change_id, false)
+            .expect(CRUD_ERROR);
     }
 
     /// Utility function to put / update a key & value in the batch
-    pub fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
+    fn put_or_update_entry_value(&self, batch: &mut DBBatch, key: Vec<u8>, value: &[u8]) {
         batch.insert(key, Some(value.to_vec()));
     }
 
     /// Utility function to delete a key & value in the batch
-    pub fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
+    fn delete_key(&self, batch: &mut DBBatch, key: Vec<u8>) {
         batch.insert(key, None);
     }
 
     /// Utility function to delete all keys in a prefix
-    pub fn delete_prefix(
-        &mut self,
-        prefix: &str,
-        handle_str: &str,
-        change_id: Option<Slot>,
-        only_use_xor: bool,
-    ) {
+    fn delete_prefix(&mut self, prefix: &str, handle_str: &str, change_id: Option<Slot>) {
         let db = &self.db;
 
         let handle = db.cf_handle(handle_str).expect(CF_ERROR);
@@ -926,19 +642,142 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
         match handle_str {
             STATE_CF => {
-                self.write_batch(batch, DBBatch::new(), change_id, only_use_xor);
+                self.write_batch(batch, DBBatch::new(), change_id);
             }
             VERSIONING_CF => {
-                self.write_batch(DBBatch::new(), batch, change_id, only_use_xor);
+                self.write_batch(DBBatch::new(), batch, change_id);
             }
             _ => {}
         }
     }
 
     /// Reset the database, and attach it to the given slot.
-    pub fn reset(&mut self, slot: Slot) {
+    fn reset(&mut self, slot: Slot) {
         self.set_initial_change_id(slot);
         self.change_history.clear();
-        self.current_hashmap.write().clear();
+    }
+
+    fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        db.get_cf(handle, key)
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    /// Exposes RocksDB's "multi_get_cf" function
+    fn multi_get_cf(&self, query: Vec<(&str, Key)>) -> Vec<Result<Option<Value>, MassaDBError>> {
+        let db = &self.db;
+
+        let rocks_db_query = query
+            .into_iter()
+            .map(|(handle_cf, key)| (db.cf_handle(handle_cf).expect(CF_ERROR), key))
+            .collect::<Vec<_>>();
+
+        db.multi_get_cf(rocks_db_query)
+            .into_iter()
+            .map(|res| res.map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e))))
+            .collect()
+    }
+
+    /// Exposes RocksDB's "iterator_cf" function
+    fn iterator_cf(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        let rocksdb_mode = match mode {
+            MassaIteratorMode::Start => IteratorMode::Start,
+            MassaIteratorMode::End => IteratorMode::End,
+            MassaIteratorMode::From(key, MassaDirection::Forward) => {
+                IteratorMode::From(key, Direction::Forward)
+            }
+            MassaIteratorMode::From(key, MassaDirection::Reverse) => {
+                IteratorMode::From(key, Direction::Reverse)
+            }
+        };
+
+        Box::new(
+            db.iterator_cf(handle, rocksdb_mode)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Exposes RocksDB's "prefix_iterator_cf" function
+    fn prefix_iterator_cf(
+        &self,
+        handle_cf: &str,
+        prefix: &[u8],
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        Box::new(
+            db.prefix_iterator_cf(handle, prefix)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Get the current extended state hash of the database
+    fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
+        self.get_xof_db_hash()
+    }
+
+    /// Get the current change_id attached to the database.
+    fn get_change_id(&self) -> Result<Slot, ModelsError> {
+        self.get_change_id()
+    }
+
+    /// Set the initial change_id. This function should only be called at startup/reset, as it does not batch this set with other changes.
+    fn set_initial_change_id(&self, change_id: Slot) {
+        self.set_initial_change_id(change_id)
+    }
+
+    /// Flushes the underlying db.
+    fn flush(&self) -> Result<(), MassaDBError> {
+        self.db
+            .flush()
+            .map_err(|e| MassaDBError::RocksDBError(format!("{:?}", e)))
+    }
+
+    /// Write a stream_batch of database entries received from a bootstrap server
+    fn write_batch_bootstrap_client(
+        &mut self,
+        stream_changes: StreamBatch<Slot>,
+        stream_changes_versioning: StreamBatch<Slot>,
+    ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
+        self.write_batch_bootstrap_client(stream_changes, stream_changes_versioning)
+    }
+
+    /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_batch_to_stream(
+        &self,
+        last_state_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<Slot>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_batch_to_stream(last_state_step, last_change_id)
+    }
+
+    /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
+    ///
+    /// Returns a StreamBatch<Slot>
+    fn get_versioning_batch_to_stream(
+        &self,
+        last_versioning_step: &StreamingStep<Vec<u8>>,
+        last_change_id: Option<Slot>,
+    ) -> Result<StreamBatch<Slot>, MassaDBError> {
+        self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
+    }
+
+    /// To be called just after bootstrap
+    fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
+        self.recompute_db_hash()
     }
 }

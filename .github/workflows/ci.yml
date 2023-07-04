@@ -31,7 +31,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-06-01
+          toolchain: nightly-2023-07-01
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -55,11 +55,15 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-06-01
+          toolchain: nightly-2023-07-01
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -76,13 +80,17 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-06-01
+          toolchain: nightly-2023-07-01
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -108,12 +116,16 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-06-01
+          toolchain: nightly-2023-07-01
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -144,7 +156,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-06-01
+          toolchain: nightly-2023-07-01
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -179,13 +191,17 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-06-01
+          toolchain: nightly-2023-07-01
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
           command: doc

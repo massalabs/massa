@@ -10,7 +10,7 @@ use massa_consensus_exports::{
     },
     export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
 };
-use massa_db::{DBBatch, MassaDB};
+use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,
@@ -33,7 +33,7 @@ use massa_models::config::{
     MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    MIP_STORE_STATS_COUNTERS_MAX, PERIODS_PER_CYCLE, THREAD_COUNT,
+    PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
@@ -58,11 +58,10 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
-use parking_lot::RwLock;
+use num::rational::Ratio;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -179,18 +178,14 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
 
     pos.create_initial_cycle(&mut batch);
 
-    pos.db
-        .write()
-        .write_batch(batch, Default::default(), None, false);
+    pos.db.write().write_batch(batch, Default::default(), None);
 
     let mut batch = DBBatch::new();
 
     pos.apply_changes_to_batch(changes, Slot::new(0, 0), false, &mut batch)
         .expect("Critical: Error while applying changes to pos_state");
 
-    pos.db
-        .write()
-        .write_batch(batch, Default::default(), None, false);
+    pos.db.write().write_batch(batch, Default::default(), None);
 
     pos
 }
@@ -229,13 +224,12 @@ pub fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedOpsConfig,
-    db: Arc<RwLock<MassaDB>>,
+    db: ShareableMassaDBController,
 ) -> ExecutedOps {
     let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
     let mut batch = DBBatch::new();
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
-    db.write()
-        .write_batch(batch, Default::default(), None, false);
+    db.write().write_batch(batch, Default::default(), None);
     executed_ops
 }
 
@@ -260,7 +254,7 @@ pub fn get_random_executed_de(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedDenunciationsConfig,
-    db: Arc<RwLock<MassaDB>>,
+    db: ShareableMassaDBController,
 ) -> ExecutedDenunciations {
     let mut executed_de = ExecutedDenunciations::new(config, db);
     let mut batch = DBBatch::new();
@@ -269,7 +263,7 @@ pub fn get_random_executed_de(
     executed_de
         .db
         .write()
-        .write_batch(batch, Default::default(), None, false);
+        .write_batch(batch, Default::default(), None);
 
     executed_de
 }
@@ -297,7 +291,7 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
     config: FinalStateConfig,
-    db: Arc<RwLock<MassaDB>>,
+    db: ShareableMassaDBController,
 ) -> FinalState {
     let r_limit: u64 = 50;
 
@@ -323,7 +317,7 @@ pub fn get_random_final_state_bootstrap(
     async_pool
         .db
         .write()
-        .write_batch(batch, versioning_batch, None, false);
+        .write_batch(batch, versioning_batch, None);
 
     let executed_ops = get_random_executed_ops(
         r_limit,
@@ -345,7 +339,7 @@ pub fn get_random_final_state_bootstrap(
         [],
         MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         },
     ))
     .unwrap();
@@ -400,7 +394,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_simultaneous_bootstraps: 2,
         ip_list_max_size: 10,
         per_ip_min_interval: MassaTime::from_millis(10000),
-        max_bytes_read_write: std::f64::INFINITY,
+        max_bytes_read_write: std::u64::MAX,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -431,7 +425,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     }
@@ -462,7 +455,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
             header: BlockHeader::new_verifiable(
                 BlockHeader {
                     current_version: 0,
-                    announced_version: 0,
+                    announced_version: None,
                     // associated slot
                     // all header endorsements are supposed to point towards this one
                     slot: Slot::new(1, 0),

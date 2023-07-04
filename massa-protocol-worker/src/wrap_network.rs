@@ -32,6 +32,7 @@ pub trait ActiveConnectionsTrait: Send + Sync {
     fn get_nb_out_connections(&self) -> usize;
     fn get_nb_in_connections(&self) -> usize;
     fn shutdown_connection(&mut self, peer_id: &PeerId);
+    fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)>;
 }
 
 impl Clone for Box<dyn ActiveConnectionsTrait> {
@@ -100,6 +101,14 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
             connection.shutdown();
         }
     }
+
+    fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)> {
+        let mut map = HashMap::new();
+        for (peerid, conn) in self.read().connections.iter() {
+            map.insert(peerid.to_string(), conn.endpoint.get_bandwidth());
+        }
+        map
+    }
 }
 
 pub trait NetworkController: Send + Sync {
@@ -119,6 +128,8 @@ pub trait NetworkController: Send + Sync {
         addr: SocketAddr,
         timeout: std::time::Duration,
     ) -> Result<(), ProtocolError>;
+    fn get_total_bytes_received(&self) -> u64;
+    fn get_total_bytes_sent(&self) -> u64;
 }
 
 pub struct NetworkControllerImpl {
@@ -168,5 +179,13 @@ impl NetworkController for NetworkControllerImpl {
             .try_connect(TransportType::Tcp, addr, timeout)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         Ok(())
+    }
+
+    fn get_total_bytes_received(&self) -> u64 {
+        self.peernet_manager.get_total_bytes_received()
+    }
+
+    fn get_total_bytes_sent(&self) -> u64 {
+        self.peernet_manager.get_total_bytes_sent()
     }
 }

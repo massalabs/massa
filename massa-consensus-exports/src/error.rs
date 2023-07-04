@@ -41,6 +41,8 @@ pub enum ConsensusError {
     TransactionError(String),
     /// Protocol error {0}
     ProtocolError(#[from] ProtocolError),
+    /// Invalid transition {0}
+    InvalidTransition(String),
 }
 
 /// Internal error

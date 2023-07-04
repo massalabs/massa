@@ -130,8 +130,8 @@ pub fn create_basic_get_block_operation_execution_mock(
             vec![
                 (
                     // Operations need to be paid for
-                    Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
-                    Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                    Some(Amount::const_init(1_000_000_000, 0)),
+                    Some(Amount::const_init(1_000_000_000, 0)),
                 );
                 addrs.len()
             ]
@@ -273,8 +273,8 @@ fn test_get_operations_overflow() {
 //                     vec![
 //                         (
 //                             // Operations need to be paid for
-//                             Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
-//                             Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+//                             Some(Amount::const_init(1_000_000_000, 0)),
+//                             Some(Amount::const_init(1_000_000_000, 0)),
 //                         );
 //                         addrs.len()
 //                     ]

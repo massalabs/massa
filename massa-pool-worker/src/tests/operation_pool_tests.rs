@@ -41,8 +41,8 @@ fn test_add_operation() {
                     vec![
                         (
                             // Operations need to be paid for
-                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
-                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                            Some(Amount::const_init(1_000_000_000, 0)),
+                            Some(Amount::const_init(1_000_000_000, 0)),
                         );
                         addrs.len()
                     ]
@@ -104,8 +104,8 @@ fn test_add_irrelevant_operation() {
                     vec![
                         (
                             // Operations need to be paid for
-                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
-                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                            Some(Amount::const_init(1_000_000_000, 0)),
+                            Some(Amount::const_init(1_000_000_000, 0)),
                         );
                         addrs.len()
                     ]
@@ -167,8 +167,8 @@ fn test_pool() {
                     vec![
                         (
                             // Operations need to be paid for
-                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
-                            Some(Amount::from_mantissa_scale(1_000_000_000, 0)),
+                            Some(Amount::const_init(1_000_000_000, 0)),
+                            Some(Amount::const_init(1_000_000_000, 0)),
                         );
                         addrs.len()
                     ]
@@ -212,7 +212,7 @@ fn test_pool() {
         let expire_period = 3;
         let op = OpGenerator::default()
             .expirery(expire_period)
-            .fee(Amount::from_mantissa_scale(1 + i, 3))
+            .fee(Amount::const_init(1 + i, 3)) // can panic but not a big deal as we are testing
             .generate(); //get_transaction(expire_period, fee);
 
         storage.store_operations(vec![op.clone()]);

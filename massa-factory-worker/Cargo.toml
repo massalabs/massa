@@ -1,6 +1,6 @@
 [package]
 name = "massa_factory_worker"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -24,6 +24,7 @@ massa_pool_exports = { path = "../massa-pool-exports" }
 massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
+num = "0.4"
 massa_protocol_exports = { path = "../massa-protocol-exports", features=["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
 massa_factory_exports = { path = "../massa-factory-exports", features=["testing"]  }

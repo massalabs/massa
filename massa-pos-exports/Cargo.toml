@@ -1,6 +1,6 @@
 [package]
 name = "massa_pos_exports"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -17,7 +17,6 @@ tracing = "0.1"
 num = { version = "0.4", features = ["serde"] }
 parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 crossbeam-channel = { version = "0.5", optional = true }
-rocksdb = "0.20"
 mockall = { version = "0.11.4", optional = true }
 
 # custom modules
@@ -25,11 +24,12 @@ massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
-massa_db = { path = "../massa-db" }
+massa_db_exports = { path = "../massa-db-exports" }
 
 [dev-dependencies]
 mockall = "0.11.4"
 tempfile = "3.3"
+massa_db_worker = { path = "../massa-db-worker"}
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

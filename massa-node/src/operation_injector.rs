@@ -57,11 +57,11 @@ pub fn start_operation_injector(
                 wallet
                     .create_operation(
                         Operation {
-                            fee: Amount::from_mantissa_scale(0, 0),
+                            fee: Amount::const_init(0, 0),
                             expire_period: final_slot.period + 8,
                             op: OperationType::Transaction {
                                 recipient_address: addr,
-                                amount: Amount::from_mantissa_scale(10000, 0),
+                                amount: Amount::const_init(10000, 0),
                             },
                         },
                         return_addr,
@@ -83,6 +83,7 @@ pub fn start_operation_injector(
         use rand::Rng;
         let mut rng = rand::thread_rng();
         loop {
+            let now = std::time::Instant::now();
             let mut storage = storage.clone_without_refs();
             let txps = nb_op / 32;
             let final_slot = get_closest_slot_to_timestamp(
@@ -97,11 +98,11 @@ pub fn start_operation_injector(
                 for _ in 0..txps {
                     let amount = rng.gen_range(1..=10000);
                     let content = Operation {
-                        fee: Amount::from_mantissa_scale(0, 0),
+                        fee: Amount::const_init(0, 0),
                         expire_period: final_slot.period + 8,
                         op: OperationType::Transaction {
                             recipient_address: return_addr,
-                            amount: Amount::from_mantissa_scale(amount, 8),
+                            amount: Amount::from_mantissa_scale(amount, 8).unwrap(),
                         },
                     };
                     let address = Address::from_public_key(&distant_wallets[i].get_public_key());
@@ -113,7 +114,7 @@ pub fn start_operation_injector(
             protocol_controller
                 .propagate_operations(storage.clone())
                 .unwrap();
-            std::thread::sleep(Duration::from_secs(1));
+            std::thread::sleep(Duration::from_secs(1).saturating_sub(now.elapsed()));
         }
     });
 }

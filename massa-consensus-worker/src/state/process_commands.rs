@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, BTreeSet};
+use std::collections::BTreeSet;
 
 use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
@@ -39,29 +39,14 @@ impl ConsensusState {
         );
         massa_trace!("consensus.block_graph.incoming_header", {"block_id": block_id, "header": header});
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
-        match self.block_statuses.entry(block_id) {
-            // if absent => add as Incoming, call rec_ack on it
-            Entry::Vacant(vac) => {
-                to_ack.insert((header.content.slot, block_id));
-                vac.insert(BlockStatus::Incoming(HeaderOrBlock::Header(header)));
-                self.incoming_index.insert(block_id);
-            }
-            Entry::Occupied(mut occ) => match occ.get_mut() {
-                BlockStatus::Discarded {
-                    sequence_number, ..
-                } => {
-                    // promote if discarded
-                    self.sequence_counter += 1;
-                    *sequence_number = self.sequence_counter;
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| match block_status {
+                None => {
+                    to_ack.insert((header.content.slot, block_id));
+                    Some(BlockStatus::Incoming(HeaderOrBlock::Header(header.clone())))
                 }
-                BlockStatus::WaitingForDependencies { .. } => {
-                    // promote in dependencies
-                    self.promote_dep_tree(block_id)?;
-                }
-                _ => {}
-            },
-        }
-
+                Some(block_status) => Some(block_status),
+            });
         // process
         self.rec_process(to_ack, current_slot)?;
 
@@ -101,55 +86,52 @@ impl ConsensusState {
         debug!("received block {} for slot {}", block_id, slot);
 
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
-        match self.block_statuses.entry(block_id) {
-            // if absent => add as Incoming, call rec_ack on it
-            Entry::Vacant(vac) => {
-                to_ack.insert((slot, block_id));
-                vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block {
-                    id: block_id,
-                    slot,
-                    storage,
-                }));
-                self.incoming_index.insert(block_id);
-            }
-            Entry::Occupied(mut occ) => match occ.get_mut() {
-                BlockStatus::Discarded {
-                    sequence_number, ..
-                } => {
-                    // promote if discarded
-                    self.sequence_counter += 1;
-                    *sequence_number = self.sequence_counter;
-                }
-                BlockStatus::WaitingForSlot(header_or_block) => {
-                    // promote to full block
-                    *header_or_block = HeaderOrBlock::Block {
-                        id: block_id,
-                        slot,
-                        storage,
-                    };
-                }
-                BlockStatus::WaitingForDependencies {
-                    header_or_block,
-                    unsatisfied_dependencies,
-                    ..
-                } => {
-                    // promote to full block and satisfy self-dependency
-                    if unsatisfied_dependencies.remove(&block_id) {
-                        // a dependency was satisfied: process
+        self.blocks_state
+            .transition_map(&block_id, |block_status, _| {
+                match block_status {
+                    None => {
                         to_ack.insert((slot, block_id));
+                        Some(BlockStatus::Incoming(HeaderOrBlock::Block {
+                            id: block_id,
+                            slot,
+                            storage,
+                        }))
                     }
-                    *header_or_block = HeaderOrBlock::Block {
-                        id: block_id,
-                        slot,
-                        storage,
-                    };
-                    // promote in dependencies
-                    self.promote_dep_tree(block_id)?;
+                    Some(block_status) => {
+                        Some(match block_status {
+                            BlockStatus::WaitingForSlot(_) => {
+                                // promote to full block
+                                BlockStatus::WaitingForSlot(HeaderOrBlock::Block {
+                                    id: block_id,
+                                    slot,
+                                    storage,
+                                })
+                            }
+                            BlockStatus::WaitingForDependencies {
+                                header_or_block: _,
+                                mut unsatisfied_dependencies,
+                                sequence_number,
+                            } => {
+                                // promote to full block and satisfy self-dependency
+                                if unsatisfied_dependencies.remove(&block_id) {
+                                    // a dependency was satisfied: process
+                                    to_ack.insert((slot, block_id));
+                                }
+                                BlockStatus::WaitingForDependencies {
+                                    header_or_block: HeaderOrBlock::Block {
+                                        id: block_id,
+                                        slot,
+                                        storage,
+                                    },
+                                    unsatisfied_dependencies,
+                                    sequence_number,
+                                }
+                            }
+                            _ => block_status,
+                        })
+                    }
                 }
-                _ => return Ok(()),
-            },
-        }
-
+            });
         // process
         self.rec_process(to_ack, current_slot)?;
 
@@ -165,36 +147,15 @@ impl ConsensusState {
         let reason = DiscardReason::Invalid("invalid".to_string());
         self.maybe_note_attack_attempt(&reason, block_id);
         massa_trace!("consensus.block_graph.process.invalid_block", {"block_id": block_id, "reason": reason});
-        match self.block_statuses.get(block_id) {
-            Some(BlockStatus::WaitingForDependencies { .. }) => {
-                self.waiting_for_dependencies_index.remove(block_id);
-            }
-            Some(BlockStatus::WaitingForSlot(_)) => {
-                self.waiting_for_slot_index.remove(block_id);
-            }
-            Some(BlockStatus::Incoming(_)) => {
-                self.incoming_index.remove(block_id);
-            }
-            Some(BlockStatus::Active { .. }) => {
-                self.active_index.remove(block_id);
-            }
-            Some(BlockStatus::Discarded { .. }) => {}
-            None => {}
-        };
-        // add to discard
-        self.block_statuses.insert(
-            *block_id,
-            BlockStatus::Discarded {
+        let sequence_number = self.blocks_state.sequence_counter();
+        self.blocks_state.transition_map(block_id, |_, _| {
+            Some(BlockStatus::Discarded {
                 slot: header.content.slot,
                 creator: header.content_creator_address,
                 parents: header.content.parents,
                 reason,
-                sequence_number: {
-                    self.sequence_counter += 1;
-                    self.sequence_counter
-                },
-            },
-        );
-        self.discarded_index.insert(*block_id);
+                sequence_number,
+            })
+        });
     }
 }

@@ -4,9 +4,9 @@
 //! Used to detect operation reuse.
 
 use crate::{ops_changes::ExecutedOpsChanges, ExecutedOpsConfig};
-use massa_db::{
-    DBBatch, MassaDB, CF_ERROR, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR, EXECUTED_OPS_ID_SER_ERROR,
-    EXECUTED_OPS_PREFIX, STATE_CF,
+use massa_db_exports::{
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, EXECUTED_OPS_ID_DESER_ERROR,
+    EXECUTED_OPS_ID_SER_ERROR, EXECUTED_OPS_PREFIX, STATE_CF,
 };
 use massa_models::{
     operation::{OperationId, OperationIdDeserializer, OperationIdSerializer},
@@ -23,11 +23,9 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     ops::Bound::{Excluded, Included},
-    sync::Arc,
 };
 
 /// Op id key formatting macro
@@ -44,7 +42,7 @@ pub struct ExecutedOps {
     /// Executed operations configuration
     _config: ExecutedOpsConfig,
     /// RocksDB Instance
-    pub db: Arc<RwLock<MassaDB>>,
+    pub db: ShareableMassaDBController,
     /// Executed operations btreemap with slot as index for better pruning complexity
     pub sorted_ops: BTreeMap<Slot, PreHashSet<OperationId>>,
     /// execution status of operations (true: success, false: fail)
@@ -59,7 +57,7 @@ pub struct ExecutedOps {
 
 impl ExecutedOps {
     /// Creates a new `ExecutedOps`
-    pub fn new(config: ExecutedOpsConfig, db: Arc<RwLock<MassaDB>>) -> Self {
+    pub fn new(config: ExecutedOpsConfig, db: ShareableMassaDBController) -> Self {
         let slot_deserializer = SlotDeserializer::new(
             (Included(u64::MIN), Included(u64::MAX)),
             (Included(0), Excluded(config.thread_count)),
@@ -94,12 +92,9 @@ impl ExecutedOps {
         self.op_exec_status.clear();
 
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
-        for (serialized_op_id, serialized_value) in db
-            .db
-            .prefix_iterator_cf(handle, EXECUTED_OPS_PREFIX)
-            .flatten()
+        for (serialized_op_id, serialized_value) in
+            db.prefix_iterator_cf(STATE_CF, EXECUTED_OPS_PREFIX.as_bytes())
         {
             if !serialized_op_id.starts_with(EXECUTED_OPS_PREFIX.as_bytes()) {
                 break;
@@ -136,10 +131,10 @@ impl ExecutedOps {
     /// Reset the executed operations
     ///
     /// USED FOR BOOTSTRAP ONLY
-    pub fn reset(&mut self, only_use_xor: bool) {
+    pub fn reset(&mut self) {
         self.db
             .write()
-            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None, only_use_xor);
+            .delete_prefix(EXECUTED_OPS_PREFIX, STATE_CF, None);
 
         self.recompute_sorted_ops_and_op_exec_status();
     }
@@ -175,15 +170,13 @@ impl ExecutedOps {
     /// Check if an operation was executed
     pub fn contains(&self, op_id: &OperationId) -> bool {
         let db = self.db.read();
-        let handle = db.db.cf_handle(STATE_CF).expect(CF_ERROR);
 
         let mut serialized_op_id = Vec::new();
         self.operation_id_serializer
             .serialize(op_id, &mut serialized_op_id)
             .expect(EXECUTED_OPS_ID_SER_ERROR);
 
-        db.db
-            .get_cf(handle, op_id_key!(serialized_op_id))
+        db.get_cf(STATE_CF, op_id_key!(serialized_op_id))
             .expect(CRUD_ERROR)
             .is_some()
     }
@@ -270,10 +263,14 @@ impl ExecutedOps {
 
 #[test]
 fn test_executed_ops_hash_computing() {
-    use massa_db::{MassaDB, MassaDBConfig, STATE_HASH_INITIAL_BYTES};
+    use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
+    use massa_db_worker::MassaDB;
     use massa_hash::Hash;
+    use massa_hash::HashXof;
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
+    use parking_lot::RwLock;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     // initialize the executed ops config
@@ -293,8 +290,14 @@ fn test_executed_ops_hash_computing() {
         max_new_elements: 100,
         thread_count,
     };
-    let db_a = Arc::new(RwLock::new(MassaDB::new(db_a_config)));
-    let db_c = Arc::new(RwLock::new(MassaDB::new(db_c_config)));
+
+    let db_a = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_a_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
+    let db_c = Arc::new(RwLock::new(
+        Box::new(MassaDB::new(db_c_config)) as Box<(dyn MassaDBController + 'static)>
+    ));
+
     // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone(), db_a.clone());
     let mut c = ExecutedOps::new(config, db_c.clone());
@@ -332,27 +335,24 @@ fn test_executed_ops_hash_computing() {
 
     let mut batch_a = DBBatch::new();
     a.apply_changes_to_batch(change_a, apply_slot, &mut batch_a);
-    db_a.write()
-        .write_batch(batch_a, Default::default(), None, false);
+    db_a.write().write_batch(batch_a, Default::default(), None);
 
     let mut batch_b = DBBatch::new();
     a.apply_changes_to_batch(change_b, apply_slot, &mut batch_b);
-    db_a.write()
-        .write_batch(batch_b, Default::default(), None, false);
+    db_a.write().write_batch(batch_b, Default::default(), None);
 
     let mut batch_c = DBBatch::new();
     c.apply_changes_to_batch(change_c, apply_slot, &mut batch_c);
-    db_c.write()
-        .write_batch(batch_c, Default::default(), None, false);
+    db_c.write().write_batch(batch_c, Default::default(), None);
 
     // check that a.hash ^ $(change_b) = c.hash
     assert_ne!(
-        db_a.read().get_db_hash(),
-        Hash::from_bytes(STATE_HASH_INITIAL_BYTES)
+        db_a.read().get_xof_db_hash(),
+        HashXof(*STATE_HASH_INITIAL_BYTES)
     );
     assert_eq!(
-        db_a.read().get_db_hash(),
-        db_c.read().get_db_hash(),
+        db_a.read().get_xof_db_hash(),
+        db_c.read().get_xof_db_hash(),
         "'a' and 'c' hashes are not equal"
     );
 
@@ -363,13 +363,12 @@ fn test_executed_ops_hash_computing() {
     };
     let mut batch_a = DBBatch::new();
     a.prune_to_batch(prune_slot, &mut batch_a);
-    db_a.write()
-        .write_batch(batch_a, Default::default(), None, false);
+    db_a.write().write_batch(batch_a, Default::default(), None);
 
     // at this point the hash should have been reset to its original value
     assert_eq!(
-        db_a.read().get_db_hash(),
-        Hash::from_bytes(STATE_HASH_INITIAL_BYTES),
+        db_a.read().get_xof_db_hash(),
+        HashXof(*STATE_HASH_INITIAL_BYTES),
         "'a' was not reset to its initial value"
     );
 }

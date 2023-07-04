@@ -2,6 +2,7 @@
 
 //! This file defines utilities to mock the crate for testing purposes
 
+use crate::types::{ExecutionQueryRequest, ExecutionQueryResponse};
 use crate::{
     ExecutionAddressInfo, ExecutionController, ExecutionError, ReadOnlyExecutionOutput,
     ReadOnlyExecutionRequest,
@@ -81,8 +82,8 @@ pub enum MockExecutionControllerMessage {
     IsDenunciationExecuted {
         /// denunciation index
         de_idx: DenunciationIndex,
-        /// response channel
-        response_tx: mpsc::Sender<bool>,
+        /// response channel: (speculative, final)
+        response_tx: mpsc::Sender<(bool, bool)>,
     },
     /// Get final and candidate balances by addresses
     GetFinalAndCandidateBalance {
@@ -129,6 +130,7 @@ impl ExecutionController for MockExecutionController {
             final_block_count: 0,
             final_executed_operations_count: 0,
             active_cursor: Slot::new(0, 0),
+            final_cursor: Slot::new(0, 0),
         }
     }
 
@@ -146,6 +148,11 @@ impl ExecutionController for MockExecutionController {
                 block_storage,
             })
             .unwrap();
+    }
+
+    fn query_state(&self, _req: ExecutionQueryRequest) -> ExecutionQueryResponse {
+        unimplemented!("mocked execution controller does not support query_state for now");
+        //TODO
     }
 
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
@@ -205,7 +212,10 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
+    fn get_denunciation_execution_status(
+        &self,
+        denunciation_index: &DenunciationIndex,
+    ) -> (bool, bool) {
         let (response_tx, response_rx) = mpsc::channel();
         if let Err(err) =
             self.0

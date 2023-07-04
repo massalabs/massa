@@ -43,7 +43,7 @@ mod tests {
 
         let exec_output_1 = ExecutionOutput {
             slot: Slot::new(1, 0),
-            block_id: None,
+            block_info: None,
             state_changes: StateChanges {
                 ledger_changes: Default::default(),
                 async_pool_changes: Default::default(),

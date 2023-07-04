@@ -69,7 +69,7 @@ pub struct BootstrapSettings {
     pub max_simultaneous_bootstraps: u32,
     pub per_ip_min_interval: MassaTime,
     pub ip_list_max_size: usize,
-    pub max_bytes_read_write: f64,
+    pub max_bytes_read_write: u64,
     /// Allocated time with which to manage the bootstrap process
     pub bootstrap_timeout: MassaTime,
 }
@@ -81,12 +81,15 @@ pub struct FactorySettings {
     pub initial_delay: MassaTime,
     /// Staking wallet file
     pub staking_wallet_path: PathBuf,
+    /// stop the production in case we are not connected to anyone
+    pub stop_production_when_zero_connections: bool,
 }
 
 /// Pool configuration, read from a file configuration
 #[derive(Debug, Deserialize, Clone)]
 pub struct PoolSettings {
     pub max_operation_pool_size: usize,
+    pub max_operation_pool_excess_items: usize,
     pub operation_max_future_start_delay: MassaTime,
     pub operation_pool_refresh_interval: MassaTime,
     pub max_endorsements_pool_size_per_thread: usize,
@@ -135,6 +138,7 @@ pub struct Settings {
     pub factory: FactorySettings,
     pub grpc: GrpcSettings,
     pub metrics: MetricsSettings,
+    pub versioning: VersioningSettings,
 }
 
 /// Consensus configuration
@@ -172,7 +176,12 @@ pub struct NetworkSettings {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MetricsSettings {
+    /// enable prometheus metrics
     pub enabled: bool,
+    /// port on which to listen for prometheus metrics
+    pub bind: SocketAddr,
+    /// interval at which to update metrics
+    pub tick_delay: MassaTime,
 }
 
 /// Protocol Configuration, read from toml user configuration file
@@ -188,6 +197,8 @@ pub struct ProtocolSettings {
     pub max_node_wanted_blocks_size: usize,
     /// max known operations current node kept in memory
     pub max_known_ops_size: usize,
+    /// size of the buffer of asked operations
+    pub asked_operations_buffer_capacity: usize,
     /// max known operations of foreign nodes we keep in memory (by node)
     pub max_node_known_ops_size: usize,
     /// max known endorsements by our node that we kept in memory
@@ -206,12 +217,12 @@ pub struct ProtocolSettings {
     pub operation_announcement_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: MassaTime,
-    /// All operations asked are prune each `operation_asked_pruning_period` millisecond
-    pub asked_operations_pruning_period: MassaTime,
     /// Interval at which operations are announced in batches.
     pub operation_announcement_interval: MassaTime,
     /// Maximum of operations sent in one message.
     pub max_operations_per_message: u64,
+    /// MAx number of operations kept for propagation
+    pub max_ops_kept_for_propagation: usize,
     /// Time threshold after which operation are not propagated
     pub max_operations_propagation_time: MassaTime,
     /// Time threshold after which operation are not propagated
@@ -304,6 +315,12 @@ pub struct GrpcSettings {
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct VersioningSettings {
+    // Warn user to update its node if we reach this percentage for announced network versions
+    pub(crate) mip_stats_warn_announced_version: u32,
 }
 
 #[cfg(test)]

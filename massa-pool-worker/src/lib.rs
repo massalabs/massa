@@ -7,7 +7,6 @@
 #![feature(async_closure)]
 #![feature(map_try_insert)]
 #![feature(let_chains)]
-#![feature(hash_drain_filter)]
 #![feature(deadline_api)]
 
 mod controller_impl;

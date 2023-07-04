@@ -16,7 +16,8 @@ use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRo
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
-    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+    EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
+    ExecutionStackElement,
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
@@ -133,7 +134,7 @@ pub struct ExecutionContext {
     /// counter of newly created messages so far during this execution
     pub created_message_index: u64,
 
-    /// block ID, if one is present at the execution slot
+    /// block Id, if one is present at the execution slot
     pub opt_block_id: Option<BlockId>,
 
     /// address call stack, most recent is at the back
@@ -455,14 +456,6 @@ impl ExecutionContext {
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
     pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
-        // TODO: collision problem:
-        //  prefix addresses to know if they are SCs or normal,
-        //  otherwise people can already create new accounts by sending coins to the right hash
-        //  they won't have ownership over it but this can still be unexpected
-        //  to have initial extra coins when an address is created
-        //  It may also induce that for read-only calls.
-        //  https://github.com/massalabs/massa/issues/2331
-
         // deterministically generate a new unique smart contract address
         let slot_timestamp = get_block_slot_timestamp(
             self.config.thread_count,
@@ -475,7 +468,7 @@ impl ExecutionContext {
         // create a seed from the current slot
         let mut data: Vec<u8> = self.slot.to_bytes_key().to_vec();
         // add the index of the created address within this context to the seed
-        data.append(&mut self.created_addr_index.to_be_bytes().to_vec());
+        data.extend(self.created_addr_index.to_be_bytes());
         // add a flag on whether we are in read-only mode or not to the seed
         // this prevents read-only contexts from shadowing existing addresses
         if self.read_only {
@@ -483,12 +476,36 @@ impl ExecutionContext {
         } else {
             data.push(1u8);
         }
-        // hash the seed to get a unique address
-        let hash = Hash::compute_from(&data);
-        let address = self.address_factory.create(
-            &AddressArgs::SC { hash },
-            FactoryStrategy::At(slot_timestamp),
-        )?;
+
+        // Loop over nonces until we find an address that doesn't exist in the speculative ledger.
+        // Note that this loop is here for robustness, and should not be looping because
+        // even through the SC addresses are predictable, nobody can create them beforehand because:
+        // - their category is "SC" and not "USER" so they can't be derived from a public key
+        // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
+        let mut nonce = 0u64;
+        let address = loop {
+            // compute the hash of the concatenation [data, nonce]
+            let hash = Hash::compute_from(&[&data[..], &nonce.to_be_bytes()[..]].concat());
+            let addr = self.address_factory.create(
+                &AddressArgs::SC { hash },
+                FactoryStrategy::At(slot_timestamp),
+            )?;
+            // check if this address already exists in the speculative ledger
+            if !self.speculative_ledger.entry_exists(&addr) {
+                // if not, we can use it
+                break addr;
+            }
+            // otherwise, increment the nonce to get a new hash and try again
+            nonce = nonce.checked_add(1).ok_or_else(|| {
+                ExecutionError::RuntimeError("nonce overflow when creating SC address".into())
+            })?;
+        };
+        if nonce > 0 {
+            warn!(
+                "smart contract address generation required {} nonces",
+                nonce
+            );
+        }
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(
@@ -524,8 +541,8 @@ impl ExecutionContext {
     }
 
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    pub fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
-        self.speculative_ledger.get_keys(address)
+    pub fn get_keys(&self, address: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
+        self.speculative_ledger.get_keys(address, prefix)
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
@@ -664,13 +681,25 @@ impl ExecutionContext {
     ) -> Result<(), ExecutionError> {
         if let Some(from_addr) = &from_addr {
             // check access rights
-            if check_rights && !self.has_write_rights_on(from_addr) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "spending from address {} is not allowed in this context",
-                    from_addr
-                )));
-            }
+            if check_rights {
+                // ensure we can't spend from an address on which we have no write access
+                if !self.has_write_rights_on(from_addr) {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "spending from address {} is not allowed in this context",
+                        from_addr
+                    )));
+                }
 
+                // ensure we can't transfer towards SC addresses on which we have no write access
+                if let Some(to_addr) = &to_addr {
+                    if matches!(to_addr, Address::SC(..)) && !self.has_write_rights_on(to_addr) {
+                        return Err(ExecutionError::RuntimeError(format!(
+                            "crediting SC address {} is not allowed without write access to it",
+                            to_addr
+                        )));
+                    }
+                }
+            }
             // control vesting min_balance for sender address
             self.vesting_manager
                 .check_vesting_transfer_coins(self, from_addr, amount)?;
@@ -860,7 +889,7 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self) -> ExecutionOutput {
+    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -908,9 +937,11 @@ impl ExecutionContext {
             executed_ops_changes: self.speculative_executed_ops.take(),
             executed_denunciations_changes: self.speculative_executed_denunciations.take(),
         };
+
+        std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
             slot,
-            block_id: std::mem::take(&mut self.opt_block_id),
+            block_info,
             state_changes,
             events: std::mem::take(&mut self.events),
         }
@@ -935,12 +966,13 @@ impl ExecutionContext {
             )));
         }
 
-        // We define that set the bytecode of a non-SC address is impossible to avoid problems for block creator.
+        // Do not allow user addresses to store bytecode.
         // See: https://github.com/massalabs/massa/discussions/2952
-        if let Some(creator_address) = self.creator_address && &creator_address == address {
-            return Err(ExecutionError::RuntimeError(format!("
-                can't set the bytecode of address {} because this is not a smart contract address",
-                                                            address)));
+        if let Address::User(_) = address {
+            return Err(ExecutionError::RuntimeError(format!(
+                "can't set the bytecode of address {} because this is not a smart contract address",
+                address
+            )));
         }
 
         // set data entry

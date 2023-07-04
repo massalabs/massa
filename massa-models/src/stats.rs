@@ -18,6 +18,8 @@ pub struct ExecutionStats {
     pub final_executed_operations_count: usize,
     /// active execution cursor slot
     pub active_cursor: Slot,
+    /// final execution cursor slot
+    pub final_cursor: Slot,
 }
 
 impl std::fmt::Display for ExecutionStats {
@@ -44,6 +46,7 @@ impl std::fmt::Display for ExecutionStats {
             self.final_executed_operations_count
         )?;
         writeln!(f, "\tActive cursor: {}", self.active_cursor)?;
+        writeln!(f, "\tFinal cursor: {}", self.final_cursor)?;
         Ok(())
     }
 }

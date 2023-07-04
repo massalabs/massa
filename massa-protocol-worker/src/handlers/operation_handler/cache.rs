@@ -28,7 +28,7 @@ impl OperationCache {
             .insert(operation_id.prefix(), ());
     }
 
-    pub fn update_cache(&mut self, peers_connected: HashSet<PeerId>, _max_known_ops_by_peer: u32) {
+    pub fn update_cache(&mut self, peers_connected: HashSet<PeerId>) {
         let peers: Vec<PeerId> = self
             .ops_known_by_peer
             .iter()

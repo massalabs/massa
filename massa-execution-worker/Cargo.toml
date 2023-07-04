@@ -1,6 +1,6 @@
 [package]
 name = "massa_execution_worker"
-version = "0.23.0"
+version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -15,6 +15,8 @@ tracing = "0.1"
 serde_json = "1.0"
 num = { version = "0.4", features = ["serde"] }
 sha2 = "0.10.6"
+sha3 = "0.10.8"
+libsecp256k1 = "0.7.1"
 # use with features
 criterion = { version = "0.4", optional = true }
 tempfile = { version = "3.3", optional = true }
@@ -37,7 +39,9 @@ massa_ledger_exports = { path = "../massa-ledger-exports" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_final_state = { path = "../massa-final-state" }
 massa_versioning = { path = "../massa-versioning" }
-massa_db = { path = "../massa-db" }
+massa_db_exports = { path = "../massa-db-exports" }
+massa_db_worker = { path = "../massa-db-worker", optional = true }
+massa_wallet = { path = "../massa-wallet" }
 
 [dev-dependencies]
 tokio = { version = "1.23", features = ["sync"] }
@@ -72,9 +76,12 @@ testing = [
     "massa_pos_exports/testing",
     "massa_final_state/testing",
     "massa-sc-runtime/testing",
+    "massa_wallet/testing",
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
+    "massa_metrics/testing",
+    "massa_db_worker",
     "massa_metrics/testing"
 ]
 

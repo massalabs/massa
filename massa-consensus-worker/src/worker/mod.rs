@@ -19,7 +19,7 @@ use std::time::Instant;
 use crate::commands::ConsensusCommand;
 use crate::controller::ConsensusControllerImpl;
 use crate::manager::ConsensusManagerImpl;
-use crate::state::ConsensusState;
+use crate::state::{blocks_state::BlocksState, ConsensusState};
 
 /// The consensus worker structure that contains all information and tools for the consensus worker thread.
 pub struct ConsensusWorker {
@@ -72,21 +72,15 @@ pub fn start_consensus_worker(
             fitness: 0,
             is_blockclique: true,
         }],
-        sequence_counter: 0,
-        waiting_for_slot_index: Default::default(),
-        waiting_for_dependencies_index: Default::default(),
-        discarded_index: Default::default(),
+        blocks_state: BlocksState::new(),
         to_propagate: Default::default(),
         attack_attempts: Default::default(),
         new_final_blocks: Default::default(),
         new_stale_blocks: Default::default(),
-        incoming_index: Default::default(),
-        active_index: Default::default(),
         active_index_without_ops: Default::default(),
         save_final_periods: Default::default(),
         latest_final_blocks_periods: Default::default(),
         best_parents: Default::default(),
-        block_statuses: Default::default(),
         genesis_hashes: Default::default(),
         gi_head: Default::default(),
         final_block_stats: Default::default(),

@@ -264,7 +264,7 @@ impl Tester {
             loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
-                        receiver.inc_metrics();
+                        receiver.update_metrics();
                         match res {
                             Ok(listener) => {
                                 if listener.1.is_empty() {
@@ -334,7 +334,7 @@ impl Tester {
                                         }
                                         // TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                        if ip_canonical.is_global() && !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
+                                        if !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                                             //Don't test our local addresses
                                             for (local_addr, _transport) in protocol_config.listeners.iter() {
                                                 if addr == local_addr {
@@ -386,9 +386,10 @@ impl Tester {
                             db.tested_addresses.insert(listener, MassaTime::now().unwrap());
                         }
 
+
                         // we try to connect to all peer listener (For now we have only one listener)
                         let ip_canonical = listener.ip().to_canonical();
-                        if !ip_canonical.is_global() || active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
+                        if active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                             continue;
                         }
                         //Don't test our local addresses

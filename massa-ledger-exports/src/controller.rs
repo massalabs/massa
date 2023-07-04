@@ -3,11 +3,11 @@ use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use crate::{LedgerChanges, LedgerError};
-use ::massa_db::DBBatch;
+use massa_db_exports::DBBatch;
 
 pub trait LedgerController: Send + Sync + Debug {
     /// Loads ledger from file
-    fn load_initial_ledger(&mut self, only_use_xor: bool) -> Result<(), LedgerError>;
+    fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
 
     /// Gets the balance of a ledger entry
     ///
@@ -41,12 +41,12 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>>;
+    fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>>;
 
     /// Reset the ledger
     ///
     /// USED FOR BOOTSTRAP ONLY
-    fn reset(&mut self, only_use_xor: bool);
+    fn reset(&mut self);
 
     fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch);
 

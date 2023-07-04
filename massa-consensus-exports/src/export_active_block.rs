@@ -175,7 +175,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         current_version: 0,
-    ///         announced_version: 0,
+    ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),

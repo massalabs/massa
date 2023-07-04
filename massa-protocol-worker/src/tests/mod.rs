@@ -1,8 +1,9 @@
+use num::rational::Ratio;
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
 use massa_consensus_exports::test_exports::ConsensusControllerImpl;
 use massa_metrics::MassaMetrics;
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
@@ -102,8 +103,8 @@ fn basic() {
     categories.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_pre_handshake: 1,
-            max_in_connections_post_handshake: 1,
+            allow_local_peers: true,
+            max_in_connections: 1,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },
@@ -114,8 +115,8 @@ fn basic() {
     categories2.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_pre_handshake: 5,
-            max_in_connections_post_handshake: 5,
+            allow_local_peers: true,
+            max_in_connections: 5,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },
@@ -133,11 +134,17 @@ fn basic() {
     // Setup the MIP store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-    let metrics = MassaMetrics::new(false, 32);
+    let metrics = MassaMetrics::new(
+        false,
+        "0.0.0.0:9898".parse().unwrap(),
+        32,
+        std::time::Duration::from_secs(5),
+    )
+    .0;
 
     // Setup the protocols
     let (mut manager1, _, _) = start_protocol_controller(
@@ -247,8 +254,8 @@ fn stop_with_controller_still_exists() {
     categories.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_post_handshake: 1,
-            max_in_connections_pre_handshake: 1,
+            allow_local_peers: true,
+            max_in_connections: 1,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },
@@ -259,8 +266,8 @@ fn stop_with_controller_still_exists() {
     categories2.insert(
         "Bootstrap".to_string(),
         PeerCategoryInfo {
-            max_in_connections_post_handshake: 5,
-            max_in_connections_pre_handshake: 5,
+            allow_local_peers: true,
+            max_in_connections: 5,
             target_out_connections: 1,
             max_in_connections_per_ip: 1,
         },
@@ -275,10 +282,16 @@ fn stop_with_controller_still_exists() {
     // Setup the MIP store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
-    let metrics = MassaMetrics::new(false, 32);
+    let metrics = MassaMetrics::new(
+        false,
+        "0.0.0.0:9898".parse().unwrap(),
+        32,
+        std::time::Duration::from_secs(5),
+    )
+    .0;
 
     // Setup the protocols
     let (mut sender_manager1, channels1) = create_protocol_controller(config1.clone());

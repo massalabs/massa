@@ -8,7 +8,7 @@ mod tests {
         create_block, get_initials_vesting, get_random_address_full, get_sample_state,
     };
     use massa_async_pool::AsyncMessage;
-    use massa_db::DBBatch;
+    use massa_db_exports::DBBatch;
     use massa_execution_exports::{
         ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
         ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
@@ -17,7 +17,6 @@ mod tests {
     use massa_metrics::MassaMetrics;
     use massa_models::config::{
         LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED,
-        MIP_STORE_STATS_COUNTERS_MAX,
     };
     use massa_models::prehash::PreHashMap;
     use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -38,6 +37,7 @@ mod tests {
     use massa_storage::Storage;
     use massa_time::MassaTime;
     use massa_versioning::versioning::{MipStatsConfig, MipStore};
+    use massa_wallet::test_exports::create_test_wallet;
     use num::rational::Ratio;
     use parking_lot::RwLock;
     use serial_test::serial;
@@ -62,7 +62,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -79,7 +79,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         manager.stop();
     }
@@ -95,7 +102,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -112,7 +119,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         controller.update_blockclique_status(
             Default::default(),
@@ -136,7 +150,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
@@ -157,7 +171,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -240,7 +261,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
@@ -261,7 +282,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -401,7 +429,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // get a sample final state
@@ -422,7 +450,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -557,7 +592,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -576,7 +611,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -668,7 +710,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -688,7 +730,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -770,7 +819,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -790,7 +839,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -853,8 +909,8 @@ mod tests {
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
         assert!(
             // start (299_000) - fee (1000) - storage cost
-            Amount::from_str("299_979").unwrap() < amount
-                && amount < Amount::from_str("299_980").unwrap()
+            Amount::from_str("299_976").unwrap() < amount
+                && amount < Amount::from_str("299_977").unwrap()
         );
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
@@ -894,7 +950,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -914,7 +970,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1007,7 +1070,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1028,7 +1091,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1161,7 +1231,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1181,7 +1251,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1260,7 +1337,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1280,7 +1357,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1374,7 +1458,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1394,7 +1478,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1471,7 +1562,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1491,7 +1582,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1570,7 +1668,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1590,7 +1688,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1622,7 +1727,7 @@ mod tests {
             .write()
             .db
             .write()
-            .write_batch(batch, Default::default(), None, false);
+            .write_batch(batch, Default::default(), None);
 
         // create operation 1
         let operation1 = Operation::new_verifiable(
@@ -1775,7 +1880,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1795,7 +1900,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -1937,7 +2049,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -1957,7 +2069,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2106,7 +2225,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2126,7 +2245,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2195,7 +2321,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2215,7 +2341,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2281,7 +2414,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2301,7 +2434,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2367,7 +2507,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2387,7 +2527,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2475,7 +2622,7 @@ mod tests {
             Amount::from_str("300000")
                 .unwrap()
                 // Gas fee
-                .saturating_sub(Amount::from_mantissa_scale(10, 0))
+                .saturating_sub(Amount::const_init(10, 0))
                 // Storage cost key
                 .saturating_sub(
                     exec_cfg
@@ -2514,7 +2661,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2530,7 +2677,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2624,7 +2778,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -2641,7 +2795,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2655,10 +2816,10 @@ mod tests {
         // create the block containing the operation
         let operation = Operation::new_verifiable(
             Operation {
-                fee: Amount::from_mantissa_scale(10, 0),
+                fee: Amount::const_init(10, 0),
                 expire_period: 10,
                 op: OperationType::ExecuteSC {
-                    max_coins: Amount::from_mantissa_scale(0, 0),
+                    max_coins: Amount::const_init(0, 0),
                     data: bytecode.to_vec(),
                     max_gas: 0,
                     datastore: BTreeMap::default(),
@@ -2711,7 +2872,7 @@ mod tests {
         };
         let op = Operation::new_verifiable(
             Operation {
-                fee: Amount::from_mantissa_scale(10, 0),
+                fee: Amount::const_init(10, 0),
                 expire_period: 10,
                 op,
             },
@@ -2769,7 +2930,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
@@ -2788,7 +2949,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2864,7 +3032,7 @@ mod tests {
         // init the MIP store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         // init the storage
@@ -2883,7 +3051,14 @@ mod tests {
             sample_state.read().pos_state.selector.clone(),
             mip_store,
             channels,
-            MassaMetrics::new(false, 32),
+            Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:9898".parse().unwrap(),
+                32,
+                std::time::Duration::from_secs(5),
+            )
+            .0,
         );
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
@@ -2946,7 +3121,7 @@ mod tests {
             Amount::from_str("300000")
                 .unwrap()
                 // Gas fee
-                .saturating_sub(Amount::from_mantissa_scale(10, 0))
+                .saturating_sub(Amount::const_init(10, 0))
         );
 
         // stop the execution controller

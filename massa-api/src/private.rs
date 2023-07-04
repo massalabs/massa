@@ -28,13 +28,15 @@ use massa_protocol_exports::{PeerId, ProtocolController};
 use massa_signature::KeyPair;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
-use std::collections::BTreeSet;
-use std::fs::{remove_file, OpenOptions};
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use std::{collections::BTreeSet, sync::Mutex};
+use std::{
+    fs::{remove_file, OpenOptions},
+    sync::Condvar,
+};
 
 impl API<Private> {
     /// generate a new private API
@@ -42,19 +44,16 @@ impl API<Private> {
         protocol_controller: Box<dyn ProtocolController>,
         execution_controller: Box<dyn ExecutionController>,
         api_settings: APIConfig,
+        stop_cv: Arc<(Mutex<bool>, Condvar)>,
         node_wallet: Arc<RwLock<Wallet>>,
-    ) -> (Self, mpsc::Receiver<()>) {
-        let (stop_node_channel, rx) = mpsc::channel(1);
-        (
-            API(Private {
-                protocol_controller,
-                execution_controller,
-                api_settings,
-                stop_node_channel,
-                node_wallet,
-            }),
-            rx,
-        )
+    ) -> Self {
+        API(Private {
+            protocol_controller,
+            execution_controller,
+            api_settings,
+            stop_cv,
+            node_wallet,
+        })
     }
 }
 
@@ -72,11 +71,9 @@ impl RpcServer for API<Private> {
 #[doc(hidden)]
 #[async_trait]
 impl MassaRpcServer for API<Private> {
-    async fn stop_node(&self) -> RpcResult<()> {
-        let stop = self.0.stop_node_channel.clone();
-        stop.send(())
-            .await
-            .map_err(|e| ApiError::SendChannelError(format!("error sending stop signal {}", e)))?;
+    fn stop_node(&self) -> RpcResult<()> {
+        *self.0.stop_cv.0.lock().expect("twice-locked in-thread") = true;
+        self.0.stop_cv.1.notify_all();
         Ok(())
     }
 

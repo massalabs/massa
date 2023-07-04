@@ -12,7 +12,7 @@ use massa_consensus_exports::{
     ConsensusController,
 };
 use massa_metrics::MassaMetrics;
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 //use crate::handlers::block_handler::BlockInfoReply;
 use massa_pool_exports::{
     test_exports::{MockPoolController, PoolEventReceiver},
@@ -29,6 +29,7 @@ use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
@@ -103,7 +104,7 @@ pub fn start_protocol_controller_with_mock_network(
 
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
@@ -124,14 +125,20 @@ pub fn start_protocol_controller_with_mock_network(
         message_handlers,
         HashMap::default(),
         PeerCategoryInfo {
-            max_in_connections_pre_handshake: 10,
-            max_in_connections_post_handshake: 10,
+            allow_local_peers: true,
+            max_in_connections: 10,
             target_out_connections: 10,
             max_in_connections_per_ip: 10,
         },
         config,
         mip_store,
-        MassaMetrics::new(false, 32),
+        MassaMetrics::new(
+            false,
+            "0.0.0.0:9898".parse().unwrap(),
+            32,
+            std::time::Duration::from_secs(5),
+        )
+        .0,
     )?;
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);

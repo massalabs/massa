@@ -96,7 +96,7 @@
     # duration of the statistics time window in milliseconds
     stats_time_window_duration = 60000
     # maximum allowed gas for read only executions
-    max_read_only_gas = 100_000_000
+    max_read_only_gas = 4_294_967_295
     # gas cost for ABIs
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
@@ -134,7 +134,7 @@
     # number of final periods that must be kept without operations (increase improve bootstrap process, high values will increase RAM usage.)
     force_keep_final_periods_without_ops = 32
     # number of final periods that must be kept with operations (increase to more resilience to short network disconnections, high values will increase RAM usage.)
-    force_keep_final_periods = 10
+    force_keep_final_periods = 5
 
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
@@ -175,7 +175,9 @@
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
     # max cache size for which operations your node knows about
-    max_known_ops_size = 2000000
+    max_known_ops_size = 1000000
+    # max size of the cache of asked operations
+    asked_operations_buffer_capacity = 600000
     # max cache size for which operations a foreign node knows about
     max_node_known_ops_size = 200000
     # max cache size for which endorsements our node knows about
@@ -189,8 +191,6 @@
     operation_announcement_buffer_capacity = 2000
     # start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     operation_batch_proc_period = 500
-    # all operations asked are prune each `operation_asked_pruning_period` millisecond
-    asked_operations_pruning_period = 100000
     # interval at which operations are announced in batches.
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
@@ -199,24 +199,32 @@
     try_connection_timer = 5000
     # Number of millis seconds that create a timeout for out connections
     timeout_connection = 1000
+    # max number of operations kept for propagation
+    max_ops_kept_for_propagation = 320000
     # time threshold after which operation are not propagated
     max_operations_propagation_time = 32000
     # time threshold after which endorsement are not propagated
-    max_endorsements_propagation_time = 48000
+    max_endorsements_propagation_time = 32000
     # number of thread tester
     thread_tester_count = 25
     # Nb max in connections that we accept
     max_in_connections = 100
     # Peer default category limits
-    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections_pre_handshake = 70, max_in_connections_post_handshake = 15}
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 70, allow_local_peers = false }
     # Peer categories limits
     [protocol.peers_categories]
-    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections_pre_handshake = 8, max_in_connections_post_handshake = 1}
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 8, allow_local_peers = false }
 
 [network]
 
 [metrics]
+    # enable prometheus metrics
     enabled = true
+    # port on which to listen for prometheus metrics
+    bind = "[::]:31248"
+    # interval at which to update metrics
+    tick_delay = 5000
+
 
 [bootstrap]
     # list of bootstrap (ip, node id)
@@ -269,11 +277,13 @@
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
     per_ip_min_interval = 180000
     # read-write limitation for a connection in bytes per seconds (about the bootstrap specifically)
-    max_bytes_read_write = 20_000_000.0
+    max_bytes_read_write = 20_000_000
 
 [pool]
     # max number of operations kept in the pool
-    max_operation_pool_size = 800000
+    max_operation_pool_size = 500000
+    # max excess number of operations kept in pool in-between refreshes
+    max_operation_pool_excess_items = 100000
     # refresh interval of the operation pool scoring (milliseconds)
     operation_pool_refresh_interval = 5000
     # if an operation is too much in the future it will be ignored (milliseconds)
@@ -287,6 +297,7 @@
     # operations channel capacity
     broadcast_operations_channel_capacity = 5000
 
+
 [selector]
     # path to the initial roll distribution
     initial_rolls_path = "base_config/initial_rolls.json"
@@ -296,3 +307,9 @@
     initial_delay = 100
     # path to your staking wallet
     staking_wallet_path = "config/staking_wallet.dat"
+    # stop or not the production in case we are not connected to anyone
+    stop_production_when_zero_connections = true
+
+[versioning]
+    # Warn user to update its node if we reach this percentage for announced network versions
+    mip_stats_warn_announced_version = 30

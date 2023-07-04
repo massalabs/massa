@@ -61,14 +61,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1685970900000) // Monday, June 5, 2023 01:15:00 PM UTC
+        MassaTime::from_millis(1688484600000) // Tuesday, July 4, 2023 05:30:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(MassaTime::from_millis(1688140800000))  // Friday, June 30, 2023 04:00:00 PM UTC
+        Some(MassaTime::from_millis(1690808400000))  // Monday, July 31, 2023 03:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -78,14 +78,13 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.23.2"
+            "SAND.24.0"
         } else {
-            "TEST.23.2"
+            "TEST.24.0"
         }
         .parse()
         .unwrap()
     };
-
 }
 
 /// Helper function to parse args for lazy_static evaluations
@@ -103,15 +102,13 @@ pub fn get_period_from_args() -> u64 {
 }
 
 /// Price of a roll in the network
-pub const ROLL_PRICE: Amount = Amount::from_mantissa_scale(100, 0);
+pub const ROLL_PRICE: Amount = Amount::const_init(100, 0);
 /// Block reward is given for each block creation
-pub const BLOCK_REWARD: Amount = Amount::from_mantissa_scale(3, 1);
+pub const BLOCK_REWARD: Amount = Amount::const_init(102, 2);
 /// Cost to store one byte in the ledger
-pub const LEDGER_COST_PER_BYTE: Amount = Amount::from_mantissa_scale(25, 5);
-/// Address size in bytes
-pub const ADDRESS_SIZE_BYTES: usize = 32;
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 3);
 /// Cost for a base entry default 0.01 MASSA
-pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::from_mantissa_scale(1, 2);
+pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(1, 2);
 /// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
 pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
 /// Time between the periods in the same thread.
@@ -300,11 +297,9 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
-pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::from_mantissa_scale(75, 0);
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio<u64> = Ratio::new_raw(75, 100);
 /// Block count to process in MipStoreStats (for state change threshold)
 pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
-/// Max number of stats counters
-pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
 
 //
 // Constants for denunciation factory
