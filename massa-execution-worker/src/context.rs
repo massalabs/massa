@@ -214,7 +214,6 @@ impl ExecutionContext {
                 final_state,
                 active_history,
             ),
-            execution_trail_hash,
             max_gas: Default::default(),
             creator_coin_spending_allowance: Default::default(),
             slot: Slot::new(0, 0),
@@ -225,13 +224,14 @@ impl ExecutionContext {
             stack: Default::default(),
             read_only: Default::default(),
             events: Default::default(),
-            unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
+            unsafe_rng: init_prng(&execution_trail_hash),
             creator_address: Default::default(),
             origin_operation_id: Default::default(),
             module_cache,
             config,
             vesting_manager,
             address_factory: AddressFactory { mip_store },
+            execution_trail_hash,
         }
     }
 
@@ -321,27 +321,12 @@ impl ExecutionContext {
         let execution_trail_hash =
             generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
-        // Deterministically seed the unsafe RNG to allow the bytecode to use it.
-        // Note that consecutive read-only calls for the same slot will get the same random seed.
-        let seed = massa_hash::Hash::compute_from_tuple(&[
-            "PRNG_SEED".as_bytes(),
-            execution_trail_hash.to_bytes(),
-        ])
-        .into_bytes();
-
-        // We use Xoshiro256PlusPlus because it is very fast,
-        // has a period long enough to ensure no repetitions will ever happen,
-        // of decent quality (given the unsafe constraints)
-        // but not cryptographically secure (and that's ok because the internal state is exposed anyways)
-        let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
-
         // return readonly context
         ExecutionContext {
             max_gas,
             slot,
             stack: call_stack,
             read_only: true,
-            unsafe_rng,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -408,25 +393,10 @@ impl ExecutionContext {
             false,
         );
 
-        // Deterministically seed the unsafe RNG to allow the bytecode to use it.
-        // Note that consecutive read-only calls for the same slot will get the same random seed.
-        let seed = massa_hash::Hash::compute_from_tuple(&[
-            "PRNG_SEED".as_bytes(),
-            execution_trail_hash.to_bytes(),
-        ])
-        .into_bytes();
-
-        // We use Xoshiro256PlusPlus because it is very fast,
-        // has a period long enough to ensure no repetitions will ever happen,
-        // of decent quality (given the unsafe constraints)
-        // but not cryptographically secure (and that's ok because the internal state is exposed anyways)
-        let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
-
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
-            unsafe_rng,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -1124,4 +1094,21 @@ fn generate_execution_trail_hash(
             block_id.to_bytes(),
         ]),
     }
+}
+
+/// Initializes and seeds the PRNG with the given execution trail hash.
+fn init_prng(execution_trail_hash: &massa_hash::Hash) -> Xoshiro256PlusPlus {
+    // Deterministically seed the unsafe RNG to allow the bytecode to use it.
+    // Note that consecutive read-only calls for the same slot will get the same random seed.
+    let seed = massa_hash::Hash::compute_from_tuple(&[
+        "PRNG_SEED".as_bytes(),
+        execution_trail_hash.to_bytes(),
+    ])
+    .into_bytes();
+
+    // We use Xoshiro256PlusPlus because it is very fast,
+    // has a period long enough to ensure no repetitions will ever happen,
+    // of decent quality (given the unsafe constraints)
+    // but not cryptographically secure (and that's ok because the internal state is exposed anyways)
+    Xoshiro256PlusPlus::from_seed(seed)
 }
