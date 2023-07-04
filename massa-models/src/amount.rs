@@ -11,8 +11,10 @@ use std::fmt;
 use std::ops::Bound;
 use std::str::FromStr;
 
-/// decimal factor for the internal representation
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+/// Decimals scale for the amount
+pub const AMOUNT_DECIMAL_SCALE: u32 = 9;
+/// Decimals factor for the amount
+pub const AMOUNT_DECIMAL_FACTOR: u64 = 10u64.pow(AMOUNT_DECIMAL_SCALE);
 
 /// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
@@ -89,6 +91,21 @@ impl Amount {
         let res = raw_mantissa / scale_factor;
         assert!(res <= (u64::MAX as u128));
         Self(res as u64)
+    }
+
+    /// Returns the value in the (mantissa, scale) format where
+    /// amount = mantissa * 10^(-scale)
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use massa_models::amount::AMOUNT_DECIMAL_SCALE;
+    /// # use std::str::FromStr;
+    /// let amount = Amount::from_str("0.123456789").unwrap();
+    /// let (mantissa, scale) = amount.to_mantissa_scale();
+    /// assert_eq!(mantissa, 123456789);
+    /// assert_eq!(scale, AMOUNT_DECIMAL_SCALE);
+    /// ```
+    pub fn to_mantissa_scale(&self) -> (u64, u32) {
+        (self.0, AMOUNT_DECIMAL_SCALE)
     }
 
     /// Creates an amount in the format mantissa*10^(-scale).
