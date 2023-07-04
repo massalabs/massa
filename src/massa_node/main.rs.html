@@ -1297,12 +1297,6 @@
 <a href="#1297" id="1297">1297</a>
 <a href="#1298" id="1298">1298</a>
 <a href="#1299" id="1299">1299</a>
-<a href="#1300" id="1300">1300</a>
-<a href="#1301" id="1301">1301</a>
-<a href="#1302" id="1302">1302</a>
-<a href="#1303" id="1303">1303</a>
-<a href="#1304" id="1304">1304</a>
-<a href="#1305" id="1305">1305</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1392,7 +1386,6 @@
 <span class="kw">use </span>massa_versioning::mips::get_mip_list;
 <span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
 <span class="kw">use </span>massa_wallet::Wallet;
-<span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
@@ -1583,14 +1576,9 @@
     <span class="comment">// Creates an empty default store
     </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        warn_announced_version_ratio: Ratio::new(
-            u64::from(SETTINGS.versioning.mip_stats_warn_announced_version),
-            <span class="number">100</span>,
-        ),
     };
-    <span class="comment">// Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
-    </span><span class="kw">let </span>mip_list = get_mip_list();
+    <span class="kw">let </span>mip_list = get_mip_list();
     <span class="macro">debug!</span>(<span class="string">&quot;MIP list: {:?}&quot;</span>, mip_list);
     <span class="kw">let </span>mip_store =
         MipStore::try_from((mip_list, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
