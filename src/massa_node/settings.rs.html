@@ -321,6 +321,13 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -461,6 +468,7 @@
     <span class="kw">pub </span>factory: FactorySettings,
     <span class="kw">pub </span>grpc: GrpcSettings,
     <span class="kw">pub </span>metrics: MetricsSettings,
+    <span class="kw">pub </span>versioning: VersioningSettings,
 }
 
 <span class="doccomment">/// Consensus configuration
@@ -637,6 +645,12 @@
     </span><span class="kw">pub </span>server_private_key_path: PathBuf,
     <span class="doccomment">/// client certificate authority root path
     </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
+}
+
+<span class="attr">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>VersioningSettings {
+    <span class="comment">// Warn user to update its node if we reach this percentage for announced network versions
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) mip_stats_warn_announced_version: u32,
 }
 
 <span class="attr">#[cfg(test)]
