@@ -8,6 +8,7 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use massa_async_pool::AsyncPool;
+use massa_db_exports::EXECUTION_TRAIL_HASH_PREFIX;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
@@ -154,8 +155,18 @@ impl FinalState {
 
     /// Gets the hash of the execution trail
     pub fn get_execution_trail_hash(&self) -> massa_hash::Hash {
-        // TODO  return the execution trail hash
-        unimplemented!()
+        let hash_bytes = self
+            .db
+            .read()
+            .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
+            .expect("could not read execution trail hash from state DB")
+            .expect("could not find execution trail hash in state DB");
+        massa_hash::Hash::from_bytes(
+            hash_bytes
+                .as_slice()
+                .try_into()
+                .expect("invalid execution trail hash in state DB"),
+        )
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
@@ -633,8 +644,12 @@ impl FinalState {
                 )
             });
 
+        // Update execution trail hash
         if let SetOrKeep::Set(new_hash) = changes.execution_trail_hash_change {
-            // TODO update execution trail hash in batch
+            db_batch.insert(
+                EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
+                Some(new_hash.to_bytes().to_vec()),
+            );
         }
 
         self.db
