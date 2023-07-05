@@ -588,7 +588,12 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
     if !added.is_empty() {
         for (mip_info, mip_state) in added.iter() {
             let now = MassaTime::now().expect("Cannot get current time");
-            match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+            match mip_state.state_at(
+                now,
+                mip_info.start,
+                mip_info.timeout,
+                mip_info.activation_delay,
+            ) {
                 Ok(st_id) => {
                     if st_id == ComponentStateTypeId::LockedIn {
                         // A new MipInfo @ state locked_in - we need to urge the user to update

@@ -179,30 +179,55 @@ pub struct Advance {
     pub now: MassaTime,
 }
 
-// Need Ord / PartialOrd so it is properly sorted in BTreeMap
-
-impl Ord for Advance {
-    fn cmp(&self, other: &Self) -> Ordering {
-        (self.now).cmp(&other.now)
-    }
-}
-
-impl PartialOrd for Advance {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 impl PartialEq for Advance {
     fn eq(&self, other: &Self) -> bool {
         self.start_timestamp == other.start_timestamp
             && self.timeout == other.timeout
             && self.threshold == other.threshold
             && self.now == other.now
+            && self.activation_delay == other.activation_delay
     }
 }
 
 impl Eq for Advance {}
+
+// A Lightweight version of 'Advance' (used in MipState history)
+#[derive(Clone, Debug)]
+pub struct AdvanceLW {
+    /// % of past blocks with this version
+    pub threshold: Ratio<u64>,
+    /// Current time (timestamp)
+    pub now: MassaTime,
+}
+
+impl From<&Advance> for AdvanceLW {
+    fn from(value: &Advance) -> Self {
+        Self {
+            threshold: value.threshold,
+            now: value.now,
+        }
+    }
+}
+
+impl Ord for AdvanceLW {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.now, self.threshold).cmp(&(other.now, other.threshold))
+    }
+}
+
+impl PartialOrd for AdvanceLW {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for AdvanceLW {
+    fn eq(&self, other: &Self) -> bool {
+        self.threshold == other.threshold && self.now == other.now
+    }
+}
+
+impl Eq for AdvanceLW {}
 
 transitions!(ComponentState,
     [
@@ -287,7 +312,7 @@ pub enum IsConsistentError {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipState {
     pub(crate) state: ComponentState,
-    pub(crate) history: BTreeMap<Advance, ComponentStateTypeId>,
+    pub(crate) history: BTreeMap<AdvanceLW, ComponentStateTypeId>,
 }
 
 impl MipState {
@@ -295,14 +320,12 @@ impl MipState {
     pub fn new(defined: MassaTime) -> Self {
         let state: ComponentState = Default::default(); // Default is Defined
         let state_id = ComponentStateTypeId::from(&state);
-        // Build a 'dummy' advance msg for state Defined, this is to avoid using an
-        // Option<Advance> in MipStateHistory::history
-        let advance = Advance {
-            start_timestamp: MassaTime::from_millis(0),
-            timeout: MassaTime::from_millis(0),
+        // Build a 'dummy' advance lw msg for state Defined, this is to avoid using an
+        // Option<AdvanceLW> in MipStateHistory::history
+        let advance = AdvanceLW {
             threshold: Default::default(),
             now: defined,
-            activation_delay: MassaTime::from_millis(0),
+            // activation_delay: MassaTime::from_millis(0),
         };
 
         let history = BTreeMap::from([(advance, state_id)]);
@@ -341,7 +364,7 @@ impl MipState {
                     && matches!(self.state, ComponentState::Started(Started { .. })))
                 {
                     self.history
-                        .insert(input.clone(), ComponentStateTypeId::from(&state));
+                        .insert(input.into(), ComponentStateTypeId::from(&state));
                 }
                 self.state = state;
             }
@@ -429,6 +452,7 @@ impl MipState {
         ts: MassaTime,
         start: MassaTime,
         timeout: MassaTime,
+        activation_delay: MassaTime,
     ) -> Result<ComponentStateTypeId, StateAtError> {
         if self.history.is_empty() {
             return Err(StateAtError::EmptyHistory);
@@ -477,7 +501,8 @@ impl MipState {
                 // Note: Please update this if MipState transitions change as it might not hold true
                 if *st_id == ComponentStateTypeId::Started
                     && adv.threshold < threshold_for_transition
-                    && ts < adv.timeout
+                    && ts < timeout
+                // adv.timeout - TODO: test this
                 {
                     Err(StateAtError::Unpredictable)
                 } else {
@@ -486,7 +511,8 @@ impl MipState {
                         timeout,
                         threshold: adv.threshold,
                         now: ts,
-                        activation_delay: adv.activation_delay,
+                        // activation_delay: adv.activation_delay,
+                        activation_delay,
                     };
                     // Return the resulting state after advance
                     let state = self.state.on_advance(msg);
@@ -1003,7 +1029,7 @@ impl MipStoreRaw {
                     && matches!(ms.state, ComponentState::Active(_))
             })
             .find_map(|(mi, ms)| {
-                let res = ms.state_at(ts, mi.start, mi.timeout);
+                let res = ms.state_at(ts, mi.start, mi.timeout, mi.activation_delay);
                 match res {
                     Ok(ComponentStateTypeId::Active) => mi.components.get(component).copied(),
                     _ => None,
@@ -1550,11 +1576,11 @@ mod test {
         assert_eq!(state.history.len(), 2);
         assert!(matches!(
             state.history.first_key_value(),
-            Some((&Advance { .. }, &ComponentStateTypeId::Defined))
+            Some((&AdvanceLW { .. }, &ComponentStateTypeId::Defined))
         ));
         assert!(matches!(
             state.history.last_key_value(),
-            Some((&Advance { .. }, &ComponentStateTypeId::Started))
+            Some((&AdvanceLW { .. }, &ComponentStateTypeId::Started))
         ));
 
         // Query with timestamp
@@ -1564,27 +1590,32 @@ mod test {
             mi.start.saturating_sub(MassaTime::from_millis(5)),
             mi.start,
             mi.timeout,
+            mi.activation_delay,
         );
         assert!(matches!(
             state_id_,
             Err(StateAtError::BeforeInitialState(_, _))
         ));
         // After Defined timestamp
-        let state_id = state.state_at(mi.start, mi.start, mi.timeout).unwrap();
+        let state_id = state
+            .state_at(mi.start, mi.start, mi.timeout, mi.activation_delay)
+            .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Defined);
         // At Started timestamp
-        let state_id = state.state_at(now, mi.start, mi.timeout).unwrap();
+        let state_id = state
+            .state_at(now, mi.start, mi.timeout, mi.activation_delay)
+            .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Started);
 
         // After Started timestamp but before timeout timestamp
         let after_started_ts = now.saturating_add(MassaTime::from_millis(15));
-        let state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout);
+        let state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout, mi.activation_delay);
         assert_eq!(state_id_, Err(StateAtError::Unpredictable));
 
         // After Started timestamp and after timeout timestamp
         let after_timeout_ts = mi.timeout.saturating_add(MassaTime::from_millis(15));
         let state_id = state
-            .state_at(after_timeout_ts, mi.start, mi.timeout)
+            .state_at(after_timeout_ts, mi.start, mi.timeout, mi.activation_delay)
             .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Failed);
 
@@ -1599,12 +1630,17 @@ mod test {
         // After LockedIn timestamp and before timeout timestamp
         let after_locked_in_ts = now.saturating_add(MassaTime::from_millis(10));
         let state_id = state
-            .state_at(after_locked_in_ts, mi.start, mi.timeout)
+            .state_at(
+                after_locked_in_ts,
+                mi.start,
+                mi.timeout,
+                mi.activation_delay,
+            )
             .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::LockedIn);
         // After LockedIn timestamp and after timeout timestamp
         let state_id = state
-            .state_at(after_timeout_ts, mi.start, mi.timeout)
+            .state_at(after_timeout_ts, mi.start, mi.timeout, mi.activation_delay)
             .unwrap();
         assert_eq!(state_id, ComponentStateTypeId::Active);
     }
@@ -2455,7 +2491,7 @@ mod test {
         let mut at = MassaTime::now().unwrap();
         at = at.saturating_add(activation_delay);
         assert_eq!(
-            ms_.state_at(at, mi_1.start, mi_1.timeout),
+            ms_.state_at(at, mi_1.start, mi_1.timeout, mi_1.activation_delay),
             Ok(ComponentStateTypeId::Active)
         );
 
