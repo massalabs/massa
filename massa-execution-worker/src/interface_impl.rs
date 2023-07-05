@@ -325,6 +325,7 @@ impl Interface for InterfaceImpl {
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
     fn get_balance_wasmv1(&self, address: Option<String>) -> Result<NativeAmount> {
+    fn get_balance_wasmv1(&self, address: Option<String>) -> Result<NativeAmount> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -1306,12 +1307,14 @@ impl Interface for InterfaceImpl {
 
     #[allow(unused_variables)]
     fn base58_check_to_bytes_wasmv1(&self, s: &str) -> Result<Vec<u8>> {
-        unimplemented!("base58_check_to_bytes_wasmv1");
+        bs58::decode(s)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| anyhow!(format!("bs58 parsing error: {}", err)))
     }
 
-    #[allow(unused_variables)]
-    fn bytes_to_base58_check_wasmv1(&self, bytes: &[u8]) -> String {
-        unimplemented!("bytes_to_base58_check_wasmv1");
+    fn bytes_to_base58_check_wasmv1(&self, data: &[u8]) -> String {
+        bs58::encode(data).with_check().into_string()
     }
 
     fn check_address_wasmv1(&self, to_check: &String) -> Result<bool> {
@@ -1553,6 +1556,18 @@ mod tests {
             .add_native_amounts_wasmv1(&verif_div, &remainder)
             .unwrap();
         assert_eq!(verif_dif, amount1);
+    }
+
+    #[test]
+    fn test_base58_check_to_form() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None);
+
+        let data = "helloworld";
+        let encoded = interface.bytes_to_base58_check_wasmv1(data.as_bytes());
+        let decoded = interface.base58_check_to_bytes_wasmv1(&encoded).unwrap();
+
+        assert_eq!(data.as_bytes(), decoded);
     }
 }
 

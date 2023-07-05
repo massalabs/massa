@@ -2821,6 +2821,7 @@ name = "massa_execution_worker"
 version = "0.24.0"
 dependencies = [
  "anyhow",
+ "bs58",
  "criterion",
  "hex-literal",
  "libsecp256k1",
