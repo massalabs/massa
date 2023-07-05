@@ -18,7 +18,7 @@ tokio = { version = "1.23", features = ["sync"] }
 mockall = { version = "0.11.4",  optional = true}
 
 # custom modules
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "feature/Improve_ABI_types_in_wasmv1_leo", features = ["tonic"]}
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "feature/Improve_ABI_types_in_wasmv1", features = ["tonic"]}
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
@@ -28,7 +28,7 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 massa_ledger_exports = { path = "../massa-ledger-exports", optional = true }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_versioning = { path = "../massa-versioning" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "feature/Improve_ABI_types_in_wasmv1_leo" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "feature/Improve_ABI_types_in_wasmv1" }
 
 [dev-dependencies]
 mockall = "0.11.4"

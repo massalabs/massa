@@ -1374,7 +1374,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef033ed5e9bad94e55838ca0ca906db0e043f517adda0c8b79c7a8c66c93c1b5"
 dependencies = [
  "cfg-if",
- "rustix 0.38.2",
+ "rustix 0.38.3",
  "windows-sys 0.48.0",
 ]
 
@@ -2511,7 +2511,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1_leo#b8013a7adccd3b9b1d18acfc1487dbacea352d49"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1#988019fe50dd093f4793ec7b43a1d5e1b1952ae4"
 dependencies = [
  "glob",
  "prost",
@@ -2524,7 +2524,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1_leo#9f69d3cf532886cf857407c3bfd490614854d013"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1#8ad3296d211976b912f909dca8372fd5ef074638"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -4081,7 +4081,7 @@ dependencies = [
  "byteorder",
  "hex",
  "lazy_static",
- "rustix 0.36.14",
+ "rustix 0.36.15",
 ]
 
 [[package]]
@@ -4542,9 +4542,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustix"
-version = "0.36.14"
+version = "0.36.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14e4d67015953998ad0eb82887a0eb0129e18a7e2f3b7b0f6c422fddcd503d62"
+checksum = "c37f1bd5ef1b5422177b7646cba67430579cfe2ace80f284fee876bca52ad941"
 dependencies = [
  "bitflags 1.3.2",
  "errno",
@@ -4556,9 +4556,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.37.22"
+version = "0.37.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8818fa822adcc98b18fedbb3632a6a33213c070556b5aa7c4c8cc21cff565c4c"
+checksum = "4d69718bf81c6127a49dc64e44a742e8bb9213c0ff8869a22c308f84c1d4ab06"
 dependencies = [
  "bitflags 1.3.2",
  "errno",
@@ -4570,9 +4570,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.2"
+version = "0.38.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aabcb0461ebd01d6b79945797c27f8529082226cb630a9865a71870ff63532a4"
+checksum = "ac5ffa1efe7548069688cd7028f32591853cd7b5b756d41bcffd2353e4fc75b4"
 dependencies = [
  "bitflags 2.3.3",
  "errno",
@@ -5182,7 +5182,7 @@ dependencies = [
  "cfg-if",
  "fastrand",
  "redox_syscall 0.3.5",
- "rustix 0.37.22",
+ "rustix 0.37.23",
  "windows-sys 0.48.0",
 ]
 
