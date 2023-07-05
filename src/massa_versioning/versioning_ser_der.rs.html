@@ -1127,6 +1127,50 @@
 <a href="#1127" id="1127">1127</a>
 <a href="#1128" id="1128">1128</a>
 <a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -1140,7 +1184,7 @@
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::versioning::{
-    Active, AdvanceLW, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
+    Active, Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
     MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
@@ -1482,15 +1526,15 @@
 
 <span class="comment">// End ComponentState
 
-// AdvanceLW
+// Advance
 
-</span><span class="doccomment">/// Serializer for `AdvanceLW`
-</span><span class="kw">pub struct </span>AdvanceLWSerializer {
+</span><span class="doccomment">/// Serializer for `Advance`
+</span><span class="kw">pub struct </span>AdvanceSerializer {
     ratio_serializer: RatioSerializer&lt;u64, U64VarIntSerializer&gt;,
     time_serializer: MassaTimeSerializer,
 }
 
-<span class="kw">impl </span>AdvanceLWSerializer {
+<span class="kw">impl </span>AdvanceSerializer {
     <span class="doccomment">/// Creates a new `Serializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -1500,30 +1544,38 @@
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>AdvanceLWSerializer {
+<span class="kw">impl </span>Default <span class="kw">for </span>AdvanceSerializer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl </span>Serializer&lt;AdvanceLW&gt; <span class="kw">for </span>AdvanceLWSerializer {
-    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>AdvanceLW, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="comment">// vote ratio
+<span class="kw">impl </span>Serializer&lt;Advance&gt; <span class="kw">for </span>AdvanceSerializer {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>Advance, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+        <span class="comment">// start
+        </span><span class="self">self</span>.time_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.start_timestamp, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// timeout
+        </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.timeout, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// threshold
         </span><span class="self">self</span>.ratio_serializer.serialize(<span class="kw-2">&amp;</span>value.threshold, buffer)<span class="question-mark">?</span>;
         <span class="comment">// now
         </span><span class="self">self</span>.time_serializer.serialize(<span class="kw-2">&amp;</span>value.now, buffer)<span class="question-mark">?</span>;
+        <span class="comment">// activation delay
+        </span><span class="self">self</span>.time_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.activation_delay, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// A Deserializer for `AdvanceLW`
-</span><span class="kw">pub struct </span>AdvanceLWDeserializer {
+<span class="doccomment">/// A Deserializer for `Advance`
+</span><span class="kw">pub struct </span>AdvanceDeserializer {
     ratio_deserializer: RatioDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     time_deserializer: MassaTimeDeserializer,
 }
 
-<span class="kw">impl </span>AdvanceLWDeserializer {
-    <span class="doccomment">/// Creates a new `AdvanceLWDeserializer`
+<span class="kw">impl </span>AdvanceDeserializer {
+    <span class="doccomment">/// Creates a new `AdvanceDeserializer`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
@@ -1538,41 +1590,58 @@
     }
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>AdvanceLWDeserializer {
+<span class="kw">impl </span>Default <span class="kw">for </span>AdvanceDeserializer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl </span>Deserializer&lt;AdvanceLW&gt; <span class="kw">for </span>AdvanceLWDeserializer {
+<span class="kw">impl </span>Deserializer&lt;Advance&gt; <span class="kw">for </span>AdvanceDeserializer {
     <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], AdvanceLW, E&gt; {
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Advance, E&gt; {
         context(
             <span class="string">&quot;Failed Advance deserialization&quot;</span>,
             tuple((
+                context(<span class="string">&quot;Failed start_timestamp deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.time_deserializer.deserialize(input)
+                }),
+                context(<span class="string">&quot;Failed timeout deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.time_deserializer.deserialize(input)
+                }),
                 context(<span class="string">&quot;Failed threshold deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.ratio_deserializer.deserialize(input)
                 }),
                 context(<span class="string">&quot;Failed now deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
+                context(<span class="string">&quot;Failed activation delay deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.time_deserializer.deserialize(input)
+                }),
             )),
         )
-        .map(|(threshold, now)| AdvanceLW { threshold, now })
+        .map(
+            |(start_timestamp, timeout, threshold, now, activation_delay)| Advance {
+                start_timestamp,
+                timeout,
+                threshold,
+                now,
+                activation_delay,
+            },
+        )
         .parse(buffer)
     }
 }
 
-<span class="comment">// End AdvanceLW
+<span class="comment">// End Advance
 
 // MipState
 
 </span><span class="doccomment">/// Serializer for `MipState`
 </span><span class="kw">pub struct </span>MipStateSerializer {
     state_serializer: ComponentStateSerializer,
-    advance_serializer: AdvanceLWSerializer,
+    advance_serializer: AdvanceSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
@@ -1616,7 +1685,7 @@
 <span class="doccomment">/// A Deserializer for `MipState`
 </span><span class="kw">pub struct </span>MipStateDeserializer {
     state_deserializer: ComponentStateDeserializer,
-    advance_deserializer: AdvanceLWDeserializer,
+    advance_deserializer: AdvanceDeserializer,
     state_id_deserializer: U32VarIntDeserializer,
     u32_deserializer: U32VarIntDeserializer,
 }
@@ -1626,7 +1695,7 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             state_deserializer: ComponentStateDeserializer::new(),
-            advance_deserializer: AdvanceLWDeserializer::new(),
+            advance_deserializer: AdvanceDeserializer::new(),
             state_id_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Excluded(COMPONENT_STATE_ID_VARIANT_COUNT),
@@ -1686,7 +1755,7 @@
         .map(|items| {
             items
                 .into_iter()
-                .collect::&lt;BTreeMap&lt;AdvanceLW, ComponentStateTypeId&gt;&gt;()
+                .collect::&lt;BTreeMap&lt;Advance, ComponentStateTypeId&gt;&gt;()
         })
         .parse(rem)<span class="question-mark">?</span>;
 
@@ -1809,8 +1878,14 @@
                     nom::error::ErrorKind::Fail,
                 ))
             })<span class="question-mark">?</span>;
+        <span class="comment">// let cfg_counter_max: u32 = u32::try_from(self.config.counters_max).map_err(|_e| {
+        //     nom::Err::Error(ParseError::from_error_kind(
+        //         buffer,
+        //         nom::error::ErrorKind::Fail,
+        //     ))
+        // })?;
 
-        <span class="kw">let </span>(rem3, latest_annoucements_) = context(
+        </span><span class="kw">let </span>(rem3, latest_annoucements_) = context(
             <span class="string">&quot;Failed MipStoreStats latest announcements der&quot;</span>,
             length_count(
                 context(<span class="string">&quot;Failed latest announcements count der&quot;</span>, |input| {
@@ -1938,7 +2013,15 @@
     }
 }
 
-<span class="kw">impl </span>Deserializer&lt;MipStoreRaw&gt; <span class="kw">for </span>MipStoreRawDeserializer {
+<span class="comment">/*
+impl Default for MipStoreRawDeserializer {
+    fn default() -&gt; Self {
+        Self::new()
+    }
+}
+*/
+
+</span><span class="kw">impl </span>Deserializer&lt;MipStoreRaw&gt; <span class="kw">for </span>MipStoreRawDeserializer {
     <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
@@ -2068,23 +2151,28 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_advance_ser_der() {
+        <span class="kw">let </span>start = MassaTime::from_utc_ymd_hms(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">01</span>, <span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>).unwrap();
+        <span class="kw">let </span>timeout = MassaTime::from_utc_ymd_hms(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">11</span>, <span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>).unwrap();
         <span class="kw">let </span>now = MassaTime::from_utc_ymd_hms(<span class="number">2017</span>, <span class="number">05</span>, <span class="number">11</span>, <span class="number">11</span>, <span class="number">33</span>, <span class="number">44</span>).unwrap();
 
-        <span class="kw">let </span>adv_lw = AdvanceLW {
+        <span class="kw">let </span>adv = Advance {
+            start_timestamp: start,
+            timeout,
             threshold: Default::default(),
             now,
+            activation_delay: MassaTime::from_millis(<span class="number">20</span>),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
-        <span class="kw">let </span>adv_ser = AdvanceLWSerializer::new();
-        adv_ser.serialize(<span class="kw-2">&amp;</span>adv_lw, <span class="kw-2">&amp;mut </span>buf).unwrap();
+        <span class="kw">let </span>adv_ser = AdvanceSerializer::new();
+        adv_ser.serialize(<span class="kw-2">&amp;</span>adv, <span class="kw-2">&amp;mut </span>buf).unwrap();
 
-        <span class="kw">let </span>state_der = AdvanceLWDeserializer::new();
+        <span class="kw">let </span>state_der = AdvanceDeserializer::new();
 
         <span class="kw">let </span>(rem, adv_der) = state_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
 
         <span class="macro">assert!</span>(rem.is_empty());
-        <span class="macro">assert_eq!</span>(adv_lw, adv_der);
+        <span class="macro">assert_eq!</span>(adv, adv_der);
     }
 
     <span class="attr">#[test]
@@ -2223,7 +2311,7 @@
                 <span class="kw">let </span>state = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>mi_base);
 
                 all_state_size += size_of_val(<span class="kw-2">&amp;</span>state.state);
-                all_state_size += state.history.len() * (size_of::&lt;AdvanceLW&gt;() + size_of::&lt;u32&gt;());
+                all_state_size += state.history.len() * (size_of::&lt;Advance&gt;() + size_of::&lt;u32&gt;());
 
                 (mi_base.clone(), state)
             })

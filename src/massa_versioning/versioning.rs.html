@@ -2406,28 +2406,6 @@
 <a href="#2406" id="2406">2406</a>
 <a href="#2407" id="2407">2407</a>
 <a href="#2408" id="2408">2408</a>
-<a href="#2409" id="2409">2409</a>
-<a href="#2410" id="2410">2410</a>
-<a href="#2411" id="2411">2411</a>
-<a href="#2412" id="2412">2412</a>
-<a href="#2413" id="2413">2413</a>
-<a href="#2414" id="2414">2414</a>
-<a href="#2415" id="2415">2415</a>
-<a href="#2416" id="2416">2416</a>
-<a href="#2417" id="2417">2417</a>
-<a href="#2418" id="2418">2418</a>
-<a href="#2419" id="2419">2419</a>
-<a href="#2420" id="2420">2420</a>
-<a href="#2421" id="2421">2421</a>
-<a href="#2422" id="2422">2422</a>
-<a href="#2423" id="2423">2423</a>
-<a href="#2424" id="2424">2424</a>
-<a href="#2425" id="2425">2425</a>
-<a href="#2426" id="2426">2426</a>
-<a href="#2427" id="2427">2427</a>
-<a href="#2428" id="2428">2428</a>
-<a href="#2429" id="2429">2429</a>
-<a href="#2430" id="2430">2430</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
@@ -2447,6 +2425,8 @@
     VERSIONING_CF,
 };
 <span class="kw">use </span>massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+<span class="attr">#[allow(unused_imports)]
+</span><span class="kw">use </span>massa_models::config::VERSIONING_ACTIVATION_DELAY_MIN;
 <span class="kw">use </span>massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::slot::Slot;
@@ -2609,55 +2589,30 @@
     </span><span class="kw">pub </span>now: MassaTime,
 }
 
+<span class="comment">// Need Ord / PartialOrd so it is properly sorted in BTreeMap
+
+</span><span class="kw">impl </span>Ord <span class="kw">for </span>Advance {
+    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
+        (<span class="self">self</span>.now).cmp(<span class="kw-2">&amp;</span>other.now)
+    }
+}
+
+<span class="kw">impl </span>PartialOrd <span class="kw">for </span>Advance {
+    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
+    }
+}
+
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>Advance {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="self">self</span>.start_timestamp == other.start_timestamp
             &amp;&amp; <span class="self">self</span>.timeout == other.timeout
             &amp;&amp; <span class="self">self</span>.threshold == other.threshold
             &amp;&amp; <span class="self">self</span>.now == other.now
-            &amp;&amp; <span class="self">self</span>.activation_delay == other.activation_delay
     }
 }
 
 <span class="kw">impl </span>Eq <span class="kw">for </span>Advance {}
-
-<span class="comment">// A Lightweight version of &#39;Advance&#39; (used in MipState history)
-</span><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>AdvanceLW {
-    <span class="doccomment">/// % of past blocks with this version
-    </span><span class="kw">pub </span>threshold: Ratio&lt;u64&gt;,
-    <span class="doccomment">/// Current time (timestamp)
-    </span><span class="kw">pub </span>now: MassaTime,
-}
-
-<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Advance&gt; <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>Advance) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            threshold: value.threshold,
-            now: value.now,
-        }
-    }
-}
-
-<span class="kw">impl </span>Ord <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
-        (<span class="self">self</span>.now, <span class="self">self</span>.threshold).cmp(<span class="kw-2">&amp;</span>(other.now, other.threshold))
-    }
-}
-
-<span class="kw">impl </span>PartialOrd <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
-        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
-    }
-}
-
-<span class="kw">impl </span>PartialEq <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
-        <span class="self">self</span>.threshold == other.threshold &amp;&amp; <span class="self">self</span>.now == other.now
-    }
-}
-
-<span class="kw">impl </span>Eq <span class="kw">for </span>AdvanceLW {}
 
 <span class="macro">transitions!</span>(ComponentState,
     [
@@ -2683,7 +2638,7 @@
 <span class="kw">impl </span>Started {
     <span class="doccomment">/// Update state from state Started
     </span><span class="kw">pub fn </span>on_advance(<span class="self">self</span>, input: Advance) -&gt; ComponentState {
-        <span class="kw">if </span>input.now &gt;= input.timeout {
+        <span class="kw">if </span>input.now &gt; input.timeout {
             <span class="kw">return </span>ComponentState::failed();
         }
 
@@ -2742,7 +2697,7 @@
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub struct </span>MipState {
     <span class="kw">pub</span>(<span class="kw">crate</span>) state: ComponentState,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) history: BTreeMap&lt;AdvanceLW, ComponentStateTypeId&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) history: BTreeMap&lt;Advance, ComponentStateTypeId&gt;,
 }
 
 <span class="kw">impl </span>MipState {
@@ -2750,13 +2705,15 @@
     </span><span class="kw">pub fn </span>new(defined: MassaTime) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>state: ComponentState = Default::default(); <span class="comment">// Default is Defined
         </span><span class="kw">let </span>state_id = ComponentStateTypeId::from(<span class="kw-2">&amp;</span>state);
-        <span class="comment">// Build a &#39;dummy&#39; advance lw msg for state Defined, this is to avoid using an
-        // Option&lt;AdvanceLW&gt; in MipStateHistory::history
-        </span><span class="kw">let </span>advance = AdvanceLW {
+        <span class="comment">// Build a &#39;dummy&#39; advance msg for state Defined, this is to avoid using an
+        // Option&lt;Advance&gt; in MipStateHistory::history
+        </span><span class="kw">let </span>advance = Advance {
+            start_timestamp: MassaTime::from_millis(<span class="number">0</span>),
+            timeout: MassaTime::from_millis(<span class="number">0</span>),
             threshold: Default::default(),
             now: defined,
-            <span class="comment">// activation_delay: MassaTime::from_millis(0),
-        </span>};
+            activation_delay: MassaTime::from_millis(<span class="number">0</span>),
+        };
 
         <span class="kw">let </span>history = BTreeMap::from([(advance, state_id)]);
         <span class="self">Self </span>{ state, history }
@@ -2794,7 +2751,7 @@
                     &amp;&amp; <span class="macro">matches!</span>(<span class="self">self</span>.state, ComponentState::Started(Started { .. })))
                 {
                     <span class="self">self</span>.history
-                        .insert(input.into(), ComponentStateTypeId::from(<span class="kw-2">&amp;</span>state));
+                        .insert(input.clone(), ComponentStateTypeId::from(<span class="kw-2">&amp;</span>state));
                 }
                 <span class="self">self</span>.state = state;
             }
@@ -2882,7 +2839,6 @@
         ts: MassaTime,
         start: MassaTime,
         timeout: MassaTime,
-        activation_delay: MassaTime,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ComponentStateTypeId, StateAtError&gt; {
         <span class="kw">if </span><span class="self">self</span>.history.is_empty() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(StateAtError::EmptyHistory);
@@ -2931,9 +2887,8 @@
                 <span class="comment">// Note: Please update this if MipState transitions change as it might not hold true
                 </span><span class="kw">if </span><span class="kw-2">*</span>st_id == ComponentStateTypeId::Started
                     &amp;&amp; adv.threshold &lt; threshold_for_transition
-                    &amp;&amp; ts &lt; timeout
-                <span class="comment">// adv.timeout - TODO: test this
-                </span>{
+                    &amp;&amp; ts &lt; adv.timeout
+                {
                     <span class="prelude-val">Err</span>(StateAtError::Unpredictable)
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>msg = Advance {
@@ -2941,8 +2896,7 @@
                         timeout,
                         threshold: adv.threshold,
                         now: ts,
-                        <span class="comment">// activation_delay: adv.activation_delay,
-                        </span>activation_delay,
+                        activation_delay: adv.activation_delay,
                     };
                     <span class="comment">// Return the resulting state after advance
                     </span><span class="kw">let </span>state = <span class="self">self</span>.state.on_advance(msg);
@@ -3209,6 +3163,8 @@
     <span class="comment">// ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
     </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} has overlapping data of MipInfo {1:?}&quot;</span>)]
     </span>Overlapping(MipInfo, MipInfo),
+    <span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} has an invalid activation delay value: {1}, min allowed: {2}&quot;</span>)]
+    </span>InvalidActivationDelay(MipInfo, MassaTime, MassaTime),
 }
 
 <span class="doccomment">/// Error returned by &#39;extend_from_db`
@@ -3316,6 +3272,16 @@
                             component_version_compatible = <span class="bool-val">false</span>;
                             <span class="kw">break</span>;
                         }
+                    }
+
+                    <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+                    </span><span class="kw">if </span>v_info.activation_delay &lt; VERSIONING_ACTIVATION_DELAY_MIN {
+                        has_error = <span class="prelude-val">Some</span>(UpdateWithError::InvalidActivationDelay(
+                            v_info.clone(),
+                            v_info.activation_delay,
+                            VERSIONING_ACTIVATION_DELAY_MIN,
+                        ));
+                        <span class="kw">break</span>;
                     }
 
                     <span class="kw">if </span>v_info.start &gt; last_v_info.timeout
@@ -3459,7 +3425,7 @@
                     &amp;&amp; <span class="macro">matches!</span>(ms.state, ComponentState::Active(<span class="kw">_</span>))
             })
             .find_map(|(mi, ms)| {
-                <span class="kw">let </span>res = ms.state_at(ts, mi.start, mi.timeout, mi.activation_delay);
+                <span class="kw">let </span>res = ms.state_at(ts, mi.start, mi.timeout);
                 <span class="kw">match </span>res {
                     <span class="prelude-val">Ok</span>(ComponentStateTypeId::Active) =&gt; mi.components.get(component).copied(),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -4006,11 +3972,11 @@
         </span><span class="macro">assert_eq!</span>(state.history.len(), <span class="number">2</span>);
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
             state.history.first_key_value(),
-            <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>AdvanceLW { .. }, <span class="kw-2">&amp;</span>ComponentStateTypeId::Defined))
+            <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>Advance { .. }, <span class="kw-2">&amp;</span>ComponentStateTypeId::Defined))
         ));
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
             state.history.last_key_value(),
-            <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>AdvanceLW { .. }, <span class="kw-2">&amp;</span>ComponentStateTypeId::Started))
+            <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>Advance { .. }, <span class="kw-2">&amp;</span>ComponentStateTypeId::Started))
         ));
 
         <span class="comment">// Query with timestamp
@@ -4020,32 +3986,27 @@
             mi.start.saturating_sub(MassaTime::from_millis(<span class="number">5</span>)),
             mi.start,
             mi.timeout,
-            mi.activation_delay,
         );
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
             state_id_,
             <span class="prelude-val">Err</span>(StateAtError::BeforeInitialState(<span class="kw">_</span>, <span class="kw">_</span>))
         ));
         <span class="comment">// After Defined timestamp
-        </span><span class="kw">let </span>state_id = state
-            .state_at(mi.start, mi.start, mi.timeout, mi.activation_delay)
-            .unwrap();
+        </span><span class="kw">let </span>state_id = state.state_at(mi.start, mi.start, mi.timeout).unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Defined);
         <span class="comment">// At Started timestamp
-        </span><span class="kw">let </span>state_id = state
-            .state_at(now, mi.start, mi.timeout, mi.activation_delay)
-            .unwrap();
+        </span><span class="kw">let </span>state_id = state.state_at(now, mi.start, mi.timeout).unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Started);
 
         <span class="comment">// After Started timestamp but before timeout timestamp
         </span><span class="kw">let </span>after_started_ts = now.saturating_add(MassaTime::from_millis(<span class="number">15</span>));
-        <span class="kw">let </span>state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout, mi.activation_delay);
+        <span class="kw">let </span>state_id_ = state.state_at(after_started_ts, mi.start, mi.timeout);
         <span class="macro">assert_eq!</span>(state_id_, <span class="prelude-val">Err</span>(StateAtError::Unpredictable));
 
         <span class="comment">// After Started timestamp and after timeout timestamp
         </span><span class="kw">let </span>after_timeout_ts = mi.timeout.saturating_add(MassaTime::from_millis(<span class="number">15</span>));
         <span class="kw">let </span>state_id = state
-            .state_at(after_timeout_ts, mi.start, mi.timeout, mi.activation_delay)
+            .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Failed);
 
@@ -4060,17 +4021,12 @@
         // After LockedIn timestamp and before timeout timestamp
         </span><span class="kw">let </span>after_locked_in_ts = now.saturating_add(MassaTime::from_millis(<span class="number">10</span>));
         <span class="kw">let </span>state_id = state
-            .state_at(
-                after_locked_in_ts,
-                mi.start,
-                mi.timeout,
-                mi.activation_delay,
-            )
+            .state_at(after_locked_in_ts, mi.start, mi.timeout)
             .unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::LockedIn);
         <span class="comment">// After LockedIn timestamp and after timeout timestamp
         </span><span class="kw">let </span>state_id = state
-            .state_at(after_timeout_ts, mi.start, mi.timeout, mi.activation_delay)
+            .state_at(after_timeout_ts, mi.start, mi.timeout)
             .unwrap();
         <span class="macro">assert_eq!</span>(state_id, ComponentStateTypeId::Active);
     }
@@ -4845,7 +4801,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>at = MassaTime::now().unwrap();
         at = at.saturating_add(activation_delay);
         <span class="macro">assert_eq!</span>(
-            ms_.state_at(at, mi_1.start, mi_1.timeout, mi_1.activation_delay),
+            ms_.state_at(at, mi_1.start, mi_1.timeout),
             <span class="prelude-val">Ok</span>(ComponentStateTypeId::Active)
         );
 
