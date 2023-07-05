@@ -148,6 +148,8 @@ pub struct ProtocolConfig {
     pub max_in_connections: usize,
     /// Timeout connection
     pub timeout_connection: MassaTime,
+    /// Timeout message
+    pub message_timeout: MassaTime,
     /// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     pub read_write_limit_bytes_per_second: u128,
     /// Optional routable ip
