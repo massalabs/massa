@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use std::net::IpAddr;
 use std::str::FromStr;
 
 use crate::error::GrpcError;
@@ -10,15 +11,36 @@ use massa_models::node::NodeId;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_protocol_exports::PeerId;
 use massa_signature::KeyPair;
+use tracing::warn;
 // use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
 
 /// Add IP addresses to node bootstrap blacklist
 pub(crate) fn add_to_bootstrap_blacklist(
-    _grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::AddToBootstrapBlacklistRequest>,
+    grpc: &MassaPrivateGrpc,
+    request: tonic::Request<grpc_api::AddToBootstrapBlacklistRequest>,
 ) -> Result<tonic::Response<grpc_api::AddToBootstrapBlacklistResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented(
-        "add_to_bootstrap_blacklist".to_string(),
+    let inner_req = request.into_inner();
+
+    let ips = inner_req
+        .ips
+        .into_iter()
+        .filter_map(|ip| match IpAddr::from_str(&ip) {
+            Ok(ip_addr) => Some(ip_addr),
+            Err(e) => {
+                warn!("error when parsing address : {}", e);
+                None
+            }
+        })
+        .collect();
+
+    if let Some(bs_list) = &grpc.bs_white_black_list {
+        if let Err(e) = bs_list.add_ips_to_blacklist(ips) {
+            warn!("error when adding ips to bootstrap blacklist : {}", e)
+        }
+    }
+
+    Ok(tonic::Response::new(
+        grpc_api::AddToBootstrapBlacklistResponse {},
     ))
 }
 /// Add IP addresses to node bootstrap whitelist
@@ -109,7 +131,7 @@ pub(crate) fn ban_nodes_by_ids(
 
 /// Ban multiple nodes by their individual IP addresses
 pub(crate) fn ban_nodes_by_ips(
-    _grpc: &MassaPrivateGrpc,
+    grpc: &MassaPrivateGrpc,
     _request: tonic::Request<grpc_api::BanNodesByIpsRequest>,
 ) -> Result<tonic::Response<grpc_api::BanNodesByIpsResponse>, GrpcError> {
     Err(GrpcError::Unimplemented("ban_nodes_by_ips".to_string()))

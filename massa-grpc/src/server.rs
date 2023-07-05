@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use massa_bootstrap::white_black_list::SharedWhiteBlackList;
 use parking_lot::RwLock;
 use std::convert::Infallible;
 use std::sync::{Arc, Condvar, Mutex};
@@ -47,6 +48,8 @@ pub struct MassaPrivateGrpc {
     pub grpc_config: GrpcConfig,
     /// node version
     pub version: massa_models::version::Version,
+    /// white/black list of bootstrap
+    pub bs_white_black_list: Option<SharedWhiteBlackList<'static>>,
 }
 
 impl MassaPrivateGrpc {

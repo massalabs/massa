@@ -2,16 +2,13 @@
 
 use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
-use itertools::izip;
-use massa_hash::Hash;
 use massa_models::address::Address;
-use massa_models::block::{Block, BlockGraphStatus};
+use massa_models::block::Block;
 use massa_models::block_id::BlockId;
 use massa_models::execution::EventFilter;
 use massa_models::operation::{OperationId, SecureShareOperation};
-use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
-use massa_models::timeslots::{self, get_latest_block_slot_at_timestamp};
+use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_time::MassaTime;
@@ -527,78 +524,91 @@ pub(crate) fn get_sc_execution_events(
 
 //  Get selector draws
 pub(crate) fn get_selector_draws(
-    _grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
 ) -> Result<grpc_api::GetSelectorDrawsResponse, GrpcError> {
+    unimplemented!("to rework");
     // let inner_req = request.into_inner();
-    // let id = inner_req.id;
 
-    // let addresses = inner_req
-    //     .queries
-    //     .into_iter()
-    //     .map(|query| match query.filter {
-    //         Some(filter) => Address::from_str(filter.address.as_str()).map_err(|e| e.into()),
-    //         None => Err(GrpcError::InvalidArgument("filter is missing".to_string())),
-    //     })
-    //     .collect::<Result<Vec<_>, _>>()?;
+    // // TODO address list optional
+
+    // let mut addresses = Vec::new();
+    // let mut slot_range: (Option<Slot>, Option<Slot>) = (None, None);
+    // inner_req.filters.into_iter().for_each(|query| {
+    //     if let Some(filter) = query.filter {
+    //         match filter {
+    //             grpc_api::selector_draws_filter::Filter::Addresses(addrs) => {
+    //                 addrs
+    //                     .addresses
+    //                     .into_iter()
+    //                     .for_each(|addr| match Address::from_str(&addr) {
+    //                         Ok(ad) => {
+    //                             addresses.push(ad);
+    //                         }
+    //                         Err(e) => warn!("failed to parse address: {}", e),
+    //                     });
+    //             }
+    //             grpc_api::selector_draws_filter::Filter::SlotRange(range) => {
+    //                 if let Some(start_slot) = range.start_slot {
+    //                     slot_range.0 = Some(start_slot.into());
+    //                 }
+    //                 if let Some(end_slot) = range.end_slot {
+    //                     slot_range.1 = Some(end_slot.into());
+    //                 }
+    //             }
+    //         }
+    //     }
+    // });
+
+    // if slot_range.0.is_none() || slot_range.1.is_none() {
+    //     return Err(GrpcError::InvalidArgument(
+    //         "slot range is required".to_string(),
+    //     ));
+    // }
 
     // // get future draws from selector
     // let selection_draws = {
-    //     let cur_slot = match timeslots::get_current_latest_block_slot(
-    //         grpc.grpc_config.thread_count,
-    //         grpc.grpc_config.t0,
-    //         grpc.grpc_config.genesis_timestamp,
-    //     ) {
-    //         Ok(slot) => slot.unwrap_or_else(Slot::min),
-    //         Err(e) => {
-    //             warn!("failed to get current slot with error: {}", e);
-    //             Slot::min()
-    //         }
-    //     };
+    //     let slot_start = slot_range.0.unwrap();
+    //     let slot_end = slot_range.1.unwrap();
 
-    //     let slot_end = Slot::new(
-    //         cur_slot
-    //             .period
-    //             .saturating_add(grpc.grpc_config.draw_lookahead_period_count),
-    //         cur_slot.thread,
-    //     );
+    //     // TODO make works with only range slot
+
     //     addresses
     //         .iter()
     //         .map(|addr| {
     //             let (nt_block_draws, nt_endorsement_draws) = grpc
     //                 .selector_controller
-    //                 .get_address_selections(addr, cur_slot, slot_end)
+    //                 .get_address_selections(addr, slot_start, slot_end)
     //                 .unwrap_or_default();
 
-    //             let mut proto_nt_block_draws = Vec::with_capacity(addresses.len());
-    //             let mut proto_nt_endorsement_draws = Vec::with_capacity(addresses.len());
-    //             let iterator = izip!(nt_block_draws.into_iter(), nt_endorsement_draws.into_iter());
-    //             for (next_block_draw, next_endorsement_draw) in iterator {
-    //                 proto_nt_block_draws.push(next_block_draw.into());
-    //                 proto_nt_endorsement_draws.push(next_endorsement_draw.into());
-    //             }
+    //             // TODO mapping
+    //             let endorsements = nt_endorsement_draws
+    //                 .into_iter()
+    //                 .map(|endorsement| grpc_model::EndorsementDraw {
+    //                     index: endorsement.index as u64,
+    //                     producer: addr.to_string(),
+    //                 })
+    //                 .collect::<Vec<_>>();
 
-    //             (proto_nt_block_draws, proto_nt_endorsement_draws)
+    //             (addr, nt_block_draws, nt_endorsement_draws)
     //         })
     //         .collect::<Vec<_>>()
     // };
 
     // // Compile results
-    // let mut res = Vec::with_capacity(addresses.len());
-    // let iterator = izip!(addresses.into_iter(), selection_draws.into_iter());
-    // for (address, (next_block_draws, next_endorsement_draws)) in iterator {
-    //     res.push(grpc_model::SelectorDraws {
-    //         address: address.to_string(),
-    //         next_block_draws,
-    //         next_endorsement_draws,
-    //     });
-    // }
+    // let res = selection_draws
+    //     .into_iter()
+    //     .map(
+    //         |(addr, block_draws, endorsement_draws)| grpc_model::SlotDraw {
+    //             block_producer: addr.to_string(),
+    //             // TODO one slot
+    //             slot: Some(block_draws.into()),
+    //             endorsement_draws: endorsement_draws,
+    //         },
+    //     )
+    //     .collect();
 
-    // Ok(grpc_api::GetSelectorDrawsResponse {
-    //     id,
-    //     selector_draws: res,
-    // })
-    Err(GrpcError::Unimplemented("get_selector_draws".to_string()))
+    // Ok(grpc_api::GetSelectorDrawsResponse { draws: res })
 }
 
 //  Get status
