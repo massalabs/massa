@@ -57,6 +57,28 @@ impl SharedWhiteBlackList<'_> {
         Ok(())
     }
 
+    /// Add IP address to the white list
+    pub fn add_ips_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
+        let mut write_lock = self.inner.write();
+        if let Some(white_list) = &mut write_lock.white_list {
+            white_list.extend(ips);
+        } else {
+            write_lock.white_list = Some(HashSet::from_iter(ips));
+        }
+        Ok(())
+    }
+
+    /// Remove IPs address from the white list
+    pub fn remove_ips_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
+        let mut write_lock = self.inner.write();
+        if let Some(white_list) = &mut write_lock.white_list {
+            for ip in ips {
+                white_list.remove(&ip);
+            }
+        }
+        Ok(())
+    }
+
     /// Checks if the white/black list is up to date with a read-lock
     /// Creates a new list, and replaces the old one in a write-lock
     pub(crate) fn update(&mut self) -> Result<(), BootstrapError> {

@@ -9,7 +9,6 @@ use massa_hash::Hash;
 use massa_models::error::ModelsError;
 use massa_models::node::NodeId;
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::api::v1::private_service_server::PrivateService;
 use massa_protocol_exports::PeerId;
 use massa_signature::KeyPair;
 use tracing::warn;
@@ -46,11 +45,31 @@ pub(crate) fn add_to_bootstrap_blacklist(
 }
 /// Add IP addresses to node bootstrap whitelist
 pub(crate) fn add_to_bootstrap_whitelist(
-    _grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::AddToBootstrapWhitelistRequest>,
+    grpc: &MassaPrivateGrpc,
+    request: tonic::Request<grpc_api::AddToBootstrapWhitelistRequest>,
 ) -> Result<tonic::Response<grpc_api::AddToBootstrapWhitelistResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented(
-        "add_to_bootstrap_whitelist".to_string(),
+    let inner_req = request.into_inner();
+
+    let ips = inner_req
+        .ips
+        .into_iter()
+        .filter_map(|ip| match IpAddr::from_str(&ip) {
+            Ok(ip_addr) => Some(ip_addr),
+            Err(e) => {
+                warn!("error when parsing address : {}", e);
+                None
+            }
+        })
+        .collect();
+
+    if let Some(bs_list) = &grpc.bs_white_black_list {
+        if let Err(e) = bs_list.add_ips_to_whitelist(ips) {
+            warn!("error when adding ips to bootstrap whitelist : {}", e)
+        }
+    }
+
+    Ok(tonic::Response::new(
+        grpc_api::AddToBootstrapWhitelistResponse {},
     ))
 }
 /// Add IP addresses to node peers whitelist. No confirmation to expect.
@@ -209,11 +228,30 @@ pub(crate) fn remove_from_bootstrap_blacklist(
 }
 /// Remove from bootstrap whitelist given IP addresses
 pub(crate) fn remove_from_bootstrap_whitelist(
-    _grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::RemoveFromBootstrapWhitelistRequest>,
+    grpc: &MassaPrivateGrpc,
+    request: tonic::Request<grpc_api::RemoveFromBootstrapWhitelistRequest>,
 ) -> Result<tonic::Response<grpc_api::RemoveFromBootstrapWhitelistResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented(
-        "remove_from_peers_whitelist".to_string(),
+    let inner_req = request.into_inner();
+    let ips = inner_req
+        .ips
+        .into_iter()
+        .filter_map(|ip| match IpAddr::from_str(&ip) {
+            Ok(ip_addr) => Some(ip_addr),
+            Err(e) => {
+                warn!("error when parsing address : {}", e);
+                None
+            }
+        })
+        .collect();
+
+    if let Some(bs_list) = &grpc.bs_white_black_list {
+        if let Err(e) = bs_list.remove_ips_from_whitelist(ips) {
+            warn!("error when removing ips to bootstrap whitelist : {}", e)
+        }
+    }
+
+    Ok(tonic::Response::new(
+        grpc_api::RemoveFromBootstrapWhitelistResponse {},
     ))
 }
 /// Remove from peers whitelist given IP addresses
