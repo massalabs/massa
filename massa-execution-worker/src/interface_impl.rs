@@ -329,10 +329,7 @@ impl Interface for InterfaceImpl {
         let address = get_address_from_opt_or_context(&context, address)?;
 
         let amount = context.get_balance(&address).unwrap_or_default();
-
-        let native_amount = self
-            .native_amount_from_str_wasmv1(&amount.to_string())
-            .unwrap_or_default();
+        let native_amount = amount_to_native_amount(&amount);
 
         Ok(native_amount)
     }
@@ -929,7 +926,8 @@ impl Interface for InterfaceImpl {
         from_address: Option<String>,
     ) -> Result<()> {
         let to_address = Address::from_str(&to_address)?;
-        let amount = Amount::from_mantissa_scale(raw_amount.mantissa, raw_amount.scale)?;
+        let amount = amount_from_native_amount(&raw_amount)?;
+
         let mut context = context_guard!(self);
         let from_address = match from_address {
             Some(from_address) => Address::from_str(&from_address)?,
@@ -972,8 +970,20 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The raw representation (no decimal factor) of the amount of coins
+    /// 
+    /// [DeprecatedByNewRuntime] Replaced by `get_call_coins_wasmv1`
     fn get_call_coins(&self) -> Result<u64> {
         Ok(context_guard!(self).get_current_call_coins()?.to_raw())
+    }
+
+    /// Gets the amount of coins that have been transferred at the beginning of the call.
+    /// See the `init_call` method.
+    ///
+    /// # Returns
+    /// The amount of coins
+    fn get_call_coins_wasmv1(&self) -> Result<NativeAmount> {
+        let amount = context_guard!(self).get_current_call_coins()?;
+        Ok(amount_to_native_amount(&amount))
     }
 
     /// Emits an execution event to be stored.
@@ -1197,6 +1207,7 @@ impl Interface for InterfaceImpl {
         Ok(hash.into_bytes())
     }
 
+    #[allow(unused_variables)]
     fn init_call_wasmv1(&self, address: &str, raw_coins: NativeAmount) -> Result<Vec<u8>> {
         unimplemented!("init_call")
     }
@@ -1211,7 +1222,6 @@ impl Interface for InterfaceImpl {
     fn native_amount_to_string_wasmv1(&self, amount: &NativeAmount) -> Result<String> {
         let amount = amount_from_native_amount(amount)
             .map_err(|err| anyhow!(format!("Couldn't convert native amount to Amount: {}", err)))?;
-
         Ok(amount.to_string())
     }
 
@@ -1267,10 +1277,10 @@ impl Interface for InterfaceImpl {
             .checked_rem_u64(divisor)
             .ok_or_else(|| anyhow!(format!("Couldn't checked_rem_u64 native amount")))?;
 
-        return Ok((
+        Ok((
             amount_to_native_amount(&quotient),
             amount_to_native_amount(&remainder),
-        ));
+        ))
     }
 
     /// Divides a native amount by a divisor, return an error if the divisor is 0.
@@ -1291,19 +1301,17 @@ impl Interface for InterfaceImpl {
             .ok_or_else(|| anyhow!(format!("Couldn't checked_rem native amount")))?;
         let remainder = amount_to_native_amount(&remainder);
 
-        return Ok((quotient, remainder));
+        Ok((quotient, remainder))
     }
 
-    fn get_call_coins_wasmv1(&self) -> Result<NativeAmount> {
-        unimplemented!("get_call_coins_wasmv1");
-    }
-
+    #[allow(unused_variables)]
     fn base58_check_to_bytes_wasmv1(&self, s: &str) -> Result<Vec<u8>> {
-        unimplemented!("get_call_coins_wasmv1");
+        unimplemented!("base58_check_to_bytes_wasmv1");
     }
 
+    #[allow(unused_variables)]
     fn bytes_to_base58_check_wasmv1(&self, bytes: &[u8]) -> String {
-        unimplemented!("get_call_coins_wasmv1");
+        unimplemented!("bytes_to_base58_check_wasmv1");
     }
 
     fn check_address_wasmv1(&self, to_check: &String) -> Result<bool> {
@@ -1402,10 +1410,10 @@ impl Interface for InterfaceImpl {
             .checked_rem_u64(divisor)
             .or_else(|_| bail!(format!("Couldn't checked_rem_u64 native time")))?;
 
-        return Ok((
+        Ok((
             massa_time_to_native_time(&quotient),
             massa_time_to_native_time(&remainder),
-        ));
+        ))
     }
 
     fn checked_div_native_time_wasmv1(
@@ -1425,7 +1433,7 @@ impl Interface for InterfaceImpl {
             .or_else(|_| bail!(format!("Couldn't checked_rem native time")))?;
         let remainder = massa_time_to_native_time(&remainder);
 
-        return Ok((quotient, remainder));
+        Ok((quotient, remainder))
     }
 }
 

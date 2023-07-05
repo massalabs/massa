@@ -710,9 +710,9 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03e69e28e9f7f77debdedbaafa2866e1de9ba56df55a8bd7cfc724c25a09987c"
+checksum = "a17b76ff3a4162b0b27f354a0c87015ddad39d35f9c0c36607a3bdd175dde1f1"
 dependencies = [
  "libc",
 ]
@@ -2511,7 +2511,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1_leo#77e9f4e515d48baf35f1bf8f52152b776e5f04ab"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1_leo#b8013a7adccd3b9b1d18acfc1487dbacea352d49"
 dependencies = [
  "glob",
  "prost",
@@ -2524,7 +2524,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1_leo#2e61b8887234f013068d77b8f5ca0baf57314b0a"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1_leo#9f69d3cf532886cf857407c3bfd490614854d013"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -4387,9 +4387,21 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.8.4"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0ab3ca65655bb1e41f2a8c8cd662eb4fb035e67c3f78da1d61dffe89d07300f"
+checksum = "89089e897c013b3deb627116ae56a6955a72b8bed395c9526af31c9fe528b484"
+dependencies = [
+ "aho-corasick 1.0.2",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa250384981ea14565685dea16a9ccc4d1c541a13f82b9c168572264d1df8c56"
 dependencies = [
  "aho-corasick 1.0.2",
  "memchr",
@@ -4398,9 +4410,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
+checksum = "2ab07dc67230e4a4718e70fd5c20055a4334b121f1f9db8fe63ef39ce9b8c846"
 
 [[package]]
 name = "region"
