@@ -474,24 +474,42 @@ pub(crate) fn get_sc_execution_events(
     let mut event_filter: EventFilter = EventFilter::default();
 
     inner_req.filters.into_iter().for_each(|query| {
-        if let Some(filter) = query {
+        if let Some(filter) = query.filter {
             match filter {
                 grpc_api::sc_execution_events_filter::Filter::SlotRange(range) => {
-                    event_filter.start = range.start as u64;
-                    event_filter.end = range.end as u64;
+                    if let Some(start) = range.start_slot {
+                        event_filter.start = Some(start.into());
+                    }
+                    if let Some(end) = range.end_slot {
+                        event_filter.end = Some(end.into());
+                    }
                 }
                 grpc_api::sc_execution_events_filter::Filter::CallerAddress(address) => {
-                    event_filter.original_caller_address = Some(address);
+                    if let Ok(add) = Address::from_str(&address) {
+                        event_filter.original_caller_address = Some(add);
+                    } else {
+                        warn!("Invalid address: {}", address);
+                    }
                 }
                 grpc_api::sc_execution_events_filter::Filter::EmitterAddress(address) => {
-                    event_filter.emitter_address = Some(address);
+                    if let Ok(add) = Address::from_str(&address) {
+                        event_filter.emitter_address = Some(add);
+                    } else {
+                        warn!("Invalid address: {}", address);
+                    }
                 }
                 grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(id) => {
-                    event_filter.original_operation_id = Some(id);
+                    match OperationId::from_str(&id) {
+                        Ok(ope_id) => event_filter.original_operation_id = Some(ope_id),
+                        Err(e) => warn!("Invalid operation id: {}", e),
+                    }
                 }
                 grpc_api::sc_execution_events_filter::Filter::Status(status) => {
-                    event_filter.is_final = Some(status.is_final);
-                    event_filter.is_error = Some(status.is_error);
+                    if status.eq(&1) {
+                        event_filter.is_final = Some(true);
+                    } else if status.eq(&3) {
+                        event_filter.is_error = Some(true);
+                    }
                 }
             }
         }
