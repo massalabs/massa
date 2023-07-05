@@ -214,10 +214,10 @@ impl BootstrapClientBinder {
 
 impl crate::bindings::BindingReadExact for BootstrapClientBinder {
     fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        if let Some(ref mut opts) = self.duplex.read_opt {
-            opts.timeout = duration;
-        }
-        self.duplex.stream.set_read_timeout(duration)
+        // if let Some(ref mut opts) = self.duplex.read_opt {
+        //     opts.timeout = duration;
+        // }
+        self.duplex.set_read_timeout(duration)
     }
 }
 
@@ -229,10 +229,10 @@ impl std::io::Read for BootstrapClientBinder {
 
 impl crate::bindings::BindingWriteExact for BootstrapClientBinder {
     fn set_write_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        if let Some(ref mut opts) = self.duplex.write_opt {
-            opts.timeout = duration;
-        }
-        self.duplex.stream.set_write_timeout(duration)
+        // if let Some(ref mut opts) = self.duplex.write_opt {
+        //     opts.timeout = duration;
+        // }
+        self.duplex.set_write_timeout(duration)
     }
 }
 

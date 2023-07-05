@@ -326,7 +326,7 @@ impl io::Read for BootstrapServerBinder {
 
 impl crate::bindings::BindingReadExact for BootstrapServerBinder {
     fn set_read_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.stream.set_read_timeout(duration)
+        self.duplex.set_read_timeout(duration)
     }
 }
 
@@ -342,6 +342,6 @@ impl io::Write for BootstrapServerBinder {
 
 impl crate::bindings::BindingWriteExact for BootstrapServerBinder {
     fn set_write_timeout(&mut self, duration: Option<Duration>) -> Result<(), std::io::Error> {
-        self.duplex.stream.set_write_timeout(duration)
+        self.duplex.set_write_timeout(duration)
     }
 }
