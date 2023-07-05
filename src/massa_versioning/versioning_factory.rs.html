@@ -374,6 +374,9 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>thiserror::Error;
@@ -479,6 +482,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
+    <span class="kw">use </span>num::rational::Ratio;
     <span class="kw">use </span>std::collections::BTreeMap;
 
     <span class="kw">use </span><span class="kw">crate</span>::test_helpers::versioning_helpers::advance_state_until;
@@ -606,6 +610,7 @@
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
 
         <span class="kw">let </span>vs = MipStore::try_from((
@@ -696,6 +701,7 @@
 
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
 
         <span class="kw">let </span>vs = MipStore::try_from((
