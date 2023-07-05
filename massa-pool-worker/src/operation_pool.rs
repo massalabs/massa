@@ -84,18 +84,25 @@ impl OperationPool {
         let max_slot = max(max_slot, min_slot);
 
         // search for all our PoS draws in the interval of interest
-        let mut pos_draws = BTreeSet::new();
-        let addrs = self.wallet.read().keys.keys().copied().collect::<Vec<_>>();
-        for addr in addrs {
-            let (d, _) = self
-                .channels
-                .selector
-                .get_address_selections(&addr, min_slot, max_slot)
-                .expect("could not get PoS draws");
-            pos_draws.extend(d.into_iter());
-        }
+        let addrs: PreHashSet<Address> = self.wallet.read().keys.keys().copied().collect();
+        let mut pos_draws: BTreeSet<Slot> = self
+            .channels
+            .selector
+            .get_available_selections_in_range(min_slot..=max_slot, Some(&addrs))
+            .expect("could not get PoS draws")
+            .into_iter()
+            .filter_map(|(v_slot, v_sel)| {
+                if addrs.contains(&v_sel.producer) {
+                    Some(v_slot)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         // retain only the ones that are strictly after the last final slot of their thread
         pos_draws.retain(|s| s.period > self.last_cs_final_periods[s.thread as usize]);
+
         pos_draws
     }
 
