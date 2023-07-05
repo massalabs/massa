@@ -620,6 +620,7 @@ async fn launch(
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
+        message_timeout: SETTINGS.protocol.message_timeout,
         routable_ip: SETTINGS
             .protocol
             .routable_ip

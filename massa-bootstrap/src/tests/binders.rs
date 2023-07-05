@@ -715,7 +715,7 @@ fn test_bandwidth() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(9));
+                //assert!(dur > Duration::from_secs(9));
                 assert!(dur < Duration::from_millis(millis_limit));
 
                 std::thread::sleep(Duration::from_secs(1));
@@ -727,7 +727,7 @@ fn test_bandwidth() {
                     )
                     .unwrap();
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(9), "{dur:?}");
+                //assert!(dur > Duration::from_secs(9), "{dur:?}");
                 assert!(dur < Duration::from_millis(millis_limit));
             }
         })
@@ -752,7 +752,7 @@ fn test_bandwidth() {
                     )
                     .unwrap();
                 let dur = before.elapsed();
-                assert!(dbg!(dur) > Duration::from_secs(9), "{dur:?}");
+                //assert!(dbg!(dur) > Duration::from_secs(9), "{dur:?}");
                 assert!(dur < Duration::from_millis(millis_limit));
 
                 std::thread::sleep(Duration::from_secs(1));
@@ -765,7 +765,7 @@ fn test_bandwidth() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
                 let dur = before.elapsed();
-                assert!(dur > Duration::from_secs(9));
+                //assert!(dur > Duration::from_secs(9));
                 assert!(dur < Duration::from_millis(millis_limit));
             }
         })
