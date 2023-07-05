@@ -7,10 +7,7 @@ use std::collections::BTreeMap;
 
 use crate::PosResult;
 use massa_hash::Hash;
-use massa_models::{
-    address::Address,
-    slot::{IndexedSlot, Slot},
-};
+use massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
 
 #[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};
@@ -45,25 +42,21 @@ pub trait SelectorController: Send + Sync {
         lookback_seed: Hash,
     ) -> PosResult<()>;
 
-    /// Get [Selection] computed for a slot:
-    /// # Arguments
-    /// * `slot`: target slot of the selection
+    /// Get [Selection] computed for a slot
     fn get_selection(&self, slot: Slot) -> PosResult<Selection>;
 
-    /// Return a list of slots where `address` has been chosen to produce a
-    /// block and a list where he is chosen for the endorsements.
-    /// Look from the `start` slot to the `end` slot.
-    fn get_address_selections(
-        &self,
-        address: &Address,
-        start: Slot,
-        end: Slot,
-    ) -> PosResult<(Vec<Slot>, Vec<IndexedSlot>)>;
-
     /// Get [Address] of the selected block producer for a given slot
-    /// # Arguments
-    /// * `slot`: target slot of the selection
     fn get_producer(&self, slot: Slot) -> PosResult<Address>;
+
+    /// Get selections computed for a slot range (only returns available selections):
+    /// # Arguments
+    /// * `slot_range`: range of slots to get the selection for
+    /// * `restrict_to_addresses`: optionally restrict only to slots involving a given address
+    fn get_available_selections_in_range<'a>(
+        &self,
+        slot_range: std::ops::RangeInclusive<Slot>,
+        restrict_to_addresses: Option<&'a PreHashSet<Address>>,
+    ) -> PosResult<BTreeMap<Slot, Selection>>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn SelectorController>`.
