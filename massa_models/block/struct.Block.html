@@ -24,7 +24,7 @@
 </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
     BlockHeader {
         current_version: <span class="number">0</span>,
-        announced_version: <span class="number">0</span>,
+        announced_version: <span class="prelude-val">None</span>,
         slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
         parents: parents.clone(),
         operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
@@ -143,7 +143,7 @@ the data required to share and verify the data in a trust-free network of peers.
 </span><span class="kw">let </span>orig_header = BlockHeader::new_verifiable(
     BlockHeader {
         current_version: <span class="number">0</span>,
-        announced_version: <span class="number">0</span>,
+        announced_version: <span class="prelude-val">None</span>,
         slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
         parents,
         operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),

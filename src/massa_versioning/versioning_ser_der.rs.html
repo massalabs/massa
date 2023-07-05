@@ -1171,6 +1171,13 @@
 <a href="#1171" id="1171">1171</a>
 <a href="#1172" id="1172">1172</a>
 <a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::mem;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
@@ -1182,6 +1189,7 @@
     sequence::tuple,
     IResult, Parser,
 };
+<span class="kw">use </span>num::rational::Ratio;
 
 <span class="kw">use </span><span class="kw">crate</span>::versioning::{
     Active, Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
@@ -1426,9 +1434,7 @@
         <span class="kw">let </span>state_id = u32::from(ComponentStateTypeId::from(value));
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>state_id, buffer)<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
-            ComponentState::Started(Started {
-                vote_ratio: threshold,
-            }) =&gt; {
+            ComponentState::Started(Started { threshold }) =&gt; {
                 <span class="comment">// self.amount_serializer.serialize(threshold, buffer)?;
                 </span><span class="self">self</span>.ratio_serializer.serialize(threshold, buffer)<span class="question-mark">?</span>;
             }
@@ -1855,10 +1861,11 @@
 
 <span class="kw">impl </span>MipStoreStatsDeserializer {
     <span class="doccomment">/// Creates a new ``
-    </span><span class="kw">pub fn </span>new(block_count_considered: usize) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(block_count_considered: usize, warn_announced_version_ratio: Ratio&lt;u64&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             config: MipStatsConfig {
                 block_count_considered,
+                warn_announced_version_ratio,
             },
             u32_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
             u64_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
@@ -1878,14 +1885,8 @@
                     nom::error::ErrorKind::Fail,
                 ))
             })<span class="question-mark">?</span>;
-        <span class="comment">// let cfg_counter_max: u32 = u32::try_from(self.config.counters_max).map_err(|_e| {
-        //     nom::Err::Error(ParseError::from_error_kind(
-        //         buffer,
-        //         nom::error::ErrorKind::Fail,
-        //     ))
-        // })?;
 
-        </span><span class="kw">let </span>(rem3, latest_annoucements_) = context(
+        <span class="kw">let </span>(rem3, latest_annoucements_) = context(
             <span class="string">&quot;Failed MipStoreStats latest announcements der&quot;</span>,
             length_count(
                 context(<span class="string">&quot;Failed latest announcements count der&quot;</span>, |input| {
@@ -2000,7 +2001,7 @@
 
 <span class="kw">impl </span>MipStoreRawDeserializer {
     <span class="doccomment">/// Creates a new ``
-    </span><span class="kw">pub fn </span>new(block_count_considered: usize) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(block_count_considered: usize, warn_announced_version_ratio: Ratio&lt;u64&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
@@ -2008,7 +2009,10 @@
             ),
             info_deserializer: MipInfoDeserializer::new(),
             state_deserializer: MipStateDeserializer::new(),
-            stats_deserializer: MipStoreStatsDeserializer::new(block_count_considered),
+            stats_deserializer: MipStoreStatsDeserializer::new(
+                block_count_considered,
+                warn_announced_version_ratio,
+            ),
         }
     }
 }
@@ -2127,7 +2131,7 @@ impl Default for MipStoreRawDeserializer {
     </span><span class="kw">fn </span>test_component_state_ser_der() {
         <span class="kw">let </span>st_1 = ComponentState::failed();
         <span class="kw">let </span>st_2 = ComponentState::Started(Started {
-            vote_ratio: Ratio::from_f32(<span class="number">0.9842</span>).unwrap(),
+            threshold: Ratio::from_f32(<span class="number">0.9842</span>).unwrap(),
         });
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
@@ -2213,6 +2217,7 @@ impl Default for MipStoreRawDeserializer {
     </span><span class="kw">fn </span>test_mip_store_stats_ser_der() {
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
 
         <span class="kw">let </span>mip_stats = MipStoreStats {
@@ -2225,7 +2230,10 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>store_stats_ser = MipStoreStatsSerializer::new();
         store_stats_ser.serialize(<span class="kw-2">&amp;</span>mip_stats, <span class="kw-2">&amp;mut </span>buf).unwrap();
 
-        <span class="kw">let </span>store_stats_der = MipStoreStatsDeserializer::new(mip_stats_cfg.block_count_considered);
+        <span class="kw">let </span>store_stats_der = MipStoreStatsDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.warn_announced_version_ratio,
+        );
         <span class="kw">let </span>(rem, store_stats_der_res) = store_stats_der
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf)
             .unwrap();
@@ -2238,6 +2246,7 @@ impl Default for MipStoreRawDeserializer {
     </span><span class="kw">fn </span>test_mip_store_raw_ser_der() {
         <span class="kw">let </span>mip_stats_cfg = MipStatsConfig {
             block_count_considered: <span class="number">10</span>,
+            warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
 
         <span class="kw">let </span>mi_2 = MipInfo {
@@ -2263,13 +2272,17 @@ impl Default for MipStoreRawDeserializer {
         <span class="kw">let </span>state_3 = advance_state_until(ComponentState::started(Ratio::new_raw(<span class="number">42</span>, <span class="number">100</span>)), <span class="kw-2">&amp;</span>mi_3);
 
         <span class="kw">let </span>store_raw =
-            MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg)).unwrap();
+            MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg.clone()))
+                .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         <span class="kw">let </span>store_raw_ser = MipStoreRawSerializer::new();
         store_raw_ser.serialize(<span class="kw-2">&amp;</span>store_raw, <span class="kw-2">&amp;mut </span>buf).unwrap();
 
-        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>);
+        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.warn_announced_version_ratio,
+        );
         <span class="kw">let </span>(rem, store_raw_der_res) = store_raw_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
 
         <span class="macro">assert!</span>(rem.is_empty());
@@ -2322,6 +2335,7 @@ impl Default for MipStoreRawDeserializer {
             store: BTreeMap::from_iter(store_raw_.into_iter()),
             stats: MipStoreStats::new(MipStatsConfig {
                 block_count_considered: <span class="number">10</span>,
+                warn_announced_version_ratio: Ratio::new(<span class="number">30</span>, <span class="number">100</span>),
             }),
         };
         <span class="macro">assert_eq!</span>(store_raw.store.len(), MIP_STORE_MAX_ENTRIES <span class="kw">as </span>usize);
@@ -2337,7 +2351,7 @@ impl Default for MipStoreRawDeserializer {
             .serialize(<span class="kw-2">&amp;</span>store_raw, <span class="kw-2">&amp;mut </span>buf)
             .expect(<span class="string">&quot;Unable to serialize&quot;</span>);
 
-        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>);
+        <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>, Ratio::new(<span class="number">30</span>, <span class="number">100</span>));
         <span class="kw">let </span>(rem, store_raw_der_res) = store_raw_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();
 
         <span class="macro">assert!</span>(rem.is_empty());
