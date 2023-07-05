@@ -13,7 +13,7 @@ use crate::private::{
 use crate::public::{
     execute_read_only_call, get_blocks, get_datastore_entries, get_mip_status,
     get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
-    get_stakers, get_transactions_throughput, query_state,
+    get_stakers, get_status, get_transactions_throughput, query_state,
 };
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{
@@ -66,10 +66,9 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     /// handler for get satatus
     async fn get_status(
         &self,
-        _request: tonic::Request<grpc_api::GetStatusRequest>,
+        request: tonic::Request<grpc_api::GetStatusRequest>,
     ) -> Result<tonic::Response<grpc_api::GetStatusResponse>, tonic::Status> {
-        // Ok(tonic::Response::new(get_status(self, request)?))
-        unimplemented!("get_status is not implemented yet")
+        Ok(tonic::Response::new(get_status(self, request)?))
     }
 
     /// handler for get mip status (versioning)

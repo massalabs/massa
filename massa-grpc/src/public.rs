@@ -601,6 +601,14 @@ pub(crate) fn get_selector_draws(
     Err(GrpcError::Unimplemented("get_selector_draws".to_string()))
 }
 
+//  Get status
+pub(crate) fn get_status(
+    _grpc: &MassaPublicGrpc,
+    _request: tonic::Request<grpc_api::GetStatusRequest>,
+) -> Result<grpc_api::GetStatusResponse, GrpcError> {
+    Err(GrpcError::Unimplemented("get_status".to_string()))
+}
+
 /// Get transactions throughput
 pub(crate) fn get_transactions_throughput(
     grpc: &MassaPublicGrpc,

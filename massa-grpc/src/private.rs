@@ -5,7 +5,10 @@ use std::str::FromStr;
 use crate::error::GrpcError;
 use crate::server::MassaPrivateGrpc;
 use massa_hash::Hash;
+use massa_models::error::ModelsError;
+use massa_models::node::NodeId;
 use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_protocol_exports::PeerId;
 use massa_signature::KeyPair;
 // use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
 
@@ -34,7 +37,7 @@ pub(crate) fn add_to_peers_whitelist(
     _request: tonic::Request<grpc_api::AddToPeersWhitelistRequest>,
 ) -> Result<tonic::Response<grpc_api::AddToPeersWhitelistResponse>, GrpcError> {
     Err(GrpcError::Unimplemented(
-        "add_staking_secret_keys".to_string(),
+        "add_to_peers_whitelist".to_string(),
     ))
 }
 /// Add staking secret keys to wallet
@@ -72,10 +75,36 @@ pub(crate) fn add_staking_secret_keys(
 
 /// Ban multiple nodes by their individual ids
 pub(crate) fn ban_nodes_by_ids(
-    _grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::BanNodesByIdsRequest>,
+    grpc: &MassaPrivateGrpc,
+    request: tonic::Request<grpc_api::BanNodesByIdsRequest>,
 ) -> Result<tonic::Response<grpc_api::BanNodesByIdsResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented("ban_nodes_by_ids".to_string()))
+    let node_ids = request.into_inner().node_ids;
+
+    if node_ids.is_empty() {
+        return Err(GrpcError::InvalidArgument(
+            "no node id received".to_string(),
+        ));
+    }
+
+    //TODO customize number of accepted parameters
+    if node_ids.len() as u32 > grpc.grpc_config.max_parameter_size {
+        return Err(GrpcError::InvalidArgument(format!(
+            "too many node ids received. Only a maximum of {} node ids are accepted per request",
+            grpc.grpc_config.max_parameter_size
+        )));
+    }
+
+    //TODO: Change when unify node id and peer id
+    let peer_ids = node_ids
+        .into_iter()
+        .map(|id| {
+            NodeId::from_str(&id).map(|node_id| PeerId::from_public_key(node_id.get_public_key()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    grpc.protocol_controller.ban_peers(peer_ids)?;
+
+    Ok(tonic::Response::new(grpc_api::BanNodesByIdsResponse {}))
 }
 
 /// Ban multiple nodes by their individual IP addresses
@@ -207,10 +236,36 @@ pub(crate) fn shutdown_gracefully(
 
 /// Unban multiple nodes by their individual ids
 pub(crate) fn unban_nodes_by_ids(
-    _grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::UnbanNodesByIdsRequest>,
+    grpc: &MassaPrivateGrpc,
+    request: tonic::Request<grpc_api::UnbanNodesByIdsRequest>,
 ) -> Result<tonic::Response<grpc_api::UnbanNodesByIdsResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented("unban_nodes_by_ids".to_string()))
+    let node_ids = request.into_inner().node_ids;
+
+    if node_ids.is_empty() {
+        return Err(GrpcError::InvalidArgument(
+            "no node id received".to_string(),
+        ));
+    }
+
+    //TODO customize number of accepted parameters
+    if node_ids.len() as u32 > grpc.grpc_config.max_parameter_size {
+        return Err(GrpcError::InvalidArgument(format!(
+            "too many node ids received. Only a maximum of {} node ids are accepted per request",
+            grpc.grpc_config.max_parameter_size
+        )));
+    }
+
+    //TODO: Change when unify node id and peer id
+    let peer_ids = node_ids
+        .into_iter()
+        .map(|id| {
+            NodeId::from_str(&id).map(|node_id| PeerId::from_public_key(node_id.get_public_key()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    grpc.protocol_controller.unban_peers(peer_ids)?;
+
+    Ok(tonic::Response::new(grpc_api::UnbanNodesByIdsResponse {}))
 }
 
 /// Unban multiple nodes by their individual IP addresses
