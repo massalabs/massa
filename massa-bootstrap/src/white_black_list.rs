@@ -46,11 +46,13 @@ impl SharedWhiteBlackList<'_> {
         Ok(())
     }
 
-    /// Remove IP address from the black list
-    pub fn remove_add_from_blacklist(&self, ip: IpAddr) -> Result<(), BootstrapError> {
+    /// Remove IPs address from the black list
+    pub fn remove_ips_from_blacklist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
         let mut write_lock = self.inner.write();
         if let Some(black_list) = &mut write_lock.black_list {
-            black_list.remove(&ip);
+            for ip in ips {
+                black_list.remove(&ip);
+            }
         }
         Ok(())
     }
