@@ -19,9 +19,9 @@ use massa_models::{
     slot::Slot,
     timeslots::get_block_slot_timestamp,
 };
-use massa_proto_rs::massa::model::v1::AddressCategory;
-use massa_proto_rs::massa::model::v1::NativeAmount;
-use massa_proto_rs::massa::model::v1::NativeTime;
+use massa_proto_rs::massa::model::v1::{
+    AddressCategory, ComparisonResult, NativeAmount, NativeTime,
+};
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 
@@ -324,7 +324,6 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
-    fn get_balance_wasmv1(&self, address: Option<String>) -> Result<NativeAmount> {
     fn get_balance_wasmv1(&self, address: Option<String>) -> Result<NativeAmount> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
@@ -1305,7 +1304,6 @@ impl Interface for InterfaceImpl {
         Ok((quotient, remainder))
     }
 
-    #[allow(unused_variables)]
     fn base58_check_to_bytes_wasmv1(&self, s: &str) -> Result<Vec<u8>> {
         bs58::decode(s)
             .with_check(None)
@@ -1437,6 +1435,79 @@ impl Interface for InterfaceImpl {
         let remainder = massa_time_to_native_time(&remainder);
 
         Ok((quotient, remainder))
+    }
+
+    fn compare_address_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
+        let left = Address::from_str(left)?;
+        let right = Address::from_str(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
+
+    fn compare_native_amount_wasmv1(
+        &self,
+        left: &NativeAmount,
+        right: &NativeAmount,
+    ) -> Result<ComparisonResult> {
+        let left = amount_from_native_amount(left)?;
+        let right = amount_from_native_amount(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
+
+    fn compare_native_time_wasmv1(
+        &self,
+        left: &NativeTime,
+        right: &NativeTime,
+    ) -> Result<ComparisonResult> {
+        let left = massa_time_from_native_time(left)?;
+        let right = massa_time_from_native_time(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
+
+    fn compare_pub_key_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
+        let left = PublicKey::from_str(left)?;
+        let right = PublicKey::from_str(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
+
+    fn compare_sig_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
+        let left = Signature::from_str(left)?;
+        let right = Signature::from_str(right)?;
+        todo!()
+        // let res = match left.cmp(&right) {
+        //     std::cmp::Ordering::Less => ComparisonResult::Lower,
+        //     std::cmp::Ordering::Equal => ComparisonResult::Equal,
+        //     std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        // };
+
+        // Ok(res)
     }
 }
 
