@@ -304,10 +304,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The raw representation (no decimal factor) of the balance of the address,
     /// or zero if the address is not found in the ledger.
-    fn get_balance_wasmv1(
-        &self,
-        address: Option<String>,
-    ) -> Result<NativeAmount> {
+    fn get_balance_wasmv1(&self, address: Option<String>) -> Result<NativeAmount> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
