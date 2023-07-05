@@ -14,7 +14,7 @@ use tracing::info;
 use crate::{
     context::Context,
     handlers::peer_handler::MassaHandshake,
-    messages::{Message, MessagesHandler, MessagesSerializer},
+    messages::{Message, MessageTypeId, MessagesHandler, MessagesSerializer},
 };
 
 pub trait ActiveConnectionsTrait: Send + Sync {
@@ -50,7 +50,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
         message: Message,
         high_priority: bool,
     ) -> Result<(), ProtocolError> {
-        info!("AURELIEN: Sending message to peer {}", peer_id);
+        info!("AURELIEN: Sending message to peer {} of type {:?}", peer_id, MessageTypeId::from(&message));
         if let Some(connection) = self.read().connections.get(peer_id) {
             connection
                 .send_channels

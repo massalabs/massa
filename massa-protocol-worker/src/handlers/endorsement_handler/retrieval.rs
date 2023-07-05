@@ -79,7 +79,7 @@ impl RetrievalThread {
                             }
                             match message {
                                 EndorsementMessage::Endorsements(endorsements) => {
-                                    debug!("Received endorsement message: Endorsement from {}", peer_id);
+                                    info!("AURELIEN: Received endorsement message: Endorsement from {}", peer_id);
                                     if let Err(err) =
                                         self.note_endorsements_from_peer(endorsements, &peer_id)
                                     {

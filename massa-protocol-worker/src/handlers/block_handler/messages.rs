@@ -18,7 +18,7 @@ use nom::{
     IResult, Parser,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use std::ops::Bound::Included;
+use std::{ops::Bound::Included, fmt::Display};
 
 /// Ask for the info about a block.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -43,6 +43,17 @@ pub enum BlockInfoReply {
     Operations(Vec<SecureShareOperation>),
     /// Block not found
     NotFound,
+}
+
+impl Display for BlockInfoReply {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BlockInfoReply::Header(_) => write!(f, "Header"),
+            BlockInfoReply::Info(_) => write!(f, "Info"),
+            BlockInfoReply::Operations(_) => write!(f, "Operations"),
+            BlockInfoReply::NotFound => write!(f, "NotFound"),
+        }
+    }
 }
 
 #[derive(Debug)]

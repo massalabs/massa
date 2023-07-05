@@ -153,12 +153,15 @@ impl RetrievalThread {
                             }
                             match message {
                                 BlockMessage::AskForBlocks(block_infos) => {
+                                    info!("AURELIEN: Received block ask for blocks message from {}", peer_id);
                                     if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
                                 BlockMessage::ReplyForBlocks(block_infos) => {
+                                    info!("AURELIEN: Received block reply for blocks message from {}", peer_id);
                                     for (block_id, block_info) in block_infos.into_iter() {
+                                        info!("AURELIEN: Block id {}, block infos {}", block_id, block_info);
                                         if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
                                             warn!("Error in on_block_info_received: {:?}", err);
                                         }
@@ -168,6 +171,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
+                                    info!("AURELIEN: Received block blockHeader message from {}", peer_id);
                                     massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
                                     if let Ok(Some((block_id, is_new))) =
                                         self.note_header_from_peer(&header, &peer_id)
@@ -1241,6 +1245,27 @@ impl RetrievalThread {
         // list blocks to re-ask and from whom
         {
             let mut cache_write = self.cache.write();
+            let peers_connected = self.active_connections.get_peer_ids_connected();
+            cache_write.update_cache(
+                peers_connected.clone(),
+                self.config
+                    .max_node_known_blocks_size
+                    .try_into()
+                    .expect("max_node_known_blocks_size is too big"),
+            );
+            let peers_in_asked_blocks: Vec<PeerId> =
+                self.asked_blocks.keys().cloned().collect();
+            for peer_id in peers_in_asked_blocks {
+                if !peers_connected.contains(&peer_id) {
+                    self.asked_blocks.remove(&peer_id);
+                }
+            }
+            for peer_id in peers_connected {
+                if !self.asked_blocks.contains_key(&peer_id) {
+                    self.asked_blocks
+                        .insert(peer_id.clone(), PreHashMap::default());
+                }
+            }
             for (hash, block_info) in self.block_wishlist.iter() {
                 let required_info = if block_info.header.is_none() {
                     AskForBlocksInfo::Header
@@ -1262,27 +1287,6 @@ impl RetrievalThread {
                 };
                 let mut needs_ask = true;
 
-                let peers_connected = self.active_connections.get_peer_ids_connected();
-                cache_write.update_cache(
-                    peers_connected.clone(),
-                    self.config
-                        .max_node_known_blocks_size
-                        .try_into()
-                        .expect("max_node_known_blocks_size is too big"),
-                );
-                let peers_in_asked_blocks: Vec<PeerId> =
-                    self.asked_blocks.keys().cloned().collect();
-                for peer_id in peers_in_asked_blocks {
-                    if !peers_connected.contains(&peer_id) {
-                        self.asked_blocks.remove(&peer_id);
-                    }
-                }
-                for peer_id in peers_connected {
-                    if !self.asked_blocks.contains_key(&peer_id) {
-                        self.asked_blocks
-                            .insert(peer_id.clone(), PreHashMap::default());
-                    }
-                }
                 let all_keys: Vec<PeerId> = cache_write
                     .blocks_known_by_peer
                     .iter()
