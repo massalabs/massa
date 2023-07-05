@@ -245,6 +245,7 @@ pub fn start_protocol_controller(
             our_keypair: keypair.clone(),
         },
     );
+    //TODO: Readd timeout message
 
     let initial_peers_infos = serde_json::from_str::<HashMap<PeerId, PeerData>>(
         &std::fs::read_to_string(&config.initial_peers)?,

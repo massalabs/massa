@@ -979,6 +979,7 @@ impl RetrievalThread {
         block_id: BlockId,
         mut operations: Vec<SecureShareOperation>,
     ) -> Result<(), ProtocolError> {
+        info!("AURELIEN: {} on_block_full_operations_received start", block_id);
         if let Err(err) = self.note_operations_from_peer(operations.clone(), &from_peer_id) {
             warn!(
                 "Peer id {} sent us operations for block id {} but they failed at verifications. Err = {}",
@@ -989,6 +990,7 @@ impl RetrievalThread {
             }
             return Ok(());
         }
+        info!("AURELIEN: {} on_block_full_operations_received after verif ops", block_id);
         match self.block_wishlist.entry(block_id) {
             Entry::Occupied(mut entry) => {
                 let info = entry.get_mut();
@@ -999,8 +1001,10 @@ impl RetrievalThread {
                     if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
                         asked_blocks.remove(&block_id);
                         {
+                            info!("AURELIEN: {} on_block_full_operations_received before editing cache1", block_id);
                             let mut cache_write = self.cache.write();
                             cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                            info!("AURELIEN: {} on_block_full_operations_received after editing cache1", block_id);
                         }
                     }
                     return Ok(());
@@ -1012,21 +1016,26 @@ impl RetrievalThread {
                     if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
                         asked_blocks.remove(&block_id);
                         {
+                            info!("AURELIEN: {} on_block_full_operations_received before editing cache2", block_id);
                             let mut cache_write = self.cache.write();
                             cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                            info!("AURELIEN: {} on_block_full_operations_received after editing cache2", block_id);
                         }
                     }
                     return Ok(());
                 };
+                info!("AURELIEN: {} on_block_full_operations_received before store ops", block_id);
                 operations.retain(|op| block_operation_ids.contains(&op.id));
                 // add operations to local storage and claim ref
                 info.storage.store_operations(operations);
                 let block_ids_set = block_operation_ids.clone().into_iter().collect();
                 let known_operations = info.storage.claim_operation_refs(&block_ids_set);
+                info!("AURELIEN: {} on_block_full_operations_received after store ops", block_id);
 
                 // Ban the node if:
                 // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
                 // - full operations serialized size overflow
+                info!("AURELIEN: {} on_block_full_operations_received before read ops", block_id);
                 let full_op_size: usize = {
                     let stored_operations = info.storage.read_operations();
                     known_operations
@@ -1034,6 +1043,7 @@ impl RetrievalThread {
                         .map(|id| stored_operations.get(id).unwrap().serialized_size())
                         .sum()
                 };
+                info!("AURELIEN: {} on_block_full_operations_received after read ops", block_id);
                 if full_op_size > self.config.max_serialized_operations_size_per_block {
                     warn!("Peer id {} sent us full operations for block id {} but they exceed max size.", from_peer_id, block_id);
                     if let Err(err) = self.ban_node(&from_peer_id) {
@@ -1054,8 +1064,10 @@ impl RetrievalThread {
                         if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) && asked_blocks.contains_key(&block_id) {
                             asked_blocks.remove(&block_id);
                             {
+                                info!("AURELIEN: {} on_block_full_operations_received before editing cache3", block_id);
                                 let mut cache_write = self.cache.write();
                                 cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                                info!("AURELIEN: {} on_block_full_operations_received after editing cache3", block_id);
                             }
                         }
                         return Ok(());
