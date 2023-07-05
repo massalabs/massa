@@ -13,6 +13,7 @@ nom = "=7.1"
 unsigned-varint = { version = "0.7.1", features = [
     "nom",
 ], git = "https://github.com/cyphar/unsigned-varint.git", branch = "nom6-errors" }
+num = "0.4"
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]

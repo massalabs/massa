@@ -23,6 +23,7 @@ use tracing::{debug, info, warn};
 
 #[cfg(feature = "bootstrap_server")]
 use massa_models::config::PERIODS_BETWEEN_BACKUPS;
+use massa_models::timeslots::get_block_slot_timestamp;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -131,6 +132,13 @@ impl FinalState {
 
         // create the final state
         Ok(final_state)
+    }
+
+    /// Get the fingerprint (hash) of the final state.
+    /// Note that only one atomic write per final slot occurs, so this can be safely queried at any time.
+    pub fn get_fingerprint(&self) -> massa_hash::Hash {
+        let internal_hash = self.db.read().get_xof_db_hash();
+        massa_hash::Hash::compute_from(internal_hash.to_bytes())
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
@@ -554,6 +562,7 @@ impl FinalState {
         );
 
         let mut db_batch = DBBatch::new();
+        let mut db_versioning_batch = DBBatch::new();
 
         // apply the state changes to the batch
 
@@ -577,9 +586,39 @@ impl FinalState {
             &mut db_batch,
         );
 
+        let slot_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot,
+        )
+        .expect("Cannot get timestamp from slot");
+
+        let slot_prev_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot.get_prev_slot(self.config.thread_count)
+                .expect("Cannot get prev slot"),
+        )
+        .expect("Cannot get timestamp for prev slot");
+
+        self.mip_store
+            .update_batches(
+                &mut db_batch,
+                &mut db_versioning_batch,
+                Some((&slot_prev_ts, &slot_ts)),
+            )
+            .unwrap_or_else(|e| {
+                panic!(
+                    "Unable to get MIP store changes between {} and {}: {}",
+                    slot_prev_ts, slot_ts, e
+                )
+            });
+
         self.db
             .write()
-            .write_batch(db_batch, Default::default(), Some(slot));
+            .write_batch(db_batch, db_versioning_batch, Some(slot));
 
         let final_state_hash = self.db.read().get_xof_db_hash();
 

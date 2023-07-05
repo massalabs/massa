@@ -12,7 +12,7 @@ use massa_consensus_exports::{
     ConsensusController,
 };
 use massa_metrics::MassaMetrics;
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 //use crate::handlers::block_handler::BlockInfoReply;
 use massa_pool_exports::{
     test_exports::{MockPoolController, PoolEventReceiver},
@@ -103,7 +103,6 @@ pub fn start_protocol_controller_with_mock_network(
 
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        counters_max: MIP_STORE_STATS_COUNTERS_MAX,
     };
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 

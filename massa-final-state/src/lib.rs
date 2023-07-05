@@ -86,7 +86,6 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(hash_drain_filter)]
 #![feature(async_closure)]
 #![feature(map_try_insert)]
 #![feature(let_chains)]

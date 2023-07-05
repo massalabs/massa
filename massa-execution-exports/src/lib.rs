@@ -61,10 +61,10 @@ pub use event_store::EventStore;
 pub use massa_sc_runtime::GasCosts;
 pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
-    ExecutionAddressInfo, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryExecutionStatus,
-    ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
-    ExecutionQueryResponseItem, ExecutionQueryStakerInfo, ExecutionStackElement,
-    ReadOnlyCallRequest, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutedBlockInfo, ExecutionAddressInfo, ExecutionOutput, ExecutionQueryCycleInfos,
+    ExecutionQueryExecutionStatus, ExecutionQueryRequest, ExecutionQueryRequestItem,
+    ExecutionQueryResponse, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
+    ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 

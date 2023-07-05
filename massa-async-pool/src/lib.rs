@@ -85,9 +85,7 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See `test_exports/mod.rs` for details.
 
-#![feature(btree_drain_filter)]
 #![feature(let_chains)]
-#![feature(drain_filter)]
 
 mod changes;
 mod config;

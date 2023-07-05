@@ -1,23 +1,25 @@
 use std::cmp::Ordering;
+use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::ops::Deref;
 use std::sync::Arc;
 
 use machine::{machine, transitions};
+use num::{rational::Ratio, Zero};
 use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
 use parking_lot::RwLock;
 use thiserror::Error;
-use tracing::{debug, warn};
+use tracing::debug;
 
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
     VERSIONING_CF,
 };
-use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX};
+use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
-use massa_models::{amount::Amount, config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED};
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
 
@@ -108,7 +110,7 @@ machine!(
         /// Initial state
         Defined,
         /// Past start, can only go to LockedIn after the threshold is above a given value
-        Started { pub(crate) threshold: Amount },
+        Started { pub(crate) threshold: Ratio<u64> },
         /// Locked but wait for some time before going to active (to let users the time to upgrade)
         LockedIn { pub(crate) at: MassaTime },
         /// After LockedIn, deployment is considered successful (after activation delay)
@@ -160,7 +162,7 @@ pub struct Advance {
     pub activation_delay: MassaTime,
 
     /// % of past blocks with this version
-    pub threshold: Amount,
+    pub threshold: Ratio<u64>,
     /// Current time (timestamp)
     pub now: MassaTime,
 }
@@ -205,7 +207,7 @@ impl Defined {
     pub fn on_advance(self, input: Advance) -> ComponentState {
         match input.now {
             n if n >= input.timeout => ComponentState::failed(),
-            n if n >= input.start_timestamp => ComponentState::started(Amount::zero()),
+            n if n >= input.start_timestamp => ComponentState::started(Ratio::zero()),
             _ => ComponentState::Defined(Defined {}),
         }
     }
@@ -308,13 +310,12 @@ impl MipState {
     /// Advance the state
     /// Can be called as multiple times as it will only store what changes the state in history
     pub fn on_advance(&mut self, input: &Advance) {
-        let now = input.now;
         // Check that input.now is after last item in history
         // We don't want to go backward
         let is_forward = self
             .history
             .last_key_value()
-            .map(|(adv, _)| adv.now < now)
+            .map(|(adv, _)| adv.now < input.now)
             .unwrap_or(false);
 
         if is_forward {
@@ -322,14 +323,13 @@ impl MipState {
             let state = self.state.on_advance(input.clone());
             // Update history as well
             if state != self.state {
-                let state_id = ComponentStateTypeId::from(&state);
-
                 // Avoid storing too much things in history
                 // Here we avoid storing for every threshold update
                 if !(matches!(state, ComponentState::Started(Started { .. }))
                     && matches!(self.state, ComponentState::Started(Started { .. })))
                 {
-                    self.history.insert(input.clone(), state_id);
+                    self.history
+                        .insert(input.clone(), ComponentStateTypeId::from(&state));
                 }
                 self.state = state;
             }
@@ -373,7 +373,7 @@ impl MipState {
         let mut advance_msg = Advance {
             start_timestamp: mip_info.start,
             timeout: mip_info.timeout,
-            threshold: Amount::zero(),
+            threshold: Ratio::zero(),
             now: initial_ts.now,
             activation_delay: mip_info.activation_delay,
         };
@@ -495,6 +495,14 @@ impl MipState {
             }
             _ => None,
         }
+    }
+
+    /// Return True if state can not change anymore (e.g. Active, Failed or Error)
+    pub fn is_final(&self) -> bool {
+        matches!(
+            self.state,
+            ComponentState::Active(..) | ComponentState::Failed(..) | ComponentState::Error
+        )
     }
 }
 
@@ -672,7 +680,6 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 #[derive(Debug, Clone, PartialEq)]
 pub struct MipStatsConfig {
     pub block_count_considered: usize,
-    pub counters_max: usize,
 }
 
 /// In order for a MIP to be accepted, we compute statistics about other node 'network' version announcement
@@ -680,10 +687,13 @@ pub struct MipStatsConfig {
 pub(crate) struct MipStoreStats {
     // config for max counters + block to consider when computing the vote ratio
     pub(crate) config: MipStatsConfig,
-    // used to clean up the counters (pop the oldest then subtract matching counter)
+    // Last network version announcements (in last block header)
+    // Used to clean up the field: network_version_counters (pop the oldest then subtract matching counter)
     pub(crate) latest_announcements: VecDeque<u32>,
-    // counter per network version
-    pub(crate) network_version_counters: BTreeMap<u32, u64>,
+    // A map where key: network version, value: announcement for this network version count
+    // Note: to avoid various attacks, we have as many counters as version announcements
+    //       + if a counter reset to 0, it is removed from the hash map
+    pub(crate) network_version_counters: HashMap<u32, u64>,
 }
 
 impl MipStoreStats {
@@ -691,7 +701,7 @@ impl MipStoreStats {
         Self {
             config: config.clone(),
             latest_announcements: VecDeque::with_capacity(config.block_count_considered),
-            network_version_counters: Default::default(),
+            network_version_counters: HashMap::with_capacity(config.block_count_considered),
         }
     }
 
@@ -882,53 +892,62 @@ impl MipStoreRaw {
                 .latest_announcements
                 .push_back(announced_network_version);
 
-            // We update the count of the received version
-            let entry_value = self
-                .stats
+            // We update the count of the received version (example: update counter for version 1)
+            self.stats
                 .network_version_counters
                 .entry(announced_network_version)
-                .or_default();
-            *entry_value = entry_value.saturating_add(1);
+                .and_modify(|v| *v = v.saturating_add(1))
+                .or_insert(1);
 
+            // If we removed a version announcement, we decrement the corresponding counter
+            // (example: remove a version 1, so decrement the corresponding counter)
+            // As soon as a counter value is 0, we remove it
             if let Some(removed_version) = removed_version_ {
-                let entry_value = self
-                    .stats
-                    .network_version_counters
-                    .entry(removed_version)
-                    .or_insert(1);
-                *entry_value = entry_value.saturating_sub(1);
-            }
-
-            // Cleanup the counters
-            if self.stats.network_version_counters.len() > self.stats.config.counters_max {
-                if let Some((version, count)) = self.stats.network_version_counters.pop_first() {
-                    // TODO: return version / count for unit tests?
-                    warn!(
-                        "MipStoreStats removed counter for version {}, count was: {}",
-                        version, count
-                    )
+                if let Entry::Occupied(mut e) =
+                    self.stats.network_version_counters.entry(removed_version)
+                {
+                    let entry_value = e.get_mut();
+                    *entry_value = entry_value.saturating_sub(1);
+                    if *entry_value == 0 {
+                        self.stats.network_version_counters.remove(&removed_version);
+                    }
                 }
             }
-
-            self.advance_states_on_updated_stats(slot_timestamp);
         }
+
+        debug!(
+            "[VERSIONING STATS] stats have {} counters and {} announcements",
+            self.stats.network_version_counters.len(),
+            self.stats.latest_announcements.len()
+        );
+
+        // Even if stats did not move, update the states (e.g. LockedIn -> Active)
+        self.advance_states_on_updated_stats(slot_timestamp);
     }
 
     /// Used internally by `update_network_version_stats`
     fn advance_states_on_updated_stats(&mut self, slot_timestamp: MassaTime) {
         for (mi, state) in self.store.iter_mut() {
+            if state.is_final() {
+                // State cannot change (ex: Active), no need to update
+                continue;
+            }
+
             let network_version_count = *self
                 .stats
                 .network_version_counters
                 .get(&mi.version)
-                .unwrap_or(&0) as f32;
-            let block_count_considered = self.stats.config.block_count_considered as f32;
+                .unwrap_or(&0);
 
-            let vote_ratio_ = 100.0 * network_version_count / block_count_considered;
+            let vote_ratio = Ratio::new(
+                network_version_count,
+                self.stats.config.block_count_considered as u64,
+            );
 
-            let vote_ratio = Amount::const_init(vote_ratio_.round() as u64, 0);
-
-            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})", vote_ratio, network_version_count, block_count_considered);
+            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})",
+                vote_ratio,
+                network_version_count,
+                self.stats.config.block_count_considered);
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,
@@ -938,7 +957,6 @@ impl MipStoreRaw {
                 activation_delay: mi.activation_delay,
             };
 
-            // TODO / OPTIM: filter the store to avoid advancing on failed and active versions
             state.on_advance(&advance_msg.clone());
         }
     }
@@ -1113,8 +1131,8 @@ impl MipStoreRaw {
         let mip_state_ser = MipStateSerializer::new();
 
         let bounds = match between {
-            Some(between) => (*between.0)..=(*between.1),
-            None => MassaTime::from_millis(0)..=MassaTime::max(),
+            Some(between) => (*between.0)..(*between.1),
+            None => MassaTime::from_millis(0)..MassaTime::max(),
         };
         let mut key = Vec::new();
         let mut value = Vec::new();
@@ -1141,12 +1159,13 @@ impl MipStoreRaw {
             }
         }
 
-        key.clear();
         value.clear();
-        key.extend(MIP_STORE_STATS_PREFIX.as_bytes().to_vec());
         let mip_stats_ser = MipStoreStatsSerializer::new();
         mip_stats_ser.serialize(&self.stats, &mut value)?;
-        versioning_batch.insert(key.clone(), Some(value.clone()));
+        versioning_batch.insert(
+            MIP_STORE_STATS_PREFIX.as_bytes().to_vec(),
+            Some(value.clone()),
+        );
 
         Ok(())
     }
@@ -1158,10 +1177,8 @@ impl MipStoreRaw {
     ) -> Result<(Vec<MipInfo>, BTreeMap<MipInfo, MipState>), ExtendFromDbError> {
         let mip_info_deser = MipInfoDeserializer::new();
         let mip_state_deser = MipStateDeserializer::new();
-        let mip_store_stats_deser = MipStoreStatsDeserializer::new(
-            MIP_STORE_STATS_BLOCK_CONSIDERED,
-            MIP_STORE_STATS_COUNTERS_MAX,
-        );
+        let mip_store_stats_deser =
+            MipStoreStatsDeserializer::new(MIP_STORE_STATS_BLOCK_CONSIDERED);
 
         let db = db.read();
 
@@ -1186,18 +1203,23 @@ impl MipStoreRaw {
             update_data.insert(mip_info, mip_state);
         }
 
-        let store_raw_ = MipStoreRaw {
-            store: update_data,
-            stats: MipStoreStats {
-                config: MipStatsConfig {
-                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
-                },
-                latest_announcements: Default::default(),
-                network_version_counters: Default::default(),
-            },
+        let (mut updated, mut added) = match update_data.is_empty() {
+            true => (vec![], BTreeMap::new()),
+            false => {
+                let store_raw_ = MipStoreRaw {
+                    store: update_data,
+                    stats: MipStoreStats {
+                        config: MipStatsConfig {
+                            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                        },
+                        latest_announcements: Default::default(),
+                        network_version_counters: Default::default(),
+                    },
+                };
+                // Only call update_with if update_data is not empty
+                self.update_with(&store_raw_)?
+            }
         };
-        let (mut updated, mut added) = self.update_with(&store_raw_)?;
 
         let mut update_data: BTreeMap<MipInfo, MipState> = Default::default();
 
@@ -1232,20 +1254,22 @@ impl MipStoreRaw {
             }
         }
 
-        let store_raw_ = MipStoreRaw {
-            store: update_data,
-            stats: MipStoreStats {
-                config: MipStatsConfig {
-                    block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-                    counters_max: MIP_STORE_STATS_COUNTERS_MAX,
+        if !update_data.is_empty() {
+            let store_raw_ = MipStoreRaw {
+                store: update_data,
+                stats: MipStoreStats {
+                    config: MipStatsConfig {
+                        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+                    },
+                    latest_announcements: Default::default(),
+                    network_version_counters: Default::default(),
                 },
-                latest_announcements: Default::default(),
-                network_version_counters: Default::default(),
-            },
-        };
-        let (updated_2, added_2) = self.update_with(&store_raw_)?;
-        updated.extend(updated_2);
-        added.extend(added_2);
+            };
+            // Only call update_with if update_data is not empty
+            let (updated_2, added_2) = self.update_with(&store_raw_)?;
+            updated.extend(updated_2);
+            added.extend(added_2);
+        }
 
         Ok((updated, added))
     }
@@ -1291,15 +1315,13 @@ mod test {
     use more_asserts::assert_le;
     use parking_lot::RwLock;
     use std::assert_matches::assert_matches;
-    use std::str::FromStr;
+    use std::ops::{Add, Sub};
     use std::sync::Arc;
     use tempfile::tempdir;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
 
-    use massa_models::config::{
-        MIP_STORE_STATS_BLOCK_CONSIDERED, MIP_STORE_STATS_COUNTERS_MAX, T0, THREAD_COUNT,
-    };
+    use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, T0, THREAD_COUNT};
     use massa_models::timeslots::get_closest_slot_to_timestamp;
 
     // Only for unit tests
@@ -1310,8 +1332,8 @@ mod test {
     }
 
     // helper
-    impl From<(&MipInfo, &Amount, &MassaTime)> for Advance {
-        fn from((mip_info, threshold, now): (&MipInfo, &Amount, &MassaTime)) -> Self {
+    impl From<(&MipInfo, &Ratio<u64>, &MassaTime)> for Advance {
+        fn from((mip_info, threshold, now): (&MipInfo, &Ratio<u64>, &MassaTime)) -> Self {
             Self {
                 start_timestamp: mip_info.start,
                 timeout: mip_info.timeout,
@@ -1352,7 +1374,7 @@ mod test {
         assert_eq!(state, ComponentState::defined());
 
         let now = mi.start.saturating_sub(MassaTime::from_millis(1));
-        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let mut advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::defined());
@@ -1365,7 +1387,7 @@ mod test {
         assert_eq!(
             state,
             ComponentState::Started(Started {
-                threshold: Amount::zero()
+                threshold: Ratio::zero()
             })
         );
     }
@@ -1377,11 +1399,10 @@ mod test {
         let mut state: ComponentState = ComponentState::started(Default::default());
 
         let now = mi.start;
-        let threshold_too_low = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
-            .saturating_sub(Amount::from_str("0.1").unwrap());
-        let threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED
-            .saturating_add(Amount::from_str("5.42").unwrap());
-        assert_le!(threshold_ok, Amount::from_str("100.0").unwrap());
+        let threshold_too_low =
+            VERSIONING_THRESHOLD_TRANSITION_ACCEPTED.sub(Ratio::new_raw(10, 100));
+        let threshold_ok = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED.add(Ratio::new_raw(1, 100));
+        assert_le!(threshold_ok, Ratio::from_integer(1));
         let mut advance_msg = Advance::from((&mi, &threshold_too_low, &now));
 
         state = state.on_advance(advance_msg.clone());
@@ -1400,7 +1421,7 @@ mod test {
         let mut state: ComponentState = ComponentState::locked_in(locked_in_at);
 
         let now = mi.start;
-        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let mut advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         state = state.on_advance(advance_msg.clone());
         assert_eq!(state, ComponentState::locked_in(locked_in_at));
@@ -1418,7 +1439,7 @@ mod test {
         let (start, _, mi) = get_a_version_info();
         let mut state = ComponentState::active(start);
         let now = mi.start;
-        let advance = Advance::from((&mi, &Amount::zero(), &now));
+        let advance = Advance::from((&mi, &Ratio::zero(), &now));
 
         state = state.on_advance(advance);
         assert!(matches!(state, ComponentState::Active(_)));
@@ -1430,7 +1451,7 @@ mod test {
         let (_, _, mi) = get_a_version_info();
         let mut state = ComponentState::failed();
         let now = mi.start;
-        let advance = Advance::from((&mi, &Amount::zero(), &now));
+        let advance = Advance::from((&mi, &Ratio::zero(), &now));
         state = state.on_advance(advance);
         assert_eq!(state, ComponentState::failed());
     }
@@ -1440,7 +1461,7 @@ mod test {
         // Test Versioning state transition (to state: Failed)
         let (_, _, mi) = get_a_version_info();
         let now = mi.timeout.saturating_add(MassaTime::from_millis(1));
-        let advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         let mut state: ComponentState = Default::default(); // Defined
         state = state.on_advance(advance_msg.clone());
@@ -1462,11 +1483,11 @@ mod test {
         assert_eq!(state, ComponentState::defined());
 
         let now = mi.start.saturating_add(MassaTime::from_millis(15));
-        let mut advance_msg = Advance::from((&mi, &Amount::zero(), &now));
+        let mut advance_msg = Advance::from((&mi, &Ratio::zero(), &now));
 
         // Move from Defined -> Started
         state.on_advance(&advance_msg);
-        assert_eq!(state, ComponentState::started(Amount::zero()));
+        assert_eq!(state, ComponentState::started(Ratio::zero()));
 
         // Check history
         assert_eq!(state.history.len(), 2);
@@ -1512,7 +1533,7 @@ mod test {
 
         // Move from Started to LockedIn
         let threshold = VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
-        advance_msg.threshold = threshold.saturating_add(Amount::from_str("1.0").unwrap());
+        advance_msg.threshold = threshold.add(Ratio::from_integer(1));
         advance_msg.now = now.saturating_add(MassaTime::from_millis(1));
         state.on_advance(&advance_msg);
         assert_eq!(state, ComponentState::locked_in(advance_msg.now));
@@ -1552,14 +1573,13 @@ mod test {
             history: Default::default(),
         };
         let vs_2 = MipState {
-            state: ComponentState::started(Amount::zero()),
+            state: ComponentState::started(Ratio::zero()),
             history: Default::default(),
         };
 
         // TODO: Have VersioningStore::from ?
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 5,
         };
         let vs_raw = MipStoreRaw {
             store: BTreeMap::from([(mi.clone(), vs_1), (mi_2.clone(), vs_2)]),
@@ -1630,17 +1650,14 @@ mod test {
 
         // Advance to Started
         let now = MassaTime::from_millis(3);
-        let adv = Advance::from((&vi_1, &Amount::zero(), &now));
+        let adv = Advance::from((&vi_1, &Ratio::zero(), &now));
         vsh.on_advance(&adv);
         let now = MassaTime::from_millis(4);
-        let adv = Advance::from((&vi_1, &Amount::from_str("14.42").unwrap(), &now));
+        let adv = Advance::from((&vi_1, &Ratio::new_raw(14, 100), &now));
         vsh.on_advance(&adv);
 
         // At state Started at time now -> true
-        assert_eq!(
-            vsh.state,
-            ComponentState::started(Amount::from_str("14.42").unwrap())
-        );
+        assert_eq!(vsh.state, ComponentState::started(Ratio::new_raw(14, 100)));
         assert_eq!(vsh.is_coherent_with(&vi_1).is_ok(), true);
         // Now with another versioning info
         assert_eq!(vsh.is_coherent_with(&vi_2).is_ok(), false);
@@ -1687,7 +1704,6 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 5,
         };
         let mut vs_raw_1 = MipStoreRaw::try_from((
             [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
@@ -1747,7 +1763,6 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 5,
         };
 
         // case 1
@@ -1825,7 +1840,6 @@ mod test {
         // part 0 - defines data for the test
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 5,
         };
         let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
@@ -1876,7 +1890,6 @@ mod test {
 
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
 
         let mip_store = MipStore::try_from(([], mip_stats_config));
@@ -1890,7 +1903,6 @@ mod test {
         // data
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
 
         let mut mip_store_raw_1 = MipStoreRaw::try_from(([], mip_stats_config.clone())).unwrap();
@@ -1978,7 +1990,6 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 5,
         };
         let mut mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
@@ -2052,7 +2063,7 @@ mod test {
             mi_2.start = get_slot_ts(Slot::new(7, 7));
             mi_2.timeout = get_slot_ts(Slot::new(10, 7));
 
-            let ms_1 = advance_state_until(ComponentState::started(Amount::zero()), &mi_1);
+            let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
@@ -2177,7 +2188,6 @@ mod test {
 
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-            counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         };
         let mut mip_store = MipStore::try_from((
             [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
@@ -2274,7 +2284,6 @@ mod test {
 
         let mip_stats_config = MipStatsConfig {
             block_count_considered: 2,
-            counters_max: 1,
         };
         let activation_delay = MassaTime::from_millis(100);
         let timeout = MassaTime::now()
@@ -2288,15 +2297,10 @@ mod test {
             timeout,
             activation_delay,
         };
-        let ms_1 = advance_state_until(ComponentState::started(Amount::zero()), &mi_1);
+        let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
 
         let mut mip_store =
             MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_config)).unwrap();
-
-        //
-        // mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 0)));
-        // TODO: should not add a counter for version 0 ?
-        // assert_eq!(mip_store.stats.network_version_counters.len(), 0);
 
         // Current network version is 0, next one is 1
         mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((0, 1)));
@@ -2321,8 +2325,10 @@ mod test {
 
         // Now network version is 1, next one is 2
         mip_store.update_network_version_stats(get_slot_ts(Slot::new(1, 0)), Some((1, 2)));
-        // Config is set to allow only 1 counter
-        assert_eq!(mip_store.stats.network_version_counters.len(), 1);
+        // Counter for announced version: 1 & 2
+        assert_eq!(mip_store.stats.network_version_counters.len(), 2);
+        // First announced version 1 was removed and so the counter decremented
+        assert_eq!(mip_store.stats.network_version_counters.get(&1), Some(&1));
         assert_eq!(mip_store.stats.network_version_counters.get(&2), Some(&1));
     }
 }

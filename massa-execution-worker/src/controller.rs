@@ -136,6 +136,7 @@ impl ExecutionController for ExecutionControllerImpl {
             responses: Vec::with_capacity(req.requests.len()),
             candidate_cursor: execution_lock.active_cursor,
             final_cursor: execution_lock.final_cursor,
+            final_state_fingerprint: execution_lock.get_final_state_fingerprint(),
         };
         for req_item in req.requests {
             let resp_item = match req_item {

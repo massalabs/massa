@@ -82,8 +82,8 @@
 #![feature(map_try_insert)]
 #![feature(let_chains)]
 #![feature(option_get_or_insert_default)]
-#![feature(drain_filter)]
-#![feature(btree_drain_filter)]
+#![feature(btree_extract_if)]
+#![feature(extract_if)]
 
 mod active_history;
 mod context;
@@ -101,6 +101,7 @@ mod stats;
 mod vesting_manager;
 mod worker;
 
+use massa_db_exports as _;
 pub use worker::start_execution_worker;
 
 #[cfg(any(

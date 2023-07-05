@@ -9,6 +9,7 @@ edition = "2021"
 machine = { git = "https://github.com/antifuchs/machine", branch = "fix-workspace-build" }
 parking_lot = "0.12"
 thiserror = "1.0"
+num = "0.4"
 num_enum = "0.5"
 nom = "=7.1"
 tracing = "0.1"
