@@ -58,6 +58,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
@@ -338,6 +339,7 @@ pub fn get_random_final_state_bootstrap(
         [],
         MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         },
     ))
     .unwrap();
@@ -453,7 +455,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
             header: BlockHeader::new_verifiable(
                 BlockHeader {
                     current_version: 0,
-                    announced_version: 0,
+                    announced_version: None,
                     // associated slot
                     // all header endorsements are supposed to point towards this one
                     slot: Slot::new(1, 0),

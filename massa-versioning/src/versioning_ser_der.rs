@@ -9,6 +9,7 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use num::rational::Ratio;
 
 use crate::versioning::{
     Active, AdvanceLW, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
@@ -657,10 +658,11 @@ pub struct MipStoreStatsDeserializer {
 
 impl MipStoreStatsDeserializer {
     /// Creates a new ``
-    pub fn new(block_count_considered: usize) -> Self {
+    pub fn new(block_count_considered: usize, warn_announced_version_ratio: Ratio<u64>) -> Self {
         Self {
             config: MipStatsConfig {
                 block_count_considered,
+                warn_announced_version_ratio,
             },
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -796,7 +798,7 @@ pub struct MipStoreRawDeserializer {
 
 impl MipStoreRawDeserializer {
     /// Creates a new ``
-    pub fn new(block_count_considered: usize) -> Self {
+    pub fn new(block_count_considered: usize, warn_announced_version_ratio: Ratio<u64>) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -804,7 +806,10 @@ impl MipStoreRawDeserializer {
             ),
             info_deserializer: MipInfoDeserializer::new(),
             state_deserializer: MipStateDeserializer::new(),
-            stats_deserializer: MipStoreStatsDeserializer::new(block_count_considered),
+            stats_deserializer: MipStoreStatsDeserializer::new(
+                block_count_considered,
+                warn_announced_version_ratio,
+            ),
         }
     }
 }
@@ -996,6 +1001,7 @@ mod test {
     fn test_mip_store_stats_ser_der() {
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let mip_stats = MipStoreStats {
@@ -1008,7 +1014,10 @@ mod test {
         let store_stats_ser = MipStoreStatsSerializer::new();
         store_stats_ser.serialize(&mip_stats, &mut buf).unwrap();
 
-        let store_stats_der = MipStoreStatsDeserializer::new(mip_stats_cfg.block_count_considered);
+        let store_stats_der = MipStoreStatsDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.warn_announced_version_ratio,
+        );
         let (rem, store_stats_der_res) = store_stats_der
             .deserialize::<DeserializeError>(&buf)
             .unwrap();
@@ -1021,6 +1030,7 @@ mod test {
     fn test_mip_store_raw_ser_der() {
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let mi_2 = MipInfo {
@@ -1046,13 +1056,17 @@ mod test {
         let state_3 = advance_state_until(ComponentState::started(Ratio::new_raw(42, 100)), &mi_3);
 
         let store_raw =
-            MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg)).unwrap();
+            MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg.clone()))
+                .unwrap();
 
         let mut buf = Vec::new();
         let store_raw_ser = MipStoreRawSerializer::new();
         store_raw_ser.serialize(&store_raw, &mut buf).unwrap();
 
-        let store_raw_der = MipStoreRawDeserializer::new(10);
+        let store_raw_der = MipStoreRawDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.warn_announced_version_ratio,
+        );
         let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());
@@ -1105,6 +1119,7 @@ mod test {
             store: BTreeMap::from_iter(store_raw_.into_iter()),
             stats: MipStoreStats::new(MipStatsConfig {
                 block_count_considered: 10,
+                warn_announced_version_ratio: Ratio::new(30, 100),
             }),
         };
         assert_eq!(store_raw.store.len(), MIP_STORE_MAX_ENTRIES as usize);
@@ -1120,7 +1135,7 @@ mod test {
             .serialize(&store_raw, &mut buf)
             .expect("Unable to serialize");
 
-        let store_raw_der = MipStoreRawDeserializer::new(10);
+        let store_raw_der = MipStoreRawDeserializer::new(10, Ratio::new(30, 100));
         let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());

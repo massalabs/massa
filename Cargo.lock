@@ -913,6 +913,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
 name = "crypto-common"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -921,6 +927,16 @@ dependencies = [
  "generic-array",
  "rand_core 0.6.4",
  "typenum",
+]
+
+[[package]]
+name = "crypto-mac"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
+dependencies = [
+ "generic-array",
+ "subtle",
 ]
 
 [[package]]
@@ -1772,11 +1788,32 @@ checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
 
 [[package]]
 name = "hmac"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "126888268dcc288495a26bf004b38c5fdbb31682f992c84ceb046a1f0fe38840"
+dependencies = [
+ "crypto-mac",
+ "digest 0.9.0",
+]
+
+[[package]]
+name = "hmac"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest 0.10.7",
+]
+
+[[package]]
+name = "hmac-drbg"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17ea0a1394df5b6574da6e0c1ade9e78868c9fb0a4e5ef4428e32da4676b85b1"
+dependencies = [
+ "digest 0.9.0",
+ "generic-array",
+ "hmac 0.8.1",
 ]
 
 [[package]]
@@ -2232,6 +2269,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsecp256k1"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95b09eff1b35ed3b33b877ced3a691fc7a481919c7e29c53c906226fcf55e2a1"
+dependencies = [
+ "arrayref",
+ "base64 0.13.1",
+ "digest 0.9.0",
+ "hmac-drbg",
+ "libsecp256k1-core",
+ "libsecp256k1-gen-ecmult",
+ "libsecp256k1-gen-genmult",
+ "rand 0.8.5",
+ "serde",
+ "sha2 0.9.9",
+ "typenum",
+]
+
+[[package]]
+name = "libsecp256k1-core"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5be9b9bb642d8522a44d533eab56c16c738301965504753b03ad1de3425d5451"
+dependencies = [
+ "crunchy",
+ "digest 0.9.0",
+ "subtle",
+]
+
+[[package]]
+name = "libsecp256k1-gen-ecmult"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3038c808c55c87e8a172643a7d87187fc6c4174468159cb3090659d55bcb4809"
+dependencies = [
+ "libsecp256k1-core",
+]
+
+[[package]]
+name = "libsecp256k1-gen-genmult"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3db8d6ba2cec9eacc40e6e8ccc98931840301f1006e95647ceb2dd5c3aa06f7c"
+dependencies = [
+ "libsecp256k1-core",
+]
+
+[[package]]
 name = "libz-sys"
 version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2412,6 +2497,7 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "massa_wallet",
+ "num",
  "parking_lot",
  "paw",
  "rand 0.8.5",
@@ -2438,7 +2524,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#afed9fa574d3f62282fb5a0cc4e7e95e929fd127"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#3da4a73e7cb607875bdf3ab59e06c057c6e3f8ee"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2576,6 +2662,7 @@ dependencies = [
  "mio",
  "mockall",
  "nom",
+ "num",
  "num_enum",
  "parking_lot",
  "rand 0.8.5",
@@ -2583,7 +2670,6 @@ dependencies = [
  "serde_json",
  "serial_test 2.0.0",
  "socket2",
- "stream_limiter",
  "substruct",
  "tempfile",
  "thiserror",
@@ -2736,6 +2822,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "hex-literal",
+ "libsecp256k1",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_channel",
@@ -2764,6 +2851,7 @@ dependencies = [
  "serde_json",
  "serial_test 1.0.0",
  "sha2 0.10.6",
+ "sha3",
  "tempfile",
  "tokio",
  "tracing",
@@ -2804,6 +2892,7 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "massa_wallet",
+ "num",
  "parking_lot",
  "tracing",
 ]
@@ -2829,6 +2918,7 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "nom",
+ "num",
  "parking_lot",
  "serde",
  "tempfile",
@@ -2859,6 +2949,7 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "massa_wallet",
+ "num",
  "serde",
  "thiserror",
  "tokio",
@@ -3103,6 +3194,7 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "nom",
+ "num",
  "num_enum",
  "parking_lot",
  "peernet",
@@ -3687,7 +3779,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83a0692ec44e4cf1ef28ca317f14f8f07da2d95ec3fa01f86e4467b725e60917"
 dependencies = [
  "digest 0.10.7",
- "hmac",
+ "hmac 0.12.1",
  "password-hash",
  "sha2 0.10.6",
 ]
@@ -3701,7 +3793,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?rev=7b2a1a9#7b2a1a93e993df61b8b1288c2847be2d6488e805"
+source = "git+https://github.com/massalabs/PeerNet?branch=deactivate_stream_limiter#df6149648cf994e1ff587a95cdaa486868932533"
 dependencies = [
  "crossbeam",
  "enum_delegate",
@@ -3711,7 +3803,6 @@ dependencies = [
  "quiche",
  "rand 0.8.5",
  "serde",
- "stream_limiter",
  "thiserror",
 ]
 
@@ -4796,6 +4887,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha3"
+version = "0.10.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
+dependencies = [
+ "digest 0.10.7",
+ "keccak",
+]
+
+[[package]]
 name = "sharded-slab"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4907,12 +5008,6 @@ name = "str-buf"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e08d8363704e6c71fc928674353e6b7c23dcea9d82d7012c8faf2a3a025f8d0"
-
-[[package]]
-name = "stream_limiter"
-version = "3.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89acdb288f530d175bbeb1344aab11cfa0e0ee5b4e63d75c204001568dcf90cf"
 
 [[package]]
 name = "strsim"

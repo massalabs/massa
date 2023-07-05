@@ -87,6 +87,7 @@ use massa_time::MassaTime;
 use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -277,7 +278,12 @@ async fn launch(
     // Creates an empty default store
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        warn_announced_version_ratio: Ratio::new(
+            u64::from(SETTINGS.versioning.mip_stats_warn_announced_version),
+            100,
+        ),
     };
+    // Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
     let mip_list = get_mip_list();
     debug!("MIP list: {:?}", mip_list);
@@ -614,6 +620,7 @@ async fn launch(
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
+        message_timeout: SETTINGS.protocol.message_timeout,
         routable_ip: SETTINGS
             .protocol
             .routable_ip

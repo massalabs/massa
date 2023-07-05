@@ -19,6 +19,7 @@ use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::massa_service_client::MassaServiceClient;
 use massa_protocol_exports::MockProtocolController;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
@@ -99,6 +100,7 @@ async fn test_start_grpc_server() {
 
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
     };
 
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();

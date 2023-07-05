@@ -210,10 +210,10 @@
     # Nb max in connections that we accept
     max_in_connections = 100
     # Peer default category limits
-    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 70, allow_local_peers = false }
+    default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 15, allow_local_peers = false }
     # Peer categories limits
     [protocol.peers_categories]
-    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 8, allow_local_peers = false }
+    Bootstrap = { target_out_connections = 1, max_in_connections_per_ip = 1, max_in_connections = 1, allow_local_peers = false }
 
 [network]
 
@@ -309,3 +309,7 @@
     staking_wallet_path = "config/staking_wallet.dat"
     # stop or not the production in case we are not connected to anyone
     stop_production_when_zero_connections = true
+
+[versioning]
+    # Warn user to update its node if we reach this percentage for announced network versions
+    mip_stats_warn_announced_version = 30

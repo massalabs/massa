@@ -99,6 +99,7 @@ mod state_changes;
 pub use config::FinalStateConfig;
 pub use error::FinalStateError;
 pub use final_state::FinalState;
+use num as _;
 pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 
 #[cfg(test)]

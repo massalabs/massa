@@ -138,6 +138,7 @@ pub struct Settings {
     pub factory: FactorySettings,
     pub grpc: GrpcSettings,
     pub metrics: MetricsSettings,
+    pub versioning: VersioningSettings,
 }
 
 /// Consensus configuration
@@ -244,6 +245,8 @@ pub struct ProtocolSettings {
     pub try_connection_timer: MassaTime,
     /// Timeout connection
     pub timeout_connection: MassaTime,
+    /// Message timeout
+    pub message_timeout: MassaTime,
     /// Nb in connections
     pub max_in_connections: usize,
     /// Peers limits per category
@@ -314,6 +317,12 @@ pub struct GrpcSettings {
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct VersioningSettings {
+    // Warn user to update its node if we reach this percentage for announced network versions
+    pub(crate) mip_stats_warn_announced_version: u32,
 }
 
 #[cfg(test)]

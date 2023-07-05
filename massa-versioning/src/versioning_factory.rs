@@ -103,6 +103,7 @@ pub trait VersioningFactory {
 mod test {
     use super::*;
 
+    use num::rational::Ratio;
     use std::collections::BTreeMap;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
@@ -230,6 +231,7 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let vs = MipStore::try_from((
@@ -320,6 +322,7 @@ mod test {
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let vs = MipStore::try_from((

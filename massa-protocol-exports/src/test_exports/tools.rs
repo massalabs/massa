@@ -23,7 +23,7 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot: Slot::new(1, 0),
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -67,7 +67,7 @@ pub fn create_block_with_operations(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
@@ -107,7 +107,7 @@ pub fn create_block_with_endorsements(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: vec![
                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),

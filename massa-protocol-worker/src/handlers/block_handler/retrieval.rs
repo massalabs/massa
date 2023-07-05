@@ -456,13 +456,24 @@ impl RetrievalThread {
             self.config.genesis_timestamp,
             slot,
         )?;
-        let version = self.mip_store.get_network_version_active_at(ts);
-        if header.content.current_version != version {
+        let current_version = self.mip_store.get_network_version_active_at(ts);
+        if header.content.current_version != current_version {
+            // Received a current version different from current version (given by mip store)
             Err(ProtocolError::IncompatibleNetworkVersion {
-                local: version,
+                local: current_version,
                 received: header.content.current_version,
             })
         } else {
+            if let Some(announced_version) = header.content.announced_version {
+                if announced_version <= current_version {
+                    // Received an announced network version that is already known
+                    return Err(ProtocolError::OutdatedAnnouncedNetworkVersion {
+                        local: current_version,
+                        announced_received: announced_version,
+                    });
+                }
+            }
+
             Ok(())
         }
     }
@@ -999,12 +1010,12 @@ impl RetrievalThread {
                     }
                     return Ok(());
                 };
-                operations.retain(|op| block_operation_ids.contains(&op.id));
+                let block_ids_set: PreHashSet<OperationId> =
+                    block_operation_ids.iter().copied().collect();
+                operations.retain(|op| block_ids_set.contains(&op.id));
                 // add operations to local storage and claim ref
                 info.storage.store_operations(operations);
-                let block_ids_set = block_operation_ids.clone().into_iter().collect();
-                let known_operations = info.storage.claim_operation_refs(&block_ids_set);
-
+                let known_operations = info.storage.get_op_refs();
                 // Ban the node if:
                 // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
                 // - full operations serialized size overflow
@@ -1024,7 +1035,7 @@ impl RetrievalThread {
                     self.consensus_controller
                         .mark_invalid_block(block_id, header);
                 } else {
-                    if known_operations != block_ids_set {
+                    if known_operations != &block_ids_set {
                         warn!(
                             "Peer id {} didn't sent us all the full operations for block id {}.",
                             from_peer_id, block_id
