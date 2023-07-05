@@ -46,7 +46,7 @@ impl BootstrapClientBinder {
         duplex: TcpStream,
         remote_pubkey: PublicKey,
         cfg: BootstrapClientConfig,
-        limit: Option<u64>,
+        _limit: Option<u64>,
     ) -> Self {
         // let limit_opts =
         //     limit.map(|limit| LimiterOptions::new(limit, Duration::from_millis(1000), limit));

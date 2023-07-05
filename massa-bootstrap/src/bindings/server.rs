@@ -62,7 +62,7 @@ impl BootstrapServerBinder {
         duplex: TcpStream,
         local_keypair: KeyPair,
         cfg: BootstrapSrvBindCfg,
-        rw_limit: Option<u64>,
+        _rw_limit: Option<u64>,
     ) -> Self {
         let BootstrapSrvBindCfg {
             max_bytes_read_write: _limit,
