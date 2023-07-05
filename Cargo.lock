@@ -2511,7 +2511,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1#988019fe50dd093f4793ec7b43a1d5e1b1952ae4"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1_leo#77e9f4e515d48baf35f1bf8f52152b776e5f04ab"
 dependencies = [
  "glob",
  "prost",
@@ -2524,7 +2524,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1#5594a48a5097fbcc78b06c168f5cb38a0b0dff13"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1_leo#2e61b8887234f013068d77b8f5ca0baf57314b0a"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",

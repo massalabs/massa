@@ -16,7 +16,9 @@ use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
     address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
 };
+use massa_proto_rs::massa::model::v1::AddressCategory;
 use massa_proto_rs::massa::model::v1::NativeAmount;
+use massa_proto_rs::massa::model::v1::NativeTime;
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 
@@ -1284,6 +1286,96 @@ impl Interface for InterfaceImpl {
 
     fn bytes_to_base58_check_wasmv1(&self, bytes: &[u8]) -> String {
         unimplemented!("get_call_coins_wasmv1");
+    }
+
+    
+    fn check_address_wasmv1(
+        &self,
+        to_check: &String,
+    ) -> Result<bool> {
+        unimplemented!("check_address_wasmv1");
+    }
+
+    fn check_pubkey_wasmv1(
+        &self,
+        to_check: &String,
+    ) -> Result<bool> {
+        unimplemented!("check_pubkey_wasmv1");
+    }
+
+    fn check_signature_wasmv1(
+        &self,
+        to_check: &String,
+    ) -> Result<bool> {
+        unimplemented!("check_signature_wasmv1");
+    }
+
+    fn get_address_category_wasmv1(
+        &self,
+        to_check: &String,
+    ) -> Result<AddressCategory> {
+        unimplemented!("get_address_category_wasmv1");
+    }
+
+    fn get_address_version_wasmv1(
+        &self,
+        address: &String,
+    ) -> Result<u64> {
+        unimplemented!("get_address_version_wasmv1");
+    }
+
+    fn get_pubkey_version_wasmv1(
+        &self,
+        pubkey: &String,
+    ) -> Result<u64> {
+        unimplemented!("get_pubkey_version_wasmv1");
+    }
+
+    fn get_signature_version_wasmv1(
+        &self,
+        signature: &String,
+    ) -> Result<u64> {
+        unimplemented!("get_signature_version_wasmv1");
+    }
+
+    fn checked_add_native_time_wasmv1(
+        &self,
+        time1: &NativeTime,
+        time2: &NativeTime,
+    ) -> Result<NativeTime> {
+        unimplemented!("checked_add_native_time_wasmv1");
+    }
+
+    fn checked_sub_native_time_wasmv1(
+        &self,
+        time1: &NativeTime,
+        time2: &NativeTime,
+    ) -> Result<NativeTime> {
+        unimplemented!("checked_sub_native_time_wasmv1");
+    }
+
+    fn checked_mul_native_time_wasmv1(
+        &self,
+        time: &NativeTime,
+        factor: u64,
+    ) -> Result<NativeTime> {
+        unimplemented!("checked_mul_native_time_wasmv1");
+    }
+
+    fn checked_scalar_div_native_time_wasmv1(
+        &self,
+        dividend: &NativeTime,
+        divisor: u64,
+    ) -> Result<(NativeTime, NativeTime)> {
+        unimplemented!("checked_scalar_div_native_time_wasmv1");
+    }
+
+    fn checked_div_native_time_wasmv1(
+        &self,
+        dividend: &NativeTime,
+        divisor: &NativeTime,
+    ) -> Result<(u64, NativeTime)> {
+        unimplemented!("checked_div_native_time_wasmv1");
     }
 }
 
