@@ -2520,12 +2520,12 @@
                     }
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 };
-                operations.retain(|op| block_operation_ids.contains(<span class="kw-2">&amp;</span>op.id));
+                <span class="kw">let </span>block_ids_set: PreHashSet&lt;OperationId&gt; =
+                    block_operation_ids.iter().copied().collect();
+                operations.retain(|op| block_ids_set.contains(<span class="kw-2">&amp;</span>op.id));
                 <span class="comment">// add operations to local storage and claim ref
                 </span>info.storage.store_operations(operations);
-                <span class="kw">let </span>block_ids_set = block_operation_ids.clone().into_iter().collect();
-                <span class="kw">let </span>known_operations = info.storage.claim_operation_refs(<span class="kw-2">&amp;</span>block_ids_set);
-
+                <span class="kw">let </span>known_operations = info.storage.get_op_refs();
                 <span class="comment">// Ban the node if:
                 // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
                 // - full operations serialized size overflow
@@ -2545,7 +2545,7 @@
                     <span class="self">self</span>.consensus_controller
                         .mark_invalid_block(block_id, header);
                 } <span class="kw">else </span>{
-                    <span class="kw">if </span>known_operations != block_ids_set {
+                    <span class="kw">if </span>known_operations != <span class="kw-2">&amp;</span>block_ids_set {
                         <span class="macro">warn!</span>(
                             <span class="string">&quot;Peer id {} didn&#39;t sent us all the full operations for block id {}.&quot;</span>,
                             from_peer_id, block_id
