@@ -29,7 +29,7 @@ impl ConsensusState {
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
 
-        warn!(">>>>>>>>>>>> Register block header {}", block_id);
+        warn!("AURELIEN: >>>>>>>>>>>> Register block header {}", block_id);
 
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
@@ -75,7 +75,7 @@ impl ConsensusState {
         storage: Storage,
         created: bool,
     ) -> Result<(), ConsensusError> {
-        warn!(">>>>>>>>>>>> Register block {}", block_id);
+        warn!("AURELIEN: >>>>>>>>>>>> Register block {}", block_id);
 
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
