@@ -970,7 +970,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The raw representation (no decimal factor) of the amount of coins
-    /// 
+    ///
     /// [DeprecatedByNewRuntime] Replaced by `get_call_coins_wasmv1`
     fn get_call_coins(&self) -> Result<u64> {
         Ok(context_guard!(self).get_current_call_coins()?.to_raw())
