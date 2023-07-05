@@ -2438,7 +2438,7 @@ dependencies = [
  "dialoguer",
  "erased-serde",
  "lazy_static",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_api_exports",
  "massa_models",
  "massa_sdk",
@@ -2511,7 +2511,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=8873f96#8873f969375834904044965cb1b0bcb9ec0fafdd"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=feature/Improve_ABI_types_in_wasmv1#988019fe50dd093f4793ec7b43a1d5e1b1952ae4"
 dependencies = [
  "glob",
  "prost",
@@ -2522,21 +2522,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa-proto-rs"
-version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=988019f#988019fe50dd093f4793ec7b43a1d5e1b1952ae4"
-dependencies = [
- "glob",
- "prost",
- "prost-build",
- "prost-types",
- "tonic-build",
-]
-
-[[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1#4bc7a62f0eef3ca404e75a51f68f5e98ab797dad"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/Improve_ABI_types_in_wasmv1#5594a48a5097fbcc78b06c168f5cb38a0b0dff13"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2545,7 +2533,7 @@ dependencies = [
  "displaydoc",
  "function_name",
  "loupe",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=988019f)",
+ "massa-proto-rs",
  "more-asserts 0.3.1",
  "num_enum 0.6.1",
  "parking_lot",
@@ -2628,7 +2616,7 @@ dependencies = [
 name = "massa_async_pool"
 version = "0.24.0"
 dependencies = [
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_db_exports",
  "massa_hash",
  "massa_ledger_exports",
@@ -2809,7 +2797,7 @@ name = "massa_execution_exports"
 version = "0.24.0"
 dependencies = [
  "displaydoc",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa-sc-runtime",
  "massa_final_state",
  "massa_hash",
@@ -2836,7 +2824,7 @@ dependencies = [
  "criterion",
  "hex-literal",
  "libsecp256k1",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_channel",
@@ -2916,7 +2904,7 @@ version = "0.24.0"
 dependencies = [
  "bs58",
  "displaydoc",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_async_pool",
  "massa_db_exports",
  "massa_db_worker",
@@ -2947,7 +2935,7 @@ dependencies = [
  "h2",
  "hyper",
  "itertools",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",
@@ -2995,7 +2983,7 @@ name = "massa_ledger_exports"
 version = "0.24.0"
 dependencies = [
  "displaydoc",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_db_exports",
  "massa_hash",
  "massa_models",
@@ -3054,7 +3042,7 @@ dependencies = [
  "directories",
  "displaydoc",
  "lazy_static",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_hash",
  "massa_serialization",
  "massa_signature",
@@ -3225,7 +3213,7 @@ dependencies = [
  "jsonrpsee",
  "jsonrpsee-http-client",
  "jsonrpsee-ws-client",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_api_exports",
  "massa_models",
  "massa_time",
@@ -3291,7 +3279,7 @@ name = "massa_versioning"
 version = "0.24.0"
 dependencies = [
  "machine",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs?rev=8873f96)",
+ "massa-proto-rs",
  "massa_db_exports",
  "massa_db_worker",
  "massa_hash",
