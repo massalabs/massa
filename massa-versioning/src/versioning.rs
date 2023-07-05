@@ -1897,11 +1897,27 @@ mod test {
                 MipStoreRaw::try_from(([(mi_1.clone(), ms_1.clone())], mip_stats_cfg.clone()))
                     .unwrap();
             let mut mi_2_2 = mi_2.clone();
-            // Make MIP 2 invalid (has network version set to 1 - same as MIP 1)
-            mi_2_2.version = mi_1.version;
+            // Make MIP 2 invalid (MIP 2 network version < MIP 1 network version)
+            mi_2_2.version = mi_1.version - 1;
 
             let store_2 = MipStoreRaw {
                 store: BTreeMap::from([(mi_2_2.clone(), ms_2.clone())]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
+
+            assert_matches!(
+                store_1.update_with(&store_2),
+                Err(UpdateWithError::Overlapping(..))
+            );
+
+            // Test again but with == network versions
+
+            let mut mi_2_3 = mi_2.clone();
+            // Make MIP 2 invalid (MIP 2 network version == MIP 1 network version)
+            mi_2_3.version = mi_1.version;
+
+            let store_2 = MipStoreRaw {
+                store: BTreeMap::from([(mi_2_3.clone(), ms_2.clone())]),
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
@@ -1917,7 +1933,7 @@ mod test {
                 MipStoreRaw::try_from(([(mi_1.clone(), ms_1.clone())], mip_stats_cfg.clone()))
                     .unwrap();
             let mut mi_2_2 = mi_2.clone();
-            // Make MIP 2 invalid (same name as MIP 1)
+            // Make MIP 2 invalid (MIP 2 name == MIP 1 name)
             mi_2_2.name = mi_1.name.clone();
 
             let store_2 = MipStoreRaw {
