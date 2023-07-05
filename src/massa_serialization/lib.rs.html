@@ -787,7 +787,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
     </span>T: Clone,
     DT: Deserializer&lt;T&gt;,
 {
-    <span class="kw">pub fn </span>new(data_deserializer: DT) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub const fn </span>new(data_deserializer: DT) -&gt; <span class="self">Self </span>{
         OptionDeserializer {
             data_deserializer,
             phantom_t: std::marker::PhantomData,
