@@ -2937,6 +2937,7 @@ dependencies = [
  "hyper",
  "itertools",
  "massa-proto-rs",
+ "massa_bootstrap",
  "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",

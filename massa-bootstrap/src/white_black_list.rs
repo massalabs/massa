@@ -16,7 +16,7 @@ use crate::tools::normalize_ip;
 /// A wrapper around the white/black lists that allows efficient sharing between threads
 // TODO: don't clone the path-bufs...
 #[derive(Clone)]
-pub(crate) struct SharedWhiteBlackList<'a> {
+pub struct SharedWhiteBlackList<'a> {
     inner: Arc<RwLock<WhiteBlackListInner>>,
     white_path: Cow<'a, Path>,
     black_path: Cow<'a, Path>,
@@ -33,6 +33,26 @@ impl SharedWhiteBlackList<'_> {
             white_path: Cow::from(white_path),
             black_path: Cow::from(black_path),
         })
+    }
+
+    /// Add IP address to the black list
+    pub fn add_ips_to_blacklist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
+        let mut write_lock = self.inner.write();
+        if let Some(black_list) = &mut write_lock.black_list {
+            black_list.extend(ips);
+        } else {
+            write_lock.black_list = Some(HashSet::from_iter(ips));
+        }
+        Ok(())
+    }
+
+    /// Remove IP address from the black list
+    pub fn remove_add_from_blacklist(&self, ip: IpAddr) -> Result<(), BootstrapError> {
+        let mut write_lock = self.inner.write();
+        if let Some(black_list) = &mut write_lock.black_list {
+            black_list.remove(&ip);
+        }
+        Ok(())
     }
 
     /// Checks if the white/black list is up to date with a read-lock

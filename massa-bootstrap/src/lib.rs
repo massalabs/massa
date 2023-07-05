@@ -30,6 +30,7 @@ mod messages;
 mod server;
 mod settings;
 mod tools;
+pub mod white_black_list;
 
 pub use client::{get_state, DefaultConnector};
 pub use listener::BootstrapTcpListener;

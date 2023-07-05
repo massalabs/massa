@@ -41,6 +41,7 @@ massa_wallet = { path = "../massa-wallet" }
 massa_serialization = { path = "../massa-serialization" }
 massa_versioning = { path = "../massa-versioning" }
 massa_signature = { path = "../massa-signature" }
+massa_bootstrap = { path = "../massa-bootstrap" }
 
 [dev-dependencies]
 num = "0.4"

@@ -746,6 +746,7 @@ async fn launch(
                     format!("Could not bind to address: {}", addr).as_str()
                 )
             });
+
         start_bootstrap_server(
             listener,
             listener_stopper,
@@ -971,6 +972,12 @@ async fn launch(
                 .clone(),
         };
 
+        let bs_white_black_list = if let Some(manager) = &bootstrap_manager {
+            Some(manager.white_black_list.clone())
+        } else {
+            None
+        };
+
         let grpc_private_api = MassaPrivateGrpc {
             execution_controller: execution_controller.clone(),
             protocol_controller: protocol_controller.clone(),
@@ -978,6 +985,7 @@ async fn launch(
             version: *VERSION,
             stop_cv: sig_int_toggled.clone(),
             node_wallet: node_wallet.clone(),
+            bs_white_black_list,
         };
 
         // Spawn gRPC PRIVATE API
