@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::iter;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -606,9 +607,25 @@ impl MipStore {
 
     // Query
 
+    /// Get latest version at given timestamp (e.g. slot) for the given MipComponent
     pub fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
-        let lock = self.0.read();
-        lock.get_latest_component_version_at(component, ts)
+        let guard = self.0.read();
+        guard.get_latest_component_version_at(component, ts)
+    }
+
+    /// Get all versions in 'Active state' for the given MipComponent
+    pub(crate) fn get_all_active_component_versions(&self, component: &MipComponent) -> Vec<u32> {
+        let guard = self.0.read();
+        guard.get_all_active_component_versions(component)
+    }
+
+    /// Get all versions (at any state) for the given MipComponent
+    pub(crate) fn get_all_component_versions(
+        &self,
+        component: &MipComponent,
+    ) -> BTreeMap<u32, ComponentStateTypeId> {
+        let guard = self.0.read();
+        guard.get_all_component_versions(component)
     }
 
     // GRPC
@@ -629,6 +646,7 @@ impl MipStore {
     }
 
     // Network restart
+
     pub fn is_consistent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
@@ -648,6 +666,7 @@ impl MipStore {
     }
 
     // DB
+
     pub fn update_batches(
         &self,
         db_batch: &mut DBBatch,
@@ -973,27 +992,55 @@ impl MipStoreRaw {
 
     // Query
 
+    /// Get latest version at given timestamp (e.g. slot)
     fn get_latest_component_version_at(&self, component: &MipComponent, ts: MassaTime) -> u32 {
-        // TODO: duplicated code with the same function in versioning_factory - factorize
-
         let version = self
             .store
             .iter()
             .rev()
-            .filter(|(vi, vsh)| {
-                vi.components.get(component).is_some()
-                    && matches!(vsh.state, ComponentState::Active(_))
+            .filter(|(mi, ms)| {
+                mi.components.get(component).is_some()
+                    && matches!(ms.state, ComponentState::Active(_))
             })
-            .find_map(|(vi, vsh)| {
-                let res = vsh.state_at(ts, vi.start, vi.timeout);
+            .find_map(|(mi, ms)| {
+                let res = ms.state_at(ts, mi.start, mi.timeout);
                 match res {
-                    Ok(ComponentStateTypeId::Active) => vi.components.get(component).copied(),
+                    Ok(ComponentStateTypeId::Active) => mi.components.get(component).copied(),
                     _ => None,
                 }
             })
             .unwrap_or(0);
 
         version
+    }
+
+    /// Get all versions in 'Active state' for the given MipComponent
+    fn get_all_active_component_versions(&self, component: &MipComponent) -> Vec<u32> {
+        let versions_iter = self.store.iter().filter_map(|(mi, ms)| {
+            if matches!(ms.state, ComponentState::Active(_)) {
+                mi.components.get(component).copied()
+            } else {
+                None
+            }
+        });
+        let versions: Vec<u32> = iter::once(0).chain(versions_iter).collect();
+        versions
+    }
+
+    /// Get all versions (at any state) for the given MipComponent
+    fn get_all_component_versions(
+        &self,
+        component: &MipComponent,
+    ) -> BTreeMap<u32, ComponentStateTypeId> {
+        let versions_iter = self.store.iter().filter_map(|(mi, ms)| {
+            mi.components
+                .get(component)
+                .copied()
+                .map(|component_version| (component_version, ComponentStateTypeId::from(&ms.state)))
+        });
+        iter::once((0, ComponentStateTypeId::Active))
+            .chain(versions_iter)
+            .collect()
     }
 
     // Network restart
