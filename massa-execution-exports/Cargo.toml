@@ -28,7 +28,7 @@ massa_pos_exports = { path = "../massa-pos-exports" }
 massa_ledger_exports = { path = "../massa-ledger-exports", optional = true }
 massa_module_cache = { path = "../massa-module-cache" }
 massa_versioning = { path = "../massa-versioning" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "get-operation-id" }
 
 [dev-dependencies]
 mockall = "0.11.4"

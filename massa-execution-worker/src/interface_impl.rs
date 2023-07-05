@@ -842,6 +842,15 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    // Returns the operation id that originated the current execution if there is one
+    fn get_origin_operation_id(&self) -> Result<Option<String>> {
+        let operation_id = context_guard!(self)
+            .origin_operation_id
+            .map(|op_id| op_id.to_string());
+        tracing::warn!("origin_operation_id: {:?}", operation_id);
+        Ok(operation_id)
+    }
+
     /// Returns the period of the current execution slot
     fn get_current_period(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
