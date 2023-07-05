@@ -1,16 +1,21 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use std::net::IpAddr;
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 
 use crate::error::GrpcError;
 use crate::server::MassaPrivateGrpc;
+use massa_execution_exports::ExecutionQueryRequest;
 use massa_hash::Hash;
-use massa_models::error::ModelsError;
+use massa_models::config::CompactConfig;
 use massa_models::node::NodeId;
+use massa_models::slot::Slot;
+use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_protocol_exports::PeerId;
+use massa_proto_rs::massa::model::v1 as grpc_model;
+use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use tracing::warn;
 // use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
 
@@ -163,7 +168,7 @@ pub(crate) fn get_bootstrap_blacklist(
     _request: tonic::Request<grpc_api::GetBootstrapBlacklistRequest>,
 ) -> Result<tonic::Response<grpc_api::GetBootstrapBlacklistResponse>, GrpcError> {
     Err(GrpcError::Unimplemented(
-        "get_bootstrap_whitelist".to_string(),
+        "get_bootstrap_blacklist".to_string(),
     ))
 }
 /// Get node bootstrap whitelist IP addresses
@@ -172,7 +177,7 @@ pub(crate) fn get_bootstrap_whitelist(
     _request: tonic::Request<grpc_api::GetBootstrapWhitelistRequest>,
 ) -> Result<tonic::Response<grpc_api::GetBootstrapWhitelistResponse>, GrpcError> {
     Err(GrpcError::Unimplemented(
-        "allow_everyone_to_bootstrap".to_string(),
+        "get_bootstrap_whitelist".to_string(),
     ))
 }
 /// Allow everyone to bootstrap from the node by removing bootstrap whitelist configuration file
@@ -180,23 +185,112 @@ pub(crate) fn allow_everyone_to_bootstrap(
     _grpc: &MassaPrivateGrpc,
     _request: tonic::Request<grpc_api::AllowEveryoneToBootstrapRequest>,
 ) -> Result<tonic::Response<grpc_api::AllowEveryoneToBootstrapResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented("get_node_status".to_string()))
+    Err(GrpcError::Unimplemented(
+        "allow_everyone_to_bootstrap".to_string(),
+    ))
 }
 /// Get node status
 pub(crate) fn get_node_status(
-    _grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::GetNodeStatusRequest>,
+    grpc: &MassaPrivateGrpc,
+    request: tonic::Request<grpc_api::GetNodeStatusRequest>,
 ) -> Result<tonic::Response<grpc_api::GetNodeStatusResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented("get_peers_whitelist".to_string()))
+    let config = CompactConfig::default();
+
+    let now = MassaTime::now()?;
+
+    let last_slot = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    )?;
+
+    let execution_stats = grpc.execution_controller.get_stats();
+    let consensus_stats = grpc.consensus_controller.get_stats()?;
+    let (network_stats, peers) = grpc.protocol_controller.get_stats()?;
+
+    let pool_stats = (
+        grpc.pool_controller.get_operation_count(),
+        grpc.pool_controller.get_endorsement_count(),
+    );
+
+    let next_slot = last_slot
+        .unwrap_or_else(|| Slot::new(0, 0))
+        .get_next_slot(grpc.grpc_config.thread_count)?;
+
+    let connected_nodes = peers
+        .iter()
+        .map(|(id, peer)| {
+            let is_outgoing = match peer.1 {
+                PeerConnectionType::IN => false,
+                PeerConnectionType::OUT => true,
+            };
+            (NodeId::new(id.get_public_key()), (peer.0.ip(), is_outgoing))
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let current_cycle = last_slot
+        .unwrap_or_else(|| Slot::new(0, 0))
+        .get_cycle(grpc.grpc_config.periods_per_cycle);
+
+    let cycle_duration = grpc
+        .grpc_config
+        .t0
+        .checked_mul(grpc.grpc_config.periods_per_cycle)?;
+
+    let current_cycle_time = if current_cycle == 0 {
+        grpc.grpc_config.genesis_timestamp
+    } else {
+        cycle_duration
+            .checked_mul(current_cycle)
+            .and_then(|elapsed_time_before_current_cycle| {
+                grpc.grpc_config
+                    .genesis_timestamp
+                    .checked_add(elapsed_time_before_current_cycle)
+            })?
+    };
+
+    let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
+    let empty_request = ExecutionQueryRequest { requests: vec![] };
+    let state = grpc.execution_controller.query_state(empty_request);
+
+    let node_ip = grpc
+        .protocol_config
+        .routable_ip
+        .map(|ip| ip.to_string())
+        .unwrap_or("".to_string());
+
+    //TODO to be mapped to grpc model
+    let status = grpc_model::NodeStatus {
+        node_id: grpc.node_id.to_string(),
+        node_ip,
+        version: grpc.version.to_string(),
+        current_time: Some(now.into()),
+        current_cycle: current_cycle.into(),
+        current_cycle_time: Some(current_cycle_time.into()),
+        next_cycle_time: Some(next_cycle_time.into()),
+        //TODO to be mapped to grpc model
+        connected_nodes: vec![],
+        last_executed_final_slot: Some(state.final_cursor.into()),
+        last_executed_speculative_slot: Some(state.candidate_cursor.into()),
+        final_state_fingerprint: state.final_state_fingerprint.to_string(),
+        consensus_stats: None,
+        pool_stats: None,
+        network_stats: None,
+        execution_stats: None,
+        config: Some(config.into()),
+    };
+
+    Ok(tonic::Response::new(grpc_api::GetNodeStatusResponse {
+        status: Some(status),
+    }))
 }
 /// Get node peers whitelist IP addresses
 pub(crate) fn get_peers_whitelist(
     _grpc: &MassaPrivateGrpc,
     _request: tonic::Request<grpc_api::GetPeersWhitelistRequest>,
 ) -> Result<tonic::Response<grpc_api::GetPeersWhitelistResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented(
-        "remove_from_bootstrap_blacklist".to_string(),
-    ))
+    Err(GrpcError::Unimplemented("get_peers_whitelist".to_string()))
 }
 /// Remove from bootstrap blacklist given IP addresses
 pub(crate) fn remove_from_bootstrap_blacklist(
@@ -260,7 +354,7 @@ pub(crate) fn remove_from_peers_whitelist(
     _request: tonic::Request<grpc_api::RemoveFromPeersWhitelistRequest>,
 ) -> Result<tonic::Response<grpc_api::RemoveFromPeersWhitelistResponse>, GrpcError> {
     Err(GrpcError::Unimplemented(
-        "remove_staking_addresses".to_string(),
+        "remove_from_peers_whitelist".to_string(),
     ))
 }
 /// Remove addresses from staking
@@ -268,7 +362,9 @@ pub(crate) fn remove_staking_addresses(
     _grpc: &MassaPrivateGrpc,
     _request: tonic::Request<grpc_api::RemoveStakingAddressesRequest>,
 ) -> Result<tonic::Response<grpc_api::RemoveStakingAddressesResponse>, GrpcError> {
-    Err(GrpcError::Unimplemented("sign_messages".to_string()))
+    Err(GrpcError::Unimplemented(
+        "remove_staking_addresses".to_string(),
+    ))
 }
 /// Sign messages with node's key
 pub(crate) fn sign_messages(

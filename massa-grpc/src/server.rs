@@ -1,6 +1,8 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use massa_bootstrap::white_black_list::SharedWhiteBlackList;
+use massa_models::node::NodeId;
+use massa_versioning::keypair_factory::KeyPairFactory;
 use parking_lot::RwLock;
 use std::convert::Infallible;
 use std::sync::{Arc, Condvar, Mutex};
@@ -18,7 +20,7 @@ use massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
-use massa_protocol_exports::ProtocolController;
+use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 
@@ -35,8 +37,12 @@ use tracing::log::{info, warn};
 
 /// gRPC PRIVATE API content
 pub struct MassaPrivateGrpc {
+    /// link to the consensus component
+    pub consensus_controller: Box<dyn ConsensusController>,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// link to the pool component
+    pub pool_controller: Box<dyn PoolController>,
     /// link to the protocol component
     pub protocol_controller: Box<dyn ProtocolController>,
     /// Mechanism by which to gracefully shut down.
@@ -46,6 +52,12 @@ pub struct MassaPrivateGrpc {
     pub node_wallet: Arc<RwLock<Wallet>>,
     /// gRPC configuration
     pub grpc_config: GrpcConfig,
+    /// Massa protocol configuration
+    pub protocol_config: ProtocolConfig,
+    /// our node id
+    pub node_id: NodeId,
+    /// keypair factory
+    pub keypair_factory: KeyPairFactory,
     /// node version
     pub version: massa_models::version::Version,
     /// white/black list of bootstrap
@@ -97,10 +109,14 @@ pub struct MassaPublicGrpc {
     pub storage: Storage,
     /// gRPC configuration
     pub grpc_config: GrpcConfig,
+    /// Massa protocol configuration
+    pub protocol_config: ProtocolConfig,
+    /// our node id
+    pub node_id: NodeId,
+    /// keypair factory
+    pub keypair_factory: KeyPairFactory,
     /// node version
     pub version: massa_models::version::Version,
-    /// mip store
-    pub mip_store: MipStore,
 }
 
 impl MassaPublicGrpc {
