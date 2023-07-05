@@ -994,6 +994,7 @@ impl RetrievalThread {
         match self.block_wishlist.entry(block_id) {
             Entry::Occupied(mut entry) => {
                 let info = entry.get_mut();
+                info!("AURELIEN: {} on_block_full_operations_received before get header", block_id);
                 let header = if let Some(header) = &info.header {
                     header.clone()
                 } else {
@@ -1009,6 +1010,7 @@ impl RetrievalThread {
                     }
                     return Ok(());
                 };
+                info!("AURELIEN: {} on_block_full_operations_received before get operations ids", block_id);
                 let block_operation_ids = if let Some(operations) = &info.operation_ids {
                     operations
                 } else {
@@ -1024,18 +1026,15 @@ impl RetrievalThread {
                     }
                     return Ok(());
                 };
-                info!("AURELIEN: {} on_block_full_operations_received before store ops", block_id);
-                operations.retain(|op| block_operation_ids.contains(&op.id));
+                let block_ids_set: PreHashSet<OperationId> = block_operation_ids.iter().copied().collect();
+                operations.retain(|op| block_ids_set.contains(&op.id));
                 // add operations to local storage and claim ref
                 info.storage.store_operations(operations);
-                let block_ids_set = block_operation_ids.clone().into_iter().collect();
-                let known_operations = info.storage.claim_operation_refs(&block_ids_set);
-                info!("AURELIEN: {} on_block_full_operations_received after store ops", block_id);
+                let known_operations = info.storage.get_op_refs();
 
                 // Ban the node if:
                 // - mismatch with asked operations (asked operations are the one that are not in storage) + operations already in storage and block operations
                 // - full operations serialized size overflow
-                info!("AURELIEN: {} on_block_full_operations_received before read ops", block_id);
                 let full_op_size: usize = {
                     let stored_operations = info.storage.read_operations();
                     known_operations
@@ -1043,7 +1042,6 @@ impl RetrievalThread {
                         .map(|id| stored_operations.get(id).unwrap().serialized_size())
                         .sum()
                 };
-                info!("AURELIEN: {} on_block_full_operations_received after read ops", block_id);
                 if full_op_size > self.config.max_serialized_operations_size_per_block {
                     warn!("Peer id {} sent us full operations for block id {} but they exceed max size.", from_peer_id, block_id);
                     if let Err(err) = self.ban_node(&from_peer_id) {
@@ -1055,7 +1053,7 @@ impl RetrievalThread {
                         .mark_invalid_block(block_id, header);
                     info!("AURELIEN: After Registering invalid block to consensus controller");
                 } else {
-                    if known_operations != block_ids_set {
+                    if known_operations != &block_ids_set {
                         warn!(
                             "Peer id {} didn't sent us all the full operations for block id {}.",
                             from_peer_id, block_id
