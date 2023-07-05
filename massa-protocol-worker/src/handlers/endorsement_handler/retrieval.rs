@@ -60,7 +60,9 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver) -> msg => {
+                    info!("AURELIEN: Receiving message in endorsement handler");
                     self.receiver.update_metrics();
+                    info!("AURELIEN: Receiving message in endorsement handler after metrics");
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match endorsement_message_deserializer

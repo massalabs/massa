@@ -81,7 +81,9 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver) -> msg => {
+                    info!("AURELIEN: Receiving message in operation handler");
                     self.receiver.update_metrics();
+                    info!("AURELIEN: Receiving message in operation handler after metrics");
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match operation_message_deserializer
