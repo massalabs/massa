@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::iter;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -800,93 +800,93 @@ impl MipStoreRaw {
                     })
             })
             .collect();
-        let mut names: BTreeSet<String> = self.store.iter().map(|i| i.0.name.clone()).collect();
+        let mut names: HashSet<String> = self.store.keys().map(|mi| mi.name.clone()).collect();
         let mut to_update: BTreeMap<MipInfo, MipState> = Default::default();
         let mut to_add: BTreeMap<MipInfo, MipState> = Default::default();
         let mut has_error: Option<UpdateWithError> = None;
 
-        for (v_info, v_state) in store_raw.store.iter() {
-            if let Err(e) = v_state.is_consistent_with(v_info) {
+        for (m_info, m_state) in store_raw.store.iter() {
+            if let Err(e) = m_state.is_consistent_with(m_info) {
                 // As soon as we found one non consistent state we abort the merge
                 has_error = Some(UpdateWithError::NonConsistent(
-                    v_info.clone(),
-                    v_state.clone(),
+                    m_info.clone(),
+                    m_state.clone(),
                     e,
                 ));
                 break;
             }
 
-            if let Some(v_state_orig) = self.store.get(v_info) {
-                // Versioning info (from right) is already in self (left)
-                // Need to check if we add this to 'to_update' list
-                let v_state_id: u32 = ComponentStateTypeId::from(&v_state.state).into();
-                let v_state_orig_id: u32 = ComponentStateTypeId::from(&v_state_orig.state).into();
+            if let Some(m_state_orig) = self.store.get(m_info) {
+                // Given MIP info is already in self
+                // Need to check if we add it to 'to_update' list
+                let m_state_id: u32 = ComponentStateTypeId::from(&m_state.state).into();
+                let m_state_orig_id: u32 = ComponentStateTypeId::from(&m_state_orig.state).into();
 
                 // Note: we do not check for state: active OR failed OR error as they cannot change
                 if matches!(
-                    v_state_orig.state,
+                    m_state_orig.state,
                     ComponentState::Defined(_)
                         | ComponentState::Started(_)
                         | ComponentState::LockedIn(_)
                 ) {
                     // Only accept 'higher' state
                     // (e.g. 'started' if 'defined', 'locked in' if 'started'...)
-                    if v_state_id >= v_state_orig_id {
-                        to_update.insert(v_info.clone(), v_state.clone());
+                    if m_state_id >= m_state_orig_id {
+                        to_update.insert(m_info.clone(), m_state.clone());
                     } else {
                         // Trying to downgrade state' (e.g. trying to go from 'active' -> 'defined')
                         has_error = Some(UpdateWithError::Downgrade(
-                            v_info.clone(),
-                            v_state_orig.state,
-                            v_state.state,
+                            m_info.clone(),
+                            m_state_orig.state,
+                            m_state.state,
                         ));
                         break;
                     }
                 }
             } else {
-                // Versioning info (from right) is not in self.0 (left)
-                // Need to check if we add this to 'to_add' list
+                // Given MIP info is not in self
+                // Need to check if we add it to 'to_add' list
 
-                let last_v_info_ = to_add
+                let last_m_info_ = to_add
                     .last_key_value()
-                    .map(|i| i.0)
-                    .or(self.store.last_key_value().map(|i| i.0));
+                    .map(|(mi, _)| mi)
+                    .or(self.store.last_key_value().map(|(mi, _)| mi));
 
-                if let Some(last_v_info) = last_v_info_ {
+                if let Some(last_m_info) = last_m_info_ {
                     // check for versions of all components in v_info
                     let mut component_version_compatible = true;
-                    for component in v_info.components.iter() {
-                        if component.1 <= component_versions.get(component.0).unwrap_or(&0) {
+                    for (component, component_version) in m_info.components.iter() {
+                        if component_version <= component_versions.get(component).unwrap_or(&0) {
                             component_version_compatible = false;
                             break;
                         }
                     }
 
-                    if v_info.start > last_v_info.timeout
-                        && v_info.timeout > v_info.start
-                        && v_info.version > last_v_info.version
-                        && !names.contains(&v_info.name)
+                    if m_info.start > last_m_info.timeout
+                        && m_info.timeout > m_info.start
+                        && m_info.version > last_m_info.version
+                        && !names.contains(&m_info.name)
                         && component_version_compatible
                     {
                         // Time range is ok / version is ok / name is unique, let's add it
-                        to_add.insert(v_info.clone(), v_state.clone());
-                        names.insert(v_info.name.clone());
-                        for component in v_info.components.iter() {
-                            component_versions.insert(component.0.clone(), *component.1);
+                        to_add.insert(m_info.clone(), m_state.clone());
+                        names.insert(m_info.name.clone());
+                        for (component, component_version) in m_info.components.iter() {
+                            component_versions.insert(component.clone(), *component_version);
                         }
                     } else {
                         // Something is wrong (time range not ok? / version not incr? / names?
                         // or component version not incr?)
                         has_error = Some(UpdateWithError::Overlapping(
-                            v_info.clone(),
-                            last_v_info.clone(),
+                            m_info.clone(),
+                            last_m_info.clone(),
                         ));
                         break;
                     }
                 } else {
                     // to_add is empty && self.0 is empty
-                    to_add.insert(v_info.clone(), v_state.clone());
-                    names.insert(v_info.name.clone());
+                    to_add.insert(m_info.clone(), m_state.clone());
+                    names.insert(m_info.name.clone());
                 }
             }
         }
@@ -1793,13 +1793,11 @@ mod test {
 
     #[test]
     fn test_update_with_invalid() {
-        // Test updating a MIP store with another invalid one:
-        // case 1: overlapping time range
-        // case 2: overlapping versioning component
+        // Test updating a MIP store with another invalid one
 
         // part 0 - defines data for the test
-        let vi_1 = MipInfo {
-            name: "MIP-0002".to_string(),
+        let mi_1 = MipInfo {
+            name: "MIP-0001".to_string(),
             version: 2,
             components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(0),
@@ -1807,88 +1805,166 @@ mod test {
             activation_delay: MassaTime::from_millis(2),
         };
         let _time = MassaTime::now().unwrap();
-        let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
-        assert!(matches!(vs_1.state, ComponentState::Active(_)));
+        let ms_1 = advance_state_until(ComponentState::active(_time), &mi_1);
+        assert!(matches!(ms_1.state, ComponentState::Active(_)));
 
-        let vi_2 = MipInfo {
-            name: "MIP-0003".to_string(),
+        let mi_2 = MipInfo {
+            name: "MIP-0002".to_string(),
             version: 3,
             components: BTreeMap::from([(MipComponent::Address, 2)]),
             start: MassaTime::from_millis(17),
             timeout: MassaTime::from_millis(27),
             activation_delay: MassaTime::from_millis(2),
         };
-        let vs_2 = advance_state_until(ComponentState::defined(), &vi_2);
-        assert_eq!(vs_2, ComponentState::defined());
+        let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+        assert_eq!(ms_2, ComponentState::defined());
 
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
         };
 
-        // case 1
+        // case 1: overlapping time range
         {
-            let mut vs_raw_1 = MipStoreRaw::try_from((
-                [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            let mut store_1 = MipStoreRaw::try_from((
+                [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
                 mip_stats_cfg.clone(),
             ))
             .unwrap();
 
-            let mut vi_2_2 = vi_2.clone();
-            // Make mip info invalid (because start == vi_1.timeout)
-            vi_2_2.start = vi_1.timeout;
-            let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
-            let vs_raw_2 = MipStoreRaw {
+            let mut mi_2_2 = mi_2.clone();
+            // Make mip info invalid (because start == mi_1.timeout)
+            mi_2_2.start = mi_1.timeout;
+            let ms_2_2 = advance_state_until(ComponentState::defined(), &mi_2_2);
+            let store_2 = MipStoreRaw {
                 store: BTreeMap::from([
-                    (vi_1.clone(), vs_1.clone()),
-                    (vi_2_2.clone(), vs_2_2.clone()),
+                    (mi_1.clone(), ms_1.clone()),
+                    (mi_2_2.clone(), ms_2_2.clone()),
                 ]),
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
             assert_matches!(
-                vs_raw_1.update_with(&vs_raw_2),
+                store_1.update_with(&store_2),
                 Err(UpdateWithError::Overlapping(..))
             );
-            assert_eq!(vs_raw_1.store.get(&vi_1).unwrap().state, vs_1.state);
-            assert_eq!(vs_raw_1.store.get(&vi_2).unwrap().state, vs_2.state);
+            assert_eq!(store_1.store.get(&mi_1).unwrap().state, ms_1.state);
+            assert_eq!(store_1.store.get(&mi_2).unwrap().state, ms_2.state);
 
             // Check that try_from fails too (because it uses update_with internally)
             {
-                let _vs_raw_2_ = MipStoreRaw::try_from((
+                let _store_2_ = MipStoreRaw::try_from((
                     [
-                        (vi_1.clone(), vs_1.clone()),
-                        (vi_2_2.clone(), vs_2_2.clone()),
+                        (mi_1.clone(), ms_1.clone()),
+                        (mi_2_2.clone(), ms_2_2.clone()),
                     ],
                     mip_stats_cfg.clone(),
                 ));
-                assert_eq!(_vs_raw_2_.is_err(), true);
+                assert_eq!(_store_2_.is_err(), true);
             }
         }
 
-        // case 2
+        // case 2: overlapping versioning component
         {
-            let mut vs_raw_1 = MipStoreRaw::try_from((
-                [(vi_1.clone(), vs_1.clone()), (vi_2.clone(), vs_2.clone())],
+            let mut store_1 = MipStoreRaw::try_from((
+                [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
                 mip_stats_cfg.clone(),
             ))
             .unwrap();
 
-            let mut vi_2_2 = vi_2.clone();
-            vi_2_2.components = vi_1.components.clone();
+            let mut mi_2_2 = mi_2.clone();
+            // Make MIP invalid (has component version set to 1 - same as MIP 1)
+            mi_2_2.components = mi_1.components.clone();
 
-            let vs_2_2 = advance_state_until(ComponentState::defined(), &vi_2_2);
-            let vs_raw_2 = MipStoreRaw {
+            let ms_2_2 = advance_state_until(ComponentState::defined(), &mi_2_2);
+            let store_2 = MipStoreRaw {
                 store: BTreeMap::from([
-                    (vi_1.clone(), vs_1.clone()),
-                    (vi_2_2.clone(), vs_2_2.clone()),
+                    (mi_1.clone(), ms_1.clone()),
+                    (mi_2_2.clone(), ms_2_2.clone()),
                 ]),
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
             };
 
             // MIP-0003 in vs_raw_1 & vs_raw_2 has != components
             assert_matches!(
-                vs_raw_1.update_with(&vs_raw_2),
+                store_1.update_with(&store_2),
                 Err(UpdateWithError::Overlapping(..))
+            );
+        }
+
+        // case 3: trying to downgrade network version
+        {
+            let mut store_1 =
+                MipStoreRaw::try_from(([(mi_1.clone(), ms_1.clone())], mip_stats_cfg.clone()))
+                    .unwrap();
+            let mut mi_2_2 = mi_2.clone();
+            // Make MIP 2 invalid (MIP 2 network version < MIP 1 network version)
+            mi_2_2.version = mi_1.version - 1;
+
+            let store_2 = MipStoreRaw {
+                store: BTreeMap::from([(mi_2_2.clone(), ms_2.clone())]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
+
+            assert_matches!(
+                store_1.update_with(&store_2),
+                Err(UpdateWithError::Overlapping(..))
+            );
+
+            // Test again but with == network versions
+
+            let mut mi_2_3 = mi_2.clone();
+            // Make MIP 2 invalid (MIP 2 network version == MIP 1 network version)
+            mi_2_3.version = mi_1.version;
+
+            let store_2 = MipStoreRaw {
+                store: BTreeMap::from([(mi_2_3.clone(), ms_2.clone())]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
+
+            assert_matches!(
+                store_1.update_with(&store_2),
+                Err(UpdateWithError::Overlapping(..))
+            );
+        }
+
+        // case 4: non unique name
+        {
+            let mut store_1 =
+                MipStoreRaw::try_from(([(mi_1.clone(), ms_1.clone())], mip_stats_cfg.clone()))
+                    .unwrap();
+            let mut mi_2_2 = mi_2.clone();
+            // Make MIP 2 invalid (MIP 2 name == MIP 1 name)
+            mi_2_2.name = mi_1.name.clone();
+
+            let store_2 = MipStoreRaw {
+                store: BTreeMap::from([(mi_2_2.clone(), ms_2.clone())]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
+
+            assert_matches!(
+                store_1.update_with(&store_2),
+                Err(UpdateWithError::Overlapping(..))
+            );
+        }
+
+        // case 5: trying to downgrade state
+        {
+            let ms_1_1 =
+                advance_state_until(ComponentState::locked_in(MassaTime::from_millis(0)), &mi_1);
+            let ms_1_2 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
+            let mut store_1 =
+                MipStoreRaw::try_from(([(mi_1.clone(), ms_1_1.clone())], mip_stats_cfg.clone()))
+                    .unwrap();
+
+            // Try to downgrade from 'LockedIn' to 'Started'
+            let store_2 = MipStoreRaw {
+                store: BTreeMap::from([(mi_1.clone(), ms_1_2.clone())]),
+                stats: MipStoreStats::new(mip_stats_cfg.clone()),
+            };
+
+            assert_matches!(
+                store_1.update_with(&store_2),
+                Err(UpdateWithError::Downgrade(..))
             );
         }
     }
