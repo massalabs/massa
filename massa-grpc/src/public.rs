@@ -336,7 +336,7 @@ pub(crate) fn get_mip_status(
     grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::GetMipStatusRequest>,
 ) -> Result<grpc_api::GetMipStatusResponse, GrpcError> {
-    let mip_store_status_ = grpc.mip_store.get_mip_status();
+    let mip_store_status_ = grpc.keypair_factory.mip_store.get_mip_status();
     let mip_store_status: Result<Vec<grpc_model::MipStatusEntry>, GrpcError> = mip_store_status_
         .iter()
         .map(|(mip_info, state_id_)| {

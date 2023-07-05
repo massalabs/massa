@@ -27,8 +27,8 @@ pub type SendOperationsStreamType = Pin<
 /// verifies, saves and propagates the operations received in each message, and sends back a stream of
 /// operations ids messages
 pub(crate) async fn send_operations(
-    grpc: &MassaPublicGrpc,
-    request: tonic::Request<tonic::Streaming<grpc_api::SendOperationsRequest>>,
+    _grpc: &MassaPublicGrpc,
+    _request: tonic::Request<tonic::Streaming<grpc_api::SendOperationsRequest>>,
 ) -> Result<SendOperationsStreamType, GrpcError> {
     // let mut pool_command_sender = grpc.pool_command_sender.clone();
     // let protocol_command_sender = grpc.protocol_command_sender.clone();

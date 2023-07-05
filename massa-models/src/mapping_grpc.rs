@@ -6,6 +6,7 @@ use crate::address::Address;
 use crate::amount::Amount;
 use crate::block::{Block, BlockGraphStatus, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
+use crate::config::CompactConfig;
 use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::error::ModelsError;
@@ -394,4 +395,23 @@ pub fn secure_share_to_vec(value: grpc_model::SecureShare) -> Result<Vec<u8>, Mo
     serialized_content.extend_from_slice(&value.serialized_data);
 
     Ok(serialized_content)
+}
+
+//TODO update proto files
+impl From<CompactConfig> for grpc_model::CompactConfig {
+    fn from(value: CompactConfig) -> Self {
+        grpc_model::CompactConfig {
+            genesis_timestamp: Some(value.genesis_timestamp.into()),
+            end_timestamp: value.end_timestamp.map(|time| time.into()),
+            thread_count: value.thread_count as u32,
+            //TODO
+            t0: 0,
+            delta_f0: value.delta_f0,
+            operation_validity_periods: value.operation_validity_periods,
+            periods_per_cycle: 0,
+            block_reward: 0,
+            roll_price: 0,
+            max_block_size: value.max_block_size,
+        }
+    }
 }

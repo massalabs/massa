@@ -84,6 +84,7 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
@@ -883,8 +884,12 @@ async fn launch(
             selector_controller: selector_controller.clone(),
             storage: shared_storage.clone(),
             grpc_config: grpc_public_config.clone(),
+            protocol_config: protocol_config.clone(),
+            node_id,
+            keypair_factory: KeyPairFactory {
+                mip_store: mip_store.clone(),
+            },
             version: *VERSION,
-            mip_store: mip_store.clone(),
         };
 
         // Spawn gRPC PUBLIC API
@@ -972,9 +977,16 @@ async fn launch(
         };
 
         let grpc_private_api = MassaPrivateGrpc {
+            consensus_controller: consensus_controller.clone(),
             execution_controller: execution_controller.clone(),
+            pool_controller: pool_controller.clone(),
             protocol_controller: protocol_controller.clone(),
             grpc_config: grpc_private_config.clone(),
+            protocol_config: protocol_config.clone(),
+            node_id,
+            keypair_factory: KeyPairFactory {
+                mip_store: mip_store.clone(),
+            },
             version: *VERSION,
             stop_cv: sig_int_toggled.clone(),
             node_wallet: node_wallet.clone(),
