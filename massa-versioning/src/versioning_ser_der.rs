@@ -11,8 +11,8 @@ use nom::{
 };
 
 use crate::versioning::{
-    Active, Advance, AdvanceLW, ComponentState, ComponentStateTypeId, LockedIn, MipComponent,
-    MipInfo, MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
+    Active, AdvanceLW, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
+    MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
@@ -353,7 +353,7 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
 
 // End ComponentState
 
-// Advance
+// AdvanceLW
 
 /// Serializer for `AdvanceLW`
 pub struct AdvanceLWSerializer {
@@ -379,18 +379,10 @@ impl Default for AdvanceLWSerializer {
 
 impl Serializer<AdvanceLW> for AdvanceLWSerializer {
     fn serialize(&self, value: &AdvanceLW, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        // start
-        // self.time_serializer
-        //     .serialize(&value.start_timestamp, buffer)?;
-        // timeout
-        // self.time_serializer.serialize(&value.timeout, buffer)?;
-        // threshold
+        // vote ratio
         self.ratio_serializer.serialize(&value.threshold, buffer)?;
         // now
         self.time_serializer.serialize(&value.now, buffer)?;
-        // activation delay
-        self.time_serializer
-            .serialize(&value.activation_delay, buffer)?;
         Ok(())
     }
 }
@@ -431,35 +423,20 @@ impl Deserializer<AdvanceLW> for AdvanceLWDeserializer {
         context(
             "Failed Advance deserialization",
             tuple((
-                /*
-                context("Failed start_timestamp deserialization", |input| {
-                    self.time_deserializer.deserialize(input)
-                }),
-                context("Failed timeout deserialization", |input| {
-                    self.time_deserializer.deserialize(input)
-                }),
-                */
                 context("Failed threshold deserialization", |input| {
                     self.ratio_deserializer.deserialize(input)
                 }),
                 context("Failed now deserialization", |input| {
                     self.time_deserializer.deserialize(input)
                 }),
-                context("Failed activation delay deserialization", |input| {
-                    self.time_deserializer.deserialize(input)
-                }),
             )),
         )
-        .map(|(threshold, now, activation_delay)| AdvanceLW {
-            threshold,
-            now,
-            activation_delay,
-        })
+        .map(|(threshold, now)| AdvanceLW { threshold, now })
         .parse(buffer)
     }
 }
 
-// End Advance
+// End AdvanceLW
 
 // MipState
 
@@ -703,12 +680,6 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
                     nom::error::ErrorKind::Fail,
                 ))
             })?;
-        // let cfg_counter_max: u32 = u32::try_from(self.config.counters_max).map_err(|_e| {
-        //     nom::Err::Error(ParseError::from_error_kind(
-        //         buffer,
-        //         nom::error::ErrorKind::Fail,
-        //     ))
-        // })?;
 
         let (rem3, latest_annoucements_) = context(
             "Failed MipStoreStats latest announcements der",
@@ -837,14 +808,6 @@ impl MipStoreRawDeserializer {
         }
     }
 }
-
-/*
-impl Default for MipStoreRawDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-*/
 
 impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -976,14 +939,11 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        // let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
-        // let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
         let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
 
         let adv_lw = AdvanceLW {
             threshold: Default::default(),
             now,
-            activation_delay: MassaTime::from_millis(20),
         };
 
         let mut buf = Vec::new();
@@ -1134,7 +1094,7 @@ mod test {
                 let state = advance_state_until(ComponentState::active(_time), &mi_base);
 
                 all_state_size += size_of_val(&state.state);
-                all_state_size += state.history.len() * (size_of::<Advance>() + size_of::<u32>());
+                all_state_size += state.history.len() * (size_of::<AdvanceLW>() + size_of::<u32>());
 
                 (mi_base.clone(), state)
             })
