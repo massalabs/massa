@@ -111,7 +111,7 @@ max_in_connections = 100
 [network]
 
 [metrics]
-enabled = true
+enabled = false
 bind = "[::]:31248"
 tick_delay = 5000
 

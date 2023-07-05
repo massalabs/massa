@@ -134,7 +134,9 @@ impl RetrievalThread {
         loop {
             select! {
                 recv(self.receiver_network) -> msg => {
+                    info!("AURELIEN: Receiving message in block handler");
                     self.receiver_network.update_metrics();
+                    info!("AURELIEN: Receiving message in block handler after update metrics");
                     match msg {
                         Ok((peer_id, message)) => {
                             let (rest, message) = match block_message_deserializer
@@ -171,8 +173,10 @@ impl RetrievalThread {
                                         self.note_header_from_peer(&header, &peer_id)
                                     {
                                         if is_new {
+                                            info!("AURELIEN: Before Registering block header in consensus controller");
                                             self.consensus_controller
                                                 .register_block_header(block_id, header);
+                                            info!("AURELIEN: After Registering block header in consensus controller");
                                         }
                                         if let Err(err) = self.update_ask_block() {
                                             warn!("Error in update_ask_blocks: {:?}", err);
@@ -1032,8 +1036,10 @@ impl RetrievalThread {
                         warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
                     }
                     self.block_wishlist.remove(&block_id);
+                    info!("AURELIEN: Before Registering invalid block to consensus controller");
                     self.consensus_controller
                         .mark_invalid_block(block_id, header);
+                    info!("AURELIEN: After Registering invalid block to consensus controller");
                 } else {
                     if known_operations != block_ids_set {
                         warn!(
@@ -1084,8 +1090,10 @@ impl RetrievalThread {
                     block_storage.store_block(signed_block);
 
                     // Send to consensus
+                    info!("AURELIEN: Before Registering block consensus controller");
                     self.consensus_controller
                         .register_block(block_id, slot, block_storage, false);
+                    info!("AURELIEN: After Registering block consensus controller");
                 }
             }
             Entry::Vacant(_) => {

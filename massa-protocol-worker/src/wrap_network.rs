@@ -9,6 +9,7 @@ use peernet::{
     peer::PeerConnectionType,
     transports::TransportType,
 };
+use tracing::info;
 
 use crate::{
     context::Context,
@@ -49,6 +50,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
         message: Message,
         high_priority: bool,
     ) -> Result<(), ProtocolError> {
+        info!("AURELIEN: Sending message to peer {}", peer_id);
         if let Some(connection) = self.read().connections.get(peer_id) {
             connection
                 .send_channels
