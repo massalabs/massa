@@ -14,7 +14,10 @@ use massa_models::bytecode::Bytecode;
 use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
-    address::Address, amount::Amount, slot::Slot, timeslots::get_block_slot_timestamp,
+    address::{Address, SCAddress, UserAddress},
+    amount::Amount,
+    slot::Slot,
+    timeslots::get_block_slot_timestamp,
 };
 use massa_proto_rs::massa::model::v1::AddressCategory;
 use massa_proto_rs::massa::model::v1::NativeAmount;
@@ -22,6 +25,9 @@ use massa_proto_rs::massa::model::v1::NativeTime;
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 
+use massa_signature::PublicKey;
+use massa_signature::Signature;
+use massa_time::MassaTime;
 use parking_lot::Mutex;
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -154,6 +160,18 @@ fn amount_from_native_amount(amount: &NativeAmount) -> Result<Amount> {
 fn amount_to_native_amount(amount: &Amount) -> NativeAmount {
     let (mantissa, scale) = amount.to_mantissa_scale();
     NativeAmount { mantissa, scale }
+}
+
+/// Helper function that creates an MassaTime from a NativeTime
+fn massa_time_from_native_time(time: &NativeTime) -> Result<MassaTime> {
+    let time = MassaTime::from_millis(time.milliseconds);
+    Ok(time)
+}
+
+/// Helper function that creates a NativeTime from the MassaTime internal representation
+fn massa_time_to_native_time(time: &MassaTime) -> NativeTime {
+    let milliseconds = time.to_millis();
+    NativeTime { milliseconds }
 }
 
 /// Helper function to get the address from the option given as argument to some ABIs
@@ -1288,54 +1306,58 @@ impl Interface for InterfaceImpl {
         unimplemented!("get_call_coins_wasmv1");
     }
 
-    
-    fn check_address_wasmv1(
-        &self,
-        to_check: &String,
-    ) -> Result<bool> {
-        unimplemented!("check_address_wasmv1");
+    fn check_address_wasmv1(&self, to_check: &String) -> Result<bool> {
+        Ok(Address::from_str(to_check).is_ok())
     }
 
-    fn check_pubkey_wasmv1(
-        &self,
-        to_check: &String,
-    ) -> Result<bool> {
-        unimplemented!("check_pubkey_wasmv1");
+    fn check_pubkey_wasmv1(&self, to_check: &String) -> Result<bool> {
+        Ok(PublicKey::from_str(to_check).is_ok())
     }
 
-    fn check_signature_wasmv1(
-        &self,
-        to_check: &String,
-    ) -> Result<bool> {
-        unimplemented!("check_signature_wasmv1");
+    fn check_signature_wasmv1(&self, to_check: &String) -> Result<bool> {
+        Ok(Signature::from_str(to_check).is_ok())
     }
 
-    fn get_address_category_wasmv1(
-        &self,
-        to_check: &String,
-    ) -> Result<AddressCategory> {
-        unimplemented!("get_address_category_wasmv1");
+    fn get_address_category_wasmv1(&self, to_check: &String) -> Result<AddressCategory> {
+        let addr = Address::from_str(to_check)?;
+        match addr {
+            Address::User(_) => Ok(AddressCategory::ScAddress),
+            Address::SC(_) => Ok(AddressCategory::UserAddress),
+            #[allow(unreachable_patterns)]
+            _ => Ok(AddressCategory::Unspecified),
+        }
     }
 
-    fn get_address_version_wasmv1(
-        &self,
-        address: &String,
-    ) -> Result<u64> {
-        unimplemented!("get_address_version_wasmv1");
+    fn get_address_version_wasmv1(&self, address: &String) -> Result<u64> {
+        let address = Address::from_str(address)?;
+        match address {
+            Address::User(UserAddress::UserAddressV0(_)) => Ok(0),
+            Address::User(UserAddress::UserAddressV1(_)) => Ok(1),
+            Address::SC(SCAddress::SCAddressV0(_)) => Ok(0),
+            Address::SC(SCAddress::SCAddressV1(_)) => Ok(1),
+            #[allow(unreachable_patterns)]
+            _ => bail!("Unknown address version"),
+        }
     }
 
-    fn get_pubkey_version_wasmv1(
-        &self,
-        pubkey: &String,
-    ) -> Result<u64> {
-        unimplemented!("get_pubkey_version_wasmv1");
+    fn get_pubkey_version_wasmv1(&self, pubkey: &String) -> Result<u64> {
+        let pubkey = PublicKey::from_str(pubkey)?;
+        match pubkey {
+            PublicKey::PublicKeyV0(_) => Ok(0),
+            PublicKey::PublicKeyV1(_) => Ok(1),
+            #[allow(unreachable_patterns)]
+            _ => bail!("Unknown pubkey version"),
+        }
     }
 
-    fn get_signature_version_wasmv1(
-        &self,
-        signature: &String,
-    ) -> Result<u64> {
-        unimplemented!("get_signature_version_wasmv1");
+    fn get_signature_version_wasmv1(&self, signature: &String) -> Result<u64> {
+        let signature = Signature::from_str(signature)?;
+        match signature {
+            Signature::SignatureV0(_) => Ok(0),
+            Signature::SignatureV1(_) => Ok(1),
+            #[allow(unreachable_patterns)]
+            _ => bail!("Unknown signature version"),
+        }
     }
 
     fn checked_add_native_time_wasmv1(
@@ -1343,7 +1365,10 @@ impl Interface for InterfaceImpl {
         time1: &NativeTime,
         time2: &NativeTime,
     ) -> Result<NativeTime> {
-        unimplemented!("checked_add_native_time_wasmv1");
+        let time1 = massa_time_from_native_time(time1)?;
+        let time2 = massa_time_from_native_time(time2)?;
+        let sum = time1.checked_add(time2)?;
+        Ok(massa_time_to_native_time(&sum))
     }
 
     fn checked_sub_native_time_wasmv1(
@@ -1351,15 +1376,16 @@ impl Interface for InterfaceImpl {
         time1: &NativeTime,
         time2: &NativeTime,
     ) -> Result<NativeTime> {
-        unimplemented!("checked_sub_native_time_wasmv1");
+        let time1 = massa_time_from_native_time(time1)?;
+        let time2 = massa_time_from_native_time(time2)?;
+        let sub = time1.checked_sub(time2)?;
+        Ok(massa_time_to_native_time(&sub))
     }
 
-    fn checked_mul_native_time_wasmv1(
-        &self,
-        time: &NativeTime,
-        factor: u64,
-    ) -> Result<NativeTime> {
-        unimplemented!("checked_mul_native_time_wasmv1");
+    fn checked_mul_native_time_wasmv1(&self, time: &NativeTime, factor: u64) -> Result<NativeTime> {
+        let time1 = massa_time_from_native_time(time)?;
+        let mul = time1.checked_mul(factor)?;
+        Ok(massa_time_to_native_time(&mul))
     }
 
     fn checked_scalar_div_native_time_wasmv1(
@@ -1367,7 +1393,19 @@ impl Interface for InterfaceImpl {
         dividend: &NativeTime,
         divisor: u64,
     ) -> Result<(NativeTime, NativeTime)> {
-        unimplemented!("checked_scalar_div_native_time_wasmv1");
+        let dividend = massa_time_from_native_time(dividend)?;
+
+        let quotient = dividend
+            .checked_div_u64(divisor)
+            .or_else(|_| bail!(format!("Couldn't div_rem native time")))?;
+        let remainder = dividend
+            .checked_rem_u64(divisor)
+            .or_else(|_| bail!(format!("Couldn't checked_rem_u64 native time")))?;
+
+        return Ok((
+            massa_time_to_native_time(&quotient),
+            massa_time_to_native_time(&remainder),
+        ));
     }
 
     fn checked_div_native_time_wasmv1(
@@ -1375,7 +1413,19 @@ impl Interface for InterfaceImpl {
         dividend: &NativeTime,
         divisor: &NativeTime,
     ) -> Result<(u64, NativeTime)> {
-        unimplemented!("checked_div_native_time_wasmv1");
+        let dividend = massa_time_from_native_time(dividend)?;
+        let divisor = massa_time_from_native_time(divisor)?;
+
+        let quotient = dividend
+            .checked_div_time(divisor)
+            .or_else(|_| bail!(format!("Couldn't div_rem native time")))?;
+
+        let remainder = dividend
+            .checked_rem_time(divisor)
+            .or_else(|_| bail!(format!("Couldn't checked_rem native time")))?;
+        let remainder = massa_time_to_native_time(&remainder);
+
+        return Ok((quotient, remainder));
     }
 }
 
