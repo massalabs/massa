@@ -25,8 +25,8 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
 
 /// Creates a new stream of new produced and received slot execution outputs
 pub(crate) async fn new_slot_execution_outputs(
-    grpc: &MassaPublicGrpc,
-    request: Request<Streaming<grpc_api::NewSlotExecutionOutputsRequest>>,
+    _grpc: &MassaPublicGrpc,
+    _request: Request<Streaming<grpc_api::NewSlotExecutionOutputsRequest>>,
 ) -> Result<NewSlotExecutionOutputsStreamType, GrpcError> {
     //     // Create a channel to handle communication with the client
     //     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);

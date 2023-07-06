@@ -2,9 +2,12 @@
 
 use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
+
+use massa_execution_exports::ExecutionQueryRequest;
 use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
+use massa_models::config::CompactConfig;
 use massa_models::execution::EventFilter;
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::slot::Slot;
@@ -18,8 +21,8 @@ use tracing::log::warn;
 
 /// Get blocks
 pub(crate) fn execute_read_only_call(
-    grpc: &MassaPublicGrpc,
-    request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
+    _grpc: &MassaPublicGrpc,
+    _request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
 ) -> Result<grpc_api::ExecuteReadOnlyCallResponse, GrpcError> {
     Err(GrpcError::Unimplemented(
         "execute_read_only_call".to_string(),
@@ -524,8 +527,8 @@ pub(crate) fn get_sc_execution_events(
 
 //  Get selector draws
 pub(crate) fn get_selector_draws(
-    grpc: &MassaPublicGrpc,
-    request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
+    _grpc: &MassaPublicGrpc,
+    _request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
 ) -> Result<grpc_api::GetSelectorDrawsResponse, GrpcError> {
     unimplemented!("to rework");
     // let inner_req = request.into_inner();
@@ -613,10 +616,56 @@ pub(crate) fn get_selector_draws(
 
 //  Get status
 pub(crate) fn get_status(
-    _grpc: &MassaPublicGrpc,
+    grpc: &MassaPublicGrpc,
     _request: tonic::Request<grpc_api::GetStatusRequest>,
 ) -> Result<grpc_api::GetStatusResponse, GrpcError> {
-    Err(GrpcError::Unimplemented("get_status".to_string()))
+    let config = CompactConfig::default();
+    let now = MassaTime::now()?;
+    let last_slot = get_latest_block_slot_at_timestamp(
+        grpc.grpc_config.thread_count,
+        grpc.grpc_config.t0,
+        grpc.grpc_config.genesis_timestamp,
+        now,
+    )?;
+
+    let current_cycle = last_slot
+        .unwrap_or_else(|| Slot::new(0, 0))
+        .get_cycle(grpc.grpc_config.periods_per_cycle);
+    let cycle_duration = grpc
+        .grpc_config
+        .t0
+        .checked_mul(grpc.grpc_config.periods_per_cycle)?;
+    let current_cycle_time = if current_cycle == 0 {
+        grpc.grpc_config.genesis_timestamp
+    } else {
+        cycle_duration
+            .checked_mul(current_cycle)
+            .and_then(|elapsed_time_before_current_cycle| {
+                grpc.grpc_config
+                    .genesis_timestamp
+                    .checked_add(elapsed_time_before_current_cycle)
+            })?
+    };
+    let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
+    let empty_request = ExecutionQueryRequest { requests: vec![] };
+    let state = grpc.execution_controller.query_state(empty_request);
+
+    let status = grpc_model::PublicStatus {
+        node_id: grpc.node_id.to_string(),
+        version: grpc.version.to_string(),
+        current_time: Some(now.into()),
+        current_cycle: current_cycle.into(),
+        current_cycle_time: Some(current_cycle_time.into()),
+        next_cycle_time: Some(next_cycle_time.into()),
+        last_executed_final_slot: Some(state.final_cursor.into()),
+        last_executed_speculative_slot: Some(state.candidate_cursor.into()),
+        final_state_fingerprint: state.final_state_fingerprint.to_string(),
+        config: Some(config.into()),
+    };
+
+    Ok(grpc_api::GetStatusResponse {
+        status: Some(status),
+    })
 }
 
 /// Get transactions throughput

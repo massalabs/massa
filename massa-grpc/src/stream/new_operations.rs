@@ -21,8 +21,8 @@ pub type NewOperationsStreamType = Pin<
 
 /// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(
-    grpc: &MassaPublicGrpc,
-    request: Request<Streaming<grpc_api::NewOperationsRequest>>,
+    _grpc: &MassaPublicGrpc,
+    _request: Request<Streaming<grpc_api::NewOperationsRequest>>,
 ) -> Result<NewOperationsStreamType, GrpcError> {
     //     // Create a channel to handle communication with the client
     //     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
