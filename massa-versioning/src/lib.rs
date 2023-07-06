@@ -29,7 +29,7 @@
 //!
 //! At the slot when the activation happens, need to make sure that everyone knows it should happen,
 //! so we need to make sure that everyone has seen as final the slot that triggered the locked-in state,
-//! and the worst-case delay required for a slot to become is the definition of a cycle.
+//! and the worst-case delay required for a slot to become final is the definition of a cycle.
 //!
 //! The activation delay counts how long we wait to activate after the vote threshold was reached
 //! and we entered into locked-in state. During that delay, and after it, the number of blocks considered
