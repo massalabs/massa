@@ -19,9 +19,9 @@ use massa_models::{
     slot::Slot,
     timeslots::get_block_slot_timestamp,
 };
-use massa_proto_rs::massa::model::v1::AddressCategory;
-use massa_proto_rs::massa::model::v1::NativeAmount;
-use massa_proto_rs::massa::model::v1::NativeTime;
+use massa_proto_rs::massa::model::v1::{
+    AddressCategory, ComparisonResult, NativeAmount, NativeTime,
+};
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 
@@ -1304,14 +1304,15 @@ impl Interface for InterfaceImpl {
         Ok((quotient, remainder))
     }
 
-    #[allow(unused_variables)]
     fn base58_check_to_bytes_wasmv1(&self, s: &str) -> Result<Vec<u8>> {
-        unimplemented!("base58_check_to_bytes_wasmv1");
+        bs58::decode(s)
+            .with_check(None)
+            .into_vec()
+            .map_err(|err| anyhow!(format!("bs58 parsing error: {}", err)))
     }
 
-    #[allow(unused_variables)]
-    fn bytes_to_base58_check_wasmv1(&self, bytes: &[u8]) -> String {
-        unimplemented!("bytes_to_base58_check_wasmv1");
+    fn bytes_to_base58_check_wasmv1(&self, data: &[u8]) -> String {
+        bs58::encode(data).with_check().into_string()
     }
 
     fn check_address_wasmv1(&self, to_check: &String) -> Result<bool> {
@@ -1435,6 +1436,66 @@ impl Interface for InterfaceImpl {
 
         Ok((quotient, remainder))
     }
+
+    fn compare_address_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
+        let left = Address::from_str(left)?;
+        let right = Address::from_str(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
+
+    fn compare_native_amount_wasmv1(
+        &self,
+        left: &NativeAmount,
+        right: &NativeAmount,
+    ) -> Result<ComparisonResult> {
+        let left = amount_from_native_amount(left)?;
+        let right = amount_from_native_amount(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
+
+    fn compare_native_time_wasmv1(
+        &self,
+        left: &NativeTime,
+        right: &NativeTime,
+    ) -> Result<ComparisonResult> {
+        let left = massa_time_from_native_time(left)?;
+        let right = massa_time_from_native_time(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
+
+    fn compare_pub_key_wasmv1(&self, left: &str, right: &str) -> Result<ComparisonResult> {
+        let left = PublicKey::from_str(left)?;
+        let right = PublicKey::from_str(right)?;
+
+        let res = match left.cmp(&right) {
+            std::cmp::Ordering::Less => ComparisonResult::Lower,
+            std::cmp::Ordering::Equal => ComparisonResult::Equal,
+            std::cmp::Ordering::Greater => ComparisonResult::Greater,
+        };
+
+        Ok(res)
+    }
 }
 
 #[cfg(test)]
@@ -1553,6 +1614,214 @@ mod tests {
             .add_native_amounts_wasmv1(&verif_div, &remainder)
             .unwrap();
         assert_eq!(verif_dif, amount1);
+    }
+
+    #[test]
+    fn test_base58_check_to_form() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None);
+
+        let data = "helloworld";
+        let encoded = interface.bytes_to_base58_check_wasmv1(data.as_bytes());
+        let decoded = interface.base58_check_to_bytes_wasmv1(&encoded).unwrap();
+
+        assert_eq!(data.as_bytes(), decoded);
+    }
+    #[test]
+    fn test_comparison_function() {
+        let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+        let interface = InterfaceImpl::new_default(sender_addr, None);
+
+        // address
+        let addr1 =
+            Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()).to_string();
+        let addr2 =
+            Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()).to_string();
+
+        let cmp_res = interface.compare_address_wasmv1(&addr1, &addr1).unwrap();
+        println!("compare_address_wasmv1(: {}", cmp_res.as_str_name());
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Equal,
+            "  > Error: compare_address_wasmv1((addr1, addr1) should return EQUAL"
+        );
+
+        let cmp_res1 = interface.compare_address_wasmv1(&addr1, &addr2).unwrap();
+        println!(
+            "compare_address_wasmv1((addr1, addr2): {}",
+            cmp_res1.as_str_name()
+        );
+
+        let cmp_res2 = interface.compare_address_wasmv1(&addr2, &addr1).unwrap();
+        println!(
+            "compare_address_wasmv1((addr2, addr1): {}",
+            cmp_res2.as_str_name()
+        );
+
+        if cmp_res1 == ComparisonResult::Lower {
+            assert_eq!(
+                cmp_res2,
+                ComparisonResult::Greater,
+                "  > Error: compare_address_wasmv1((addr2, addr1) should return GREATER"
+            );
+        } else if cmp_res1 == ComparisonResult::Greater {
+            assert_eq!(
+                cmp_res2,
+                ComparisonResult::Lower,
+                "  > Error: compare_address_wasmv1((addr2, addr1) should return LOWER"
+            );
+        } else {
+            assert_eq!(
+                cmp_res1, cmp_res2,
+                "  > Error: compare_address_wasmv1((addr2, addr1) should return EQUAL"
+            );
+        }
+
+        //amount
+        let amount1 = interface.native_amount_from_str_wasmv1("1").unwrap();
+        let amount2 = interface.native_amount_from_str_wasmv1("2").unwrap();
+        println!("do some compare with amount1 = 1, amount2 = 2");
+
+        let cmp_res = interface
+            .compare_native_amount_wasmv1(&amount1, &amount1)
+            .unwrap();
+        println!(
+            "compare_native_amount_wasmv1(amount1, amount1): {}",
+            cmp_res.as_str_name()
+        );
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Equal,
+            "  > Error: compare_native_amount_wasmv1(amount1, amount1) should return EQUAL"
+        );
+
+        let cmp_res = interface
+            .compare_native_amount_wasmv1(&amount1, &amount2)
+            .unwrap();
+        println!(
+            "compare_native_amount_wasmv1(amount1, amount2): {}",
+            cmp_res.as_str_name()
+        );
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Lower,
+            "  > Error: compare_native_amount_wasmv1(amount1, amount2) should return LOWER"
+        );
+
+        let cmp_res = interface
+            .compare_native_amount_wasmv1(&amount2, &amount1)
+            .unwrap();
+        println!(
+            "compare_native_amount_wasmv1(amount2, amount1): {}",
+            cmp_res.as_str_name()
+        );
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Greater,
+            "  > Error: compare_native_amount_wasmv1(amount2, amount1) should return GREATER"
+        );
+
+        //time
+        let time1 = massa_time_to_native_time(&MassaTime::from_str("1").unwrap());
+        let time2 = massa_time_to_native_time(&MassaTime::from_str("2").unwrap());
+        println!(
+            "do some compare with time1 = {}, time2 = {}",
+            time1.milliseconds.to_string(),
+            time2.milliseconds.to_string()
+        );
+
+        let cmp_res = interface
+            .compare_native_time_wasmv1(&time1, &time1)
+            .unwrap();
+        println!(
+            "compare_native_time_wasmv1(time1, time1): {}",
+            cmp_res.as_str_name()
+        );
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Equal,
+            "  > Error:compare_native_time_wasmv1(time1, time1) should return EQUAL"
+        );
+
+        let cmp_res = interface
+            .compare_native_time_wasmv1(&time1, &time2)
+            .unwrap();
+        println!(
+            "compare_native_time_wasmv1(time1, time2): {}",
+            cmp_res.as_str_name()
+        );
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Lower,
+            "  > Error: compare_native_time_wasmv1(time1, time2) should return LOWER"
+        );
+
+        let cmp_res = interface
+            .compare_native_time_wasmv1(&time2, &time1)
+            .unwrap();
+        println!(
+            "compare_native_time_wasmv1(time2, time1): {}",
+            cmp_res.as_str_name()
+        );
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Greater,
+            "  > Error: compare_native_time_wasmv1(time2, time1) should return GREATER"
+        );
+
+        //pub_key
+        let pub_key1 = KeyPair::generate(0).unwrap().get_public_key().to_string();
+        let pub_key2 = KeyPair::generate(0).unwrap().get_public_key().to_string();
+
+        println!(
+            "do some compare with pub_key1 = {}, pub_key2 = {}",
+            pub_key1, pub_key2
+        );
+
+        let cmp_res = interface
+            .compare_pub_key_wasmv1(&pub_key1, &pub_key1)
+            .unwrap();
+        println!(
+            "compare_pub_key_wasmv1(pub_key1, pub_key1): {}",
+            cmp_res.as_str_name()
+        );
+        assert_eq!(
+            cmp_res,
+            ComparisonResult::Equal,
+            "  > Error: compare_pub_key_wasmv1(pub_key1, pub_key1) should return EQUAL"
+        );
+        let cmp_res1 = interface
+            .compare_pub_key_wasmv1(&pub_key1, &pub_key2)
+            .unwrap();
+        println!(
+            "compare_pub_key_wasmv1(pub_key1, pub_key2): {}",
+            cmp_res1.as_str_name()
+        );
+        let cmp_res2 = interface
+            .compare_pub_key_wasmv1(&pub_key2, &pub_key1)
+            .unwrap();
+        println!(
+            "compare_pub_key_wasmv1(pub_key2, pub_key1): {}",
+            cmp_res2.as_str_name()
+        );
+        if cmp_res1 == ComparisonResult::Lower {
+            assert_eq!(
+                cmp_res2,
+                ComparisonResult::Greater,
+                "  > Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return GREATER"
+            );
+        } else if cmp_res1 == ComparisonResult::Greater {
+            assert_eq!(
+                cmp_res2,
+                ComparisonResult::Lower,
+                "  > Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return LOWER"
+            );
+        } else {
+            assert_eq!(
+                cmp_res1, cmp_res2,
+                "  > Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return EQUAL"
+            );
+        }
     }
 }
 
