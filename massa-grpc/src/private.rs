@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use std::collections::HashSet;
 use std::net::IpAddr;
 use std::{collections::BTreeMap, str::FromStr};
 
@@ -159,21 +160,40 @@ pub(crate) fn ban_nodes_by_ips(
 
 /// Get node bootstrap blacklist IP addresses
 pub(crate) fn get_bootstrap_blacklist(
-    _grpc: &MassaPrivateGrpc,
+    grpc: &MassaPrivateGrpc,
     _request: tonic::Request<grpc_api::GetBootstrapBlacklistRequest>,
 ) -> Result<grpc_api::GetBootstrapBlacklistResponse, GrpcError> {
-    Err(GrpcError::Unimplemented(
-        "get_bootstrap_blacklist".to_string(),
-    ))
+    let list = {
+        match grpc.bs_white_black_list {
+            Some(ref bs_list) => bs_list
+                .get_black_list()
+                .unwrap_or(HashSet::new())
+                .into_iter()
+                .map(|ip| ip.to_string())
+                .collect(),
+            None => Vec::new(),
+        }
+    };
+    Ok(grpc_api::GetBootstrapBlacklistResponse { ips: list })
 }
 /// Get node bootstrap whitelist IP addresses
 pub(crate) fn get_bootstrap_whitelist(
-    _grpc: &MassaPrivateGrpc,
+    grpc: &MassaPrivateGrpc,
     _request: tonic::Request<grpc_api::GetBootstrapWhitelistRequest>,
 ) -> Result<grpc_api::GetBootstrapWhitelistResponse, GrpcError> {
-    Err(GrpcError::Unimplemented(
-        "get_bootstrap_whitelist".to_string(),
-    ))
+    let list = {
+        match grpc.bs_white_black_list {
+            Some(ref bs_list) => bs_list
+                .get_white_list()
+                .unwrap_or(HashSet::new())
+                .into_iter()
+                .map(|ip| ip.to_string())
+                .collect(),
+            None => Vec::new(),
+        }
+    };
+
+    Ok(grpc_api::GetBootstrapWhitelistResponse { ips: list })
 }
 /// Allow everyone to bootstrap from the node by removing bootstrap whitelist configuration file
 pub(crate) fn allow_everyone_to_bootstrap(
