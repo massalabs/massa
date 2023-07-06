@@ -22,7 +22,7 @@ massa_async_pool = { path = "../massa-async-pool" }
 massa_serialization = { path = "../massa-serialization" }
 massa_pos_exports = { path = "../massa-pos-exports" }
 massa_db_exports = { path = "../massa-db-exports" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "369ccb4", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "845ef9a", features = ["tonic"] }
 massa_versioning = { path = "../massa-versioning" }
 massa_time = { path = "../massa-time" }
 massa_hash = { path = "../massa-hash" }

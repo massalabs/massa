@@ -2,7 +2,6 @@
 
 use std::str::FromStr;
 
-use crate::address::Address;
 use crate::amount::Amount;
 use crate::block::{Block, BlockGraphStatus, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
@@ -11,20 +10,22 @@ use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::error::ModelsError;
 use crate::execution::EventFilter;
-use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
+use crate::operation::{Operation, OperationId, OperationType};
 use crate::output_event::{EventExecutionContext, SCOutputEvent};
 use crate::secure_share::SecureShare;
 use crate::slot::{IndexedSlot, Slot};
+use crate::stats::{ExecutionStats, ConsensusStats, NetworkStats};
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_signature::{PublicKey, Signature};
 
-//TODO to be checked
+
 impl From<Amount> for grpc_model::NativeAmount {
     fn from(value: Amount) -> Self {
+        let (mantissa, scale) = value.to_mantissa_scale();
         grpc_model::NativeAmount {
-            mantissa: value.to_raw(),
-            scale: 0,
+            mantissa: mantissa,
+            scale: scale,
         }
     }
 }
@@ -397,21 +398,54 @@ pub fn secure_share_to_vec(value: grpc_model::SecureShare) -> Result<Vec<u8>, Mo
     Ok(serialized_content)
 }
 
-//TODO update proto files
 impl From<CompactConfig> for grpc_model::CompactConfig {
     fn from(value: CompactConfig) -> Self {
         grpc_model::CompactConfig {
             genesis_timestamp: Some(value.genesis_timestamp.into()),
             end_timestamp: value.end_timestamp.map(|time| time.into()),
             thread_count: value.thread_count as u32,
-            //TODO
-            t0: 0,
+            t0: Some(value.t0.into()),
             delta_f0: value.delta_f0,
             operation_validity_periods: value.operation_validity_periods,
-            periods_per_cycle: 0,
-            block_reward: 0,
-            roll_price: 0,
+            periods_per_cycle: value.periods_per_cycle,
+            block_reward: Some(value.block_reward.into()),
+            roll_price: Some(value.roll_price.into()),
             max_block_size: value.max_block_size,
+        }
+    }
+}
+
+impl From<ConsensusStats> for grpc_model::ConsensusStats {
+    fn from(value: ConsensusStats) -> Self {
+        grpc_model::ConsensusStats {
+            start_timespan: Some(value.start_timespan.into()),
+            end_timespan: Some(value.end_timespan.into()),
+            final_block_count: value.final_block_count as u64,
+            stale_block_count: value.stale_block_count as u64,
+            clique_count: value.clique_count as u64,
+        }
+    }
+}
+
+impl From<ExecutionStats> for grpc_model::ExecutionStats {
+    fn from(value: ExecutionStats) -> Self {
+        grpc_model::ExecutionStats {
+            time_window_start: Some(value.time_window_start.into()),
+            time_window_end: Some(value.time_window_end.into()),
+            final_block_count: value.final_block_count as u64,
+            final_executed_operations_count: value.final_executed_operations_count as u64,
+        }
+    }
+}
+
+impl From<NetworkStats> for grpc_model::NetworkStats {
+    fn from(value: NetworkStats) -> Self {
+        grpc_model::NetworkStats {
+            in_connection_count: value.in_connection_count,
+            out_connection_count: value.out_connection_count,
+            known_peer_count: value.known_peer_count,
+            banned_peer_count: value.banned_peer_count,
+            active_node_count: value.active_node_count,
         }
     }
 }

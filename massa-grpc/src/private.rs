@@ -5,6 +5,7 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use crate::error::GrpcError;
 use crate::server::MassaPrivateGrpc;
+use hyper::client::connect::Connect;
 use massa_execution_exports::ExecutionQueryRequest;
 use massa_hash::Hash;
 use massa_models::config::CompactConfig;
@@ -195,49 +196,45 @@ pub(crate) fn get_node_status(
     request: tonic::Request<grpc_api::GetNodeStatusRequest>,
 ) -> Result<tonic::Response<grpc_api::GetNodeStatusResponse>, GrpcError> {
     let config = CompactConfig::default();
-
     let now = MassaTime::now()?;
-
     let last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,
         grpc.grpc_config.genesis_timestamp,
         now,
     )?;
-
     let execution_stats = grpc.execution_controller.get_stats();
     let consensus_stats = grpc.consensus_controller.get_stats()?;
     let (network_stats, peers) = grpc.protocol_controller.get_stats()?;
-
-    let pool_stats = (
-        grpc.pool_controller.get_operation_count(),
-        grpc.pool_controller.get_endorsement_count(),
-    );
-
-    let next_slot = last_slot
-        .unwrap_or_else(|| Slot::new(0, 0))
-        .get_next_slot(grpc.grpc_config.thread_count)?;
-
-    let connected_nodes = peers
+    let pool_stats = grpc_model::PoolStats{
+        operations_count: grpc.pool_controller.get_denunciation_count() as u64,
+        endorsements_count: grpc.pool_controller.get_endorsement_count() as u64,
+    };
+    
+    let mut connected_nodes = peers
         .iter()
         .map(|(id, peer)| {
-            let is_outgoing = match peer.1 {
-                PeerConnectionType::IN => false,
-                PeerConnectionType::OUT => true,
+            let connection_type = match peer.1 {
+                PeerConnectionType::IN => grpc_model::ConnectionType::Incoming,
+                PeerConnectionType::OUT => grpc_model::ConnectionType::Outgoing,
             };
-            (NodeId::new(id.get_public_key()), (peer.0.ip(), is_outgoing))
+
+            grpc_model::ConnectedNode {
+                node_id: NodeId::new(id.get_public_key()).to_string(),
+                node_ip: peer.0.ip().to_string(),
+                connection_type: connection_type as i32,
+            }
         })
-        .collect::<BTreeMap<_, _>>();
+        .collect::<Vec<_>>();
+    connected_nodes.sort_by(|a, b| a.node_ip.cmp(&b.node_ip));
 
     let current_cycle = last_slot
         .unwrap_or_else(|| Slot::new(0, 0))
         .get_cycle(grpc.grpc_config.periods_per_cycle);
-
     let cycle_duration = grpc
         .grpc_config
         .t0
         .checked_mul(grpc.grpc_config.periods_per_cycle)?;
-
     let current_cycle_time = if current_cycle == 0 {
         grpc.grpc_config.genesis_timestamp
     } else {
@@ -249,11 +246,9 @@ pub(crate) fn get_node_status(
                     .checked_add(elapsed_time_before_current_cycle)
             })?
     };
-
     let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
     let empty_request = ExecutionQueryRequest { requests: vec![] };
     let state = grpc.execution_controller.query_state(empty_request);
-
     let node_ip = grpc
         .protocol_config
         .routable_ip
@@ -269,15 +264,14 @@ pub(crate) fn get_node_status(
         current_cycle: current_cycle.into(),
         current_cycle_time: Some(current_cycle_time.into()),
         next_cycle_time: Some(next_cycle_time.into()),
-        //TODO to be mapped to grpc model
-        connected_nodes: vec![],
+        connected_nodes,
         last_executed_final_slot: Some(state.final_cursor.into()),
         last_executed_speculative_slot: Some(state.candidate_cursor.into()),
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
-        consensus_stats: None,
-        pool_stats: None,
-        network_stats: None,
-        execution_stats: None,
+        consensus_stats: Some(consensus_stats.into()),
+        pool_stats: Some(pool_stats),
+        network_stats: Some(network_stats.into()),
+        execution_stats: Some(execution_stats.into()),
         config: Some(config.into()),
     };
 
