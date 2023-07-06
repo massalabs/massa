@@ -25,6 +25,20 @@
 //! In order to have all nodes in sync (because of node various delays), the state is set to active
 //! after an activation delay (duration is required to be > 1 cycle).
 //!
+//! About activation delay:
+//!
+//! At the slot when the activation happens, need to make sure that everyone knows it should happen,
+//! so we need to make sure that everyone has seen as final the slot that triggered the locked-in state,
+//! and the worst-case delay required for a slot to become final is the definition of a cycle.
+//!
+//! The activation delay counts how long we wait to activate after the vote threshold was reached
+//! and we entered into locked-in state. During that delay, and after it, the number of blocks considered
+//! for the vote is not relevant. The only reason why we should consider a sufficient number of votes
+//! is to get a reasonable p-value on the vote itself:
+//!
+//! if we consider only 5 votes, the probability that a 30%-stake was selected to vote at least 75% of the times is 3%:
+//! if we consider 1000 votes that probability falls to 1e-149.
+//!
 //! # Notes on MipState
 //!
 //! MipState has:

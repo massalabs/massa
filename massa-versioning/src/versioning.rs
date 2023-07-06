@@ -17,6 +17,8 @@ use massa_db_exports::{
     VERSIONING_CF,
 };
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+#[allow(unused_imports)]
+use massa_models::config::VERSIONING_ACTIVATION_DELAY_MIN;
 use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
@@ -775,6 +777,8 @@ pub enum UpdateWithError {
     // ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
     #[error("MipInfo {0:?} has overlapping data of MipInfo {1:?}")]
     Overlapping(MipInfo, MipInfo),
+    #[error("MipInfo {0:?} has an invalid activation delay value: {1}, min allowed: {2}")]
+    InvalidActivationDelay(MipInfo, MassaTime, MassaTime),
 }
 
 /// Error returned by 'extend_from_db`
@@ -882,6 +886,16 @@ impl MipStoreRaw {
                             component_version_compatible = false;
                             break;
                         }
+                    }
+
+                    #[cfg(not(feature = "testing"))]
+                    if m_info.activation_delay < VERSIONING_ACTIVATION_DELAY_MIN {
+                        has_error = Some(UpdateWithError::InvalidActivationDelay(
+                            m_info.clone(),
+                            m_info.activation_delay,
+                            VERSIONING_ACTIVATION_DELAY_MIN,
+                        ));
+                        break;
                     }
 
                     if m_info.start > last_m_info.timeout
