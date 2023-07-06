@@ -10,12 +10,14 @@ use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
 use massa_models::execution::EventFilter;
 use massa_models::operation::{OperationId, SecureShareOperation};
+use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_time::MassaTime;
 use std::collections::HashSet;
+use std::ops::RangeInclusive;
 use std::str::FromStr;
 use tracing::log::warn;
 
@@ -527,91 +529,95 @@ pub(crate) fn get_sc_execution_events(
 
 //  Get selector draws
 pub(crate) fn get_selector_draws(
-    _grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetSelectorDrawsRequest>,
 ) -> Result<grpc_api::GetSelectorDrawsResponse, GrpcError> {
-    unimplemented!("to rework");
-    // let inner_req = request.into_inner();
+    let inner_req = request.into_inner();
+    let mut addresses: PreHashSet<Address> = PreHashSet::default();
+    let mut slot_range: (Option<Slot>, Option<Slot>) = (None, None);
 
-    // // TODO address list optional
+    // parse filters from request
+    inner_req.filters.into_iter().for_each(|query| {
+        if let Some(filter) = query.filter {
+            match filter {
+                grpc_api::selector_draws_filter::Filter::Addresses(addrs) => {
+                    addrs
+                        .addresses
+                        .into_iter()
+                        .for_each(|addr| match Address::from_str(&addr) {
+                            Ok(ad) => {
+                                addresses.insert(ad);
+                            }
+                            Err(e) => warn!("failed to parse address: {}", e),
+                        });
+                }
+                grpc_api::selector_draws_filter::Filter::SlotRange(range) => {
+                    if let Some(start_slot) = range.start_slot {
+                        slot_range.0 = Some(start_slot.into());
+                    }
+                    if let Some(end_slot) = range.end_slot {
+                        slot_range.1 = Some(end_slot.into());
+                    }
+                }
+            }
+        }
+    });
 
-    // let mut addresses = Vec::new();
-    // let mut slot_range: (Option<Slot>, Option<Slot>) = (None, None);
-    // inner_req.filters.into_iter().for_each(|query| {
-    //     if let Some(filter) = query.filter {
-    //         match filter {
-    //             grpc_api::selector_draws_filter::Filter::Addresses(addrs) => {
-    //                 addrs
-    //                     .addresses
-    //                     .into_iter()
-    //                     .for_each(|addr| match Address::from_str(&addr) {
-    //                         Ok(ad) => {
-    //                             addresses.push(ad);
-    //                         }
-    //                         Err(e) => warn!("failed to parse address: {}", e),
-    //                     });
-    //             }
-    //             grpc_api::selector_draws_filter::Filter::SlotRange(range) => {
-    //                 if let Some(start_slot) = range.start_slot {
-    //                     slot_range.0 = Some(start_slot.into());
-    //                 }
-    //                 if let Some(end_slot) = range.end_slot {
-    //                     slot_range.1 = Some(end_slot.into());
-    //                 }
-    //             }
-    //         }
-    //     }
-    // });
+    if slot_range.0.is_none() || slot_range.1.is_none() {
+        return Err(GrpcError::InvalidArgument(
+            "slot range is required".to_string(),
+        ));
+    }
 
-    // if slot_range.0.is_none() || slot_range.1.is_none() {
-    //     return Err(GrpcError::InvalidArgument(
-    //         "slot range is required".to_string(),
-    //     ));
-    // }
+    // get future draws from selector
+    let selection_draws = {
+        let slot_start = slot_range.0.unwrap();
+        let slot_end = slot_range.1.unwrap();
+        let hashset_addresses = addresses.clone().into();
+        let restrict_to_addresses = if addresses.is_empty() {
+            None
+        } else {
+            Some(&hashset_addresses)
+        };
 
-    // // get future draws from selector
-    // let selection_draws = {
-    //     let slot_start = slot_range.0.unwrap();
-    //     let slot_end = slot_range.1.unwrap();
+        grpc.selector_controller
+            .get_available_selections_in_range(slot_start..=slot_end, restrict_to_addresses)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(v_slot, v_sel)| {
+                let block_producer: Option<String> = if addresses.contains(&v_sel.producer) {
+                    Some(v_sel.producer.to_string())
+                } else {
+                    None
+                };
+                let endorsement_producers: Vec<grpc_model::EndorsementDraw> = v_sel
+                    .endorsements
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(index, endo_sel)| {
+                        if addresses.contains(&endo_sel) {
+                            Some(grpc_model::EndorsementDraw {
+                                index: index as u64,
+                                producer: endo_sel.to_string(),
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
 
-    //     // TODO make works with only range slot
+                grpc_model::SlotDraw {
+                    slot: Some(v_slot.into()),
+                    block_producer: block_producer,
+                    endorsement_draws: endorsement_producers,
+                }
+            })
+            .collect()
+    };
 
-    //     addresses
-    //         .iter()
-    //         .map(|addr| {
-    //             let (nt_block_draws, nt_endorsement_draws) = grpc
-    //                 .selector_controller
-    //                 .get_address_selections(addr, slot_start, slot_end)
-    //                 .unwrap_or_default();
-
-    //             // TODO mapping
-    //             let endorsements = nt_endorsement_draws
-    //                 .into_iter()
-    //                 .map(|endorsement| grpc_model::EndorsementDraw {
-    //                     index: endorsement.index as u64,
-    //                     producer: addr.to_string(),
-    //                 })
-    //                 .collect::<Vec<_>>();
-
-    //             (addr, nt_block_draws, nt_endorsement_draws)
-    //         })
-    //         .collect::<Vec<_>>()
-    // };
-
-    // // Compile results
-    // let res = selection_draws
-    //     .into_iter()
-    //     .map(
-    //         |(addr, block_draws, endorsement_draws)| grpc_model::SlotDraw {
-    //             block_producer: addr.to_string(),
-    //             // TODO one slot
-    //             slot: Some(block_draws.into()),
-    //             endorsement_draws: endorsement_draws,
-    //         },
-    //     )
-    //     .collect();
-
-    // Ok(grpc_api::GetSelectorDrawsResponse { draws: res })
+    Ok(grpc_api::GetSelectorDrawsResponse {
+        draws: selection_draws,
+    })
 }
 
 //  Get status
