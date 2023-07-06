@@ -336,28 +336,6 @@ pub(crate) fn get_stakers(
     Ok(grpc_api::GetStakersResponse { stakers })
 }
 
-// Get node version
-pub(crate) fn get_mip_status(
-    grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::GetMipStatusRequest>,
-) -> Result<grpc_api::GetMipStatusResponse, GrpcError> {
-    let mip_store_status_ = grpc.keypair_factory.mip_store.get_mip_status();
-    let mip_store_status: Result<Vec<grpc_model::MipStatusEntry>, GrpcError> = mip_store_status_
-        .iter()
-        .map(|(mip_info, state_id_)| {
-            let state_id = grpc_model::ComponentStateId::from(state_id_);
-            Ok(grpc_model::MipStatusEntry {
-                mip_info: Some(grpc_model::MipInfo::from(mip_info)),
-                state_id: i32::from(state_id),
-            })
-        })
-        .collect();
-
-    Ok(grpc_api::GetMipStatusResponse {
-        mipstatus_entries: mip_store_status?,
-    })
-}
-
 /// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
     grpc: &MassaPublicGrpc,

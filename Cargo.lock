@@ -2954,6 +2954,7 @@ dependencies = [
  "massa_wallet",
  "num",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-stream",

@@ -10,14 +10,19 @@ use hyper::client::connect::Connect;
 use massa_execution_exports::ExecutionQueryRequest;
 use massa_hash::Hash;
 use massa_models::config::CompactConfig;
+use massa_models::error::ModelsError;
 use massa_models::node::NodeId;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
+use massa_proto_rs::massa::model::v1::KeyPair as GrpcKeyPair;
+use massa_proto_rs::massa::model::v1::MipComponent::Keypair;
 use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use massa_versioning::keypair_factory::KeyPairFactory;
+use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use tracing::warn;
 // use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
 
@@ -158,6 +163,25 @@ pub(crate) fn ban_nodes_by_ips(
     Err(GrpcError::Unimplemented("ban_nodes_by_ips".to_string()))
 }
 
+// Create KeyPair
+pub(crate) fn create_key_pair(
+    grpc: &MassaPrivateGrpc,
+    _request: tonic::Request<grpc_api::CreateKeyPairRequest>,
+) -> Result<grpc_api::CreateKeyPairResponse, GrpcError> {
+    let now = MassaTime::now().map_err(|e| GrpcError::TimeError(e))?;
+    let keypair = grpc.keypair_factory.create(&(), FactoryStrategy::At(now))?;
+    let public_key_serialized = serde_json::to_string(&keypair.get_public_key())
+        .map_err(|e| GrpcError::ModelsError(ModelsError::SerializeError(e.to_string())))?;
+    let keypair_serialized = serde_json::to_string(&keypair)
+        .map_err(|e| GrpcError::ModelsError(ModelsError::SerializeError(e.to_string())))?;
+    Ok(grpc_api::CreateKeyPairResponse {
+        key_pair: Some(GrpcKeyPair {
+            public_key: public_key_serialized,
+            secret_key: keypair_serialized,
+        }),
+    })
+}
+
 /// Get node bootstrap blacklist IP addresses
 pub(crate) fn get_bootstrap_blacklist(
     grpc: &MassaPrivateGrpc,
@@ -195,6 +219,28 @@ pub(crate) fn get_bootstrap_whitelist(
 
     Ok(grpc_api::GetBootstrapWhitelistResponse { ips: list })
 }
+// Get MIP store dump
+pub(crate) fn get_mip_status(
+    grpc: &MassaPrivateGrpc,
+    _request: tonic::Request<grpc_api::GetMipStatusRequest>,
+) -> Result<grpc_api::GetMipStatusResponse, GrpcError> {
+    let mip_store_status_ = grpc.keypair_factory.mip_store.get_mip_status();
+    let mip_store_status: Result<Vec<grpc_model::MipStatusEntry>, GrpcError> = mip_store_status_
+        .iter()
+        .map(|(mip_info, state_id_)| {
+            let state_id = grpc_model::ComponentStateId::from(state_id_);
+            Ok(grpc_model::MipStatusEntry {
+                mip_info: Some(grpc_model::MipInfo::from(mip_info)),
+                state_id: i32::from(state_id),
+            })
+        })
+        .collect();
+
+    Ok(grpc_api::GetMipStatusResponse {
+        mipstatus_entries: mip_store_status?,
+    })
+}
+
 /// Allow everyone to bootstrap from the node by removing bootstrap whitelist configuration file
 pub(crate) fn allow_everyone_to_bootstrap(
     _grpc: &MassaPrivateGrpc,

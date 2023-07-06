@@ -42,6 +42,7 @@ use massa_models::{
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
+use massa_proto_rs::massa::api::v1::private_service_client::PrivateServiceClient;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
@@ -69,8 +70,10 @@ pub struct Client {
     pub public: RpcClient,
     /// private component
     pub private: RpcClient,
-    /// grpc client
-    pub grpc: Option<PublicServiceClient<tonic::transport::Channel>>,
+    /// grpc public client
+    pub grpc_public: Option<PublicServiceClient<tonic::transport::Channel>>,
+    /// grpc private client
+    pub grpc_private: Option<PrivateServiceClient<tonic::transport::Channel>>,
 }
 
 impl Client {
@@ -79,18 +82,21 @@ impl Client {
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
-        grpc_port: u16,
+        grpc_public_port: u16,
+        grpc_private_port: u16,
         http_config: &HttpConfig,
     ) -> Result<Client, ClientError> {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
-        let grpc_socket_addr = SocketAddr::new(ip, grpc_port);
+        let grpc_public_socket_addr = SocketAddr::new(ip, grpc_public_port);
+        let grpc_private_socket_addr = SocketAddr::new(ip, grpc_private_port);
         let public_url = format!("http://{}", public_socket_addr);
         let private_url = format!("http://{}", private_socket_addr);
-        let grpc_url = format!("grpc://{}", grpc_socket_addr);
+        let grpc_public_url = format!("grpc://{}", grpc_public_socket_addr);
+        let grpc_private_url = format!("grpc://{}", grpc_private_socket_addr);
 
-        // try to start grpc client and connect to the server
-        let grpc_opts = match tonic::transport::Channel::from_shared(grpc_url)?
+        // try to start grpc client (public api) and connect to the server
+        let grpc_pub_client = match tonic::transport::Channel::from_shared(grpc_public_url)?
             .connect()
             .await
         {
@@ -101,10 +107,23 @@ impl Client {
             }
         };
 
+        // try to start grpc client (private api) and connect to the server
+        let grpc_priv_client = match tonic::transport::Channel::from_shared(grpc_private_url)?
+            .connect()
+            .await
+        {
+            Ok(channel) => Some(PrivateServiceClient::new(channel)),
+            Err(e) => {
+                tracing::warn!("unable to connect to grpc server {}", e);
+                None
+            }
+        };
+
         Ok(Client {
             public: RpcClient::from_url(&public_url, http_config).await,
             private: RpcClient::from_url(&private_url, http_config).await,
-            grpc: grpc_opts,
+            grpc_public: grpc_pub_client,
+            grpc_private: grpc_priv_client,
         })
     }
 }
