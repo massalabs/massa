@@ -29,7 +29,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, SerializeDisplay, DeserializeFromStr};
+use serde_with::{serde_as, DeserializeFromStr, SerializeDisplay};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
@@ -45,7 +45,7 @@ pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 #[allow(missing_docs)]
 #[transition::versioned(versions("0"))]
 #[derive(
-    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
 )]
 pub struct OperationId(Hash);
 
@@ -136,10 +136,12 @@ impl FromStr for OperationId {
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::OperationIdParseError)?;
                 match version {
-                    0 => Ok(OperationIdVariant!["0"](OperationId!["0"](Hash::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::OperationIdParseError)?,
-                    )))),
+                    0 => Ok(OperationIdVariant!["0"](OperationId!["0"](
+                        Hash::from_bytes(
+                            rest.try_into()
+                                .map_err(|_| ModelsError::OperationIdParseError)?,
+                        ),
+                    ))),
                     _ => Err(ModelsError::OperationIdParseError),
                 }
             }
@@ -196,11 +198,10 @@ impl Id for OperationId {
 
     fn get_hash(&self) -> &Hash {
         match self {
-            OperationId::OperationIdV0(op_id) => op_id.get_hash()
+            OperationId::OperationIdV0(op_id) => op_id.get_hash(),
         }
     }
 }
-
 
 impl PreHashed for OperationPrefixId {}
 
@@ -272,7 +273,7 @@ impl OperationIdSerializer {
 impl Serializer<OperationId> for OperationIdSerializer {
     fn serialize(&self, value: &OperationId, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         match value {
-            OperationId::OperationIdV0(id) => self.serialize(id, buffer)
+            OperationId::OperationIdV0(id) => self.serialize(id, buffer),
         }
     }
 }
@@ -299,6 +300,12 @@ impl OperationIdDeserializer {
             hash_deserializer: HashDeserializer::new(),
             version_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
+    }
+}
+
+impl Default for OperationIdDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -334,7 +341,9 @@ impl Deserializer<OperationId> for OperationIdDeserializer {
     ) -> IResult<&'a [u8], OperationId, E> {
         context("Failed OperationId deserialization", |input| {
             self.hash_deserializer.deserialize(input)
-        }).map(OperationId).parse(buffer)
+        })
+        .map(OperationId)
+        .parse(buffer)
     }
 }
 

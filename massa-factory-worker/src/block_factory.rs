@@ -8,10 +8,11 @@ use massa_models::{
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
+    operation::OperationIdSerializer,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, operation::OperationIdSerializer,
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_serialization::Serializer;
 use massa_time::MassaTime;
