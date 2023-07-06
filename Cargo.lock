@@ -2512,7 +2512,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=845ef9a#845ef9a292fea3806637030121f15f27746c3174"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=482e983#482e983a61ed422ca85899c43d19002cbbe54c52"
 dependencies = [
  "glob",
  "prost",
@@ -4573,7 +4573,7 @@ checksum = "b19faa85ecb5197342b54f987b142fb3e30d0c90da40f80ef4fa9a726e6676ed"
 dependencies = [
  "log",
  "ring",
- "rustls-webpki 0.101.0",
+ "rustls-webpki 0.101.1",
  "sct",
 ]
 
@@ -4610,9 +4610,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.101.0"
+version = "0.101.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89efed4bd0af2a8de0feb22ba38030244c93db56112b8aa67d27022286852b1c"
+checksum = "15f36a6828982f422756984e47912a7a51dcbc2a197aa791158f8ca61cd8204e"
 dependencies = [
  "ring",
  "untrusted",
