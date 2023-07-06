@@ -398,7 +398,6 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
@@ -444,7 +443,6 @@
 }
 
 <span class="doccomment">/// Used by signed structure
-/// TODO: Make this trait use versions
 </span><span class="kw">pub trait </span>Id {
     <span class="doccomment">/// New id from hash
     </span><span class="kw">fn </span>new(hash: Hash) -&gt; <span class="self">Self</span>;
