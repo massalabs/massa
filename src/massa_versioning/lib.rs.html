@@ -71,6 +71,20 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
 </pre></div><pre class="rust"><code><span class="attr">#![feature(variant_count)]
 #![feature(assert_matches)]
 </span><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
@@ -97,6 +111,20 @@
 //! (This means that the trigger and the trigger timeout are not timer based).
 //! In order to have all nodes in sync (because of node various delays), the state is set to active
 //! after an activation delay (duration is required to be &gt; 1 cycle).
+//!
+//! About activation delay:
+//!
+//! At the slot when the activation happens, need to make sure that everyone knows it should happen,
+//! so we need to make sure that everyone has seen as final the slot that triggered the locked-in state,
+//! and the worst-case delay required for a slot to become is the definition of a cycle.
+//!
+//! The activation delay counts how long we wait to activate after the vote threshold was reached
+//! and we entered into locked-in state. During that delay, and after it, the number of blocks considered
+//! for the vote is not relevant. The only reason why we should consider a sufficient number of votes
+//! is to get a reasonable p-value on the vote itself:
+//!
+//! if we consider only 5 votes, the probability that a 30%-stake was selected to vote at least 75% of the times is 3%:
+//! if we consider 1000 votes that probability falls to 1e-149.
 //!
 //! # Notes on MipState
 //!

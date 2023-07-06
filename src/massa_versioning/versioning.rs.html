@@ -2547,6 +2547,20 @@
 <a href="#2547" id="2547">2547</a>
 <a href="#2548" id="2548">2548</a>
 <a href="#2549" id="2549">2549</a>
+<a href="#2550" id="2550">2550</a>
+<a href="#2551" id="2551">2551</a>
+<a href="#2552" id="2552">2552</a>
+<a href="#2553" id="2553">2553</a>
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a>
+<a href="#2556" id="2556">2556</a>
+<a href="#2557" id="2557">2557</a>
+<a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
+<a href="#2562" id="2562">2562</a>
+<a href="#2563" id="2563">2563</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -2566,6 +2580,8 @@
     VERSIONING_CF,
 };
 <span class="kw">use </span>massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+<span class="attr">#[allow(unused_imports)]
+</span><span class="kw">use </span>massa_models::config::VERSIONING_ACTIVATION_DELAY_MIN;
 <span class="kw">use </span>massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::slot::Slot;
@@ -3324,6 +3340,8 @@
     <span class="comment">// ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
     </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} has overlapping data of MipInfo {1:?}&quot;</span>)]
     </span>Overlapping(MipInfo, MipInfo),
+    <span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} has an invalid activation delay value: {1}, min allowed: {2}&quot;</span>)]
+    </span>InvalidActivationDelay(MipInfo, MassaTime, MassaTime),
 }
 
 <span class="doccomment">/// Error returned by &#39;extend_from_db`
@@ -3431,6 +3449,16 @@
                             component_version_compatible = <span class="bool-val">false</span>;
                             <span class="kw">break</span>;
                         }
+                    }
+
+                    <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+                    </span><span class="kw">if </span>m_info.activation_delay &lt; VERSIONING_ACTIVATION_DELAY_MIN {
+                        has_error = <span class="prelude-val">Some</span>(UpdateWithError::InvalidActivationDelay(
+                            m_info.clone(),
+                            m_info.activation_delay,
+                            VERSIONING_ACTIVATION_DELAY_MIN,
+                        ));
+                        <span class="kw">break</span>;
                     }
 
                     <span class="kw">if </span>m_info.start &gt; last_m_info.timeout
