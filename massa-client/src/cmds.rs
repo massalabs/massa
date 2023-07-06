@@ -788,7 +788,7 @@ impl Command {
                 // active version
                 let req = grpc_api::GetMipStatusRequest {};
 
-                if let Some(ref mut grpc) = client.grpc {
+                if let Some(ref mut grpc) = client.grpc_private {
                     let versioning_status = match grpc.get_mip_status(req).await {
                         Ok(resp_) => {
                             let resp = resp_.into_inner();
