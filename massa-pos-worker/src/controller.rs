@@ -111,6 +111,7 @@ impl SelectorController for SelectorControllerImpl {
     /// # Arguments
     /// * `slot_range`: target slot of the selection (from included, to included)
     /// * `restrict_to_addresses`: optionally restrict only to slots involving a given address
+    #[allow(clippy::needless_lifetimes)] // lifetime elision conflicts with Mockall
     fn get_available_selections_in_range<'a>(
         &self,
         slot_range: std::ops::RangeInclusive<Slot>,
@@ -132,10 +133,10 @@ impl SelectorController for SelectorControllerImpl {
         let slot_begin;
         let slot_end_included;
         {
-            let available_cycles = cache.get_available_cycles_range();
-            if available_cycles.is_empty() {
-                return Ok(BTreeMap::new());
-            }
+            let available_cycles = match cache.get_available_cycles_range() {
+                Some(c) => c,
+                None => return Ok(BTreeMap::new()),
+            };
             slot_begin = std::cmp::max(
                 *slot_range.start(),
                 Slot::new_first_of_cycle(*available_cycles.start(), self.periods_per_cycle)

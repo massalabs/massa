@@ -36,16 +36,16 @@ pub(crate) struct DrawCache(pub VecDeque<CycleDraws>);
 
 impl DrawCache {
     /// Get the range of available cycles in the cache.
-    /// Returns 1..=0 if the cache is empty (returned_range.is_empty() is true)
-    pub fn get_available_cycles_range(&self) -> std::ops::RangeInclusive<u64> {
+    /// Returns None if the cache is empty
+    pub fn get_available_cycles_range(&self) -> Option<std::ops::RangeInclusive<u64>> {
         match self.0.front() {
-            None => 1..=0,
+            None => None,
             Some(cd) => {
                 let upper_bound = cd
                     .cycle
                     .checked_add(self.0.len().try_into().expect("overflow on cycles length"))
                     .expect("overflow on cycle delta");
-                cd.cycle..=upper_bound
+                Some(cd.cycle..=upper_bound)
             }
         }
     }
