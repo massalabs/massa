@@ -11,6 +11,7 @@ use massa_models::error::ModelsError;
 use massa_protocol_exports::ProtocolError;
 use massa_signature::MassaSignatureError;
 use massa_time::TimeError;
+use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
 use tracing::log::error;
 
@@ -34,6 +35,8 @@ pub enum GrpcError {
     ModelsError(#[from] ModelsError),
     /// Time error: {0}
     TimeError(#[from] TimeError),
+    /// Versioning factory error: {0}
+    FactoryError(#[from] FactoryError),
     /// Wallet error: {0}
     WalletError(#[from] WalletError),
     /// Internal server error: {0}
@@ -55,6 +58,7 @@ impl From<GrpcError> for tonic::Status {
             GrpcError::ProtocolError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ModelsError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::TimeError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::FactoryError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::WalletError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::InternalServerError(e) => tonic::Status::internal(e),
             GrpcError::ReflectionError(e) => tonic::Status::internal(e.to_string()),
