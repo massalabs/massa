@@ -1720,7 +1720,7 @@
         <span class="kw">if </span>!final_state
             .read()
             .mip_store
-            .is_consistent_with_shutdown_period(
+            .is_coherent_with_shutdown_period(
                 last_shutdown_start,
                 last_shutdown_end,
                 THREAD_COUNT,
@@ -1730,7 +1730,7 @@
             .unwrap_or(<span class="bool-val">false</span>)
         {
             <span class="macro">panic!</span>(
-                <span class="string">&quot;MIP store is not consistent with last shutdown period ({} - {})&quot;</span>,
+                <span class="string">&quot;MIP store is not coherent with last shutdown period ({} - {})&quot;</span>,
                 last_shutdown_start, last_shutdown_end
             );
         }
