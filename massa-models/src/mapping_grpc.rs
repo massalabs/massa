@@ -14,11 +14,10 @@ use crate::operation::{Operation, OperationId, OperationType};
 use crate::output_event::{EventExecutionContext, SCOutputEvent};
 use crate::secure_share::SecureShare;
 use crate::slot::{IndexedSlot, Slot};
-use crate::stats::{ExecutionStats, ConsensusStats, NetworkStats};
+use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_signature::{PublicKey, Signature};
-
 
 impl From<Amount> for grpc_model::NativeAmount {
     fn from(value: Amount) -> Self {
