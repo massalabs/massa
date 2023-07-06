@@ -11,8 +11,9 @@ use massa_models::{
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
-    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
+    timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp}, operation::OperationIdSerializer,
 };
+use massa_serialization::Serializer;
 use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
@@ -27,6 +28,7 @@ pub(crate) struct BlockFactoryWorker {
     channels: FactoryChannels,
     factory_receiver: MassaReceiver<()>,
     mip_store: MipStore,
+    op_id_serializer: OperationIdSerializer,
 }
 
 impl BlockFactoryWorker {
@@ -48,6 +50,7 @@ impl BlockFactoryWorker {
                     channels,
                     factory_receiver,
                     mip_store,
+                    op_id_serializer: OperationIdSerializer::new(),
                 };
                 this.run();
             })
@@ -223,7 +226,12 @@ impl BlockFactoryWorker {
         let global_operations_hash = Hash::compute_from(
             &op_ids
                 .iter()
-                .flat_map(|op_id| *op_id.to_bytes())
+                .flat_map(|op_id| {
+                    let mut buffer = Vec::new();
+                    //It was a to_bytes() there before, we know the op is valid because it comes from the pool
+                    self.op_id_serializer.serialize(op_id, &mut buffer).unwrap();
+                    buffer
+                })
                 .collect::<Vec<u8>>(),
         );
 

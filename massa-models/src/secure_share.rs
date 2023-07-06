@@ -43,6 +43,7 @@ where
 }
 
 /// Used by signed structure
+/// TODO: Make this trait use versions
 pub trait Id {
     /// New id from hash
     fn new(hash: Hash) -> Self;

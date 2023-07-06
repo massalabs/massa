@@ -14,6 +14,7 @@ tracing = "0.1"
 massa_channel = { path = "../massa-channel" }
 massa_models = { path = "../massa-models" }
 massa_factory_exports = { path = "../massa-factory-exports" }
+massa_serialization = { path = "../massa-serialization" }
 massa_signature = { path = "../massa-signature" }
 massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time" }
