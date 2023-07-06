@@ -704,6 +704,8 @@ pub struct ExecutionAddressCycleInfo {
 
 #[cfg(test)]
 mod test {
+    use crate::config::THREAD_COUNT;
+
     use super::*;
 
     #[test]
@@ -731,5 +733,19 @@ mod test {
             .unwrap();
 
         assert_eq!(addr, addr2);
+    }
+
+    #[test]
+    fn test_address_get_thread() {
+        let hash = massa_hash::Hash::compute_from(&"ADDR".as_bytes());
+
+        let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        let thread_addr_0 = user_addr_0.get_thread(THREAD_COUNT);
+        let hash = massa_hash::Hash::compute_from(&"ADDR2".as_bytes());
+
+        let user_addr_1 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        let thread_addr_1 = user_addr_1.get_thread(THREAD_COUNT);
+
+        assert_ne!(thread_addr_0, thread_addr_1);
     }
 }
