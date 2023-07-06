@@ -35,6 +35,16 @@ impl SharedWhiteBlackList<'_> {
         })
     }
 
+    /// get the white list
+    pub fn get_white_list(&self) -> Option<HashSet<IpAddr>> {
+        self.inner.read().white_list.clone()
+    }
+
+    /// get the black list
+    pub fn get_black_list(&self) -> Option<HashSet<IpAddr>> {
+        self.inner.read().black_list.clone()
+    }
+
     /// Add IP address to the black list
     pub fn add_ips_to_blacklist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
         let mut write_lock = self.inner.write();
