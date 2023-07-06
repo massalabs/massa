@@ -10,6 +10,7 @@ use std::{
 use massa_hash::Hash;
 use massa_models::{
     address::Address,
+    prehash::PreHashSet,
     slot::{IndexedSlot, Slot},
 };
 
@@ -30,14 +31,12 @@ pub enum MockSelectorControllerMessage {
     /// Get a list of slots where address has been chosen to produce a block and a list where he is chosen for the endorsements.
     /// Look from the start slot to the end slot.
     GetAddressSelections {
-        /// Address to search
-        address: Address,
-        /// Start of the search range
-        start: Slot,
-        /// End of the search range
-        end: Slot,
+        /// Slot range to consider
+        slot_range: std::ops::RangeInclusive<Slot>,
+        /// Optionally restrict to a list of addresses
+        restrict_to_addresses: Option<PreHashSet<Address>>,
         /// Receiver to send the result to
-        response_tx: Sender<PosResult<(Vec<Slot>, Vec<IndexedSlot>)>>,
+        response_tx: Sender<PosResult<BTreeMap<Slot, Selection>>>,
     },
     /// Get the entire selection of PoS. used for testing only
     GetEntireSelection {
@@ -130,19 +129,18 @@ impl SelectorController for MockSelectorController {
         response_rx.recv().unwrap()
     }
 
-    fn get_address_selections(
+    #[allow(clippy::needless_lifetimes)] // lifetime elision conflicts with Mockall
+    fn get_available_selections_in_range<'a>(
         &self,
-        address: &Address,
-        start: Slot,
-        end: Slot,
-    ) -> PosResult<(Vec<Slot>, Vec<IndexedSlot>)> {
+        slot_range: std::ops::RangeInclusive<Slot>,
+        restrict_to_addresses: Option<&'a PreHashSet<Address>>,
+    ) -> PosResult<BTreeMap<Slot, Selection>> {
         let (response_tx, response_rx) = crossbeam_channel::unbounded();
         self.0
             .lock()
             .send(MockSelectorControllerMessage::GetAddressSelections {
-                address: *address,
-                start,
-                end,
+                slot_range,
+                restrict_to_addresses: restrict_to_addresses.cloned(),
                 response_tx,
             })
             .unwrap();

@@ -52,6 +52,7 @@ pub trait SelectorController: Send + Sync {
     /// # Arguments
     /// * `slot_range`: range of slots to get the selection for
     /// * `restrict_to_addresses`: optionally restrict only to slots involving a given address
+    #[allow(clippy::needless_lifetimes)] // lifetime elision conflicts with Mockall
     fn get_available_selections_in_range<'a>(
         &self,
         slot_range: std::ops::RangeInclusive<Slot>,
