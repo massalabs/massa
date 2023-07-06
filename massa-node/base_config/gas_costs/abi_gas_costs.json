@@ -40,6 +40,7 @@
   "assembly_script_print": 171,
   "assembly_script_seed": 72,
   "assembly_script_send_message": 286,
+  "assembly_script_get_origin_operation_id": 157,
   "assembly_script_set_bytecode": 187,
   "assembly_script_set_bytecode_for": 227,
   "assembly_script_set_data": 188,
