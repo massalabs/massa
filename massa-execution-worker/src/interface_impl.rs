@@ -30,6 +30,7 @@ use massa_signature::Signature;
 use massa_time::MassaTime;
 use parking_lot::Mutex;
 use rand::Rng;
+use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::str::FromStr;
@@ -1044,6 +1045,12 @@ impl Interface for InterfaceImpl {
     fn unsafe_random_f64(&self) -> Result<f64> {
         let distr = rand::distributions::Uniform::new(0f64, 1f64);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
+    }
+
+    fn unsafe_random_wasmv1(&self, num_bytes: u64) -> Result<Vec<u8>> {
+        let mut arr = vec![0u8; num_bytes as usize];
+        context_guard!(self).unsafe_rng.try_fill_bytes(&mut arr)?;
+        Ok(arr)
     }
 
     /// Adds an asynchronous message to the context speculative asynchronous pool
