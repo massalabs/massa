@@ -24,10 +24,11 @@ use massa_proto_rs::massa::model::v1::{
 };
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
-
 use massa_signature::PublicKey;
 use massa_signature::Signature;
 use massa_time::MassaTime;
+#[cfg(feature = "testing")]
+use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
 use rand::RngCore;
@@ -112,6 +113,7 @@ impl InterfaceImpl {
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store =
             MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
@@ -875,7 +877,7 @@ impl Interface for InterfaceImpl {
     fn hash_keccak256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         Ok(sha3::Keccak256::digest(bytes).into())
     }
-
+  
     /// Transfer coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments

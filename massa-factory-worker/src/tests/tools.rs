@@ -5,6 +5,7 @@ use massa_consensus_exports::test_exports::{
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 use massa_versioning::versioning::MipStatsConfig;
 use massa_versioning::versioning::MipStore;
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::{sync::Arc, thread::sleep, time::Duration};
 
@@ -83,6 +84,7 @@ impl TestFactory {
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store =
             MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");

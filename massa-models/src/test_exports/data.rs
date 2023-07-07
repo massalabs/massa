@@ -88,7 +88,7 @@ pub fn gen_block_headers_for_denunciation(
 
     let block_header_1 = BlockHeader {
         current_version: 0,
-        announced_version: 0,
+        announced_version: None,
         slot,
         parents: parents_1,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -106,7 +106,7 @@ pub fn gen_block_headers_for_denunciation(
 
     let block_header_2 = BlockHeader {
         current_version: 0,
-        announced_version: 0,
+        announced_version: None,
         slot,
         parents: parents_2,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -124,7 +124,7 @@ pub fn gen_block_headers_for_denunciation(
 
     let block_header_3 = BlockHeader {
         current_version: 0,
-        announced_version: 0,
+        announced_version: None,
         slot,
         parents: parents_3,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),

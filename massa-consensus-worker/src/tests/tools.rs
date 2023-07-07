@@ -147,7 +147,7 @@ pub fn create_block_with_merkle_root(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             denunciations: vec![],
             slot,
             parents: best_parents,

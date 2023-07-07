@@ -9,9 +9,10 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use num::rational::Ratio;
 
 use crate::versioning::{
-    Active, Advance, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
+    Active, AdvanceLW, ComponentState, ComponentStateTypeId, LockedIn, MipComponent, MipInfo,
     MipState, MipStatsConfig, MipStoreRaw, MipStoreStats, Started,
 };
 
@@ -253,7 +254,9 @@ impl Serializer<ComponentState> for ComponentStateSerializer {
         let state_id = u32::from(ComponentStateTypeId::from(value));
         self.u32_serializer.serialize(&state_id, buffer)?;
         match value {
-            ComponentState::Started(Started { threshold }) => {
+            ComponentState::Started(Started {
+                vote_ratio: threshold,
+            }) => {
                 // self.amount_serializer.serialize(threshold, buffer)?;
                 self.ratio_serializer.serialize(threshold, buffer)?;
             }
@@ -351,15 +354,15 @@ impl Deserializer<ComponentState> for ComponentStateDeserializer {
 
 // End ComponentState
 
-// Advance
+// AdvanceLW
 
-/// Serializer for `Advance`
-pub struct AdvanceSerializer {
+/// Serializer for `AdvanceLW`
+pub struct AdvanceLWSerializer {
     ratio_serializer: RatioSerializer<u64, U64VarIntSerializer>,
     time_serializer: MassaTimeSerializer,
 }
 
-impl AdvanceSerializer {
+impl AdvanceLWSerializer {
     /// Creates a new `Serializer`
     pub fn new() -> Self {
         Self {
@@ -369,38 +372,30 @@ impl AdvanceSerializer {
     }
 }
 
-impl Default for AdvanceSerializer {
+impl Default for AdvanceLWSerializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Serializer<Advance> for AdvanceSerializer {
-    fn serialize(&self, value: &Advance, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        // start
-        self.time_serializer
-            .serialize(&value.start_timestamp, buffer)?;
-        // timeout
-        self.time_serializer.serialize(&value.timeout, buffer)?;
-        // threshold
+impl Serializer<AdvanceLW> for AdvanceLWSerializer {
+    fn serialize(&self, value: &AdvanceLW, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        // vote ratio
         self.ratio_serializer.serialize(&value.threshold, buffer)?;
         // now
         self.time_serializer.serialize(&value.now, buffer)?;
-        // activation delay
-        self.time_serializer
-            .serialize(&value.activation_delay, buffer)?;
         Ok(())
     }
 }
 
-/// A Deserializer for `Advance`
-pub struct AdvanceDeserializer {
+/// A Deserializer for `AdvanceLW`
+pub struct AdvanceLWDeserializer {
     ratio_deserializer: RatioDeserializer<u64, U64VarIntDeserializer>,
     time_deserializer: MassaTimeDeserializer,
 }
 
-impl AdvanceDeserializer {
-    /// Creates a new `AdvanceDeserializer`
+impl AdvanceLWDeserializer {
+    /// Creates a new `AdvanceLWDeserializer`
     pub fn new() -> Self {
         Self {
             ratio_deserializer: RatioDeserializer::new(U64VarIntDeserializer::new(
@@ -415,58 +410,41 @@ impl AdvanceDeserializer {
     }
 }
 
-impl Default for AdvanceDeserializer {
+impl Default for AdvanceLWDeserializer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Deserializer<Advance> for AdvanceDeserializer {
+impl Deserializer<AdvanceLW> for AdvanceLWDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], Advance, E> {
+    ) -> IResult<&'a [u8], AdvanceLW, E> {
         context(
             "Failed Advance deserialization",
             tuple((
-                context("Failed start_timestamp deserialization", |input| {
-                    self.time_deserializer.deserialize(input)
-                }),
-                context("Failed timeout deserialization", |input| {
-                    self.time_deserializer.deserialize(input)
-                }),
                 context("Failed threshold deserialization", |input| {
                     self.ratio_deserializer.deserialize(input)
                 }),
                 context("Failed now deserialization", |input| {
                     self.time_deserializer.deserialize(input)
                 }),
-                context("Failed activation delay deserialization", |input| {
-                    self.time_deserializer.deserialize(input)
-                }),
             )),
         )
-        .map(
-            |(start_timestamp, timeout, threshold, now, activation_delay)| Advance {
-                start_timestamp,
-                timeout,
-                threshold,
-                now,
-                activation_delay,
-            },
-        )
+        .map(|(threshold, now)| AdvanceLW { threshold, now })
         .parse(buffer)
     }
 }
 
-// End Advance
+// End AdvanceLW
 
 // MipState
 
 /// Serializer for `MipState`
 pub struct MipStateSerializer {
     state_serializer: ComponentStateSerializer,
-    advance_serializer: AdvanceSerializer,
+    advance_serializer: AdvanceLWSerializer,
     u32_serializer: U32VarIntSerializer,
 }
 
@@ -510,7 +488,7 @@ impl Serializer<MipState> for MipStateSerializer {
 /// A Deserializer for `MipState`
 pub struct MipStateDeserializer {
     state_deserializer: ComponentStateDeserializer,
-    advance_deserializer: AdvanceDeserializer,
+    advance_deserializer: AdvanceLWDeserializer,
     state_id_deserializer: U32VarIntDeserializer,
     u32_deserializer: U32VarIntDeserializer,
 }
@@ -520,7 +498,7 @@ impl MipStateDeserializer {
     pub fn new() -> Self {
         Self {
             state_deserializer: ComponentStateDeserializer::new(),
-            advance_deserializer: AdvanceDeserializer::new(),
+            advance_deserializer: AdvanceLWDeserializer::new(),
             state_id_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Excluded(COMPONENT_STATE_ID_VARIANT_COUNT),
@@ -580,7 +558,7 @@ impl Deserializer<MipState> for MipStateDeserializer {
         .map(|items| {
             items
                 .into_iter()
-                .collect::<BTreeMap<Advance, ComponentStateTypeId>>()
+                .collect::<BTreeMap<AdvanceLW, ComponentStateTypeId>>()
         })
         .parse(rem)?;
 
@@ -680,10 +658,11 @@ pub struct MipStoreStatsDeserializer {
 
 impl MipStoreStatsDeserializer {
     /// Creates a new ``
-    pub fn new(block_count_considered: usize) -> Self {
+    pub fn new(block_count_considered: usize, warn_announced_version_ratio: Ratio<u64>) -> Self {
         Self {
             config: MipStatsConfig {
                 block_count_considered,
+                warn_announced_version_ratio,
             },
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             u64_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
@@ -703,12 +682,6 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
                     nom::error::ErrorKind::Fail,
                 ))
             })?;
-        // let cfg_counter_max: u32 = u32::try_from(self.config.counters_max).map_err(|_e| {
-        //     nom::Err::Error(ParseError::from_error_kind(
-        //         buffer,
-        //         nom::error::ErrorKind::Fail,
-        //     ))
-        // })?;
 
         let (rem3, latest_annoucements_) = context(
             "Failed MipStoreStats latest announcements der",
@@ -825,7 +798,7 @@ pub struct MipStoreRawDeserializer {
 
 impl MipStoreRawDeserializer {
     /// Creates a new ``
-    pub fn new(block_count_considered: usize) -> Self {
+    pub fn new(block_count_considered: usize, warn_announced_version_ratio: Ratio<u64>) -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(
                 Included(0),
@@ -833,18 +806,13 @@ impl MipStoreRawDeserializer {
             ),
             info_deserializer: MipInfoDeserializer::new(),
             state_deserializer: MipStateDeserializer::new(),
-            stats_deserializer: MipStoreStatsDeserializer::new(block_count_considered),
+            stats_deserializer: MipStoreStatsDeserializer::new(
+                block_count_considered,
+                warn_announced_version_ratio,
+            ),
         }
     }
 }
-
-/*
-impl Default for MipStoreRawDeserializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-*/
 
 impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -952,7 +920,7 @@ mod test {
     fn test_component_state_ser_der() {
         let st_1 = ComponentState::failed();
         let st_2 = ComponentState::Started(Started {
-            threshold: Ratio::from_f32(0.9842).unwrap(),
+            vote_ratio: Ratio::from_f32(0.9842).unwrap(),
         });
 
         let mut buf = Vec::new();
@@ -976,28 +944,23 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        let start = MassaTime::from_utc_ymd_hms(2017, 11, 01, 7, 33, 44).unwrap();
-        let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
         let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
 
-        let adv = Advance {
-            start_timestamp: start,
-            timeout,
+        let adv_lw = AdvanceLW {
             threshold: Default::default(),
             now,
-            activation_delay: MassaTime::from_millis(20),
         };
 
         let mut buf = Vec::new();
-        let adv_ser = AdvanceSerializer::new();
-        adv_ser.serialize(&adv, &mut buf).unwrap();
+        let adv_ser = AdvanceLWSerializer::new();
+        adv_ser.serialize(&adv_lw, &mut buf).unwrap();
 
-        let state_der = AdvanceDeserializer::new();
+        let state_der = AdvanceLWDeserializer::new();
 
         let (rem, adv_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());
-        assert_eq!(adv, adv_der);
+        assert_eq!(adv_lw, adv_der);
     }
 
     #[test]
@@ -1038,6 +1001,7 @@ mod test {
     fn test_mip_store_stats_ser_der() {
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let mip_stats = MipStoreStats {
@@ -1050,7 +1014,10 @@ mod test {
         let store_stats_ser = MipStoreStatsSerializer::new();
         store_stats_ser.serialize(&mip_stats, &mut buf).unwrap();
 
-        let store_stats_der = MipStoreStatsDeserializer::new(mip_stats_cfg.block_count_considered);
+        let store_stats_der = MipStoreStatsDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.warn_announced_version_ratio,
+        );
         let (rem, store_stats_der_res) = store_stats_der
             .deserialize::<DeserializeError>(&buf)
             .unwrap();
@@ -1063,6 +1030,7 @@ mod test {
     fn test_mip_store_raw_ser_der() {
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
 
         let mi_2 = MipInfo {
@@ -1088,13 +1056,17 @@ mod test {
         let state_3 = advance_state_until(ComponentState::started(Ratio::new_raw(42, 100)), &mi_3);
 
         let store_raw =
-            MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg)).unwrap();
+            MipStoreRaw::try_from(([(mi_2, state_2), (mi_3, state_3)], mip_stats_cfg.clone()))
+                .unwrap();
 
         let mut buf = Vec::new();
         let store_raw_ser = MipStoreRawSerializer::new();
         store_raw_ser.serialize(&store_raw, &mut buf).unwrap();
 
-        let store_raw_der = MipStoreRawDeserializer::new(10);
+        let store_raw_der = MipStoreRawDeserializer::new(
+            mip_stats_cfg.block_count_considered,
+            mip_stats_cfg.warn_announced_version_ratio,
+        );
         let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());
@@ -1136,7 +1108,7 @@ mod test {
                 let state = advance_state_until(ComponentState::active(_time), &mi_base);
 
                 all_state_size += size_of_val(&state.state);
-                all_state_size += state.history.len() * (size_of::<Advance>() + size_of::<u32>());
+                all_state_size += state.history.len() * (size_of::<AdvanceLW>() + size_of::<u32>());
 
                 (mi_base.clone(), state)
             })
@@ -1147,6 +1119,7 @@ mod test {
             store: BTreeMap::from_iter(store_raw_.into_iter()),
             stats: MipStoreStats::new(MipStatsConfig {
                 block_count_considered: 10,
+                warn_announced_version_ratio: Ratio::new(30, 100),
             }),
         };
         assert_eq!(store_raw.store.len(), MIP_STORE_MAX_ENTRIES as usize);
@@ -1162,7 +1135,7 @@ mod test {
             .serialize(&store_raw, &mut buf)
             .expect("Unable to serialize");
 
-        let store_raw_der = MipStoreRawDeserializer::new(10);
+        let store_raw_der = MipStoreRawDeserializer::new(10, Ratio::new(30, 100));
         let (rem, store_raw_der_res) = store_raw_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());

@@ -41,5 +41,6 @@ massa_serialization = { path = "../massa-serialization" }
 massa_versioning = { path = "../massa-versioning" }
 
 [dev-dependencies]
+num = "0.4"
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
 massa_channel = { path = "../massa-channel" }

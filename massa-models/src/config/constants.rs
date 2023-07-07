@@ -61,14 +61,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1685970900000) // Monday, June 5, 2023 01:15:00 PM UTC
+        MassaTime::from_millis(1688490000000) // Tuesday, July 4, 2023 05:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(MassaTime::from_millis(1688140800000))  // Friday, June 30, 2023 04:00:00 PM UTC
+        Some(MassaTime::from_millis(1690808400000))  // Monday, July 31, 2023 03:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -78,7 +78,7 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.24.0"
+            "SAND.25.0"
         } else {
             "TEST.25.0"
         }
@@ -300,6 +300,8 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio<u64> = Ratio::new_raw(75, 100);
 /// Block count to process in MipStoreStats (for state change threshold)
 pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
+/// Minimum value allowed for activation delay (in MIP info)
+pub const VERSIONING_ACTIVATION_DELAY_MIN: MassaTime = T0.saturating_mul(PERIODS_PER_CYCLE);
 
 //
 // Constants for denunciation factory
