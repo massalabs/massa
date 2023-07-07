@@ -11,6 +11,7 @@ use massa_api_exports::{
     operation::OperationInput,
 };
 use massa_models::node::NodeId;
+use massa_models::operation::OperationV0;
 use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
@@ -1434,11 +1435,11 @@ async fn send_operation(
     };
 
     let op = wallet.create_operation(
-        Operation {
+        Operation::OperationV0(OperationV0 {
             fee,
             expire_period,
             op,
-        },
+        }),
         addr,
     )?;
 

@@ -395,6 +395,8 @@ enum OperationTypeId {
 }
 
 /// the operation as sent in the network
+#[allow(missing_docs)]
+#[transition::versioned(versions("0"))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 // Only for unit test, otherwise, comparison should be made between OperationId
 #[cfg_attr(test, derive(PartialEq))]
@@ -409,10 +411,57 @@ pub struct Operation {
 
 impl std::fmt::Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operation::OperationV0(op) => write!(f, "{}", op),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl std::fmt::Display for Operation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Fee: {}", self.fee)?;
         writeln!(f, "Expire period: {}", self.expire_period)?;
         writeln!(f, "Operation type: {}", self.op)?;
         Ok(())
+    }
+}
+
+impl Operation {
+    /// get version of the operation
+    pub fn get_version(&self) -> u64 {
+        match self {
+            Operation::OperationV0(op) => op.get_version(),
+        }
+    }
+
+    /// get the fee of an operation
+    pub fn get_fee(&self) -> Amount {
+        match self {
+            Operation::OperationV0(op) => op.fee,
+        }
+    }
+
+    /// get the expire period of an operation
+    pub fn get_expire_period(&self) -> u64 {
+        match self {
+            Operation::OperationV0(op) => op.expire_period,
+        }
+    }
+
+    /// get the op type of an operation
+    pub fn get_op_type(&self) -> &OperationType {
+        match self {
+            Operation::OperationV0(op) => &op.op,
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl Operation {
+    /// Get version of the operation
+    pub fn get_version(&self) -> u64 {
+        Self::VERSION
     }
 }
 
@@ -423,6 +472,7 @@ impl SecureShareContent for Operation {}
 
 /// Serializer for `Operation`
 pub struct OperationSerializer {
+    version_serializer: U64VarIntSerializer,
     u64_serializer: U64VarIntSerializer,
     amount_serializer: AmountSerializer,
     op_type_serializer: OperationTypeSerializer,
@@ -432,6 +482,7 @@ impl OperationSerializer {
     /// Creates a new `OperationSerializer`
     pub fn new() -> Self {
         Self {
+            version_serializer: U64VarIntSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
             amount_serializer: AmountSerializer::new(),
             op_type_serializer: OperationTypeSerializer::new(),
@@ -446,9 +497,20 @@ impl Default for OperationSerializer {
 }
 
 impl Serializer<Operation> for OperationSerializer {
+    fn serialize(&self, value: &Operation, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.version_serializer
+            .serialize(&value.get_version(), buffer)?;
+        match value {
+            Operation::OperationV0(op) => self.serialize(op, buffer),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"), structures("Operation"))]
+impl Serializer<Operation> for OperationSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation}};
+    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation, OperationV0}};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -458,11 +520,11 @@ impl Serializer<Operation> for OperationSerializer {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
     /// };
-    /// let operation = Operation {
+    /// let operation = Operation::OperationV0( OperationV0 {
     ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
-    /// };
+    /// });
     /// let mut buffer = Vec::new();
     /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
     /// ```
@@ -477,6 +539,7 @@ impl Serializer<Operation> for OperationSerializer {
 
 /// Serializer for `Operation`
 pub struct OperationDeserializer {
+    version_deserializer: U64VarIntDeserializer,
     expire_period_deserializer: U64VarIntDeserializer,
     amount_deserializer: AmountDeserializer,
     op_type_deserializer: OperationTypeDeserializer,
@@ -493,6 +556,7 @@ impl OperationDeserializer {
         max_op_datastore_value_length: u64,
     ) -> Self {
         Self {
+            version_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             expire_period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             amount_deserializer: AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -511,9 +575,34 @@ impl OperationDeserializer {
 }
 
 impl Deserializer<Operation> for OperationDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], Operation, E> {
+        if buffer.len() < 2 {
+            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
+        }
+        let (rest, addr_vers) =
+            self.version_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
+        match addr_vers {
+            <Operation!["0"]>::VERSION => {
+                let (rest, op) = self.deserialize(rest)?;
+                Ok((rest, OperationVariant!["0"](op)))
+            }
+            _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"), structures("Operation"))]
+impl Deserializer<Operation> for OperationDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation, OperationDeserializer}};
+    /// use massa_models::{amount::Amount, address::Address, operation::{OperationType, OperationSerializer, Operation, OperationV0, OperationDeserializer}};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -523,19 +612,19 @@ impl Deserializer<Operation> for OperationDeserializer {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
     /// };
-    /// let operation = Operation {
+    /// let operation = Operation::OperationV0( OperationV0 {
     ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
-    /// };
+    /// });
     /// let mut buffer = Vec::new();
     /// OperationSerializer::new().serialize(&operation, &mut buffer).unwrap();
-    /// let (rest, deserialized_operation) = OperationDeserializer::new(10000, 10000, 10000, 100, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_operation): (&[u8], Operation) = OperationDeserializer::new(10000, 10000, 10000, 100, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
-    /// assert_eq!(deserialized_operation.fee, operation.fee);
-    /// assert_eq!(deserialized_operation.expire_period, operation.expire_period);
-    /// match deserialized_operation.op {
-    ///   OperationType::Transaction {
+    /// assert_eq!(deserialized_operation.get_fee(), operation.get_fee());
+    /// assert_eq!(deserialized_operation.get_expire_period(), operation.get_expire_period());
+    /// match deserialized_operation.get_op_type() {
+    ///   &OperationType::Transaction {
     ///     recipient_address,
     ///     amount,
     ///   } => {
@@ -965,20 +1054,15 @@ impl Deserializer<OperationType> for OperationTypeDeserializer {
     }
 }
 
-impl SecureShareOperation {
-    /// get the range of periods during which an operation is valid
-    /// Range: `(op.expire_period - cfg.operation_validity_period) -> op.expire_period` (included)
-    pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
-        let start = self
-            .content
-            .expire_period
-            .saturating_sub(operation_validity_period);
-        start..=self.content.expire_period
+#[transition::impl_version(versions("0"))]
+impl Operation {
+    fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
+        let start = self.expire_period.saturating_sub(operation_validity_period);
+        start..=self.expire_period
     }
 
-    /// Get the max amount of gas used by the operation (`max_gas`)
-    pub fn get_gas_usage(&self) -> u64 {
-        match &self.content.op {
+    fn get_gas_usage(&self) -> u64 {
+        match &self.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
             OperationType::CallSC { max_gas, .. } => *max_gas,
             OperationType::RollBuy { .. } => 0,
@@ -987,12 +1071,10 @@ impl SecureShareOperation {
         }
     }
 
-    /// get the addresses that are involved in this operation from a ledger point of view
-    pub fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
+    fn get_ledger_involved_addresses(&self, emitter_address: Address) -> PreHashSet<Address> {
         let mut res = PreHashSet::<Address>::default();
-        let emitter_address = Address::from_public_key(&self.content_creator_pub_key);
         res.insert(emitter_address);
-        match &self.content.op {
+        match &self.op {
             OperationType::Transaction {
                 recipient_address, ..
             } => {
@@ -1008,10 +1090,9 @@ impl SecureShareOperation {
         res
     }
 
-    /// Gets the maximal amount of coins that may be spent by this operation (incl. fee)
-    pub fn get_max_spending(&self, roll_price: Amount) -> Amount {
+    fn get_max_spending(&self, roll_price: Amount) -> Amount {
         // compute the max amount of coins spent outside of the fees
-        let max_non_fee_seq_spending = match &self.content.op {
+        let max_non_fee_seq_spending = match &self.op {
             OperationType::Transaction { amount, .. } => *amount,
             OperationType::RollBuy { roll_count } => roll_price.saturating_mul_u64(*roll_count),
             OperationType::RollSell { .. } => Amount::zero(),
@@ -1020,24 +1101,65 @@ impl SecureShareOperation {
         };
 
         // add all fees and return
-        max_non_fee_seq_spending.saturating_add(self.content.fee)
+        max_non_fee_seq_spending.saturating_add(self.fee)
     }
 
-    /// get the addresses that are involved in this operation from a rolls point of view
-    pub fn get_roll_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
+    fn get_roll_involved_addresses(
+        &self,
+        emitter_address: Address,
+    ) -> Result<PreHashSet<Address>, ModelsError> {
         let mut res = PreHashSet::<Address>::default();
-        match self.content.op {
+        match self.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
-                res.insert(Address::from_public_key(&self.content_creator_pub_key));
+                res.insert(emitter_address);
             }
             OperationType::RollSell { .. } => {
-                res.insert(Address::from_public_key(&self.content_creator_pub_key));
+                res.insert(emitter_address);
             }
             OperationType::ExecuteSC { .. } => {}
             OperationType::CallSC { .. } => {}
         }
         Ok(res)
+    }
+}
+impl SecureShareOperation {
+    /// get the range of periods during which an operation is valid
+    /// Range: `(op.expire_period - cfg.operation_validity_period) -> op.expire_period` (included)
+    pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
+        match &self.content {
+            Operation::OperationV0(op) => op.get_validity_range(operation_validity_period),
+        }
+    }
+
+    /// Get the max amount of gas used by the operation (`max_gas`)
+    pub fn get_gas_usage(&self) -> u64 {
+        match &self.content {
+            Operation::OperationV0(op) => op.get_gas_usage(),
+        }
+    }
+
+    /// get the addresses that are involved in this operation from a ledger point of view
+    pub fn get_ledger_involved_addresses(&self) -> PreHashSet<Address> {
+        let emitter_address: Address = Address::from_public_key(&self.content_creator_pub_key);
+        match &self.content {
+            Operation::OperationV0(op) => op.get_ledger_involved_addresses(emitter_address),
+        }
+    }
+
+    /// Gets the maximal amount of coins that may be spent by this operation (incl. fee)
+    pub fn get_max_spending(&self, roll_price: Amount) -> Amount {
+        match &self.content {
+            Operation::OperationV0(op) => op.get_max_spending(roll_price),
+        }
+    }
+
+    /// get the addresses that are involved in this operation from a rolls point of view
+    pub fn get_roll_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
+        let emitter_address: Address = Address::from_public_key(&self.content_creator_pub_key);
+        match &self.content {
+            Operation::OperationV0(op) => op.get_roll_involved_addresses(emitter_address),
+        }
     }
 }
 
@@ -1325,7 +1447,7 @@ impl Default for OperationsSerializer {
 impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationV0, OperationType, OperationsSerializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
@@ -1335,11 +1457,11 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
     /// };
-    /// let content = Operation {
+    /// let content = Operation::OperationV0( OperationV0 {
     ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
-    /// };
+    /// });
     /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
@@ -1398,7 +1520,7 @@ impl OperationsDeserializer {
 impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     /// ## Example:
     /// ```rust
-    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
+    /// use massa_models::{operation::{SecureShareOperation, Operation, OperationV0, OperationType, OperationsSerializer, OperationsDeserializer, OperationSerializer}, secure_share::SecureShareContent, address::Address, amount::Amount};
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
@@ -1408,11 +1530,11 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     ///    recipient_address: Address::from_public_key(&keypair.get_public_key()),
     ///    amount: Amount::from_str("300").unwrap(),
     /// };
-    /// let content = Operation {
+    /// let content = Operation::OperationV0( OperationV0 {
     ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
-    /// };
+    /// });
     /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
@@ -1422,7 +1544,7 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);
     ///     assert_eq!(operation1.content_creator_pub_key, operation2.content_creator_pub_key);
-    ///     assert_eq!(operation1.content.fee, operation2.content.fee);
+    ///     assert_eq!(operation1.content.get_fee(), operation2.content.get_fee());
     /// }
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
@@ -1485,17 +1607,17 @@ mod tests {
 
         assert_eq!(res_type, op);
 
-        let content = Operation {
+        let content = Operation::OperationV0(OperationV0 {
             fee: Amount::from_str("20").unwrap(),
             op,
             expire_period: 50,
-        };
+        });
 
         let mut ser_content = Vec::new();
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new(
+        let (_, res_content): (&[u8], Operation) = OperationDeserializer::new(
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
@@ -1561,17 +1683,17 @@ mod tests {
         .unwrap();
         assert_eq!(res_type, op);
 
-        let content = Operation {
+        let content = Operation::OperationV0(OperationV0 {
             fee: Amount::from_str("20").unwrap(),
             op,
             expire_period: 50,
-        };
+        });
 
         let mut ser_content = Vec::new();
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new(
+        let (_, res_content): (&[u8], Operation) = OperationDeserializer::new(
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,
@@ -1637,17 +1759,17 @@ mod tests {
         .unwrap();
         assert_eq!(res_type, op);
 
-        let content = Operation {
+        let content = Operation::OperationV0(OperationV0 {
             fee: Amount::from_str("20").unwrap(),
             op,
             expire_period: 50,
-        };
+        });
 
         let mut ser_content = Vec::new();
         OperationSerializer::new()
             .serialize(&content, &mut ser_content)
             .unwrap();
-        let (_, res_content) = OperationDeserializer::new(
+        let (_, res_content): (&[u8], Operation) = OperationDeserializer::new(
             MAX_DATASTORE_VALUE_LENGTH,
             MAX_FUNCTION_NAME_LENGTH,
             MAX_PARAMETERS_SIZE,

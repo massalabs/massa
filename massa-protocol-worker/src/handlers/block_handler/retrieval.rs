@@ -1123,7 +1123,7 @@ impl RetrievalThread {
                 self.config.t0,
                 self.config.genesis_timestamp,
                 Slot::new(
-                    operation.content.expire_period,
+                    operation.content.get_expire_period(),
                     operation
                         .content_creator_address
                         .get_thread(self.config.thread_count),

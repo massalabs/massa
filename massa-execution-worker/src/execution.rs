@@ -329,7 +329,7 @@ impl ExecutionState {
         // debit the fee from the operation sender
         // fail execution if there are not enough coins
         if let Err(err) =
-            context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
+            context.transfer_coins(Some(sender_addr), None, operation.content.get_fee(), false)
         {
             let error = format!("could not spend fees: {}", err);
             let event = context.event_create(error.clone(), true);
@@ -402,7 +402,7 @@ impl ExecutionState {
         let operation_id = operation.id;
 
         // Add fee from operation.
-        let new_block_credits = block_credits.saturating_add(operation.content.fee);
+        let new_block_credits = block_credits.saturating_add(operation.content.get_fee());
 
         let context_snapshot = self.prepare_operation_for_execution(operation, sender_addr)?;
 
@@ -413,22 +413,13 @@ impl ExecutionState {
         *block_credits = new_block_credits;
 
         // Call the execution process specific to the operation type.
-        let execution_result = match &operation.content.op {
-            OperationType::ExecuteSC { .. } => {
-                self.execute_executesc_op(&operation.content.op, sender_addr)
-            }
-            OperationType::CallSC { .. } => {
-                self.execute_callsc_op(&operation.content.op, sender_addr)
-            }
-            OperationType::RollBuy { .. } => {
-                self.execute_roll_buy_op(&operation.content.op, sender_addr, block_slot)
-            }
-            OperationType::RollSell { .. } => {
-                self.execute_roll_sell_op(&operation.content.op, sender_addr)
-            }
-            OperationType::Transaction { .. } => {
-                self.execute_transaction_op(&operation.content.op, sender_addr)
-            }
+        let op = operation.content.get_op_type();
+        let execution_result = match op {
+            OperationType::ExecuteSC { .. } => self.execute_executesc_op(op, sender_addr),
+            OperationType::CallSC { .. } => self.execute_callsc_op(op, sender_addr),
+            OperationType::RollBuy { .. } => self.execute_roll_buy_op(op, sender_addr, block_slot),
+            OperationType::RollSell { .. } => self.execute_roll_sell_op(op, sender_addr),
+            OperationType::Transaction { .. } => self.execute_transaction_op(op, sender_addr),
         };
 
         {
@@ -436,11 +427,12 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             // check execution results
+            let expire_period = operation.content.get_expire_period();
             match execution_result {
                 Ok(_) => context.insert_executed_op(
                     operation_id,
                     true,
-                    Slot::new(operation.content.expire_period, op_thread),
+                    Slot::new(expire_period, op_thread),
                 ),
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
@@ -455,7 +447,7 @@ impl ExecutionState {
                     context.insert_executed_op(
                         operation_id,
                         false,
-                        Slot::new(operation.content.expire_period, op_thread),
+                        Slot::new(expire_period, op_thread),
                     )
                 }
             }

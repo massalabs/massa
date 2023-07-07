@@ -2,7 +2,7 @@
 
 use massa_hash::Hash;
 use massa_models::endorsement::EndorsementSerializer;
-use massa_models::operation::{OperationIdSerializer, OperationSerializer};
+use massa_models::operation::{OperationIdSerializer, OperationSerializer, OperationV0};
 use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
@@ -163,10 +163,10 @@ pub fn create_operation_with_expire_period(
         recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
         amount: Amount::default(),
     };
-    let content = Operation {
+    let content = Operation::OperationV0(OperationV0 {
         fee: Amount::default(),
         op,
         expire_period,
-    };
+    });
     Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
 }

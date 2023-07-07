@@ -539,14 +539,17 @@ impl Output for Vec<OperationInfo> {
                 "Creator address: {}",
                 Style::Wallet.style(info.operation.content_creator_address)
             );
-            println!("Fee: {}", Style::Coins.style(info.operation.content.fee));
+            println!(
+                "Fee: {}",
+                Style::Coins.style(info.operation.content.get_fee())
+            );
             println!(
                 "Expire period: {}",
-                Style::Pending.style(info.operation.content.expire_period)
+                Style::Pending.style(info.operation.content.get_expire_period())
             );
             println!(
                 "Operation type: {}",
-                Style::Id.style(&info.operation.content.op)
+                Style::Id.style(info.operation.content.get_op_type())
             );
         }
     }
