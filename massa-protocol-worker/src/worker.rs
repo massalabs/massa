@@ -245,6 +245,8 @@ pub fn start_protocol_controller(
             our_keypair: keypair.clone(),
         },
     );
+    peernet_config.write_timeout = config.message_timeout.to_duration();
+    peernet_config.read_timeout = config.message_timeout.to_duration();
 
     let initial_peers_infos = serde_json::from_str::<HashMap<PeerId, PeerData>>(
         &std::fs::read_to_string(&config.initial_peers)?,

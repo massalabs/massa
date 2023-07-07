@@ -21,7 +21,6 @@ substruct = { git = "https://github.com/sydhds/substruct" }
 socket2 = "0.4.7"
 crossbeam = "0.8.2"
 mio =  { version = "0.8", features = ["net", "os-poll"] }
-stream_limiter = "3.2.0"
 
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
@@ -43,6 +42,7 @@ bitvec = { version = "1.0", features = ["serde"] }
 lazy_static = "1.4"
 tempfile = "3.3"
 serial_test = "2.0.0"
+num = "0.4"
 massa_final_state = { path = "../massa-final-state", features = ["testing"] }
 massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
 massa_ledger_exports = { path = "../massa-ledger-exports" }
