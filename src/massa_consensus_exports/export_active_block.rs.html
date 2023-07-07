@@ -277,13 +277,11 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ConsensusError;
-<span class="kw">use </span>massa_hash::HashDeserializer;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
-    block_id::BlockId,
+    block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
@@ -372,6 +370,7 @@
 </span><span class="kw">pub struct </span>ExportActiveBlockSerializer {
     sec_share_serializer: SecureShareSerializer,
     period_serializer: U64VarIntSerializer,
+    block_id_serializer: BlockIdSerializer,
 }
 
 <span class="kw">impl </span>ExportActiveBlockSerializer {
@@ -380,6 +379,7 @@
         ExportActiveBlockSerializer {
             sec_share_serializer: SecureShareSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
+            block_id_serializer: BlockIdSerializer::new(),
         }
     }
 }
@@ -397,7 +397,7 @@
         // note: there should be no parents for genesis blocks
         </span>buffer.push(u8::from(!value.parents.is_empty()));
         <span class="kw">for </span>(hash, period) <span class="kw">in </span>value.parents.iter() {
-            buffer.extend(hash.<span class="number">0</span>.to_bytes());
+            <span class="self">self</span>.block_id_serializer.serialize(hash, buffer)<span class="question-mark">?</span>;
             <span class="self">self</span>.period_serializer.serialize(period, buffer)<span class="question-mark">?</span>;
         }
 
@@ -411,7 +411,7 @@
 <span class="doccomment">/// Basic deserializer of `ExportActiveBlock`
 </span><span class="kw">pub struct </span>ExportActiveBlockDeserializer {
     sec_share_block_deserializer: SecureShareDeserializer&lt;Block, BlockDeserializer&gt;,
-    hash_deserializer: HashDeserializer,
+    block_id_deserializer: BlockIdDeserializer,
     period_deserializer: U64VarIntDeserializer,
     thread_count: u8,
 }
@@ -426,7 +426,7 @@
             sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
                 block_der_args,
             )),
-            hash_deserializer: HashDeserializer::new(),
+            block_id_deserializer: BlockIdDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             thread_count,
         }
@@ -448,7 +448,7 @@
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
-    ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
+    ///     .map(|i| BlockId::generate_from_hash(Hash::compute_from(&amp;[i])))
     ///     .collect();
     ///
     /// // create block header
@@ -464,7 +464,7 @@
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&amp;[1])),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&amp;[1])),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
@@ -474,7 +474,7 @@
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&amp;[1])),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&amp;[1])),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
@@ -530,9 +530,7 @@
                             count(
                                 tuple((
                                     context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
+                                        <span class="self">self</span>.block_id_deserializer.deserialize(input)
                                     }),
                                     context(<span class="string">&quot;Failed period deserialization&quot;</span>, |input| {
                                         <span class="self">self</span>.period_deserializer.deserialize(input)

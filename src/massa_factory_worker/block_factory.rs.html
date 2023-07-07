@@ -292,6 +292,15 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -302,11 +311,13 @@
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
+    operation::OperationIdSerializer,
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
+<span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
@@ -321,6 +332,7 @@
     channels: FactoryChannels,
     factory_receiver: MassaReceiver&lt;()&gt;,
     mip_store: MipStore,
+    op_id_serializer: OperationIdSerializer,
 }
 
 <span class="kw">impl </span>BlockFactoryWorker {
@@ -342,6 +354,7 @@
                     channels,
                     factory_receiver,
                     mip_store,
+                    op_id_serializer: OperationIdSerializer::new(),
                 };
                 this.run();
             })
@@ -517,7 +530,12 @@
         <span class="kw">let </span>global_operations_hash = Hash::compute_from(
             <span class="kw-2">&amp;</span>op_ids
                 .iter()
-                .flat_map(|op_id| <span class="kw-2">*</span>op_id.to_bytes())
+                .flat_map(|op_id| {
+                    <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+                    <span class="comment">//It was a to_bytes() there before, we know the op is valid because it comes from the pool
+                    </span><span class="self">self</span>.op_id_serializer.serialize(op_id, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+                    buffer
+                })
                 .collect::&lt;Vec&lt;u8&gt;&gt;(),
         );
 
