@@ -18,7 +18,11 @@ use massa_models::{
 };
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
-#[cfg(feature = "testing")]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
