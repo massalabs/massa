@@ -2714,7 +2714,7 @@
         </span><span class="kw">let </span>endorsement_4 = Endorsement {
             slot,
             index: <span class="number">9</span>,
-            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
         };
         <span class="kw">let </span>s_endorsement_4 =
             Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
@@ -2750,7 +2750,7 @@
         </span><span class="kw">let </span>endorsement_4 = Endorsement {
             slot,
             index: <span class="number">9</span>,
-            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
         };
         <span class="kw">let </span>s_endorsement_4 =
             Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
@@ -2797,7 +2797,7 @@
         <span class="kw">let </span>endorsement_1 = Endorsement {
             slot: slot_1,
             index: <span class="number">0</span>,
-            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
         };
 
         <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement =
@@ -2807,7 +2807,7 @@
         <span class="kw">let </span>endorsement_2 = Endorsement {
             slot: slot_2,
             index: <span class="number">0</span>,
-            endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
         };
 
         <span class="kw">let </span>s_endorsement_2: SecureShareEndorsement =

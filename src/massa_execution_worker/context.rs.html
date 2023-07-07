@@ -1074,6 +1074,10 @@
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
 <a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1099,6 +1103,7 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
+<span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
@@ -1112,6 +1117,7 @@
 };
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
+<span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_versioning::address_factory::{AddressArgs, AddressFactory};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
@@ -1464,9 +1470,11 @@
         // to prevent random draw collisions with read-only executions
         </span>seed.push(<span class="number">1u8</span>); <span class="comment">// 1u8 = active
 
-        // For more deterministic entropy, seed with the block ID if any
+        </span><span class="kw">let </span>block_id_serializer = BlockIdSerializer::new();
+        <span class="comment">// For more deterministic entropy, seed with the block ID if any
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = <span class="kw-2">&amp;</span>opt_block_id {
-            seed.extend(block_id.to_bytes()); <span class="comment">// append block ID
+            <span class="comment">// Shouldn&#39;t be possible to fail as we already have a valid block id here
+            </span>block_id_serializer.serialize(block_id, <span class="kw-2">&amp;mut </span>seed).unwrap(); <span class="comment">// append block ID
         </span>}
         <span class="kw">let </span>seed = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>seed).into_bytes();
         <span class="kw">let </span>unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
