@@ -183,9 +183,9 @@ impl From<OperationType> for grpc_model::OperationType {
 impl From<Operation> for grpc_model::Operation {
     fn from(op: Operation) -> Self {
         grpc_model::Operation {
-            fee: op.get_fee().to_raw(),
-            expire_period: op.get_expire_period(),
-            op: Some((*op.get_op_type()).clone().into()),
+            fee: op.fee.to_raw(),
+            expire_period: op.expire_period,
+            op: Some(op.op.into()),
         }
     }
 }

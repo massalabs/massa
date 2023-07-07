@@ -44,7 +44,7 @@ pub(crate) async fn new_operations(
                         match event {
                             Ok(massa_operation) => {
                                 // Check if the operation should be sent
-                                if !should_send(&filter, (*massa_operation.content.get_op_type()).clone().into()) {
+                                if !should_send(&filter, massa_operation.clone().content.op.into()) {
                                     continue;
                                 }
 
