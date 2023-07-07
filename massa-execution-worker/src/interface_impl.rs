@@ -27,7 +27,11 @@ use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_signature::PublicKey;
 use massa_signature::Signature;
 use massa_time::MassaTime;
-#[cfg(feature = "testing")]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
