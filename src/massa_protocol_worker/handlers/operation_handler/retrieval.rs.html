@@ -682,7 +682,7 @@
                 <span class="self">self</span>.config.t0,
                 <span class="self">self</span>.config.genesis_timestamp,
                 Slot::new(
-                    operation.content.expire_period,
+                    operation.content.get_expire_period(),
                     operation
                         .content_creator_address
                         .get_thread(<span class="self">self</span>.config.thread_count),

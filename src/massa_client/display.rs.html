@@ -595,6 +595,9 @@
 <a href="#595" id="595">595</a>
 <a href="#596" id="596">596</a>
 <a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cmds::ExtendedWallet;
@@ -1136,14 +1139,17 @@
                 <span class="string">&quot;Creator address: {}&quot;</span>,
                 Style::Wallet.style(info.operation.content_creator_address)
             );
-            <span class="macro">println!</span>(<span class="string">&quot;Fee: {}&quot;</span>, Style::Coins.style(info.operation.content.fee));
+            <span class="macro">println!</span>(
+                <span class="string">&quot;Fee: {}&quot;</span>,
+                Style::Coins.style(info.operation.content.get_fee())
+            );
             <span class="macro">println!</span>(
                 <span class="string">&quot;Expire period: {}&quot;</span>,
-                Style::Pending.style(info.operation.content.expire_period)
+                Style::Pending.style(info.operation.content.get_expire_period())
             );
             <span class="macro">println!</span>(
                 <span class="string">&quot;Operation type: {}&quot;</span>,
-                Style::Id.style(<span class="kw-2">&amp;</span>info.operation.content.op)
+                Style::Id.style(info.operation.content.get_op_type())
             );
         }
     }

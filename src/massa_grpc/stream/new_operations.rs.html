@@ -157,7 +157,7 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(massa_operation) =&gt; {
                                 <span class="comment">// Check if the operation should be sent
-                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, massa_operation.clone().content.op.into()) {
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, (<span class="kw-2">*</span>massa_operation.content.get_op_type()).clone().into()) {
                                     <span class="kw">continue</span>;
                                 }
 

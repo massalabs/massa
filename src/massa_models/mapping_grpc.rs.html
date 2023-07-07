@@ -538,9 +538,9 @@
 <span class="kw">impl </span>From&lt;Operation&gt; <span class="kw">for </span>grpc_model::Operation {
     <span class="kw">fn </span>from(op: Operation) -&gt; <span class="self">Self </span>{
         grpc_model::Operation {
-            fee: op.fee.to_raw(),
-            expire_period: op.expire_period,
-            op: <span class="prelude-val">Some</span>(op.op.into()),
+            fee: op.get_fee().to_raw(),
+            expire_period: op.get_expire_period(),
+            op: <span class="prelude-val">Some</span>((<span class="kw-2">*</span>op.get_op_type()).clone().into()),
         }
     }
 }

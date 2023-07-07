@@ -1839,14 +1839,6 @@
 <a href="#1839" id="1839">1839</a>
 <a href="#1840" id="1840">1840</a>
 <a href="#1841" id="1841">1841</a>
-<a href="#1842" id="1842">1842</a>
-<a href="#1843" id="1843">1843</a>
-<a href="#1844" id="1844">1844</a>
-<a href="#1845" id="1845">1845</a>
-<a href="#1846" id="1846">1846</a>
-<a href="#1847" id="1847">1847</a>
-<a href="#1848" id="1848">1848</a>
-<a href="#1849" id="1849">1849</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2178,7 +2170,7 @@
         <span class="comment">// debit the fee from the operation sender
         // fail execution if there are not enough coins
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-            context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
+            context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.get_fee(), <span class="bool-val">false</span>)
         {
             <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">&quot;could not spend fees: {}&quot;</span>, err);
             <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
@@ -2251,7 +2243,7 @@
         </span><span class="kw">let </span>operation_id = operation.id;
 
         <span class="comment">// Add fee from operation.
-        </span><span class="kw">let </span>new_block_credits = block_credits.saturating_add(operation.content.fee);
+        </span><span class="kw">let </span>new_block_credits = block_credits.saturating_add(operation.content.get_fee());
 
         <span class="kw">let </span>context_snapshot = <span class="self">self</span>.prepare_operation_for_execution(operation, sender_addr)<span class="question-mark">?</span>;
 
@@ -2262,22 +2254,13 @@
         </span><span class="kw-2">*</span>block_credits = new_block_credits;
 
         <span class="comment">// Call the execution process specific to the operation type.
-        </span><span class="kw">let </span>execution_result = <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
-            OperationType::ExecuteSC { .. } =&gt; {
-                <span class="self">self</span>.execute_executesc_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
-            }
-            OperationType::CallSC { .. } =&gt; {
-                <span class="self">self</span>.execute_callsc_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
-            }
-            OperationType::RollBuy { .. } =&gt; {
-                <span class="self">self</span>.execute_roll_buy_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr, block_slot)
-            }
-            OperationType::RollSell { .. } =&gt; {
-                <span class="self">self</span>.execute_roll_sell_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
-            }
-            OperationType::Transaction { .. } =&gt; {
-                <span class="self">self</span>.execute_transaction_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
-            }
+        </span><span class="kw">let </span>op = operation.content.get_op_type();
+        <span class="kw">let </span>execution_result = <span class="kw">match </span>op {
+            OperationType::ExecuteSC { .. } =&gt; <span class="self">self</span>.execute_executesc_op(op, sender_addr),
+            OperationType::CallSC { .. } =&gt; <span class="self">self</span>.execute_callsc_op(op, sender_addr),
+            OperationType::RollBuy { .. } =&gt; <span class="self">self</span>.execute_roll_buy_op(op, sender_addr, block_slot),
+            OperationType::RollSell { .. } =&gt; <span class="self">self</span>.execute_roll_sell_op(op, sender_addr),
+            OperationType::Transaction { .. } =&gt; <span class="self">self</span>.execute_transaction_op(op, sender_addr),
         };
 
         {
@@ -2285,11 +2268,12 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
             <span class="comment">// check execution results
-            </span><span class="kw">match </span>execution_result {
+            </span><span class="kw">let </span>expire_period = operation.content.get_expire_period();
+            <span class="kw">match </span>execution_result {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; context.insert_executed_op(
                     operation_id,
                     <span class="bool-val">true</span>,
-                    Slot::new(operation.content.expire_period, op_thread),
+                    Slot::new(expire_period, op_thread),
                 ),
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="comment">// an error occurred: emit error event and reset context to snapshot
@@ -2304,7 +2288,7 @@
                     </span>context.insert_executed_op(
                         operation_id,
                         <span class="bool-val">false</span>,
-                        Slot::new(operation.content.expire_period, op_thread),
+                        Slot::new(expire_period, op_thread),
                     )
                 }
             }
