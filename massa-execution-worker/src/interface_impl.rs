@@ -877,7 +877,7 @@ impl Interface for InterfaceImpl {
     fn hash_keccak256(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         Ok(sha3::Keccak256::digest(bytes).into())
     }
-  
+
     /// Transfer coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments
@@ -1034,7 +1034,7 @@ impl Interface for InterfaceImpl {
     /// # Warning
     /// This random number generator is unsafe:
     /// it can be both predicted and manipulated before the execution
-    /// 
+    ///
     /// [DeprecatedByNewRuntime] Replaced by `unsafe_random_wasmv1`
     fn unsafe_random(&self) -> Result<i64> {
         let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
@@ -1046,7 +1046,7 @@ impl Interface for InterfaceImpl {
     /// # Warning
     /// This random number generator is unsafe:
     /// it can be both predicted and manipulated before the execution
-    /// 
+    ///
     /// [DeprecatedByNewRuntime] Replaced by `unsafe_random_wasmv1`
     fn unsafe_random_f64(&self) -> Result<f64> {
         let distr = rand::distributions::Uniform::new(0f64, 1f64);
