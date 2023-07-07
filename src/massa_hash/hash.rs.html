@@ -437,6 +437,11 @@
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::MassaHashError;
@@ -509,6 +514,11 @@
 }
 
 <span class="kw">impl </span>Hash {
+    <span class="doccomment">/// Creates a hash full of zeros bytes.
+    </span><span class="kw">pub fn </span>zero() -&gt; <span class="self">Self </span>{
+        Hash(blake3::Hash::from([<span class="number">0</span>; HASH_SIZE_BYTES]))
+    }
+
     <span class="doccomment">/// Compute a hash from data.
     ///
     /// # Example
