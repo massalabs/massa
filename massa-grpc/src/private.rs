@@ -16,7 +16,6 @@ use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
-use massa_proto_rs::massa::model::v1::KeyPair as GrpcKeyPair;
 use massa_proto_rs::massa::model::v1::MipComponent::Keypair;
 use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
@@ -161,25 +160,6 @@ pub(crate) fn ban_nodes_by_ips(
     _request: tonic::Request<grpc_api::BanNodesByIpsRequest>,
 ) -> Result<grpc_api::BanNodesByIpsResponse, GrpcError> {
     Err(GrpcError::Unimplemented("ban_nodes_by_ips".to_string()))
-}
-
-// Create KeyPair
-pub(crate) fn create_key_pair(
-    grpc: &MassaPrivateGrpc,
-    _request: tonic::Request<grpc_api::CreateKeyPairRequest>,
-) -> Result<grpc_api::CreateKeyPairResponse, GrpcError> {
-    let now = MassaTime::now().map_err(|e| GrpcError::TimeError(e))?;
-    let keypair = grpc.keypair_factory.create(&(), FactoryStrategy::At(now))?;
-    let public_key_serialized = serde_json::to_string(&keypair.get_public_key())
-        .map_err(|e| GrpcError::ModelsError(ModelsError::SerializeError(e.to_string())))?;
-    let keypair_serialized = serde_json::to_string(&keypair)
-        .map_err(|e| GrpcError::ModelsError(ModelsError::SerializeError(e.to_string())))?;
-    Ok(grpc_api::CreateKeyPairResponse {
-        key_pair: Some(GrpcKeyPair {
-            public_key: public_key_serialized,
-            secret_key: keypair_serialized,
-        }),
-    })
 }
 
 /// Get node bootstrap blacklist IP addresses
