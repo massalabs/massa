@@ -68,6 +68,7 @@ gas_calibration = [
     "massa_final_state/testing",
     "massa_pos_worker",
     "massa_ledger_worker",
+    "massa_db_worker",
     "tempfile",
 ]
 testing = [
@@ -91,6 +92,7 @@ benchmarking = [
     "criterion",
     "massa_pos_worker",
     "massa_ledger_worker",
+    "massa_db_worker",
     "tempfile",
 ]
 
