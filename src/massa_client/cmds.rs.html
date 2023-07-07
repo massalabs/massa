@@ -1504,7 +1504,6 @@
 <a href="#1504" id="1504">1504</a>
 <a href="#1505" id="1505">1505</a>
 <a href="#1506" id="1506">1506</a>
-<a href="#1507" id="1507">1507</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1518,7 +1517,6 @@
     operation::OperationInput,
 };
 <span class="kw">use </span>massa_models::node::NodeId;
-<span class="kw">use </span>massa_models::operation::OperationV0;
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::timeslots::get_current_latest_block_slot;
 <span class="kw">use </span>massa_models::{
@@ -2942,11 +2940,11 @@
     };
 
     <span class="kw">let </span>op = wallet.create_operation(
-        Operation::OperationV0(OperationV0 {
+        Operation {
             fee,
             expire_period,
             op,
-        }),
+        },
         addr,
     )<span class="question-mark">?</span>;
 
