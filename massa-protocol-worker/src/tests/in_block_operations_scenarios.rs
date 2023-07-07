@@ -199,8 +199,8 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
 //                             current_version: 0,
 //                             slot: Slot::new(1, op_thread),
 //                             parents: vec![
-//                                 BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-//                                 BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+//                                 BlockId::generate_from_hash(Hash::compute_from("Genesis 0".as_bytes())),
+//                                 BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
 //                             ],
 //                             denunciations: Vec::new(),
 //                             operation_merkle_root,

@@ -170,7 +170,7 @@ pub fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
     let content = Endorsement {
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from("blabla".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blabla".as_bytes())),
     };
     Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
 }

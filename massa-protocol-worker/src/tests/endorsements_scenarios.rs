@@ -288,7 +288,9 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
             let content = Endorsement {
                 slot: Slot::new(1, 1),
                 index: 0,
-                endorsed_block: BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                endorsed_block: BlockId::generate_from_hash(Hash::compute_from(
+                    "Genesis 1".as_bytes(),
+                )),
             };
             let endorsement =
                 Endorsement::new_verifiable(content, EndorsementSerializer::new(), &node_a_keypair)

@@ -36,7 +36,6 @@ use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 use transition::Versioned;
 
 /// Size in bytes of the serialized operation ID
-pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// Size in bytes of the serialized operation ID prefix
 pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
@@ -50,11 +49,50 @@ pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 pub struct OperationId(Hash);
 
 const OPERATIONID_PREFIX: char = 'O';
-const OPERATIONID_VERSION: u64 = 0;
 
 /// Left part of the operation id hash stored in a vector of size [`OPERATION_ID_PREFIX_SIZE_BYTES`]
+#[allow(missing_docs)]
+#[transition::versioned(versions("0"))]
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[allow(unused_macros)]
 pub struct OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
+
+impl std::fmt::Display for OperationPrefixId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationPrefixId::OperationPrefixIdV0(prefix) => write!(f, "{}", prefix),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl std::fmt::Display for OperationPrefixId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let u64_serializer = U64VarIntSerializer::new();
+        // might want to allocate the vector with capacity in order to avoid re-allocation
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.as_bytes());
+        write!(f, "{}", bs58::encode(bytes).into_string())
+    }
+}
+
+impl std::fmt::Debug for OperationPrefixId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationPrefixId::OperationPrefixIdV0(prefix) => write!(f, "{:?}", prefix),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl std::fmt::Debug for OperationPrefixId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -71,7 +109,7 @@ impl std::fmt::Display for OperationId {
         // might want to allocate the vector with capacity in order to avoid re-allocation
         let mut bytes: Vec<u8> = Vec::new();
         u64_serializer
-            .serialize(&OPERATIONID_VERSION, &mut bytes)
+            .serialize(&Self::VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
         bytes.extend(self.0.to_bytes());
         write!(
@@ -98,26 +136,16 @@ impl std::fmt::Debug for OperationId {
     }
 }
 
-impl std::fmt::Display for OperationPrefixId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
-    }
-}
-
-impl std::fmt::Debug for OperationPrefixId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
-    }
-}
-
 impl FromStr for OperationId {
     type Err = ModelsError;
     /// ## Example
     /// ```rust
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
-    /// # use massa_models::operation::OperationId;
-    /// # let op_id = OperationId::from_bytes(&[0; 32]);
+    /// # use massa_serialization::{Deserializer, DeserializeError};
+    /// # use massa_models::operation::{OperationId, OperationIdDeserializer};
+    /// # let op_id_deserializer = OperationIdDeserializer::new();
+    /// # let (_, op_id): (&[u8], OperationId) = op_id_deserializer.deserialize::<DeserializeError>(&[0; 33]).unwrap();
     /// let ser = op_id.to_string();
     /// let res_op_id = OperationId::from_str(&ser).unwrap();
     /// assert_eq!(op_id, res_op_id);
@@ -153,16 +181,6 @@ impl FromStr for OperationId {
 #[transition::impl_version(versions("0"))]
 impl FromStr for OperationId {
     type Err = ModelsError;
-    /// ## Example
-    /// ```rust
-    /// # use massa_hash::Hash;
-    /// # use std::str::FromStr;
-    /// # use massa_models::operation::OperationId;
-    /// # let op_id = OperationId::from_bytes(&[0; 32]);
-    /// let ser = op_id.to_string();
-    /// let res_op_id = OperationId::from_str(&ser).unwrap();
-    /// assert_eq!(op_id, res_op_id);
-    /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
         match chars.next() {
@@ -208,13 +226,15 @@ impl PreHashed for OperationPrefixId {}
 impl From<&[u8; OPERATION_ID_PREFIX_SIZE_BYTES]> for OperationPrefixId {
     /// get prefix of the operation id of size `OPERATION_ID_PREFIX_SIZE_BIT`
     fn from(bytes: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]) -> Self {
-        Self(*bytes)
+        OperationPrefixIdVariant!["0"](OperationPrefixId!["0"](*bytes))
     }
 }
 
 impl From<&OperationPrefixId> for Vec<u8> {
     fn from(prefix: &OperationPrefixId) -> Self {
-        prefix.0.to_vec()
+        match prefix {
+            OperationPrefixId::OperationPrefixIdV0(prefix) => prefix.0.to_vec(),
+        }
     }
 }
 
@@ -232,46 +252,63 @@ impl OperationId {
             OperationId::OperationIdV0(op_id) => op_id.prefix(),
         }
     }
+
+    /// Get the version of the operation by looking at the first bytes of the id
+    pub fn get_version(&self) -> u64 {
+        match self {
+            OperationId::OperationIdV0(op_id) => op_id.get_version(),
+        }
+    }
 }
 
 #[transition::impl_version(versions("0"))]
 impl OperationId {
     /// convert the [`OperationId`] into a [`OperationPrefixId`]
     pub fn into_prefix(self) -> OperationPrefixId {
-        OperationPrefixId(
+        OperationPrefixId::OperationPrefixIdV0(OperationPrefixIdV0(
             self.0.into_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
                 .try_into()
                 .expect("failed to truncate prefix from OperationId"),
-        )
+        ))
     }
 
     /// get a prefix from the [`OperationId`] by copying it
     pub fn prefix(&self) -> OperationPrefixId {
-        OperationPrefixId(
+        OperationPrefixId::OperationPrefixIdV0(OperationPrefixIdV0(
             self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
                 .try_into()
                 .expect("failed to truncate prefix from OperationId"),
-        )
+        ))
     }
 
     fn get_hash(&self) -> &Hash {
         &self.0
     }
+
+    fn get_version(&self) -> u64 {
+        Self::VERSION
+    }
 }
 
 /// Serializer for `OperationId`
 #[derive(Default, Clone)]
-pub struct OperationIdSerializer;
+pub struct OperationIdSerializer {
+    version_serializer: U64VarIntSerializer,
+}
 
 impl OperationIdSerializer {
     /// Creates a new serializer for `OperationId`
     pub fn new() -> Self {
-        Self
+        Self {
+            version_serializer: U64VarIntSerializer::new(),
+        }
     }
 }
 
 impl Serializer<OperationId> for OperationIdSerializer {
     fn serialize(&self, value: &OperationId, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.version_serializer
+            .serialize(&value.get_version(), buffer)?;
         match value {
             OperationId::OperationIdV0(id) => self.serialize(id, buffer),
         }

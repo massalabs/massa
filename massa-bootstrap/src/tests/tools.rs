@@ -357,7 +357,7 @@ pub fn get_random_final_state_bootstrap(
 }
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId(Hash::compute_from(s.as_bytes()))
+    BlockId::generate_from_hash(Hash::compute_from(s.as_bytes()))
 }
 
 pub fn get_random_address() -> Address {

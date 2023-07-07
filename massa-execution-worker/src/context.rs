@@ -23,6 +23,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -36,6 +37,7 @@ use massa_models::{
 };
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
+use massa_serialization::Serializer;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::MipStore;
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
@@ -388,9 +390,11 @@ impl ExecutionContext {
         // to prevent random draw collisions with read-only executions
         seed.push(1u8); // 1u8 = active
 
+        let block_id_serializer = BlockIdSerializer::new();
         // For more deterministic entropy, seed with the block ID if any
         if let Some(block_id) = &opt_block_id {
-            seed.extend(block_id.to_bytes()); // append block ID
+            // Shouldn't be possible to fail as we already have a valid block id here
+            block_id_serializer.serialize(block_id, &mut seed).unwrap(); // append block ID
         }
         let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
         let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
