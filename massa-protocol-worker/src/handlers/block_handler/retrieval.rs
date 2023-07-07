@@ -25,7 +25,7 @@ use crossbeam::{
 };
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
-use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::{
@@ -33,7 +33,7 @@ use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
-    operation::{OperationId, SecureShareOperation},
+    operation::{OperationId, OperationIdSerializer, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::{Id, SecureShare},
     slot::Slot,
@@ -875,12 +875,13 @@ impl RetrievalThread {
             }
             return Ok(());
         }
-        let mut total_hash: Vec<u8> =
-            Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
-        operation_ids.iter().for_each(|op_id| {
-            let op_hash = op_id.get_hash().into_bytes();
-            total_hash.extend(op_hash);
-        });
+        let mut total_hash: Vec<u8> = Vec::new();
+        let op_id_serializer = OperationIdSerializer::new();
+        for op_id in operation_ids.iter() {
+            op_id_serializer
+                .serialize(op_id, &mut total_hash)
+                .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
+        }
 
         // Check operation_list against expected operations hash from header.
         if header.content.operation_merkle_root == Hash::compute_from(&total_hash) {
