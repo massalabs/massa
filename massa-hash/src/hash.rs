@@ -184,6 +184,17 @@ impl Hash {
     }
 }
 
+impl TryFrom<&[u8]> for Hash {
+    type Error = MassaHashError;
+
+    /// Try parsing from byte slice.
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Ok(Hash::from_bytes(value.try_into().map_err(|err| {
+            MassaHashError::ParsingError(format!("{}", err))
+        })?))
+    }
+}
+
 /// Serializer for `Hash`
 #[derive(Default, Clone)]
 pub struct HashSerializer;

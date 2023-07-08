@@ -123,6 +123,10 @@ impl FinalState {
         };
 
         if reset_final_state {
+            // delete the execution trail hash
+            self.db
+                .write()
+                .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
             final_state.async_pool.reset();
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
@@ -565,6 +569,10 @@ impl FinalState {
         self.executed_ops.reset();
         self.executed_denunciations.reset();
         self.mip_store.reset_db(self.db.clone());
+        // delete the execution trail hash
+        self.db
+            .write()
+            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
     }
 
     /// Performs the initial draws.
@@ -704,23 +712,24 @@ impl FinalState {
     pub fn is_db_valid(&self) -> bool {
         let db = self.db.read();
 
-        for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
+        // check if the execution trial hash is present and valid
         {
-            if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
-                && !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())
-                && !serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes())
-                && !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes())
-                && !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes())
-                && !serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
-                && !serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes())
-            {
-                warn!(
-                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
-                    serialized_key, serialized_value
-                );
+            let execution_trail_hash_serialized: [u8] =
+                match db.get(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
+                    Some(v) => v,
+                    None => {
+                        warn!("No execution trail hash found in DB");
+                        return false;
+                    }
+                };
+            if let Err(err) = massa_hash::Hash::try_from(&execution_trail_hash_serialized) {
+                warn!("Invalid execution trail hash found in DB: {}", err);
                 return false;
             }
+        }
 
+        for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
+        {
             if serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                 if !self
                     .pos_state
@@ -780,6 +789,16 @@ impl FinalState {
             {
                 warn!(
                     "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                return false;
+            } else if serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                // TODO: check MIP_STORE_PREFIX
+            } else if serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
+                // no checks here as they are performed above by direct reading
+            } else {
+                warn!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
                 return false;
