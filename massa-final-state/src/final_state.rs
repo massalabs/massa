@@ -29,8 +29,6 @@ use massa_models::timeslots::get_block_slot_timestamp;
 
 // TODO when creating a final ledger at genesis, initialize the execution hash trail to Hash::zero()
 
-// TODO after bootstrap, check that the execution hash trail is present and in correct format
-
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
     /// execution state configuration
