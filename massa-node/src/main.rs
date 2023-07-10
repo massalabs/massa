@@ -84,7 +84,6 @@ use massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
@@ -886,9 +885,7 @@ async fn launch(
             grpc_config: grpc_public_config.clone(),
             protocol_config: protocol_config.clone(),
             node_id,
-            keypair_factory: KeyPairFactory {
-                mip_store: mip_store.clone(),
-            },
+            mip_store: mip_store.clone(),
             version: *VERSION,
         };
 
@@ -982,9 +979,7 @@ async fn launch(
             grpc_config: grpc_private_config.clone(),
             protocol_config: protocol_config.clone(),
             node_id,
-            keypair_factory: KeyPairFactory {
-                mip_store: mip_store.clone(),
-            },
+            mip_store: mip_store.clone(),
             version: *VERSION,
             stop_cv: sig_int_toggled.clone(),
             node_wallet: node_wallet.clone(),

@@ -3,6 +3,7 @@
 use massa_bootstrap::white_black_list::SharedWhiteBlackList;
 use massa_models::node::NodeId;
 use massa_versioning::keypair_factory::KeyPairFactory;
+use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::convert::Infallible;
 use std::sync::{Arc, Condvar, Mutex};
@@ -55,9 +56,8 @@ pub struct MassaPrivateGrpc {
     pub protocol_config: ProtocolConfig,
     /// our node id
     pub node_id: NodeId,
-    //TODO remove this nd use only MIP store
-    /// keypair factory
-    pub keypair_factory: KeyPairFactory,
+    /// database for all MIP info
+    pub mip_store: MipStore,
     /// node version
     pub version: massa_models::version::Version,
     /// white/black list of bootstrap
@@ -113,9 +113,8 @@ pub struct MassaPublicGrpc {
     pub protocol_config: ProtocolConfig,
     /// our node id
     pub node_id: NodeId,
-    //TODO remove this nd use only MIP store
-    /// keypair factory
-    pub keypair_factory: KeyPairFactory,
+    /// database for all MIP info
+    pub mip_store: MipStore,
     /// node version
     pub version: massa_models::version::Version,
 }

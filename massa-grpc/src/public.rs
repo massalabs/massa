@@ -8,7 +8,7 @@ use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
-use massa_models::mapping_grpc::to_event_filter;
+use massa_models::execution::EventFilter;
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
@@ -443,7 +443,39 @@ pub(crate) fn get_sc_execution_events(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
 ) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
-    let event_filter = to_event_filter(request.into_inner().filters)?;
+    let mut event_filter = EventFilter::default();
+    for query in request.into_inner().filters {
+        if let Some(filter) = query.filter {
+            match filter {
+                grpc_api::sc_execution_events_filter::Filter::SlotRange(slot_range) => {
+                    event_filter.start = slot_range.start_slot.map(|slot| slot.into());
+                    event_filter.end = slot_range.end_slot.map(|slot| slot.into());
+                }
+                grpc_api::sc_execution_events_filter::Filter::CallerAddress(caller_address) => {
+                    event_filter.original_caller_address =
+                        Some(Address::from_str(&caller_address)?);
+                }
+                grpc_api::sc_execution_events_filter::Filter::EmitterAddress(emitter_address) => {
+                    event_filter.emitter_address = Some(Address::from_str(&emitter_address)?);
+                }
+                grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(operation_id) => {
+                    event_filter.original_operation_id =
+                        Some(OperationId::from_str(&operation_id)?);
+                }
+                grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
+                    event_filter.is_error = Some(is_failure);
+                }
+                grpc_api::sc_execution_events_filter::Filter::Status(status) => {
+                    // See grpc_model::ScExecutionEventStatus
+                    match status {
+                        1 => event_filter.is_final = Some(true),
+                        2 => event_filter.is_final = Some(false),
+                        _ => event_filter.is_final = None,
+                    }
+                }
+            }
+        }
+    }
 
     let events: Vec<grpc_model::ScExecutionEvent> = grpc
         .execution_controller
