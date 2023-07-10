@@ -1232,9 +1232,8 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The byte array of the resulting hash
-    fn blake3_hash(&self, bytes: &[u8]) -> Result<[u8; 32]> {
-        let hash = massa_hash::Hash::compute_from(bytes);
-        Ok(hash.into_bytes())
+    fn hash_blake3(&self, bytes: &[u8]) -> Result<[u8; 32]> {
+        Ok(blake3::hash(bytes).into())
     }
 
     #[allow(unused_variables)]
