@@ -733,6 +733,7 @@ impl FinalState {
 
         for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
         {
+            #[allow(clippy::if_same_then_else)]
             if serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                 if !self
                     .pos_state
