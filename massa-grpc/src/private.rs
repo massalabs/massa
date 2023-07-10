@@ -112,7 +112,7 @@ pub(crate) fn add_staking_secret_keys(
 
     let keypairs = match secret_keys.iter().map(|x| KeyPair::from_str(x)).collect() {
         Ok(keypairs) => keypairs,
-        Err(e) => return Err(GrpcError::InvalidArgument(e.to_string()).into()),
+        Err(e) => return Err(GrpcError::InvalidArgument(e.to_string())),
     };
 
     grpc.node_wallet.write().add_keypairs(keypairs)?;
@@ -300,7 +300,7 @@ pub(crate) fn get_node_status(
         node_ip,
         version: grpc.version.to_string(),
         current_time: Some(now.into()),
-        current_cycle: current_cycle.into(),
+        current_cycle: current_cycle,
         current_cycle_time: Some(current_cycle_time.into()),
         next_cycle_time: Some(next_cycle_time.into()),
         connected_nodes,
