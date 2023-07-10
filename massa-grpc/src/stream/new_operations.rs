@@ -3,15 +3,13 @@
 use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
-use massa_models::operation::OperationId;
 use massa_proto_rs::massa::api::v1::{self as grpc_api, NewOperationsRequest};
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use std::pin::Pin;
-use std::str::FromStr;
 use tokio::select;
 use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
-use tracing::log::{error, warn};
+use tracing::log::error;
 
 /// Type declaration for NewOperations
 pub type NewOperationsStreamType = Pin<
@@ -22,35 +20,15 @@ pub type NewOperationsStreamType = Pin<
     >,
 >;
 
-fn get_request_parameters(request: NewOperationsRequest) -> (Vec<OperationId>, Vec<i32>) {
-    let mut operations_ids = Vec::new();
+fn get_request_parameters(request: NewOperationsRequest) -> Vec<i32> {
     let mut filter_ope_types = Vec::new();
 
     request.filters.into_iter().for_each(|query| {
-        if let Some(filter) = query.filter {
-            match filter {
-                grpc_api::new_operations_filter::Filter::OperationIds(ids) => {
-                    let ids = ids
-                        .operation_ids
-                        .into_iter()
-                        .filter_map(|id| match OperationId::from_str(id.as_str()) {
-                            Ok(ope) => Some(ope),
-                            Err(e) => {
-                                warn!("Invalid operation id: {}", e);
-                                None
-                            }
-                        })
-                        .collect::<Vec<OperationId>>();
-
-                    operations_ids.extend(ids.iter().copied());
-                }
-                grpc_api::new_operations_filter::Filter::OperationTypes(ope_types) => {
-                    filter_ope_types.extend_from_slice(&ope_types.op_types)
-                }
-            }
+        if let Some(filter) = query.operation_types {
+            filter_ope_types.extend_from_slice(&filter.op_types);
         }
     });
-    (operations_ids, filter_ope_types)
+    filter_ope_types
 }
 
 /// Creates a new stream of new produced and received operations
@@ -77,7 +55,7 @@ pub(crate) async fn new_operations(
                         match event {
                             Ok(massa_operation) => {
                                 // Check if the operation should be sent
-                                if !should_send(&filters, massa_operation.id, grpc_model::OpType::from(massa_operation.clone().content.op) as i32) {
+                                if !should_send(&filters, grpc_model::OpType::from(massa_operation.clone().content.op) as i32) {
                                     continue;
                                 }
 
@@ -122,22 +100,6 @@ pub(crate) async fn new_operations(
     Ok(Box::pin(out_stream) as NewOperationsStreamType)
 }
 
-fn should_send(filters: &(Vec<OperationId>, Vec<i32>), ope_id: OperationId, ope_type: i32) -> bool {
-    if filters.0.is_empty() && filters.1.is_empty() {
-        return true;
-    }
-
-    if !filters.0.is_empty() {
-        if filters.0.contains(&ope_id) {
-            if !filters.1.is_empty() {
-                return filters.1.contains(&ope_type);
-            } else {
-                return true;
-            }
-        }
-    } else if !filters.1.is_empty() {
-        return filters.1.contains(&ope_type);
-    }
-
-    false
+fn should_send(filters: &Vec<i32>, ope_type: i32) -> bool {
+    filters.is_empty() || filters.contains(&ope_type)
 }
