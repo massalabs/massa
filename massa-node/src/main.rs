@@ -977,11 +977,9 @@ async fn launch(
                 .clone(),
         };
 
-        let bs_white_black_list = if let Some(manager) = &bootstrap_manager {
-            Some(manager.white_black_list.clone())
-        } else {
-            None
-        };
+        let bs_white_black_list = bootstrap_manager
+            .as_ref()
+            .map(|manager| manager.white_black_list.clone());
 
         let grpc_private_api = MassaPrivateGrpc {
             consensus_controller: consensus_controller.clone(),
