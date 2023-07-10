@@ -2,7 +2,6 @@
 
 use std::str::FromStr;
 
-use crate::address::Address;
 use crate::amount::Amount;
 use crate::block::{Block, BlockGraphStatus, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
@@ -10,12 +9,10 @@ use crate::config::CompactConfig;
 use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::error::ModelsError;
-use crate::execution::EventFilter;
-use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
+use crate::operation::{Operation, OperationType, SecureShareOperation};
 use crate::output_event::{EventExecutionContext, SCOutputEvent};
 use crate::slot::{IndexedSlot, Slot};
 use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
-use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_signature::{PublicKey, Signature};
 
@@ -271,53 +268,10 @@ impl From<grpc_model::Slot> for Slot {
     }
 }
 
-//TODO to be moved
-/// Convert a vector of `grpc_model::ScExecutionEventsFilter` to a `EventFilter`
-pub fn to_event_filter(
-    sce_filters: Vec<grpc_api::ScExecutionEventsFilter>,
-) -> Result<EventFilter, crate::error::ModelsError> {
-    let mut event_filter = EventFilter::default();
-    for query in sce_filters {
-        if let Some(filter) = query.filter {
-            match filter {
-                grpc_api::sc_execution_events_filter::Filter::SlotRange(slot_range) => {
-                    event_filter.start = slot_range.start_slot.map(|slot| slot.into());
-                    event_filter.end = slot_range.end_slot.map(|slot| slot.into());
-                }
-                grpc_api::sc_execution_events_filter::Filter::CallerAddress(caller_address) => {
-                    event_filter.original_caller_address =
-                        Some(Address::from_str(&caller_address)?);
-                }
-                grpc_api::sc_execution_events_filter::Filter::EmitterAddress(emitter_address) => {
-                    event_filter.emitter_address = Some(Address::from_str(&emitter_address)?);
-                }
-                grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(operation_id) => {
-                    event_filter.original_operation_id =
-                        Some(OperationId::from_str(&operation_id)?);
-                }
-                grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
-                    event_filter.is_error = Some(is_failure);
-                }
-                grpc_api::sc_execution_events_filter::Filter::Status(status) => {
-                    // See grpc_model::ScExecutionEventStatus
-                    match status {
-                        1 => event_filter.is_final = Some(true),
-                        2 => event_filter.is_final = Some(false),
-                        _ => event_filter.is_final = None,
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(event_filter)
-}
-
 impl From<SCOutputEvent> for grpc_model::ScExecutionEvent {
     fn from(value: SCOutputEvent) -> Self {
         grpc_model::ScExecutionEvent {
             context: Some(value.context.into()),
-            //TODO to be updated when ready
             data: value.data.as_bytes().to_vec(),
         }
     }
@@ -336,7 +290,6 @@ impl From<EventExecutionContext> for grpc_model::ScExecutionEventContext {
                 .collect(),
             origin_operation_id: value.origin_operation_id.map(|id| id.to_string()),
             is_failure: value.is_error,
-            //TODO to be checked
             status: if value.read_only {
                 grpc_model::ScExecutionEventStatus::ReadOnly as i32
             } else if value.is_final {
