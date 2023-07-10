@@ -271,6 +271,7 @@ impl From<grpc_model::Slot> for Slot {
     }
 }
 
+//TODO to be moved
 /// Convert a vector of `grpc_model::ScExecutionEventsFilter` to a `EventFilter`
 pub fn to_event_filter(
     sce_filters: Vec<grpc_api::ScExecutionEventsFilter>,

@@ -55,6 +55,7 @@ pub struct MassaPrivateGrpc {
     pub protocol_config: ProtocolConfig,
     /// our node id
     pub node_id: NodeId,
+    //TODO remove this nd use only MIP store
     /// keypair factory
     pub keypair_factory: KeyPairFactory,
     /// node version
@@ -112,6 +113,7 @@ pub struct MassaPublicGrpc {
     pub protocol_config: ProtocolConfig,
     /// our node id
     pub node_id: NodeId,
+    //TODO remove this nd use only MIP store
     /// keypair factory
     pub keypair_factory: KeyPairFactory,
     /// node version
