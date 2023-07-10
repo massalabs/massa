@@ -5,10 +5,10 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 use crate::private::{
     add_staking_secret_keys, add_to_bootstrap_blacklist, add_to_bootstrap_whitelist,
     add_to_peers_whitelist, allow_everyone_to_bootstrap, ban_nodes_by_ids, ban_nodes_by_ips,
-    create_key_pair, get_bootstrap_blacklist, get_bootstrap_whitelist, get_mip_status,
-    get_node_status, get_peers_whitelist, remove_from_bootstrap_blacklist,
-    remove_from_bootstrap_whitelist, remove_from_peers_whitelist, remove_staking_addresses,
-    shutdown_gracefully, sign_messages, unban_nodes_by_ids, unban_nodes_by_ips,
+    get_bootstrap_blacklist, get_bootstrap_whitelist, get_mip_status, get_node_status,
+    get_peers_whitelist, remove_from_bootstrap_blacklist, remove_from_bootstrap_whitelist,
+    remove_from_peers_whitelist, remove_staking_addresses, shutdown_gracefully, sign_messages,
+    unban_nodes_by_ids, unban_nodes_by_ips,
 };
 use crate::public::{
     execute_read_only_call, get_blocks, get_datastore_entries, get_next_block_best_parents,
@@ -266,13 +266,6 @@ impl grpc_api::private_service_server::PrivateService for MassaPrivateGrpc {
         Ok(tonic::Response::new(add_staking_secret_keys(
             self, request,
         )?))
-    }
-    /// Create a KeyPair
-    async fn create_key_pair(
-        &self,
-        request: tonic::Request<grpc_api::CreateKeyPairRequest>,
-    ) -> Result<tonic::Response<grpc_api::CreateKeyPairResponse>, tonic::Status> {
-        Ok(tonic::Response::new(create_key_pair(self, request)?))
     }
     /// Ban multiple nodes by their individual ids
     async fn ban_nodes_by_ids(
