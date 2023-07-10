@@ -2,6 +2,7 @@
 
 use std::str::FromStr;
 
+use crate::address::Address;
 use crate::amount::Amount;
 use crate::block::{Block, BlockGraphStatus, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
@@ -288,38 +289,43 @@ impl From<grpc_model::Slot> for Slot {
     }
 }
 
+//TODO to be checked
 impl TryFrom<grpc_api::ScExecutionEventsFilter> for EventFilter {
     type Error = crate::error::ModelsError;
 
     fn try_from(value: grpc_api::ScExecutionEventsFilter) -> Result<Self, Self::Error> {
-        unimplemented!("TODO");
-        // let status_final = grpc_model::ScExecutionEventStatus::Final as i32;
-        // let status_error = grpc_model::ScExecutionEventStatus::Failure as i32;
-        // Ok(Self {
-        //     start: value
-        //         .slot_range
-        //         .clone()
-        //         .map(|range| range.start_slot.map(|slot| slot.into()))
-        //         .unwrap_or_default(),
-        //     end: value
-        //         .slot_range
-        //         .map(|range| range.end_slot.map(|slot| slot.into()))
-        //         .unwrap_or_default(),
-        //     emitter_address: value
-        //         .emitter_address
-        //         .map(|address| Address::from_str(&address))
-        //         .transpose()?,
-        //     original_caller_address: value
-        //         .caller_address
-        //         .map(|address| Address::from_str(&address))
-        //         .transpose()?,
-        //     original_operation_id: value
-        //         .original_operation_id
-        //         .map(|operation_id| OperationId::from_str(&operation_id))
-        //         .transpose()?,
-        //     is_final: Some(value.status.contains(&status_final)),
-        //     is_error: Some(value.status.contains(&status_error)),
-        // })
+        let filter = value.filter.unwrap();
+        let mut event_filter = EventFilter::default();
+        match filter {
+            grpc_api::sc_execution_events_filter::Filter::SlotRange(slot_range) => {
+                event_filter.start = slot_range.start_slot.map(|slot| slot.into());
+                event_filter.end = slot_range.end_slot.map(|slot| slot.into());
+            }
+            grpc_api::sc_execution_events_filter::Filter::CallerAddress(caller_address) => {
+                event_filter.original_caller_address = Some(Address::from_str(&caller_address)?)
+            }
+            grpc_api::sc_execution_events_filter::Filter::EmitterAddress(emitter_address) => {
+                event_filter.emitter_address = Some(Address::from_str(&emitter_address)?)
+            }
+            grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(operation_id) => {
+                event_filter.original_operation_id = Some(OperationId::from_str(&operation_id)?)
+            }
+            grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
+                event_filter.is_error = Some(is_failure)
+            }
+            //TODO to be checked and updated
+            grpc_api::sc_execution_events_filter::Filter::Status(status) => {
+                if 1 == status {
+                    event_filter.is_final = Some(true);
+                } else if 2 == status {
+                    event_filter.is_final = Some(false);
+                } else {
+                    event_filter.is_final = None;
+                }
+            }
+        }
+
+        Ok(event_filter)
     }
 }
 

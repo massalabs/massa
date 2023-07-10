@@ -444,6 +444,7 @@ pub(crate) fn get_operations(
     })
 }
 
+//TODO to be checked
 /// Get smart contract execution events
 pub(crate) fn get_sc_execution_events(
     grpc: &MassaPublicGrpc,
@@ -484,11 +485,16 @@ pub(crate) fn get_sc_execution_events(
                         Err(e) => warn!("Invalid operation id: {}", e),
                     }
                 }
+                grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
+                    event_filter.is_error = Some(is_failure);
+                }
                 grpc_api::sc_execution_events_filter::Filter::Status(status) => {
-                    if status.eq(&1) {
+                    if 1 == status {
                         event_filter.is_final = Some(true);
-                    } else if status.eq(&3) {
-                        event_filter.is_error = Some(true);
+                    } else if 2 == status {
+                        event_filter.is_final = Some(false);
+                    } else {
+                        event_filter.is_final = None;
                     }
                 }
             }
