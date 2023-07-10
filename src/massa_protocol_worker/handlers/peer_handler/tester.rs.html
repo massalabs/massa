@@ -431,6 +431,12 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -530,6 +536,12 @@
                     .error(<span class="string">&quot;len too long&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, res_size))));
             }
             <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">vec!</span>[<span class="number">0u8</span>; res_size <span class="kw">as </span>usize];
+            socket
+                .set_read_timeout(<span class="prelude-val">Some</span>(Duration::from_millis(<span class="number">500</span>)))
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;read timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+            socket
+                .set_write_timeout(<span class="prelude-val">Some</span>(Duration::from_millis(<span class="number">500</span>)))
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;write timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
             socket
                 .read_exact(<span class="kw-2">&amp;mut </span>data)
                 .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;recv data&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;

@@ -2561,24 +2561,6 @@
 <a href="#2561" id="2561">2561</a>
 <a href="#2562" id="2562">2562</a>
 <a href="#2563" id="2563">2563</a>
-<a href="#2564" id="2564">2564</a>
-<a href="#2565" id="2565">2565</a>
-<a href="#2566" id="2566">2566</a>
-<a href="#2567" id="2567">2567</a>
-<a href="#2568" id="2568">2568</a>
-<a href="#2569" id="2569">2569</a>
-<a href="#2570" id="2570">2570</a>
-<a href="#2571" id="2571">2571</a>
-<a href="#2572" id="2572">2572</a>
-<a href="#2573" id="2573">2573</a>
-<a href="#2574" id="2574">2574</a>
-<a href="#2575" id="2575">2575</a>
-<a href="#2576" id="2576">2576</a>
-<a href="#2577" id="2577">2577</a>
-<a href="#2578" id="2578">2578</a>
-<a href="#2579" id="2579">2579</a>
-<a href="#2580" id="2580">2580</a>
-<a href="#2581" id="2581">2581</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -3269,25 +3251,6 @@
         )
     }
 
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">pub fn </span>update_for_network_shutdown(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        shutdown_start: Slot,
-        shutdown_end: Slot,
-        thread_count: u8,
-        t0: MassaTime,
-        genesis_timestamp: MassaTime,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ModelsError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>guard = <span class="self">self</span>.<span class="number">0</span>.write();
-        guard.update_for_network_shutdown(
-            shutdown_start,
-            shutdown_end,
-            thread_count,
-            t0,
-            genesis_timestamp,
-        )
-    }
-
     <span class="comment">// DB
 
     </span><span class="kw">pub fn </span>update_batches(
@@ -3753,7 +3716,8 @@
         <span class="prelude-val">Ok</span>(is_consistent)
     }
 
-    <span class="kw">fn </span>update_for_network_shutdown(
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>update_for_network_shutdown(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         shutdown_start: Slot,
         shutdown_end: Slot,
