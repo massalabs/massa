@@ -48,11 +48,15 @@ impl SharedWhiteBlackList<'_> {
     /// Add IP address to the black list
     pub fn add_ips_to_blacklist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
         let mut write_lock = self.inner.write();
-        if let Some(black_list) = &mut write_lock.black_list {
+        let list = if let Some(black_list) = &mut write_lock.black_list {
             black_list.extend(ips);
+            black_list.clone()
         } else {
-            write_lock.black_list = Some(HashSet::from_iter(ips));
-        }
+            let hash_set = HashSet::from_iter(ips);
+            write_lock.black_list = Some(hash_set.clone());
+            hash_set
+        };
+        self.write_list_to_file(&self.black_path, &list)?;
         Ok(())
     }
 
@@ -63,6 +67,7 @@ impl SharedWhiteBlackList<'_> {
             for ip in ips {
                 black_list.remove(&ip);
             }
+            self.write_list_to_file(&self.black_path, black_list)?;
         }
         Ok(())
     }
@@ -70,11 +75,15 @@ impl SharedWhiteBlackList<'_> {
     /// Add IP address to the white list
     pub fn add_ips_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
         let mut write_lock = self.inner.write();
-        if let Some(white_list) = &mut write_lock.white_list {
+        let list = if let Some(white_list) = &mut write_lock.white_list {
             white_list.extend(ips);
+            white_list.clone()
         } else {
-            write_lock.white_list = Some(HashSet::from_iter(ips));
-        }
+            let hash_set = HashSet::from_iter(ips);
+            write_lock.white_list = Some(hash_set.clone());
+            hash_set.clone()
+        };
+        self.write_list_to_file(&self.white_path, &list)?;
         Ok(())
     }
 
@@ -85,7 +94,25 @@ impl SharedWhiteBlackList<'_> {
             for ip in ips {
                 white_list.remove(&ip);
             }
+            self.write_list_to_file(&self.white_path, white_list)?;
         }
+        Ok(())
+    }
+
+    /// write list to file
+    fn write_list_to_file(
+        &self,
+        file_path: &Path,
+        data: &HashSet<IpAddr>,
+    ) -> Result<(), BootstrapError> {
+        let list = serde_json::to_string(data).map_err(|e| {
+            warn!(error = ?e, "failed to serialize list");
+            BootstrapError::SerializationError(e.to_string())
+        })?;
+        std::fs::write(file_path, list).map_err(|e| {
+            warn!(error = ?e, "failed to write list to file");
+            BootstrapError::IoError(e)
+        })?;
         Ok(())
     }
 
@@ -93,10 +120,10 @@ impl SharedWhiteBlackList<'_> {
     /// Creates a new list, and replaces the old one in a write-lock
     pub(crate) fn update(&mut self) -> Result<(), BootstrapError> {
         let read_lock = self.inner.read();
-        let (new_white, new_black) =
+        let (new_white_file, new_black_file) =
             WhiteBlackListInner::update_list(&self.white_path, &self.black_path)?;
-        let white_delta = new_white != read_lock.white_list;
-        let black_delta = new_black != read_lock.black_list;
+        let white_delta = new_white_file != read_lock.white_list;
+        let black_delta = new_black_file != read_lock.black_list;
         if white_delta || black_delta {
             // Ideally this scope would be atomic
             let mut mut_inner = {
@@ -106,11 +133,11 @@ impl SharedWhiteBlackList<'_> {
 
             if white_delta {
                 info!("whitelist has updated !");
-                mut_inner.white_list = new_white;
+                mut_inner.white_list = new_white_file;
             }
             if black_delta {
                 info!("blacklist has updated !");
-                mut_inner.black_list = new_black;
+                mut_inner.black_list = new_black_file;
             }
         }
         Ok(())
