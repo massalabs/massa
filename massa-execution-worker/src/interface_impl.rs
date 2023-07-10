@@ -390,7 +390,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_keys_wasmv1(&self, prefix: &[u8], address: Option<String>) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_ds_keys_wasmv1(&self, prefix: &[u8], address: Option<String>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -680,7 +680,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns bytecode of the target address, or the current address if not provided
-    fn raw_get_bytecode_wasmv1(&self, address: Option<String>) -> Result<Vec<u8>> {
+    fn get_bytecode_wasmv1(&self, address: Option<String>) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -1201,7 +1201,7 @@ impl Interface for InterfaceImpl {
 
     /// Sets the bytecode of an arbitrary address, or the current address if not provided.
     /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
-    fn raw_set_bytecode_wasmv1(&self, bytecode: &[u8], address: Option<String>) -> Result<()> {
+    fn set_bytecode_wasmv1(&self, bytecode: &[u8], address: Option<String>) -> Result<()> {
         let mut context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -1549,7 +1549,7 @@ mod tests {
             .set_ds_value_wasmv1(b"l3", b"v3", Some(sender_addr.to_string()))
             .unwrap();
 
-        let keys = interface.get_keys_wasmv1(b"k", None).unwrap();
+        let keys = interface.get_ds_keys_wasmv1(b"k", None).unwrap();
 
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(b"k1".as_slice()));
