@@ -11,9 +11,8 @@ use crate::denunciation::DenunciationIndex;
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::error::ModelsError;
 use crate::execution::EventFilter;
-use crate::operation::{Operation, OperationId, OperationType};
+use crate::operation::{Operation, OperationId, OperationType, SecureShareOperation};
 use crate::output_event::{EventExecutionContext, SCOutputEvent};
-use crate::secure_share::SecureShare;
 use crate::slot::{IndexedSlot, Slot};
 use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -23,10 +22,7 @@ use massa_signature::{PublicKey, Signature};
 impl From<Amount> for grpc_model::NativeAmount {
     fn from(value: Amount) -> Self {
         let (mantissa, scale) = value.to_mantissa_scale();
-        grpc_model::NativeAmount {
-            mantissa: mantissa,
-            scale: scale,
-        }
+        grpc_model::NativeAmount { mantissa, scale }
     }
 }
 
@@ -235,22 +231,8 @@ impl From<OperationType> for grpc_model::OpType {
     }
 }
 
-// impl From<SecureShareOperation> for grpc_model::SignedOperation {
-//     fn from(value: SecureShareOperation) -> Self {
-//         let serialized_size = value.serialized_size() as u64;
-//         grpc_model::SignedOperation {
-//             content: Some(value.content.into()),
-//             signature: value.signature.to_string(),
-//             content_creator_pub_key: value.content_creator_pub_key.to_string(),
-//             content_creator_address: value.content_creator_address.to_string(),
-//             secure_hash: value.id.to_string(),
-//             serialized_size,
-//         }
-//     }
-// }
-
-impl From<SecureShare<Operation, OperationId>> for grpc_model::SignedOperation {
-    fn from(value: SecureShare<Operation, OperationId>) -> Self {
+impl From<SecureShareOperation> for grpc_model::SignedOperation {
+    fn from(value: SecureShareOperation) -> Self {
         grpc_model::SignedOperation {
             serialized_size: value.serialized_size() as u64,
             content: Some(value.content.into()),
@@ -289,44 +271,45 @@ impl From<grpc_model::Slot> for Slot {
     }
 }
 
-//TODO to be checked
-impl TryFrom<grpc_api::ScExecutionEventsFilter> for EventFilter {
-    type Error = crate::error::ModelsError;
-
-    fn try_from(value: grpc_api::ScExecutionEventsFilter) -> Result<Self, Self::Error> {
-        let filter = value.filter.unwrap();
-        let mut event_filter = EventFilter::default();
-        match filter {
-            grpc_api::sc_execution_events_filter::Filter::SlotRange(slot_range) => {
-                event_filter.start = slot_range.start_slot.map(|slot| slot.into());
-                event_filter.end = slot_range.end_slot.map(|slot| slot.into());
-            }
-            grpc_api::sc_execution_events_filter::Filter::CallerAddress(caller_address) => {
-                event_filter.original_caller_address = Some(Address::from_str(&caller_address)?)
-            }
-            grpc_api::sc_execution_events_filter::Filter::EmitterAddress(emitter_address) => {
-                event_filter.emitter_address = Some(Address::from_str(&emitter_address)?)
-            }
-            grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(operation_id) => {
-                event_filter.original_operation_id = Some(OperationId::from_str(&operation_id)?)
-            }
-            grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
-                event_filter.is_error = Some(is_failure)
-            }
-            //TODO to be checked and updated
-            grpc_api::sc_execution_events_filter::Filter::Status(status) => {
-                if 1 == status {
-                    event_filter.is_final = Some(true);
-                } else if 2 == status {
-                    event_filter.is_final = Some(false);
-                } else {
-                    event_filter.is_final = None;
+/// Convert a vector of `grpc_model::ScExecutionEventsFilter` to a `EventFilter`
+pub fn to_event_filter(
+    sce_filters: Vec<grpc_api::ScExecutionEventsFilter>,
+) -> Result<EventFilter, crate::error::ModelsError> {
+    let mut event_filter = EventFilter::default();
+    for query in sce_filters {
+        if let Some(filter) = query.filter {
+            match filter {
+                grpc_api::sc_execution_events_filter::Filter::SlotRange(slot_range) => {
+                    event_filter.start = slot_range.start_slot.map(|slot| slot.into());
+                    event_filter.end = slot_range.end_slot.map(|slot| slot.into());
+                }
+                grpc_api::sc_execution_events_filter::Filter::CallerAddress(caller_address) => {
+                    event_filter.original_caller_address =
+                        Some(Address::from_str(&caller_address)?);
+                }
+                grpc_api::sc_execution_events_filter::Filter::EmitterAddress(emitter_address) => {
+                    event_filter.emitter_address = Some(Address::from_str(&emitter_address)?);
+                }
+                grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(operation_id) => {
+                    event_filter.original_operation_id =
+                        Some(OperationId::from_str(&operation_id)?);
+                }
+                grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
+                    event_filter.is_error = Some(is_failure);
+                }
+                grpc_api::sc_execution_events_filter::Filter::Status(status) => {
+                    // See grpc_model::ScExecutionEventStatus
+                    match status {
+                        1 => event_filter.is_final = Some(true),
+                        2 => event_filter.is_final = Some(false),
+                        _ => event_filter.is_final = None,
+                    }
                 }
             }
         }
-
-        Ok(event_filter)
     }
+
+    Ok(event_filter)
 }
 
 impl From<SCOutputEvent> for grpc_model::ScExecutionEvent {
@@ -425,9 +408,9 @@ impl From<ConsensusStats> for grpc_model::ConsensusStats {
         grpc_model::ConsensusStats {
             start_timespan: Some(value.start_timespan.into()),
             end_timespan: Some(value.end_timespan.into()),
-            final_block_count: value.final_block_count as u64,
+            final_block_count: value.final_block_count,
             stale_block_count: value.stale_block_count as u64,
-            clique_count: value.clique_count as u64,
+            clique_count: value.clique_count,
         }
     }
 }

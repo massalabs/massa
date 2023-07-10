@@ -8,7 +8,7 @@ use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
-use massa_models::execution::EventFilter;
+use massa_models::mapping_grpc::to_event_filter;
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
@@ -17,7 +17,6 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_time::MassaTime;
 use std::collections::HashSet;
-use std::ops::RangeInclusive;
 use std::str::FromStr;
 use tracing::log::warn;
 
@@ -51,9 +50,7 @@ pub(crate) fn get_blocks(
                         if let Some(ref mut vec) = addresses {
                             vec.push(addr);
                         } else {
-                            let mut v = Vec::new();
-                            v.push(addr);
-                            addresses = Some(v);
+                            addresses = Some(vec![addr]);
                         }
                     }
                 }
@@ -134,10 +131,10 @@ pub(crate) fn get_blocks(
             {
                 if let Some(hash_set) = read_blocks.get_blocks_created_by(address) {
                     let result = hash_set
-                        .into_iter()
+                        .iter()
                         .filter_map(|block_id| {
                             if let Some(block) = read_blocks
-                                .get(&block_id)
+                                .get(block_id)
                                 .map(|wrapped_block| wrapped_block.content.clone())
                             {
                                 // check slot filter
@@ -217,12 +214,11 @@ pub(crate) fn get_datastore_entries(
             filter.filter.and_then(|filter| match filter {
                 grpc_api::get_datastore_entry_filter::Filter::AddressKey(addrs) => {
                     if let Ok(add) = &Address::from_str(&addrs.address) {
-                        return Some((add.clone(), addrs.key));
+                        Some((*add, addrs.key))
                     } else {
-                        return None;
+                        None
                     }
                 }
-                _ => None,
             })
         })
         .collect();
@@ -444,62 +440,12 @@ pub(crate) fn get_operations(
     })
 }
 
-//TODO to be checked
 /// Get smart contract execution events
 pub(crate) fn get_sc_execution_events(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetScExecutionEventsRequest>,
 ) -> Result<grpc_api::GetScExecutionEventsResponse, GrpcError> {
-    let inner_req: grpc_api::GetScExecutionEventsRequest = request.into_inner();
-
-    let mut event_filter: EventFilter = EventFilter::default();
-
-    inner_req.filters.into_iter().for_each(|query| {
-        if let Some(filter) = query.filter {
-            match filter {
-                grpc_api::sc_execution_events_filter::Filter::SlotRange(range) => {
-                    if let Some(start) = range.start_slot {
-                        event_filter.start = Some(start.into());
-                    }
-                    if let Some(end) = range.end_slot {
-                        event_filter.end = Some(end.into());
-                    }
-                }
-                grpc_api::sc_execution_events_filter::Filter::CallerAddress(address) => {
-                    if let Ok(add) = Address::from_str(&address) {
-                        event_filter.original_caller_address = Some(add);
-                    } else {
-                        warn!("Invalid address: {}", address);
-                    }
-                }
-                grpc_api::sc_execution_events_filter::Filter::EmitterAddress(address) => {
-                    if let Ok(add) = Address::from_str(&address) {
-                        event_filter.emitter_address = Some(add);
-                    } else {
-                        warn!("Invalid address: {}", address);
-                    }
-                }
-                grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(id) => {
-                    match OperationId::from_str(&id) {
-                        Ok(ope_id) => event_filter.original_operation_id = Some(ope_id),
-                        Err(e) => warn!("Invalid operation id: {}", e),
-                    }
-                }
-                grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
-                    event_filter.is_error = Some(is_failure);
-                }
-                grpc_api::sc_execution_events_filter::Filter::Status(status) => {
-                    if 1 == status {
-                        event_filter.is_final = Some(true);
-                    } else if 2 == status {
-                        event_filter.is_final = Some(false);
-                    } else {
-                        event_filter.is_final = None;
-                    }
-                }
-            }
-        }
-    });
+    let event_filter = to_event_filter(request.into_inner().filters)?;
 
     let events: Vec<grpc_model::ScExecutionEvent> = grpc
         .execution_controller
@@ -557,11 +503,10 @@ pub(crate) fn get_selector_draws(
     let selection_draws = {
         let slot_start = slot_range.0.unwrap();
         let slot_end = slot_range.1.unwrap();
-        let hashset_addresses = addresses.clone().into();
         let restrict_to_addresses = if addresses.is_empty() {
             None
         } else {
-            Some(&hashset_addresses)
+            Some(&addresses)
         };
 
         grpc.selector_controller
@@ -644,7 +589,7 @@ pub(crate) fn get_status(
         node_id: grpc.node_id.to_string(),
         version: grpc.version.to_string(),
         current_time: Some(now.into()),
-        current_cycle: current_cycle.into(),
+        current_cycle: current_cycle,
         current_cycle_time: Some(current_cycle_time.into()),
         next_cycle_time: Some(next_cycle_time.into()),
         last_executed_final_slot: Some(state.final_cursor.into()),
