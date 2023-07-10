@@ -1120,6 +1120,7 @@ struct Managers {
     factory_manager: Box<dyn FactoryManager>,
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn stop(
     _consensus_event_receiver: MassaReceiver<ConsensusEvent>,
     Managers {

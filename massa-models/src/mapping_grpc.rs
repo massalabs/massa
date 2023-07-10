@@ -409,7 +409,7 @@ impl From<ConsensusStats> for grpc_model::ConsensusStats {
             start_timespan: Some(value.start_timespan.into()),
             end_timespan: Some(value.end_timespan.into()),
             final_block_count: value.final_block_count,
-            stale_block_count: value.stale_block_count as u64,
+            stale_block_count: value.stale_block_count,
             clique_count: value.clique_count,
         }
     }

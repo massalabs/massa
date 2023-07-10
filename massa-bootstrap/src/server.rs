@@ -78,6 +78,7 @@ pub struct BootstrapManager {
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     listener_stopper: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender<()>,
+    /// shared white/black list
     pub white_black_list: SharedWhiteBlackList<'static>,
 }
 

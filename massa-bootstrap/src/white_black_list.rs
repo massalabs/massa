@@ -81,7 +81,7 @@ impl SharedWhiteBlackList<'_> {
         } else {
             let hash_set = HashSet::from_iter(ips);
             write_lock.white_list = Some(hash_set.clone());
-            hash_set.clone()
+            hash_set
         };
         self.write_list_to_file(&self.white_path, &list)?;
         Ok(())
