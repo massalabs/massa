@@ -810,4 +810,14 @@ impl FinalState {
 
         true
     }
+
+    /// Initialize the execution trail hash to zero.
+    pub fn init_execution_trail_hash(&mut self) {
+        let mut db_batch = DBBatch::new();
+        db_batch.insert(
+            EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
+            Some(massa_hash::Hash::zero().to_bytes().to_vec()),
+        );
+        self.db.write().write_batch(db_batch, DBBatch::new(), None);
+    }
 }
