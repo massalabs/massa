@@ -22,7 +22,6 @@ use massa_proto_rs::massa::api::v1::{
 };
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_storage::Storage;
-use massa_versioning::versioning::MipStore;
 
 use massa_wallet::Wallet;
 use tokio::sync::oneshot;

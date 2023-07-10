@@ -376,7 +376,7 @@ pub(crate) fn get_operations(
                         })
                         .collect::<Vec<OperationId>>();
 
-                    operations_ids.extend(ids.iter().map(|id| id.clone()));
+                    operations_ids.extend(ids.iter().copied());
                 }
                 grpc_api::get_operations_filter::Filter::OperationTypes(ope_types) => {
                     filter_ope_types.extend_from_slice(&ope_types.op_types);
@@ -418,10 +418,8 @@ pub(crate) fn get_operations(
         .filter_map(|secure_share| {
             let (secure_share, block_ids) = secure_share;
             let ope_type: grpc_model::OpType = secure_share.content.op.clone().into();
-            if !filter_ope_types.is_empty() {
-                if !filter_ope_types.contains(&(ope_type as i32)) {
-                    return None;
-                }
+            if !filter_ope_types.is_empty() && !filter_ope_types.contains(&(ope_type as i32)) {
+                return None;
             }
 
             Some(grpc_model::OperationWrapper {
@@ -537,7 +535,7 @@ pub(crate) fn get_selector_draws(
 
                 grpc_model::SlotDraw {
                     slot: Some(v_slot.into()),
-                    block_producer: block_producer,
+                    block_producer,
                     endorsement_draws: endorsement_producers,
                 }
             })
@@ -589,7 +587,7 @@ pub(crate) fn get_status(
         node_id: grpc.node_id.to_string(),
         version: grpc.version.to_string(),
         current_time: Some(now.into()),
-        current_cycle: current_cycle,
+        current_cycle,
         current_cycle_time: Some(current_cycle_time.into()),
         next_cycle_time: Some(next_cycle_time.into()),
         last_executed_final_slot: Some(state.final_cursor.into()),

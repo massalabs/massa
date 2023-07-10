@@ -42,7 +42,7 @@ fn get_request_parameters(request: NewOperationsRequest) -> (Vec<OperationId>, V
                         })
                         .collect::<Vec<OperationId>>();
 
-                    operations_ids.extend(ids.iter().map(|id| *id));
+                    operations_ids.extend(ids.iter().copied());
                 }
                 grpc_api::new_operations_filter::Filter::OperationTypes(ope_types) => {
                     filter_ope_types.extend_from_slice(&ope_types.op_types)

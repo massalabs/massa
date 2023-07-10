@@ -2,26 +2,21 @@
 
 use std::collections::HashSet;
 use std::net::IpAddr;
-use std::{collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
 use crate::error::GrpcError;
 use crate::server::MassaPrivateGrpc;
-use hyper::client::connect::Connect;
 use massa_execution_exports::ExecutionQueryRequest;
 use massa_hash::Hash;
 use massa_models::config::CompactConfig;
-use massa_models::error::ModelsError;
 use massa_models::node::NodeId;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
-use massa_proto_rs::massa::model::v1::MipComponent::Keypair;
 use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use massa_versioning::keypair_factory::KeyPairFactory;
-use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use tracing::warn;
 // use massa_proto_rs::massa::model::v1 "add_to_bootstrap_blacklist"as grpc_model;
 
@@ -300,7 +295,7 @@ pub(crate) fn get_node_status(
         node_ip,
         version: grpc.version.to_string(),
         current_time: Some(now.into()),
-        current_cycle: current_cycle,
+        current_cycle,
         current_cycle_time: Some(current_cycle_time.into()),
         next_cycle_time: Some(next_cycle_time.into()),
         connected_nodes,

@@ -7,7 +7,6 @@ use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareB
 use massa_models::error::ModelsError;
 use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::secure_share::SecureShareDeserializer;
-use massa_proto_rs::google::rpc::Status;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::io::ErrorKind;
