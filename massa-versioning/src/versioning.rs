@@ -689,7 +689,7 @@ impl MipStore {
     }
 
     #[allow(dead_code)]
-    fn update_for_network_shutdown(
+    pub fn update_for_network_shutdown(
         &mut self,
         shutdown_start: Slot,
         shutdown_end: Slot,
