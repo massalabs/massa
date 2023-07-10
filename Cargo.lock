@@ -2438,7 +2438,6 @@ dependencies = [
  "dialoguer",
  "erased-serde",
  "lazy_static",
- "massa-proto-rs",
  "massa_api_exports",
  "massa_models",
  "massa_sdk",
