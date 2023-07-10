@@ -688,6 +688,25 @@ impl MipStore {
         )
     }
 
+    #[allow(dead_code)]
+    fn update_for_network_shutdown(
+        &mut self,
+        shutdown_start: Slot,
+        shutdown_end: Slot,
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> Result<(), ModelsError> {
+        let mut guard = self.0.write();
+        guard.update_for_network_shutdown(
+            shutdown_start,
+            shutdown_end,
+            thread_count,
+            t0,
+            genesis_timestamp,
+        )
+    }
+
     // DB
 
     pub fn update_batches(
@@ -1153,7 +1172,6 @@ impl MipStoreRaw {
         Ok(is_consistent)
     }
 
-    #[allow(dead_code)]
     fn update_for_network_shutdown(
         &mut self,
         shutdown_start: Slot,
