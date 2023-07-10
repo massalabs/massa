@@ -122,7 +122,8 @@ impl FinalState {
 
         if reset_final_state {
             // delete the execution trail hash
-            self.db
+            final_state
+                .db
                 .write()
                 .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
             final_state.async_pool.reset();
@@ -712,15 +713,19 @@ impl FinalState {
 
         // check if the execution trial hash is present and valid
         {
-            let execution_trail_hash_serialized: [u8] =
-                match db.get(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
-                    Some(v) => v,
-                    None => {
+            let execution_trail_hash_serialized =
+                match db.get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec()) {
+                    Ok(Some(v)) => v,
+                    Ok(None) => {
                         warn!("No execution trail hash found in DB");
                         return false;
                     }
+                    Err(err) => {
+                        warn!("Error reading execution trail hash from DB: {}", err);
+                        return false;
+                    }
                 };
-            if let Err(err) = massa_hash::Hash::try_from(&execution_trail_hash_serialized) {
+            if let Err(err) = massa_hash::Hash::try_from(&execution_trail_hash_serialized[..]) {
                 warn!("Invalid execution trail hash found in DB: {}", err);
                 return false;
             }
