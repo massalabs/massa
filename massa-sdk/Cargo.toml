@@ -14,4 +14,4 @@ tracing = {version =  "0.1", features = ["log"]}
 massa_api_exports = { path = "../massa-api-exports" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "f0bde75", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "7c47fd55c706812b060568a159838b76d4852495", features = ["tonic"] }
