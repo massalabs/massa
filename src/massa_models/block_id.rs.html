@@ -165,114 +165,6 @@
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
 <span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
 <span class="kw">use </span><span class="kw">crate</span>::secure_share::Id;
@@ -282,19 +174,19 @@
     U64VarIntSerializer,
 };
 <span class="kw">use </span>nom::{
-    error::{context, ContextError, ErrorKind, ParseError},
+    error::{context, ContextError, ParseError},
     IResult,
 };
 <span class="kw">use </span>serde_with::{DeserializeFromStr, SerializeDisplay};
 <span class="kw">use </span>std::collections::Bound::Included;
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::str::FromStr;
-<span class="kw">use </span>transition::Versioned;
+
+<span class="doccomment">/// Size in bytes of a serialized block ID
+</span><span class="kw">const </span>BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 <span class="doccomment">/// block id
-</span><span class="attr">#[allow(missing_docs)]
-#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
-#[derive(
+</span><span class="attr">#[derive(
     Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
 )]
 </span><span class="kw">pub struct </span>BlockId(<span class="kw">pub </span>Hash);
@@ -303,73 +195,24 @@
 
 <span class="kw">impl </span>Id <span class="kw">for </span>BlockId {
     <span class="kw">fn </span>new(hash: Hash) -&gt; <span class="self">Self </span>{
-        BlockId::BlockIdV0(BlockIdV0(hash))
+        BlockId(hash)
     }
 
-    <span class="kw">fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
-        <span class="kw">match </span><span class="self">self </span>{
-            BlockId::BlockIdV0(block_id) =&gt; block_id.get_hash(),
-        }
-    }
-}
-
-<span class="kw">impl </span>BlockId {
-    <span class="doccomment">/// first bit of the hashed block id
-    </span><span class="kw">pub fn </span>get_first_bit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            BlockId::BlockIdV0(block_id) =&gt; block_id.get_first_bit(),
-        }
-    }
-
-    <span class="doccomment">/// version of the block id
-    </span><span class="kw">pub fn </span>get_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="kw">match </span><span class="self">self </span>{
-            BlockId::BlockIdV0(block_id) =&gt; block_id.get_version(),
-        }
-    }
-
-    <span class="doccomment">/// Generate a version 0 block id from an hash used only for tests
-    </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
-    </span><span class="kw">pub fn </span>generate_from_hash(hash: Hash) -&gt; BlockId {
-        BlockId::BlockIdV0(BlockIdV0(hash))
-    }
-}
-
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
-</span><span class="kw">impl </span>BlockId {
     <span class="kw">fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
     </span>}
-
-    <span class="doccomment">/// first bit of the hashed block id
-    </span><span class="kw">pub fn </span>get_first_bit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.<span class="number">0</span>.to_bytes()[<span class="number">0</span>] &gt;&gt; <span class="number">7 </span>== <span class="number">1
-    </span>}
-
-    <span class="doccomment">/// version of the block id
-    </span><span class="kw">pub fn </span>get_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="self">Self</span>::VERSION
-    }
 }
 
 <span class="kw">const </span>BLOCKID_PREFIX: char = <span class="string">&#39;B&#39;</span>;
+<span class="kw">const </span>BLOCKID_VERSION: u64 = <span class="number">0</span>;
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="kw">match </span><span class="self">self </span>{
-            BlockId::BlockIdV0(block_id) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, block_id),
-        }
-    }
-}
-
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
-</span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
         <span class="comment">// might want to allocate the vector with capacity in order to avoid re-allocation
         </span><span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = Vec::new();
         u64_serializer
-            .serialize(<span class="kw-2">&amp;</span><span class="self">Self</span>::VERSION, <span class="kw-2">&amp;mut </span>bytes)
+            .serialize(<span class="kw-2">&amp;</span>BLOCKID_VERSION, <span class="kw-2">&amp;mut </span>bytes)
             .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
         bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
         <span class="macro">write!</span>(
@@ -394,9 +237,8 @@
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # use massa_models::block_id::BlockId;
-    /// # use crate::massa_models::secure_share::Id;
     /// # let hash = Hash::compute_from(b&quot;test&quot;);
-    /// # let block_id = BlockId::new(hash);
+    /// # let block_id = BlockId(hash);
     /// let ser = block_id.to_string();
     /// let res_block_id = BlockId::from_str(&amp;ser).unwrap();
     /// assert_eq!(block_id, res_block_id);
@@ -411,95 +253,63 @@
                     .into_vec()
                     .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>;
                 <span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
-                <span class="kw">let </span>(rest, version) = u64_deserializer
+                <span class="kw">let </span>(rest, _version) = u64_deserializer
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
                     .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>;
-                <span class="kw">match </span>version {
-                    <span class="number">0 </span>=&gt; <span class="prelude-val">Ok</span>(<span class="macro">BlockIdVariant!</span>[<span class="string">&quot;0&quot;</span>](<span class="macro">BlockId!</span>[<span class="string">&quot;0&quot;</span>](Hash::from_bytes(
-                        rest.try_into()
-                            .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>,
-                    )))),
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::BlockIdParseError),
-                }
+                <span class="prelude-val">Ok</span>(BlockId(Hash::from_bytes(
+                    rest.try_into()
+                        .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>,
+                )))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::BlockIdParseError),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
-</span><span class="kw">impl </span>FromStr <span class="kw">for </span>BlockId {
-    <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
-    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>chars = s.chars();
-        <span class="kw">match </span>chars.next() {
-            <span class="prelude-val">Some</span>(prefix) <span class="kw">if </span>prefix == BLOCKID_PREFIX =&gt; {
-                <span class="kw">let </span>data = chars.collect::&lt;String&gt;();
-                <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
-                    .with_check(<span class="prelude-val">None</span>)
-                    .into_vec()
-                    .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>;
-                <span class="kw">let </span>u64_deserializer = U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX));
-                <span class="kw">let </span>(rest, version) = u64_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>decoded_bs58_check[..])
-                    .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>;
-                <span class="kw">match </span>version {
-                    <span class="number">0 </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>(Hash::from_bytes(
-                        rest.try_into()
-                            .map_err(|<span class="kw">_</span>| ModelsError::BlockIdParseError)<span class="question-mark">?</span>,
-                    ))),
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::BlockIdParseError),
-                }
-            }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ModelsError::BlockIdParseError),
-        }
+<span class="kw">impl </span>BlockId {
+    <span class="doccomment">/// block id to bytes
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8; BLOCK_ID_SIZE_BYTES] {
+        <span class="self">self</span>.<span class="number">0</span>.to_bytes()
     }
+
+    <span class="doccomment">/// block id into bytes
+    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; [u8; BLOCK_ID_SIZE_BYTES] {
+        <span class="self">self</span>.<span class="number">0</span>.into_bytes()
+    }
+
+    <span class="doccomment">/// block id from bytes
+    </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8; BLOCK_ID_SIZE_BYTES]) -&gt; BlockId {
+        BlockId(Hash::from_bytes(data))
+    }
+
+    <span class="doccomment">/// first bit of the hashed block id
+    </span><span class="kw">pub fn </span>get_first_bit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.to_bytes()[<span class="number">0</span>] &gt;&gt; <span class="number">7 </span>== <span class="number">1
+    </span>}
 }
 
 <span class="doccomment">/// Serializer for `BlockId`
 </span><span class="attr">#[derive(Default, Clone)]
-</span><span class="kw">pub struct </span>BlockIdSerializer {
-    version_serializer: U64VarIntSerializer,
-}
+</span><span class="kw">pub struct </span>BlockIdSerializer;
 
 <span class="kw">impl </span>BlockIdSerializer {
     <span class="doccomment">/// Creates a new serializer for `BlockId`
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            version_serializer: U64VarIntSerializer::new(),
-        }
-    }
+        <span class="self">Self
+    </span>}
 }
 
 <span class="kw">impl </span>Serializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdSerializer {
     <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BlockId, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="self">self</span>.version_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.get_version(), buffer)<span class="question-mark">?</span>;
-        <span class="kw">match </span>value {
-            BlockId::BlockIdV0(block_id) =&gt; <span class="self">self</span>.serialize(block_id, buffer),
-        }
-    }
-}
-
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;BlockId&quot;</span>))]
-</span><span class="kw">impl </span>Serializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdSerializer {
-    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BlockId, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        buffer.extend(value.<span class="number">0</span>.to_bytes());
+        buffer.extend(value.to_bytes());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="doccomment">/// Deserializer for `BlockId`
-</span><span class="attr">#[derive(Clone)]
+</span><span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>BlockIdDeserializer {
     hash_deserializer: HashDeserializer,
-    version_deserializer: U64VarIntDeserializer,
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>BlockIdDeserializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
 }
 
 <span class="kw">impl </span>BlockIdDeserializer {
@@ -507,37 +317,11 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             hash_deserializer: HashDeserializer::new(),
-            version_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
         }
     }
 }
 
 <span class="kw">impl </span>Deserializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockId, E&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
-        }
-        <span class="kw">let </span>(rest, op_id_version) =
-            <span class="self">self</span>.version_deserializer
-                .deserialize(buffer)
-                .map_err(|<span class="kw">_</span>: nom::Err&lt;E&gt;| {
-                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
-                })<span class="question-mark">?</span>;
-        <span class="kw">match </span>op_id_version {
-            &lt;<span class="macro">BlockId!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
-                <span class="kw">let </span>(rest, op_id) = <span class="self">self</span>.deserialize(rest)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((rest, <span class="macro">BlockIdVariant!</span>[<span class="string">&quot;0&quot;</span>](op_id)))
-            }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
-        }
-    }
-}
-
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;BlockId&quot;</span>))]
-</span><span class="kw">impl </span>Deserializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdDeserializer {
     <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],

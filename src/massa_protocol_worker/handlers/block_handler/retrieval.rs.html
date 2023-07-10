@@ -1508,7 +1508,6 @@
 <a href="#1508" id="1508">1508</a>
 <a href="#1509" id="1509">1509</a>
 <a href="#1510" id="1510">1510</a>
-<a href="#1511" id="1511">1511</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
@@ -1536,7 +1535,7 @@
 };
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
-<span class="kw">use </span>massa_hash::Hash;
+<span class="kw">use </span>massa_hash::{Hash, HASH_SIZE_BYTES};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
@@ -1544,7 +1543,7 @@
     block_header::SecuredHeader,
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
-    operation::{OperationId, OperationIdSerializer, SecureShareOperation},
+    operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
     secure_share::{Id, SecureShare},
     slot::Slot,
@@ -2386,13 +2385,12 @@
             }
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="kw">let </span><span class="kw-2">mut </span>total_hash: Vec&lt;u8&gt; = Vec::new();
-        <span class="kw">let </span>op_id_serializer = OperationIdSerializer::new();
-        <span class="kw">for </span>op_id <span class="kw">in </span>operation_ids.iter() {
-            op_id_serializer
-                .serialize(op_id, <span class="kw-2">&amp;mut </span>total_hash)
-                .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))<span class="question-mark">?</span>;
-        }
+        <span class="kw">let </span><span class="kw-2">mut </span>total_hash: Vec&lt;u8&gt; =
+            Vec::with_capacity(operation_ids.len().saturating_mul(HASH_SIZE_BYTES));
+        operation_ids.iter().for_each(|op_id| {
+            <span class="kw">let </span>op_hash = op_id.get_hash().into_bytes();
+            total_hash.extend(op_hash);
+        });
 
         <span class="comment">// Check operation_list against expected operations hash from header.
         </span><span class="kw">if </span>header.content.operation_merkle_root == Hash::compute_from(<span class="kw-2">&amp;</span>total_hash) {
