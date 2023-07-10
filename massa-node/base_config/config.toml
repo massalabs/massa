@@ -162,6 +162,8 @@
     read_write_limit_bytes_per_second = 2_000_000_000
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000
+    # timeout after which a peer tester will consider the peer unreachable
+    tester_timeout = 500
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
     # max cache size for which blocks our node knows about
