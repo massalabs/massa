@@ -2,7 +2,6 @@
 
 use massa_bootstrap::white_black_list::SharedWhiteBlackList;
 use massa_models::node::NodeId;
-use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::convert::Infallible;
