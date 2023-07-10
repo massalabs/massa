@@ -445,7 +445,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
-    fn raw_get_data_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<Vec<u8>> {
+    fn get_ds_value_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -489,7 +489,7 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    fn raw_set_data_wasmv1(&self, key: &[u8], value: &[u8], address: Option<String>) -> Result<()> {
+    fn set_ds_value_wasmv1(&self, key: &[u8], value: &[u8], address: Option<String>) -> Result<()> {
         let mut context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -534,7 +534,7 @@ impl Interface for InterfaceImpl {
     /// * address: string representation of the address
     /// * key: string key of the datastore entry
     /// * value: value to append
-    fn raw_append_data_wasmv1(
+    fn append_ds_value_wasmv1(
         &self,
         key: &[u8],
         value: &[u8],
@@ -581,7 +581,7 @@ impl Interface for InterfaceImpl {
     /// # Arguments
     /// * address: string representation of the address
     /// * key: string key of the datastore entry to delete
-    fn raw_delete_data_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<()> {
+    fn delete_ds_entry_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<()> {
         let mut context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -628,7 +628,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
-    fn has_data_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<bool> {
+    fn ds_entry_exists_wasmv1(&self, key: &[u8], address: Option<String>) -> Result<bool> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -1541,13 +1541,13 @@ mod tests {
         let interface = InterfaceImpl::new_default(sender_addr, None);
 
         interface
-            .raw_set_data_wasmv1(b"k1", b"v1", Some(sender_addr.to_string()))
+            .set_ds_value_wasmv1(b"k1", b"v1", Some(sender_addr.to_string()))
             .unwrap();
         interface
-            .raw_set_data_wasmv1(b"k2", b"v2", Some(sender_addr.to_string()))
+            .set_ds_value_wasmv1(b"k2", b"v2", Some(sender_addr.to_string()))
             .unwrap();
         interface
-            .raw_set_data_wasmv1(b"l3", b"v3", Some(sender_addr.to_string()))
+            .set_ds_value_wasmv1(b"l3", b"v3", Some(sender_addr.to_string()))
             .unwrap();
 
         let keys = interface.get_keys_wasmv1(b"k", None).unwrap();
