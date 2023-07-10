@@ -3,12 +3,15 @@
 use crate::error::GrpcError;
 use crate::server::MassaGrpc;
 use futures_util::StreamExt;
-use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_models::operation::OperationId;
+use massa_proto_rs::massa::api::v1::{self as grpc_api, NewOperationsRequest};
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use std::pin::Pin;
+use std::str::FromStr;
 use tokio::select;
 use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
-use tracing::log::error;
+use tracing::log::{error, warn};
 
 /// Type declaration for NewOperations
 pub type NewOperationsStreamType = Pin<
@@ -18,6 +21,37 @@ pub type NewOperationsStreamType = Pin<
             + 'static,
     >,
 >;
+
+fn get_request_parameters(request: NewOperationsRequest) -> (Vec<OperationId>, Vec<i32>) {
+    let mut operations_ids = Vec::new();
+    let mut filter_ope_types = Vec::new();
+
+    request.filters.into_iter().for_each(|query| {
+        if let Some(filter) = query.filter {
+            match filter {
+                grpc_api::new_operations_filter::Filter::OperationIds(ids) => {
+                    let ids = ids
+                        .operation_ids
+                        .into_iter()
+                        .filter_map(|id| match OperationId::from_str(id.as_str()) {
+                            Ok(ope) => Some(ope),
+                            Err(e) => {
+                                warn!("Invalid operation id: {}", e);
+                                None
+                            }
+                        })
+                        .collect::<Vec<OperationId>>();
+
+                    operations_ids.extend(ids.iter().map(|id| *id));
+                }
+                grpc_api::new_operations_filter::Filter::OperationTypes(ope_types) => {
+                    filter_ope_types.extend_from_slice(&ope_types.op_types)
+                }
+            }
+        }
+    });
+    (operations_ids, filter_ope_types)
+}
 
 /// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(

@@ -14,7 +14,7 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{cmp::max, cmp::Ordering, cmp::PartialOrd, collections::BTreeSet, sync::Arc};
-use tracing::{debug, warn};
+use tracing::{debug, log::trace, warn};
 
 use crate::types::OperationInfo;
 
@@ -411,6 +411,14 @@ impl OperationPool {
                 let op = ops
                     .get(new_op_id)
                     .expect("operation not found in storage but listed as owned");
+
+                // Broadcast operations to active channel subscribers.
+                if self.config.broadcast_enabled {
+                    if let Err(err) = self.channels.operation_sender.send(op.clone()) {
+                        trace!("error, failed to broadcast operations {}: {}", op.id, err);
+                    }
+                }
+
                 self.sorted_ops.push(OperationInfo::from_op(
                     op,
                     self.config.operation_validity_periods,
