@@ -431,6 +431,12 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -441,7 +447,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
-<span class="kw">use </span>massa_models::version::{Version, VersionDeserializer};
+<span class="kw">use </span>massa_models::version::VersionDeserializer;
 <span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -509,13 +515,19 @@
         version_deserializer: VersionDeserializer,
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
-        our_version: Version,
+        config: <span class="kw-2">&amp;</span>ProtocolConfig,
     ) -&gt; PeerNetResult&lt;PeerId&gt; {
+        <span class="kw">let </span>our_version = config.version;
         <span class="kw">let </span>result = {
             <span class="kw">let </span><span class="kw-2">mut </span>socket =
-                std::net::TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, Duration::from_millis(<span class="number">500</span>))
+                std::net::TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, config.timeout_connection.into())
                     .map_err(|e| PeerNetError::PeerConnectionError.new(<span class="string">&quot;connect&quot;</span>, e, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
-
+            socket
+                .set_read_timeout(<span class="prelude-val">Some</span>(config.message_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;read timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+            socket
+                .set_write_timeout(<span class="prelude-val">Some</span>(config.message_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;write timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
             <span class="comment">// data.receive() from Endpoint
             </span><span class="kw">let </span><span class="kw-2">mut </span>len_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="number">4</span>];
             socket
@@ -790,7 +802,7 @@
                                                 VersionDeserializer::new(),
                                                 PeerIdDeserializer::new(),
                                                 <span class="kw-2">*</span>addr,
-                                                protocol_config.version,
+                                                <span class="kw-2">&amp;</span>protocol_config,
                                             );
 
                                             <span class="comment">// let _res =  network_manager.try_connect(
@@ -846,7 +858,7 @@
                             VersionDeserializer::new(),
                             PeerIdDeserializer::new(),
                             listener,
-                            protocol_config.version,
+                            <span class="kw-2">&amp;</span>protocol_config,
                         );
                         <span class="comment">// let res =  network_manager.try_connect(
                         //     listener,
