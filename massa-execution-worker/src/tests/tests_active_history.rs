@@ -55,6 +55,7 @@ mod tests {
                 },
                 executed_ops_changes: Default::default(),
                 executed_denunciations_changes: Default::default(),
+                execution_trail_hash_change: Default::default(),
             },
             events: Default::default(),
         };
