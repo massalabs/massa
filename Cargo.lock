@@ -144,7 +144,7 @@ checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
 [[package]]
 name = "as-ffi-bindings"
 version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.4.0#7767634dfc22407bd2b0fa0e4fd7432231b10dd7"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=0.5.0#512792515055573e600c0054a4b44bbcbfeb779a"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -1043,12 +1043,12 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.4.0"
+version = "5.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
+checksum = "6943ae99c34386c84a470c499d3414f66502a41340aa895406e0d2e4a207b91d"
 dependencies = [
  "cfg-if",
- "hashbrown 0.12.3",
+ "hashbrown 0.14.0",
  "lock_api",
  "once_cell",
  "parking_lot_core",
@@ -1302,9 +1302,9 @@ dependencies = [
 
 [[package]]
 name = "equivalent"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88bffebc5d80432c9b140ee17875ff173a8ab62faad5b257da912bd2f6c1c0a1"
+checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "erased-serde"
@@ -2512,7 +2512,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=7c47fd55c706812b060568a159838b76d4852495#7c47fd55c706812b060568a159838b76d4852495"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=35da139#35da139eb276971ce0526c91fbf918714818fa2f"
 dependencies = [
  "glob",
  "prost",
@@ -2525,7 +2525,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#ca2c7f1b4e5fb24764f9f34bd38c70bfd6aa526a"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#a2ad6ea81ee6ad7b217319667529fa17410a07b4"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2536,7 +2536,7 @@ dependencies = [
  "glob",
  "loupe",
  "more-asserts 0.3.1",
- "num_enum",
+ "num_enum 0.6.1",
  "parking_lot",
  "prost",
  "prost-build",
@@ -2545,7 +2545,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serial_test 1.0.0",
+ "serial_test 2.0.0",
  "sha2 0.10.6",
  "thiserror",
  "tracing",
@@ -2664,7 +2664,7 @@ dependencies = [
  "mockall",
  "nom",
  "num",
- "num_enum",
+ "num_enum 0.5.11",
  "parking_lot",
  "rand 0.8.5",
  "serde",
@@ -2952,6 +2952,7 @@ dependencies = [
  "massa_versioning",
  "massa_wallet",
  "num",
+ "parking_lot",
  "serde",
  "thiserror",
  "tokio",
@@ -2992,7 +2993,7 @@ dependencies = [
  "massa_models",
  "massa_serialization",
  "nom",
- "num_enum",
+ "num_enum 0.5.11",
  "serde",
  "serde_json",
  "tempfile",
@@ -3052,7 +3053,7 @@ dependencies = [
  "massa_time",
  "nom",
  "num",
- "num_enum",
+ "num_enum 0.5.11",
  "rust_decimal",
  "serde",
  "serde_with",
@@ -3072,7 +3073,7 @@ dependencies = [
  "massa_models",
  "massa_serialization",
  "nom",
- "num_enum",
+ "num_enum 0.5.11",
  "rand 0.8.5",
  "rocksdb",
  "schnellru",
@@ -3197,7 +3198,7 @@ dependencies = [
  "massa_versioning",
  "nom",
  "num",
- "num_enum",
+ "num_enum 0.5.11",
  "parking_lot",
  "peernet",
  "rand 0.8.5",
@@ -3295,7 +3296,7 @@ dependencies = [
  "more-asserts 0.3.1",
  "nom",
  "num",
- "num_enum",
+ "num_enum 0.5.11",
  "parking_lot",
  "tempfile",
  "thiserror",
@@ -3611,7 +3612,16 @@ version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f646caf906c20226733ed5b1374287eb97e3c2a5c227ce668c1f2ce20ae57c9"
 dependencies = [
- "num_enum_derive",
+ "num_enum_derive 0.5.11",
+]
+
+[[package]]
+name = "num_enum"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a015b430d3c108a207fd776d2e2196aaf8b1cf8cf93253e3a097ff3085076a1"
+dependencies = [
+ "num_enum_derive 0.6.1",
 ]
 
 [[package]]
@@ -3624,6 +3634,18 @@ dependencies = [
  "proc-macro2 1.0.64",
  "quote 1.0.29",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96667db765a921f7b295ffee8b60472b686a51d4f21c2ee4ffdb94c7013b65a6"
+dependencies = [
+ "proc-macro-crate 1.3.1",
+ "proc-macro2 1.0.64",
+ "quote 1.0.29",
+ "syn 2.0.25",
 ]
 
 [[package]]
@@ -4393,9 +4415,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ab07dc67230e4a4718e70fd5c20055a4334b121f1f9db8fe63ef39ce9b8c846"
+checksum = "e5ea92a5b6195c6ef2a0295ea818b312502c6fc94dde986c5553242e18fd4ce2"
 
 [[package]]
 name = "region"
@@ -4566,9 +4588,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.21.3"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b19faa85ecb5197342b54f987b142fb3e30d0c90da40f80ef4fa9a726e6676ed"
+checksum = "79ea77c539259495ce8ca47f53e66ae0330a8819f67e23ac96ca02f50e7b7d36"
 dependencies = [
  "log",
  "ring",
@@ -5862,18 +5884,18 @@ checksum = "ca6ad05a4870b2bf5fe995117d3728437bd27d7cd5f06f13c17443ef369775a1"
 
 [[package]]
 name = "wasm-encoder"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18c41dbd92eaebf3612a39be316540b8377c871cb9bde6b064af962984912881"
+checksum = "b2f8e9778e04cbf44f58acc301372577375a666b966c50b03ef46144f80436a8"
 dependencies = [
  "leb128",
 ]
 
 [[package]]
 name = "wasmer"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78caedecd8cb71ed47ccca03b68d69414a3d278bb031e6f93f15759344efdd52"
+checksum = "ea790bcdfb4e6e9d1e5ddf75b4699aac62b078fcc9f27f44e1748165ceea67bf"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -5899,9 +5921,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-compiler"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "726a8450541af4a57c34af7b6973fdbfc79f896cc7e733429577dfd1d1687180"
+checksum = "f093937725e242e5529fed27e08ff836c011a9ecc22e6819fb818c2ac6ff5f88"
 dependencies = [
  "backtrace",
  "cfg-if",
@@ -5923,9 +5945,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-compiler-cranelift"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1e5633f90f372563ebbdf3f9799c7b29ba11c90e56cf9b54017112d2e656c95"
+checksum = "3b27b1670d27158789ebe14e4da3902c72132174884a1c6a3533ce4fd9dd83db"
 dependencies = [
  "cranelift-codegen",
  "cranelift-entity",
@@ -5942,9 +5964,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-compiler-singlepass"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4d38957de6f452115c0af3ff08cec268ee248d665b54d4bbf7da60b7453cb97"
+checksum = "02509aaab7e302fc551ff03512807514b379ba32136892e96fcaa5b62a3228de"
 dependencies = [
  "byteorder",
  "dynasm",
@@ -5961,9 +5983,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-derive"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97901fdbaae383dbb90ea162cc3a76a9fa58ac39aec7948b4c0b9bbef9307738"
+checksum = "13ae8286cba2acb10065a4dac129c7c7f7bcd24acd6538555d96616eea16bc27"
 dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.64",
@@ -5973,9 +5995,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-middlewares"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e028013811035111beb768074b6ccc09eabd77811b1e01fd099b5471924ca16"
+checksum = "3bc8cafe02112ecf21a7fc1d090ac0f0220a86a8d4f561c24e382a4c2ee4addc"
 dependencies = [
  "wasmer",
  "wasmer-types",
@@ -5984,9 +6006,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-object"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b6a25e04fdd0f2173bebfce2804ac1fba5e45827afed76876bf414e74244aae"
+checksum = "bda85dbe7e313fa98a22d11045885db631871e1d17382297da401f2be7e4c957"
 dependencies = [
  "object 0.28.4",
  "thiserror",
@@ -5995,9 +6017,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-types"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67f1f2839f4f61509550e4ddcd0e658e19f3af862b51c79fda15549d735d659b"
+checksum = "918d2f0bb5eaa95a80c06be33f21dee92f40f12cd0982da34490d121a99d244b"
 dependencies = [
  "bytecheck",
  "enum-iterator",
@@ -6011,9 +6033,9 @@ dependencies = [
 
 [[package]]
 name = "wasmer-vm"
-version = "3.3.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043118ec4f16d1714fed3aab758b502b864bd865e1d5188626c9ad290100563f"
+checksum = "a1e000c2cbd4f9805427af5f3b3446574caf89ab3a1e66c2f3579fbde22b072b"
 dependencies = [
  "backtrace",
  "cc",
@@ -6048,9 +6070,9 @@ dependencies = [
 
 [[package]]
 name = "wast"
-version = "60.0.0"
+version = "61.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd06cc744b536e30387e72a48fdd492105b9c938bb4f415c39c616a7a0a697ad"
+checksum = "dc6b347851b52fd500657d301155c79e8c67595501d179cef87b6f04ebd25ac4"
 dependencies = [
  "leb128",
  "memchr",
@@ -6060,9 +6082,9 @@ dependencies = [
 
 [[package]]
 name = "wat"
-version = "1.0.66"
+version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5abe520f0ab205366e9ac7d3e6b2fc71de44e32a2b58f2ec871b6b575bdcea3b"
+checksum = "459e764d27c3ab7beba1ebd617cc025c7e76dea6e7c5ce3189989a970aea3491"
 dependencies = [
  "wast",
 ]
