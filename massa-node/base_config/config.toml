@@ -72,6 +72,8 @@
         concurrency_limit_per_connection = 32
         # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
         max_concurrent_streams = 1024
+        # max number of arguments per gRPC request
+        max_arguments = 128
         # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
         tcp_nodelay = true
         # max number of future periods considered during requests
@@ -119,6 +121,8 @@
         concurrency_limit_per_connection = 32
         # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
         max_concurrent_streams = 1024
+        # max number of arguments per gRPC request
+        max_arguments = 128
         # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
         tcp_nodelay = true
         # max number of future periods considered during requests

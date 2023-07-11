@@ -41,6 +41,8 @@ pub struct GrpcConfig {
     pub initial_connection_window_size: Option<u32>,
     /// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     pub max_concurrent_streams: Option<u32>,
+    /// max number of arguments per gRPC request
+    pub max_arguments: u64,
     /// set whether TCP keepalive messages are enabled on accepted connections
     pub tcp_keepalive: Option<Duration>,
     /// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default

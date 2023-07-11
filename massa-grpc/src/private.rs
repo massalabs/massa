@@ -97,11 +97,10 @@ pub(crate) fn add_staking_secret_keys(
         ));
     }
 
-    //TODO customize number of accepted parameters
-    if secret_keys.len() as u32 > grpc.grpc_config.max_parameter_size {
+    if secret_keys.len() as u64 > grpc.grpc_config.max_arguments {
         return Err(GrpcError::InvalidArgument(format!(
-            "too many secret received. Only a maximum of {} secret keys are accepted per request",
-            grpc.grpc_config.max_parameter_size
+            "too many secret keys received. Only a maximum of {} secret keys are accepted per request",
+            grpc.grpc_config.max_arguments
         )));
     }
 
@@ -128,11 +127,10 @@ pub(crate) fn ban_nodes_by_ids(
         ));
     }
 
-    //TODO customize number of accepted parameters
-    if node_ids.len() as u32 > grpc.grpc_config.max_parameter_size {
+    if node_ids.len() as u64 > grpc.grpc_config.max_arguments {
         return Err(GrpcError::InvalidArgument(format!(
             "too many node ids received. Only a maximum of {} node ids are accepted per request",
-            grpc.grpc_config.max_parameter_size
+            grpc.grpc_config.max_arguments
         )));
     }
 
@@ -403,11 +401,10 @@ pub(crate) fn sign_messages(
         ));
     }
 
-    //TODO customize number of accepted parameters
-    if messages.len() as u32 > grpc.grpc_config.max_parameter_size {
+    if messages.len() as u64 > grpc.grpc_config.max_arguments {
         return Err(GrpcError::InvalidArgument(format!(
             "too many messages received. Only a maximum of {} messages are accepted per request",
-            grpc.grpc_config.max_parameter_size
+            grpc.grpc_config.max_arguments
         )));
     }
 
@@ -447,11 +444,10 @@ pub(crate) fn unban_nodes_by_ids(
         ));
     }
 
-    //TODO customize number of accepted parameters
-    if node_ids.len() as u32 > grpc.grpc_config.max_parameter_size {
+    if node_ids.len() as u64 > grpc.grpc_config.max_arguments {
         return Err(GrpcError::InvalidArgument(format!(
             "too many node ids received. Only a maximum of {} node ids are accepted per request",
-            grpc.grpc_config.max_parameter_size
+            grpc.grpc_config.max_arguments
         )));
     }
 

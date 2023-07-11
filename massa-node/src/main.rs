@@ -835,6 +835,7 @@ async fn launch(
             initial_stream_window_size: SETTINGS.grpc.public.initial_stream_window_size,
             initial_connection_window_size: SETTINGS.grpc.public.initial_connection_window_size,
             max_concurrent_streams: SETTINGS.grpc.public.max_concurrent_streams,
+            max_arguments: SETTINGS.grpc.public.max_arguments,
             tcp_keepalive: SETTINGS.grpc.public.tcp_keepalive.map(|t| t.to_duration()),
             tcp_nodelay: SETTINGS.grpc.public.tcp_nodelay,
             http2_keepalive_interval: SETTINGS
@@ -930,6 +931,7 @@ async fn launch(
             initial_stream_window_size: SETTINGS.grpc.private.initial_stream_window_size,
             initial_connection_window_size: SETTINGS.grpc.private.initial_connection_window_size,
             max_concurrent_streams: SETTINGS.grpc.private.max_concurrent_streams,
+            max_arguments: SETTINGS.grpc.private.max_arguments,
             tcp_keepalive: SETTINGS.grpc.private.tcp_keepalive.map(|t| t.to_duration()),
             tcp_nodelay: SETTINGS.grpc.private.tcp_nodelay,
             http2_keepalive_interval: SETTINGS
