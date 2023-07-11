@@ -6,18 +6,23 @@ use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
-use massa_models::config::{
-    ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
-    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
-    MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE, T0, THREAD_COUNT, VERSION,
+use massa_models::{
+    config::{
+        ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
+        MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
+        MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        MAX_PARAMETERS_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE, T0, THREAD_COUNT,
+        VERSION,
+    },
+    node::NodeId,
 };
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
-use massa_protocol_exports::MockProtocolController;
+use massa_protocol_exports::{MockProtocolController, ProtocolConfig};
+use massa_signature::KeyPair;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use num::rational::Ratio;
 use std::{
@@ -49,7 +54,7 @@ async fn test_start_grpc_server() {
     let endorsement_sender = tokio::sync::broadcast::channel(2000).0;
     let operation_sender = tokio::sync::broadcast::channel(5000).0;
     let slot_execution_output_sender = tokio::sync::broadcast::channel(5000).0;
-
+    let keypair = KeyPair::generate(0).unwrap();
     let grpc_config = GrpcConfig {
         enabled: true,
         accept_http1: true,
@@ -67,6 +72,7 @@ async fn test_start_grpc_server() {
         initial_stream_window_size: None,
         initial_connection_window_size: None,
         max_concurrent_streams: None,
+        max_arguments: 128,
         tcp_keepalive: None,
         tcp_nodelay: false,
         http2_keepalive_interval: None,
@@ -87,6 +93,7 @@ async fn test_start_grpc_server() {
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
+        keypair: keypair.clone(),
         max_channel_size: 128,
         draw_lookahead_period_count: 10,
         last_start_period: 0,
@@ -120,11 +127,13 @@ async fn test_start_grpc_server() {
         },
         pool_controller: pool_ctrl.0,
         protocol_controller: Box::new(MockProtocolController::new()),
+        protocol_config: ProtocolConfig::default(),
         selector_controller: selector_ctrl.0,
         storage: shared_storage,
         grpc_config: grpc_config.clone(),
         version: *VERSION,
         mip_store,
+        node_id: NodeId::new(keypair.get_public_key()),
     };
 
     let stop_handle = service.serve(&grpc_config).await.unwrap();

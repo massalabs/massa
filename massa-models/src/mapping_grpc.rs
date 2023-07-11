@@ -325,6 +325,25 @@ impl From<DenunciationIndex> for grpc_model::DenunciationIndex {
     }
 }
 
+//TODO remove unwrap
+impl From<grpc_model::DenunciationIndex> for DenunciationIndex {
+    fn from(value: grpc_model::DenunciationIndex) -> Self {
+        match value.entry.unwrap() {
+            grpc_model::denunciation_index::Entry::BlockHeader(block_header) => {
+                DenunciationIndex::BlockHeader {
+                    slot: block_header.slot.unwrap().into(),
+                }
+            }
+            grpc_model::denunciation_index::Entry::Endorsement(endorsement) => {
+                DenunciationIndex::Endorsement {
+                    slot: endorsement.slot.unwrap().into(),
+                    index: endorsement.index,
+                }
+            }
+        }
+    }
+}
+
 /// Converts a gRPC `SecureShare` into a byte vector
 pub fn secure_share_to_vec(value: grpc_model::SecureShare) -> Result<Vec<u8>, ModelsError> {
     let pub_key = PublicKey::from_str(&value.content_creator_pub_key)?;

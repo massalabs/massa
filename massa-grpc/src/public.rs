@@ -3,7 +3,8 @@
 use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
 
-use massa_execution_exports::ExecutionQueryRequest;
+use grpc_api::execution_query_request_item as exec;
+use massa_execution_exports::{ExecutionQueryRequest, ExecutionQueryRequestItem};
 use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
@@ -654,10 +655,139 @@ pub(crate) fn get_transactions_throughput(
     Ok(grpc_api::GetTransactionsThroughputResponse { throughput })
 }
 
+//TODO remove all unwraps
 /// Get query state
 pub(crate) fn query_state(
-    _grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::QueryStateRequest>,
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::QueryStateRequest>,
 ) -> Result<grpc_api::QueryStateResponse, GrpcError> {
-    Err(GrpcError::Unimplemented("query_state".to_string()))
+    let queries = request
+        .into_inner()
+        .queries
+        .into_iter()
+        .map(|query: grpc_api::ExecutionQueryRequestItem| {
+            if let Some(item) = query.request_item {
+                match item {
+                    exec::RequestItem::AddressExistsCandidate(value) => {
+                        ExecutionQueryRequestItem::AddressExistsCandidate(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressExistsFinal(value) => {
+                        ExecutionQueryRequestItem::AddressExistsFinal(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressBalanceCandidate(value) => {
+                        ExecutionQueryRequestItem::AddressBalanceCandidate(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressBalanceFinal(value) => {
+                        ExecutionQueryRequestItem::AddressBalanceFinal(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressBytecodeCandidate(value) => {
+                        ExecutionQueryRequestItem::AddressBytecodeCandidate(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressBytecodeFinal(value) => {
+                        ExecutionQueryRequestItem::AddressBytecodeCandidate(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
+                        ExecutionQueryRequestItem::AddressBytecodeCandidate(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressDatastoreKeysFinal(value) => {
+                        ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+                            addr: Address::from_str(&value.address).unwrap(),
+                            prefix: value.prefix,
+                        }
+                    }
+                    exec::RequestItem::AddressDatastoreValueCandidate(value) => {
+                        ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
+                            addr: Address::from_str(&value.address).unwrap(),
+                            key: value.key,
+                        }
+                    }
+                    exec::RequestItem::AddressDatastoreValueFinal(value) => {
+                        ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                            addr: Address::from_str(&value.address).unwrap(),
+                            key: value.key,
+                        }
+                    }
+                    exec::RequestItem::OpExecutionStatusCandidate(value) => {
+                        ExecutionQueryRequestItem::OpExecutionStatusCandidate(
+                            OperationId::from_str(&value.operation_id).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::OpExecutionStatusFinal(value) => {
+                        ExecutionQueryRequestItem::OpExecutionStatusFinal(
+                            OperationId::from_str(&value.operation_id).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::DenunciationExecutionStatusCandidate(value) => {
+                        ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(
+                            value.denunciation_index.unwrap().into(),
+                        )
+                    }
+                    exec::RequestItem::DenunciationExecutionStatusFinal(value) => {
+                        ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(
+                            value.denunciation_index.unwrap().into(),
+                        )
+                    }
+                    exec::RequestItem::AddressRollsCandidate(value) => {
+                        ExecutionQueryRequestItem::AddressRollsCandidate(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressRollsFinal(value) => {
+                        ExecutionQueryRequestItem::AddressRollsFinal(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressDeferredCreditsCandidate(value) => {
+                        ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::AddressDeferredCreditsFinal(value) => {
+                        ExecutionQueryRequestItem::AddressDeferredCreditsFinal(
+                            Address::from_str(&value.address).unwrap(),
+                        )
+                    }
+                    exec::RequestItem::CycleInfos(value) => {
+                        //TODO to be updated
+                        ExecutionQueryRequestItem::CycleInfos {
+                            cycle: value.cycle,
+                            restrict_to_addresses: Some(HashSet::default()),
+                        }
+                    }
+                    exec::RequestItem::Events(_value) => {
+                        //TODO to be updated
+                        ExecutionQueryRequestItem::Events(EventFilter::default())
+                    }
+                }
+            } else {
+                todo!("no request item")
+                // return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let response = grpc
+        .execution_controller
+        .query_state(ExecutionQueryRequest { requests: queries });
+
+    Ok(grpc_api::QueryStateResponse {
+        final_cursor: Some(response.final_cursor.into()),
+        candidate_cursor: Some(response.candidate_cursor.into()),
+        final_state_fingerprint: response.final_state_fingerprint.to_string(),
+        responses: vec![],
+    })
 }
