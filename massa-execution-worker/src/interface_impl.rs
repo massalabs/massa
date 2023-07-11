@@ -390,7 +390,11 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A list of keys (keys are byte arrays)
-    fn get_ds_keys_wasmv1(&self, prefix: &[u8], address: Option<String>) -> Result<BTreeSet<Vec<u8>>> {
+    fn get_ds_keys_wasmv1(
+        &self,
+        prefix: &[u8],
+        address: Option<String>,
+    ) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
@@ -1238,7 +1242,54 @@ impl Interface for InterfaceImpl {
 
     #[allow(unused_variables)]
     fn init_call_wasmv1(&self, address: &str, raw_coins: NativeAmount) -> Result<Vec<u8>> {
-        unimplemented!("init_call")
+        // get target address
+        let to_address = Address::from_str(address)?;
+
+        // check that the target address is an SC address
+        if !matches!(to_address, Address::SC(..)) {
+            bail!("called address {} is not an SC address", to_address);
+        }
+
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // get target bytecode
+        let bytecode = match context.get_bytecode(&to_address) {
+            Some(bytecode) => bytecode,
+            None => bail!("bytecode not found for address {}", to_address),
+        };
+
+        // get caller address
+        let from_address = match context.stack.last() {
+            Some(addr) => addr.address,
+            _ => bail!("failed to read call stack current address"),
+        };
+
+        // transfer coins from caller to target address
+        let coins = amount_from_native_amount(&raw_coins)?;
+        // note: rights are not checked here we checked that to_address is an SC address above
+        // and we know that the sender is at the top of the call stack
+        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, false)
+        {
+            bail!(
+                "error transferring {} coins from {} to {}: {}",
+                coins,
+                from_address,
+                to_address,
+                err
+            );
+        }
+
+        // push a new call stack element on top of the current call stack
+        context.stack.push(ExecutionStackElement {
+            address: to_address,
+            coins,
+            owned_addresses: vec![to_address],
+            operation_datastore: None,
+        });
+
+        // return the target bytecode
+        Ok(bytecode.0)
     }
 
     /// Returns a NativeAmount from a string
