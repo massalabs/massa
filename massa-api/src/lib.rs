@@ -160,8 +160,7 @@ async fn serve<T>(
         } else {
             BatchRequestConfig::Disabled
         })
-        .ping_interval(api_config.ping_interval.to_duration())
-        .custom_tokio_runtime(tokio::runtime::Handle::current());
+        .ping_interval(api_config.ping_interval.to_duration());
 
     if api_config.enable_http && !api_config.enable_ws {
         server_builder = server_builder.http_only();
