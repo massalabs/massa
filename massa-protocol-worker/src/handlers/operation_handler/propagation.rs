@@ -8,8 +8,8 @@ use massa_metrics::MassaMetrics;
 use massa_models::operation::OperationId;
 use massa_models::prehash::CapacityAllocator;
 use massa_models::prehash::PreHashSet;
-use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
+use massa_protocol_exports::{PeerId, ProtocolError};
 use massa_storage::Storage;
 use tracing::{debug, info, log::warn};
 
@@ -179,6 +179,12 @@ impl PropagationThread {
                                 "Failed to send OperationsAnnouncement message to peer: {}",
                                 err
                             );
+
+                            if let ProtocolError::PeerDisconnected(_) = err {
+                                // todo remove ops known by peer ?
+                                // cache_write.ops_known_by_peer.remove(&peer_id);
+                                break;
+                            }
                         }
                     }
                 }

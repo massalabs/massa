@@ -5,8 +5,8 @@ use massa_models::{
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
-use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
+use massa_protocol_exports::{PeerId, ProtocolError};
 use tracing::{debug, info, log::warn};
 
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
@@ -123,6 +123,13 @@ impl PropagationThread {
                                                     "could not send endorsements batch to node {}: {}",
                                                     peer_id, err
                                                 );
+                                                if let ProtocolError::PeerDisconnected(_) = err {
+                                                    // TODO: remove endorsement known by peer ?
+                                                    // cache_write
+                                                    //     .endorsements_known_by_peer
+                                                    //     .remove(peer_id);
+                                                    break;
+                                                }
                                             }
                                         }
                                     }

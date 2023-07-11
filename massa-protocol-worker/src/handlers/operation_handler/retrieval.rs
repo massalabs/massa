@@ -392,6 +392,9 @@ impl RetrievalThread {
                         let mut cache_write = self.cache.write();
                         cache_write.ops_known_by_peer.remove(peer_id);
                     }
+                    if let ProtocolError::PeerDisconnected(_) = err {
+                        break;
+                    }
                 }
             }
         }
@@ -455,6 +458,9 @@ impl RetrievalThread {
                 {
                     let mut cache_write = self.cache.write();
                     cache_write.ops_known_by_peer.remove(peer_id);
+                }
+                if let ProtocolError::PeerDisconnected(_) = err {
+                    break;
                 }
             }
         }

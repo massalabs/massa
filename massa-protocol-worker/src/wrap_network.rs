@@ -55,9 +55,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
                 .try_send(message_serializer, message, high_priority)
                 .map_err(|err| ProtocolError::SendError(err.to_string()))
         } else {
-            Err(ProtocolError::SendError(
-                "Peer isn't connected anymore".to_string(),
-            ))
+            Err(ProtocolError::PeerDisconnected(peer_id.to_string()))
         }
     }
 

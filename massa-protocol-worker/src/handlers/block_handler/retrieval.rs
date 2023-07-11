@@ -342,6 +342,9 @@ impl RetrievalThread {
                     "Error while sending reply for blocks to {}: {:?}",
                     from_peer_id, err
                 );
+                if let ProtocolError::PeerDisconnected(_) = err {
+                    break;
+                }
             }
         }
         Ok(())
@@ -1445,6 +1448,16 @@ impl RetrievalThread {
                             "Failed to send AskForBlocks to peer {} err: {}",
                             peer_id, err
                         );
+
+                        if let ProtocolError::PeerDisconnected(_) = err {
+                            // remove from active block requests
+                            if let Some(asked_blocks) = self.asked_blocks.get_mut(peer_id) {
+                                for (hash, _) in sub_list {
+                                    asked_blocks.remove(hash);
+                                }
+                            }
+                            break;
+                        }
                     }
                 }
             }
