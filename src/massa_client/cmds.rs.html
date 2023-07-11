@@ -1465,49 +1465,10 @@
 <a href="#1465" id="1465">1465</a>
 <a href="#1466" id="1466">1466</a>
 <a href="#1467" id="1467">1467</a>
-<a href="#1468" id="1468">1468</a>
-<a href="#1469" id="1469">1469</a>
-<a href="#1470" id="1470">1470</a>
-<a href="#1471" id="1471">1471</a>
-<a href="#1472" id="1472">1472</a>
-<a href="#1473" id="1473">1473</a>
-<a href="#1474" id="1474">1474</a>
-<a href="#1475" id="1475">1475</a>
-<a href="#1476" id="1476">1476</a>
-<a href="#1477" id="1477">1477</a>
-<a href="#1478" id="1478">1478</a>
-<a href="#1479" id="1479">1479</a>
-<a href="#1480" id="1480">1480</a>
-<a href="#1481" id="1481">1481</a>
-<a href="#1482" id="1482">1482</a>
-<a href="#1483" id="1483">1483</a>
-<a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
-<a href="#1487" id="1487">1487</a>
-<a href="#1488" id="1488">1488</a>
-<a href="#1489" id="1489">1489</a>
-<a href="#1490" id="1490">1490</a>
-<a href="#1491" id="1491">1491</a>
-<a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
-<a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
-<a href="#1496" id="1496">1496</a>
-<a href="#1497" id="1497">1497</a>
-<a href="#1498" id="1498">1498</a>
-<a href="#1499" id="1499">1499</a>
-<a href="#1500" id="1500">1500</a>
-<a href="#1501" id="1501">1501</a>
-<a href="#1502" id="1502">1502</a>
-<a href="#1503" id="1503">1503</a>
-<a href="#1504" id="1504">1504</a>
-<a href="#1505" id="1505">1505</a>
-<a href="#1506" id="1506">1506</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
-<span class="kw">use crate</span>::{client_warning, grpc_error, rpc_error};
+<span class="kw">use crate</span>::{client_warning, rpc_error};
 <span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>massa_api_exports::{
@@ -1528,8 +1489,6 @@
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
-<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
-<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 <span class="kw">use </span>massa_sdk::Client;
 <span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
@@ -2290,61 +2249,24 @@
             Command::wallet_generate_secret_key =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
-                <span class="comment">// In order to generate a KeyPair we need to get the MIP statuses and use the latest
-                // active version
-                </span><span class="kw">let </span>req = grpc_api::GetMipStatusRequest {};
+                <span class="comment">// Note: keypair version is hardcoded here (no Versioning check via grpc done)
+                //       Requirements is to ALWAYS have the generation done without a node (for security)
+                //       If a new keypair version is accepted (through a MIP), we will update the version here
+                //       manually.
+                //       This will allow to generate keypair on hardware ledger / computer without internet...
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>grpc) = client.grpc_private {
-                    <span class="kw">let </span>versioning_status = <span class="kw">match </span>grpc.get_mip_status(req).<span class="kw">await </span>{
-                        <span class="prelude-val">Ok</span>(resp_) =&gt; {
-                            <span class="kw">let </span>resp = resp_.into_inner();
-                            resp.mipstatus_entries
-                        }
-                        <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">grpc_error!</span>(e)
-                        }
-                    };
+                </span><span class="kw">let </span>keypair_version: u64 = <span class="number">0</span>;
+                <span class="kw">let </span>key = KeyPair::generate(keypair_version).expect(<span class="string">&quot;Unable to generate key pair&quot;</span>);
 
-                    <span class="comment">// Note: this is a bit duplicated with KeyPairFactory code but it avoids
-                    //       sending the whole mip store through the API
-                    </span><span class="kw">let </span>keypair_version = versioning_status
-                        .into_iter()
-                        .rev()
-                        .find_map(|entry| {
-                            <span class="kw">let </span>is_about_keypair = <span class="kw">match </span>entry.mip_info {
-                                <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
-                                <span class="prelude-val">Some</span>(mip_info) =&gt; mip_info.components.iter().any(|st_entry| {
-                                    grpc_model::MipComponent::from_i32(st_entry.kind)
-                                        .unwrap_or(grpc_model::MipComponent::Unspecified)
-                                        == grpc_model::MipComponent::Keypair
-                                }),
-                            };
-
-                            <span class="kw">let </span>state = grpc_model::ComponentStateId::from_i32(entry.state_id)
-                                .unwrap_or(grpc_model::ComponentStateId::Error);
-
-                            <span class="kw">if </span>is_about_keypair &amp;&amp; state == grpc_model::ComponentStateId::Active {
-                                <span class="prelude-val">Some</span>(entry.state_id)
-                            } <span class="kw">else </span>{
-                                <span class="prelude-val">None
-                            </span>}
-                        })
-                        .unwrap_or(<span class="number">0</span>);
-                    <span class="kw">let </span>key = KeyPair::generate(keypair_version <span class="kw">as </span>u64)
-                        .expect(<span class="string">&quot;Unable to generate key pair&quot;</span>);
-
-                    <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
-                    <span class="kw">if </span>json {
-                        <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
-                    } <span class="kw">else </span>{
-                        <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, ad);
-                        <span class="macro">println!</span>(
-                            <span class="string">&quot;Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking &lt;your address&gt;` to start staking.\n&quot;
-                        </span>);
-                        <span class="prelude-val">Ok</span>(Box::new(()))
-                    }
+                <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
+                <span class="kw">if </span>json {
+                    <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
                 } <span class="kw">else </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;Failed to establish connection. Please ensure that the gRPC API is enabled and accessible.&quot;</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, ad);
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking &lt;your address&gt;` to start staking.\n&quot;
+                    </span>);
+                    <span class="prelude-val">Ok</span>(Box::new(()))
                 }
             }
 
