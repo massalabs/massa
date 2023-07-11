@@ -220,6 +220,7 @@ impl Tester {
 
             // if handshake failed, we set the peer state to HandshakeFailed
             if res.is_err() {
+                println!("Handshake failed in tester");
                 let mut peer_db_write = peer_db.write();
                 peer_db_write.peers.entry(peer_id).and_modify(|info| {
                     info.state = super::PeerState::HandshakeFailed;

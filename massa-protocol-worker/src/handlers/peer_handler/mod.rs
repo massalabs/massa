@@ -4,6 +4,7 @@ use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Durat
 
 use crossbeam::channel::tick;
 use crossbeam::select;
+use massa_channel::MassaChannel;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_hash::Hash;
 use massa_models::config::SIGNATURE_DESER_SIZE;
@@ -89,9 +90,16 @@ impl PeerManagementHandler {
             config,
             active_connections.clone(),
             peer_db.clone(),
-            messages_handler,
+            messages_handler.clone(),
             target_out_connections,
             default_target_out_connections,
+        );
+
+        let connect_sender = PeerManagementHandler::start_thread_listener(
+            config,
+            5,
+            messages_handler,
+            peer_db.clone(),
         );
 
         let thread_join = std::thread::Builder::new()
@@ -107,6 +115,7 @@ impl PeerManagementHandler {
                     max_peers_per_announcement: config.max_size_peers_announcement,
                     max_listeners_per_peer: config.max_size_listeners_per_peer,
                 });
+
             move || {
                 loop {
                     select! {
@@ -197,9 +206,9 @@ impl PeerManagementHandler {
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                                     debug!("Received peer message: NewPeerConnected from {}", peer_id);
-                                    if let Err(e) = test_sender.try_send((peer_id, listeners)) {
-                                        debug!("error when sending msg to peer tester : {}", e);
-                                    }
+                                        if let Err(e) = connect_sender.try_send((peer_id, listeners)) {
+                                            debug!("error when sending msg to peer connect : {}", e);
+                                        }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
                                     debug!("Received peer message: List peers from {}", peer_id);
@@ -236,6 +245,49 @@ impl PeerManagementHandler {
             },
             testers,
         }
+    }
+
+    /// thread pool for incoming connections
+    fn start_thread_listener(
+        protocol_config: &ProtocolConfig,
+        nb_thread: usize,
+        messages_handler: MessagesHandler,
+        peer_db: SharedPeerDB,
+    ) -> MassaSender<(PeerId, HashMap<SocketAddr, TransportType>)> {
+        let (connect_sender, connect_receiver) =
+            MassaChannel::new::<(PeerId, HashMap<SocketAddr, TransportType>)>(
+                "connect_listener".to_string(),
+                Some(1000),
+            );
+
+        let announcement_deser = AnnouncementDeserializer::new(AnnouncementDeserializerArgs {
+            max_listeners: protocol_config.max_size_listeners_per_peer,
+        });
+
+        for _ in 0..nb_thread {
+            let connect_receiver = connect_receiver.clone();
+            let messages_handler = messages_handler.clone();
+            let peer_db = peer_db.clone();
+            let announcement_deserializer = announcement_deser.clone();
+            let version = protocol_config.version;
+            std::thread::spawn(move || {
+                while let Ok((_peer_id, listeners)) = connect_receiver.recv() {
+                    if let Some((addr, _ty)) = listeners.iter().next() {
+                        let _ = Tester::tcp_handshake(
+                            messages_handler.clone(),
+                            peer_db.clone(),
+                            announcement_deserializer.clone(),
+                            VersionDeserializer::new(),
+                            PeerIdDeserializer::new(),
+                            *addr,
+                            version,
+                        );
+                    }
+                }
+            });
+        }
+
+        connect_sender
     }
 
     pub fn stop(&mut self) {
