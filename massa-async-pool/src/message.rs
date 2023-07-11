@@ -321,7 +321,7 @@ impl Default for AsyncMessage {
             destination: genesis_address,
             validity_start: slot_zero,
             validity_end: slot_zero,
-            hash: Hash::from_bytes(&[0; 32]),
+            hash: Hash::zero(),
             ..Default::default()
         }
     }
@@ -362,7 +362,7 @@ impl AsyncMessage {
             can_be_executed: can_be_executed.unwrap_or(trigger.is_none()),
             trigger,
             // placeholder hash to serialize the message, replaced below
-            hash: Hash::from_bytes(&[0; 32]),
+            hash: Hash::zero(),
         };
         async_message_ser
             .serialize(&message, &mut buffer)
