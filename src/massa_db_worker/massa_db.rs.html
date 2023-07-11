@@ -833,9 +833,9 @@
     <span class="doccomment">/// A serializer for the ChangeID type
     </span><span class="kw">pub </span>change_id_serializer: ChangeIDSerializer,
     <span class="doccomment">/// A deserializer for the ChangeID type
-    </span>change_id_deserializer: ChangeIDDeserializer,
+    </span><span class="kw">pub </span>change_id_deserializer: ChangeIDDeserializer,
     <span class="doccomment">/// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
-    </span>current_batch: Arc&lt;Mutex&lt;WriteBatch&gt;&gt;,
+    </span><span class="kw">pub </span>current_batch: Arc&lt;Mutex&lt;WriteBatch&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;ChangeID, ChangeIDSerializer, ChangeIDDeserializer&gt; std::fmt::Debug

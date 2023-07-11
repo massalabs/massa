@@ -330,15 +330,6 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -477,7 +468,7 @@
     <span class="kw">pub </span>ledger: LedgerSettings,
     <span class="kw">pub </span>selector: SelectionSettings,
     <span class="kw">pub </span>factory: FactorySettings,
-    <span class="kw">pub </span>grpc: GrpcApiSettings,
+    <span class="kw">pub </span>grpc: GrpcSettings,
     <span class="kw">pub </span>metrics: MetricsSettings,
     <span class="kw">pub </span>versioning: VersioningSettings,
 }
@@ -658,15 +649,6 @@
     </span><span class="kw">pub </span>server_private_key_path: PathBuf,
     <span class="doccomment">/// client certificate authority root path
     </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
-}
-
-<span class="doccomment">/// gRPC API settings.
-</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
-</span><span class="kw">pub struct </span>GrpcApiSettings {
-    <span class="doccomment">/// Public server gRPC configuration.
-    </span><span class="kw">pub </span>public: GrpcSettings,
-    <span class="doccomment">/// Private server gRPC configuration.
-    </span><span class="kw">pub </span>private: GrpcSettings,
 }
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
