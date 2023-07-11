@@ -308,7 +308,7 @@ fn test_bootstrap_server() {
             async_pool_changes: get_random_async_pool_changes(10, thread_count),
             executed_ops_changes: get_random_executed_ops_changes(10),
             executed_denunciations_changes: get_random_executed_de_changes(10),
-            execution_trail_hash_change: get_random_execution_trail_hash_change(),
+            execution_trail_hash_change: get_random_execution_trail_hash_change(true),
         };
 
         let next = current_slot.get_next_slot(thread_count).unwrap();
@@ -454,7 +454,7 @@ fn test_bootstrap_server() {
                     async_pool_changes: get_random_async_pool_changes(10, thread_count),
                     executed_ops_changes: get_random_executed_ops_changes(10),
                     executed_denunciations_changes: get_random_executed_de_changes(10),
-                    execution_trail_hash_change: get_random_execution_trail_hash_change(),
+                    execution_trail_hash_change: get_random_execution_trail_hash_change(true),
                 };
 
                 let mut batch = DBBatch::new();

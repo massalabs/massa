@@ -288,9 +288,8 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
 }
 
 /// generates a random execution trail hash change
-pub fn get_random_execution_trail_hash_change() -> SetOrKeep<massa_hash::Hash> {
-    let mut rng = rand::thread_rng();
-    if rng.gen() {
+pub fn get_random_execution_trail_hash_change(always_set: bool) -> SetOrKeep<massa_hash::Hash> {
+    if always_set || rand::thread_rng().gen() {
         SetOrKeep::Set(Hash::compute_from(&get_some_random_bytes()))
     } else {
         SetOrKeep::Keep
