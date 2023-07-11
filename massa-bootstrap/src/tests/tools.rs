@@ -353,7 +353,7 @@ pub fn get_random_final_state_bootstrap(
     ))
     .unwrap();
 
-    create_final_state(
+    let mut final_state = create_final_state(
         config,
         Box::new(final_ledger),
         async_pool,
@@ -362,7 +362,10 @@ pub fn get_random_final_state_bootstrap(
         executed_denunciations,
         mip_store,
         db,
-    )
+    );
+
+    final_state.init_execution_trail_hash();
+    final_state
 }
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {

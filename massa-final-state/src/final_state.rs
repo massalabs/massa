@@ -786,16 +786,14 @@ impl FinalState {
                     warn!("Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
                     return false;
                 }
-            } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
-                && !self
+            } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes()) {
+                if !self
                     .ledger
                     .is_key_value_valid(&serialized_key, &serialized_value)
-            {
-                warn!(
-                    "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
-                    serialized_key, serialized_value
-                );
-                return false;
+                {
+                    warn!("Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
+                    return false;
+                }
             } else if serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes()) {
                 // TODO: check MIP_STORE_PREFIX
             } else if serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
