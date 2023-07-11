@@ -47,13 +47,13 @@
         <span class="kw">match </span>value {
             SlotExecutionOutput::ExecutedSlot(execution_output) =&gt; {
                 grpc_model::SlotExecutionOutput {
-                    status: <span class="macro">vec!</span>[grpc_model::ExecutionOutputStatus::Candidate <span class="kw">as </span>i32],
+                    status: grpc_model::ExecutionOutputStatus::Candidate <span class="kw">as </span>i32,
                     execution_output: <span class="prelude-val">Some</span>(execution_output.into()),
                 }
             }
             SlotExecutionOutput::FinalizedSlot(execution_output) =&gt; {
                 grpc_model::SlotExecutionOutput {
-                    status: <span class="macro">vec!</span>[grpc_model::ExecutionOutputStatus::Final <span class="kw">as </span>i32],
+                    status: grpc_model::ExecutionOutputStatus::Final <span class="kw">as </span>i32,
                     execution_output: <span class="prelude-val">Some</span>(execution_output.into()),
                 }
             }

@@ -321,8 +321,6 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -403,9 +401,9 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
-            <span class="string">&quot;SAND.25.0&quot;
+            <span class="string">&quot;SAND.24.1&quot;
         </span>} <span class="kw">else </span>{
-            <span class="string">&quot;TEST.25.0&quot;
+            <span class="string">&quot;TEST.24.1&quot;
         </span>}
         .parse()
         .unwrap()
@@ -625,8 +623,6 @@
 </span><span class="kw">pub const </span>VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio&lt;u64&gt; = Ratio::new_raw(<span class="number">75</span>, <span class="number">100</span>);
 <span class="doccomment">/// Block count to process in MipStoreStats (for state change threshold)
 </span><span class="kw">pub const </span>MIP_STORE_STATS_BLOCK_CONSIDERED: usize = <span class="number">1000</span>;
-<span class="doccomment">/// Minimum value allowed for activation delay (in MIP info)
-</span><span class="kw">pub const </span>VERSIONING_ACTIVATION_DELAY_MIN: MassaTime = T0.saturating_mul(PERIODS_PER_CYCLE);
 
 <span class="comment">//
 // Constants for denunciation factory

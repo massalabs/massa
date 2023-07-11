@@ -943,10 +943,6 @@
 <a href="#943" id="943">943</a>
 <a href="#944" id="944">944</a>
 <a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
-<a href="#949" id="949">949</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -967,11 +963,7 @@
 };
 <span class="kw">use </span>massa_sc_runtime::RuntimeModule;
 <span class="kw">use </span>massa_sc_runtime::{Interface, InterfaceClone};
-<span class="attr">#[cfg(any(
-    feature = <span class="string">&quot;gas_calibration&quot;</span>,
-    feature = <span class="string">&quot;benchmarking&quot;</span>,
-    feature = <span class="string">&quot;testing&quot;
-</span>))]
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rand::Rng;
