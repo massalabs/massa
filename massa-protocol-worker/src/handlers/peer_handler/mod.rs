@@ -95,12 +95,8 @@ impl PeerManagementHandler {
             default_target_out_connections,
         );
 
-        let connect_sender = PeerManagementHandler::start_thread_listener(
-            config,
-            5,
-            messages_handler,
-            peer_db.clone(),
-        );
+        let connect_sender =
+            PeerManagementHandler::start_thread_listener(config, messages_handler, peer_db.clone());
 
         let thread_join = std::thread::Builder::new()
         .name("protocol-peer-handler".to_string())
@@ -250,7 +246,6 @@ impl PeerManagementHandler {
     /// thread pool for incoming connections
     fn start_thread_listener(
         protocol_config: &ProtocolConfig,
-        nb_thread: usize,
         messages_handler: MessagesHandler,
         peer_db: SharedPeerDB,
     ) -> MassaSender<(PeerId, HashMap<SocketAddr, TransportType>)> {
@@ -264,7 +259,7 @@ impl PeerManagementHandler {
             max_listeners: protocol_config.max_size_listeners_per_peer,
         });
 
-        for _ in 0..nb_thread {
+        for _ in 0..protocol_config.thread_incoming_connections_count {
             let connect_receiver = connect_receiver.clone();
             let messages_handler = messages_handler.clone();
             let peer_db = peer_db.clone();

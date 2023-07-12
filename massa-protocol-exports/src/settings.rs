@@ -88,6 +88,8 @@ pub struct ProtocolConfig {
     pub max_message_size: usize,
     /// number of thread tester
     pub thread_tester_count: u8,
+    /// Number of threads for incoming connections
+    pub thread_incoming_connections_count: u8,
     /// Max size of the channel for command to the connectivity thread
     pub max_size_channel_commands_connectivity: usize,
     /// Max size of channel to send commands to retrieval thread of operations
