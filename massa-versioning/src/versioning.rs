@@ -1205,6 +1205,7 @@ impl MipStoreRaw {
         let next_valid_start =
             get_block_slot_timestamp(thread_count, t0, genesis_timestamp, next_valid_start_)?;
 
+        println!("genesis ts: {}", genesis_timestamp);
         println!("next_valid_start_: {}", next_valid_start_);
 
         let mut offset: Option<MassaTime> = None;
