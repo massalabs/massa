@@ -160,9 +160,11 @@ impl FinalState {
         info!("Restarting from snapshot");
 
         // update MIP store by reading from the db
+        debug!("Init. Mip store: {:?}", mip_store);
         mip_store
             .extend_from_db(db.clone())
             .map_err(FinalStateError::from)?;
+        debug!("After read from db, Mip store: {:?}", mip_store);
 
         let mut final_state =
             FinalState::new(db, config.clone(), ledger, selector, mip_store, false)?;
