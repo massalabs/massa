@@ -1,6 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::{ExecutionOutput, SlotExecutionOutput};
+use crate::{ExecutionOutput, ExecutionQueryError, SlotExecutionOutput};
 use massa_proto_rs::massa::model::v1 as grpc_model;
 
 impl From<SlotExecutionOutput> for grpc_model::SlotExecutionOutput {
@@ -34,6 +34,18 @@ impl From<ExecutionOutput> for grpc_model::ExecutionOutput {
                 .map(|event| event.into())
                 .collect(),
             state_changes: Some(value.state_changes.into()),
+        }
+    }
+}
+
+impl From<ExecutionQueryError> for grpc_model::Error {
+    fn from(value: ExecutionQueryError) -> Self {
+        match value {
+            ExecutionQueryError::NotFound(error) => grpc_model::Error {
+                //TODO to be defined
+                code: 404,
+                message: error,
+            },
         }
     }
 }

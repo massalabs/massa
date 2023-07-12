@@ -4,7 +4,10 @@ use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
 
 use grpc_api::execution_query_request_item as exec;
-use massa_execution_exports::{ExecutionQueryRequest, ExecutionQueryRequestItem};
+use massa_execution_exports::{
+    ExecutionQueryCycleInfos, ExecutionQueryError, ExecutionQueryRequest,
+    ExecutionQueryRequestItem, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
+};
 use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
@@ -623,7 +626,6 @@ pub(crate) fn get_transactions_throughput(
     Ok(grpc_api::GetTransactionsThroughputResponse { throughput })
 }
 
-//TODO remove all unwraps
 /// Get query state
 pub(crate) fn query_state(
     grpc: &MassaPublicGrpc,
@@ -640,17 +642,145 @@ pub(crate) fn query_state(
         .execution_controller
         .query_state(ExecutionQueryRequest { requests: queries });
 
-    //TODO to be binded
     Ok(grpc_api::QueryStateResponse {
         final_cursor: Some(response.final_cursor.into()),
         candidate_cursor: Some(response.candidate_cursor.into()),
         final_state_fingerprint: response.final_state_fingerprint.to_string(),
-        responses: vec![],
+        responses: response
+            .responses
+            .into_iter()
+            .map(into_execution_query_response)
+            .collect(),
     })
 }
 
-/// Convert a vector of `grpc_model::ScExecutionEventsFilter` to a `EventFilter`
-pub fn to_event_filter(
+// Convert a `ExecutionQueryResponse` to a `grpc_api::ExecutionQueryResponse`
+fn into_execution_query_response(
+    value: Result<ExecutionQueryResponseItem, ExecutionQueryError>,
+) -> grpc_api::ExecutionQueryResponse {
+    match value {
+        Ok(item) => grpc_api::ExecutionQueryResponse {
+            response: Some(grpc_api::execution_query_response::Response::Result(
+                to_execution_query_result(item),
+            )),
+        },
+        Err(err) => grpc_api::ExecutionQueryResponse {
+            response: Some(grpc_api::execution_query_response::Response::Error(
+                err.into(),
+            )),
+        },
+    }
+}
+
+/// Convert a `ExecutionQueryResponseItem` to a `grpc_api::ExecutionQueryResponseItem`
+pub fn to_execution_query_result(
+    value: ExecutionQueryResponseItem,
+) -> grpc_api::ExecutionQueryResponseItem {
+    let response_item = match value {
+        ExecutionQueryResponseItem::Boolean(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::Boolean(result)
+        }
+        ExecutionQueryResponseItem::RollCount(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::RollCount(result)
+        }
+        ExecutionQueryResponseItem::Amount(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::Amount(result.into())
+        }
+        ExecutionQueryResponseItem::Bytecode(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::Bytes(result.0)
+        }
+        ExecutionQueryResponseItem::DatastoreValue(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::Bytes(result)
+        }
+        ExecutionQueryResponseItem::KeyList(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::VecBytes(
+                grpc_model::ArrayOfBytesWrapper {
+                    items: result.into_iter().collect(),
+                },
+            )
+        }
+        ExecutionQueryResponseItem::DeferredCredits(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::DeferredCredits(
+                grpc_api::DeferredCreditsEntryWrapper {
+                    entries: result
+                        .into_iter()
+                        .map(|(slot, amount)| grpc_api::DeferredCreditsEntry {
+                            slot: Some(slot.into()),
+                            amount: Some(amount.into()),
+                        })
+                        .collect(),
+                },
+            )
+        }
+        ExecutionQueryResponseItem::ExecutionStatus(result) => match result {
+            massa_execution_exports::ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess => {
+                grpc_api::execution_query_response_item::ResponseItem::ExecutionStatus(
+                    grpc_api::ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess as i32,
+                )
+            }
+            massa_execution_exports::ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure => {
+                grpc_api::execution_query_response_item::ResponseItem::ExecutionStatus(
+                    grpc_api::ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure as i32,
+                )
+            }
+            massa_execution_exports::ExecutionQueryExecutionStatus::ExecutableOrExpired => {
+                grpc_api::execution_query_response_item::ResponseItem::ExecutionStatus(
+                    grpc_api::ExecutionQueryExecutionStatus::ExecutableOrExpired as i32,
+                )
+            }
+        },
+        ExecutionQueryResponseItem::CycleInfos(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::CycleInfos(to_cycle_info(result))
+        }
+        ExecutionQueryResponseItem::Events(result) => {
+            grpc_api::execution_query_response_item::ResponseItem::Events(
+                grpc_api::ScOutputEventsWrapper {
+                    events: result.into_iter().map(|event| event.into()).collect(),
+                },
+            )
+        }
+    };
+
+    grpc_api::ExecutionQueryResponseItem {
+        response_item: Some(response_item),
+    }
+}
+
+/// Convert a `ExecutionQueryCycleInfos` to a `grpc_api::CycleInfos`
+pub fn to_cycle_info(value: ExecutionQueryCycleInfos) -> grpc_api::ExecutionQueryCycleInfos {
+    grpc_api::ExecutionQueryCycleInfos {
+        cycle: value.cycle,
+        is_final: value.is_final,
+        staker_infos: value
+            .staker_infos
+            .into_iter()
+            .map(|(address, info)| to_execution_query_staker_info(address, info))
+            .collect(),
+    }
+}
+
+/// Convert a `ExecutionQueryStakerInfo` to a `grpc_api::ExecutionQueryStakerInfo`
+pub fn to_execution_query_staker_info(
+    address: Address,
+    info: ExecutionQueryStakerInfo,
+) -> grpc_api::ExecutionQueryStakerInfoEntry {
+    grpc_api::ExecutionQueryStakerInfoEntry {
+        address: address.to_string(),
+        info: Some(grpc_api::ExecutionQueryStakerInfo {
+            active_rolls: info.active_rolls,
+            production_stats: Some(grpc_api::ExecutionQueryStakerInfoProductionStatsEntry {
+                address: address.to_string(),
+                stats: Some(grpc_api::ExecutionQueryStakerInfoProductionStats {
+                    block_success_count: info.production_stats.block_success_count,
+                    block_failure_count: info.production_stats.block_failure_count,
+                }),
+            }),
+        }),
+    }
+}
+
+// Convert a vector of `grpc_model::ScExecutionEventsFilter` to a `EventFilter`
+fn to_event_filter(
     sce_filters: Vec<grpc_api::ScExecutionEventsFilter>,
 ) -> Result<EventFilter, GrpcError> {
     let mut event_filter = EventFilter::default();
@@ -690,8 +820,8 @@ pub fn to_event_filter(
     Ok(event_filter)
 }
 
-/// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
-pub fn to_querystate_filter(
+// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
+fn to_querystate_filter(
     query: grpc_api::ExecutionQueryRequestItem,
 ) -> Result<ExecutionQueryRequestItem, GrpcError> {
     if let Some(item) = query.request_item {
