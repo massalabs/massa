@@ -16,6 +16,50 @@ use crate::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_signature::{PublicKey, Signature};
 
+//TODO check error type
+/// Converts a gRPC `grpc_model::DenunciationIndex` into a DenunciationIndex
+pub fn to_denunciation_index(
+    value: grpc_model::DenunciationIndex,
+) -> Result<DenunciationIndex, ModelsError> {
+    match value
+        .entry
+        .ok_or_else(|| ModelsError::ErrorRaised("no denunciation_index found".to_string()))?
+    {
+        grpc_model::denunciation_index::Entry::BlockHeader(block_header) => {
+            Ok(DenunciationIndex::BlockHeader {
+                slot: block_header
+                    .slot
+                    .ok_or_else(|| ModelsError::ErrorRaised("no slot found".to_string()))?
+                    .into(),
+            })
+        }
+        grpc_model::denunciation_index::Entry::Endorsement(endorsement) => {
+            Ok(DenunciationIndex::Endorsement {
+                slot: endorsement
+                    .slot
+                    .ok_or_else(|| ModelsError::ErrorRaised("no slot found".to_string()))?
+                    .into(),
+                index: endorsement.index,
+            })
+        }
+    }
+}
+
+/// Converts a gRPC `SecureShare` into a byte vector
+pub fn secure_share_to_vec(value: grpc_model::SecureShare) -> Result<Vec<u8>, ModelsError> {
+    let pub_key = PublicKey::from_str(&value.content_creator_pub_key)?;
+    let pub_key_b = pub_key.to_bytes();
+    // Concatenate signature, public key, and data into a single byte vector
+    let mut serialized_content =
+        Vec::with_capacity(value.signature.len() + pub_key_b.len() + value.serialized_data.len());
+    serialized_content
+        .extend_from_slice(&Signature::from_str(&value.signature).map(|value| value.to_bytes())?);
+    serialized_content.extend_from_slice(&pub_key_b);
+    serialized_content.extend_from_slice(&value.serialized_data);
+
+    Ok(serialized_content)
+}
+
 impl From<Amount> for grpc_model::NativeAmount {
     fn from(value: Amount) -> Self {
         let (mantissa, scale) = value.to_mantissa_scale();
@@ -323,40 +367,6 @@ impl From<DenunciationIndex> for grpc_model::DenunciationIndex {
             }),
         }
     }
-}
-
-//TODO remove unwrap
-impl From<grpc_model::DenunciationIndex> for DenunciationIndex {
-    fn from(value: grpc_model::DenunciationIndex) -> Self {
-        match value.entry.unwrap() {
-            grpc_model::denunciation_index::Entry::BlockHeader(block_header) => {
-                DenunciationIndex::BlockHeader {
-                    slot: block_header.slot.unwrap().into(),
-                }
-            }
-            grpc_model::denunciation_index::Entry::Endorsement(endorsement) => {
-                DenunciationIndex::Endorsement {
-                    slot: endorsement.slot.unwrap().into(),
-                    index: endorsement.index,
-                }
-            }
-        }
-    }
-}
-
-/// Converts a gRPC `SecureShare` into a byte vector
-pub fn secure_share_to_vec(value: grpc_model::SecureShare) -> Result<Vec<u8>, ModelsError> {
-    let pub_key = PublicKey::from_str(&value.content_creator_pub_key)?;
-    let pub_key_b = pub_key.to_bytes();
-    // Concatenate signature, public key, and data into a single byte vector
-    let mut serialized_content =
-        Vec::with_capacity(value.signature.len() + pub_key_b.len() + value.serialized_data.len());
-    serialized_content
-        .extend_from_slice(&Signature::from_str(&value.signature).map(|value| value.to_bytes())?);
-    serialized_content.extend_from_slice(&pub_key_b);
-    serialized_content.extend_from_slice(&value.serialized_data);
-
-    Ok(serialized_content)
 }
 
 impl From<CompactConfig> for grpc_model::CompactConfig {
