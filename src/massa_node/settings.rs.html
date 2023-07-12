@@ -330,8 +330,6 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -573,8 +571,6 @@
     </span><span class="kw">pub </span>connect_timeout: MassaTime,
     <span class="doccomment">/// Number of tester threads
     </span><span class="kw">pub </span>thread_tester_count: u8,
-    <span class="doccomment">/// Number of threads for incoming connections
-    </span><span class="kw">pub </span>thread_incoming_connections_count: u8,
     <span class="doccomment">/// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u64,
     <span class="doccomment">/// try connection timer
