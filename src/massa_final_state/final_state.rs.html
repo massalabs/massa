@@ -818,13 +818,6 @@
 <a href="#818" id="818">818</a>
 <a href="#819" id="819">819</a>
 <a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1012,17 +1005,10 @@
         config: FinalStateConfig,
         ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        <span class="kw-2">mut </span>mip_store: MipStore,
+        mip_store: MipStore,
         last_start_period: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
         <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
-
-        <span class="comment">// update MIP store by reading from the db
-        </span><span class="macro">debug!</span>(<span class="string">&quot;Init. Mip store: {:?}&quot;</span>, mip_store);
-        mip_store
-            .extend_from_db(db.clone())
-            .map_err(FinalStateError::from)<span class="question-mark">?</span>;
-        <span class="macro">debug!</span>(<span class="string">&quot;After read from db, Mip store: {:?}&quot;</span>, mip_store);
 
         <span class="kw">let </span><span class="kw-2">mut </span>final_state =
             FinalState::new(db, config.clone(), ledger, selector, mip_store, <span class="bool-val">false</span>)<span class="question-mark">?</span>;

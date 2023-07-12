@@ -187,8 +187,6 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
@@ -246,9 +244,7 @@
                 .try_send(message_serializer, message, high_priority)
                 .map_err(|err| ProtocolError::SendError(err.to_string()))
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(ProtocolError::SendError(
-                <span class="string">&quot;Peer isn&#39;t connected anymore&quot;</span>.to_string(),
-            ))
+            <span class="prelude-val">Err</span>(ProtocolError::PeerDisconnected(peer_id.to_string()))
         }
     }
 
