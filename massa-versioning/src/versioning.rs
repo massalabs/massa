@@ -1282,13 +1282,9 @@ impl MipStoreRaw {
                         }
                     };
 
-                    new_mip_info.start = new_mip_info.start.saturating_add(offset_ts);
-                    new_mip_info.timeout = new_mip_info
-                        .start
-                        .saturating_add(mip_info.timeout.saturating_sub(mip_info.start));
-
+                    println!("Offset ts: {}", offset_ts);
                     println!(
-                        "new mip info start: {:?}",
+                        "[S] mip info start: {:?}",
                         get_closest_slot_to_timestamp(
                             THREAD_COUNT,
                             T0,
@@ -1296,13 +1292,28 @@ impl MipStoreRaw {
                             mip_info.start
                         )
                     );
+
+                    new_mip_info.start = new_mip_info.start.saturating_add(offset_ts);
+                    new_mip_info.timeout = new_mip_info
+                        .start
+                        .saturating_add(mip_info.timeout.saturating_sub(mip_info.start));
+
                     println!(
-                        "new mip info timeout: {:?}",
+                        "[S] new mip info start: {:?}",
                         get_closest_slot_to_timestamp(
                             THREAD_COUNT,
                             T0,
-                            *GENESIS_TIMESTAMP,
-                            mip_info.timeout
+                            genesis_timestamp,
+                            new_mip_info.start
+                        )
+                    );
+                    println!(
+                        "[S] new mip info timeout: {:?}",
+                        get_closest_slot_to_timestamp(
+                            THREAD_COUNT,
+                            T0,
+                            genesis_timestamp,
+                            new_mip_info.timeout
                         )
                     );
 
