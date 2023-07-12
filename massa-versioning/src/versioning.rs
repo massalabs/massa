@@ -1212,6 +1212,19 @@ impl MipStoreRaw {
         for (mip_info, mip_state) in &self.store {
             println!("mip info: {:?}", mip_info);
             println!("mip state: {:?}", mip_state);
+            println!(
+                "mip info start: {:?}",
+                get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, mip_info.start)
+            );
+            println!(
+                "mip info timeout: {:?}",
+                get_closest_slot_to_timestamp(
+                    thread_count,
+                    t0,
+                    genesis_timestamp,
+                    mip_info.timeout
+                )
+            );
             match mip_state.state {
                 ComponentState::Defined(..) => {
                     // Defined: offset start & timeout
@@ -1235,19 +1248,19 @@ impl MipStoreRaw {
                         println!(
                             "new mip info start: {:?}",
                             get_closest_slot_to_timestamp(
-                                THREAD_COUNT,
-                                T0,
-                                *GENESIS_TIMESTAMP,
-                                mip_info.start
+                                thread_count,
+                                t0,
+                                genesis_timestamp,
+                                new_mip_info.start
                             )
                         );
                         println!(
                             "new mip info timeout: {:?}",
                             get_closest_slot_to_timestamp(
-                                THREAD_COUNT,
-                                T0,
-                                *GENESIS_TIMESTAMP,
-                                mip_info.timeout
+                                thread_count,
+                                t0,
+                                genesis_timestamp,
+                                new_mip_info.timeout
                             )
                         );
                     }
@@ -1272,6 +1285,25 @@ impl MipStoreRaw {
                     new_mip_info.timeout = new_mip_info
                         .start
                         .saturating_add(mip_info.timeout.saturating_sub(mip_info.start));
+
+                    println!(
+                        "new mip info start: {:?}",
+                        get_closest_slot_to_timestamp(
+                            THREAD_COUNT,
+                            T0,
+                            *GENESIS_TIMESTAMP,
+                            mip_info.start
+                        )
+                    );
+                    println!(
+                        "new mip info timeout: {:?}",
+                        get_closest_slot_to_timestamp(
+                            THREAD_COUNT,
+                            T0,
+                            *GENESIS_TIMESTAMP,
+                            mip_info.timeout
+                        )
+                    );
 
                     // Need to reset state to 'Defined'
                     let new_mip_state = MipState::reset_from(mip_state)
