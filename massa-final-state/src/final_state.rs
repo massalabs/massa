@@ -154,10 +154,15 @@ impl FinalState {
         config: FinalStateConfig,
         ledger: Box<dyn LedgerController>,
         selector: Box<dyn SelectorController>,
-        mip_store: MipStore,
+        mut mip_store: MipStore,
         last_start_period: u64,
     ) -> Result<Self, FinalStateError> {
         info!("Restarting from snapshot");
+
+        // update MIP store by reading from the db
+        mip_store
+            .extend_from_db(db.clone())
+            .map_err(FinalStateError::from)?;
 
         let mut final_state =
             FinalState::new(db, config.clone(), ledger, selector, mip_store, false)?;

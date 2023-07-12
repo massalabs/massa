@@ -735,6 +735,12 @@ impl MipStore {
             guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, None);
         }
     }
+
+    // // debug
+    // pub fn len(&self) -> usize {
+    //     let guard = self.0.read();
+    //     guard.store.len()
+    // }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -1420,6 +1426,8 @@ impl MipStoreRaw {
             added.extend(added_2);
         }
 
+        debug!("[extend_from_db] updated: {:?}", updated);
+        debug!("[extend_from_db] added: {:?}", added);
         Ok((updated, added))
     }
 }
