@@ -16,13 +16,13 @@ use massa_db_exports::{
     DBBatch, ShareableMassaDBController, MIP_STORE_PREFIX, MIP_STORE_STATS_PREFIX, STATE_CF,
     VERSIONING_CF,
 };
-use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 #[allow(unused_imports)]
 use massa_models::config::VERSIONING_ACTIVATION_DELAY_MIN;
 use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
+use massa_models::config::{GENESIS_TIMESTAMP, MIP_STORE_STATS_BLOCK_CONSIDERED, T0, THREAD_COUNT};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
-use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
 
@@ -736,11 +736,11 @@ impl MipStore {
         }
     }
 
-    // // debug
-    // pub fn len(&self) -> usize {
-    //     let guard = self.0.read();
-    //     guard.store.len()
-    // }
+    // debug
+    pub fn len(&self) -> usize {
+        let guard = self.0.read();
+        guard.store.len()
+    }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -1186,6 +1186,11 @@ impl MipStoreRaw {
         t0: MassaTime,
         genesis_timestamp: MassaTime,
     ) -> Result<(), ModelsError> {
+        println!(
+            "[update_for_network_shutdown] start with MIP store: {:?}",
+            self.store
+        );
+
         let shutdown_start_ts =
             get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_start)?;
         let shutdown_end_ts =
@@ -1200,9 +1205,13 @@ impl MipStoreRaw {
         let next_valid_start =
             get_block_slot_timestamp(thread_count, t0, genesis_timestamp, next_valid_start_)?;
 
+        println!("next_valid_start_: {}", next_valid_start_);
+
         let mut offset: Option<MassaTime> = None;
 
         for (mip_info, mip_state) in &self.store {
+            println!("mip info: {:?}", mip_info);
+            println!("mip state: {:?}", mip_state);
             match mip_state.state {
                 ComponentState::Defined(..) => {
                     // Defined: offset start & timeout
@@ -1223,12 +1232,31 @@ impl MipStoreRaw {
                         new_mip_info.timeout = new_mip_info
                             .start
                             .saturating_add(mip_info.timeout.saturating_sub(mip_info.start));
+                        println!(
+                            "new mip info start: {:?}",
+                            get_closest_slot_to_timestamp(
+                                THREAD_COUNT,
+                                T0,
+                                *GENESIS_TIMESTAMP,
+                                mip_info.start
+                            )
+                        );
+                        println!(
+                            "new mip info timeout: {:?}",
+                            get_closest_slot_to_timestamp(
+                                THREAD_COUNT,
+                                T0,
+                                *GENESIS_TIMESTAMP,
+                                mip_info.timeout
+                            )
+                        );
                     }
                     new_store.insert(new_mip_info, mip_state.clone());
                 }
                 ComponentState::Started(..) | ComponentState::LockedIn(..) => {
                     // Started or LockedIn -> Reset to Defined, offset start & timeout
 
+                    println!("Started...");
                     let mut new_mip_info = mip_info.clone();
 
                     let offset_ts = match offset {
@@ -1258,6 +1286,7 @@ impl MipStoreRaw {
             }
         }
 
+        println!("new store: {:?}", new_store);
         self.store = new_store;
         self.stats = new_stats;
         Ok(())
@@ -1426,8 +1455,8 @@ impl MipStoreRaw {
             added.extend(added_2);
         }
 
-        debug!("[extend_from_db] updated: {:?}", updated);
-        debug!("[extend_from_db] added: {:?}", added);
+        println!("[extend_from_db] updated: {:?}", updated);
+        println!("[extend_from_db] added: {:?}", added);
         Ok((updated, added))
     }
 }
