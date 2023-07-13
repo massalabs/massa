@@ -754,7 +754,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
-    fn has_op_key(&self, key: &[u8]) -> Result<bool> {
+    fn op_entry_exists(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
@@ -1311,7 +1311,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Adds two native amounts, saturating at the numeric bounds instead of overflowing.
-    fn add_native_amounts_wasmv1(
+    fn add_native_amount_wasmv1(
         &self,
         amount1: &NativeAmount,
         amount2: &NativeAmount,
@@ -1323,7 +1323,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Subtracts two native amounts, saturating at the numeric bounds instead of overflowing.
-    fn sub_native_amounts_wasmv1(
+    fn sub_native_amount_wasmv1(
         &self,
         amount1: &NativeAmount,
         amount2: &NativeAmount,
@@ -1335,14 +1335,18 @@ impl Interface for InterfaceImpl {
     }
 
     /// Multiplies a native amount by a factor, saturating at the numeric bounds instead of overflowing.
-    fn mul_native_amount_wasmv1(&self, amount: &NativeAmount, factor: u64) -> Result<NativeAmount> {
+    fn scalar_mul_native_amount_wasmv1(
+        &self,
+        amount: &NativeAmount,
+        factor: u64,
+    ) -> Result<NativeAmount> {
         let amount = amount_from_native_amount(amount)?;
         let mul = amount.saturating_mul_u64(factor);
         Ok(amount_to_native_amount(&mul))
     }
 
     /// Divides a native amount by a divisor, return an error if the divisor is 0.
-    fn div_rem_native_amount_wasmv1(
+    fn scalar_div_rem_native_amount_wasmv1(
         &self,
         dividend: &NativeAmount,
         divisor: u64,
@@ -1364,7 +1368,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Divides a native amount by a divisor, return an error if the divisor is 0.
-    fn div_rem_native_amounts_wasmv1(
+    fn div_rem_native_amount_wasmv1(
         &self,
         dividend: &NativeAmount,
         divisor: &NativeAmount,
@@ -1395,19 +1399,19 @@ impl Interface for InterfaceImpl {
         bs58::encode(data).with_check().into_string()
     }
 
-    fn check_address_wasmv1(&self, to_check: &String) -> Result<bool> {
+    fn check_address_wasmv1(&self, to_check: &str) -> Result<bool> {
         Ok(Address::from_str(to_check).is_ok())
     }
 
-    fn check_pubkey_wasmv1(&self, to_check: &String) -> Result<bool> {
+    fn check_pubkey_wasmv1(&self, to_check: &str) -> Result<bool> {
         Ok(PublicKey::from_str(to_check).is_ok())
     }
 
-    fn check_signature_wasmv1(&self, to_check: &String) -> Result<bool> {
+    fn check_signature_wasmv1(&self, to_check: &str) -> Result<bool> {
         Ok(Signature::from_str(to_check).is_ok())
     }
 
-    fn get_address_category_wasmv1(&self, to_check: &String) -> Result<AddressCategory> {
+    fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
         let addr = Address::from_str(to_check)?;
         match addr {
             Address::User(_) => Ok(AddressCategory::ScAddress),
@@ -1417,7 +1421,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn get_address_version_wasmv1(&self, address: &String) -> Result<u64> {
+    fn get_address_version_wasmv1(&self, address: &str) -> Result<u64> {
         let address = Address::from_str(address)?;
         match address {
             Address::User(UserAddress::UserAddressV0(_)) => Ok(0),
@@ -1429,7 +1433,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn get_pubkey_version_wasmv1(&self, pubkey: &String) -> Result<u64> {
+    fn get_pubkey_version_wasmv1(&self, pubkey: &str) -> Result<u64> {
         let pubkey = PublicKey::from_str(pubkey)?;
         match pubkey {
             PublicKey::PublicKeyV0(_) => Ok(0),
@@ -1439,7 +1443,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn get_signature_version_wasmv1(&self, signature: &String) -> Result<u64> {
+    fn get_signature_version_wasmv1(&self, signature: &str) -> Result<u64> {
         let signature = Signature::from_str(signature)?;
         match signature {
             Signature::SignatureV0(_) => Ok(0),
@@ -1636,7 +1640,7 @@ mod tests {
         let amount3 = interface.native_amount_from_str_wasmv1("200").unwrap();
 
         let sum = interface
-            .add_native_amounts_wasmv1(&amount1, &amount2)
+            .add_native_amount_wasmv1(&amount1, &amount2)
             .unwrap();
 
         assert_eq!(amount3, sum);
@@ -1649,7 +1653,7 @@ mod tests {
             interface.native_amount_to_string_wasmv1(&sum).unwrap()
         );
 
-        let diff = interface.sub_native_amounts_wasmv1(&sum, &amount2).unwrap();
+        let diff = interface.sub_native_amount_wasmv1(&sum, &amount2).unwrap();
         assert_eq!(amount1, diff);
 
         let amount4 = NativeAmount {
@@ -1660,38 +1664,46 @@ mod tests {
         let is_valid = interface.check_native_amount_wasmv1(&amount4).unwrap();
         assert_eq!(is_valid, true);
 
-        let mul = interface.mul_native_amount_wasmv1(&amount1, 2).unwrap();
+        let mul = interface
+            .scalar_mul_native_amount_wasmv1(&amount1, 2)
+            .unwrap();
         assert_eq!(mul, amount3);
 
-        let (quotient, remainder) = interface.div_rem_native_amount_wasmv1(&amount1, 2).unwrap();
+        let (quotient, remainder) = interface
+            .scalar_div_rem_native_amount_wasmv1(&amount1, 2)
+            .unwrap();
         let quotient_res_50 = interface.native_amount_from_str_wasmv1("50").unwrap();
         let remainder_res_0 = interface.native_amount_from_str_wasmv1("0").unwrap();
         assert_eq!(quotient, quotient_res_50);
         assert_eq!(remainder, remainder_res_0);
 
-        let (quotient, remainder) = interface.div_rem_native_amount_wasmv1(&amount1, 3).unwrap();
-        let verif_div = interface.mul_native_amount_wasmv1(&quotient, 3).unwrap();
+        let (quotient, remainder) = interface
+            .scalar_div_rem_native_amount_wasmv1(&amount1, 3)
+            .unwrap();
+        let verif_div = interface
+            .scalar_mul_native_amount_wasmv1(&quotient, 3)
+            .unwrap();
         let verif_dif = interface
-            .add_native_amounts_wasmv1(&verif_div, &remainder)
+            .add_native_amount_wasmv1(&verif_div, &remainder)
             .unwrap();
         assert_eq!(verif_dif, amount1);
 
         let amount5 = interface.native_amount_from_str_wasmv1("2").unwrap();
         let (quotient, remainder) = interface
-            .div_rem_native_amounts_wasmv1(&amount1, &amount5)
+            .div_rem_native_amount_wasmv1(&amount1, &amount5)
             .unwrap();
         assert_eq!(quotient, 50);
         assert_eq!(remainder, remainder_res_0);
 
         let amount6 = interface.native_amount_from_str_wasmv1("3").unwrap();
         let (quotient, remainder) = interface
-            .div_rem_native_amounts_wasmv1(&amount1, &amount6)
+            .div_rem_native_amount_wasmv1(&amount1, &amount6)
             .unwrap();
         let verif_div = interface
-            .mul_native_amount_wasmv1(&amount6, quotient)
+            .scalar_mul_native_amount_wasmv1(&amount6, quotient)
             .unwrap();
         let verif_dif = interface
-            .add_native_amounts_wasmv1(&verif_div, &remainder)
+            .add_native_amount_wasmv1(&verif_div, &remainder)
             .unwrap();
         assert_eq!(verif_dif, amount1);
     }
