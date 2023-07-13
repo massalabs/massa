@@ -196,7 +196,7 @@
     # max number of operation per message, same as network param but can be smaller
     max_operations_per_message = 1024
     # Number of millis seconds between each try out connections
-    try_connection_timer = 5000
+    try_connection_timer = 250
     # Number of millis seconds that create a timeout for out connections
     timeout_connection = 1000
     # max number of operations kept for propagation
