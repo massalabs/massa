@@ -511,21 +511,6 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -815,15 +800,6 @@
         <span class="kw-2">mut </span>op_batch: OperationPrefixIds,
         peer_id: <span class="kw-2">&amp;</span>PeerId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">// ignore announcements from disconnected peers
-        </span><span class="kw">if </span>!<span class="self">self
-            </span>.active_connections
-            .get_peer_ids_connected()
-            .contains(peer_id)
-        {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-        }
-
         <span class="comment">// mark sender as knowing the ops
         </span><span class="lifetime">&#39;write_cache</span>: {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
@@ -929,9 +905,6 @@
                         <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
                         cache_write.ops_known_by_peer.remove(peer_id);
                     }
-                    <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
-                        <span class="kw">break</span>;
-                    }
                 }
             }
         }
@@ -995,9 +968,6 @@
                 {
                     <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
                     cache_write.ops_known_by_peer.remove(peer_id);
-                }
-                <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
-                    <span class="kw">break</span>;
                 }
             }
         }

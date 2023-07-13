@@ -1058,6 +1058,27 @@
 <a href="#1058" id="1058">1058</a>
 <a href="#1059" id="1059">1059</a>
 <a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1103,7 +1124,7 @@
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
-    slot::Slot,
+    slot::{IndexedSlot, Slot},
     timeslots,
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
@@ -1899,13 +1920,34 @@
                     .saturating_add(<span class="self">self</span>.<span class="number">0</span>.api_settings.draw_lookahead_period_count),
                 cur_slot.thread,
             );
+            <span class="kw">let </span>selections = <span class="self">self
+                </span>.<span class="number">0
+                </span>.selector_controller
+                .get_available_selections_in_range(
+                    cur_slot..=slot_end,
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>addresses.iter().copied().collect()),
+                )
+                .unwrap_or_default();
+
             addresses
                 .iter()
                 .map(|addr| {
-                    <span class="self">self</span>.<span class="number">0
-                        </span>.selector_controller
-                        .get_address_selections(addr, cur_slot, slot_end)
-                        .unwrap_or_default()
+                    <span class="kw">let </span><span class="kw-2">mut </span>producer_slots = Vec::new();
+                    <span class="kw">let </span><span class="kw-2">mut </span>endorser_slots = Vec::new();
+                    <span class="kw">for </span>(s_slot, s_sel) <span class="kw">in </span><span class="kw-2">&amp;</span>selections {
+                        <span class="kw">if </span>s_sel.producer == <span class="kw-2">*</span>addr {
+                            producer_slots.push(<span class="kw-2">*</span>s_slot);
+                        }
+                        <span class="kw">for </span>(index, endorser) <span class="kw">in </span>s_sel.endorsements.iter().enumerate() {
+                            <span class="kw">if </span>endorser == addr {
+                                endorser_slots.push(IndexedSlot {
+                                    slot: <span class="kw-2">*</span>s_slot,
+                                    index,
+                                });
+                            }
+                        }
+                    }
+                    (producer_slots, endorser_slots)
                 })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };

@@ -336,6 +336,11 @@
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -474,7 +479,7 @@
     <span class="kw">pub </span>ledger: LedgerSettings,
     <span class="kw">pub </span>selector: SelectionSettings,
     <span class="kw">pub </span>factory: FactorySettings,
-    <span class="kw">pub </span>grpc: GrpcSettings,
+    <span class="kw">pub </span>grpc: GrpcApiSettings,
     <span class="kw">pub </span>metrics: MetricsSettings,
     <span class="kw">pub </span>versioning: VersioningSettings,
 }
@@ -577,20 +582,14 @@
     </span><span class="kw">pub </span>connect_timeout: MassaTime,
     <span class="doccomment">/// Number of tester threads
     </span><span class="kw">pub </span>thread_tester_count: u8,
-    <span class="doccomment">/// Number of threads for incoming connections
-    </span><span class="kw">pub </span>thread_incoming_connections_count: u8,
     <span class="doccomment">/// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u64,
     <span class="doccomment">/// try connection timer
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
-    <span class="doccomment">/// try connection timer for the same peer
-    </span><span class="kw">pub </span>try_connection_timer_same_peer: MassaTime,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Message timeout
     </span><span class="kw">pub </span>message_timeout: MassaTime,
-    <span class="doccomment">/// Timeout for the tester operations
-    </span><span class="kw">pub </span>tester_timeout: MassaTime,
     <span class="doccomment">/// Nb in connections
     </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Peers limits per category
@@ -637,6 +636,8 @@
     </span><span class="kw">pub </span>initial_connection_window_size: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     <span class="doccomment">/// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     </span><span class="kw">pub </span>max_concurrent_streams: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="doccomment">/// max number of arguments per gRPC request
+    </span><span class="kw">pub </span>max_arguments: u64,
     <span class="doccomment">/// set whether TCP keepalive messages are enabled on accepted connections
     </span><span class="kw">pub </span>tcp_keepalive: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
     <span class="doccomment">/// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -661,6 +662,15 @@
     </span><span class="kw">pub </span>server_private_key_path: PathBuf,
     <span class="doccomment">/// client certificate authority root path
     </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
+}
+
+<span class="doccomment">/// gRPC API settings.
+</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>GrpcApiSettings {
+    <span class="doccomment">/// Public server gRPC configuration.
+    </span><span class="kw">pub </span>public: GrpcSettings,
+    <span class="doccomment">/// Private server gRPC configuration.
+    </span><span class="kw">pub </span>private: GrpcSettings,
 }
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
