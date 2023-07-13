@@ -754,7 +754,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
-    fn op_entry_exists(&self, key: &[u8]) -> Result<bool> {
+    fn op_entry_exists_wasmv1(&self, key: &[u8]) -> Result<bool> {
         let context = context_guard!(self);
         let stack = context.stack.last().ok_or_else(|| anyhow!("No stack"))?;
         let datastore = stack
@@ -763,6 +763,11 @@ impl Interface for InterfaceImpl {
             .ok_or_else(|| anyhow!("No datastore in stack"))?;
         let has_key = datastore.contains_key(key);
         Ok(has_key)
+    }
+
+    // Deprecated by `has_op_key_wasmv1`
+    fn has_op_key(&self, key: &[u8]) -> Result<bool> {
+        self.op_entry_exists_wasmv1(key)
     }
 
     /// Gets an operation datastore value by key.
