@@ -198,13 +198,17 @@ impl Tester {
                                 .peers
                                 .entry(peer_id.clone())
                                 .and_modify(|info| {
-                                    if info.last_announce.timestamp < announcement.timestamp {
-                                        info.last_announce = announcement.clone();
+                                    if let Some(last_announce) = &info.last_announce {
+                                        if last_announce.timestamp < announcement.timestamp {
+                                            info.last_announce = Some(announcement.clone());
+                                        }
+                                    } else {
+                                        info.last_announce = Some(announcement.clone());
                                     }
                                     info.state = super::PeerState::Trusted;
                                 })
                                 .or_insert(PeerInfo {
-                                    last_announce: announcement,
+                                    last_announce: Some(announcement),
                                     state: super::PeerState::Trusted,
                                 });
                         }
@@ -233,9 +237,16 @@ impl Tester {
             if res.is_err() {
                 println!("Handshake failed in tester");
                 let mut peer_db_write = peer_db.write();
-                peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                    info.state = super::PeerState::HandshakeFailed;
-                });
+                peer_db_write
+                    .peers
+                    .entry(peer_id)
+                    .and_modify(|info| {
+                        info.state = super::PeerState::HandshakeFailed;
+                    })
+                    .or_insert(PeerInfo {
+                        last_announce: None,
+                        state: super::PeerState::HandshakeFailed,
+                    });
             }
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
                 tracing::log::error!("Failed to shutdown socket: {}", e);
