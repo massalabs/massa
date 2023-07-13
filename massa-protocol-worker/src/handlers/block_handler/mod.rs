@@ -94,8 +94,7 @@ impl BlockHandler {
             internal_receiver,
             peer_cmd_sender,
             config,
-            cache,
-            storage,
+            cache
         );
         Self {
             block_retrieval_thread: Some((sender_ext, block_retrieval_thread)),
