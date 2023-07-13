@@ -13,8 +13,7 @@ serde_json = "1.0"
 nom = "=7.1"
 num_enum = "0.5"
 # TODO tag peernet version
-peernet = { git = "https://github.com/massalabs/PeerNet", branch = "deactivate_stream_limiter" } #rev = "7b2a1a9" }
-#peernet = { path = "../../PeerNet" } #rev = "7b2a1a9" }
+peernet = { git = "https://github.com/massalabs/PeerNet", branch = "main" } #rev = "7b2a1a9" }
 tempfile = { version = "3.3", optional = true } # use with testing feature
 rayon = "1.7.0"
 schnellru = "0.2.1"
