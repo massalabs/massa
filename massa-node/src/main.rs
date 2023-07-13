@@ -289,7 +289,11 @@ async fn launch(
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
             Some(last_start_period) => {
-                // create MIP store by reading from the db
+                // The node is restarted from a snapshot:
+                // MIP store by reading from the db as it must have been updated by the massa ledger editor
+                // (to shift transitions that might have happened during the network shutdown)
+                // Note that FinalState::new_derived_from_snapshot will check if MIP store is consistent
+                // No Bootstrap are expected after this
                 let mip_store: MipStore = MipStore::try_from_db(db.clone(), mip_stats_config)
                     .expect("MIP store creation failed");
                 debug!("After read from db, Mip store: {:?}", mip_store);
@@ -305,6 +309,11 @@ async fn launch(
                 .expect("could not init final state")
             }
             None => {
+                // The node is started in a normal way
+                // Read the mip list supported by the current software
+                // The resulting MIP store will likely be updated by the boostrap process in order
+                // to get the latest information for the MIP store (new states, votes...)
+
                 let mip_list = get_mip_list();
                 debug!("MIP list: {:?}", mip_list);
                 let mip_store = MipStore::try_from((mip_list, mip_stats_config))
