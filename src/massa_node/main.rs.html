@@ -1928,6 +1928,7 @@
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         message_timeout: SETTINGS.protocol.message_timeout,
+        tester_timeout: SETTINGS.protocol.tester_timeout,
         routable_ip: SETTINGS
             .protocol
             .routable_ip
@@ -1936,7 +1937,6 @@
         peers_categories: SETTINGS.protocol.peers_categories.clone(),
         default_category_info: SETTINGS.protocol.default_category_info,
         version: <span class="kw-2">*</span>VERSION,
-        thread_incoming_connections_count: SETTINGS.protocol.thread_incoming_connections_count,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =

@@ -573,8 +573,6 @@
     </span><span class="kw">pub </span>connect_timeout: MassaTime,
     <span class="doccomment">/// Number of tester threads
     </span><span class="kw">pub </span>thread_tester_count: u8,
-    <span class="doccomment">/// Number of threads for incoming connections
-    </span><span class="kw">pub </span>thread_incoming_connections_count: u8,
     <span class="doccomment">/// Number of bytes we can read/write by seconds in a connection (must be a 10 multiple)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u64,
     <span class="doccomment">/// try connection timer
@@ -583,6 +581,8 @@
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Message timeout
     </span><span class="kw">pub </span>message_timeout: MassaTime,
+    <span class="doccomment">/// Timeout for the tester operations
+    </span><span class="kw">pub </span>tester_timeout: MassaTime,
     <span class="doccomment">/// Nb in connections
     </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Peers limits per category

@@ -255,8 +255,6 @@
     </span><span class="kw">pub </span>max_message_size: usize,
     <span class="doccomment">/// number of thread tester
     </span><span class="kw">pub </span>thread_tester_count: u8,
-    <span class="doccomment">/// Number of threads for incoming connections
-    </span><span class="kw">pub </span>thread_incoming_connections_count: u8,
     <span class="doccomment">/// Max size of the channel for command to the connectivity thread
     </span><span class="kw">pub </span>max_size_channel_commands_connectivity: usize,
     <span class="doccomment">/// Max size of channel to send commands to retrieval thread of operations
@@ -319,6 +317,8 @@
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Timeout message
     </span><span class="kw">pub </span>message_timeout: MassaTime,
+    <span class="doccomment">/// Timeout for the tester operations
+    </span><span class="kw">pub </span>tester_timeout: MassaTime,
     <span class="doccomment">/// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u128,
     <span class="doccomment">/// Optional routable ip
