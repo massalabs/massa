@@ -299,7 +299,7 @@ async fn launch(
                     final_state_config,
                     Box::new(ledger),
                     selector_controller.clone(),
-                    mip_store.clone(),
+                    mip_store,
                     last_start_period,
                 )
                 .expect("could not init final state")
@@ -422,7 +422,8 @@ async fn launch(
         let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
             .get_prev_slot(THREAD_COUNT)
             .unwrap();
-        if !final_state
+
+        final_state
             .read()
             .mip_store
             .is_consistent_with_shutdown_period(
@@ -432,13 +433,7 @@ async fn launch(
                 T0,
                 *GENESIS_TIMESTAMP,
             )
-            .unwrap_or(false)
-        {
-            panic!(
-                "MIP store is not consistent with last shutdown period ({} - {})",
-                last_shutdown_start, last_shutdown_end
-            );
-        }
+            .expect("Mip store is not consistent with shutdown period")
     }
 
     // Storage costs constants

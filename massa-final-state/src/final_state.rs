@@ -202,7 +202,7 @@ impl FinalState {
             shutdown_start, shutdown_end
         );
 
-        if !final_state
+        final_state
             .mip_store
             .is_consistent_with_shutdown_period(
                 shutdown_start,
@@ -211,12 +211,7 @@ impl FinalState {
                 config.t0,
                 config.genesis_timestamp,
             )
-            .unwrap_or(false)
-        {
-            return Err(FinalStateError::InvalidSlot(
-                "MIP store is Not consistent".to_string(),
-            ));
-        }
+            .map_err(FinalStateError::from)?;
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
