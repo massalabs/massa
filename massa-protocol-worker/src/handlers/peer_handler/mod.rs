@@ -264,7 +264,7 @@ impl PeerManagementHandler {
             let messages_handler = messages_handler.clone();
             let peer_db = peer_db.clone();
             let announcement_deserializer = announcement_deser.clone();
-            let version = protocol_config.version;
+            let config = protocol_config.clone();
             std::thread::spawn(move || {
                 while let Ok((_peer_id, listeners)) = connect_receiver.recv() {
                     if let Some((addr, _ty)) = listeners.iter().next() {
@@ -275,7 +275,7 @@ impl PeerManagementHandler {
                             VersionDeserializer::new(),
                             PeerIdDeserializer::new(),
                             *addr,
-                            version,
+                            &config,
                         );
                     }
                 }
@@ -559,11 +559,11 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         .peers
                         .entry(peer_id.clone())
                         .and_modify(|info| {
-                            info.last_announce = announcement.clone();
+                            info.last_announce = Some(announcement.clone());
                             info.state = PeerState::Trusted;
                         })
                         .or_insert(PeerInfo {
-                            last_announce: announcement.clone(),
+                            last_announce: Some(announcement.clone()),
                             state: PeerState::Trusted,
                         });
                 }

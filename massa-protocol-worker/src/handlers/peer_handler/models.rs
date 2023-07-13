@@ -31,7 +31,7 @@ pub type PeerMessageTuple = (PeerId, Vec<u8>);
 
 #[derive(Clone, Debug)]
 pub struct PeerInfo {
-    pub last_announce: Announcement,
+    pub last_announce: Option<Announcement>,
     pub state: PeerState,
 }
 
@@ -122,15 +122,17 @@ impl PeerDB {
             }
             if let Some(peer) = self.peers.get(&key) {
                 // skip old peers
-                if peer.last_announce.timestamp < min_time {
-                    continue;
+                if let Some(last_announce) = &peer.last_announce {
+                    if last_announce.timestamp < min_time {
+                        continue;
+                    }
+                    let listeners: HashMap<SocketAddr, TransportType> =
+                        last_announce.listeners.clone().into_iter().collect();
+                    if listeners.is_empty() {
+                        continue;
+                    }
+                    result.push((key, listeners));
                 }
-                let listeners: HashMap<SocketAddr, TransportType> =
-                    peer.last_announce.listeners.clone().into_iter().collect();
-                if listeners.is_empty() {
-                    continue;
-                }
-                result.push((key, listeners));
             }
         }
 
