@@ -19,7 +19,7 @@ use massa_db_exports::{
 #[allow(unused_imports)]
 use massa_models::config::VERSIONING_ACTIVATION_DELAY_MIN;
 use massa_models::config::VERSIONING_THRESHOLD_TRANSITION_ACCEPTED;
-use massa_models::config::{GENESIS_TIMESTAMP, MIP_STORE_STATS_BLOCK_CONSIDERED, T0, THREAD_COUNT};
+use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, T0, THREAD_COUNT};
 use massa_models::error::ModelsError;
 use massa_models::slot::Slot;
 use massa_models::timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp};
@@ -736,11 +736,19 @@ impl MipStore {
         }
     }
 
-    // debug
-    pub fn len(&self) -> usize {
-        let guard = self.0.read();
-        guard.store.len()
+    /// Create a MIP store with what is written on the disk
+    pub fn try_from_db(
+        db: ShareableMassaDBController,
+        cfg: MipStatsConfig,
+    ) -> Result<Self, ExtendFromDbError> {
+        MipStoreRaw::try_from_db(db, cfg).map(|store_raw| Self(Arc::new(RwLock::new(store_raw))))
     }
+
+    // debug
+    // pub fn len(&self) -> usize {
+    //     let guard = self.0.read();
+    //     guard.store.len()
+    // }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -1288,7 +1296,7 @@ impl MipStoreRaw {
                         get_closest_slot_to_timestamp(
                             THREAD_COUNT,
                             T0,
-                            *GENESIS_TIMESTAMP,
+                            genesis_timestamp,
                             mip_info.start
                         )
                     );
@@ -1502,6 +1510,25 @@ impl MipStoreRaw {
         println!("[extend_from_db] updated: {:?}", updated);
         println!("[extend_from_db] added: {:?}", added);
         Ok((updated, added))
+    }
+
+    /// Create a MIP store raw with what is written on the disk
+    fn try_from_db(
+        db: ShareableMassaDBController,
+        cfg: MipStatsConfig,
+    ) -> Result<Self, ExtendFromDbError> {
+        let mut store_raw = MipStoreRaw {
+            store: Default::default(),
+            stats: MipStoreStats {
+                config: cfg,
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
+        };
+
+        let (_updated, mut added) = store_raw.extend_from_db(db)?;
+        store_raw.store.append(&mut added);
+        Ok(store_raw)
     }
 }
 

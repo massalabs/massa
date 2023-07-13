@@ -285,34 +285,45 @@ async fn launch(
     };
     // Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
-    let mip_list = get_mip_list();
-    debug!("MIP list: {:?}", mip_list);
-    let mip_store =
-        MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
-
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
-            Some(last_start_period) => FinalState::new_derived_from_snapshot(
-                db.clone(),
-                final_state_config,
-                Box::new(ledger),
-                selector_controller.clone(),
-                mip_store.clone(),
-                last_start_period,
-            )
-            .expect("could not init final state"),
-            None => FinalState::new(
-                db.clone(),
-                final_state_config,
-                Box::new(ledger),
-                selector_controller.clone(),
-                mip_store.clone(),
-                true,
-            )
-            .expect("could not init final state"),
+            Some(last_start_period) => {
+                // create MIP store by reading from the db
+                let mip_store: MipStore = MipStore::try_from_db(db.clone(), mip_stats_config)
+                    .expect("MIP store creation failed");
+                debug!("After read from db, Mip store: {:?}", mip_store);
+
+                FinalState::new_derived_from_snapshot(
+                    db.clone(),
+                    final_state_config,
+                    Box::new(ledger),
+                    selector_controller.clone(),
+                    mip_store.clone(),
+                    last_start_period,
+                )
+                .expect("could not init final state")
+            }
+            None => {
+                let mip_list = get_mip_list();
+                debug!("MIP list: {:?}", mip_list);
+                let mip_store = MipStore::try_from((mip_list, mip_stats_config))
+                    .expect("mip store creation failed");
+
+                FinalState::new(
+                    db.clone(),
+                    final_state_config,
+                    Box::new(ledger),
+                    selector_controller.clone(),
+                    mip_store,
+                    true,
+                )
+                .expect("could not init final state")
+            }
         },
     ));
+
+    let mip_store = final_state.read().mip_store.clone();
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
