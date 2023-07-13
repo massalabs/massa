@@ -401,6 +401,7 @@ impl Tester {
                             continue;
                         };
 
+                        peers_in_test.write().unwrap().insert(listener.clone());
                         {
                             let mut db = db.write();
                             db.tested_addresses.insert(listener, MassaTime::now().unwrap());
@@ -415,12 +416,14 @@ impl Tester {
                         //Don't test our local addresses
                         for (local_addr, _transport) in protocol_config.listeners.iter() {
                             if listener == *local_addr {
+                                peers_in_test.write().unwrap().remove(&listener);
                                 continue;
                             }
                         }
                         //Don't test our proper ip
                         if let Some(ip) = protocol_config.routable_ip {
                             if ip.to_canonical() == ip_canonical {
+                                peers_in_test.write().unwrap().remove(&listener);
                                 continue;
                             }
                         }
@@ -440,6 +443,7 @@ impl Tester {
                         //     protocol_config.timeout_connection.to_duration(),
                         //     &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         // );
+                        peers_in_test.write().unwrap().remove(&listener);
                         tracing::log::debug!("{:?}", res);
                     }
                 }
