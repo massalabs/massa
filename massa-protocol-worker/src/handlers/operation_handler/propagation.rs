@@ -181,8 +181,7 @@ impl PropagationThread {
                             );
 
                             if let ProtocolError::PeerDisconnected(_) = err {
-                                // todo remove ops known by peer ?
-                                // cache_write.ops_known_by_peer.remove(&peer_id);
+                                // cache of this peer is removed in next call of cache_write.update_cache
                                 break;
                             }
                         }

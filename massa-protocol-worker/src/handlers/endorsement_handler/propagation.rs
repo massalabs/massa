@@ -124,10 +124,7 @@ impl PropagationThread {
                                                     peer_id, err
                                                 );
                                                 if let ProtocolError::PeerDisconnected(_) = err {
-                                                    // TODO: remove endorsement known by peer ?
-                                                    // cache_write
-                                                    //     .endorsements_known_by_peer
-                                                    //     .remove(peer_id);
+                                                    // cache of this peer is removed in next call of cache_write.update_cache
                                                     break;
                                                 }
                                             }
