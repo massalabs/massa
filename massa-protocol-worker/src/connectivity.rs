@@ -245,6 +245,7 @@ pub(crate) fn start_connectivity_thread(
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();
+                        let peers_connection_queue = active_conn.get_peer_ids_connection_queue();
                         let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                                 if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {
@@ -264,6 +265,7 @@ pub(crate) fn start_connectivity_thread(
                                     if peers_connected.contains_key(peer_id) {
                                         continue;
                                     }
+
                                     if let Some(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
                                         if peer.state == PeerState::Trusted {
                                             Some(peer.clone())
@@ -278,6 +280,10 @@ pub(crate) fn start_connectivity_thread(
 
                                             //TODO: Adapt for multiple listeners
                                             let (addr, _) = last_announce.listeners.iter().next().unwrap();
+                                            if peers_connection_queue.contains(addr) {
+                                                continue;
+                                            }
+
                                             let canonical_ip = addr.ip().to_canonical();
                                             let mut allowed_local_ips = false;
                                             // Check if the peer is in a category and we didn't reached out target yet
@@ -295,10 +301,8 @@ pub(crate) fn start_connectivity_thread(
                                             if let Some(category) = category_found {
                                                 for (name, category_infos) in &mut slots_per_category {
                                                     if name == category && category_infos > &mut 0 {
-                                                        // if !addresses_to_connect.contains(addr) {
                                                             addresses_to_connect.push(*addr);
                                                             *category_infos -= 1;
-                                                        // }
                                                     }
                                                 }
                                             } else if slot_default_category > 0 &&  !addresses_to_connect.contains(addr) {

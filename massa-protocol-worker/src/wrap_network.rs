@@ -29,6 +29,7 @@ pub trait ActiveConnectionsTrait: Send + Sync {
     fn get_peers_connected(
         &self,
     ) -> HashMap<PeerId, (SocketAddr, PeerConnectionType, Option<String>)>;
+    fn get_peer_ids_connection_queue(&self) -> HashSet<SocketAddr>;
     fn get_nb_out_connections(&self) -> usize;
     fn get_nb_in_connections(&self) -> usize;
     fn shutdown_connection(&mut self, peer_id: &PeerId);
@@ -106,6 +107,10 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
             map.insert(peerid.to_string(), conn.endpoint.get_bandwidth());
         }
         map
+    }
+
+    fn get_peer_ids_connection_queue(&self) -> HashSet<SocketAddr> {
+        self.read().connection_queue.clone()
     }
 }
 
