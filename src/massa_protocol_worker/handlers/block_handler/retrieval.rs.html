@@ -1508,6 +1508,19 @@
 <a href="#1508" id="1508">1508</a>
 <a href="#1509" id="1509">1509</a>
 <a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
@@ -1852,6 +1865,9 @@
                     <span class="string">&quot;Error while sending reply for blocks to {}: {:?}&quot;</span>,
                     from_peer_id, err
                 );
+                <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                    <span class="kw">break</span>;
+                }
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -2955,6 +2971,16 @@
                             <span class="string">&quot;Failed to send AskForBlocks to peer {} err: {}&quot;</span>,
                             peer_id, err
                         );
+
+                        <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                            <span class="comment">// remove from active block requests
+                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(asked_blocks) = <span class="self">self</span>.asked_blocks.get_mut(peer_id) {
+                                <span class="kw">for </span>(hash, <span class="kw">_</span>) <span class="kw">in </span>sub_list {
+                                    asked_blocks.remove(hash);
+                                }
+                            }
+                            <span class="kw">break</span>;
+                        }
                     }
                 }
             }
