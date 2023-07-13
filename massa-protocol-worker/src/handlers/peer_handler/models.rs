@@ -23,6 +23,8 @@ pub struct PeerDB {
     pub index_by_newest: BTreeSet<(Reverse<u64>, PeerId)>,
     /// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
     pub tested_addresses: HashMap<SocketAddr, MassaTime>,
+    /// history of try connection to peers
+    pub try_connect_history: HashMap<SocketAddr, MassaTime>,
 }
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;

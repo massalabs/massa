@@ -8,6 +8,7 @@ use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use peernet::peer::PeerConnectionType;
@@ -284,6 +285,14 @@ pub(crate) fn start_connectivity_thread(
                                                 continue;
                                             }
 
+                                            // check if the peer last connect attempt has not been too recent
+                                            if let Some(last_try) = peer_db_read.try_connect_history.get(addr) {
+                                                let last_try = last_try.estimate_instant().expect("Time went backward");
+                                                if last_try.elapsed() < config.try_connection_timer_same_peer.to_duration() {
+                                                    continue;
+                                                }
+                                            }
+
                                             let canonical_ip = addr.ip().to_canonical();
                                             let mut allowed_local_ips = false;
                                             // Check if the peer is in a category and we didn't reached out target yet
@@ -321,6 +330,8 @@ pub(crate) fn start_connectivity_thread(
 
                         for addr in addresses_to_connect {
                             info!("Trying to connect to addr {}", addr);
+
+                            peer_db.write().try_connect_history.insert(addr, MassaTime::now().unwrap());
 
                             // We only manage TCP for now
                             if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {

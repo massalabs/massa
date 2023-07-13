@@ -245,6 +245,8 @@ pub struct ProtocolSettings {
     pub read_write_limit_bytes_per_second: u64,
     /// try connection timer
     pub try_connection_timer: MassaTime,
+    /// try connection timer for the same peer
+    pub try_connection_timer_same_peer: MassaTime,
     /// Timeout connection
     pub timeout_connection: MassaTime,
     /// Message timeout

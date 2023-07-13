@@ -631,6 +631,7 @@ async fn launch(
         default_category_info: SETTINGS.protocol.default_category_info,
         version: *VERSION,
         thread_incoming_connections_count: SETTINGS.protocol.thread_incoming_connections_count,
+        try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
     };
 
     let (protocol_controller, protocol_channels) =

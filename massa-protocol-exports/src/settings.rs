@@ -146,6 +146,8 @@ pub struct ProtocolConfig {
     pub last_start_period: u64,
     /// try connection timer
     pub try_connection_timer: MassaTime,
+    /// try connection timer same peer
+    pub try_connection_timer_same_peer: MassaTime,
     /// Max in connections
     pub max_in_connections: usize,
     /// Timeout connection
