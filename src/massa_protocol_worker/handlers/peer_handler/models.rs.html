@@ -149,10 +149,6 @@
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -178,8 +174,6 @@
     </span><span class="kw">pub </span>index_by_newest: BTreeSet&lt;(Reverse&lt;u64&gt;, PeerId)&gt;,
     <span class="doccomment">/// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
     </span><span class="kw">pub </span>tested_addresses: HashMap&lt;SocketAddr, MassaTime&gt;,
-    <span class="doccomment">/// history of try connection to peers
-    </span><span class="kw">pub </span>try_connect_history: HashMap&lt;SocketAddr, MassaTime&gt;,
 }
 
 <span class="kw">pub type </span>SharedPeerDB = Arc&lt;RwLock&lt;PeerDB&gt;&gt;;
@@ -188,7 +182,7 @@
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>PeerInfo {
-    <span class="kw">pub </span>last_announce: <span class="prelude-ty">Option</span>&lt;Announcement&gt;,
+    <span class="kw">pub </span>last_announce: Announcement,
     <span class="kw">pub </span>state: PeerState,
 }
 
@@ -279,17 +273,15 @@
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get(<span class="kw-2">&amp;</span>key) {
                 <span class="comment">// skip old peers
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_announce) = <span class="kw-2">&amp;</span>peer.last_announce {
-                    <span class="kw">if </span>last_announce.timestamp &lt; min_time {
-                        <span class="kw">continue</span>;
-                    }
-                    <span class="kw">let </span>listeners: HashMap&lt;SocketAddr, TransportType&gt; =
-                        last_announce.listeners.clone().into_iter().collect();
-                    <span class="kw">if </span>listeners.is_empty() {
-                        <span class="kw">continue</span>;
-                    }
-                    result.push((key, listeners));
+                </span><span class="kw">if </span>peer.last_announce.timestamp &lt; min_time {
+                    <span class="kw">continue</span>;
                 }
+                <span class="kw">let </span>listeners: HashMap&lt;SocketAddr, TransportType&gt; =
+                    peer.last_announce.listeners.clone().into_iter().collect();
+                <span class="kw">if </span>listeners.is_empty() {
+                    <span class="kw">continue</span>;
+                }
+                result.push((key, listeners));
             }
         }
 

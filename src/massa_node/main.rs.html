@@ -1319,9 +1319,6 @@
 <a href="#1319" id="1319">1319</a>
 <a href="#1320" id="1320">1320</a>
 <a href="#1321" id="1321">1321</a>
-<a href="#1322" id="1322">1322</a>
-<a href="#1323" id="1323">1323</a>
-<a href="#1324" id="1324">1324</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1960,7 +1957,6 @@
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         message_timeout: SETTINGS.protocol.message_timeout,
-        tester_timeout: SETTINGS.protocol.tester_timeout,
         routable_ip: SETTINGS
             .protocol
             .routable_ip
@@ -1969,8 +1965,6 @@
         peers_categories: SETTINGS.protocol.peers_categories.clone(),
         default_category_info: SETTINGS.protocol.default_category_info,
         version: <span class="kw-2">*</span>VERSION,
-        thread_incoming_connections_count: SETTINGS.protocol.thread_incoming_connections_count,
-        try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =
