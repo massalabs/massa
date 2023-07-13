@@ -8,7 +8,7 @@ use std::{
 
 use crate::messages::MessagesHandler;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
-use massa_models::version::{Version, VersionDeserializer};
+use massa_models::version::VersionDeserializer;
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
@@ -76,13 +76,19 @@ impl Tester {
         version_deserializer: VersionDeserializer,
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
-        our_version: Version,
+        config: &ProtocolConfig,
     ) -> PeerNetResult<PeerId> {
+        let our_version = config.version;
         let result = {
             let mut socket =
-                std::net::TcpStream::connect_timeout(&addr, Duration::from_millis(500))
+                std::net::TcpStream::connect_timeout(&addr, config.tester_timeout.into())
                     .map_err(|e| PeerNetError::PeerConnectionError.new("connect", e, None))?;
-
+            socket
+                .set_read_timeout(Some(config.tester_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new("read timeout", err, None))?;
+            socket
+                .set_write_timeout(Some(config.tester_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new("write timeout", err, None))?;
             // data.receive() from Endpoint
             let mut len_bytes = vec![0u8; 4];
             socket
@@ -358,7 +364,7 @@ impl Tester {
                                                 VersionDeserializer::new(),
                                                 PeerIdDeserializer::new(),
                                                 *addr,
-                                                protocol_config.version,
+                                                &protocol_config,
                                             );
 
                                             // let _res =  network_manager.try_connect(
@@ -414,7 +420,7 @@ impl Tester {
                             VersionDeserializer::new(),
                             PeerIdDeserializer::new(),
                             listener,
-                            protocol_config.version,
+                            &protocol_config,
                         );
                         // let res =  network_manager.try_connect(
                         //     listener,

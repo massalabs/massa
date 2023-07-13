@@ -249,6 +249,8 @@ pub struct ProtocolSettings {
     pub timeout_connection: MassaTime,
     /// Message timeout
     pub message_timeout: MassaTime,
+    /// Timeout for the tester operations
+    pub tester_timeout: MassaTime,
     /// Nb in connections
     pub max_in_connections: usize,
     /// Peers limits per category
