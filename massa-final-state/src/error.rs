@@ -5,7 +5,7 @@
 use displaydoc::Display;
 use thiserror::Error;
 
-use massa_versioning::versioning::ExtendFromDbError;
+use massa_versioning::versioning::{ExtendFromDbError, IsConsistentWithShutdownPeriodError};
 
 /// Final state error
 #[non_exhaustive]
@@ -20,5 +20,7 @@ pub enum FinalStateError {
     /// Snapshot error: {0}
     SnapshotError(String),
     /// ExtendFromDbError
-    MipStoreError(#[from] ExtendFromDbError),
+    ExtendFromDbError(#[from] ExtendFromDbError),
+    /// IsConsistentWithShutdownPeriodError
+    NonConsistentWithShutdownPeriodError(#[from] IsConsistentWithShutdownPeriodError),
 }
