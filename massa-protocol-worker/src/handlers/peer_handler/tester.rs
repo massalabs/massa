@@ -258,6 +258,7 @@ impl Tester {
     }
 
     /// Create a new tester (spawn a thread)
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         peer_db: SharedPeerDB,
         active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -327,12 +328,12 @@ impl Tester {
                                     let db = db.clone();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
-                                        if peers_in_test.read().unwrap().contains(&addr) {
+                                        if peers_in_test.read().unwrap().contains(addr) {
                                             continue;
                                         }
                                         {
                                             let mut peers_in_test = peers_in_test.write().unwrap();
-                                            peers_in_test.insert(addr.clone());
+                                            peers_in_test.insert(*addr);
                                         }
 
                                         //Find category of that address
@@ -359,7 +360,7 @@ impl Tester {
                                             if let Some(last_tested_time) = db_write.tested_addresses.get(addr) {
                                                 let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
                                                 if last_tested_time.elapsed() < cooldown {
-                                                    peers_in_test.write().unwrap().remove(&addr);
+                                                    peers_in_test.write().unwrap().remove(addr);
                                                     continue;
                                                 }
                                             }
@@ -371,14 +372,14 @@ impl Tester {
                                             //Don't test our local addresses
                                             for (local_addr, _transport) in protocol_config.listeners.iter() {
                                                 if addr == local_addr {
-                                                    peers_in_test.write().unwrap().remove(&addr);
+                                                    peers_in_test.write().unwrap().remove(addr);
                                                     continue;
                                                 }
                                             }
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
                                                 if ip.to_canonical() == ip_canonical {
-                                                    peers_in_test.write().unwrap().remove(&addr);
+                                                    peers_in_test.write().unwrap().remove(addr);
                                                     continue;
                                                 }
                                             }
@@ -395,7 +396,7 @@ impl Tester {
                                                 &protocol_config,
                                             );
 
-                                            peers_in_test.write().unwrap().remove(&addr);
+                                            peers_in_test.write().unwrap().remove(addr);
 
                                             // let _res =  network_manager.try_connect(
                                             //     *addr,
@@ -418,7 +419,7 @@ impl Tester {
                             continue;
                         };
 
-                        peers_in_test.write().unwrap().insert(listener.clone());
+                        peers_in_test.write().unwrap().insert(listener);
                         {
                             let mut db = db.write();
                             db.tested_addresses.insert(listener, MassaTime::now().unwrap());
