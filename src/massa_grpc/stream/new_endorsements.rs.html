@@ -86,20 +86,10 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
-<span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
+<span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>std::io::ErrorKind;
@@ -120,7 +110,7 @@
 
 <span class="doccomment">/// Creates a new stream of new produced and received endorsements
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_endorsements(
-    grpc: <span class="kw-2">&amp;</span>MassaGrpc,
+    grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: Request&lt;Streaming&lt;grpc_api::NewEndorsementsRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewEndorsementsStreamType, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
@@ -131,8 +121,6 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.pool_channels.endorsement_sender.subscribe();
 
     tokio::spawn(<span class="kw">async move </span>{
-        <span class="comment">// Initialize the request_id string
-        </span><span class="kw">let </span><span class="kw-2">mut </span>request_id = String::new();
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 <span class="comment">// Receive a new endorsement from the subscriber
@@ -141,8 +129,7 @@
                         <span class="prelude-val">Ok</span>(massa_endorsement) =&gt; {
                             <span class="comment">// Send the new endorsement through the channel
                             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewEndorsementsResponse {
-                                    id: request_id.clone(),
-                                    endorsement: <span class="prelude-val">Some</span>(massa_endorsement.into())
+                                    signed_endorsement: <span class="prelude-val">Some</span>(massa_endorsement.into())
                             })).<span class="kw">await </span>{
                                 <span class="macro">error!</span>(<span class="string">&quot;failed to send new endorsement : {}&quot;</span>, e);
                                 <span class="kw">break</span>;
@@ -155,13 +142,7 @@
                 </span>res = in_stream.next() =&gt; {
                     <span class="kw">match </span>res {
                         <span class="prelude-val">Some</span>(res) =&gt; {
-                            <span class="kw">match </span>res {
-                                <span class="comment">// Get the request_id from the received data
-                                </span><span class="prelude-val">Ok</span>(data) =&gt; {
-                                    request_id = data.id
-                                },
-                                <span class="comment">// Handle any errors that may occur during receiving the data
-                                </span><span class="prelude-val">Err</span>(err) =&gt; {
+                            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = res {
                                     <span class="comment">// Check if the error matches any IO errors
                                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>err) {
                                         <span class="kw">if </span>io_err.kind() == ErrorKind::BrokenPipe {
@@ -175,7 +156,6 @@
                                         <span class="macro">error!</span>(<span class="string">&quot;failed to send back new_endorsements error response: {}&quot;</span>, e);
                                         <span class="kw">break</span>;
                                     }
-                                }
                             }
                         },
                         <span class="prelude-val">None </span>=&gt; {

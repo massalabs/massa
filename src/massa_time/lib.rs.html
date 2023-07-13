@@ -483,6 +483,7 @@
 <a href="#483" id="483">483</a>
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Unsigned time management
 </span><span class="attr">#![warn(missing_docs)]
@@ -490,6 +491,7 @@
 #![feature(bound_map)]
 
 </span><span class="kw">mod </span>error;
+<span class="kw">mod </span>mapping_grpc;
 <span class="kw">pub use </span>error::TimeError;
 <span class="kw">use </span>massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
