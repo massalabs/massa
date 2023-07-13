@@ -3,19 +3,16 @@
 use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
 
-use grpc_api::execution_query_request_item as exec;
-use massa_execution_exports::{
-    ExecutionQueryCycleInfos, ExecutionQueryError, ExecutionQueryRequest,
-    ExecutionQueryRequestItem, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
+use massa_execution_exports::mapping_grpc::{
+    to_event_filter, to_execution_query_response, to_querystate_filter,
 };
+use massa_execution_exports::ExecutionQueryRequest;
 use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
-use massa_models::execution::EventFilter;
-use massa_models::mapping_grpc::to_denunciation_index;
 use massa_models::operation::{OperationId, SecureShareOperation};
-use massa_models::prehash::{CapacityAllocator, PreHashSet};
+use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -584,6 +581,7 @@ pub(crate) fn get_status(
             })?
     };
     let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
+    //TODO to be enhanced
     let empty_request = ExecutionQueryRequest { requests: vec![] };
     let state = grpc.execution_controller.query_state(empty_request);
 
@@ -649,296 +647,7 @@ pub(crate) fn query_state(
         responses: response
             .responses
             .into_iter()
-            .map(into_execution_query_response)
+            .map(to_execution_query_response)
             .collect(),
     })
-}
-
-// Convert a `ExecutionQueryResponse` to a `grpc_api::ExecutionQueryResponse`
-fn into_execution_query_response(
-    value: Result<ExecutionQueryResponseItem, ExecutionQueryError>,
-) -> grpc_api::ExecutionQueryResponse {
-    match value {
-        Ok(item) => grpc_api::ExecutionQueryResponse {
-            response: Some(grpc_api::execution_query_response::Response::Result(
-                to_execution_query_result(item),
-            )),
-        },
-        Err(err) => grpc_api::ExecutionQueryResponse {
-            response: Some(grpc_api::execution_query_response::Response::Error(
-                err.into(),
-            )),
-        },
-    }
-}
-
-/// Convert a `ExecutionQueryResponseItem` to a `grpc_api::ExecutionQueryResponseItem`
-pub fn to_execution_query_result(
-    value: ExecutionQueryResponseItem,
-) -> grpc_api::ExecutionQueryResponseItem {
-    let response_item = match value {
-        ExecutionQueryResponseItem::Boolean(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::Boolean(result)
-        }
-        ExecutionQueryResponseItem::RollCount(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::RollCount(result)
-        }
-        ExecutionQueryResponseItem::Amount(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::Amount(result.into())
-        }
-        ExecutionQueryResponseItem::Bytecode(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::Bytes(result.0)
-        }
-        ExecutionQueryResponseItem::DatastoreValue(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::Bytes(result)
-        }
-        ExecutionQueryResponseItem::KeyList(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::VecBytes(
-                grpc_model::ArrayOfBytesWrapper {
-                    items: result.into_iter().collect(),
-                },
-            )
-        }
-        ExecutionQueryResponseItem::DeferredCredits(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::DeferredCredits(
-                grpc_api::DeferredCreditsEntryWrapper {
-                    entries: result
-                        .into_iter()
-                        .map(|(slot, amount)| grpc_api::DeferredCreditsEntry {
-                            slot: Some(slot.into()),
-                            amount: Some(amount.into()),
-                        })
-                        .collect(),
-                },
-            )
-        }
-        ExecutionQueryResponseItem::ExecutionStatus(result) => match result {
-            massa_execution_exports::ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess => {
-                grpc_api::execution_query_response_item::ResponseItem::ExecutionStatus(
-                    grpc_api::ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess as i32,
-                )
-            }
-            massa_execution_exports::ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure => {
-                grpc_api::execution_query_response_item::ResponseItem::ExecutionStatus(
-                    grpc_api::ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure as i32,
-                )
-            }
-            massa_execution_exports::ExecutionQueryExecutionStatus::ExecutableOrExpired => {
-                grpc_api::execution_query_response_item::ResponseItem::ExecutionStatus(
-                    grpc_api::ExecutionQueryExecutionStatus::ExecutableOrExpired as i32,
-                )
-            }
-        },
-        ExecutionQueryResponseItem::CycleInfos(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::CycleInfos(to_cycle_info(result))
-        }
-        ExecutionQueryResponseItem::Events(result) => {
-            grpc_api::execution_query_response_item::ResponseItem::Events(
-                grpc_api::ScOutputEventsWrapper {
-                    events: result.into_iter().map(|event| event.into()).collect(),
-                },
-            )
-        }
-    };
-
-    grpc_api::ExecutionQueryResponseItem {
-        response_item: Some(response_item),
-    }
-}
-
-/// Convert a `ExecutionQueryCycleInfos` to a `grpc_api::CycleInfos`
-pub fn to_cycle_info(value: ExecutionQueryCycleInfos) -> grpc_api::ExecutionQueryCycleInfos {
-    grpc_api::ExecutionQueryCycleInfos {
-        cycle: value.cycle,
-        is_final: value.is_final,
-        staker_infos: value
-            .staker_infos
-            .into_iter()
-            .map(|(address, info)| to_execution_query_staker_info(address, info))
-            .collect(),
-    }
-}
-
-/// Convert a `ExecutionQueryStakerInfo` to a `grpc_api::ExecutionQueryStakerInfo`
-pub fn to_execution_query_staker_info(
-    address: Address,
-    info: ExecutionQueryStakerInfo,
-) -> grpc_api::ExecutionQueryStakerInfoEntry {
-    grpc_api::ExecutionQueryStakerInfoEntry {
-        address: address.to_string(),
-        info: Some(grpc_api::ExecutionQueryStakerInfo {
-            active_rolls: info.active_rolls,
-            production_stats: Some(grpc_api::ExecutionQueryStakerInfoProductionStatsEntry {
-                address: address.to_string(),
-                stats: Some(grpc_api::ExecutionQueryStakerInfoProductionStats {
-                    block_success_count: info.production_stats.block_success_count,
-                    block_failure_count: info.production_stats.block_failure_count,
-                }),
-            }),
-        }),
-    }
-}
-
-// Convert a vector of `grpc_model::ScExecutionEventsFilter` to a `EventFilter`
-fn to_event_filter(
-    sce_filters: Vec<grpc_api::ScExecutionEventsFilter>,
-) -> Result<EventFilter, GrpcError> {
-    let mut event_filter = EventFilter::default();
-    for query in sce_filters {
-        if let Some(filter) = query.filter {
-            match filter {
-                grpc_api::sc_execution_events_filter::Filter::SlotRange(slot_range) => {
-                    event_filter.start = slot_range.start_slot.map(|slot| slot.into());
-                    event_filter.end = slot_range.end_slot.map(|slot| slot.into());
-                }
-                grpc_api::sc_execution_events_filter::Filter::CallerAddress(caller_address) => {
-                    event_filter.original_caller_address =
-                        Some(Address::from_str(&caller_address)?);
-                }
-                grpc_api::sc_execution_events_filter::Filter::EmitterAddress(emitter_address) => {
-                    event_filter.emitter_address = Some(Address::from_str(&emitter_address)?);
-                }
-                grpc_api::sc_execution_events_filter::Filter::OriginalOperationId(operation_id) => {
-                    event_filter.original_operation_id =
-                        Some(OperationId::from_str(&operation_id)?);
-                }
-                grpc_api::sc_execution_events_filter::Filter::IsFailure(is_failure) => {
-                    event_filter.is_error = Some(is_failure);
-                }
-                grpc_api::sc_execution_events_filter::Filter::Status(status) => {
-                    // See grpc_model::ScExecutionEventStatus
-                    match status {
-                        1 => event_filter.is_final = Some(true),
-                        2 => event_filter.is_final = Some(false),
-                        _ => event_filter.is_final = None,
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(event_filter)
-}
-
-// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
-fn to_querystate_filter(
-    query: grpc_api::ExecutionQueryRequestItem,
-) -> Result<ExecutionQueryRequestItem, GrpcError> {
-    if let Some(item) = query.request_item {
-        match item {
-            exec::RequestItem::AddressExistsCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressExistsCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            exec::RequestItem::AddressExistsFinal(value) => Ok(
-                ExecutionQueryRequestItem::AddressExistsFinal(Address::from_str(&value.address)?),
-            ),
-            exec::RequestItem::AddressBalanceCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressBalanceCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            exec::RequestItem::AddressBalanceFinal(value) => Ok(
-                ExecutionQueryRequestItem::AddressBalanceFinal(Address::from_str(&value.address)?),
-            ),
-            exec::RequestItem::AddressBytecodeCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressBytecodeCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            exec::RequestItem::AddressBytecodeFinal(value) => {
-                Ok(ExecutionQueryRequestItem::AddressBytecodeCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressBytecodeCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            exec::RequestItem::AddressDatastoreKeysFinal(value) => {
-                Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr: Address::from_str(&value.address)?,
-                    prefix: value.prefix,
-                })
-            }
-            exec::RequestItem::AddressDatastoreValueCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
-                    addr: Address::from_str(&value.address)?,
-                    key: value.key,
-                })
-            }
-            exec::RequestItem::AddressDatastoreValueFinal(value) => {
-                Ok(ExecutionQueryRequestItem::AddressDatastoreValueFinal {
-                    addr: Address::from_str(&value.address)?,
-                    key: value.key,
-                })
-            }
-            exec::RequestItem::OpExecutionStatusCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::OpExecutionStatusCandidate(
-                    OperationId::from_str(&value.operation_id)?,
-                ))
-            }
-            exec::RequestItem::OpExecutionStatusFinal(value) => {
-                Ok(ExecutionQueryRequestItem::OpExecutionStatusFinal(
-                    OperationId::from_str(&value.operation_id)?,
-                ))
-            }
-            //TODO to be improved
-            exec::RequestItem::DenunciationExecutionStatusCandidate(value) => Ok(
-                ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(
-                    to_denunciation_index(value.denunciation_index.ok_or_else(|| {
-                        GrpcError::InvalidArgument("no denounciation index found".to_string())
-                    })?)?,
-                ),
-            ),
-            //TODO to be improved
-            exec::RequestItem::DenunciationExecutionStatusFinal(value) => {
-                Ok(ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(
-                    to_denunciation_index(value.denunciation_index.ok_or_else(|| {
-                        GrpcError::InvalidArgument("no denounciation index found".to_string())
-                    })?)?,
-                ))
-            }
-            exec::RequestItem::AddressRollsCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressRollsCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            exec::RequestItem::AddressRollsFinal(value) => Ok(
-                ExecutionQueryRequestItem::AddressRollsFinal(Address::from_str(&value.address)?),
-            ),
-            exec::RequestItem::AddressDeferredCreditsCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            exec::RequestItem::AddressDeferredCreditsFinal(value) => {
-                Ok(ExecutionQueryRequestItem::AddressDeferredCreditsFinal(
-                    Address::from_str(&value.address)?,
-                ))
-            }
-            //TODO to be checked
-            exec::RequestItem::CycleInfos(value) => {
-                let addreses = value
-                    .restrict_to_addresses
-                    .into_iter()
-                    .map(|address| Address::from_str(&address))
-                    .collect::<Result<Vec<_>, _>>()?;
-                let mut addresses_set = PreHashSet::with_capacity(addreses.len());
-                addresses_set.extend(addreses);
-                Ok(ExecutionQueryRequestItem::CycleInfos {
-                    cycle: value.cycle,
-                    restrict_to_addresses: Some(addresses_set),
-                })
-            }
-            exec::RequestItem::Events(value) => {
-                let event_filter = to_event_filter(value.filters)?;
-                Ok(ExecutionQueryRequestItem::Events(event_filter))
-            }
-        }
-    } else {
-        Err(GrpcError::InvalidArgument("no filter provided".to_string()))
-    }
 }

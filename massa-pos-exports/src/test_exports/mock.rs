@@ -8,11 +8,7 @@ use std::{
 };
 
 use massa_hash::Hash;
-use massa_models::{
-    address::Address,
-    prehash::PreHashSet,
-    slot::{IndexedSlot, Slot},
-};
+use massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
 
 use crate::{PosResult, Selection, SelectorController};
 

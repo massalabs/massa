@@ -14,7 +14,7 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{cmp::max, cmp::Ordering, cmp::PartialOrd, collections::BTreeSet, sync::Arc};
-use tracing::{debug, log::trace, warn};
+use tracing::{debug, trace, warn};
 
 use crate::types::OperationInfo;
 
