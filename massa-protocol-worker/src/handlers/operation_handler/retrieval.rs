@@ -217,28 +217,27 @@ impl RetrievalThread {
                 .collect::<Vec<_>>(),
         )?;
 
-        'write_cache: {
+        {
             // add to checked operations
             let mut cache_write = self.cache.write();
+
+            // add checked operations
             for op_id in new_operations.keys().copied() {
                 cache_write.insert_checked_operation(op_id);
             }
 
             // add to known ops
-            let Ok(known_ops) = cache_write
+            let known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(source_peer_id.clone(), || {
+                .entry(source_peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         self.config
                             .max_node_known_ops_size
                             .try_into()
-                            .expect("max_node_known_ops_size in config must be > 0"),
+                            .expect("max_node_known_ops_size in config must fit in u32"),
                     ))
-                })
-                .ok_or(()) else {
-                    warn!("ops_known_by_peer limitation reached");
-                    break 'write_cache;
-                };
+                });
             for id in all_received_ids {
                 known_ops.insert(id.prefix(), ());
             }
@@ -249,6 +248,7 @@ impl RetrievalThread {
             let mut ops = self.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
+            // propagate new operations
             self.internal_sender
                 .try_send(OperationHandlerPropagationCommand::PropagateOperations(
                     ops.clone(),
@@ -287,7 +287,7 @@ impl RetrievalThread {
         mut op_batch: OperationPrefixIds,
         peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
-        // ignore announcements from disconnected peers
+        // ignore announcement from disconnected peers
         if !self
             .active_connections
             .get_peer_ids_connected()
@@ -297,24 +297,21 @@ impl RetrievalThread {
         }
 
         // mark sender as knowing the ops
-        'write_cache: {
+        {
             let mut cache_write = self.cache.write();
-            let Ok(known_ops) = cache_write
+            let known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(peer_id.clone(), || {
+                .entry(peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         self.config
                             .max_node_known_ops_size
                             .try_into()
-                            .expect("max_node_known_ops_size in config must be > 0"),
+                            .expect("max_node_known_ops_size in config must fit in u32"),
                     ))
-                })
-                .ok_or(()) else {
-                    warn!("ops_known_by_peer limitation reached");
-                    break 'write_cache;
-                };
-            for prefix in &op_batch {
-                known_ops.insert(*prefix, ());
+                });
+            for prefix_id in &op_batch {
+                known_ops.insert(*prefix_id, ());
             }
         }
 
@@ -330,32 +327,33 @@ impl RetrievalThread {
         let now = Instant::now();
         let mut count_reask = 0;
         for op_id in op_batch {
-            let wish = match self.asked_operations.get(&op_id) {
-                Some(wish) => {
-                    if wish.1.contains(peer_id) {
-                        continue; // already asked to the `peer_id`
+            let opt_previous_ask = match self.asked_operations.get(&op_id) {
+                Some(previous_ask) => {
+                    if previous_ask.1.contains(peer_id) {
+                        continue; // already asked to the origin `peer_id` => ignore
                     } else {
-                        Some(wish) // already asked but at someone else
+                        Some(previous_ask) // already asked but to someone else
                     }
                 }
                 None => None,
             };
-            if let Some(wish) = wish {
+            if let Some((previous_ask_time, previous_ask_peers)) = opt_previous_ask {
                 // Ask now if latest ask instant < now - operation_batch_proc_period
                 // otherwise add in future_set
-                if wish.0
-                    < now
-                        .checked_sub(self.config.operation_batch_proc_period.into())
-                        .ok_or(TimeError::TimeOverflowError)?
+                if now
+                    .checked_duration_since(*previous_ask_time)
+                    .unwrap_or_default()
+                    > self.config.operation_batch_proc_period.to_duration()
                 {
                     count_reask += 1;
                     ask_set.insert(op_id);
-                    wish.0 = now;
-                    wish.1.push(peer_id.clone());
+                    *previous_ask_time = now;
+                    previous_ask_peers.push(peer_id.clone());
                 } else {
                     future_set.insert(op_id);
                 }
             } else {
+                // the same peer announced this op for a second time, ask them immediately
                 ask_set.insert(op_id);
                 self.asked_operations
                     .insert(op_id, (now, vec![peer_id.clone()]));
@@ -397,10 +395,6 @@ impl RetrievalThread {
                     false,
                 ) {
                     warn!("Failed to send AskForOperations message to peer: {}", err);
-                    {
-                        let mut cache_write = self.cache.write();
-                        cache_write.ops_known_by_peer.remove(peer_id);
-                    }
                 }
             }
         }
@@ -461,10 +455,6 @@ impl RetrievalThread {
                 false,
             ) {
                 warn!("Failed to send Operations message to peer: {}", err);
-                {
-                    let mut cache_write = self.cache.write();
-                    cache_write.ops_known_by_peer.remove(peer_id);
-                }
             }
         }
         Ok(())
