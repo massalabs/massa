@@ -119,6 +119,7 @@ impl InterfaceImpl {
             module_cache,
             vesting_manager,
             mip_store,
+            massa_hash::Hash::zero(),
         );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,

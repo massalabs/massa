@@ -231,6 +231,17 @@ impl ActiveHistory {
         None
     }
 
+    /// Gets the execution trail hash
+    pub fn get_execution_trail_hash(&self) -> HistorySearchResult<massa_hash::Hash> {
+        for history_element in self.0.iter().rev() {
+            if let SetOrKeep::Set(hash) = history_element.state_changes.execution_trail_hash_change
+            {
+                return HistorySearchResult::Present(hash);
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
+
     /// Gets the index of a slot in history
     pub fn get_slot_index(&self, slot: &Slot, thread_count: u8) -> SlotIndexPosition {
         let first_slot = match self.0.front() {
