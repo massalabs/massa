@@ -86,7 +86,7 @@
             name: value.name.clone(),
             version: value.version,
             start: value.start.to_millis(),
-            timeout: <span class="prelude-val">Some</span>(value.timeout.into()),
+            timeout: value.start.to_millis(),
             activation_delay: value.activation_delay.to_millis(),
             components,
         }

@@ -166,6 +166,10 @@
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -173,8 +177,8 @@
     endorsement::{EndorsementId, SecureShareEndorsement},
     prehash::{PreHashMap, PreHashSet},
 };
-<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
+<span class="kw">use </span>massa_protocol_exports::{PeerId, ProtocolError};
 <span class="kw">use </span>tracing::{debug, info, log::warn};
 
 <span class="kw">use crate</span>::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
@@ -291,6 +295,10 @@
                                                     <span class="string">&quot;could not send endorsements batch to node {}: {}&quot;</span>,
                                                     peer_id, err
                                                 );
+                                                <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                                                    <span class="comment">// cache of this peer is removed in next call of cache_write.update_cache
+                                                    </span><span class="kw">break</span>;
+                                                }
                                             }
                                         }
                                     }

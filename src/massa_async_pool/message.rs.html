@@ -1449,7 +1449,7 @@
             destination: genesis_address,
             validity_start: slot_zero,
             validity_end: slot_zero,
-            hash: Hash::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">32</span>]),
+            hash: Hash::zero(),
             ..Default::default()
         }
     }
@@ -1490,7 +1490,7 @@
             can_be_executed: can_be_executed.unwrap_or(trigger.is_none()),
             trigger,
             <span class="comment">// placeholder hash to serialize the message, replaced below
-            </span>hash: Hash::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">32</span>]),
+            </span>hash: Hash::zero(),
         };
         async_message_ser
             .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>buffer)

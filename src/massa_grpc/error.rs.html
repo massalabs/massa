@@ -80,17 +80,6 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::error::Error;
@@ -102,9 +91,7 @@
 <span class="kw">use </span>massa_hash::MassaHashError;
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_protocol_exports::ProtocolError;
-<span class="kw">use </span>massa_signature::MassaSignatureError;
 <span class="kw">use </span>massa_time::TimeError;
-<span class="kw">use </span>massa_versioning::versioning_factory::FactoryError;
 <span class="kw">use </span>massa_wallet::WalletError;
 <span class="kw">use </span>tracing::log::error;
 
@@ -114,8 +101,6 @@
 </span><span class="kw">pub enum </span>GrpcError {
     <span class="doccomment">/// `massa_hash` error: {0}
     </span>MassaHashError(<span class="attr">#[from] </span>MassaHashError),
-    <span class="doccomment">/// `massa_hash` error: {0}
-    </span>MassaSignatureError(<span class="attr">#[from] </span>MassaSignatureError),
     <span class="doccomment">/// consensus error: {0}
     </span>ConsensusError(<span class="attr">#[from] </span>ConsensusError),
     <span class="doccomment">/// execution error: {0}
@@ -128,16 +113,12 @@
     </span>ModelsError(<span class="attr">#[from] </span>ModelsError),
     <span class="doccomment">/// Time error: {0}
     </span>TimeError(<span class="attr">#[from] </span>TimeError),
-    <span class="doccomment">/// Versioning factory error: {0}
-    </span>FactoryError(<span class="attr">#[from] </span>FactoryError),
     <span class="doccomment">/// Wallet error: {0}
     </span>WalletError(<span class="attr">#[from] </span>WalletError),
     <span class="doccomment">/// Internal server error: {0}
     </span>InternalServerError(String),
     <span class="doccomment">/// Invalid argument error: {0}
     </span>InvalidArgument(String),
-    <span class="doccomment">/// Not implemented error: {0}
-    </span>Unimplemented(String),
 }
 
 <span class="kw">impl </span>From&lt;GrpcError&gt; <span class="kw">for </span>tonic::Status {
@@ -145,18 +126,15 @@
         <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, error);
         <span class="kw">match </span>error {
             GrpcError::MassaHashError(e) =&gt; tonic::Status::internal(e.to_string()),
-            GrpcError::MassaSignatureError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ConsensusError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ExecutionError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ProtocolError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::ModelsError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::TimeError(e) =&gt; tonic::Status::internal(e.to_string()),
-            GrpcError::FactoryError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::WalletError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::InternalServerError(e) =&gt; tonic::Status::internal(e),
             GrpcError::ReflectionError(e) =&gt; tonic::Status::internal(e.to_string()),
             GrpcError::InvalidArgument(e) =&gt; tonic::Status::invalid_argument(e),
-            GrpcError::Unimplemented(e) =&gt; tonic::Status::unimplemented(e),
         }
     }
 }
