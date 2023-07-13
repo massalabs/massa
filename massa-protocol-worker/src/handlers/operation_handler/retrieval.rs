@@ -287,6 +287,15 @@ impl RetrievalThread {
         mut op_batch: OperationPrefixIds,
         peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
+        // ignore announcements from disconnected peers
+        if !self
+            .active_connections
+            .get_peer_ids_connected()
+            .contains(peer_id)
+        {
+            return Ok(());
+        }
+
         // mark sender as knowing the ops
         'write_cache: {
             let mut cache_write = self.cache.write();
