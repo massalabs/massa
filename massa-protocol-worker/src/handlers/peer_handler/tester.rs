@@ -1,14 +1,15 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::Read,
     net::{IpAddr, SocketAddr},
+    sync::{Arc, RwLock},
     thread::JoinHandle,
     time::Duration,
 };
 
 use crate::messages::MessagesHandler;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
-use massa_models::version::VersionDeserializer;
+use massa_models::version::{Version, VersionDeserializer};
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
@@ -54,6 +55,9 @@ impl Tester {
             Some(config.max_size_channel_commands_peer_testers),
         );
 
+        // Peers currently tested by one of the thread
+        let peers_in_test = Arc::new(RwLock::new(HashSet::new()));
+
         for _ in 0..config.thread_tester_count {
             testers.push(Tester::new(
                 peer_db.clone(),
@@ -63,6 +67,7 @@ impl Tester {
                 messages_handler.clone(),
                 target_out_connections.clone(),
                 default_target_out_connections,
+                peers_in_test.clone(),
             ));
         }
 
@@ -76,19 +81,13 @@ impl Tester {
         version_deserializer: VersionDeserializer,
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
-        config: &ProtocolConfig,
+        our_version: Version,
     ) -> PeerNetResult<PeerId> {
-        let our_version = config.version;
         let result = {
             let mut socket =
-                std::net::TcpStream::connect_timeout(&addr, config.tester_timeout.into())
+                std::net::TcpStream::connect_timeout(&addr, Duration::from_millis(500))
                     .map_err(|e| PeerNetError::PeerConnectionError.new("connect", e, None))?;
-            socket
-                .set_read_timeout(Some(config.tester_timeout.into()))
-                .map_err(|err| PeerNetError::PeerConnectionError.new("read timeout", err, None))?;
-            socket
-                .set_write_timeout(Some(config.tester_timeout.into()))
-                .map_err(|err| PeerNetError::PeerConnectionError.new("write timeout", err, None))?;
+
             // data.receive() from Endpoint
             let mut len_bytes = vec![0u8; 4];
             socket
@@ -193,17 +192,13 @@ impl Tester {
                                 .peers
                                 .entry(peer_id.clone())
                                 .and_modify(|info| {
-                                    if let Some(last_announce) = &info.last_announce {
-                                        if last_announce.timestamp < announcement.timestamp {
-                                            info.last_announce = Some(announcement.clone());
-                                        }
-                                    } else {
-                                        info.last_announce = Some(announcement.clone());
+                                    if info.last_announce.timestamp < announcement.timestamp {
+                                        info.last_announce = announcement.clone();
                                     }
                                     info.state = super::PeerState::Trusted;
                                 })
                                 .or_insert(PeerInfo {
-                                    last_announce: Some(announcement),
+                                    last_announce: announcement,
                                     state: super::PeerState::Trusted,
                                 });
                         }
@@ -232,16 +227,9 @@ impl Tester {
             if res.is_err() {
                 println!("Handshake failed in tester");
                 let mut peer_db_write = peer_db.write();
-                peer_db_write
-                    .peers
-                    .entry(peer_id)
-                    .and_modify(|info| {
-                        info.state = super::PeerState::HandshakeFailed;
-                    })
-                    .or_insert(PeerInfo {
-                        last_announce: None,
-                        state: super::PeerState::HandshakeFailed,
-                    });
+                peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                    info.state = super::PeerState::HandshakeFailed;
+                });
             }
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
                 tracing::log::error!("Failed to shutdown socket: {}", e);
@@ -261,6 +249,7 @@ impl Tester {
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
+        peers_in_test: Arc<RwLock<HashSet<SocketAddr>>>,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -321,6 +310,14 @@ impl Tester {
                                     let db = db.clone();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
+                                        if peers_in_test.read().unwrap().contains(&addr) {
+                                            continue;
+                                        }
+                                        {
+                                            let mut peers_in_test = peers_in_test.write().unwrap();
+                                            peers_in_test.insert(addr.clone());
+                                        }
+
                                         //Find category of that address
                                         let ip_canonical = addr.ip().to_canonical();
                                         let cooldown = 'cooldown: {
@@ -345,6 +342,7 @@ impl Tester {
                                             if let Some(last_tested_time) = db_write.tested_addresses.get(addr) {
                                                 let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
                                                 if last_tested_time.elapsed() < cooldown {
+                                                    peers_in_test.write().unwrap().remove(&addr);
                                                     continue;
                                                 }
                                             }
@@ -356,12 +354,14 @@ impl Tester {
                                             //Don't test our local addresses
                                             for (local_addr, _transport) in protocol_config.listeners.iter() {
                                                 if addr == local_addr {
+                                                    peers_in_test.write().unwrap().remove(&addr);
                                                     continue;
                                                 }
                                             }
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
                                                 if ip.to_canonical() == ip_canonical {
+                                                    peers_in_test.write().unwrap().remove(&addr);
                                                     continue;
                                                 }
                                             }
@@ -375,8 +375,10 @@ impl Tester {
                                                 VersionDeserializer::new(),
                                                 PeerIdDeserializer::new(),
                                                 *addr,
-                                                &protocol_config,
+                                                protocol_config.version,
                                             );
+
+                                            peers_in_test.write().unwrap().remove(&addr);
 
                                             // let _res =  network_manager.try_connect(
                                             //     *addr,
@@ -431,7 +433,7 @@ impl Tester {
                             VersionDeserializer::new(),
                             PeerIdDeserializer::new(),
                             listener,
-                            &protocol_config,
+                            protocol_config.version,
                         );
                         // let res =  network_manager.try_connect(
                         //     listener,
