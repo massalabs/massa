@@ -22,6 +22,8 @@
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines all error types for final state management
@@ -29,7 +31,7 @@
 </span><span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use </span>massa_versioning::versioning::ExtendFromDbError;
+<span class="kw">use </span>massa_versioning::versioning::{ExtendFromDbError, IsConsistentWithShutdownPeriodError};
 
 <span class="doccomment">/// Final state error
 </span><span class="attr">#[non_exhaustive]
@@ -44,6 +46,8 @@
     <span class="doccomment">/// Snapshot error: {0}
     </span>SnapshotError(String),
     <span class="doccomment">/// ExtendFromDbError
-    </span>MipStoreError(<span class="attr">#[from] </span>ExtendFromDbError),
+    </span>ExtendFromDbError(<span class="attr">#[from] </span>ExtendFromDbError),
+    <span class="doccomment">/// IsConsistentWithShutdownPeriodError
+    </span>NonConsistentWithShutdownPeriodError(<span class="attr">#[from] </span>IsConsistentWithShutdownPeriodError),
 }
 </code></pre></div></section></main></body></html>
