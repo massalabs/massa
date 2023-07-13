@@ -326,6 +326,27 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -336,6 +357,7 @@
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 <span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::peer::PeerConnectionType;
@@ -573,6 +595,7 @@
                     recv(tick_try_connect) -&gt; <span class="kw">_ </span>=&gt; {
                         <span class="kw">let </span>active_conn = network_controller.get_active_connections();
                         <span class="kw">let </span>peers_connected = active_conn.get_peers_connected();
+                        <span class="kw">let </span>peers_connection_queue = active_conn.get_peer_ids_connection_queue();
                         <span class="kw">let </span><span class="kw-2">mut </span>slots_per_category: Vec&lt;(String, usize)&gt; = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.<span class="number">1</span>.target_out_connections.saturating_sub(peers_connected.iter().filter(|(<span class="kw">_</span>, peer)| {
                                 <span class="kw">if </span>peer.<span class="number">1 </span>== PeerConnectionType::OUT &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(peer_category) = <span class="kw-2">&amp;</span>peer.<span class="number">2 </span>{
@@ -587,59 +610,78 @@
                         }).count());
                         <span class="kw">let </span><span class="kw-2">mut </span>addresses_to_connect: Vec&lt;SocketAddr&gt; = Vec::new();
                         {
-                            <span class="kw">let </span>peer_db_read = peer_db.read();
-                            <span class="kw">for </span>(<span class="kw">_</span>, peer_id) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_read.index_by_newest {
-                                <span class="kw">if </span>peers_connected.contains_key(peer_id) {
-                                    <span class="kw">continue</span>;
-                                }
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
-                                    <span class="kw">if </span>peer.state == PeerState::Trusted {
-                                        <span class="prelude-val">Some</span>(peer.clone())
-                                    } <span class="kw">else </span>{
-                                        <span class="prelude-val">None
-                                    </span>}
-                                }) {
-                                    <span class="kw">if </span>peer_info.last_announce.listeners.is_empty() {
-                                        <span class="kw">continue</span>;
-                                    }
-                                    <span class="comment">//TODO: Adapt for multiple listeners
-                                    </span><span class="kw">let </span>(addr, <span class="kw">_</span>) = peer_info.last_announce.listeners.iter().next().unwrap();
-                                    <span class="kw">let </span>canonical_ip = addr.ip().to_canonical();
-                                    <span class="kw">let </span><span class="kw-2">mut </span>allowed_local_ips = <span class="bool-val">false</span>;
-                                    <span class="comment">// Check if the peer is in a category and we didn&#39;t reached out target yet
-                                    </span><span class="kw">let </span><span class="kw-2">mut </span>category_found = <span class="prelude-val">None</span>;
-                                    <span class="kw">for </span>(name, (ips, cat)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
-                                        <span class="kw">if </span>ips.contains(<span class="kw-2">&amp;</span>canonical_ip) {
-                                            category_found = <span class="prelude-val">Some</span>(name);
-                                            allowed_local_ips = cat.allow_local_peers;
-                                        }
-                                    }
-                                    <span class="kw">if </span>!canonical_ip.is_global() &amp;&amp; !allowed_local_ips {
+                                <span class="kw">let </span>peer_db_read = peer_db.read();
+                                <span class="kw">for </span>(<span class="kw">_</span>, peer_id) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_read.index_by_newest {
+                                    <span class="kw">if </span>peers_connected.contains_key(peer_id) {
                                         <span class="kw">continue</span>;
                                     }
 
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(category) = category_found {
-                                        <span class="kw">for </span>(name, category_infos) <span class="kw">in </span><span class="kw-2">&amp;mut </span>slots_per_category {
-                                            <span class="kw">if </span>name == category &amp;&amp; category_infos &gt; <span class="kw-2">&amp;mut </span><span class="number">0 </span>{
+                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
+                                        <span class="kw">if </span>peer.state == PeerState::Trusted {
+                                            <span class="prelude-val">Some</span>(peer.clone())
+                                        } <span class="kw">else </span>{
+                                            <span class="prelude-val">None
+                                        </span>}
+                                    }) {
+                                        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_announce) = peer_info.last_announce {
+                                            <span class="kw">if </span>last_announce.listeners.is_empty() {
+                                                <span class="kw">continue</span>;
+                                            }
+
+                                            <span class="comment">//TODO: Adapt for multiple listeners
+                                            </span><span class="kw">let </span>(addr, <span class="kw">_</span>) = last_announce.listeners.iter().next().unwrap();
+                                            <span class="kw">if </span>peers_connection_queue.contains(addr) {
+                                                <span class="kw">continue</span>;
+                                            }
+
+                                            <span class="comment">// check if the peer last connect attempt has not been too recent
+                                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_try) = peer_db_read.try_connect_history.get(addr) {
+                                                <span class="kw">let </span>last_try = last_try.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
+                                                <span class="kw">if </span>last_try.elapsed() &lt; config.try_connection_timer_same_peer.to_duration() {
+                                                    <span class="kw">continue</span>;
+                                                }
+                                            }
+
+                                            <span class="kw">let </span>canonical_ip = addr.ip().to_canonical();
+                                            <span class="kw">let </span><span class="kw-2">mut </span>allowed_local_ips = <span class="bool-val">false</span>;
+                                            <span class="comment">// Check if the peer is in a category and we didn&#39;t reached out target yet
+                                            </span><span class="kw">let </span><span class="kw-2">mut </span>category_found = <span class="prelude-val">None</span>;
+                                            <span class="kw">for </span>(name, (ips, cat)) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_categories {
+                                                <span class="kw">if </span>ips.contains(<span class="kw-2">&amp;</span>canonical_ip) {
+                                                    category_found = <span class="prelude-val">Some</span>(name);
+                                                    allowed_local_ips = cat.allow_local_peers;
+                                                }
+                                            }
+                                            <span class="kw">if </span>!canonical_ip.is_global() &amp;&amp; !allowed_local_ips {
+                                                <span class="kw">continue</span>;
+                                            }
+
+                                            <span class="kw">if let </span><span class="prelude-val">Some</span>(category) = category_found {
+                                                <span class="kw">for </span>(name, category_infos) <span class="kw">in </span><span class="kw-2">&amp;mut </span>slots_per_category {
+                                                    <span class="kw">if </span>name == category &amp;&amp; category_infos &gt; <span class="kw-2">&amp;mut </span><span class="number">0 </span>{
+                                                            addresses_to_connect.push(<span class="kw-2">*</span>addr);
+                                                            <span class="kw-2">*</span>category_infos -= <span class="number">1</span>;
+                                                    }
+                                                }
+                                            } <span class="kw">else if </span>slot_default_category &gt; <span class="number">0 </span>&amp;&amp;  !addresses_to_connect.contains(addr) {
                                                 addresses_to_connect.push(<span class="kw-2">*</span>addr);
-                                                <span class="kw-2">*</span>category_infos -= <span class="number">1</span>;
+                                                slot_default_category -= <span class="number">1</span>;
+                                            }
+
+                                                <span class="comment">// IF all slots are filled, stop
+                                            </span><span class="kw">if </span>slot_default_category == <span class="number">0 </span>&amp;&amp; slots_per_category.iter().all(|(<span class="kw">_</span>, slots)| <span class="kw-2">*</span>slots == <span class="number">0</span>) {
+                                                <span class="kw">break</span>;
                                             }
                                         }
-                                    } <span class="kw">else if </span>slot_default_category &gt; <span class="number">0 </span>{
-                                        addresses_to_connect.push(<span class="kw-2">*</span>addr);
-                                        slot_default_category -= <span class="number">1</span>;
-                                    }
-
-
-                                    <span class="comment">// IF all slots are filled, stop
-                                    </span><span class="kw">if </span>slot_default_category == <span class="number">0 </span>&amp;&amp; slots_per_category.iter().all(|(<span class="kw">_</span>, slots)| <span class="kw-2">*</span>slots == <span class="number">0</span>) {
-                                        <span class="kw">break</span>;
                                     }
                                 }
-                            }
                         }
+
                         <span class="kw">for </span>addr <span class="kw">in </span>addresses_to_connect {
                             <span class="macro">info!</span>(<span class="string">&quot;Trying to connect to addr {}&quot;</span>, addr);
+
+                            peer_db.write().try_connect_history.insert(addr, MassaTime::now().unwrap());
+
                             <span class="comment">// We only manage TCP for now
                             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
                                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);

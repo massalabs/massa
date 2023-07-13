@@ -1307,18 +1307,6 @@
 <a href="#1307" id="1307">1307</a>
 <a href="#1308" id="1308">1308</a>
 <a href="#1309" id="1309">1309</a>
-<a href="#1310" id="1310">1310</a>
-<a href="#1311" id="1311">1311</a>
-<a href="#1312" id="1312">1312</a>
-<a href="#1313" id="1313">1313</a>
-<a href="#1314" id="1314">1314</a>
-<a href="#1315" id="1315">1315</a>
-<a href="#1316" id="1316">1316</a>
-<a href="#1317" id="1317">1317</a>
-<a href="#1318" id="1318">1318</a>
-<a href="#1319" id="1319">1319</a>
-<a href="#1320" id="1320">1320</a>
-<a href="#1321" id="1321">1321</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1606,54 +1594,34 @@
     };
     <span class="comment">// Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
-    // Create final state, either from a snapshot, or from scratch
+    </span><span class="kw">let </span>mip_list = get_mip_list();
+    <span class="macro">debug!</span>(<span class="string">&quot;MIP list: {:?}&quot;</span>, mip_list);
+    <span class="kw">let </span>mip_store =
+        MipStore::try_from((mip_list, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+
+    <span class="comment">// Create final state, either from a snapshot, or from scratch
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
         <span class="kw">match </span>args.restart_from_snapshot_at_period {
-            <span class="prelude-val">Some</span>(last_start_period) =&gt; {
-                <span class="comment">// The node is restarted from a snapshot:
-                // MIP store by reading from the db as it must have been updated by the massa ledger editor
-                // (to shift transitions that might have happened during the network shutdown)
-                // Note that FinalState::new_derived_from_snapshot will check if MIP store is consistent
-                // No Bootstrap are expected after this
-                </span><span class="kw">let </span>mip_store: MipStore = MipStore::try_from_db(db.clone(), mip_stats_config)
-                    .expect(<span class="string">&quot;MIP store creation failed&quot;</span>);
-                <span class="macro">debug!</span>(<span class="string">&quot;After read from db, Mip store: {:?}&quot;</span>, mip_store);
-
-                FinalState::new_derived_from_snapshot(
-                    db.clone(),
-                    final_state_config,
-                    Box::new(ledger),
-                    selector_controller.clone(),
-                    mip_store,
-                    last_start_period,
-                )
-                .expect(<span class="string">&quot;could not init final state&quot;</span>)
-            }
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="comment">// The node is started in a normal way
-                // Read the mip list supported by the current software
-                // The resulting MIP store will likely be updated by the boostrap process in order
-                // to get the latest information for the MIP store (new states, votes...)
-
-                </span><span class="kw">let </span>mip_list = get_mip_list();
-                <span class="macro">debug!</span>(<span class="string">&quot;MIP list: {:?}&quot;</span>, mip_list);
-                <span class="kw">let </span>mip_store = MipStore::try_from((mip_list, mip_stats_config))
-                    .expect(<span class="string">&quot;mip store creation failed&quot;</span>);
-
-                FinalState::new(
-                    db.clone(),
-                    final_state_config,
-                    Box::new(ledger),
-                    selector_controller.clone(),
-                    mip_store,
-                    <span class="bool-val">true</span>,
-                )
-                .expect(<span class="string">&quot;could not init final state&quot;</span>)
-            }
+            <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
+                db.clone(),
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+                mip_store.clone(),
+                last_start_period,
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
+            <span class="prelude-val">None </span>=&gt; FinalState::new(
+                db.clone(),
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+                mip_store.clone(),
+                <span class="bool-val">true</span>,
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
         },
     ));
-
-    <span class="kw">let </span>mip_store = final_state.read().mip_store.clone();
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -1752,8 +1720,7 @@
         <span class="kw">let </span>last_shutdown_end = Slot::new(final_state.read().last_start_period, <span class="number">0</span>)
             .get_prev_slot(THREAD_COUNT)
             .unwrap();
-
-        final_state
+        <span class="kw">if </span>!final_state
             .read()
             .mip_store
             .is_consistent_with_shutdown_period(
@@ -1763,7 +1730,13 @@
                 T0,
                 <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             )
-            .expect(<span class="string">&quot;Mip store is not consistent with shutdown period&quot;</span>)
+            .unwrap_or(<span class="bool-val">false</span>)
+        {
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;MIP store is not consistent with last shutdown period ({} - {})&quot;</span>,
+                last_shutdown_start, last_shutdown_end
+            );
+        }
     }
 
     <span class="comment">// Storage costs constants
@@ -1957,6 +1930,7 @@
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         message_timeout: SETTINGS.protocol.message_timeout,
+        tester_timeout: SETTINGS.protocol.tester_timeout,
         routable_ip: SETTINGS
             .protocol
             .routable_ip
@@ -1965,6 +1939,8 @@
         peers_categories: SETTINGS.protocol.peers_categories.clone(),
         default_category_info: SETTINGS.protocol.default_category_info,
         version: <span class="kw-2">*</span>VERSION,
+        thread_incoming_connections_count: SETTINGS.protocol.thread_incoming_connections_count,
+        try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =
