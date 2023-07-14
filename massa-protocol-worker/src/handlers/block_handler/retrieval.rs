@@ -163,26 +163,7 @@ impl RetrievalThread {
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
-                                    match self.note_header_from_peer(&header, &peer_id) {
-                                        Ok(is_new) => {
-                                            if is_new {
-                                                self.consensus_controller
-                                                    .register_block_header(header.id, header);
-                                            }
-                                            if let Err(err) = self.update_ask_block() {
-                                                warn!("Error in update_ask_blocks: {:?}", err);
-                                            }
-                                        }
-                                        Err(err) => {
-                                            warn!(
-                                                "peer {} sent us critically incorrect header: {}",
-                                                peer_id, err
-                                            );
-                                            if let Err(err) = self.ban_node(&peer_id) {
-                                                warn!("Error while banning peer {} err: {:?}", peer_id, err);
-                                            }
-                                        }
-                                    }
+                                    self.on_block_header_received(peer_id.clone(), header);
                                 }
                             }
                         },
@@ -394,7 +375,7 @@ impl RetrievalThread {
         match block_info {
             BlockInfoReply::Header(header) => {
                 // Verify and send it consensus
-                self.on_block_header_received(from_peer_id, block_id, header)
+                self.on_block_header_received(from_peer_id, header)
             }
             BlockInfoReply::OperationIds(operation_list) => {
                 // Ask for missing operations ids and print a warning if there is no header for
@@ -420,55 +401,43 @@ impl RetrievalThread {
     }
 
     /// On block header received from a node.
-    /// If the header is new, we propagate it to the consensus.
-    /// We pass the state of `block_wishlist` to ask for information about the block.
     fn on_block_header_received(
         &mut self,
         from_peer_id: PeerId,
-        block_id: BlockId,
         header: SecuredHeader,
     ) -> Result<(), ProtocolError> {
-        if let Some(info) = self.block_wishlist.get(&block_id) {
-            if info.header.is_some() {
+        // Check header and update knowledge info
+        let is_new = match self.note_header_from_peer(&header, &from_peer_id) {
+            Ok(is_new) => is_new,
+            Err(err) => {
                 warn!(
-                    "Peer {} sent us header for block id {} but we already received it.",
-                    from_peer_id, block_id
+                    "peer {} sent us critically incorrect header: {}",
+                    from_peer_id, err
                 );
-                if let Some(asked_blocks) = self.asked_blocks.get_mut(&from_peer_id) {
-                    if asked_blocks.contains_key(&block_id) {
-                        asked_blocks.remove(&block_id);
-                        {
-                            let mut cache_write = self.cache.write();
-                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
-                        }
-                    }
+                if let Err(err) = self.ban_node(&from_peer_id) {
+                    warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
                 }
-
-                return Ok(());
+                return Err(err);
             }
-        }
-        if let Err(err) = self.note_header_from_peer(&header, &from_peer_id) {
-            warn!(
-                "peer {} sent us critically incorrect header through protocol, \
-                which may be an attack attempt by the remote node \
-                or a loss of sync between us and the remote node. Err = {}",
-                from_peer_id, err
-            );
-            if let Err(err) = self.ban_node(&from_peer_id) {
-                warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
-            }
-            return Ok(());
         };
-        if let Some(info) = self.block_wishlist.get_mut(&block_id) {
+
+        if let Some(info) = self.block_wishlist.get_mut(&header.id) {
+            // if the header is in our wishlist, we update the wishlist
             info.header = Some(header);
+        } else if is_new {
+            // otherwise, if the header is new, we send it to consensus
+            self.consensus_controller
+                .register_block_header(header.id, header);
+        } else {
+            // the header is not new, and we don't have it in our wishlist, so nothing to do.
+            return Ok(());
         }
 
-        // Update ask block
-        // Maybe this code is useless as it's been done just above but in a condition that should cover all cases where it's useful
-        // to do this. But maybe it's still trigger there it need verifications.
-        let mut set = PreHashSet::<BlockId>::with_capacity(1);
-        set.insert(block_id);
-        self.remove_asked_blocks_of_node(&set);
+        // update block asking process
+        if let Err(err) = self.update_ask_block() {
+            warn!("Error in update_ask_blocks: {:?}", err);
+        }
+
         Ok(())
     }
 
@@ -629,19 +598,26 @@ impl RetrievalThread {
             }
         }
 
-        // mark the sender peer as knowing the block and its parents
-        self.cache.write().insert_blocks_known(
-            from_peer_id,
-            &[&[block_id], header.content.parents.as_slice()].concat(),
-            true,
-        );
-
         // mark the sender peer as knowing the endorsements in the block
         {
             let endorsement_ids = header.content.endorsements.iter().map(|e| e.id).collect();
             self.endorsement_cache
                 .write()
                 .insert_known_endorsements(&from_peer_id, &endorsement_ids);
+        }
+
+        {
+            let cache_lock = self.cache.write();
+
+            // mark the sender peer as knowing the block and its parents
+            self.cache.write().insert_blocks_known(
+                from_peer_id,
+                &[&[block_id], header.content.parents.as_slice()].concat(),
+                true,
+            );
+
+            // mark us as knowing the header
+            cache_lock.checked_headers.insert(block_id, header);
         }
 
         Ok(true)
