@@ -13,7 +13,9 @@ impl Default for ProtocolConfig {
                 .path()
                 .to_path_buf(),
             ask_block_timeout: MassaTime::from_millis(500),
-            max_known_blocks_saved_size: 300,
+            max_blocks_kept_for_propagation: 300,
+            max_block_propagation_time: MassaTime::from_millis(40000),
+            block_propagation_tick: MassaTime::from_millis(1000),
             max_known_blocks_size: 100,
             max_node_known_blocks_size: 100,
             max_node_wanted_blocks_size: 100,

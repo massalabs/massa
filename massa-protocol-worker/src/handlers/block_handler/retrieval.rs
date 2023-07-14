@@ -299,12 +299,7 @@ impl RetrievalThread {
                     // Mark the node as having the block.
                     {
                         let mut cache_write = self.cache.write();
-                        cache_write.insert_blocks_known(
-                            &from_peer_id,
-                            &[*hash],
-                            true,
-                            Instant::now(),
-                        );
+                        cache_write.insert_blocks_known(&from_peer_id, &[*hash], true);
                     }
                     // Send only the missing operations that are in storage.
                     let needed_ops = {
@@ -374,12 +369,7 @@ impl RetrievalThread {
             BlockInfoReply::NotFound => {
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(
-                        &from_peer_id,
-                        &[block_id],
-                        false,
-                        Instant::now(),
-                    );
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                 }
                 Ok(())
             }
@@ -406,12 +396,7 @@ impl RetrievalThread {
                         asked_blocks.remove(&block_id);
                         {
                             let mut cache_write = self.cache.write();
-                            cache_write.insert_blocks_known(
-                                &from_peer_id,
-                                &[block_id],
-                                false,
-                                Instant::now(),
-                            );
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                         }
                     }
                 }
@@ -515,13 +500,8 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             if let Some(block_header) = cache_write.checked_headers.get(&block_id).cloned() {
-                cache_write.insert_blocks_known(from_peer_id, &[block_id], true, Instant::now());
-                cache_write.insert_blocks_known(
-                    from_peer_id,
-                    &block_header.content.parents,
-                    true,
-                    Instant::now(),
-                );
+                cache_write.insert_blocks_known(from_peer_id, &[block_id], true);
+                cache_write.insert_blocks_known(from_peer_id, &block_header.content.parents, true);
                 'write_cache: {
                     let mut endorsement_cache_write = self.endorsement_cache.write();
                     let Ok(endorsement_ids) =  endorsement_cache_write
@@ -587,13 +567,8 @@ impl RetrievalThread {
         {
             let mut cache_write = self.cache.write();
             cache_write.checked_headers.insert(block_id, header.clone());
-            cache_write.insert_blocks_known(from_peer_id, &[block_id], true, Instant::now());
-            cache_write.insert_blocks_known(
-                from_peer_id,
-                &header.content.parents,
-                true,
-                Instant::now(),
-            );
+            cache_write.insert_blocks_known(from_peer_id, &[block_id], true);
+            cache_write.insert_blocks_known(from_peer_id, &header.content.parents, true);
             'write_cache: {
                 let mut endorsement_cache_write = self.endorsement_cache.write();
                 let Ok(endorsement_ids) = endorsement_cache_write
@@ -840,7 +815,7 @@ impl RetrievalThread {
                 asked_blocks.remove(&block_id);
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                 }
             }
             return Ok(());
@@ -853,7 +828,7 @@ impl RetrievalThread {
                 asked_blocks.remove(&block_id);
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                 }
             }
             return Ok(());
@@ -867,7 +842,7 @@ impl RetrievalThread {
                 asked_blocks.remove(&block_id);
                 {
                     let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                 }
             }
             return Ok(());
@@ -989,7 +964,7 @@ impl RetrievalThread {
                         asked_blocks.remove(&block_id);
                         {
                             let mut cache_write = self.cache.write();
-                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                         }
                     }
                     return Ok(());
@@ -1002,7 +977,7 @@ impl RetrievalThread {
                         asked_blocks.remove(&block_id);
                         {
                             let mut cache_write = self.cache.write();
-                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                            cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                         }
                     }
                     return Ok(());
@@ -1042,7 +1017,7 @@ impl RetrievalThread {
                             asked_blocks.remove(&block_id);
                             {
                                 let mut cache_write = self.cache.write();
-                                cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                                cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                             }
                         }
                         return Ok(());
@@ -1091,7 +1066,7 @@ impl RetrievalThread {
                     asked_blocks.remove(&block_id);
                     {
                         let mut cache_write = self.cache.write();
-                        cache_write.insert_blocks_known(&from_peer_id, &[block_id], false, Instant::now());
+                        cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
                     }
                 }
                 return Ok(());
@@ -1251,13 +1226,7 @@ impl RetrievalThread {
                 let mut needs_ask = true;
 
                 let peers_connected = self.active_connections.get_peer_ids_connected();
-                cache_write.update_cache(
-                    peers_connected.clone(),
-                    self.config
-                        .max_node_known_blocks_size
-                        .try_into()
-                        .expect("max_node_known_blocks_size is too big"),
-                );
+                cache_write.update_cache(&peers_connected);
                 let peers_in_asked_blocks: Vec<PeerId> =
                     self.asked_blocks.keys().cloned().collect();
                 for peer_id in peers_in_asked_blocks {
@@ -1279,8 +1248,7 @@ impl RetrievalThread {
                     .collect();
                 for peer_id in all_keys.iter() {
                     // for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter() {
-                    let (blocks_known, _) =
-                        cache_write.blocks_known_by_peer.peek_mut(peer_id).unwrap();
+                    let blocks_known = cache_write.blocks_known_by_peer.get_mut(peer_id).unwrap();
                     // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
                     let ask_time_opt = self
                         .asked_blocks
@@ -1392,7 +1360,7 @@ impl RetrievalThread {
                         {
                             cache_read
                                 .blocks_known_by_peer
-                                .peek(&peer_id)
+                                .get(&peer_id)
                                 .map(|peer_data| (knowledge, peer_id, required_info, peer_data.1))
                         } else {
                             None

@@ -164,6 +164,12 @@
     message_timeout = 5000
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
+    # Max known blocks we keep during their propagation
+    max_blocks_kept_for_propagation = 300
+    # Time during which a block is expected to propagate (in milliseconds)
+    max_block_propagation_time = 40000
+    # Block propagation tick interval, useful for propagating blocks quickly to newly connected peers (in milliseconds)
+    block_propagation_tick = 1000
     # max cache size for which blocks our node knows about
     max_known_blocks_size = 1024
     # max cache size for which blocks a foreign node knows about

@@ -1,3 +1,16 @@
+//! Copyright (c) 2023 MASSA LABS <info@massa.net>
+
+//! This file deals with the announcement of block headers to other nodes
+//! in order to propagate the blocks from our node to other nodes.
+//! It also manages peer banning for invalid blocks detected by consensus.
+//!
+//! The block propagation system works in the following way:
+//! * a node announces the headers of blocks to its neighbor nodes
+//! * the neighbor nodes that need that block then ask our Retrieval process for it
+//!
+//! Here we need to announce block headers to other nodes that haven't sene them,
+//! and keep the blocks alive long enough for our peers to be able to retrieve them from us.
+
 use super::{
     cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
     BlockMessageSerializer,
@@ -33,13 +46,19 @@ struct BlockPropagationData {
 }
 
 pub struct PropagationThread {
+    /// Receiver for commands
     receiver: MassaReceiver<BlockHandlerPropagationCommand>,
+    /// Protocol config
     config: ProtocolConfig,
+    /// Shared access to the block cache
     cache: SharedBlockCache,
     /// Blocks stored for propagation
     stored_for_propagation: LruMap<BlockId, BlockPropagationData>,
+    /// Shared access to the list of peers connected to us
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    /// Channel to send commands to the peer management system (for banning peers)
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    /// Serializer for block-related messages
     block_serializer: MessagesSerializer,
 }
 
@@ -118,7 +137,7 @@ impl PropagationThread {
                     }
                 }
                 Err(RecvTimeoutError::Timeout) => {
-                    // propagation tick
+                    // Propagation tick. This is useful to quickly propagate headers to newly connected nodes.
                     self.perform_propagations();
                     // renew deadline of next tick
                     deadline = Instant::now()
@@ -219,7 +238,10 @@ pub fn start_propagation_thread(
                 .with_block_message_serializer(BlockMessageSerializer::new());
             let mut propagation_thread = PropagationThread {
                 stored_for_propagation: LruMap::new(ByLength::new(
-                    config.max_blocks_kept_for_propagation,
+                    config
+                        .max_blocks_kept_for_propagation
+                        .try_into()
+                        .expect("max_blocks_kept_for_propagation does not fit in u32"),
                 )),
                 receiver,
                 config,

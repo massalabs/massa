@@ -30,8 +30,12 @@ pub struct ProtocolConfig {
     pub initial_peers: PathBuf,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
-    /// Max known blocks we keep in block_handler
-    pub max_known_blocks_saved_size: usize,
+    /// Max known blocks we keep during their propagation
+    pub max_blocks_kept_for_propagation: usize,
+    /// Time during which a block is expected to propagate
+    pub max_block_propagation_time: MassaTime,
+    /// Block propagation tick interval, useful for propagating blocks quickly to newly connected peers.
+    pub block_propagation_tick: MassaTime,
     /// max known blocks of current nodes we keep in memory
     pub max_known_blocks_size: usize,
     /// max known blocks of foreign nodes we keep in memory (by node)

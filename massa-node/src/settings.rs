@@ -189,9 +189,15 @@ pub struct MetricsSettings {
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
-    /// max known blocks of current nodes we keep in memory (by node)
+    /// Max known blocks we keep during their propagation
+    pub max_blocks_kept_for_propagation: usize,
+    /// Time during which a block is expected to propagate
+    pub max_block_propagation_time: MassaTime,
+    /// Block propagation tick interval, useful for propagating blocks quickly to newly connected peers.
+    pub block_propagation_tick: MassaTime,
+    /// max known blocks our node keeps in its knowledge cache
     pub max_known_blocks_size: usize,
-    /// max known blocks of foreign nodes we keep in memory (by node)
+    /// max cache size for which blocks a foreign node knows about
     pub max_node_known_blocks_size: usize,
     /// max wanted blocks per node kept in memory
     pub max_node_wanted_blocks_size: usize,
