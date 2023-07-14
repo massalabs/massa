@@ -20,7 +20,7 @@ pub fn assert_hash_asked_to_node(node: &MassaReceiver<Message>, block_id: &Block
         .expect("Node didn't receive the ask for block message");
     match msg {
         Message::Block(message) => {
-            if let BlockMessage::AskForBlocks(asked) = *message {
+            if let BlockMessage::BlockDataRequest(asked) = *message {
                 assert_eq!(asked.len(), 1);
                 assert_eq!(&asked[0].0, block_id);
             } else {
@@ -51,7 +51,7 @@ pub fn assert_block_info_sent_to_node(node: &MassaReceiver<Message>, block_id: &
         .expect("Node didn't receive the infos block message");
     match msg {
         Message::Block(message) => {
-            if let BlockMessage::ReplyForBlocks(asked) = *message {
+            if let BlockMessage::BlockDataResponse(asked) = *message {
                 assert_eq!(asked.len(), 1);
                 assert_eq!(&asked[0].0, block_id);
                 match asked[0].1 {
@@ -100,7 +100,7 @@ pub fn send_and_propagate_block(
     network_controller
         .send_from_peer(
             node_id,
-            Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
+            Message::Block(Box::new(BlockMessage::BlockDataResponse(info))),
         )
         .unwrap();
 
@@ -109,7 +109,7 @@ pub fn send_and_propagate_block(
     network_controller
         .send_from_peer(
             node_id,
-            Message::Block(Box::new(BlockMessage::ReplyForBlocks(info))),
+            Message::Block(Box::new(BlockMessage::BlockDataResponse(info))),
         )
         .unwrap();
 }

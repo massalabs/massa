@@ -493,7 +493,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
                         block.id,
                         BlockInfoReply::Info(vec![operation.id].into_iter().collect()),
                     )]))),
@@ -601,7 +601,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
                         block.id,
                         BlockInfoReply::Info(vec![operation_2.id].into_iter().collect()),
                     )]))),
@@ -612,7 +612,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             network_controller
                 .send_from_peer(
                     &node_c_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
                         block.id,
                         BlockInfoReply::Info(vec![operation_1.id].into_iter().collect()),
                     )]))),
@@ -623,7 +623,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             network_controller
                 .send_from_peer(
                     &node_c_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
                         block.id,
                         BlockInfoReply::Operations(vec![operation_1]),
                     )]))),

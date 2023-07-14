@@ -15,6 +15,8 @@ pub enum ProtocolError {
     WrongSignature,
     /// Protocol error: {0}
     GeneralProtocolError(String),
+    /// Invalid block: {0}
+    InvalidBlock(String),
     /// An error occurred during channel communication: {0}
     ChannelError(String),
     /// Error during network connection: `{0:?}`

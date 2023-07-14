@@ -96,7 +96,7 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
                         break;
                     }
                     Message::Block(block_msg) => match *block_msg {
-                        BlockMessage::AskForBlocks(_) => {
+                        BlockMessage::BlockDataRequest(_) => {
                             continue;
                         }
                         _ => panic!("Unexpected message: {:?}", block_msg),

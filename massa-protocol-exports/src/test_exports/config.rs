@@ -63,7 +63,6 @@ impl Default for ProtocolConfig {
             max_size_channel_commands_peers: 300,
             max_message_size: MAX_MESSAGE_SIZE as usize,
             endorsement_count: ENDORSEMENT_COUNT,
-            max_size_block_infos: 200,
             max_size_value_datastore: 1_000_000,
             max_size_function_name: u16::MAX,
             max_size_call_sc_parameter: 10_000_000,

@@ -122,8 +122,6 @@ pub struct ProtocolConfig {
     pub endorsement_count: u32,
     /// running threads count
     pub thread_count: u8,
-    /// Max of block infos you can send
-    pub max_size_block_infos: u64,
     /// Maximum size of an value user datastore
     pub max_size_value_datastore: u64,
     /// Maximum size of a function name

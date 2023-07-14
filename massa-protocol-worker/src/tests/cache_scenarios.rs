@@ -112,7 +112,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
                         block.id,
                         BlockInfoReply::Info(vec![op_1.id, op_2.id]),
                     )]))),
@@ -125,7 +125,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
                 .expect("Node B didn't receive the ask for operations message");
             match msg {
                 Message::Block(message) => {
-                    if let BlockMessage::AskForBlocks(asked) = *message {
+                    if let BlockMessage::BlockDataRequest(asked) = *message {
                         assert_eq!(asked.len(), 1);
                         assert_eq!(asked[0].0, block.id);
                         assert_eq!(
@@ -143,7 +143,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
                         block.id,
                         BlockInfoReply::Operations(vec![op_1, op_2]),
                     )]))),

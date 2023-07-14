@@ -28,7 +28,7 @@ pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
 #[cfg(feature = "testing")]
 pub use messages::{
-    AskForBlocksInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
+    AskForBlockInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
 };
 
 use super::{

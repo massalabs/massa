@@ -55,7 +55,7 @@ use super::{
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
     messages::{
-        AskForBlocksInfo, BlockInfoReply, BlockMessage, BlockMessageDeserializer,
+        AskForBlockInfo, BlockInfoReply, BlockMessage, BlockMessageDeserializer,
         BlockMessageDeserializerArgs,
     },
     BlockMessageSerializer,
@@ -94,7 +94,7 @@ pub struct RetrievalThread {
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
     receiver_network: MassaReceiver<PeerMessageTuple>,
-    _internal_sender: MassaSender<BlockHandlerPropagationCommand>,
+    _announcement_sender: MassaSender<BlockHandlerPropagationCommand>,
     receiver: MassaReceiver<BlockHandlerRetrievalCommand>,
     block_message_serializer: MessagesSerializer,
     block_wishlist: PreHashMap<BlockId, BlockInfo>,
@@ -118,7 +118,6 @@ impl RetrievalThread {
             BlockMessageDeserializer::new(BlockMessageDeserializerArgs {
                 thread_count: self.config.thread_count,
                 endorsement_count: self.config.endorsement_count,
-                block_infos_length_max: self.config.max_size_block_infos,
                 max_operations_per_block: self.config.max_operations_per_block,
                 max_datastore_value_length: self.config.max_size_value_datastore,
                 max_function_name_length: self.config.max_size_function_name,
@@ -150,42 +149,38 @@ impl RetrievalThread {
                                 return;
                             }
                             match message {
-                                BlockMessage::AskForBlocks(block_infos) => {
-                                    if let Err(err) = self.on_asked_for_blocks_received(peer_id.clone(), block_infos) {
+                                BlockMessage::BlockDataRequest{block_id, block_info} => {
+                                    if let Err(err) = self.on_ask_for_block_info_received(peer_id.clone(), block_id, block_info) {
                                         warn!("Error in on_asked_for_blocks_received: {:?}", err);
                                     }
                                 }
-                                BlockMessage::ReplyForBlocks(block_infos) => {
-                                    for (block_id, block_info) in block_infos.into_iter() {
-                                        if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
-                                            warn!("Error in on_block_info_received: {:?}", err);
-                                        }
+                                BlockMessage::BlockDataResponse{block_id, block_info} => {
+                                    if let Err(err) = self.on_block_info_received(peer_id.clone(), block_id, block_info) {
+                                        warn!("Error in on_block_info_received: {:?}", err);
                                     }
                                     if let Err(err) = self.update_ask_block() {
                                         warn!("Error in update_ask_blocks: {:?}", err);
                                     }
                                 }
                                 BlockMessage::BlockHeader(header) => {
-                                    massa_trace!(BLOCK_HEADER, { "peer_id": peer_id, "header": header});
-                                    if let Ok(Some((block_id, is_new))) =
-                                        self.note_header_from_peer(&header, &peer_id)
-                                    {
-                                        if is_new {
-                                            self.consensus_controller
-                                                .register_block_header(block_id, header);
+                                    match self.note_header_from_peer(&header, &peer_id) {
+                                        Ok(is_new) => {
+                                            if is_new {
+                                                self.consensus_controller
+                                                    .register_block_header(header.id, header);
+                                            }
+                                            if let Err(err) = self.update_ask_block() {
+                                                warn!("Error in update_ask_blocks: {:?}", err);
+                                            }
                                         }
-                                        if let Err(err) = self.update_ask_block() {
-                                            warn!("Error in update_ask_blocks: {:?}", err);
-                                        }
-                                    } else {
-                                        warn!(
-                                            "peer {} sent us critically incorrect header, \
-                                            which may be an attack attempt by the remote peer \
-                                            or a loss of sync between us and the remote peer",
-                                            peer_id,
-                                        );
-                                        if let Err(err) = self.ban_node(&peer_id) {
-                                            warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                                        Err(err) => {
+                                            warn!(
+                                                "peer {} sent us critically incorrect header: {}",
+                                                peer_id, err
+                                            );
+                                            if let Err(err) = self.ban_node(&peer_id) {
+                                                warn!("Error while banning peer {} err: {:?}", peer_id, err);
+                                            }
                                         }
                                     }
                                 }
@@ -210,24 +205,21 @@ impl RetrievalThread {
                                             BlockInfo::new(header, self.storage.clone_without_refs()),
                                         );
                                     }
-                                    // Remove the knowledge that we asked this block to nodes.
+                                    // Cleanup the knowledge that we asked this list of blocks to nodes.
                                     self.remove_asked_blocks_of_node(&remove);
 
                                     // Remove from the wishlist.
                                     for block_id in remove.iter() {
                                         self.block_wishlist.remove(block_id);
                                     }
+
+                                    // update block asking process
                                     if let Err(err) = self.update_ask_block() {
                                         warn!("Error in update_ask_blocks: {:?}", err);
                                     }
-                                    massa_trace!(
-                                        "protocol.protocol_worker.process_command.wishlist_delta.end",
-                                        {}
-                                    );
                                 },
                                 BlockHandlerRetrievalCommand::Stop => {
-                                    debug!("Received block message: command Stop");
-                                    info!("Stop block retrieval thread from command receiver");
+                                    info!("Stop block retrieval thread from command receiver (Stop)");
                                     return;
                                 }
                             }
@@ -267,93 +259,144 @@ impl RetrievalThread {
         }
     }
 
-    /// Network ask the local node for blocks
+    /// A remote node asked the local node for block data
     ///
-    /// React on another node asking for blocks information. We can forward the operation ids if
-    /// the foreign node asked for `AskForBlocksInfo::Info` or the full operations if he asked for
-    /// the missing operations in his storage with `AskForBlocksInfo::Operations`
-    ///
-    /// Forward the reply to the network.
-    fn on_asked_for_blocks_received(
+    /// We send the block's operation ids if the foreign node asked for `AskForBlocksInfo::Info`
+    /// or a subset of the full operations of the block if it asked for `AskForBlocksInfo::Operations`.
+    fn on_ask_for_block_info_received(
         &mut self,
         from_peer_id: PeerId,
-        list: Vec<(BlockId, AskForBlocksInfo)>,
+        block_id: BlockId,
+        info_requested: AskForBlockInfo,
     ) -> Result<(), ProtocolError> {
-        let mut all_blocks_info = vec![];
-        for (hash, info_wanted) in &list {
-            let (header, operations_ids) = match self.storage.read_blocks().get(hash) {
-                Some(signed_block) => (
-                    signed_block.content.header.clone(),
-                    signed_block.content.operations.clone(),
-                ),
-                None => {
-                    // let the node know we don't have the block.
-                    all_blocks_info.push((*hash, BlockInfoReply::NotFound));
-                    continue;
-                }
-            };
-            let block_info = match info_wanted {
-                AskForBlocksInfo::Header => BlockInfoReply::Header(header),
-                AskForBlocksInfo::Info => BlockInfoReply::Info(operations_ids),
-                AskForBlocksInfo::Operations(op_ids) => {
-                    // Mark the node as having the block.
-                    {
-                        let mut cache_write = self.cache.write();
-                        cache_write.insert_blocks_known(&from_peer_id, &[*hash], true);
-                    }
-                    // Send only the missing operations that are in storage.
-                    let needed_ops = {
-                        let operations = self.storage.read_operations();
-                        operations_ids
-                            .into_iter()
-                            .filter_map(|id| {
-                                if op_ids.contains(&id) {
-                                    operations.get(&id)
-                                } else {
-                                    None
-                                }
-                            })
-                            .cloned()
-                            .collect()
-                    };
-                    BlockInfoReply::Operations(needed_ops)
-                }
-            };
-            all_blocks_info.push((*hash, block_info));
-        }
-        debug!(
-            "Send reply for blocks of len {} to {}",
-            all_blocks_info.len(),
-            from_peer_id
-        );
-        for sub_list in all_blocks_info.chunks(self.config.max_size_block_infos as usize) {
-            if let Err(err) = self.active_connections.send_to_peer(
-                &from_peer_id,
-                &self.block_message_serializer,
-                BlockMessage::ReplyForBlocks(sub_list.to_vec()).into(),
-                true,
-            ) {
-                warn!(
-                    "Error while sending reply for blocks to {}: {:?}",
-                    from_peer_id, err
-                );
+        // updates on the remote peer's knowledge on blocks, operations and endorsements
+        // only applied if the response is successfully sent to the peer
+        let mut block_knowledge_updates = PreHashSet::default();
+        let mut operation_knowledge_updates = PreHashSet::default();
+        let mut endorsement_knowledge_updates = PreHashSet::default();
+
+        // retrieve block data from storage
+        let stored_header_op_ids = self.storage.read_blocks().get(&block_id).map(|block| {
+            (
+                block.content.header.clone(),
+                block.content.operations.clone(),
+            )
+        });
+
+        let block_info_response = match (stored_header_op_ids, info_requested) {
+            (None, _) => BlockInfoReply::NotFound,
+
+            (Some((header, _)), AskForBlockInfo::Header) => {
+                // the peer asked for a block header
+
+                // once sent, the peer will know about that block,
+                // no need to announce this header to that peer anymore
+                block_knowledge_updates.insert(block_id);
+
+                // once sent, the peer will know about the endorsements in that block,
+                // no need to announce those endorsements to that peer anymore
+                endorsement_knowledge_updates
+                    .extend(header.content.endorsements.iter().map(|e| e.id).collect());
+
+                BlockInfoReply::Header(header)
             }
+            (Some((_, block_op_ids)), AskForBlockInfo::OperationIds) => {
+                // the peer asked for the operation IDs of the block
+
+                // once sent, the peer will know about those operations,
+                // no need to announce their IDs to that peer anymore
+                operation_knowledge_updates.extend(block_op_ids.iter().cloned());
+
+                BlockInfoReply::OperationIds(block_op_ids)
+            }
+            (Some((_, block_op_ids)), AskForBlockInfo::Operations(mut asked_ops)) => {
+                // the peer asked for a list of full operations from the block
+
+                // retain only ops that belong to the block
+                {
+                    let block_op_ids_set: PreHashSet<OperationId> =
+                        block_op_ids.iter().copied().collect();
+                    asked_ops.retain(|id| block_op_ids_set.contains(id));
+                }
+
+                // Send the operations that are available in storage
+                let returned_ops: Vec<_> = {
+                    let op_storage_lock = self.storage.read_operations();
+                    asked_ops
+                        .into_iter()
+                        .filter_map(|id| op_storage_lock.get(&id))
+                        .cloned()
+                        .collect()
+                };
+
+                // mark the peer as knowing about those operations,
+                // no need to announce their IDs to them anymore
+                operation_knowledge_updates.extend(returned_ops.iter().map(|op| op.id).collect());
+
+                BlockInfoReply::Operations(returned_ops)
+            }
+        };
+
+        debug!("Send reply for block info to {}", from_peer_id);
+
+        // send response to peer
+        if let Err(err) = self.active_connections.send_to_peer(
+            &from_peer_id,
+            &self.block_message_serializer,
+            BlockMessage::BlockDataResponse {
+                block_id,
+                block_info: block_info_response,
+            }
+            .into(),
+            true,
+        ) {
+            warn!(
+                "Error while sending reply for blocks to {}: {:?}",
+                from_peer_id, err
+            );
+            return Ok(());
         }
+
+        // here we know that the response was successfully sent to the peer
+        // so we can update our vision of the peer's knowledge on blocks, operations and endorsements
+        if !block_knowledge_updates.is_empty() {
+            self.cache.write().insert_blocks_known(
+                &from_peer_id,
+                &block_knowledge_updates.into_iter().collect::<Vec<_>>(),
+                true,
+            );
+        }
+        if !operation_knowledge_updates.is_empty() {
+            self.operation_cache.write().insert_ops_known(
+                &from_peer_id,
+                &operation_knowledge_updates.into_iter().collect::<Vec<_>>(),
+            );
+        }
+        if !endorsement_knowledge_updates.is_empty() {
+            self.endorsement_cache.write().insert_endorsements_known(
+                &from_peer_id,
+                &endorsement_knowledge_updates
+                    .into_iter()
+                    .collect::<Vec<_>>(),
+            );
+        }
+
         Ok(())
     }
 
+    /// A peer sent us a response to one of our requests for block data
     fn on_block_info_received(
         &mut self,
         from_peer_id: PeerId,
         block_id: BlockId,
-        info: BlockInfoReply,
+        block_info: BlockInfoReply,
     ) -> Result<(), ProtocolError> {
-        match info {
+        match block_info {
             BlockInfoReply::Header(header) => {
-                // Verify and Send it consensus
+                // Verify and send it consensus
                 self.on_block_header_received(from_peer_id, block_id, header)
             }
-            BlockInfoReply::Info(operation_list) => {
+            BlockInfoReply::OperationIds(operation_list) => {
                 // Ask for missing operations ids and print a warning if there is no header for
                 // that block.
                 // Ban the node if the operation ids hash doesn't match with the hash contained in
@@ -367,10 +410,10 @@ impl RetrievalThread {
                 self.on_block_full_operations_received(from_peer_id, block_id, operations)
             }
             BlockInfoReply::NotFound => {
-                {
-                    let mut cache_write = self.cache.write();
-                    cache_write.insert_blocks_known(&from_peer_id, &[block_id], false);
-                }
+                // The peer doesn't know about the block. Mark it as such.
+                self.cache
+                    .write()
+                    .insert_blocks_known(&from_peer_id, &[block_id], false);
                 Ok(())
             }
         }
@@ -435,163 +478,173 @@ impl RetrievalThread {
         header: &SecuredHeader,
     ) -> Result<(), ProtocolError> {
         let slot = header.content.slot;
-        let ts = get_block_slot_timestamp(
+        let timestamp = get_block_slot_timestamp(
             self.config.thread_count,
             self.config.t0,
             self.config.genesis_timestamp,
             slot,
         )?;
-        let current_version = self.mip_store.get_network_version_active_at(ts);
+
+        let current_version = self.mip_store.get_network_version_active_at(timestamp);
         if header.content.current_version != current_version {
             // Received a current version different from current version (given by mip store)
-            Err(ProtocolError::IncompatibleNetworkVersion {
+            return Err(ProtocolError::IncompatibleNetworkVersion {
                 local: current_version,
                 received: header.content.current_version,
-            })
-        } else {
-            if let Some(announced_version) = header.content.announced_version {
-                if announced_version <= current_version {
-                    // Received an announced network version that is already known
-                    return Err(ProtocolError::OutdatedAnnouncedNetworkVersion {
-                        local: current_version,
-                        announced_received: announced_version,
-                    });
-                }
-            }
-
-            Ok(())
+            });
         }
+
+        if let Some(announced_version) = header.content.announced_version {
+            if announced_version <= current_version {
+                // Received an announced network version that is already known
+                return Err(ProtocolError::OutdatedAnnouncedNetworkVersion {
+                    local: current_version,
+                    announced_received: announced_version,
+                });
+            }
+        }
+
+        Ok(())
     }
 
-    /// Perform checks on a header,
-    /// and if valid update the node's view of the world.
+    /// Performs validity checks on a block header,
+    /// and if valid update the node's view of its surrounding peers.
     ///
-    /// Returns a boolean representing whether the header is new.
+    /// Returns a boolean indicating whether the header is new.
     ///
     /// Does not ban the source node if the header is invalid.
     ///
     /// Checks performed on Header:
-    /// - Not genesis.
-    /// - Can compute a `BlockId`.
-    /// - Valid signature.
-    /// - Absence of duplicate endorsements.
-    ///
-    /// Checks performed on endorsements:
-    /// - Unique indices.
-    /// - Slot matches that of the block.
-    /// - Block matches that of the block.
+    /// - Not genesis
+    /// - Compatible version
+    /// - Can compute a `BlockId`
+    /// - Valid signature
+    /// - All endorsement are valid
+    /// - Endorsements have unique indices
+    /// - Endorsement slots match that of the block
+    /// - Endorsed blocks match the same-thread parent of the header
     pub(crate) fn note_header_from_peer(
         &mut self,
         header: &SecuredHeader,
         from_peer_id: &PeerId,
-    ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
-        // TODO: Check if the error is used here ?
+    ) -> Result<bool, ProtocolError> {
         // refuse genesis blocks
         if header.content.slot.period == 0 || header.content.parents.is_empty() {
-            return Ok(None);
+            return Err(ProtocolError::InvalidBlock(format!("block is genesis")));
         }
 
+        // Check that our node supports the block version
         self.check_network_version_compatibility(header)?;
 
-        // compute ID
         let block_id = header.id;
 
-        // check if this header was already verified
+        // check if the header has not been seen before (is_new == true)
+        let is_new;
         {
             let mut cache_write = self.cache.write();
-            if let Some(block_header) = cache_write.checked_headers.get(&block_id).cloned() {
-                cache_write.insert_blocks_known(from_peer_id, &[block_id], true);
-                cache_write.insert_blocks_known(from_peer_id, &block_header.content.parents, true);
-                'write_cache: {
-                    let mut endorsement_cache_write = self.endorsement_cache.write();
-                    let Ok(endorsement_ids) =  endorsement_cache_write
-                        .endorsements_known_by_peer
-                        .get_or_insert(from_peer_id.clone(), || {
-                            LruMap::new(ByLength::new(
-                                self.config
-                                    .max_node_known_endorsements_size
-                                    .try_into()
-                                    .expect("max_node_known_blocks_size in config must be > 0"),
-                            ))
-                        })
-                        .ok_or(()) else {
-                            warn!("endorsements known by peer limit reached");
-                            break 'write_cache;
-                        };
-                    for endorsement_id in block_header.content.endorsements.iter().map(|e| e.id) {
-                        endorsement_ids.insert(endorsement_id, ());
-                    }
-                }
-                return Ok(Some((block_id, false)));
+            is_new = cache_write.checked_headers.get(&block_id).is_none();
+            if !is_new {
+                // the header was previously verified
+
+                // mark the sender peer as knowing the block and its parents
+                cache_write.insert_blocks_known(
+                    from_peer_id,
+                    &[&[block_id], header.content.parents.as_slice()].concat(),
+                    true,
+                );
             }
         }
 
+        // if the header was previously verified, update peer knowledge information and return Ok(false)
+        if !is_new {
+            // mark the sender peer as knowing the endorsements in the block
+            {
+                let endorsement_ids = header.content.endorsements.iter().map(|e| e.id).collect();
+                self.endorsement_cache
+                    .write()
+                    .insert_known_endorsements(&from_peer_id, &endorsement_ids);
+            }
+
+            // mark the sender peer as knowing the operations of the block (if we know them)
+            let opt_block_ops = self
+                .storage
+                .read_blocks()
+                .get(&block_id)
+                .map(|b| b.content.operations.clone());
+            if let Some(block_ops) = opt_block_ops {
+                self.operation_cache
+                    .write()
+                    .insert_known_operations(&from_peer_id, &block_ops);
+            }
+
+            // return that we already know that header
+            return Ok(false);
+        }
+
+        // check endorsements
         if let Err(err) =
             self.note_endorsements_from_peer(header.content.endorsements.clone(), from_peer_id)
         {
-            warn!(
-                "node {} sent us a header containing critically incorrect endorsements: {}",
-                from_peer_id, err
-            );
-            return Ok(None);
+            return Err(ProtocolError::InvalidBlock(format!(
+                "invalid endorsements: {}",
+                err
+            )));
         };
 
         // check header signature
         if let Err(err) = header.verify_signature() {
-            massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
-            return Ok(None);
+            return Err(ProtocolError::InvalidBlock(format!(
+                "invalid header signature: {}",
+                err
+            )));
         };
 
-        // check endorsement in header integrity
+        // check endorsement integrity within the context of the header
         let mut used_endorsement_indices: HashSet<u32> =
             HashSet::with_capacity(header.content.endorsements.len());
         for endorsement in header.content.endorsements.iter() {
             // check index reuse
             if !used_endorsement_indices.insert(endorsement.content.index) {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "endorsement": endorsement});
-                return Ok(None);
+                return Err(ProtocolError::InvalidBlock(format!(
+                    "duplicate endorsement index: {}",
+                    endorsement.content.index
+                )));
             }
             // check slot
             if endorsement.content.slot != header.content.slot {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "endorsement": endorsement});
-                return Ok(None);
+                return Err(ProtocolError::InvalidBlock(format!(
+                    "endorsement slot {} does not match header slot: {}",
+                    endorsement.content.slot, header.content.slot
+                )));
             }
             // check endorsed block
             if endorsement.content.endorsed_block
                 != header.content.parents[header.content.slot.thread as usize]
             {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "endorsement": endorsement});
-                return Ok(None);
+                return Err(ProtocolError::InvalidBlock(format!(
+                    "endorsed block {} does not match header parent: {}",
+                    endorsement.content.endorsed_block,
+                    header.content.parents[header.content.slot.thread as usize]
+                )));
             }
         }
+
+        // mark the sender peer as knowing the block and its parents
+        self.cache.write().insert_blocks_known(
+            from_peer_id,
+            &[&[block_id], header.content.parents.as_slice()].concat(),
+            true,
+        );
+
+        // mark the sender peer as knowing the endorsements in the block
         {
-            let mut cache_write = self.cache.write();
-            cache_write.checked_headers.insert(block_id, header.clone());
-            cache_write.insert_blocks_known(from_peer_id, &[block_id], true);
-            cache_write.insert_blocks_known(from_peer_id, &header.content.parents, true);
-            'write_cache: {
-                let mut endorsement_cache_write = self.endorsement_cache.write();
-                let Ok(endorsement_ids) = endorsement_cache_write
-                    .endorsements_known_by_peer
-                    .get_or_insert(from_peer_id.clone(), || {
-                        LruMap::new(ByLength::new(
-                            self.config
-                                .max_node_known_endorsements_size
-                                .try_into()
-                                .expect("max_node_known_blocks_size in config must be > 0"),
-                        ))
-                    })
-                    .ok_or(()) else {
-                        warn!("endorsements_known_by_peer limit reached");
-                        break 'write_cache;
-                    };
-                for endorsement_id in header.content.endorsements.iter().map(|e| e.id) {
-                    endorsement_ids.insert(endorsement_id, ());
-                }
-            }
+            let endorsement_ids = header.content.endorsements.iter().map(|e| e.id).collect();
+            self.endorsement_cache
+                .write()
+                .insert_known_endorsements(&from_peer_id, &endorsement_ids);
         }
-        massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": from_peer_id, "block_id": block_id, "header": header});
-        Ok(Some((block_id, true)))
+
+        Ok(true)
     }
 
     /// send a ban peer command to the peer handler
@@ -604,11 +657,10 @@ impl RetrievalThread {
 
     /// Remove the given blocks from the local wishlist
     pub(crate) fn remove_asked_blocks_of_node(&mut self, remove_hashes: &PreHashSet<BlockId>) {
-        massa_trace!("protocol.protocol_worker.remove_asked_blocks_of_node", {
-            "remove": remove_hashes
-        });
         for asked_blocks in self.asked_blocks.values_mut() {
-            asked_blocks.retain(|h, _| !remove_hashes.contains(h));
+            for remove_h in remove_hashes {
+                asked_blocks.remove(remove_h);
+            }
         }
     }
 
@@ -909,6 +961,7 @@ impl RetrievalThread {
         }
         Ok(())
     }
+
     /// Return the sum of all operation's serialized sizes in the `Set<Id>`
     fn get_total_operations_size(
         storage: &Storage,
@@ -1198,7 +1251,7 @@ impl RetrievalThread {
 
         // list blocks to re-ask and gather candidate nodes to ask from
         let mut candidate_nodes: PreHashMap<BlockId, Vec<_>> = Default::default();
-        let mut ask_block_list: HashMap<PeerId, Vec<(BlockId, AskForBlocksInfo)>> =
+        let mut ask_block_list: HashMap<PeerId, Vec<(BlockId, AskForBlockInfo)>> =
             Default::default();
 
         // list blocks to re-ask and from whom
@@ -1206,13 +1259,13 @@ impl RetrievalThread {
             let mut cache_write = self.cache.write();
             for (hash, block_info) in self.block_wishlist.iter() {
                 let required_info = if block_info.header.is_none() {
-                    AskForBlocksInfo::Header
+                    AskForBlockInfo::Header
                 } else if block_info.operation_ids.is_none() {
-                    AskForBlocksInfo::Info
+                    AskForBlockInfo::OperationIds
                 } else {
                     let already_stored_operations = block_info.storage.get_op_refs();
                     // Unwrap safety: Check if `operation_ids` is none just above
-                    AskForBlocksInfo::Operations(
+                    AskForBlockInfo::Operations(
                         block_info
                             .operation_ids
                             .as_ref()
@@ -1402,7 +1455,7 @@ impl RetrievalThread {
                     if let Err(err) = self.active_connections.send_to_peer(
                         peer_id,
                         &self.block_message_serializer,
-                        BlockMessage::AskForBlocks(sub_list.to_vec()).into(),
+                        BlockMessage::BlockDataRequest(sub_list.to_vec()).into(),
                         true,
                     ) {
                         warn!(
@@ -1459,7 +1512,7 @@ pub fn start_retrieval_thread(
                 receiver_network,
                 block_message_serializer,
                 receiver,
-                _internal_sender,
+                _announcement_sender: _internal_sender,
                 cache,
                 endorsement_cache,
                 operation_cache,
