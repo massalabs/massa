@@ -7,6 +7,7 @@ use crate::{
     messages::MessagesSerializer,
     wrap_network::ActiveConnectionsTrait,
 };
+use crossbeam::channel::RecvTimeoutError;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_logging::massa_trace;
 use massa_models::block_header::SecuredHeader;
@@ -44,8 +45,12 @@ pub struct PropagationThread {
 
 impl PropagationThread {
     fn run(&mut self) {
+        let tick_interval = self.config.block_propagation_tick.to_duration();
+        let mut deadline = Instant::now()
+            .checked_add(tick_interval)
+            .expect("could not get time of next propagation tick");
         loop {
-            match self.receiver.recv() {
+            match self.receiver.recv_deadline(deadline) {
                 Ok(command) => {
                     match command {
                         // Message: the block was integrated and should be propagated
@@ -85,6 +90,11 @@ impl PropagationThread {
 
                             // propagate everything that needs to be propagated
                             self.perform_propagations();
+
+                            // renew tick because propagation propagations were updated
+                            deadline = Instant::now()
+                                .checked_add(tick_interval)
+                                .expect("could not get time of next propagation tick");
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) => {
                             let peers_to_ban: Vec<PeerId> = self
@@ -107,7 +117,15 @@ impl PropagationThread {
                         }
                     }
                 }
-                Err(_) => {
+                Err(RecvTimeoutError::Timeout) => {
+                    // propagation tick
+                    self.perform_propagations();
+                    // renew deadline of next tick
+                    deadline = Instant::now()
+                        .checked_add(tick_interval)
+                        .expect("could not get time of next propagation tick");
+                }
+                Err(RecvTimeoutError::Disconnected) => {
                     info!("Stop block propagation thread");
                     return;
                 }
