@@ -183,7 +183,7 @@ pub(crate) fn start_connectivity_thread(
 
             let tick_metrics = tick(massa_metrics.tick_delay);
             let tick_try_connect = tick(config.try_connection_timer.to_duration());
-
+      
             //Try to connect to peers
             loop {
                 select! {
@@ -242,6 +242,7 @@ pub(crate) fn start_connectivity_thread(
                         massa_metrics.update_peers_tx_rx(peers_map);
                         let peer_db_read = peer_db.read();
                         massa_metrics.set_known_peers(peer_db_read.peers.len());
+                        massa_metrics.set_banned_peers(peer_db_read.peers.iter().filter(|(_id, info)| info.state == PeerState::Banned).count());
 
                     },
                     recv(tick_try_connect) -> _ => {
