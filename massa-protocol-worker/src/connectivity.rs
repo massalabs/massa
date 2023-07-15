@@ -183,7 +183,7 @@ pub(crate) fn start_connectivity_thread(
 
             let tick_metrics = tick(massa_metrics.tick_delay);
             let tick_try_connect = tick(config.try_connection_timer.to_duration());
-      
+
             //Try to connect to peers
             loop {
                 select! {
