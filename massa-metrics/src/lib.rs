@@ -79,6 +79,12 @@ pub struct MassaMetrics {
     /// index 0 = thread 0 ...
     consensus_vec: Vec<Gauge>,
 
+    /// number of stakers
+    stakers: IntGauge,
+
+    /// know peers in protocol
+    protocol_known_peers: IntGauge,
+
     /// total bytes receive by peernet manager
     peernet_total_bytes_receive: IntCounter,
     /// total bytes sent by peernet manager
@@ -156,6 +162,10 @@ impl MassaMetrics {
             consensus_vec.push(gauge);
         }
 
+        // stakers
+        let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
+
+        let know_peers = IntGauge::new("known_peers", "number of known peers in protocol").unwrap();
         // active cursor
         let active_cursor_thread =
             IntGauge::new("active_cursor_thread", "execution active cursor thread").unwrap();
@@ -306,6 +316,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
+                let _ = prometheus::register(Box::new(stakers.clone()));
+                let _ = prometheus::register(Box::new(know_peers.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -323,6 +335,8 @@ impl MassaMetrics {
             MassaMetrics {
                 enabled,
                 consensus_vec,
+                stakers,
+                protocol_known_peers: know_peers,
                 peernet_total_bytes_receive,
                 peernet_total_bytes_sent,
                 block_graph_counter,
@@ -446,6 +460,10 @@ impl MassaMetrics {
 
     pub fn inc_operations_final_counter(&self, diff: u64) {
         self.operations_final_counter.inc_by(diff);
+    }
+
+    pub fn set_known_peers(&self, nb: usize) {
+        self.protocol_known_peers.set(nb as i64);
     }
 
     /// Update the bandwidth metrics for all peers

@@ -240,6 +240,9 @@ pub(crate) fn start_connectivity_thread(
                         massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
                         let peers_map = active_conn.get_peers_connections_bandwidth();
                         massa_metrics.update_peers_tx_rx(peers_map);
+                        let peer_db_read = peer_db.read();
+                        massa_metrics.set_known_peers(peer_db_read.peers.len());
+
                     },
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
