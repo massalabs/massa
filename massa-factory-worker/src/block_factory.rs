@@ -236,7 +236,7 @@ impl BlockFactoryWorker {
                 announced_version,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
-                operation_hash: global_operations_hash,
+                operation_merkle_root: global_operations_hash,
                 endorsements,
                 denunciations: self.channels.pool.get_block_denunciations(&slot),
             },

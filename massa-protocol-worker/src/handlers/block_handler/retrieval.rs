@@ -840,7 +840,7 @@ impl RetrievalThread {
             .header
             .expect("header presence in wishlist should have been checked above")
             .content
-            .operation_hash
+            .operation_merkle_root
             != computed_operations_hash
         {
             warn!("Peer id {} sent us a operation list for block id {} but the hash in the header doesn't match.", from_peer_id, block_id);

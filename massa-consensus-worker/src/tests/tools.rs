@@ -151,7 +151,7 @@ pub fn create_block_with_merkle_root(
             denunciations: vec![],
             slot,
             parents: best_parents,
-            operation_hash: operation_merkle_root,
+            operation_merkle_root,
             endorsements: Vec::new(),
         },
         BlockHeaderSerializer::new(),

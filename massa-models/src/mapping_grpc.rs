@@ -40,7 +40,7 @@ impl From<BlockHeader> for grpc_model::BlockHeader {
                 .into_iter()
                 .map(|parent| parent.to_string())
                 .collect(),
-            operation_merkle_root: value.operation_hash.to_string(),
+            operation_merkle_root: value.operation_merkle_root.to_string(),
             endorsements: res,
         }
     }

@@ -178,7 +178,7 @@ pub fn create_block(
             announced_version: None,
             slot,
             parents: vec![],
-            operation_hash: operation_merkle_root,
+            operation_merkle_root,
             endorsements: vec![],
             denunciations,
         },
