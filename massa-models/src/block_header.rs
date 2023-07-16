@@ -37,7 +37,7 @@ pub struct BlockHeader {
     /// parents
     pub parents: Vec<BlockId>,
     /// all operations hash
-    pub operation_merkle_root: Hash,
+    pub operation_hash: Hash,
     /// endorsements
     pub endorsements: Vec<SecureShareEndorsement>,
     /// denunciations
@@ -232,7 +232,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
         }
 
         // operations merkle root
-        buffer.extend(value.operation_merkle_root.to_bytes());
+        buffer.extend(value.operation_hash.to_bytes());
 
         self.u32_serializer.serialize(
             &value.endorsements.len().try_into().map_err(|err| {
@@ -449,7 +449,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                 announced_version,
                 slot,
                 parents,
-                operation_merkle_root,
+                operation_hash: operation_merkle_root,
                 endorsements: Vec::new(),
                 denunciations: Vec::new(),
             };
@@ -528,7 +528,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             announced_version,
             slot,
             parents,
-            operation_merkle_root,
+            operation_hash: operation_merkle_root,
             endorsements,
             denunciations,
         };
@@ -550,7 +550,7 @@ impl std::fmt::Display for BlockHeader {
             "\t(period: {}, thread: {})",
             self.slot.period, self.slot.thread,
         )?;
-        writeln!(f, "\tMerkle root: {}", self.operation_merkle_root,)?;
+        writeln!(f, "\tMerkle root: {}", self.operation_hash,)?;
         writeln!(f, "\tParents: ")?;
         for id in self.parents.iter() {
             let str_id = id.to_string();
@@ -617,7 +617,7 @@ mod test {
         fn eq(&self, other: &Self) -> bool {
             self.slot == other.slot
                 && self.parents == other.parents
-                && self.operation_merkle_root == other.operation_merkle_root
+                && self.operation_hash == other.operation_hash
                 && self.endorsements == other.endorsements
                 && self.denunciations == other.denunciations
         }
@@ -656,7 +656,7 @@ mod test {
             announced_version: None,
             slot,
             parents: parents_1,
-            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+            operation_hash: Hash::compute_from("mno".as_bytes()),
             endorsements: vec![s_endorsement_1.clone()],
             denunciations: vec![de_a.clone(), de_b.clone()],
         };

@@ -320,7 +320,7 @@ mod tests {
                 announced_version: None,
                 slot: Slot::new(i, 0),
                 parents: vec![],
-                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                operation_hash: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![],
                 denunciations: vec![],
             };

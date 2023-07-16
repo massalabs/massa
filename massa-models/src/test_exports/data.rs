@@ -91,7 +91,7 @@ pub fn gen_block_headers_for_denunciation(
         announced_version: None,
         slot,
         parents: parents_1,
-        operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+        operation_hash: Hash::compute_from("mno".as_bytes()),
         endorsements: vec![s_endorsement_1.clone()],
         denunciations: vec![],
     };
@@ -109,7 +109,7 @@ pub fn gen_block_headers_for_denunciation(
         announced_version: None,
         slot,
         parents: parents_2,
-        operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+        operation_hash: Hash::compute_from("mno".as_bytes()),
         endorsements: vec![s_endorsement_1.clone()],
         denunciations: vec![],
     };
@@ -127,7 +127,7 @@ pub fn gen_block_headers_for_denunciation(
         announced_version: None,
         slot,
         parents: parents_3,
-        operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+        operation_hash: Hash::compute_from("mno".as_bytes()),
         endorsements: vec![s_endorsement_1.clone()],
         denunciations: vec![],
     };

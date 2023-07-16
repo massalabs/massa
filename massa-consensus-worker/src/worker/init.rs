@@ -48,7 +48,7 @@ pub fn create_genesis_block(
             announced_version: None,
             slot: Slot::new(cfg.last_start_period, thread_number),
             parents: Vec::new(),
-            operation_merkle_root: Hash::compute_from(&Vec::new()),
+            operation_hash: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
             denunciations: Vec::new(),
         },
