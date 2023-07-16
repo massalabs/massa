@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     thread::JoinHandle,
     time::Instant,
 };
@@ -34,8 +34,7 @@ use massa_models::{
     endorsement::SecureShareEndorsement,
     operation::{OperationId, SecureShareOperation},
     prehash::{CapacityAllocator, PreHashMap, PreHashSet},
-    secure_share::{Id, SecureShare},
-    slot::Slot,
+    secure_share::SecureShare,
     timeslots::get_block_slot_timestamp,
 };
 use massa_pool_exports::PoolController;
@@ -50,6 +49,7 @@ use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use super::{
+    super::operation_handler::note_operations_from_peer,
     cache::SharedBlockCache,
     commands_propagation::BlockHandlerPropagationCommand,
     commands_retrieval::BlockHandlerRetrievalCommand,
@@ -80,7 +80,6 @@ impl BlockInfo {
             header,
             operation_ids: None,
             storage,
-            operations_size: 0,
         }
     }
 }
@@ -386,11 +385,7 @@ impl RetrievalThread {
     }
 
     /// On block header received from a node.
-    fn on_block_header_received(
-        &mut self,
-        from_peer_id: PeerId,
-        header: SecuredHeader,
-    ) {
+    fn on_block_header_received(&mut self, from_peer_id: PeerId, header: SecuredHeader) {
         let block_id = header.id;
 
         // Check header and update knowledge info
@@ -780,20 +775,21 @@ impl RetrievalThread {
 
     /// Mark a block as invalid
     fn mark_block_as_invalid(&mut self, block_id: &BlockId) {
-            // stop retrieving the block
-            if let Some(wishlist_info) = self.block_wishlist.remove(&block_id) {
-                if let Some(header) = wishlist_info.header {
-                    // notify consensus that the block is invalid
-                    self.consensus_controller.mark_invalid_block(*block_id, header);
-                }
+        // stop retrieving the block
+        if let Some(wishlist_info) = self.block_wishlist.remove(&block_id) {
+            if let Some(header) = wishlist_info.header {
+                // notify consensus that the block is invalid
+                self.consensus_controller
+                    .mark_invalid_block(*block_id, header);
             }
+        }
 
-            // clear retrieval cache
-            self.remove_asked_blocks(&[*block_id].into_iter().collect());
-    } 
+        // clear retrieval cache
+        self.remove_asked_blocks(&[*block_id].into_iter().collect());
+    }
 
     /// We received a list of operations for a block.
-    /// 
+    ///
     /// # Parameters:
     /// - `from_peer_id`: Node which sent us the information.
     /// - `BlockId`: ID of the related operations we received.
@@ -901,11 +897,7 @@ impl RetrievalThread {
 
         // If the block is empty, go straight to processing the full block info.
         if operation_ids.is_empty() {
-            self.on_block_full_operations_received(
-                from_peer_id,
-                block_id,
-                Default::default(),
-            );
+            self.on_block_full_operations_received(from_peer_id, block_id, Default::default());
         }
     }
 
@@ -938,7 +930,7 @@ impl RetrievalThread {
         // Move the ops into a hashmap
         let mut operations: PreHashMap<OperationId, SecureShareOperation> =
             operations.into_iter().map(|op| (op.id, op)).collect();
-        
+
         // Make a set of all the block ops for fast lookup ande deduplication
         let block_ops_set = wishlist_info
             .operation_ids
@@ -955,7 +947,9 @@ impl RetrievalThread {
             // filter out operations that we don't want or already know about
             let mut dropped_ops: PreHashSet<OperationId> = Default::default();
             operations.retain(|op_id, _| {
-                if !block_ops_set.contains(op_id) || !wishlist_info.storage.get_op_refs().contains(op_id) {
+                if !block_ops_set.contains(op_id)
+                    || !wishlist_info.storage.get_op_refs().contains(op_id)
+                {
                     dropped_ops.insert(*op_id);
                     return false;
                 }
@@ -970,17 +964,28 @@ impl RetrievalThread {
             // mark sender as knowing the dropped_ops
             self.operation_cache.write().insert_known_operations(
                 &from_peer_id,
-                &dropped_ops.into_iter().map(|op_id| op_id.prefix()).collect(),
+                &dropped_ops
+                    .into_iter()
+                    .map(|op_id| op_id.prefix())
+                    .collect(),
             );
         }
 
         // Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
-    
+
         // Check the validity of the received operations.
         // TODO: in the future if the validiy check fails for something non-malleable (eg. not sig verif),
         //       we should stop retrieving the block and ban everyone who knows it
         //       because we know for sure that this op's ID belongs to the block.
-        if let Err(err) = self.note_operations_from_peer(operations.values().cloned().collect(), &from_peer_id) {
+        if let Err(err) = note_operations_from_peer(
+            &self.storage,
+            &mut self.operation_cache,
+            &self.config,
+            operations.values().cloned().collect(),
+            &from_peer_id,
+            &mut self.sender_propagation_ops,
+            &mut self.pool_controller,
+        ) {
             warn!(
                 "Peer id {} sent us operations for block id {} but they failed validity checks: {}",
                 from_peer_id, block_id, err
@@ -992,18 +997,20 @@ impl RetrievalThread {
         }
 
         // add received operations to local storage and claim ref
-        wishlist_info.storage.store_operations(operations.into_values().collect());
+        wishlist_info
+            .storage
+            .store_operations(operations.into_values().collect());
 
         // Compute the total operations size
         let total_operations_size = Self::get_total_operations_size(
-                &wishlist_info.storage,
-                &wishlist_info
-                    .operation_ids
-                    .as_ref()
-                    .expect("operation_ids presence in wishlist should have been checked above")
-                    .iter()
-                    .copied()
-                    .collect::<Vec<_>>()
+            &wishlist_info.storage,
+            &wishlist_info
+                .operation_ids
+                .as_ref()
+                .expect("operation_ids presence in wishlist should have been checked above")
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
         );
 
         // Check if the total size of the operations we know about is greater than the max block size.
@@ -1034,12 +1041,19 @@ impl RetrievalThread {
         }
 
         // Gather all the elemnents needed to create the block. We must have it all by now.
-        let wishlist_info = self.block_wishlist.remove(&block_id).expect("block presence in wishlist should have been checked above");
+        let wishlist_info = self
+            .block_wishlist
+            .remove(&block_id)
+            .expect("block presence in wishlist should have been checked above");
 
         // Create the block
         let block = Block {
-            header: wishlist_info.header.expect("header presence in wishlist should have been checked above"),
-            operations: wishlist_info.operation_ids.expect("operation_ids presence in wishlist should have been checked above"),
+            header: wishlist_info
+                .header
+                .expect("header presence in wishlist should have been checked above"),
+            operations: wishlist_info
+                .operation_ids
+                .expect("operation_ids presence in wishlist should have been checked above"),
         };
 
         let mut content_serialized = Vec::new();
@@ -1063,9 +1077,7 @@ impl RetrievalThread {
 
         // Add endorsements to storage and claim ref
         // TODO change this if we make endorsements separate from block header
-        block_storage.store_endorsements(
-            signed_block.content.header.content.endorsements.clone(),
-        );
+        block_storage.store_endorsements(signed_block.content.header.content.endorsements.clone());
 
         // save slot
         let slot = signed_block.content.header.content.slot;
@@ -1076,124 +1088,13 @@ impl RetrievalThread {
         // Send to consensus
         self.consensus_controller
             .register_block(block_id, slot, block_storage, false);
-        
-        // Update ask block
+
+        // Remove from asked block history as it is not useful anymore
         self.remove_asked_blocks(&vec![block_id].into_iter().collect());
     }
 
-    RESUME FROM HERE
-
-    fn note_operations_from_peer(
-        &mut self,
-        operations: Vec<SecureShareOperation>,
-        source_peer_id: &PeerId,
-    ) -> Result<(), ProtocolError> {
-        use_a_common_function_with_operation_handler(); // SHARE SAME FUNC
-
-        massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
-        let now = MassaTime::now().expect("could not get current time");
-
-        let mut new_operations = PreHashMap::with_capacity(operations.len());
-        for operation in operations {
-            // ignore if op is too old
-            let expire_period_timestamp = get_block_slot_timestamp(
-                self.config.thread_count,
-                self.config.t0,
-                self.config.genesis_timestamp,
-                Slot::new(
-                    operation.content.expire_period,
-                    operation
-                        .content_creator_address
-                        .get_thread(self.config.thread_count),
-                ),
-            );
-            match expire_period_timestamp {
-                Ok(slot_timestamp) => {
-                    if slot_timestamp.saturating_add(self.config.max_operations_propagation_time)
-                        < now
-                    {
-                        continue;
-                    }
-                }
-                Err(_) => continue,
-            }
-
-            // quit if op is too big
-            if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
-                return Err(ProtocolError::InvalidOperationError(format!(
-                    "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
-                    operation.id,
-                    operation.serialized_size(),
-                    self.config.max_serialized_operations_size_per_block
-                )));
-            };
-
-            // add to new operations
-            new_operations.insert(operation.id, operation);
-        }
-
-        // all valid received ids (not only new ones) for knowledge marking
-        let all_received_ids: PreHashSet<_> = new_operations.keys().copied().collect();
-
-        // retain only new ops that are not already known
-        {
-            let cache_read = self.operation_cache.read();
-            new_operations.retain(|op_id, _| cache_read.checked_operations.peek(op_id).is_none());
-        }
-
-        // optimized signature verification
-        verify_sigs_batch(
-            &new_operations
-                .iter()
-                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.content_creator_pub_key))
-                .collect::<Vec<_>>(),
-        )?;
-
-        {
-            // add to checked operations
-            let mut cache_write = self.operation_cache.write();
-
-            // add checked operations
-            for op_id in new_operations.keys().copied() {
-                cache_write.insert_checked_operation(op_id);
-            }
-
-            // add to known ops
-            let known_ops = cache_write
-                .ops_known_by_peer
-                .entry(source_peer_id.clone())
-                .or_insert_with(|| {
-                    LruMap::new(ByLength::new(
-                        self.config
-                            .max_node_known_ops_size
-                            .try_into()
-                            .expect("max_node_known_ops_size in config must be > 0"),
-                    ))
-                });
-            for id in all_received_ids {
-                known_ops.insert(id.prefix(), ());
-            }
-        }
-
-        if !new_operations.is_empty() {
-            // Store new operations, claim locally
-            let mut ops = self.storage.clone_without_refs();
-            ops.store_operations(new_operations.into_values().collect());
-
-            self.sender_propagation_ops
-                .try_send(OperationHandlerPropagationCommand::PropagateOperations(
-                    ops.clone(),
-                ))
-                .map_err(|err| ProtocolError::SendError(err.to_string()))?;
-
-            // Add to pool
-            self.pool_controller.add_operations(ops);
-        }
-
-        Ok(())
-    }
-
     pub(crate) fn update_block_retrieval(&mut self) -> Result<(), ProtocolError> {
+        todo(); // REVIEW THIS FUNCTION
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
         let now = Instant::now();
 
