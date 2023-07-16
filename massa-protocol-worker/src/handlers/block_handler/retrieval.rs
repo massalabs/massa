@@ -1093,15 +1093,22 @@ impl RetrievalThread {
         self.remove_asked_blocks(&vec![block_id].into_iter().collect());
     }
 
-    pub(crate) fn update_block_retrieval(&mut self) -> Result<(), ProtocolError> {
-        todo(); // REVIEW THIS FUNCTION
+    /// function that updates the global state of block retrieval
+    pub(crate) fn update_block_retrieval(&mut self) {
         massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
         let now = Instant::now();
 
         // init timer
         let mut next_tick = now
             .checked_add(self.config.ask_block_timeout.into())
-            .ok_or(TimeError::TimeOverflowError)?;
+            .ok_or(TimeError::TimeOverflowError)
+            .expect("could not compute next block retrieval timer tick");
+
+        todo(); // TODO : TAKE IT FROM HERE
+
+        //TODO update caches to take into account disconnected peers
+
+        //TODO cleanup asked_blocks from all the blocks not in the wishlist anymore and from all the nodes that are not connected
 
         // list blocks to re-ask and gather candidate nodes to ask from
         let mut candidate_nodes: PreHashMap<BlockId, Vec<_>> = Default::default();
@@ -1322,7 +1329,6 @@ impl RetrievalThread {
         }
 
         self.next_timer_ask_block = next_tick;
-        Ok(())
     }
 }
 
