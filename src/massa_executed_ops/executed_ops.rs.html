@@ -488,8 +488,6 @@
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
 <a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -732,7 +730,7 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _id)): <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>[u8], OperationId), nom::Err&lt;DeserializeError&gt;&gt; = <span class="self">self</span>.operation_id_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[EXECUTED_OPS_PREFIX.len()..]) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _id)) = <span class="self">self</span>.operation_id_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[EXECUTED_OPS_PREFIX.len()..]) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>!rest.is_empty() {
@@ -869,7 +867,6 @@
 </span><span class="kw">pub struct </span>ExecutedOpsSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
-    op_id_serializer: OperationIdSerializer,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>ExecutedOpsSerializer {
@@ -884,7 +881,6 @@
         ExecutedOpsSerializer {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
-            op_id_serializer: OperationIdSerializer::new(),
         }
     }
 }
@@ -906,7 +902,7 @@
             </span><span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>(ids.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
             <span class="comment">// slots ids
             </span><span class="kw">for </span>op_id <span class="kw">in </span>ids {
-                <span class="self">self</span>.op_id_serializer.serialize(op_id, buffer)<span class="question-mark">?</span>;
+                buffer.extend(op_id.to_bytes());
             }
         }
         <span class="prelude-val">Ok</span>(())

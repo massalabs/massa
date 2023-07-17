@@ -733,22 +733,6 @@
 <a href="#733" id="733">733</a>
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -1455,8 +1439,6 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
-
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="attr">#[test]
@@ -1484,20 +1466,6 @@
             .unwrap();
 
         <span class="macro">assert_eq!</span>(addr, addr2);
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_address_get_thread() {
-        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span><span class="string">&quot;ADDR&quot;</span>.as_bytes());
-
-        <span class="kw">let </span>user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
-        <span class="kw">let </span>thread_addr_0 = user_addr_0.get_thread(THREAD_COUNT);
-        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span><span class="string">&quot;ADDR2&quot;</span>.as_bytes());
-
-        <span class="kw">let </span>user_addr_1 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
-        <span class="kw">let </span>thread_addr_1 = user_addr_1.get_thread(THREAD_COUNT);
-
-        <span class="macro">assert_ne!</span>(thread_addr_0, thread_addr_1);
     }
 }
 </code></pre></div></section></main></body></html>

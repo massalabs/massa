@@ -1112,13 +1112,6 @@
 <a href="#1112" id="1112">1112</a>
 <a href="#1113" id="1113">1113</a>
 <a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1145,7 +1138,6 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, SetOrKeep};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
-<span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
@@ -1159,7 +1151,6 @@
 };
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
-<span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_versioning::address_factory::{AddressArgs, AddressFactory};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
@@ -2210,17 +2201,12 @@
             <span class="kw-2">&amp;</span>slot.to_bytes_key(),
             <span class="kw-2">&amp;</span>[<span class="kw">if </span>read_only { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>}, <span class="number">0u8</span>],
         ]),
-        <span class="prelude-val">Some</span>(block_id) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
-            <span class="kw">let </span>block_id_serializer = BlockIdSerializer::new();
-            block_id_serializer.serialize(block_id, <span class="kw-2">&amp;mut </span>bytes).unwrap();
-            massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
-                previous_execution_trail_hash.to_bytes(),
-                <span class="kw-2">&amp;</span>slot.to_bytes_key(),
-                <span class="kw-2">&amp;</span>[<span class="kw">if </span>read_only { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>}, <span class="number">1u8</span>],
-                <span class="kw-2">&amp;</span>bytes,
-            ])
-        }
+        <span class="prelude-val">Some</span>(block_id) =&gt; massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
+            previous_execution_trail_hash.to_bytes(),
+            <span class="kw-2">&amp;</span>slot.to_bytes_key(),
+            <span class="kw-2">&amp;</span>[<span class="kw">if </span>read_only { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>}, <span class="number">1u8</span>],
+            block_id.to_bytes(),
+        ]),
     }
 }
 
