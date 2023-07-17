@@ -1089,12 +1089,17 @@ fn generate_execution_trail_hash(
             &slot.to_bytes_key(),
             &[if read_only { 1u8 } else { 0u8 }, 0u8],
         ]),
-        Some(block_id) => massa_hash::Hash::compute_from_tuple(&[
-            previous_execution_trail_hash.to_bytes(),
-            &slot.to_bytes_key(),
-            &[if read_only { 1u8 } else { 0u8 }, 1u8],
-            block_id.to_bytes(),
-        ]),
+        Some(block_id) => {
+            let mut bytes = Vec::new();
+            let block_id_serializer = BlockIdSerializer::new();
+            block_id_serializer.serialize(block_id, &mut bytes).unwrap();
+            massa_hash::Hash::compute_from_tuple(&[
+                previous_execution_trail_hash.to_bytes(),
+                &slot.to_bytes_key(),
+                &[if read_only { 1u8 } else { 0u8 }, 1u8],
+                &bytes,
+            ])
+        }
     }
 }
 
