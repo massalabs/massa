@@ -133,30 +133,36 @@ fn test_add_irrelevant_operation() {
     };
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
-        res.expect_get_available_selections_in_range()
-            .returning(|slot_range, opt_addrs| {
-                let mut all_slots = BTreeMap::new();
-                let addr = *opt_addrs
-                    .expect("No addresses filter given")
-                    .into_iter()
-                    .next()
-                    .expect("No addresses given");
-                for i in 0..15 {
-                    for j in 0..32 {
-                        let s = Slot::new(i, j);
-                        if slot_range.contains(&s) {
-                            all_slots.insert(
-                                s,
-                                Selection {
-                                    producer: addr,
-                                    endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
-                                },
-                            );
+        res.expect_clone_box().times(2).returning(|| {
+            //TODO: Add sequence
+            let mut story = MockSelectorController::new();
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .into_iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
                         }
                     }
-                }
-                Ok(all_slots)
-            });
+                    Ok(all_slots)
+                });
+            Box::new(story)
+        });
         res
     };
     operation_pool_test(
