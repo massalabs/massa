@@ -1230,8 +1230,11 @@ impl RetrievalThread {
                     (true, false) => AskForBlockInfo::OperationIds,
                     // ask for missing operations in the block
                     (true, true) => {
-                        todo(); // TODO what if no ops missing ?
-                        todo(); // TODO reclaim new ops from storage but what if size check overflows ?
+                        todo();
+                        // TODO claim missing ops from storage
+                        // TODO check total size, do the right things on overflow
+                        // TODO ask for missing ops if any
+                        // TODO if no ops missing, build and finish the block
                         AskForBlockInfo::Operations(vec![])
                     }
                     _ => panic!("invalid wishlist state"),
@@ -1239,7 +1242,7 @@ impl RetrievalThread {
 
                 // try to ask peers from best to worst
                 for (_, _, _, _, peer_id) in peer_scores {
-                    debug!("Send ask for block to {}", peer_id);
+                    debug!("Send ask for block {} to {}", block_id, peer_id);
                     if let Err(err) = self.active_connections.send_to_peer(
                         &peer_id,
                         &self.block_message_serializer,
@@ -1269,6 +1272,7 @@ impl RetrievalThread {
             }
         }
 
+        // Update timer
         self.next_timer_ask_block = next_tick;
     }
 }
