@@ -295,6 +295,10 @@ pub(crate) fn start_connectivity_thread(
                                                 }
                                             }
 
+                                            if config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
+                                                continue;
+                                            }
+
                                             let canonical_ip = addr.ip().to_canonical();
                                             let mut allowed_local_ips = false;
                                             // Check if the peer is in a category and we didn't reached out target yet

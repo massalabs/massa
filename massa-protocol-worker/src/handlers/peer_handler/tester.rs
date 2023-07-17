@@ -286,7 +286,7 @@ impl Tester {
 
             //let mut network_manager = PeerNetManager::new(config);
             let protocol_config = protocol_config.clone();
-            loop {
+            'main_loop: loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
                         receiver.update_metrics();
@@ -370,17 +370,16 @@ impl Tester {
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         if !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                                             //Don't test our local addresses
-                                            for (local_addr, _transport) in protocol_config.listeners.iter() {
-                                                if addr == local_addr {
-                                                    peers_in_test.write().unwrap().remove(addr);
-                                                    continue;
-                                                }
+                                            if protocol_config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
+                                                peers_in_test.write().unwrap().remove(addr);
+                                                continue 'main_loop;
                                             }
+
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
                                                 if ip.to_canonical() == ip_canonical {
                                                     peers_in_test.write().unwrap().remove(addr);
-                                                    continue;
+                                                    continue 'main_loop;
                                                 }
                                             }
                                             info!("testing peer {} listener addr: {}", &listener.0, &addr);
