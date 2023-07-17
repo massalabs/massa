@@ -5,10 +5,9 @@ use crossbeam::channel::RecvTimeoutError;
 use massa_channel::receiver::MassaReceiver;
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
-use massa_models::operation::OperationId;
+use massa_models::operation::{OperationId, OperationPrefixId};
 use massa_models::prehash::CapacityAllocator;
 use massa_models::prehash::PreHashSet;
-use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 use tracing::{debug, info, log::warn};
@@ -132,45 +131,46 @@ impl PropagationThread {
         if self.next_batch.is_empty() {
             return;
         }
-        let operation_ids = mem::take(&mut self.next_batch);
+        let operation_id_prefixes = mem::take(&mut self.next_batch)
+            .into_iter()
+            .map(|id| id.prefix())
+            .collect::<Vec<_>>();
         massa_trace!("protocol.protocol_worker.announce_ops.begin", {
-            "operation_ids": operation_ids
+            "operation_id_prefixes": operation_id_prefixes
         });
+        let peers_connected = self.active_connections.get_peer_ids_connected();
         {
             let mut cache_write = self.cache.write();
-            let peers_connected = self.active_connections.get_peer_ids_connected();
-            cache_write.update_cache(peers_connected);
+            cache_write.update_cache(&peers_connected);
 
             // Propagate to peers
-            let all_keys: Vec<PeerId> = cache_write
-                .ops_known_by_peer
-                .iter()
-                .map(|(k, _)| k)
-                .cloned()
-                .collect();
-            for peer_id in all_keys {
-                let ops = cache_write.ops_known_by_peer.peek_mut(&peer_id).unwrap();
-                let new_ops: Vec<OperationId> = operation_ids
+            for peer_id in peers_connected {
+                let peer_known_ops = cache_write
+                    .ops_known_by_peer
+                    .get_mut(&peer_id)
+                    .expect("expected update_cache to insert all available peers in ops_known_by_peer but one is absent");
+                let ops_unknown_to_peer: Vec<OperationPrefixId> = operation_id_prefixes
                     .iter()
-                    .filter(|id| ops.peek(&id.prefix()).is_none())
+                    .filter(|&id_prefix| peer_known_ops.peek(id_prefix).is_none())
                     .copied()
                     .collect();
-                if !new_ops.is_empty() {
-                    for id in &new_ops {
-                        ops.insert(id.prefix(), ());
+                if !ops_unknown_to_peer.is_empty() {
+                    for id_prefix in &ops_unknown_to_peer {
+                        peer_known_ops.insert(*id_prefix, ());
                     }
                     debug!(
                         "Send operations announcement of len {} to {}",
-                        new_ops.len(),
+                        ops_unknown_to_peer.len(),
                         peer_id
                     );
-                    for sub_list in new_ops.chunks(self.config.max_operations_per_message as usize)
+                    for sub_list in
+                        ops_unknown_to_peer.chunks(self.config.max_operations_per_message as usize)
                     {
                         if let Err(err) = self.active_connections.send_to_peer(
                             &peer_id,
                             &self.operation_message_serializer,
                             OperationMessage::OperationsAnnouncement(
-                                sub_list.iter().map(|id| id.into_prefix()).collect(),
+                                sub_list.iter().copied().collect(),
                             )
                             .into(),
                             false,

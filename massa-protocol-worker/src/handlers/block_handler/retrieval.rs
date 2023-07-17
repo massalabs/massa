@@ -812,22 +812,19 @@ impl RetrievalThread {
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
         // add to known ops
-        'write_cache: {
+        {
             let mut cache_write = self.operation_cache.write();
-            let Ok(known_ops) = cache_write
+            let known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(from_peer_id.clone(), || {
+                .entry(from_peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         self.config
                             .max_node_known_ops_size
                             .try_into()
-                            .expect("max_node_known_ops_size in config should be > 0"),
+                            .expect("max_node_known_ops_size in config must fit in u32"),
                     ))
-                })
-                .ok_or(()) else {
-                    warn!("ops_known_by_peer limitation reached");
-                    break 'write_cache;
-                };
+                });
             for op_id in operation_ids_set.iter() {
                 known_ops.insert(op_id.prefix(), ());
             }
@@ -1172,28 +1169,27 @@ impl RetrievalThread {
                 .collect::<Vec<_>>(),
         )?;
 
-        'write_cache: {
+        {
             // add to checked operations
             let mut cache_write = self.operation_cache.write();
+
+            // add checked operations
             for op_id in new_operations.keys().copied() {
                 cache_write.insert_checked_operation(op_id);
             }
 
             // add to known ops
-            let Ok(known_ops) = cache_write
+            let known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(source_peer_id.clone(), || {
+                .entry(source_peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         self.config
                             .max_node_known_ops_size
                             .try_into()
                             .expect("max_node_known_ops_size in config must be > 0"),
                     ))
-                })
-                .ok_or(()) else {
-                    warn!("ops_known_by_peer limitation reached");
-                    break 'write_cache;
-                };
+                });
             for id in all_received_ids {
                 known_ops.insert(id.prefix(), ());
             }

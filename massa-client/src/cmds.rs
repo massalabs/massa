@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::display::Output;
-use crate::{client_warning, grpc_error, rpc_error};
+use crate::{client_warning, rpc_error};
 use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_api_exports::{
@@ -22,8 +22,6 @@ use massa_models::{
     operation::{Operation, OperationId, OperationType},
     slot::Slot,
 };
-use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_sdk::Client;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -784,61 +782,24 @@ impl Command {
             Command::wallet_generate_secret_key => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
-                // In order to generate a KeyPair we need to get the MIP statuses and use the latest
-                // active version
-                let req = grpc_api::GetMipStatusRequest { id: "".to_string() };
+                // Note: keypair version is hardcoded here (no Versioning check via grpc done)
+                //       Requirements is to ALWAYS have the generation done without a node (for security)
+                //       If a new keypair version is accepted (through a MIP), we will update the version here
+                //       manually.
+                //       This will allow to generate keypair on hardware ledger / computer without internet...
 
-                if let Some(ref mut grpc) = client.grpc {
-                    let versioning_status = match grpc.get_mip_status(req).await {
-                        Ok(resp_) => {
-                            let resp = resp_.into_inner();
-                            resp.entries
-                        }
-                        Err(e) => {
-                            grpc_error!(e)
-                        }
-                    };
+                let keypair_version: u64 = 0;
+                let key = KeyPair::generate(keypair_version).expect("Unable to generate key pair");
 
-                    // Note: this is a bit duplicated with KeyPairFactory code but it avoids
-                    //       sending the whole mip store through the API
-                    let keypair_version = versioning_status
-                        .into_iter()
-                        .rev()
-                        .find_map(|entry| {
-                            let is_about_keypair = match entry.mip_info {
-                                None => false,
-                                Some(mip_info) => mip_info.components.iter().any(|st_entry| {
-                                    grpc_model::MipComponent::from_i32(st_entry.kind)
-                                        .unwrap_or(grpc_model::MipComponent::Unspecified)
-                                        == grpc_model::MipComponent::Keypair
-                                }),
-                            };
-
-                            let state = grpc_model::ComponentStateId::from_i32(entry.state_id)
-                                .unwrap_or(grpc_model::ComponentStateId::Error);
-
-                            if is_about_keypair && state == grpc_model::ComponentStateId::Active {
-                                Some(entry.state_id)
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or(0);
-                    let key = KeyPair::generate(keypair_version as u64)
-                        .expect("Unable to generate key pair");
-
-                    let ad = wallet.add_keypairs(vec![key])?[0];
-                    if json {
-                        Ok(Box::new(ad.to_string()))
-                    } else {
-                        println!("Generated {} address and added it to the wallet", ad);
-                        println!(
-                            "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking <your address>` to start staking.\n"
-                        );
-                        Ok(Box::new(()))
-                    }
+                let ad = wallet.add_keypairs(vec![key])?[0];
+                if json {
+                    Ok(Box::new(ad.to_string()))
                 } else {
-                    bail!("Failed to establish connection. Please ensure that the gRPC API is enabled and accessible.");
+                    println!("Generated {} address and added it to the wallet", ad);
+                    println!(
+                        "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking <your address>` to start staking.\n"
+                    );
+                    Ok(Box::new(()))
                 }
             }
 

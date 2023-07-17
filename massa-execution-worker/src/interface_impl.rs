@@ -18,7 +18,11 @@ use massa_models::{
 };
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
-#[cfg(feature = "testing")]
+#[cfg(any(
+    feature = "gas_calibration",
+    feature = "benchmarking",
+    feature = "testing"
+))]
 use num::rational::Ratio;
 use parking_lot::Mutex;
 use rand::Rng;
@@ -115,6 +119,7 @@ impl InterfaceImpl {
             module_cache,
             vesting_manager,
             mip_store,
+            massa_hash::Hash::zero(),
         );
         execution_context.stack = vec![ExecutionStackElement {
             address: sender_addr,
@@ -840,6 +845,14 @@ impl Interface for InterfaceImpl {
         ));
         execution_context.created_message_index += 1;
         Ok(())
+    }
+
+    // Returns the operation id that originated the current execution if there is one
+    fn get_origin_operation_id(&self) -> Result<Option<String>> {
+        let operation_id = context_guard!(self)
+            .origin_operation_id
+            .map(|op_id| op_id.to_string());
+        Ok(operation_id)
     }
 
     /// Returns the period of the current execution slot
