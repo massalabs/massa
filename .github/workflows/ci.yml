@@ -110,6 +110,7 @@ jobs:
           # - windows-latest
     steps:
       - name: Free Disk Space (Ubuntu)
+        if: runner.os == 'Linux'
         uses: jlumbroso/free-disk-space@main
         with:
           # this might remove tools that are actually needed,
