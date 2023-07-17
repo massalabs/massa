@@ -406,9 +406,10 @@ impl RetrievalThread {
         };
 
         if let Some(info) = self.block_wishlist.get_mut(&block_id) {
-            // if the header is in our wishlist
+            // We are actively trying to get this block
+
             if info.header.is_none() {
-                // if we were looking for the missing header
+                // we were looking for the missing header
 
                 // save the header
                 info.header = Some(header);
@@ -786,6 +787,8 @@ impl RetrievalThread {
             }
         }
 
+        todo(); // ban all peers that know about it
+
         // clear retrieval cache
         self.remove_asked_blocks(&[*block_id].into_iter().collect());
     }
@@ -848,59 +851,16 @@ impl RetrievalThread {
             return;
         }
 
-        // Save the received operation ID list to the wishlist
-        wishlist_info.operation_ids = Some(operation_ids.clone());
-
-        // claim the operations we already know about from that list
-        let known_operations = wishlist_info
-            .storage
-            .claim_operation_refs(&operation_ids_set);
-
-        // Mark the ops we already know about as checked by us,
-        // this is used to refresh our knowledge cache in case it had expired
-        if !known_operations.is_empty() {
-            let mut cache_ops_write = self.operation_cache.write();
-            for operation_id in known_operations.iter() {
-                cache_ops_write.insert_checked_operation(*operation_id);
-            }
-        }
-
-        // get the total size of known ops
-        // note that if the same op appears twice, it needs to be counted twice
-        let total_operations_size = Self::get_total_operations_size(
-            &self.storage,
-            &operation_ids
-                .iter()
-                .filter(|id| known_operations.contains(id))
-                .copied()
-                .collect::<Vec<_>>(),
-        );
-
-        // Check if the total size of the operations we know about is greater than the max block size.
-        // If it overflows, it means that the block is invalid because it is too big.
-        // We should stop trying to retrieve the block and ban everyone who knows it.
-        if total_operations_size > self.config.max_serialized_operations_size_per_block {
-            warn!("Peer id {} sent us a operation list for block id {} but the operations we already have in our records exceed max block size.", from_peer_id, block_id);
-
-            // stop retrieving the block
-            self.mark_block_as_invalid(&block_id);
-
-            // ban the sender node because they were not supposed to propagate an invalid block
-            if let Err(err) = self.ban_node(&from_peer_id) {
-                warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
-            }
-
-            // quit
-            return;
-        }
+        // Mark the sender as knowing this block
+        self.cache
+            .write()
+            .insert_blocks_known(&from_peer_id, &[block_id], true);
 
         // free up all the nodes that we asked for that operation list
         self.remove_asked_blocks(&[block_id].into_iter().collect());
 
-        // If the block is empty, go straight to processing the full block info.
-        if operation_ids.is_empty() {
-            self.on_block_full_operations_received(from_peer_id, block_id, Default::default());
-        }
+        // Save the received operation ID list to the wishlist
+        wishlist_info.operation_ids = Some(operation_ids.clone());
     }
 
     /// Return the sum of all operation's serialized sizes in the id list
@@ -933,7 +893,7 @@ impl RetrievalThread {
         let mut operations: PreHashMap<OperationId, SecureShareOperation> =
             operations.into_iter().map(|op| (op.id, op)).collect();
 
-        // Make a set of all the block ops for fast lookup ande deduplication
+        // Make a set of all the block ops for fast lookup and deduplication
         let block_ops_set = wishlist_info
             .operation_ids
             .as_ref()
@@ -942,7 +902,7 @@ impl RetrievalThread {
             .copied()
             .collect::<PreHashSet<_>>();
 
-        // just in case, claim the ops that we might have received in the meantime
+        // claim the ops that we might have received in the meantime
         wishlist_info.storage.claim_operation_refs(&block_ops_set);
 
         {
@@ -950,18 +910,13 @@ impl RetrievalThread {
             let mut dropped_ops: PreHashSet<OperationId> = Default::default();
             operations.retain(|op_id, _| {
                 if !block_ops_set.contains(op_id)
-                    || !wishlist_info.storage.get_op_refs().contains(op_id)
+                    || wishlist_info.storage.get_op_refs().contains(op_id)
                 {
                     dropped_ops.insert(*op_id);
                     return false;
                 }
                 true
             });
-
-            if operations.is_empty() {
-                // we have most likely eliminated all the received operations in the filtering above
-                return;
-            }
 
             // mark sender as knowing the dropped_ops
             self.operation_cache.write().insert_known_operations(
@@ -971,6 +926,10 @@ impl RetrievalThread {
                     .map(|op_id| op_id.prefix())
                     .collect(),
             );
+        }
+        if operations.is_empty() {
+            // we have most likely eliminated all the received operations in the filtering above
+            return;
         }
 
         // Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
@@ -1003,96 +962,7 @@ impl RetrievalThread {
             .storage
             .store_operations(operations.into_values().collect());
 
-        // Compute the total operations size
-        let total_operations_size = Self::get_total_operations_size(
-            &wishlist_info.storage,
-            &wishlist_info
-                .operation_ids
-                .as_ref()
-                .expect("operation_ids presence in wishlist should have been checked above")
-                .iter()
-                .copied()
-                .collect::<Vec<_>>(),
-        );
-
-        // Check if the total size of the operations we know about is greater than the max block size.
-        // If it overflows, it means that the block is invalid because it is too big.
-        // We should stop trying to retrieve the block and ban everyone who knows it.
-        if total_operations_size > self.config.max_serialized_operations_size_per_block {
-            warn!("Peer id {} sent us a operation list for block id {} but the operations we already have in our records exceed max block size.", from_peer_id, block_id);
-
-            // stop retrieving the block
-            self.mark_block_as_invalid(&block_id);
-
-            // ban the sender node because they were not supposed to propagate an invalid block
-            if let Err(err) = self.ban_node(&from_peer_id) {
-                warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
-            }
-
-            // quit
-            return;
-        }
-
-        // Check whether we have received all the operations for that block.
-        if wishlist_info.storage.get_op_refs().len() < block_ops_set.len() {
-            // we are still missing some operations.
-            // Note that we don't mark the sender as knowing the block here
-            // because they failed to send us all the ops we needed.
-            // This can happen if the sender node is malicious or if they dropped the block mid-process.
-            return;
-        }
-
-        // Gather all the elemnents needed to create the block. We must have it all by now.
-        let wishlist_info = self
-            .block_wishlist
-            .remove(&block_id)
-            .expect("block presence in wishlist should have been checked above");
-
-        // Create the block
-        let block = Block {
-            header: wishlist_info
-                .header
-                .expect("header presence in wishlist should have been checked above"),
-            operations: wishlist_info
-                .operation_ids
-                .expect("operation_ids presence in wishlist should have been checked above"),
-        };
-
-        let mut content_serialized = Vec::new();
-        BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
-            .serialize(&block, &mut content_serialized)
-            .expect("failed to serialize block");
-
-        // wrap block
-        let signed_block = SecureShare {
-            signature: block.header.signature.clone(),
-            content_creator_pub_key: block.header.content_creator_pub_key.clone(),
-            content_creator_address: block.header.content_creator_address.clone(),
-            id: block_id,
-            content: block,
-            serialized_data: content_serialized,
-        };
-
-        // Get block storage.
-        // It should contain only the operations.
-        let mut block_storage = wishlist_info.storage;
-
-        // Add endorsements to storage and claim ref
-        // TODO change this if we make endorsements separate from block header
-        block_storage.store_endorsements(signed_block.content.header.content.endorsements.clone());
-
-        // save slot
-        let slot = signed_block.content.header.content.slot;
-
-        // add block to storage and claim ref
-        block_storage.store_block(signed_block);
-
-        // Send to consensus
-        self.consensus_controller
-            .register_block(block_id, slot, block_storage, false);
-
-        // Remove from asked block history as it is not useful anymore
-        self.remove_asked_blocks(&vec![block_id].into_iter().collect());
+        todo(); // find a way to adjust asked_blocks so that we don't ask from the same person again but we still ask from others
     }
 
     /// function that updates the global state of block retrieval
@@ -1230,12 +1100,11 @@ impl RetrievalThread {
                     (true, false) => AskForBlockInfo::OperationIds,
                     // ask for missing operations in the block
                     (true, true) => {
-                        todo();
-                        // TODO claim missing ops from storage
-                        // TODO check total size, do the right things on overflow
-                        // TODO ask for missing ops if any
-                        // TODO if no ops missing, build and finish the block
-                        AskForBlockInfo::Operations(vec![])
+                        // gather missing block operations and perform necessary followups
+                        match self.gather_missing_block_ops(&block_id) {
+                            Some(ops) => AskForBlockInfo::Operations(ops),
+                            None => continue,
+                        }
                     }
                     _ => panic!("invalid wishlist state"),
                 };
@@ -1274,6 +1143,135 @@ impl RetrievalThread {
 
         // Update timer
         self.next_timer_ask_block = next_tick;
+    }
+
+    // Gather all missing block operations.
+    // Returns Some(ops) if there are missing ops to gather
+    fn gather_missing_block_ops(&mut self, block_id: &BlockId) -> Option<Vec<OperationId>> {
+        // Get wishlist data
+        let wishlist_info = match self.block_wishlist.get_mut(block_id) {
+            // Wishlist data found
+            Some(block_info) => {
+                if block_info.header.is_none() || block_info.operation_ids.is_none() {
+                    // Header or operation IDs not retrieved => cannot gather ops yet
+                    return None;
+                }
+                block_info
+            }
+            // Wishlist data not found => nothing to do
+            None => return None,
+        };
+
+        // Construct a hashset from the ID list for deduplication and faster lookup
+        let op_id_list = &wishlist_info
+            .operation_ids
+            .expect("operation IDs should be present");
+        let op_id_set: PreHashSet<OperationId> = op_id_list.iter().copied().collect();
+
+        // Gather all the ops in storage
+        let claimed_ops = wishlist_info.storage.claim_operation_refs(&op_id_set);
+
+        // Mark the ops we already know about as checked by us,
+        // this is used to refresh our knowledge cache in case it had expired.
+        if !claimed_ops.is_empty() {
+            let mut cache_ops_write = self.operation_cache.write();
+            for operation_id in claimed_ops.iter() {
+                cache_ops_write.insert_checked_operation(*operation_id);
+            }
+        }
+
+        // Compute the total operations size
+        let total_operations_size = Self::get_total_operations_size(
+            &wishlist_info.storage,
+            &wishlist_info
+                .operation_ids
+                .as_ref()
+                .expect("operation_ids presence in wishlist should have been checked above")
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
+        );
+
+        // Check if the total size of the operations we know about is greater than the max block size.
+        // If it overflows, it means that the block is invalid because it is too big.
+        // We should stop trying to retrieve the block and ban everyone who knows it.
+        if total_operations_size > self.config.max_serialized_operations_size_per_block {
+            warn!(
+                "The operations we already have in our records exceed max block size for block {}.",
+                block_id
+            );
+
+            // stop retrieving the block
+            self.mark_block_as_invalid(&block_id);
+
+            // quit
+            return None;
+        }
+
+        // if there are missing blocks, return them
+        if claimed_ops.len() < op_id_set.len() {
+            return Some((&op_id_set - &claimed_ops).into_iter().collect());
+        }
+
+        // there are no missing ops, we can finish the block
+        self.fully_gathered_block(&block_id);
+
+        None
+    }
+
+    /// Called when we have fully gathered a block
+    fn fully_gathered_block(&mut self, block_id: &BlockId) {
+        // Gather all the elements needed to create the block. We must have it all by now.
+        let wishlist_info = self
+            .block_wishlist
+            .remove(&block_id)
+            .expect("block presence in wishlist should have been checked before");
+
+        // Create the block
+        let block = Block {
+            header: wishlist_info
+                .header
+                .expect("header presence in wishlist should have been checked above"),
+            operations: wishlist_info
+                .operation_ids
+                .expect("operation_ids presence in wishlist should have been checked above"),
+        };
+
+        let mut content_serialized = Vec::new();
+        BlockSerializer::new() // todo : keep the serializer in the struct to avoid recreating it
+            .serialize(&block, &mut content_serialized)
+            .expect("failed to serialize block");
+
+        // wrap block
+        let signed_block = SecureShare {
+            signature: block.header.signature.clone(),
+            content_creator_pub_key: block.header.content_creator_pub_key.clone(),
+            content_creator_address: block.header.content_creator_address.clone(),
+            id: *block_id,
+            content: block,
+            serialized_data: content_serialized,
+        };
+
+        // Get block storage.
+        // It should contain only the operations.
+        let mut block_storage = wishlist_info.storage;
+
+        // Add endorsements to storage and claim ref
+        // TODO change this if we make endorsements separate from block header
+        block_storage.store_endorsements(signed_block.content.header.content.endorsements.clone());
+
+        // save slot
+        let slot = signed_block.content.header.content.slot;
+
+        // add block to storage and claim ref
+        block_storage.store_block(signed_block);
+
+        // Send to consensus
+        self.consensus_controller
+            .register_block(*block_id, slot, block_storage, false);
+
+        // Remove from asked block history as it is not useful anymore
+        self.remove_asked_blocks(&vec![*block_id].into_iter().collect());
     }
 }
 
