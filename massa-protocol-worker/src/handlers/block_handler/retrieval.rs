@@ -1161,7 +1161,13 @@ impl RetrievalThread {
                 // prioritize peers by (max knowledge, min knowledge age, min load, max random)
                 let mut peer_scores: Vec<_> = connected_peers
                     .iter()
-                    .map(|peer_id| {
+                    .filter_map(|peer_id| {
+                        // Get the peer load. Look for the minimum score for asking.
+                        let peer_load = peer_loads.get(peer_id).copied().unwrap_or_default();
+                        if peer_load >= self.config.max_simultaneous_ask_blocks_per_node {
+                            // this peer is already loaded with too many asks
+                            return None;
+                        }
                         // get peer knowledge info about that block
                         let peer_knowledge_of_block = self
                             .cache
@@ -1169,12 +1175,10 @@ impl RetrievalThread {
                             .blocks_known_by_peer
                             .get(peer_id)
                             .and_then(|blocks_known| blocks_known.peek(&block_id).copied());
-                        // Get the peer load. Look for the minimum score for asking.
-                        let peer_load = peer_loads.get(peer_id).copied().unwrap_or_default();
                         match peer_knowledge_of_block {
                             Some((false, info_t)) => {
                                 // we think that the peer doesn't know the block
-                                (
+                                Some((
                                     1i8, // worst knowledge
                                     Some(
                                         -(now.saturating_duration_since(info_t).as_millis() as i64),
@@ -1182,27 +1186,27 @@ impl RetrievalThread {
                                     peer_load, // the lower the load the better
                                     thread_rng().gen::<u64>(), // random tie breaker,
                                     *peer_id,
-                                )
+                                ))
                             }
                             None => {
                                 // we don't know if the peer knows the block
-                                (
+                                Some((
                                     0i8,                       // medium knowledge
                                     None,                      // N/A
                                     peer_load,                 // the lower the load the better
                                     thread_rng().gen::<u64>(), // random tie breaker,
                                     *peer_id,
-                                )
+                                ))
                             }
                             Some((true, info_t)) => {
                                 // we think that the peer knows the block
-                                (
+                                Some((
                                     -1i8,                                                           // best knowledge
                                     Some(now.saturating_duration_since(info_t).as_millis() as i64), // the newer the info the better
                                     peer_load, // the lower the load the better
                                     thread_rng().gen::<u64>(), // random tie breaker,
                                     *peer_id,
-                                )
+                                ))
                             }
                         }
                     })
