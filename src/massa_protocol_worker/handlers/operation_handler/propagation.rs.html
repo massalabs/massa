@@ -227,10 +227,9 @@
 <span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
-<span class="kw">use </span>massa_models::operation::OperationId;
+<span class="kw">use </span>massa_models::operation::{OperationId, OperationPrefixId};
 <span class="kw">use </span>massa_models::prehash::CapacityAllocator;
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
-<span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>tracing::{debug, info, log::warn};
@@ -354,45 +353,46 @@
         </span><span class="kw">if </span><span class="self">self</span>.next_batch.is_empty() {
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>operation_ids = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.next_batch);
+        <span class="kw">let </span>operation_id_prefixes = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.next_batch)
+            .into_iter()
+            .map(|id| id.prefix())
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.announce_ops.begin&quot;</span>, {
-            <span class="string">&quot;operation_ids&quot;</span>: operation_ids
+            <span class="string">&quot;operation_id_prefixes&quot;</span>: operation_id_prefixes
         });
+        <span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-            <span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
-            cache_write.update_cache(peers_connected);
+            cache_write.update_cache(<span class="kw-2">&amp;</span>peers_connected);
 
             <span class="comment">// Propagate to peers
-            </span><span class="kw">let </span>all_keys: Vec&lt;PeerId&gt; = cache_write
-                .ops_known_by_peer
-                .iter()
-                .map(|(k, <span class="kw">_</span>)| k)
-                .cloned()
-                .collect();
-            <span class="kw">for </span>peer_id <span class="kw">in </span>all_keys {
-                <span class="kw">let </span>ops = cache_write.ops_known_by_peer.peek_mut(<span class="kw-2">&amp;</span>peer_id).unwrap();
-                <span class="kw">let </span>new_ops: Vec&lt;OperationId&gt; = operation_ids
+            </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
+                <span class="kw">let </span>peer_known_ops = cache_write
+                    .ops_known_by_peer
+                    .get_mut(<span class="kw-2">&amp;</span>peer_id)
+                    .expect(<span class="string">&quot;expected update_cache to insert all available peers in ops_known_by_peer but one is absent&quot;</span>);
+                <span class="kw">let </span>ops_unknown_to_peer: Vec&lt;OperationPrefixId&gt; = operation_id_prefixes
                     .iter()
-                    .filter(|id| ops.peek(<span class="kw-2">&amp;</span>id.prefix()).is_none())
+                    .filter(|<span class="kw-2">&amp;</span>id_prefix| peer_known_ops.peek(id_prefix).is_none())
                     .copied()
                     .collect();
-                <span class="kw">if </span>!new_ops.is_empty() {
-                    <span class="kw">for </span>id <span class="kw">in </span><span class="kw-2">&amp;</span>new_ops {
-                        ops.insert(id.prefix(), ());
+                <span class="kw">if </span>!ops_unknown_to_peer.is_empty() {
+                    <span class="kw">for </span>id_prefix <span class="kw">in </span><span class="kw-2">&amp;</span>ops_unknown_to_peer {
+                        peer_known_ops.insert(<span class="kw-2">*</span>id_prefix, ());
                     }
                     <span class="macro">debug!</span>(
                         <span class="string">&quot;Send operations announcement of len {} to {}&quot;</span>,
-                        new_ops.len(),
+                        ops_unknown_to_peer.len(),
                         peer_id
                     );
-                    <span class="kw">for </span>sub_list <span class="kw">in </span>new_ops.chunks(<span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>usize)
+                    <span class="kw">for </span>sub_list <span class="kw">in
+                        </span>ops_unknown_to_peer.chunks(<span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>usize)
                     {
                         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
                             <span class="kw-2">&amp;</span>peer_id,
                             <span class="kw-2">&amp;</span><span class="self">self</span>.operation_message_serializer,
                             OperationMessage::OperationsAnnouncement(
-                                sub_list.iter().map(|id| id.into_prefix()).collect(),
+                                sub_list.iter().copied().collect(),
                             )
                             .into(),
                             <span class="bool-val">false</span>,
