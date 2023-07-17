@@ -89,7 +89,6 @@ impl Default for ProtocolConfig {
                 max_in_connections_per_ip: 0,
             },
             version: "TEST.23.2".parse().unwrap(),
-            thread_incoming_connections_count: 5,
             try_connection_timer_same_peer: MassaTime::from_millis(1000),
         }
     }
