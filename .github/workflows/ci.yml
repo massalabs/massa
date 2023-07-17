@@ -109,6 +109,12 @@ jobs:
           - macOS-latest
           # - windows-latest
     steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
       - uses: ilammy/setup-nasm@v1
       - uses: actions/checkout@v3
         with:
