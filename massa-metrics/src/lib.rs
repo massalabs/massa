@@ -13,7 +13,7 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
+use prometheus::{register_int_gauge, Counter, Gauge, IntCounter, IntGauge};
 use survey::MassaSurvey;
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
@@ -80,13 +80,17 @@ pub struct MassaMetrics {
     consensus_vec: Vec<Gauge>,
 
     /// number of stakers
-    stakers: IntGauge,
+    // stakers: IntGauge,
 
     /// know peers in protocol
     protocol_known_peers: IntGauge,
-
     /// banned peers in protocol
     protocol_banned_peers: IntGauge,
+
+    /// executed final slot
+    executed_final_slot: Counter,
+    /// executed final slot with block (not miss)
+    executed_final_slot_with_block: Counter,
 
     /// total bytes receive by peernet manager
     peernet_total_bytes_receive: IntCounter,
@@ -167,6 +171,14 @@ impl MassaMetrics {
 
         // stakers
         let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
+
+        let executed_final_slot =
+            Counter::new("executed_final_slot", "number of executed final slot").unwrap();
+        let executed_final_slot_with_block = Counter::new(
+            "executed_final_slot_with_block",
+            "number of executed final slot with block (not miss)",
+        )
+        .unwrap();
 
         let know_peers = IntGauge::new("known_peers", "number of known peers in protocol").unwrap();
         let banned_peers =
@@ -322,9 +334,11 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
-                let _ = prometheus::register(Box::new(stakers.clone()));
+                // let _ = prometheus::register(Box::new(stakers.clone()));
                 let _ = prometheus::register(Box::new(know_peers.clone()));
                 let _ = prometheus::register(Box::new(banned_peers.clone()));
+                let _ = prometheus::register(Box::new(executed_final_slot.clone()));
+                let _ = prometheus::register(Box::new(executed_final_slot_with_block.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -342,9 +356,11 @@ impl MassaMetrics {
             MassaMetrics {
                 enabled,
                 consensus_vec,
-                stakers,
+                // stakers,
                 protocol_known_peers: know_peers,
                 protocol_banned_peers: banned_peers,
+                executed_final_slot,
+                executed_final_slot_with_block,
                 peernet_total_bytes_receive,
                 peernet_total_bytes_sent,
                 block_graph_counter,
@@ -476,6 +492,14 @@ impl MassaMetrics {
 
     pub fn set_banned_peers(&self, nb: usize) {
         self.protocol_banned_peers.set(nb as i64);
+    }
+
+    pub fn inc_executed_final_slot(&self) {
+        self.executed_final_slot.inc();
+    }
+
+    pub fn inc_executed_final_slot_with_block(&self) {
+        self.executed_final_slot_with_block.inc();
     }
 
     /// Update the bandwidth metrics for all peers

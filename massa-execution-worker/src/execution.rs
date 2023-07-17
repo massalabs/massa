@@ -1362,9 +1362,15 @@ impl ExecutionState {
         // execute slot
         debug!("execute_final_slot: execution started");
         let exec_out = self.execute_slot(slot, exec_target, selector);
-
+        let has_block = exec_out.block_info.is_some();
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
+
+        // update metrics
+        self.massa_metrics.inc_executed_final_slot();
+        if has_block {
+            self.massa_metrics.inc_executed_final_slot_with_block();
+        }
 
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
