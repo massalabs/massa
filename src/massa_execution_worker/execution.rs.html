@@ -1849,6 +1849,12 @@
 <a href="#1849" id="1849">1849</a>
 <a href="#1850" id="1850">1850</a>
 <a href="#1851" id="1851">1851</a>
+<a href="#1852" id="1852">1852</a>
+<a href="#1853" id="1853">1853</a>
+<a href="#1854" id="1854">1854</a>
+<a href="#1855" id="1855">1855</a>
+<a href="#1856" id="1856">1856</a>
+<a href="#1857" id="1857">1857</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3213,9 +3219,15 @@
         <span class="comment">// execute slot
         </span><span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution started&quot;</span>);
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
-
+        <span class="kw">let </span>has_block = exec_out.block_info.is_some();
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
+
+        <span class="comment">// update metrics
+        </span><span class="self">self</span>.massa_metrics.inc_executed_final_slot();
+        <span class="kw">if </span>has_block {
+            <span class="self">self</span>.massa_metrics.inc_executed_final_slot_with_block();
+        }
 
         <span class="macro">debug!</span>(
             <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
