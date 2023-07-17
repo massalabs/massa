@@ -262,6 +262,8 @@ pub(crate) fn start_connectivity_thread(
                         let mut addresses_to_connect: Vec<SocketAddr> = Vec::new();
                         {
                                 let peer_db_read = peer_db.read();
+                                dbg!(&peer_db_read.index_by_newest);
+                                dbg!(&peer_db_read.peers);
                                 for (_, peer_id) in &peer_db_read.index_by_newest {
                                     if peers_connected.contains_key(peer_id) {
                                         continue;
