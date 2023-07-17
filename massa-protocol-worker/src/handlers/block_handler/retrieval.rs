@@ -15,7 +15,7 @@ use crate::{
         },
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
-    messages::MessagesSerializer,
+    messages::{Message, MessagesSerializer},
     sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
 };
@@ -45,6 +45,8 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
 use massa_time::{MassaTime, TimeError};
 use massa_versioning::versioning::MipStore;
+use rand::thread_rng;
+use rand::{seq::SliceRandom, Rng};
 use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
@@ -1095,234 +1097,169 @@ impl RetrievalThread {
 
     /// function that updates the global state of block retrieval
     pub(crate) fn update_block_retrieval(&mut self) {
-        massa_trace!("protocol.protocol_worker.update_ask_block.begin", {});
-        let now = Instant::now();
+        let ask_block_timeout = self.config.ask_block_timeout.to_duration();
 
-        // init timer
+        // Init timer for next tick
+        let now = Instant::now();
         let mut next_tick = now
             .checked_add(self.config.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)
             .expect("could not compute next block retrieval timer tick");
 
-        todo(); // TODO : TAKE IT FROM HERE
+        // Get conencted peer list
+        let connected_peers = self.active_connections.get_peer_ids_connected();
 
-        //TODO update caches to take into account disconnected peers
+        // Update cache
+        self.cache.write().update_cache(&connected_peers);
 
-        //TODO cleanup asked_blocks from all the blocks not in the wishlist anymore and from all the nodes that are not connected
+        // Cleanup asked_blocks from all disconnected peers and blocks that are not in the wishlist anymore.
+        self.asked_blocks.retain(|peer_id, asked_blocks| {
+            if !connected_peers.contains(peer_id) {
+                return false;
+            }
+            asked_blocks.retain(|block_id, _| self.block_wishlist.contains_key(block_id));
+            !asked_blocks.is_empty()
+        });
 
-        // list blocks to re-ask and gather candidate nodes to ask from
-        let mut candidate_nodes: PreHashMap<BlockId, Vec<_>> = Default::default();
-        let mut ask_block_list: HashMap<PeerId, Vec<(BlockId, AskForBlockInfo)>> =
-            Default::default();
+        // list of blocks that need to be asked
+        let mut to_ask: PreHashSet<BlockId> = self.block_wishlist.keys().copied().collect();
+        // the number of things already being asked to those peers
+        let mut peer_loads: HashMap<PeerId, usize> = Default::default();
+        for (peer_id, asked_blocks) in &self.asked_blocks {
+            for (block_id, ask_time) in asked_blocks {
+                let expiry = ask_time
+                    .checked_add(ask_block_timeout)
+                    .expect("could not compute block ask expiry");
+                if expiry <= now {
+                    // the block has been asked for the block data a long time agp and did not respond
 
-        // list blocks to re-ask and from whom
-        {
-            let mut cache_write = self.cache.write();
-            for (hash, block_info) in self.block_wishlist.iter() {
-                let required_info = if block_info.header.is_none() {
-                    AskForBlockInfo::Header
-                } else if block_info.operation_ids.is_none() {
-                    AskForBlockInfo::OperationIds
+                    // we mark this peer as not knowing this block
+                    self.cache
+                        .write()
+                        .insert_blocks_known(peer_id, &[*block_id], false);
                 } else {
-                    let already_stored_operations = block_info.storage.get_op_refs();
-                    // Unwrap safety: Check if `operation_ids` is none just above
-                    AskForBlockInfo::Operations(
-                        block_info
-                            .operation_ids
-                            .as_ref()
-                            .unwrap()
-                            .iter()
-                            .filter(|id| !already_stored_operations.contains(id))
-                            .copied()
-                            .collect(),
-                    )
-                };
-                let mut needs_ask = true;
+                    // this block was recently asked to this peer: no need to ask for the block for now
+                    to_ask.remove(block_id);
 
-                let peers_connected = self.active_connections.get_peer_ids_connected();
-                cache_write.update_cache(&peers_connected);
-                let peers_in_asked_blocks: Vec<PeerId> =
-                    self.asked_blocks.keys().cloned().collect();
-                for peer_id in peers_in_asked_blocks {
-                    if !peers_connected.contains(&peer_id) {
-                        self.asked_blocks.remove(&peer_id);
-                    }
-                }
-                for peer_id in peers_connected {
-                    if !self.asked_blocks.contains_key(&peer_id) {
-                        self.asked_blocks
-                            .insert(peer_id.clone(), PreHashMap::default());
-                    }
-                }
-                let all_keys: Vec<PeerId> = cache_write
-                    .blocks_known_by_peer
-                    .iter()
-                    .map(|(k, _)| k)
-                    .cloned()
-                    .collect();
-                for peer_id in all_keys.iter() {
-                    // for (peer_id, (blocks_known, _)) in cache_write.blocks_known_by_peer.iter() {
-                    let blocks_known = cache_write.blocks_known_by_peer.get_mut(peer_id).unwrap();
-                    // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
-                    let ask_time_opt = self
-                        .asked_blocks
-                        .get(peer_id)
-                        .and_then(|asked_blocks| asked_blocks.get(hash).copied());
-                    let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
-                        let t = ask_time
-                            .checked_add(self.config.ask_block_timeout.into())
-                            .ok_or(TimeError::TimeOverflowError)?;
-                        (Some(t), t <= now)
-                    } else {
-                        (None, false)
-                    };
-                    let knows_block = blocks_known.get(hash);
+                    // mark this peer as loaded with an angoing ask
+                    peer_loads
+                        .entry(peer_id.clone())
+                        .and_modify(|v| *v += 1)
+                        .or_insert(1);
 
-                    // check if the peer recently told us it doesn't have the block
-                    if let Some((false, info_time)) = knows_block {
-                        let info_expires = info_time
-                            .checked_add(self.config.ask_block_timeout.into())
-                            .ok_or(TimeError::TimeOverflowError)?;
-                        if info_expires > now {
-                            next_tick = std::cmp::min(next_tick, info_expires);
-                            continue; // ignore candidate peer
-                        }
-                    }
-
-                    let candidate = match (timed_out, timeout_at_opt, knows_block) {
-                        // not asked yet
-                        (_, None, knowledge) => match knowledge {
-                            Some((true, _)) => (0u8, None),
-                            None => (1u8, None),
-                            Some((false, _)) => (2u8, None),
-                        },
-                        // not timed out yet (note: recent DONTHAVBLOCK checked before the match)
-                        (false, Some(timeout_at), _) => {
-                            next_tick = std::cmp::min(next_tick, timeout_at);
-                            needs_ask = false; // no need to re ask
-                            continue; // not a candidate
-                        }
-                        // timed out, supposed to have it
-                        (true, Some(mut timeout_at), Some((true, info_time))) => {
-                            if info_time < &mut timeout_at {
-                                // info less recent than timeout: mark as not having it
-                                blocks_known.insert(*hash, (false, timeout_at));
-                                (2u8, ask_time_opt)
-                            } else {
-                                // told us it has it after a timeout: good candidate again
-                                (0u8, ask_time_opt)
-                            }
-                        }
-                        // timed out, supposed to not have it
-                        (true, Some(mut timeout_at), Some((false, info_time))) => {
-                            if info_time < &mut timeout_at {
-                                // info less recent than timeout: update info time
-                                blocks_known.insert(*hash, (false, timeout_at));
-                            }
-                            (2u8, ask_time_opt)
-                        }
-                        // timed out but don't know if has it: mark as not having it
-                        (true, Some(timeout_at), None) => {
-                            blocks_known.insert(*hash, (false, timeout_at));
-                            (2u8, ask_time_opt)
-                        }
-                    };
-
-                    // add candidate peer
-                    candidate_nodes.entry(*hash).or_insert_with(Vec::new).push((
-                        candidate,
-                        peer_id.clone(),
-                        required_info.clone(),
-                    ));
-                }
-
-                // remove if doesn't need to be asked
-                if !needs_ask {
-                    candidate_nodes.remove(hash);
+                    // update next tick
+                    next_tick = next_tick.min(expiry);
                 }
             }
         }
 
-        // count active block requests per node
-        let mut active_block_req_count: HashMap<PeerId, usize> = self
-            .asked_blocks
-            .iter()
-            .map(|(peer_id, blocks)| {
-                (
-                    peer_id.clone(),
-                    blocks
-                        .iter()
-                        .filter(|(_h, ask_t)| {
-                            ask_t
-                                .checked_add(self.config.ask_block_timeout.into())
-                                .map_or(false, |timeout_t| timeout_t > now)
-                        })
-                        .count(),
-                )
-            })
-            .collect();
+        // for each block to ask, choose a peer to ask it from and perform the ask
+        let mut to_ask = to_ask.into_iter().collect::<Vec<_>>();
+        to_ask.shuffle(&mut thread_rng()); // shuffle ask order
         {
-            let cache_read = self.cache.read();
-            for (hash, criteria) in candidate_nodes.into_iter() {
-                // find the best node
-                if let Some((_knowledge, best_node, required_info, _)) = criteria
-                    .into_iter()
-                    .filter_map(|(knowledge, peer_id, required_info)| {
-                        // filter out nodes with too many active block requests
-                        if *active_block_req_count.get(&peer_id).unwrap_or(&0)
-                            <= self.config.max_simultaneous_ask_blocks_per_node
-                        {
-                            cache_read
-                                .blocks_known_by_peer
-                                .get(&peer_id)
-                                .map(|peer_data| (knowledge, peer_id, required_info, peer_data.1))
-                        } else {
-                            None
+            for block_id in to_ask {
+                // prioritize peers by (max knowledge, min knowledge age, min load, max random)
+                let mut peer_scores: Vec<_> = connected_peers
+                    .iter()
+                    .map(|peer_id| {
+                        // get peer knowledge info about that block
+                        let peer_knowledge_of_block = self
+                            .cache
+                            .read()
+                            .blocks_known_by_peer
+                            .get(peer_id)
+                            .and_then(|blocks_known| blocks_known.peek(&block_id).copied());
+                        // Get the peer load. Look for the minimum score for asking.
+                        let peer_load = peer_loads.get(peer_id).copied().unwrap_or_default();
+                        match peer_knowledge_of_block {
+                            Some((false, info_t)) => {
+                                // we think that the peer doesn't know the block
+                                (
+                                    1i8, // worst knowledge
+                                    Some(
+                                        -(now.saturating_duration_since(info_t).as_millis() as i64),
+                                    ), // the older the info the better
+                                    peer_load, // the lower the load the better
+                                    thread_rng().gen::<u64>(), // random tie breaker,
+                                    *peer_id,
+                                )
+                            }
+                            None => {
+                                // we don't know if the peer knows the block
+                                (
+                                    0i8,                       // medium knowledge
+                                    None,                      // N/A
+                                    peer_load,                 // the lower the load the better
+                                    thread_rng().gen::<u64>(), // random tie breaker,
+                                    *peer_id,
+                                )
+                            }
+                            Some((true, info_t)) => {
+                                // we think that the peer knows the block
+                                (
+                                    -1i8,                                                           // best knowledge
+                                    Some(now.saturating_duration_since(info_t).as_millis() as i64), // the newer the info the better
+                                    peer_load, // the lower the load the better
+                                    thread_rng().gen::<u64>(), // random tie breaker,
+                                    *peer_id,
+                                )
+                            }
                         }
                     })
-                    .min_by_key(|(knowledge, peer_id, _, instant)| {
-                        (
-                            *knowledge,                                         // block knowledge
-                            *active_block_req_count.get(peer_id).unwrap_or(&0), // active requests
-                            *instant,                                           // node age
-                            peer_id.clone(),                                    // node ID
-                        )
-                    })
-                {
-                    let asked_blocks = self.asked_blocks.get_mut(&best_node).unwrap(); // will not panic, already checked
-                    asked_blocks.insert(hash, now);
-                    if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
-                        *cnt += 1; // increase the number of actively asked blocks
+                    .collect();
+
+                // sort peers from best to worst to ask
+                peer_scores.sort_unstable();
+
+                // get wishlist info to deduce message to send
+                let wishlist_info = self
+                    .block_wishlist
+                    .get_mut(&block_id)
+                    .expect("block presence in wishlist should have been checked above");
+                let request = match (
+                    wishlist_info.header.is_some(),
+                    wishlist_info.operation_ids.is_some(),
+                ) {
+                    // ask for header
+                    (false, false) => AskForBlockInfo::Header,
+                    // ask for the list of operation IDs in the block
+                    (true, false) => AskForBlockInfo::OperationIds,
+                    // ask for missing operations in the block
+                    (true, true) => {
+                        todo(); // TODO what if no ops missing ?
+                        todo(); // TODO reclaim new ops from storage but what if size check overflows ?
+                        AskForBlockInfo::Operations(vec![])
                     }
+                    _ => panic!("invalid wishlist state"),
+                };
 
-                    ask_block_list
-                        .entry(best_node.clone())
-                        .or_insert_with(Vec::new)
-                        .push((hash, required_info.clone()));
-
-                    let timeout_at = now
-                        .checked_add(self.config.ask_block_timeout.into())
-                        .ok_or(TimeError::TimeOverflowError)?;
-                    next_tick = std::cmp::min(next_tick, timeout_at);
-                }
-            }
-        }
-
-        // send AskBlockEvents
-        if !ask_block_list.is_empty() {
-            for (peer_id, list) in ask_block_list.iter() {
-                for sub_list in list.chunks(self.config.max_size_block_infos as usize) {
-                    debug!("Send ask for blocks of len {} to {}", list.len(), peer_id);
+                // try to ask peers from best to worst
+                for (_, _, _, _, peer_id) in peer_scores {
+                    debug!("Send ask for block to {}", peer_id);
                     if let Err(err) = self.active_connections.send_to_peer(
-                        peer_id,
+                        &peer_id,
                         &self.block_message_serializer,
-                        BlockMessage::BlockDataRequest(sub_list.to_vec()).into(),
+                        Message::Block(Box::new(BlockMessage::BlockDataRequest {
+                            block_id,
+                            block_info: request,
+                        })),
                         true,
                     ) {
                         warn!(
-                            "Failed to send AskForBlocks to peer {} err: {}",
+                            "Failed to send BlockDataRequest to peer {} err: {}",
                             peer_id, err
                         );
+                    } else {
+                        // The request was sent.
+
+                        // Increment the load of the peer.
+                        peer_loads
+                            .entry(peer_id)
+                            .and_modify(|v| *v += 1)
+                            .or_insert(1);
+
+                        // No need to look for other peers.
+                        break;
                     }
                 }
             }
