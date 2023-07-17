@@ -103,20 +103,13 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
-<span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
+<span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api, NewOperationsRequest};
+<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::select;
 <span class="kw">use </span>tonic::codegen::futures_core;
@@ -132,9 +125,20 @@
     &gt;,
 &gt;;
 
+<span class="kw">fn </span>get_request_parameters(request: NewOperationsRequest) -&gt; Vec&lt;i32&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>filter_ope_types = Vec::new();
+
+    request.filters.into_iter().for_each(|query| {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = query.operation_types {
+            filter_ope_types.extend_from_slice(<span class="kw-2">&amp;</span>filter.op_types);
+        }
+    });
+    filter_ope_types
+}
+
 <span class="doccomment">/// Creates a new stream of new produced and received operations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_operations(
-    grpc: <span class="kw-2">&amp;</span>MassaGrpc,
+    grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: Request&lt;Streaming&lt;grpc_api::NewOperationsRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewOperationsStreamType, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
@@ -146,26 +150,22 @@
 
     tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>request_id = request.id;
-            <span class="kw">let </span><span class="kw-2">mut </span>filter = request.query.and_then(|q| q.filter);
-
             <span class="comment">// Spawn a new task for sending new operations
-            </span><span class="kw">loop </span>{
+            </span><span class="kw">let </span><span class="kw-2">mut </span>filters = get_request_parameters(request);
+
+            <span class="kw">loop </span>{
                 <span class="macro">select! </span>{
                     <span class="comment">// Receive a new operation from the subscriber
                      </span>event = subscriber.recv() =&gt; {
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(massa_operation) =&gt; {
                                 <span class="comment">// Check if the operation should be sent
-                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, massa_operation.clone().content.op.into()) {
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filters, grpc_model::OpType::from(massa_operation.clone().content.op) <span class="kw">as </span>i32) {
                                     <span class="kw">continue</span>;
                                 }
 
                                 <span class="comment">// Send the new operation through the channel
-                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewOperationsResponse {
-                                    id: request_id.clone(),
-                                    operation: <span class="prelude-val">Some</span>(massa_operation.into())
-                                })).<span class="kw">await </span>{
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewOperationsResponse {signed_operation: <span class="prelude-val">Some</span>(massa_operation.into())})).<span class="kw">await </span>{
                                     <span class="macro">error!</span>(<span class="string">&quot;failed to send operation : {}&quot;</span>, e);
                                     <span class="kw">break</span>;
                                 }
@@ -179,10 +179,8 @@
                             <span class="prelude-val">Some</span>(res) =&gt; {
                                 <span class="kw">match </span>res {
                                     <span class="prelude-val">Ok</span>(data) =&gt; {
-                                        <span class="comment">// Update current filter &amp;&amp; request id
-                                        </span>filter = data.query
-                                        .and_then(|q| q.filter);
-                                        request_id = data.id;
+                                        <span class="comment">// Update current filter
+                                        </span>filters = get_request_parameters(data);
                                     },
                                     <span class="prelude-val">Err</span>(e) =&gt; {
                                         <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e);
@@ -207,21 +205,7 @@
     <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewOperationsStreamType)
 }
 
-<span class="kw">fn </span>should_send(
-    filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc_api::NewOperationsFilter&gt;,
-    ope_type: grpc_api::OpType,
-) -&gt; bool {
-    <span class="kw">match </span>filter_opt {
-        <span class="prelude-val">Some</span>(filter) =&gt; {
-            <span class="kw">let </span>filtered_ope_ids = <span class="kw-2">&amp;</span>filter.types;
-            <span class="kw">if </span>filtered_ope_ids.is_empty() {
-                <span class="bool-val">true
-            </span>} <span class="kw">else </span>{
-                <span class="kw">let </span>id: i32 = ope_type <span class="kw">as </span>i32;
-                filtered_ope_ids.contains(<span class="kw-2">&amp;</span>id)
-            }
-        }
-        <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>, <span class="comment">// if user has no filter = All operations type is send
-    </span>}
+<span class="kw">fn </span>should_send(filters: <span class="kw-2">&amp;</span>Vec&lt;i32&gt;, ope_type: i32) -&gt; bool {
+    filters.is_empty() || filters.contains(<span class="kw-2">&amp;</span>ope_type)
 }
 </code></pre></div></section></main></body></html>
