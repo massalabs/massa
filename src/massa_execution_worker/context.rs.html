@@ -1074,44 +1074,6 @@
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
 <a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1121,8 +1083,7 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::active_history::HistorySearchResult;
-<span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+</span><span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
@@ -1136,7 +1097,7 @@
 };
 <span class="kw">use </span>massa_final_state::{FinalState, StateChanges};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, SetOrKeep};
+<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
@@ -1270,16 +1231,13 @@
     <span class="doccomment">/// operation id that originally caused this execution (if any)
     </span><span class="kw">pub </span>origin_operation_id: <span class="prelude-ty">Option</span>&lt;OperationId&gt;,
 
-    <span class="doccomment">/// Execution trail hash
-    </span><span class="kw">pub </span>execution_trail_hash: Hash,
-
-    <span class="doccomment">/// cache of compiled runtime modules
+    <span class="comment">// cache of compiled runtime modules
     </span><span class="kw">pub </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
 
-    <span class="doccomment">/// Vesting Manager
+    <span class="comment">// Vesting Manager
     </span><span class="kw">pub </span>vesting_manager: Arc&lt;VestingManager&gt;,
 
-    <span class="doccomment">/// Address factory
+    <span class="comment">// Address factory
     </span><span class="kw">pub </span>address_factory: AddressFactory,
 }
 
@@ -1301,7 +1259,6 @@
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
-        execution_trail_hash: massa_hash::Hash,
     ) -&gt; <span class="self">Self </span>{
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -1338,14 +1295,13 @@
             stack: Default::default(),
             read_only: Default::default(),
             events: Default::default(),
-            unsafe_rng: init_prng(<span class="kw-2">&amp;</span>execution_trail_hash),
+            unsafe_rng: Xoshiro256PlusPlus::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]),
             creator_address: Default::default(),
             origin_operation_id: Default::default(),
             module_cache,
             config,
             vesting_manager,
             address_factory: AddressFactory { mip_store },
-            execution_trail_hash,
         }
     }
 
@@ -1426,14 +1382,20 @@
         vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
-        <span class="comment">// Get the execution hash trail
-        </span><span class="kw">let </span>prev_execution_trail_hash = active_history.read().get_execution_trail_hash();
-        <span class="kw">let </span>prev_execution_trail_hash = <span class="kw">match </span>prev_execution_trail_hash {
-            HistorySearchResult::Present(h) =&gt; h,
-            <span class="kw">_ </span>=&gt; final_state.read().get_execution_trail_hash(),
-        };
-        <span class="kw">let </span>execution_trail_hash =
-            generate_execution_trail_hash(<span class="kw-2">&amp;</span>prev_execution_trail_hash, <span class="kw-2">&amp;</span>slot, <span class="prelude-val">None</span>, <span class="bool-val">true</span>);
+        <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
+        // Note that consecutive read-only calls for the same slot will get the same random seed.
+
+        // Add the current slot to the seed to ensure different draws at every slot
+        </span><span class="kw">let </span><span class="kw-2">mut </span>seed: Vec&lt;u8&gt; = slot.to_bytes_key().to_vec();
+        <span class="comment">// Add a marker to the seed indicating that we are in read-only mode
+        // to prevent random draw collisions with active executions
+        </span>seed.push(<span class="number">0u8</span>); <span class="comment">// 0u8 = read-only
+        </span><span class="kw">let </span>seed = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>seed).into_bytes();
+        <span class="comment">// We use Xoshiro256PlusPlus because it is very fast,
+        // has a period long enough to ensure no repetitions will ever happen,
+        // of decent quality (given the unsafe constraints)
+        // but not cryptographically secure (and that&#39;s ok because the internal state is exposed anyways)
+        </span><span class="kw">let </span>unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
 
         <span class="comment">// return readonly context
         </span>ExecutionContext {
@@ -1441,6 +1403,7 @@
             slot,
             stack: call_stack,
             read_only: <span class="bool-val">true</span>,
+            unsafe_rng,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -1448,7 +1411,6 @@
                 module_cache,
                 vesting_manager,
                 mip_store,
-                execution_trail_hash,
             )
         }
     }
@@ -1494,23 +1456,26 @@
         vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
-        <span class="comment">// Get the execution hash trail
-        </span><span class="kw">let </span>prev_execution_trail_hash = active_history.read().get_execution_trail_hash();
-        <span class="kw">let </span>prev_execution_trail_hash = <span class="kw">match </span>prev_execution_trail_hash {
-            HistorySearchResult::Present(h) =&gt; h,
-            <span class="kw">_ </span>=&gt; final_state.read().get_execution_trail_hash(),
-        };
-        <span class="kw">let </span>execution_trail_hash = generate_execution_trail_hash(
-            <span class="kw-2">&amp;</span>prev_execution_trail_hash,
-            <span class="kw-2">&amp;</span>slot,
-            opt_block_id.as_ref(),
-            <span class="bool-val">false</span>,
-        );
+        <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
+
+        // Add the current slot to the seed to ensure different draws at every slot
+        </span><span class="kw">let </span><span class="kw-2">mut </span>seed: Vec&lt;u8&gt; = slot.to_bytes_key().to_vec();
+        <span class="comment">// Add a marker to the seed indicating that we are in active mode
+        // to prevent random draw collisions with read-only executions
+        </span>seed.push(<span class="number">1u8</span>); <span class="comment">// 1u8 = active
+
+        // For more deterministic entropy, seed with the block ID if any
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(block_id) = <span class="kw-2">&amp;</span>opt_block_id {
+            seed.extend(block_id.to_bytes()); <span class="comment">// append block ID
+        </span>}
+        <span class="kw">let </span>seed = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>seed).into_bytes();
+        <span class="kw">let </span>unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
 
         <span class="comment">// return active slot execution context
         </span>ExecutionContext {
             slot,
             opt_block_id,
+            unsafe_rng,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -1518,7 +1483,6 @@
                 module_cache,
                 vesting_manager,
                 mip_store,
-                execution_trail_hash,
             )
         }
     }
@@ -2048,7 +2012,6 @@
             pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
             executed_denunciations_changes: <span class="self">self</span>.speculative_executed_denunciations.take(),
-            execution_trail_hash_change: SetOrKeep::Set(<span class="self">self</span>.execution_trail_hash),
         };
 
         std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.opt_block_id);
@@ -2186,44 +2149,5 @@
         <span class="self">self</span>.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
     }
-}
-
-<span class="doccomment">/// Generate the execution trail hash
-</span><span class="kw">fn </span>generate_execution_trail_hash(
-    previous_execution_trail_hash: <span class="kw-2">&amp;</span>massa_hash::Hash,
-    slot: <span class="kw-2">&amp;</span>Slot,
-    opt_block_id: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BlockId&gt;,
-    read_only: bool,
-) -&gt; massa_hash::Hash {
-    <span class="kw">match </span>opt_block_id {
-        <span class="prelude-val">None </span>=&gt; massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
-            previous_execution_trail_hash.to_bytes(),
-            <span class="kw-2">&amp;</span>slot.to_bytes_key(),
-            <span class="kw-2">&amp;</span>[<span class="kw">if </span>read_only { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>}, <span class="number">0u8</span>],
-        ]),
-        <span class="prelude-val">Some</span>(block_id) =&gt; massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
-            previous_execution_trail_hash.to_bytes(),
-            <span class="kw-2">&amp;</span>slot.to_bytes_key(),
-            <span class="kw-2">&amp;</span>[<span class="kw">if </span>read_only { <span class="number">1u8 </span>} <span class="kw">else </span>{ <span class="number">0u8 </span>}, <span class="number">1u8</span>],
-            block_id.to_bytes(),
-        ]),
-    }
-}
-
-<span class="doccomment">/// Initializes and seeds the PRNG with the given execution trail hash.
-</span><span class="kw">fn </span>init_prng(execution_trail_hash: <span class="kw-2">&amp;</span>massa_hash::Hash) -&gt; Xoshiro256PlusPlus {
-    <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
-    // Note that consecutive read-only calls for the same slot will get the same random seed.
-    </span><span class="kw">let </span>seed = massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
-        <span class="string">&quot;PRNG_SEED&quot;</span>.as_bytes(),
-        execution_trail_hash.to_bytes(),
-    ])
-    .into_bytes();
-
-    <span class="comment">// We use Xoshiro256PlusPlus because it is very fast,
-    // has a period long enough to ensure no repetitions will ever happen,
-    // of decent quality (given the unsafe constraints)
-    // but not cryptographically secure (and that&#39;s ok because the internal state is exposed anyways)
-    </span>Xoshiro256PlusPlus::from_seed(seed)
 }
 </code></pre></div></section></main></body></html>
