@@ -962,7 +962,26 @@ impl RetrievalThread {
             .storage
             .store_operations(operations.into_values().collect());
 
-        todo(); // find a way to adjust asked_blocks so that we don't ask from the same person again but we still ask from others
+        if wishlist_info.storage.get_op_refs().len() == block_ops_set.len() {
+            // if we gathered all the ops, we should delete the asked history and mark the sender as knowing the block
+            self.remove_asked_blocks(&[block_id].into_iter().collect());
+
+            // Mark the sender as knowing this block
+            self.cache
+                .write()
+                .insert_blocks_known(&from_peer_id, &[block_id], true);
+        } else {
+            // otherwise, we should remove the current peer ask only and mark it as not knowing the block
+            // because it did not send us everything
+            if let Some(asked) = self.asked_blocks.get_mut(&from_peer_id) {
+                asked.remove(&block_id);
+            }
+
+            // Mark the sender as not knowing this block
+            self.cache
+                .write()
+                .insert_blocks_known(&from_peer_id, &[block_id], false);
+        }
     }
 
     /// function that updates the global state of block retrieval
