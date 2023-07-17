@@ -12,7 +12,6 @@ use nom::{
 };
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::collections::Bound::Included;
-use std::convert::TryInto;
 use std::str::FromStr;
 use transition::Versioned;
 
@@ -135,16 +134,14 @@ impl FromStr for BlockId {
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::BlockIdParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
+                let block_id_deserializer = BlockIdDeserializer::new();
+                let (rest, block_id) = block_id_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-                    .map_err(|_| ModelsError::BlockIdParseError)?;
-                match version {
-                    0 => Ok(BlockIdVariant!["0"](BlockId!["0"](Hash::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::BlockIdParseError)?,
-                    )))),
-                    _ => Err(ModelsError::BlockIdParseError),
+                    .map_err(|_| ModelsError::OperationIdParseError)?;
+                if rest.is_empty() {
+                    Ok(block_id)
+                } else {
+                    Err(ModelsError::OperationIdParseError)
                 }
             }
             _ => Err(ModelsError::BlockIdParseError),
@@ -164,16 +161,14 @@ impl FromStr for BlockId {
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::BlockIdParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
+                let block_id_deserializer = BlockIdDeserializer::new();
+                let (rest, block_id) = block_id_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
-                    .map_err(|_| ModelsError::BlockIdParseError)?;
-                match version {
-                    0 => Ok(Self(Hash::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::BlockIdParseError)?,
-                    ))),
-                    _ => Err(ModelsError::BlockIdParseError),
+                    .map_err(|_| ModelsError::OperationIdParseError)?;
+                if rest.is_empty() {
+                    Ok(block_id)
+                } else {
+                    Err(ModelsError::OperationIdParseError)
                 }
             }
             _ => Err(ModelsError::BlockIdParseError),

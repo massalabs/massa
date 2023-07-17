@@ -159,18 +159,14 @@ impl FromStr for OperationId {
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::OperationIdParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
+                let operation_id_deserializer = OperationIdDeserializer::new();
+                let (rest, op_id) = operation_id_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::OperationIdParseError)?;
-                match version {
-                    0 => Ok(OperationIdVariant!["0"](OperationId!["0"](
-                        Hash::from_bytes(
-                            rest.try_into()
-                                .map_err(|_| ModelsError::OperationIdParseError)?,
-                        ),
-                    ))),
-                    _ => Err(ModelsError::OperationIdParseError),
+                if rest.is_empty() {
+                    Ok(op_id)
+                } else {
+                    Err(ModelsError::OperationIdParseError)
                 }
             }
             _ => Err(ModelsError::OperationIdParseError),
@@ -190,16 +186,14 @@ impl FromStr for OperationId {
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::OperationIdParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
+                let operation_id_deserializer = OperationIdDeserializer::new();
+                let (rest, op_id) = operation_id_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::OperationIdParseError)?;
-                match version {
-                    0 => Ok(Self(Hash::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::OperationIdParseError)?,
-                    ))),
-                    _ => Err(ModelsError::OperationIdParseError),
+                if rest.is_empty() {
+                    Ok(op_id)
+                } else {
+                    Err(ModelsError::OperationIdParseError)
                 }
             }
             _ => Err(ModelsError::OperationIdParseError),
