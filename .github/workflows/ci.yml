@@ -110,6 +110,7 @@ jobs:
           # - windows-latest
     steps:
       - name: Maximize build space
+        runs-on: ubuntu-latest
         uses: easimon/maximize-build-space@master
         with:
           root-reserve-mb: 512
