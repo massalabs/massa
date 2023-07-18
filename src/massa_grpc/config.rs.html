@@ -113,6 +113,8 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::KeyPair;
@@ -134,7 +136,9 @@
     </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
-    <span class="doccomment">/// whether to enable mTLS
+    <span class="doccomment">/// whether to enable TLS
+    </span><span class="kw">pub </span>enable_tls: bool,
+    <span class="doccomment">/// whether to enable mTLS (requires `enable_tls` to be true)
     </span><span class="kw">pub </span>enable_mtls: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,

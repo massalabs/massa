@@ -1416,6 +1416,8 @@
 <a href="#1416" id="1416">1416</a>
 <a href="#1417" id="1417">1417</a>
 <a href="#1418" id="1418">1418</a>
+<a href="#1419" id="1419">1419</a>
+<a href="#1420" id="1420">1420</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -2242,6 +2244,7 @@
             enable_cors: SETTINGS.grpc.public.enable_cors,
             enable_health: SETTINGS.grpc.public.enable_health,
             enable_reflection: SETTINGS.grpc.public.enable_reflection,
+            enable_tls: SETTINGS.grpc.public.enable_tls,
             enable_mtls: SETTINGS.grpc.public.enable_mtls,
             bind: SETTINGS.grpc.public.bind,
             accept_compressed: SETTINGS.grpc.public.accept_compressed.clone(),
@@ -2335,6 +2338,7 @@
             enable_cors: SETTINGS.grpc.private.enable_cors,
             enable_health: SETTINGS.grpc.private.enable_health,
             enable_reflection: SETTINGS.grpc.private.enable_reflection,
+            enable_tls: SETTINGS.grpc.private.enable_tls,
             enable_mtls: SETTINGS.grpc.private.enable_mtls,
             bind: SETTINGS.grpc.private.bind,
             accept_compressed: SETTINGS.grpc.private.accept_compressed.clone(),
