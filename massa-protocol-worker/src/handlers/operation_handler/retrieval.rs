@@ -196,23 +196,10 @@ impl RetrievalThread {
         }
 
         // mark sender as knowing the ops
-        {
-            let mut cache_write = self.cache.write();
-            let known_ops = cache_write
-                .ops_known_by_peer
-                .entry(peer_id.clone())
-                .or_insert_with(|| {
-                    LruMap::new(ByLength::new(
-                        self.config
-                            .max_node_known_ops_size
-                            .try_into()
-                            .expect("max_node_known_ops_size in config must fit in u32"),
-                    ))
-                });
-            for prefix_id in &op_batch {
-                known_ops.insert(*prefix_id, ());
-            }
-        }
+        self.cache.write().insert_peer_known_ops(
+            peer_id.clone(),
+            &op_batch.iter().copied().collect::<Vec<_>>(),
+        );
 
         // filter out the operations that we already know about
         {
@@ -444,20 +431,13 @@ pub(crate) fn note_operations_from_peer(
         }
 
         // add to known ops
-        let known_ops = cache_write
-            .ops_known_by_peer
-            .entry(source_peer_id.clone())
-            .or_insert_with(|| {
-                LruMap::new(ByLength::new(
-                    config
-                        .max_node_known_ops_size
-                        .try_into()
-                        .expect("max_node_known_ops_size in config must fit in u32"),
-                ))
-            });
-        for id in all_received_ids {
-            known_ops.insert(id.prefix(), ());
-        }
+        cache_write.insert_peer_known_ops(
+            source_peer_id.clone(),
+            &all_received_ids
+                .into_iter()
+                .map(|id| id.into_prefix())
+                .collect::<Vec<_>>(),
+        );
     }
 
     if !new_operations.is_empty() {
