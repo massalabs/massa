@@ -7,6 +7,7 @@
 use std::{
     collections::HashMap,
     net::SocketAddr,
+    num::NonZeroUsize,
     sync::{Arc, RwLock},
     thread::JoinHandle,
     time::Duration,
@@ -176,6 +177,15 @@ impl MassaMetrics {
 
             consensus_vec.push(gauge);
         }
+
+        // set available processors
+        let available_processors =
+            IntCounter::new("process_available_processors", "number of processors")
+                .expect("Failed to create available_processors counter");
+        let count = std::thread::available_parallelism()
+            .unwrap_or(NonZeroUsize::MIN)
+            .get();
+        available_processors.inc_by(count as u64);
 
         // stakers
         let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
@@ -367,6 +377,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(active_history.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_success.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_failed.clone()));
+                let _ = prometheus::register(Box::new(available_processors.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
