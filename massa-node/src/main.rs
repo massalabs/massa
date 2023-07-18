@@ -769,6 +769,7 @@ async fn launch(
             bootstrap_config,
             keypair.clone(),
             *VERSION,
+            massa_metrics.clone(),
         )
         .expect("Could not start bootstrap server")
     });

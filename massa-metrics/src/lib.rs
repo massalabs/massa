@@ -85,6 +85,9 @@ pub struct MassaMetrics {
     /// number of elements in the active_history of execution
     active_history: IntGauge,
 
+    /// number of times we successfully bootstrapped someone
+    bootstrap_success: IntCounter,
+
     /// know peers in protocol
     protocol_known_peers: IntGauge,
     /// banned peers in protocol
@@ -180,6 +183,12 @@ impl MassaMetrics {
         let executed_final_slot_with_block = Counter::new(
             "executed_final_slot_with_block",
             "number of executed final slot with block (not miss)",
+        )
+        .unwrap();
+
+        let bootstrap_success = IntCounter::new(
+            "bootstrap_success",
+            "number of times we successfully bootstrapped someone",
         )
         .unwrap();
 
@@ -349,6 +358,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(executed_final_slot.clone()));
                 let _ = prometheus::register(Box::new(executed_final_slot_with_block.clone()));
                 let _ = prometheus::register(Box::new(active_history.clone()));
+                let _ = prometheus::register(Box::new(bootstrap_success.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -368,6 +378,7 @@ impl MassaMetrics {
                 consensus_vec,
                 // stakers,
                 active_history,
+                bootstrap_success,
                 protocol_known_peers: know_peers,
                 protocol_banned_peers: banned_peers,
                 executed_final_slot,
@@ -515,6 +526,10 @@ impl MassaMetrics {
 
     pub fn set_active_history(&self, nb: usize) {
         self.active_history.set(nb as i64);
+    }
+
+    pub fn inc_bootstrap_success(&self) {
+        self.bootstrap_success.inc();
     }
 
     /// Update the bandwidth metrics for all peers

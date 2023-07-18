@@ -32,6 +32,7 @@ use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, Consensus
 use massa_db_exports::CHANGE_ID_DESER_ERROR;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
@@ -136,6 +137,7 @@ pub fn start_bootstrap_server(
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
+    massa_metrics: MassaMetrics,
 ) -> Result<BootstrapManager, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
@@ -181,6 +183,7 @@ pub fn start_bootstrap_server(
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
+                massa_metrics,
             }
             .event_loop(max_bootstraps)
         })
@@ -205,6 +208,7 @@ struct BootstrapServer<'a> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    massa_metrics: MassaMetrics,
 }
 
 impl BootstrapServer<'_> {
@@ -324,6 +328,7 @@ impl BootstrapServer<'_> {
                     let config = self.bootstrap_config.clone();
 
                     let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                    let massa_metrics = self.massa_metrics.clone();
 
                     let _ = thread::Builder::new()
                         .name(format!("bootstrap thread, peer: {}", remote_addr))
@@ -337,6 +342,7 @@ impl BootstrapServer<'_> {
                                 version,
                                 consensus_command_sender,
                                 protocol_controller,
+                                massa_metrics,
                             )
                         });
 
@@ -400,6 +406,7 @@ fn run_bootstrap_session(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
+    massa_metrics: MassaMetrics,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
     let deadline = Instant::now() + config.bootstrap_timeout.to_duration();
@@ -442,6 +449,7 @@ fn run_bootstrap_session(
         }
         Ok(_) => {
             info!("bootstrapped peer {}", remote_addr);
+            massa_metrics.inc_bootstrap_success();
         }
     }
 }
