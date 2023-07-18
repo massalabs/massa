@@ -86,6 +86,13 @@ pub struct MassaMetrics {
     /// number of elements in the active_history of execution
     active_history: IntGauge,
 
+    /// number of operations in the operation pool
+    operations_pool: IntGauge,
+    /// number of endorsements in the endorsement pool
+    endorsements_pool: IntGauge,
+    /// number of elements in the denunciation pool
+    denunciations_pool: IntGauge,
+
     /// number of times we successfully bootstrapped someone
     bootstrap_success: IntCounter,
     /// number of times we failed/refused to bootstrap someone
@@ -195,6 +202,23 @@ impl MassaMetrics {
         let executed_final_slot_with_block = Counter::new(
             "executed_final_slot_with_block",
             "number of executed final slot with block (not miss)",
+        )
+        .unwrap();
+
+        // pool
+        let operations_pool = IntGauge::new(
+            "operations_pool",
+            "number of operations in the operation pool",
+        )
+        .unwrap();
+        let endorsements_pool = IntGauge::new(
+            "endorsements_pool",
+            "number of endorsements in the endorsement pool",
+        )
+        .unwrap();
+        let denunciations_pool = IntGauge::new(
+            "denunciations_pool",
+            "number of elements in the denunciation pool",
         )
         .unwrap();
 
@@ -377,7 +401,10 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(active_history.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_success.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_failed.clone()));
-                let _ = prometheus::register(Box::new(available_processors.clone()));
+                let _ = prometheus::register(Box::new(available_processors));
+                let _ = prometheus::register(Box::new(operations_pool.clone()));
+                let _ = prometheus::register(Box::new(endorsements_pool.clone()));
+                let _ = prometheus::register(Box::new(denunciations_pool.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -397,6 +424,9 @@ impl MassaMetrics {
                 consensus_vec,
                 // stakers,
                 active_history,
+                operations_pool,
+                endorsements_pool,
+                denunciations_pool,
                 bootstrap_success,
                 bootstrap_failed,
                 protocol_known_peers: know_peers,
@@ -554,6 +584,18 @@ impl MassaMetrics {
 
     pub fn inc_bootstrap_failed(&self) {
         self.bootstrap_failed.inc();
+    }
+
+    pub fn set_operations_pool(&self, nb: usize) {
+        self.operations_pool.set(nb as i64);
+    }
+
+    pub fn set_endorsements_pool(&self, nb: usize) {
+        self.endorsements_pool.set(nb as i64);
+    }
+
+    pub fn set_denunciations_pool(&self, nb: usize) {
+        self.denunciations_pool.set(nb as i64);
     }
 
     /// Update the bandwidth metrics for all peers
