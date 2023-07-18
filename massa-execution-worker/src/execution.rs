@@ -256,10 +256,11 @@ impl ExecutionState {
             .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
         self.massa_metrics
             .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
-
         self.massa_metrics.inc_operations_final_counter(
             exec_out_2.state_changes.executed_ops_changes.len() as u64,
         );
+        self.massa_metrics
+            .set_active_history(self.active_history.read().0.len());
 
         // Broadcast a final slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
@@ -296,6 +297,10 @@ impl ExecutionState {
 
         // add the execution output at the end of the output history
         self.active_history.write().0.push_back(exec_out);
+
+        // update the prometheus metrics
+        self.massa_metrics
+            .set_active_history(self.active_history.read().0.len())
     }
 
     /// Helper function.

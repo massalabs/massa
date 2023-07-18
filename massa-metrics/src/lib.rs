@@ -82,6 +82,9 @@ pub struct MassaMetrics {
     /// number of stakers
     // stakers: IntGauge,
 
+    /// number of elements in the active_history of execution
+    active_history: IntGauge,
+
     /// know peers in protocol
     protocol_known_peers: IntGauge,
     /// banned peers in protocol
@@ -177,6 +180,12 @@ impl MassaMetrics {
         let executed_final_slot_with_block = Counter::new(
             "executed_final_slot_with_block",
             "number of executed final slot with block (not miss)",
+        )
+        .unwrap();
+
+        let active_history = IntGauge::new(
+            "active_history",
+            "number of elements in the active_history of execution",
         )
         .unwrap();
 
@@ -339,6 +348,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(banned_peers.clone()));
                 let _ = prometheus::register(Box::new(executed_final_slot.clone()));
                 let _ = prometheus::register(Box::new(executed_final_slot_with_block.clone()));
+                let _ = prometheus::register(Box::new(active_history.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -357,6 +367,7 @@ impl MassaMetrics {
                 enabled,
                 consensus_vec,
                 // stakers,
+                active_history,
                 protocol_known_peers: know_peers,
                 protocol_banned_peers: banned_peers,
                 executed_final_slot,
@@ -500,6 +511,10 @@ impl MassaMetrics {
 
     pub fn inc_executed_final_slot_with_block(&self) {
         self.executed_final_slot_with_block.inc();
+    }
+
+    pub fn set_active_history(&self, nb: usize) {
+        self.active_history.set(nb as i64);
     }
 
     /// Update the bandwidth metrics for all peers
