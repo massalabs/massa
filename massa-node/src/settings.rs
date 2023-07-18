@@ -269,7 +269,9 @@ pub struct GrpcSettings {
     pub enable_health: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
-    /// whether to enable mTLS
+    /// whether to enable TLS
+    pub enable_tls: bool,
+    /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,

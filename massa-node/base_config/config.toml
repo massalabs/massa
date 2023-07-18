@@ -50,7 +50,9 @@
         enable_health = true
         # whether to enable gRPC reflection(introspection)
         enable_reflection = true
-        # whether to enable mTLS
+        # whether to enable TLS
+        enable_tls = false
+        # whether to enable mTLS (requires `enable_tls` to be true)
         enable_mtls = false
         # bind for the Massa gRPC API
         bind = "0.0.0.0:33037"
@@ -99,7 +101,9 @@
         enable_health = true
         # whether to enable gRPC reflection(introspection)
         enable_reflection = true
-        # whether to enable mTLS
+        # whether to enable TLS
+        enable_tls = false
+        # whether to enable mTLS (requires `enable_tls` to be true)
         enable_mtls = false
         # bind for the Massa gRPC API
         bind = "127.0.0.1:33038"

@@ -190,27 +190,34 @@ where
         .http2_adaptive_window(config.http2_adaptive_window)
         .max_frame_size(config.max_frame_size);
 
-    if config.enable_mtls {
+    if config.enable_tls {
         let cert = std::fs::read_to_string(config.server_certificate_path.clone())
             .expect("error, failed to read server certificat");
         let key = std::fs::read_to_string(config.server_private_key_path.clone())
             .expect("error, failed to read server private key");
         let server_identity = Identity::from_pem(cert, key);
 
-        let client_ca_cert =
-            std::fs::read_to_string(config.client_certificate_authority_root_path.clone())
-                .expect("error, failed to read client certificate authority root");
-        let client_ca_cert = Certificate::from_pem(client_ca_cert);
+        let tls = ServerTlsConfig::new().identity(server_identity);
 
-        let tls = ServerTlsConfig::new()
-            .identity(server_identity)
-            .client_ca_root(client_ca_cert);
+        if config.enable_mtls {
+            let client_ca_cert =
+                std::fs::read_to_string(config.client_certificate_authority_root_path.clone())
+                    .expect("error, failed to read client certificate authority root");
+            let client_ca_cert = Certificate::from_pem(client_ca_cert);
 
-        server_builder = server_builder
-            .tls_config(tls)
-            .expect("error, failed to setup mTLS");
+            let tls = tls.client_ca_root(client_ca_cert);
 
-        info!("gRPC mTLS enabled");
+            server_builder = server_builder
+                .tls_config(tls)
+                .expect("error, failed to setup mTLS");
+
+            info!("gRPC mTLS enabled");
+        } else {
+            server_builder = server_builder
+                .tls_config(tls)
+                .expect("error, failed to setup TLS");
+            info!("gRPC TLS enabled");
+        }
     }
 
     let reflection_service_opt = if config.enable_reflection {
