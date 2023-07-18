@@ -96,9 +96,24 @@
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-// Features used for draining cache in selector thread
+</span><span class="attr">#![feature(let_chains)]
 
 </span><span class="kw">mod </span>controller;
 <span class="kw">mod </span>draw;
@@ -133,6 +148,21 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DrawCache(<span class="kw">pub </span>VecDeque&lt;CycleDraws&gt;);
 
 <span class="kw">impl </span>DrawCache {
+    <span class="doccomment">/// Get the range of available cycles in the cache.
+    /// Returns None if the cache is empty
+    </span><span class="kw">pub fn </span>get_available_cycles_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;std::ops::RangeInclusive&lt;u64&gt;&gt; {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.front() {
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+            <span class="prelude-val">Some</span>(cd) =&gt; {
+                <span class="kw">let </span>upper_bound = cd
+                    .cycle
+                    .checked_add(<span class="self">self</span>.<span class="number">0</span>.len().try_into().expect(<span class="string">&quot;overflow on cycles length&quot;</span>))
+                    .expect(<span class="string">&quot;overflow on cycle delta&quot;</span>);
+                <span class="prelude-val">Some</span>(cd.cycle..=upper_bound)
+            }
+        }
+    }
+
     <span class="doccomment">/// get the index of a cycle in the cache
     </span><span class="kw">pub fn </span>get_cycle_index(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>first_cycle = <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.front() {
