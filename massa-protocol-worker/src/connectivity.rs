@@ -128,6 +128,7 @@ pub(crate) fn start_connectivity_thread(
                 peer_categories.iter().map(|(key, value)|(key.clone(), (value.0.clone(), value.1.target_out_connections))).collect(),
                 config.default_category_info.target_out_connections,
                 &config,
+                massa_metrics.clone(),
             );
 
             let mut operation_handler = OperationHandler::new(

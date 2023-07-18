@@ -8,6 +8,7 @@ use std::{
 
 use crate::messages::MessagesHandler;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
+use massa_metrics::MassaMetrics;
 use massa_models::version::{Version, VersionDeserializer};
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
@@ -39,6 +40,7 @@ impl Tester {
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
+        massa_metrics: MassaMetrics,
     ) -> (
         (
             MassaSender<(PeerId, HashMap<SocketAddr, TransportType>)>,
@@ -63,12 +65,14 @@ impl Tester {
                 messages_handler.clone(),
                 target_out_connections.clone(),
                 default_target_out_connections,
+                massa_metrics.clone(),
             ));
         }
 
         ((test_sender, test_receiver), testers)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn tcp_handshake(
         messages_handler: MessagesHandler,
         peer_db: SharedPeerDB,
@@ -77,6 +81,7 @@ impl Tester {
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
         our_version: Version,
+        massa_metrics: MassaMetrics,
     ) -> PeerNetResult<PeerId> {
         let result = {
             let mut socket =
@@ -224,7 +229,12 @@ impl Tester {
                 peer_db_write.peers.entry(peer_id).and_modify(|info| {
                     info.state = super::PeerState::HandshakeFailed;
                 });
+
+                massa_metrics.inc_protocol_tester_failed();
+            } else {
+                massa_metrics.inc_protocol_tester_success();
             }
+
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
                 tracing::log::error!("Failed to shutdown socket: {}", e);
             }
@@ -235,6 +245,7 @@ impl Tester {
     }
 
     /// Create a new tester (spawn a thread)
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         peer_db: SharedPeerDB,
         active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -243,6 +254,7 @@ impl Tester {
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -358,6 +370,7 @@ impl Tester {
                                                 PeerIdDeserializer::new(),
                                                 *addr,
                                                 protocol_config.version,
+                                                massa_metrics.clone(),
                                             );
 
                                             // let _res =  network_manager.try_connect(
@@ -414,6 +427,7 @@ impl Tester {
                             PeerIdDeserializer::new(),
                             listener,
                             protocol_config.version,
+                            massa_metrics.clone(),
                         );
                         // let res =  network_manager.try_connect(
                         //     listener,

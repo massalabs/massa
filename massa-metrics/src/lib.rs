@@ -98,6 +98,11 @@ pub struct MassaMetrics {
     /// number of times we failed/refused to bootstrap someone
     bootstrap_failed: IntCounter,
 
+    /// number of times we successfully tested someone
+    protocol_tester_success: IntCounter,
+    /// number of times we failed to test someone
+    protocol_tester_failed: IntCounter,
+
     /// know peers in protocol
     protocol_known_peers: IntGauge,
     /// banned peers in protocol
@@ -202,6 +207,17 @@ impl MassaMetrics {
         let executed_final_slot_with_block = Counter::new(
             "executed_final_slot_with_block",
             "number of executed final slot with block (not miss)",
+        )
+        .unwrap();
+
+        let protocol_tester_success = IntCounter::new(
+            "protocol_tester_success",
+            "number of times we successfully tested someone",
+        )
+        .unwrap();
+        let protocol_tester_failed = IntCounter::new(
+            "protocol_tester_failed",
+            "number of times we failed to test someone",
         )
         .unwrap();
 
@@ -405,6 +421,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(operations_pool.clone()));
                 let _ = prometheus::register(Box::new(endorsements_pool.clone()));
                 let _ = prometheus::register(Box::new(denunciations_pool.clone()));
+                let _ = prometheus::register(Box::new(protocol_tester_success.clone()));
+                let _ = prometheus::register(Box::new(protocol_tester_failed.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -429,6 +447,8 @@ impl MassaMetrics {
                 denunciations_pool,
                 bootstrap_success,
                 bootstrap_failed,
+                protocol_tester_success,
+                protocol_tester_failed,
                 protocol_known_peers: know_peers,
                 protocol_banned_peers: banned_peers,
                 executed_final_slot,
@@ -596,6 +616,14 @@ impl MassaMetrics {
 
     pub fn set_denunciations_pool(&self, nb: usize) {
         self.denunciations_pool.set(nb as i64);
+    }
+
+    pub fn inc_protocol_tester_success(&self) {
+        self.protocol_tester_success.inc();
+    }
+
+    pub fn inc_protocol_tester_failed(&self) {
+        self.protocol_tester_failed.inc();
     }
 
     /// Update the bandwidth metrics for all peers
