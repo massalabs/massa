@@ -205,32 +205,6 @@
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements a selector controller.
@@ -240,7 +214,10 @@
 
 <span class="kw">use crate</span>::{Command, DrawCachePtr};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    slot::{IndexedSlot, Slot},
+};
 <span class="kw">use </span>massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
 <span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>std::collections::{HashMap, VecDeque};
@@ -323,7 +300,9 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Get [Selection] computed for a slot
+    <span class="doccomment">/// Get [Selection] computed for a slot:
+    /// # Arguments
+    /// * `slot`: target slot of the selection
     </span><span class="kw">fn </span>get_selection(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Selection&gt; {
         <span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.periods_per_cycle);
         <span class="kw">let </span>(_cache_cv, cache_lock) = <span class="kw-2">&amp;*</span><span class="self">self</span>.cache;
@@ -336,83 +315,52 @@
     }
 
     <span class="doccomment">/// Get [Address] of the selected block producer for a given slot
-    </span><span class="kw">fn </span>get_producer(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Address&gt; {
-        <span class="self">self</span>.get_selection(slot).map(|selection| selection.producer)
-    }
-
-    <span class="doccomment">/// Get selections computed for a slot range (only lists available selections):
     /// # Arguments
-    /// * `slot_range`: target slot of the selection (from included, to included)
-    /// * `restrict_to_addresses`: optionally restrict only to slots involving a given address
-    </span><span class="attr">#[allow(clippy::needless_lifetimes)] </span><span class="comment">// lifetime elision conflicts with Mockall
-    </span><span class="kw">fn </span>get_available_selections_in_range&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        slot_range: std::ops::RangeInclusive&lt;Slot&gt;,
-        restrict_to_addresses: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreHashSet&lt;Address&gt;&gt;,
-    ) -&gt; PosResult&lt;BTreeMap&lt;Slot, Selection&gt;&gt; {
-        <span class="comment">// get range bounds, reject empty case
-        </span><span class="kw">if </span>slot_range.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeMap::new());
-        }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(r) = <span class="kw-2">&amp;</span>restrict_to_addresses &amp;&amp; r.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeMap::new());
-        }
-        <span class="comment">// take lock
-        </span><span class="kw">let </span>(_cache_cv, cache_lock) = <span class="kw-2">&amp;*</span><span class="self">self</span>.cache;
+    /// * `slot`: target slot of the selection
+    </span><span class="kw">fn </span>get_producer(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Address&gt; {
+        <span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.periods_per_cycle);
+        <span class="kw">let </span>(_cache_cv, cache_lock) = <span class="kw-2">&amp;*</span><span class="self">self</span>.cache;
         <span class="kw">let </span>cache_guard = cache_lock.read();
         <span class="kw">let </span>cache = cache_guard.as_ref().map_err(|err| err.clone())<span class="question-mark">?</span>;
 
-        <span class="comment">// check if the requested cycles are available
-        </span><span class="kw">let </span>slot_begin;
-        <span class="kw">let </span>slot_end_included;
-        {
-            <span class="kw">let </span>available_cycles = <span class="kw">match </span>cache.get_available_cycles_range() {
-                <span class="prelude-val">Some</span>(c) =&gt; c,
-                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeMap::new()),
-            };
-            slot_begin = std::cmp::max(
-                <span class="kw-2">*</span>slot_range.start(),
-                Slot::new_first_of_cycle(<span class="kw-2">*</span>available_cycles.start(), <span class="self">self</span>.periods_per_cycle)
-                    .expect(<span class="string">&quot;could not get first slot of available cycle&quot;</span>),
-            );
-            slot_end_included = std::cmp::min(
-                <span class="kw-2">*</span>slot_range.end(),
-                Slot::new_last_of_cycle(
-                    <span class="kw-2">*</span>available_cycles.end(),
-                    <span class="self">self</span>.periods_per_cycle,
-                    <span class="self">self</span>.thread_count,
-                )
-                .expect(<span class="string">&quot;could not get last slot of available cycle&quot;</span>),
-            );
-        }
+        cache
+            .get(cycle)
+            .and_then(|selections| selections.draws.get(<span class="kw-2">&amp;</span>slot).map(|s| s.producer))
+            .ok_or(PosError::CycleUnavailable(cycle))
+    }
 
-        <span class="comment">// get the selections
-        </span><span class="kw">let </span><span class="kw-2">mut </span>res = BTreeMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>slot = slot_begin;
-        <span class="kw">while </span>slot &lt;= slot_end_included {
-            <span class="kw">let </span>cycle = slot.get_cycle(<span class="self">self</span>.periods_per_cycle);
-            <span class="kw">let </span>slot_selection = cache
-                .get(cycle)
+    <span class="doccomment">/// Return a list of slots where `address` has been chosen to produce a
+    /// block and a list where he is chosen for the endorsements.
+    /// Look from the `start` slot to the `end` slot.
+    </span><span class="kw">fn </span>get_address_selections(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="kw-2">&amp;</span>Address,
+        <span class="kw-2">mut </span>slot: Slot, <span class="comment">/* starting slot */
+        </span>end: Slot,
+    ) -&gt; PosResult&lt;(Vec&lt;Slot&gt;, Vec&lt;IndexedSlot&gt;)&gt; {
+        <span class="kw">let </span>(_cache_cv, cache_lock) = <span class="kw-2">&amp;*</span><span class="self">self</span>.cache;
+        <span class="kw">let </span>cache_guard = cache_lock.read();
+        <span class="kw">let </span>cache = cache_guard.as_ref().map_err(|err| err.clone())<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>slot_producers = <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>slot_endorsers = <span class="macro">vec!</span>[];
+        <span class="kw">while </span>slot &lt; end {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selection) = cache
+                .get(slot.get_cycle(<span class="self">self</span>.periods_per_cycle))
                 .and_then(|selections| selections.draws.get(<span class="kw-2">&amp;</span>slot))
-                .ok_or(PosError::CycleUnavailable(cycle))<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(restrict_to_addrs) = restrict_to_addresses {
-                <span class="kw">if </span>restrict_to_addrs.contains(<span class="kw-2">&amp;</span>slot_selection.producer)
-                    || slot_selection
-                        .endorsements
-                        .iter()
-                        .any(|a| restrict_to_addrs.contains(a))
+            {
+                <span class="kw">if </span>selection.producer == <span class="kw-2">*</span>address {
+                    slot_producers.push(slot);
+                } <span class="kw">else if let </span><span class="prelude-val">Some</span>(index) = selection.endorsements.iter().position(|e| e == address)
                 {
-                    res.insert(slot, slot_selection.clone());
+                    slot_endorsers.push(IndexedSlot { slot, index });
                 }
-            } <span class="kw">else </span>{
-                res.insert(slot, slot_selection.clone());
             }
             slot = <span class="kw">match </span>slot.get_next_slot(<span class="self">self</span>.thread_count) {
-                <span class="prelude-val">Ok</span>(s) =&gt; s,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">break</span>,
-            }
+                <span class="prelude-val">Ok</span>(next_slot) =&gt; next_slot,
+                <span class="kw">_ </span>=&gt; <span class="kw">break</span>,
+            };
         }
-        <span class="prelude-val">Ok</span>(res)
+        <span class="prelude-val">Ok</span>((slot_producers, slot_endorsers))
     }
 
     <span class="doccomment">/// Returns a boxed clone of self.
