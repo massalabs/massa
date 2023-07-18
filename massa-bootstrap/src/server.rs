@@ -269,6 +269,7 @@ impl BootstrapServer<'_> {
                         remote_addr,
                         move || {},
                     );
+                    self.massa_metrics.inc_bootstrap_failed();
                     continue;
                 };
 
@@ -314,6 +315,7 @@ impl BootstrapServer<'_> {
                             })
                         };
                         server_binding.close_and_send_error(msg, remote_addr, tracer);
+                        self.massa_metrics.inc_bootstrap_failed();
                         continue;
                     };
 
@@ -355,6 +357,7 @@ impl BootstrapServer<'_> {
                         remote_addr,
                         move || debug!("did not bootstrap {}: no available slots", remote_addr),
                     );
+                    self.massa_metrics.inc_bootstrap_failed();
                 }
             }
         }
@@ -436,16 +439,21 @@ fn run_bootstrap_session(
                 "Bootstrap process timedout ({})",
                 format_duration(config.bootstrap_timeout.to_duration())
             ));
+            massa_metrics.inc_bootstrap_failed();
         }
-        Err(BootstrapError::ReceivedError(error)) => debug!(
-            "bootstrap serving error received from peer {}: {}",
-            remote_addr, error
-        ),
+        Err(BootstrapError::ReceivedError(error)) => {
+            debug!(
+                "bootstrap serving error received from peer {}: {}",
+                remote_addr, error
+            );
+            massa_metrics.inc_bootstrap_failed();
+        }
         Err(err) => {
             debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
             // We allow unused result because we don't care if an error is thrown when
             // sending the error message to the server we will close the socket anyway.
             let _ = server.send_error_timeout(err.to_string());
+            massa_metrics.inc_bootstrap_failed();
         }
         Ok(_) => {
             info!("bootstrapped peer {}", remote_addr);
