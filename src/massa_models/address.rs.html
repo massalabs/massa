@@ -736,22 +736,6 @@
 <a href="#736" id="736">736</a>
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -1061,10 +1045,10 @@
 
         <span class="kw">match </span>version {
             &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">UserAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
-                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
+                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
             )),
             &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">UserAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
-                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
+                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
             )),
             unhandled_version =&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError(<span class="macro">format!</span>(
                 <span class="string">&quot;version {} is not handled for UserAddress&quot;</span>,
@@ -1112,7 +1096,7 @@
     }
 
     <span class="doccomment">/// Deserialize the address without considering the version byte
-    </span><span class="kw">fn </span>from_bytes_without_version(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;UserAddress, ModelsError&gt; {
+    </span><span class="kw">fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;UserAddress, ModelsError&gt; {
         <span class="prelude-val">Ok</span>(UserAddress(Hash::from_bytes(<span class="kw-2">&amp;</span>data.try_into().map_err(
             |<span class="kw">_</span>| {
                 ModelsError::BufferError(<span class="macro">format!</span>(
@@ -1159,10 +1143,10 @@
 
         <span class="kw">match </span>version {
             &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
+                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
             )),
             &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
+                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
             )),
             unhandled_version =&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError(<span class="macro">format!</span>(
                 <span class="string">&quot;version {} is not handled for SCAddress&quot;</span>,
@@ -1176,22 +1160,6 @@
         <span class="kw">match </span><span class="self">self </span>{
             SCAddress::SCAddressV0(addr) =&gt; addr.to_prefixed_bytes(),
             SCAddress::SCAddressV1(addr) =&gt; addr.to_prefixed_bytes(),
-        }
-    }
-
-    <span class="doccomment">/// Deserialize the address without considering the version byte
-    </span><span class="kw">pub fn </span>from_bytes_without_version(version: u64, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;SCAddress, ModelsError&gt; {
-        <span class="kw">match </span>version {
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(data)<span class="question-mark">?</span>,
-            )),
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(data)<span class="question-mark">?</span>,
-            )),
-            unhandled_version =&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError(<span class="macro">format!</span>(
-                <span class="string">&quot;version {} is not handled for SCAddress&quot;</span>,
-                unhandled_version
-            ))),
         }
     }
 }
@@ -1222,7 +1190,7 @@
     }
 
     <span class="doccomment">/// Deserialize the address without considering the version byte
-    </span><span class="kw">fn </span>from_bytes_without_version(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;SCAddress, ModelsError&gt; {
+    </span><span class="kw">fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;SCAddress, ModelsError&gt; {
         <span class="prelude-val">Ok</span>(SCAddress(Hash::from_bytes(<span class="kw-2">&amp;</span>data.try_into().map_err(
             |<span class="kw">_</span>| {
                 ModelsError::BufferError(<span class="macro">format!</span>(
