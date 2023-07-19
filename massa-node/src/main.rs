@@ -9,6 +9,7 @@ extern crate massa_logging;
 #[cfg(feature = "op_spammer")]
 use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
+use crate::survey::MassaSurvey;
 
 use crossbeam_channel::TryRecvError;
 use dialoguer::Password;
@@ -103,6 +104,7 @@ use tracing_subscriber::filter::{filter_fn, LevelFilter};
 #[cfg(feature = "op_spammer")]
 mod operation_injector;
 mod settings;
+mod survey;
 
 async fn launch(
     args: &Args,
@@ -975,6 +977,14 @@ async fn launch(
         "API | PUBLIC JsonRPC | listening on: {}",
         api_config.bind_public
     );
+
+    if massa_metrics.is_enabled() {
+        MassaSurvey::run(
+            SETTINGS.metrics.tick_delay.to_duration(),
+            execution_controller,
+            massa_metrics,
+        );
+    }
 
     #[cfg(feature = "deadlock_detection")]
     {

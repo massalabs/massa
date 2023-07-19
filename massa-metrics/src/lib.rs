@@ -15,14 +15,11 @@ use std::{
 
 use lazy_static::lazy_static;
 use prometheus::{register_int_gauge, Counter, Gauge, IntCounter, IntGauge};
-use survey::MassaSurvey;
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
 // #[cfg(not(feature = "testing"))]
 mod server;
-
-mod survey;
 
 lazy_static! {
     // use lazy_static for these metrics because they are used in storage which implement default
@@ -427,13 +424,13 @@ impl MassaMetrics {
                 stopper = server::bind_metrics(addr);
             }
 
-            MassaSurvey::run(
-                tick_delay,
-                active_in_connections.clone(),
-                active_out_connections.clone(),
-                peernet_total_bytes_sent.clone(),
-                peernet_total_bytes_receive.clone(),
-            );
+            // MassaSurvey::run(
+            //     tick_delay,
+            //     active_in_connections.clone(),
+            //     active_out_connections.clone(),
+            //     peernet_total_bytes_sent.clone(),
+            //     peernet_total_bytes_receive.clone(),
+            // );
         }
 
         (
@@ -483,6 +480,19 @@ impl MassaMetrics {
                 tick_delay,
             },
             stopper,
+        )
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn get_metrics_for_survey_thread(&self) -> (i64, i64, u64, u64) {
+        (
+            self.active_in_connections.clone().get(),
+            self.active_out_connections.clone().get(),
+            self.peernet_total_bytes_sent.clone().get(),
+            self.peernet_total_bytes_receive.clone().get(),
         )
     }
 
