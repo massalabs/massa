@@ -307,10 +307,10 @@ impl UserAddress {
 
         match version {
             <UserAddress!["0"]>::VERSION => Ok(UserAddressVariant!["0"](
-                <UserAddress!["0"]>::from_bytes_without_version(rest)?,
+                <UserAddress!["0"]>::from_bytes(rest)?,
             )),
             <UserAddress!["1"]>::VERSION => Ok(UserAddressVariant!["1"](
-                <UserAddress!["1"]>::from_bytes_without_version(rest)?,
+                <UserAddress!["1"]>::from_bytes(rest)?,
             )),
             unhandled_version => Err(ModelsError::AddressParseError(format!(
                 "version {} is not handled for UserAddress",
@@ -358,7 +358,7 @@ impl UserAddress {
     }
 
     /// Deserialize the address without considering the version byte
-    fn from_bytes_without_version(data: &[u8]) -> Result<UserAddress, ModelsError> {
+    fn from_bytes(data: &[u8]) -> Result<UserAddress, ModelsError> {
         Ok(UserAddress(Hash::from_bytes(&data.try_into().map_err(
             |_| {
                 ModelsError::BufferError(format!(
@@ -405,10 +405,10 @@ impl SCAddress {
 
         match version {
             <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
-                <SCAddress!["0"]>::from_bytes_without_version(rest)?,
+                <SCAddress!["0"]>::from_bytes(rest)?,
             )),
             <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
-                <SCAddress!["1"]>::from_bytes_without_version(rest)?,
+                <SCAddress!["1"]>::from_bytes(rest)?,
             )),
             unhandled_version => Err(ModelsError::AddressParseError(format!(
                 "version {} is not handled for SCAddress",
@@ -422,22 +422,6 @@ impl SCAddress {
         match self {
             SCAddress::SCAddressV0(addr) => addr.to_prefixed_bytes(),
             SCAddress::SCAddressV1(addr) => addr.to_prefixed_bytes(),
-        }
-    }
-
-    /// Deserialize the address without considering the version byte
-    pub fn from_bytes_without_version(version: u64, data: &[u8]) -> Result<SCAddress, ModelsError> {
-        match version {
-            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
-                <SCAddress!["0"]>::from_bytes_without_version(data)?,
-            )),
-            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
-                <SCAddress!["1"]>::from_bytes_without_version(data)?,
-            )),
-            unhandled_version => Err(ModelsError::AddressParseError(format!(
-                "version {} is not handled for SCAddress",
-                unhandled_version
-            ))),
         }
     }
 }
@@ -468,7 +452,7 @@ impl SCAddress {
     }
 
     /// Deserialize the address without considering the version byte
-    fn from_bytes_without_version(data: &[u8]) -> Result<SCAddress, ModelsError> {
+    fn from_bytes(data: &[u8]) -> Result<SCAddress, ModelsError> {
         Ok(SCAddress(Hash::from_bytes(&data.try_into().map_err(
             |_| {
                 ModelsError::BufferError(format!(
