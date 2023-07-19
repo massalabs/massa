@@ -166,4 +166,6 @@ pub struct ProtocolConfig {
     pub default_category_info: PeerCategoryInfo,
     /// Version
     pub version: Version,
+    /// Cooldown before testing again an old peer
+    pub test_oldest_peer_cooldown: MassaTime,
 }

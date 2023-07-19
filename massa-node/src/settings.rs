@@ -257,6 +257,8 @@ pub struct ProtocolSettings {
     pub peers_categories: HashMap<String, PeerCategoryInfo>,
     /// Limits for default category
     pub default_category_info: PeerCategoryInfo,
+    /// Cooldown before testing again an old peer
+    pub test_oldest_peer_cooldown: MassaTime,
 }
 
 /// gRPC settings

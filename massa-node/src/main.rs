@@ -646,6 +646,7 @@ async fn launch(
         default_category_info: SETTINGS.protocol.default_category_info,
         version: *VERSION,
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
+        test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
     };
 
     let (protocol_controller, protocol_channels) =

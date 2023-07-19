@@ -414,7 +414,7 @@ impl Tester {
                     default(Duration::from_secs(2)) => {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
-                        let Some(listener) = db.read().get_oldest_peer(Duration::from_secs(60 * 60 * 2)) else {
+                        let Some(listener) = db.read().get_oldest_peer(protocol_config.test_oldest_peer_cooldown.into()) else {
                             continue;
                         };
 
