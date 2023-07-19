@@ -1142,12 +1142,12 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">match </span>version {
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
-            )),
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
-            )),
+            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
+            }
+            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](&lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
+            }
             unhandled_version =&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError(<span class="macro">format!</span>(
                 <span class="string">&quot;version {} is not handled for SCAddress&quot;</span>,
                 unhandled_version
