@@ -5,13 +5,13 @@ use crate::prehash::PreHashed;
 use crate::secure_share::{Id, SecureShare, SecureShareContent};
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 use crate::{block_id::BlockId, error::ModelsError};
-use massa_hash::Hash;
+use massa_hash::{Hash, HashDeserializer};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U32VarIntDeserializer,
     U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use massa_signature::PublicKey;
-use nom::error::context;
+use nom::error::{context, ErrorKind};
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -115,18 +115,14 @@ impl FromStr for EndorsementId {
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::EndorsementIdParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
+                let endorsement_id_deserializer = EndorsementIdDeserializer::new();
+                let (rest, endorsement_id) = endorsement_id_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::EndorsementIdParseError)?;
-                match version {
-                    0 => Ok(EndorsementIdVariant!["0"](EndorsementId!["0"](
-                        Hash::from_bytes(
-                            rest.try_into()
-                                .map_err(|_| ModelsError::EndorsementIdParseError)?,
-                        ),
-                    ))),
-                    _ => Err(ModelsError::EndorsementIdParseError),
+                if rest.is_empty() {
+                    Ok(endorsement_id)
+                } else {
+                    Err(ModelsError::EndorsementIdParseError)
                 }
             }
             _ => Err(ModelsError::EndorsementIdParseError),
@@ -146,16 +142,14 @@ impl FromStr for EndorsementId {
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::EndorsementIdParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, version) = u64_deserializer
+                let endorsement_id_deserializer = EndorsementIdDeserializer::new();
+                let (rest, endorsement_id) = endorsement_id_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::EndorsementIdParseError)?;
-                match version {
-                    0 => Ok(Self(Hash::from_bytes(
-                        rest.try_into()
-                            .map_err(|_| ModelsError::EndorsementIdParseError)?,
-                    ))),
-                    _ => Err(ModelsError::EndorsementIdParseError),
+                if rest.is_empty() {
+                    Ok(endorsement_id)
+                } else {
+                    Err(ModelsError::EndorsementIdParseError)
                 }
             }
             _ => Err(ModelsError::EndorsementIdParseError),
@@ -163,6 +157,58 @@ impl FromStr for EndorsementId {
     }
 }
 
+struct EndorsementIdDeserializer {
+    version_deserializer: U64VarIntDeserializer,
+    hash_deserializer: HashDeserializer,
+}
+
+impl EndorsementIdDeserializer {
+    pub fn new() -> Self {
+        Self {
+            version_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            hash_deserializer: HashDeserializer::new(),
+        }
+    }
+}
+
+impl Deserializer<EndorsementId> for EndorsementIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], EndorsementId, E> {
+        // Verify that we at least have a version and something else
+        if buffer.len() < 2 {
+            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
+        }
+        let (rest, endorsement_id_version) = self
+            .version_deserializer
+            .deserialize(buffer)
+            .map_err(|_: nom::Err<E>| {
+                nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+            })?;
+        match endorsement_id_version {
+            <EndorsementId!["0"]>::VERSION => {
+                let (rest, endorsement_id) = self.deserialize(rest)?;
+                Ok((rest, EndorsementIdVariant!["0"](endorsement_id)))
+            }
+            _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"), structures("EndorsementId"))]
+impl Deserializer<EndorsementId> for EndorsementIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], EndorsementId, E> {
+        context("Failed OperationId deserialization", |input| {
+            self.hash_deserializer.deserialize(input)
+        })
+        .map(EndorsementId)
+        .parse(buffer)
+    }
+}
 impl Display for Endorsement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
