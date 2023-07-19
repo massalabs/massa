@@ -78,7 +78,9 @@ pub struct MassaMetrics {
     consensus_vec: Vec<Gauge>,
 
     /// number of stakers
-    // stakers: IntGauge,
+    stakers: IntGauge,
+    /// number of rolls
+    rolls: IntGauge,
 
     /// number of elements in the active_history of execution
     active_history: IntGauge,
@@ -198,6 +200,7 @@ impl MassaMetrics {
 
         // stakers
         let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
+        let rolls = IntGauge::new("rolls", "number of rolls").unwrap();
 
         let executed_final_slot =
             Counter::new("executed_final_slot", "number of executed final slot").unwrap();
@@ -406,7 +409,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
-                // let _ = prometheus::register(Box::new(stakers.clone()));
+                let _ = prometheus::register(Box::new(stakers.clone()));
+                let _ = prometheus::register(Box::new(rolls.clone()));
                 let _ = prometheus::register(Box::new(know_peers.clone()));
                 let _ = prometheus::register(Box::new(banned_peers.clone()));
                 let _ = prometheus::register(Box::new(executed_final_slot.clone()));
@@ -437,7 +441,8 @@ impl MassaMetrics {
             MassaMetrics {
                 enabled,
                 consensus_vec,
-                // stakers,
+                stakers,
+                rolls,
                 active_history,
                 operations_pool,
                 endorsements_pool,
@@ -634,6 +639,14 @@ impl MassaMetrics {
 
     pub fn inc_protocol_tester_failed(&self) {
         self.protocol_tester_failed.inc();
+    }
+
+    pub fn set_stakers(&self, nb: usize) {
+        self.stakers.set(nb as i64);
+    }
+
+    pub fn set_rolls(&self, nb: usize) {
+        self.rolls.set(nb as i64);
     }
 
     /// Update the bandwidth metrics for all peers

@@ -2,6 +2,8 @@ use std::thread::JoinHandle;
 
 use massa_execution_exports::ExecutionController;
 use massa_metrics::MassaMetrics;
+use massa_models::{address::Address, slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
+use massa_time::MassaTime;
 // use std::time::Duration;
 #[allow(unused_imports)]
 use tracing::warn;
@@ -10,10 +12,12 @@ pub struct MassaSurvey {}
 
 impl MassaSurvey {
     #[allow(unused_variables)]
+    // config : (thread_count, t0, genesis_timestamp, periods_per_cycle, last_start_period)
     pub fn run(
         tick_delay: std::time::Duration,
         execution_controller: Box<dyn ExecutionController>,
         massa_metrics: MassaMetrics,
+        config: (u8, MassaTime, MassaTime, u64, u64),
     ) -> Option<JoinHandle<()>> {
         #[cfg(not(feature = "sandbox"))]
         {
@@ -40,6 +44,43 @@ impl MassaSurvey {
                     } else {
                         data_sent = new_data_sent;
                         data_received = new_data_received;
+                    }
+
+                    {
+                               // update stakers / rolls
+                        let now = match MassaTime::now() {
+                            Ok(now) => now,
+                            Err(e) => {
+                                warn!("MassaSurvey | Failed to get current time: {:?}", e);
+                                continue;
+                            }
+                        };
+
+                        let curr_cycle =
+                            match get_latest_block_slot_at_timestamp(config.0, config.1, config.2, now)
+                            {
+                                Ok(Some(cur_slot)) if cur_slot.period <= config.4 => {
+                                    Slot::new(config.4, 0).get_cycle(config.3)
+                                }
+                                Ok(Some(cur_slot)) => cur_slot.get_cycle(config.3),
+                                Ok(None) => 0,
+                                Err(e) => {
+                                    warn!(
+                                    "MassaSurvey | Failed to get latest block slot at timestamp: {:?}",
+                                    e
+                                );
+                                    continue;
+                                }
+                            };
+
+                        let staker_vec = execution_controller
+                            .get_cycle_active_rolls(curr_cycle)
+                            .into_iter()
+                            .collect::<Vec<(Address, u64)>>();
+
+                        massa_metrics.set_stakers(staker_vec.len());
+                        let rolls_count = staker_vec.iter().map(|(_, r)| *r).sum::<u64>();
+                        massa_metrics.set_rolls(rolls_count as usize);
                     }
                 }) {
                 Ok(handle) => Some(handle),

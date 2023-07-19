@@ -983,6 +983,13 @@ async fn launch(
             SETTINGS.metrics.tick_delay.to_duration(),
             execution_controller,
             massa_metrics,
+            (
+                api_config.thread_count,
+                api_config.t0,
+                api_config.genesis_timestamp,
+                api_config.periods_per_cycle,
+                api_config.last_start_period,
+            ),
         );
     }
 
