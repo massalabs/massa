@@ -404,12 +404,12 @@ impl SCAddress {
             })?;
 
         match version {
-            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
-                <SCAddress!["0"]>::from_bytes(rest)?,
-            )),
-            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
-                <SCAddress!["1"]>::from_bytes(rest)?,
-            )),
+            <SCAddress!["0"]>::VERSION => {
+                Ok(SCAddressVariant!["0"](<SCAddress!["0"]>::from_bytes(rest)?))
+            }
+            <SCAddress!["1"]>::VERSION => {
+                Ok(SCAddressVariant!["1"](<SCAddress!["1"]>::from_bytes(rest)?))
+            }
             unhandled_version => Err(ModelsError::AddressParseError(format!(
                 "version {} is not handled for SCAddress",
                 unhandled_version
