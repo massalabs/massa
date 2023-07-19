@@ -325,6 +325,7 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -430,7 +431,8 @@
             <span class="kw">let </span>total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::&lt;usize&gt;() + config.default_category_info.target_out_connections + <span class="number">1</span>;
             <span class="kw">let </span>operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 config.max_known_ops_size.try_into().unwrap(),
-                config.max_node_known_ops_size.try_into().unwrap()
+                config.max_node_known_ops_size.try_into().unwrap(),
+                (total_in_slots + total_out_slots).try_into().unwrap(),
             )));
             <span class="kw">let </span>endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
                 config.max_known_endorsements_size.try_into().unwrap(),

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["massa_service_status"],"struct":["MassaGrpc","StopHandle"]};
+window.SIDEBAR_ITEMS = {"fn":["massa_service_status","serve"],"struct":["MassaPrivateGrpc","MassaPublicGrpc","StopHandle"]};

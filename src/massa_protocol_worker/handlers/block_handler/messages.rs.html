@@ -368,9 +368,15 @@
 <a href="#368" id="368">368</a>
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::HashDeserializer;
+<span class="kw">use </span>massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
-    block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
+    block_id::{BlockId, BlockIdSerializer},
     operation::{
         OperationId, OperationIdSerializer, OperationIdsDeserializer, OperationsDeserializer,
         SecureShareOperation,
@@ -564,7 +570,7 @@
     id_deserializer: U64VarIntDeserializer,
     block_header_deserializer: SecureShareDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
     block_infos_length_deserializer: U64VarIntDeserializer,
-    block_id_deserializer: BlockIdDeserializer,
+    hash_deserializer: HashDeserializer,
     operation_ids_deserializer: OperationIdsDeserializer,
     operations_deserializer: OperationsDeserializer,
 }
@@ -598,7 +604,7 @@
                 Included(<span class="number">0</span>),
                 Included(args.block_infos_length_max),
             ),
-            block_id_deserializer: BlockIdDeserializer::new(),
+            hash_deserializer: HashDeserializer::new(),
             operation_ids_deserializer: OperationIdsDeserializer::new(
                 args.max_operations_per_block,
             ),
@@ -646,7 +652,9 @@
                             <span class="string">&quot;Failed Block infos deserialization&quot;</span>,
                             tuple((
                                 context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
-                                    <span class="self">self</span>.block_id_deserializer.deserialize(input)
+                                    <span class="self">self</span>.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, id)| (rest, BlockId(id)))
                                 }),
                                 context(<span class="string">&quot;Failed infos deserialization&quot;</span>, |input| {
                                     <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
@@ -692,7 +700,9 @@
                             <span class="string">&quot;Failed block infos deserialization&quot;</span>,
                             tuple((
                                 context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
-                                    <span class="self">self</span>.block_id_deserializer.deserialize(input)
+                                    <span class="self">self</span>.hash_deserializer
+                                        .deserialize(input)
+                                        .map(|(rest, id)| (rest, BlockId(id)))
                                 }),
                                 context(<span class="string">&quot;Failed infos deserialization&quot;</span>, |input| {
                                     <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
