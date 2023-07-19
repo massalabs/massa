@@ -82,6 +82,7 @@ use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
 use massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
+use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::mips::get_mip_list;
@@ -89,6 +90,7 @@ use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
 use num::rational::Ratio;
 use parking_lot::RwLock;
+use settings::GrpcSettings;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -818,68 +820,8 @@ async fn launch(
 
     // Whether to spawn gRPC PUBLIC API
     let grpc_public_handle = if SETTINGS.grpc.public.enabled {
-        let grpc_public_config = GrpcConfig {
-            enabled: SETTINGS.grpc.public.enabled,
-            accept_http1: SETTINGS.grpc.public.accept_http1,
-            enable_cors: SETTINGS.grpc.public.enable_cors,
-            enable_health: SETTINGS.grpc.public.enable_health,
-            enable_reflection: SETTINGS.grpc.public.enable_reflection,
-            enable_tls: SETTINGS.grpc.public.enable_tls,
-            enable_mtls: SETTINGS.grpc.public.enable_mtls,
-            bind: SETTINGS.grpc.public.bind,
-            accept_compressed: SETTINGS.grpc.public.accept_compressed.clone(),
-            send_compressed: SETTINGS.grpc.public.send_compressed.clone(),
-            max_decoding_message_size: SETTINGS.grpc.public.max_decoding_message_size,
-            max_encoding_message_size: SETTINGS.grpc.public.max_encoding_message_size,
-            concurrency_limit_per_connection: SETTINGS.grpc.public.concurrency_limit_per_connection,
-            timeout: SETTINGS.grpc.public.timeout.to_duration(),
-            initial_stream_window_size: SETTINGS.grpc.public.initial_stream_window_size,
-            initial_connection_window_size: SETTINGS.grpc.public.initial_connection_window_size,
-            max_concurrent_streams: SETTINGS.grpc.public.max_concurrent_streams,
-            max_arguments: SETTINGS.grpc.public.max_arguments,
-            tcp_keepalive: SETTINGS.grpc.public.tcp_keepalive.map(|t| t.to_duration()),
-            tcp_nodelay: SETTINGS.grpc.public.tcp_nodelay,
-            http2_keepalive_interval: SETTINGS
-                .grpc
-                .public
-                .http2_keepalive_interval
-                .map(|t| t.to_duration()),
-            http2_keepalive_timeout: SETTINGS
-                .grpc
-                .public
-                .http2_keepalive_timeout
-                .map(|t| t.to_duration()),
-            http2_adaptive_window: SETTINGS.grpc.public.http2_adaptive_window,
-            max_frame_size: SETTINGS.grpc.public.max_frame_size,
-            thread_count: THREAD_COUNT,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            endorsement_count: ENDORSEMENT_COUNT,
-            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-            max_parameter_size: MAX_PARAMETERS_SIZE,
-            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-            genesis_timestamp: *GENESIS_TIMESTAMP,
-            t0: T0,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            keypair: keypair.clone(),
-            max_channel_size: SETTINGS.grpc.public.max_channel_size,
-            draw_lookahead_period_count: SETTINGS.grpc.public.draw_lookahead_period_count,
-            last_start_period: final_state.read().last_start_period,
-            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-            max_block_ids_per_request: SETTINGS.grpc.public.max_block_ids_per_request,
-            max_operation_ids_per_request: SETTINGS.grpc.public.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.public.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.public.server_private_key_path.clone(),
-            client_certificate_authority_root_path: SETTINGS
-                .grpc
-                .public
-                .client_certificate_authority_root_path
-                .clone(),
-        };
+        let grpc_public_config =
+            configure_grpc(&SETTINGS.grpc.public, keypair.clone(), &final_state);
 
         let grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
@@ -912,71 +854,8 @@ async fn launch(
 
     // Whether to spawn gRPC PRIVATE API
     let grpc_private_handle = if SETTINGS.grpc.private.enabled {
-        let grpc_private_config = GrpcConfig {
-            enabled: SETTINGS.grpc.private.enabled,
-            accept_http1: SETTINGS.grpc.private.accept_http1,
-            enable_cors: SETTINGS.grpc.private.enable_cors,
-            enable_health: SETTINGS.grpc.private.enable_health,
-            enable_reflection: SETTINGS.grpc.private.enable_reflection,
-            enable_tls: SETTINGS.grpc.private.enable_tls,
-            enable_mtls: SETTINGS.grpc.private.enable_mtls,
-            bind: SETTINGS.grpc.private.bind,
-            accept_compressed: SETTINGS.grpc.private.accept_compressed.clone(),
-            send_compressed: SETTINGS.grpc.private.send_compressed.clone(),
-            max_decoding_message_size: SETTINGS.grpc.private.max_decoding_message_size,
-            max_encoding_message_size: SETTINGS.grpc.private.max_encoding_message_size,
-            concurrency_limit_per_connection: SETTINGS
-                .grpc
-                .private
-                .concurrency_limit_per_connection,
-            timeout: SETTINGS.grpc.private.timeout.to_duration(),
-            initial_stream_window_size: SETTINGS.grpc.private.initial_stream_window_size,
-            initial_connection_window_size: SETTINGS.grpc.private.initial_connection_window_size,
-            max_concurrent_streams: SETTINGS.grpc.private.max_concurrent_streams,
-            max_arguments: SETTINGS.grpc.private.max_arguments,
-            tcp_keepalive: SETTINGS.grpc.private.tcp_keepalive.map(|t| t.to_duration()),
-            tcp_nodelay: SETTINGS.grpc.private.tcp_nodelay,
-            http2_keepalive_interval: SETTINGS
-                .grpc
-                .private
-                .http2_keepalive_interval
-                .map(|t| t.to_duration()),
-            http2_keepalive_timeout: SETTINGS
-                .grpc
-                .private
-                .http2_keepalive_timeout
-                .map(|t| t.to_duration()),
-            http2_adaptive_window: SETTINGS.grpc.private.http2_adaptive_window,
-            max_frame_size: SETTINGS.grpc.private.max_frame_size,
-            thread_count: THREAD_COUNT,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            endorsement_count: ENDORSEMENT_COUNT,
-            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-            max_parameter_size: MAX_PARAMETERS_SIZE,
-            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-            genesis_timestamp: *GENESIS_TIMESTAMP,
-            t0: T0,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            keypair,
-            max_channel_size: SETTINGS.grpc.private.max_channel_size,
-            draw_lookahead_period_count: SETTINGS.grpc.private.draw_lookahead_period_count,
-            last_start_period: final_state.read().last_start_period,
-            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-            max_block_ids_per_request: SETTINGS.grpc.private.max_block_ids_per_request,
-            max_operation_ids_per_request: SETTINGS.grpc.private.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.private.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.private.server_private_key_path.clone(),
-            client_certificate_authority_root_path: SETTINGS
-                .grpc
-                .private
-                .client_certificate_authority_root_path
-                .clone(),
-        };
+        let grpc_private_config =
+            configure_grpc(&SETTINGS.grpc.private, keypair.clone(), &final_state);
 
         let bs_white_black_list = bootstrap_manager
             .as_ref()
@@ -1107,6 +986,66 @@ async fn launch(
         grpc_public_handle,
         metrics_stopper,
     )
+}
+
+// Get the configuration of the gRPC server
+fn configure_grpc(
+    settings: &GrpcSettings,
+    keypair: KeyPair,
+    final_state: &Arc<RwLock<FinalState>>,
+) -> GrpcConfig {
+    GrpcConfig {
+        enabled: settings.enabled,
+        accept_http1: settings.accept_http1,
+        enable_cors: settings.enable_cors,
+        enable_health: settings.enable_health,
+        enable_reflection: settings.enable_reflection,
+        enable_tls: settings.enable_tls,
+        enable_mtls: settings.enable_mtls,
+        bind: settings.bind,
+        accept_compressed: settings.accept_compressed.clone(),
+        send_compressed: settings.send_compressed.clone(),
+        max_decoding_message_size: settings.max_decoding_message_size,
+        max_encoding_message_size: settings.max_encoding_message_size,
+        concurrency_limit_per_connection: settings.concurrency_limit_per_connection,
+        timeout: settings.timeout.to_duration(),
+        initial_stream_window_size: settings.initial_stream_window_size,
+        initial_connection_window_size: settings.initial_connection_window_size,
+        max_concurrent_streams: settings.max_concurrent_streams,
+        max_arguments: settings.max_arguments,
+        tcp_keepalive: settings.tcp_keepalive.map(|t| t.to_duration()),
+        tcp_nodelay: settings.tcp_nodelay,
+        http2_keepalive_interval: settings.http2_keepalive_interval.map(|t| t.to_duration()),
+        http2_keepalive_timeout: settings.http2_keepalive_timeout.map(|t| t.to_duration()),
+        http2_adaptive_window: settings.http2_adaptive_window,
+        max_frame_size: settings.max_frame_size,
+        thread_count: THREAD_COUNT,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameter_size: MAX_PARAMETERS_SIZE,
+        max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        keypair,
+        max_channel_size: settings.max_channel_size,
+        draw_lookahead_period_count: settings.draw_lookahead_period_count,
+        last_start_period: final_state.read().last_start_period,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_block_ids_per_request: settings.max_block_ids_per_request,
+        max_operation_ids_per_request: settings.max_operation_ids_per_request,
+        server_certificate_path: settings.server_certificate_path.clone(),
+        server_private_key_path: settings.server_private_key_path.clone(),
+        client_certificate_authority_root_path: settings
+            .client_certificate_authority_root_path
+            .clone(),
+    }
 }
 
 struct Managers {
