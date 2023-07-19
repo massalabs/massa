@@ -580,6 +580,7 @@ impl Deserializer<Address> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
+        // Verify that we at least have a version and something else
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
@@ -608,6 +609,7 @@ impl Deserializer<UserAddress> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], UserAddress, E> {
+        // Verify that we at least have a version and something else
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
@@ -650,6 +652,7 @@ impl Deserializer<SCAddress> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], SCAddress, E> {
+        // Verify that we at least have a version and something else
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }

@@ -345,6 +345,7 @@ impl Deserializer<OperationId> for OperationIdDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], OperationId, E> {
+        // Verify that we at least have a version and something else
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
