@@ -711,7 +711,9 @@
 <a href="#711" id="711">711</a>
 <a href="#712" id="712">712</a>
 <a href="#713" id="713">713</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
@@ -854,6 +856,7 @@
     denunciation_serializer: DenunciationSerializer,
     u32_serializer: U32VarIntSerializer,
     opt_serializer: OptionSerializer&lt;u32, U32VarIntSerializer&gt;,
+    block_id_serializer: BlockIdSerializer,
 }
 
 <span class="kw">impl </span>BlockHeaderSerializer {
@@ -866,6 +869,7 @@
             opt_serializer: OptionSerializer::new(U32VarIntSerializer),
             endorsement_content_serializer: EndorsementSerializerLW::new(),
             denunciation_serializer: DenunciationSerializer::new(),
+            block_id_serializer: BlockIdSerializer::new(),
         }
     }
 }
@@ -889,7 +893,7 @@
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
-    ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
+    ///   .map(|i| BlockId::generate_from_hash(Hash::compute_from(&amp;[i])))
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
@@ -902,7 +906,7 @@
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
-    ///          endorsed_block: BlockId(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
+    ///          endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
@@ -912,7 +916,7 @@
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
-    ///         endorsed_block: BlockId(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
+    ///         endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
@@ -941,7 +945,7 @@
             buffer.push(<span class="number">1</span>);
         }
         <span class="kw">for </span>parent_h <span class="kw">in </span>value.parents.iter() {
-            buffer.extend(parent_h.<span class="number">0</span>.to_bytes());
+            <span class="self">self</span>.block_id_serializer.serialize(parent_h, buffer)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// operations merkle root
@@ -989,12 +993,13 @@
     denunciation_deserializer: DenunciationDeserializer,
     network_versions_deserializer: U32VarIntDeserializer,
     opt_deserializer: OptionDeserializer&lt;u32, U32VarIntDeserializer&gt;,
+    block_id_deserializer: BlockIdDeserializer,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
     <span class="doccomment">/// Creates a new `BlockHeaderDeserializer`
     /// If last_start_period is Some(lsp), then the deserializer will check for valid (non)-genesis blocks
-    </span><span class="kw">pub const fn </span>new(
+    </span><span class="kw">pub fn </span>new(
         thread_count: u8,
         endorsement_count: u32,
         max_denunciations_in_block_header: u32,
@@ -1027,6 +1032,7 @@
                 thread_count,
                 endorsement_count,
             ),
+            block_id_deserializer: BlockIdDeserializer::new(),
             thread_count,
             endorsement_count,
             last_start_period,
@@ -1047,7 +1053,7 @@
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
-    ///   .map(|i| BlockId(Hash::compute_from(&amp;[i])))
+    ///   .map(|i| BlockId::generate_from_hash(Hash::compute_from(&amp;[i])))
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
@@ -1114,9 +1120,7 @@
                             tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
                             count(
                                 context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
-                                    <span class="self">self</span>.hash_deserializer
-                                        .deserialize(input)
-                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                    <span class="self">self</span>.block_id_deserializer.deserialize(input)
                                 }),
                                 <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
                             ),
@@ -1342,7 +1346,7 @@
 
         <span class="kw">let </span>slot = Slot::new(<span class="number">7</span>, <span class="number">1</span>);
         <span class="kw">let </span>parents_1: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
         <span class="kw">let </span>endorsement_1 = Endorsement {

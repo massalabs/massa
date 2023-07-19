@@ -70,6 +70,8 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
@@ -87,6 +89,8 @@
     </span>ExecutionError(<span class="attr">#[from] </span>ExecutionError),
     <span class="doccomment">/// models error: {0}
     </span>ModelsError(<span class="attr">#[from] </span>ModelsError),
+    <span class="doccomment">/// Serialization error: {0}
+    </span>SerializationError(String),
     <span class="doccomment">/// Could not create genesis block {0}
     </span>GenesisCreationError(String),
     <span class="doccomment">/// missing block {0}
