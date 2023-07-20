@@ -34,7 +34,7 @@ impl Ord for ConnectionMetadata {
 impl PartialOrd for ConnectionMetadata {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let failure_check = match (self.last_failure, other.last_failure) {
-            (Some(sf), Some(of)) => Some(sf.cmp(&of).reverse()),
+            (Some(sf), Some(of)) => Some(sf.cmp(&of)),
             (Some(_), None) => Some(Ordering::Greater),
             (None, Some(_)) => Some(Ordering::Less),
             (None, None) => None,
@@ -43,7 +43,7 @@ impl PartialOrd for ConnectionMetadata {
             return Some(res);
         }
         let success_check = match (self.last_success, other.last_success) {
-            (Some(ss), Some(os)) => Some(ss.cmp(&os)),
+            (Some(ss), Some(os)) => Some(ss.cmp(&os).reverse()),
             (Some(_), None) => Some(Ordering::Less),
             (None, Some(_)) => Some(Ordering::Greater),
             (None, None) => None,
@@ -52,7 +52,7 @@ impl PartialOrd for ConnectionMetadata {
             return Some(res);
         }
         let try_check = match (self.last_try, other.last_try) {
-            (Some(st), Some(ot)) => Some(st.cmp(&ot)),
+            (Some(st), Some(ot)) => Some(st.cmp(&ot).reverse()),
             (Some(_), None) => Some(Ordering::Less),
             (None, Some(_)) => Some(Ordering::Greater),
             (None, None) => None,

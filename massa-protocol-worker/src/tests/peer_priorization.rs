@@ -44,7 +44,7 @@ fn test_prio(mut vec: Vec<(u64, ConnectionMetadata)>, mdidx: usize, none_first: 
     }
 }
 
-//    Failure more recent (nb milli < ) -> More prio
+//    Failure more ancient (nb milli < ) -> More prio
 //    If None, more prio than any failure
 #[test]
 fn test_last_failure_prio() {
@@ -52,7 +52,7 @@ fn test_last_failure_prio() {
         ConnectionMetadata::default().edit(0, if n < 50 {
             None
         } else {
-            Some(MassaTime::from_millis(1000 - n))
+            Some(MassaTime::from_millis(n))
         })
     })).collect();
     test_prio(test_vec, 0, true);
@@ -66,7 +66,7 @@ fn test_last_success_prio() {
         ConnectionMetadata::default().edit(1, if n > 450 {
             None
         } else {
-            Some(MassaTime::from_millis(n))
+            Some(MassaTime::from_millis(1000 - n))
         })
     })).collect();
     test_prio(test_vec, 1, false);
@@ -80,7 +80,7 @@ fn test_last_try_prio() {
         ConnectionMetadata::default().edit(2, if n > 450 {
             None
         } else {
-            Some(MassaTime::from_millis(n))
+            Some(MassaTime::from_millis(1000 - n))
         })
     })).collect();
     test_prio(test_vec, 2, false);
