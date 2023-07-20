@@ -104,8 +104,7 @@ pub(crate) fn start_connectivity_thread(
             let total_out_slots = config.peers_categories.values().map(| v| v.target_out_connections).sum::<usize>() + config.default_category_info.target_out_connections + 1;
             let operation_cache = Arc::new(RwLock::new(OperationCache::new(
                 config.max_known_ops_size.try_into().unwrap(),
-                config.max_node_known_ops_size.try_into().unwrap(),
-                (total_in_slots + total_out_slots).try_into().unwrap(),
+                config.max_node_known_ops_size.try_into().unwrap()
             )));
             let endorsement_cache = Arc::new(RwLock::new(EndorsementCache::new(
                 config.max_known_endorsements_size.try_into().unwrap(),

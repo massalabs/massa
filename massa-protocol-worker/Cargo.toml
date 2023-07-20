@@ -4,40 +4,37 @@ version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-[dependencies]
-tracing = {version =  "0.1", features = ["log"]}
-rand = "0.8"
-parking_lot = "0.12"
-crossbeam = "0.8"
-serde_json = "1.0"
-nom = "=7.1"
-num_enum = "0.5"
-# TODO tag peernet version
-peernet = { git = "https://github.com/massalabs/PeerNet", branch = "main" }
-tempfile = { version = "3.3", optional = true } # use with testing feature
-rayon = "1.7.0"
-schnellru = "0.2.1"
-
-# modules Custom
-massa_hash = { path = "../massa-hash" }
-massa_models = { path = "../massa-models" }
-massa_logging = { path = "../massa-logging" }
-massa_channel = { path = "../massa-channel" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_metrics = { path = "../massa-metrics" }
-massa_pool_exports = { path = "../massa-pool-exports" }
-massa_pos_exports = { path = "../massa-pos-exports" }
-massa_storage = { path = "../massa-storage" }
-massa_serialization = { path = "../massa-serialization" }
-massa_signature = { path = "../massa-signature" }
-massa_time = { path = "../massa-time" }
-massa_versioning = { path = "../massa-versioning" }
-
-[dev-dependencies]
-tempfile = "3.3"
-serial_test = "2.0.0"
-num = "0.4"
-
 [features]
 testing = ["massa_protocol_exports/testing", "tempfile", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_metrics/testing"]
+
+[dependencies]
+tracing = {workspace = true, "features" = ["log"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem
+rand = {workspace = true}
+parking_lot = {workspace = true}
+crossbeam = {workspace = true}
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+nom = {workspace = true}
+num_enum = {workspace = true}
+peernet = {workspace = true}
+tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
+rayon = {workspace = true}
+schnellru = {workspace = true}   # BOM UPGRADE     Revert to "0.2.1" if problem
+massa_hash = {workspace = true}
+massa_models = {workspace = true}
+massa_logging = {workspace = true}
+massa_channel = {workspace = true}
+massa_protocol_exports = {workspace = true}
+massa_consensus_exports = {workspace = true}
+massa_metrics = {workspace = true}
+massa_pool_exports = {workspace = true}
+massa_pos_exports = {workspace = true}
+massa_storage = {workspace = true}
+massa_serialization = {workspace = true}
+massa_signature = {workspace = true}
+massa_time = {workspace = true}
+massa_versioning = {workspace = true}
+
+[dev-dependencies]
+tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+serial_test = {workspace = true}   # BOM UPGRADE     Revert to "2.0.0" if problem
+num = {workspace = true}
