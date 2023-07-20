@@ -35,8 +35,8 @@ impl PartialOrd for ConnectionMetadata {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let failure_check = match (self.last_failure, other.last_failure) {
             (Some(sf), Some(of)) => Some(sf.cmp(&of).reverse()),
-            (Some(_), None) => Some(Ordering::Less),
-            (None, Some(_)) => Some(Ordering::Greater),
+            (Some(_), None) => Some(Ordering::Greater),
+            (None, Some(_)) => Some(Ordering::Less),
             (None, None) => None,
         };
         if let Some(res) = failure_check {
@@ -44,8 +44,8 @@ impl PartialOrd for ConnectionMetadata {
         }
         let success_check = match (self.last_success, other.last_success) {
             (Some(ss), Some(os)) => Some(ss.cmp(&os)),
-            (Some(_), None) => Some(Ordering::Greater),
-            (None, Some(_)) => Some(Ordering::Less),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
             (None, None) => None,
         };
         if let Some(res) = success_check {
@@ -53,8 +53,8 @@ impl PartialOrd for ConnectionMetadata {
         }
         let try_check = match (self.last_try, other.last_try) {
             (Some(st), Some(ot)) => Some(st.cmp(&ot)),
-            (Some(_), None) => Some(Ordering::Greater),
-            (None, Some(_)) => Some(Ordering::Less),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
             (None, None) => None,
         };
         if let Some(res) = try_check {
