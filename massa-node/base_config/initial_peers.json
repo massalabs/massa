@@ -1,51 +1,26 @@
-{
-    "P12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j": {
-        "listeners": {
-            "149.202.86.103:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-
-    },
-    "P12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq": {
-        "listeners": {
-            "149.202.89.125:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P12rPDBmpnpnbECeAKDjbmeR19dYjAUwyLzsa8wmYJnkXLCNF28E": {
-        "listeners": {
-            "158.69.120.215:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P1XxexKa3XNzvmakNmPawqFrE9Z2NFhfq1AhvV1Qx4zXq5p1Bp9": {
-        "listeners": {
-            "158.69.23.120:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P1qxuqNnx9kyAMYxUfsYiv2gQd5viiBX126SzzexEdbbWd2vQKu": {
-        "listeners": {
-            "198.27.74.5:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P1hdgsVsd4zkNp8cF1rdqqG6JPRQasAmx12QgJaJHBHFU1fRHEH": {
-        "listeners": {
-            "198.27.74.52:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7": {
-        "listeners": {
-            "54.36.174.177:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5": {
-        "listeners": {
-            "51.75.60.228:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    }
-}
+[
+  {
+    "advertised": true,
+    "banned": false,
+    "peer_type": "Bootstrap",
+    "ip": "149.202.84.7",
+    "last_alive": null,
+    "last_failure": null
+  },
+  {
+    "advertised": true,
+    "banned": false,
+    "peer_type": "Bootstrap",
+    "ip": "149.202.84.39",
+    "last_alive": null,
+    "last_failure": null
+  },
+  {
+    "advertised": true,
+    "banned": false,
+    "peer_type": "Bootstrap",
+    "ip": "37.187.156.118",
+    "last_alive": null,
+    "last_failure": null
+  }
+]
