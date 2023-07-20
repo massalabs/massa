@@ -3,32 +3,28 @@ name = "massa-client"
 version = "0.24.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-anyhow = "1.0"
-atty = "0.2"
-console = "0.15"
-dialoguer = "0.10"
-rustyline = "10.0.0"
-rustyline-derive = "0.7.0"
-erased-serde = "0.3"
-lazy_static = "1.4"
-paw = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-structopt = { version = "0.3", features = ["paw"] }
-strum = "0.24"
-strum_macros = "0.24"
-tokio = { version = "1.23", features = ["full"] }
-# custom modules
-massa_api_exports = { path = "../massa-api-exports" }
-massa_models = { path = "../massa-models" }
-massa_signature = { path = "../massa-signature" }
-massa_time = { path = "../massa-time" }
-massa_sdk = { path = "../massa-sdk" }
-massa_wallet = { path = "../massa-wallet" }
-# massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
+anyhow = {workspace = true}
+atty = {workspace = true}
+console = {workspace = true}
+dialoguer = {workspace = true}
+rustyline = {workspace = true}
+rustyline-derive = {workspace = true}
+erased-serde = {workspace = true}
+lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
+paw = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+structopt = {workspace = true, "features" = ["paw"]}
+strum = {workspace = true}
+strum_macros = {workspace = true}
+tokio = {workspace = true, "features" = ["full"]}
+massa_api_exports = {workspace = true}
+massa_models = {workspace = true}
+massa_signature = {workspace = true}
+massa_time = {workspace = true}
+massa_sdk = {workspace = true}
+massa_wallet = {workspace = true}
 
 [dev-dependencies]
-toml_edit = "0.19"
+toml_edit = {workspace = true}

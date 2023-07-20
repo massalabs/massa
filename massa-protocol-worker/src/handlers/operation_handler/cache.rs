@@ -34,7 +34,7 @@ impl OperationCache {
     pub fn update_cache(&mut self, peers_connected: &HashSet<PeerId>) {
         // Remove disconnected peers from cache
         self.ops_known_by_peer
-            .retain(|peer_id, _| !peers_connected.contains(peer_id));
+            .retain(|peer_id, _| peers_connected.contains(peer_id));
 
         // Add new connected peers to cache
         for peer_id in peers_connected {

@@ -4,37 +4,29 @@ version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-displaydoc = "0.2"
-thiserror = "1.0"
-num = { version = "0.4", features = ["serde"] }
-parking_lot = { version = "0.12", features = [
-    "deadlock_detection",
-], optional = true }
-tempfile = { version = "3.3", optional = true }
-tokio = { version = "1.23", features = ["sync"] }
-mockall = { version = "0.11.4",  optional = true}
-
-# custom modules
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
-massa_hash = { path = "../massa-hash" }
-massa_models = { path = "../massa-models" }
-massa_time = { path = "../massa-time" }
-massa_storage = { path = "../massa-storage" }
-massa_final_state = { path = "../massa-final-state" }
-massa_pos_exports = { path = "../massa-pos-exports" }
-massa_ledger_exports = { path = "../massa-ledger-exports", optional = true }
-massa_module_cache = { path = "../massa-module-cache" }
-massa_versioning = { path = "../massa-versioning" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
-
-[dev-dependencies]
-mockall = "0.11.4"
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
-
 [features]
 gas_calibration = ["massa_ledger_exports/testing", "parking_lot", "tempfile"]
 testing = ["massa_models/testing", "massa_ledger_exports/testing", "parking_lot", "tempfile", "mockall"]
+
+[dependencies]
+displaydoc = {workspace = true}
+thiserror = {workspace = true}
+num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
+parking_lot = {workspace = true, "features" = ["deadlock_detection"], "optional" = true}
+tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
+tokio = {workspace = true, "features" = ["sync"]}
+mockall = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
+massa-proto-rs = {workspace = true, "features" = ["tonic"]}
+massa_hash = {workspace = true}
+massa_models = {workspace = true}
+massa_time = {workspace = true}
+massa_storage = {workspace = true}
+massa_final_state = {workspace = true}
+massa_pos_exports = {workspace = true}
+massa_ledger_exports = {workspace = true, "optional" = true}
+massa_module_cache = {workspace = true}
+massa_versioning = {workspace = true}
+massa-sc-runtime = {workspace = true}
+
+[dev-dependencies]
+mockall = {workspace = true}
