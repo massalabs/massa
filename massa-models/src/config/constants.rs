@@ -50,7 +50,7 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
     /// so that the network starts or restarts 10 seconds after launch
-    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::from_millis(1689845002131);
+    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::from_millis(1689845043542);
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;
@@ -60,7 +60,7 @@ lazy_static::lazy_static! {
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
     /// node version
-    pub static ref VERSION: Version = "DEVN.21.0".parse().unwrap();
+    pub static ref VERSION: Version = "DEVN.24.1".parse().unwrap();
 }
 
 /// Helper function to parse args for lazy_static evaluations

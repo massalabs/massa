@@ -176,3 +176,9 @@ target_out_connections = 3
 max_in_connections_per_ip = 1
 max_in_connections = 10
 allow_local_peers = false
+
+[protocol.peers_categories.default_category_info]
+target_out_connections = 3
+max_in_connections_per_ip = 1
+max_in_connections = 10
+allow_local_peers = false
