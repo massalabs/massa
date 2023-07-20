@@ -244,9 +244,6 @@ pub(crate) fn start_connectivity_thread(
                         let peer_db_read = peer_db.read();
                         massa_metrics.set_known_peers(peer_db_read.peers.len());
                         massa_metrics.set_banned_peers(peer_db_read.peers.iter().filter(|(_id, info)| info.state == PeerState::Banned).count());
-                        massa_metrics.set_operations_pool(pool_controller.get_operation_count());
-                        massa_metrics.set_endorsements_pool(pool_controller.get_endorsement_count());
-                        massa_metrics.set_denunciations_pool(pool_controller.get_denunciation_count());
                     },
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();

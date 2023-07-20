@@ -3,6 +3,7 @@ use std::thread::JoinHandle;
 use massa_execution_exports::ExecutionController;
 use massa_metrics::MassaMetrics;
 use massa_models::{address::Address, slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
+use massa_pool_exports::PoolController;
 use massa_time::MassaTime;
 use tracing::info;
 // use std::time::Duration;
@@ -32,6 +33,7 @@ impl MassaSurvey {
     pub fn run(
         tick_delay: std::time::Duration,
         execution_controller: Box<dyn ExecutionController>,
+        pool_controller: Box<dyn PoolController>,
         massa_metrics: MassaMetrics,
         config: (u8, MassaTime, MassaTime, u64, u64),
     ) -> MassaSurveyStopper {
@@ -98,6 +100,12 @@ impl MassaSurvey {
                             massa_metrics.set_stakers(staker_vec.len());
                             let rolls_count = staker_vec.iter().map(|(_, r)| *r).sum::<u64>();
                             massa_metrics.set_rolls(rolls_count as usize);
+                        }
+
+                        {
+                            massa_metrics.set_operations_pool(pool_controller.get_operation_count());
+                            massa_metrics.set_endorsements_pool(pool_controller.get_endorsement_count());
+                            massa_metrics.set_denunciations_pool(pool_controller.get_denunciation_count());
                         }
                     }) {
                     Ok(handle) => MassaSurveyStopper { handle: Some(handle) },

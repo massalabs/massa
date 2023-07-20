@@ -92,6 +92,9 @@ pub struct MassaMetrics {
     /// number of elements in the denunciation pool
     denunciations_pool: IntGauge,
 
+    // number of autonomous SCs messages in pool
+    messages_pool: IntGauge,
+
     // number of autonomous SC messages executed as final
     sc_messages_final: IntCounter,
 
@@ -240,6 +243,9 @@ impl MassaMetrics {
             "number of elements in the denunciation pool",
         )
         .unwrap();
+
+        let messages_pool =
+            IntGauge::new("messages_pool", "number of autonomous SCs messages in pool").unwrap();
 
         let sc_messages_final = IntCounter::new(
             "sc_messages_final",
@@ -434,6 +440,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(protocol_tester_success.clone()));
                 let _ = prometheus::register(Box::new(protocol_tester_failed.clone()));
                 let _ = prometheus::register(Box::new(sc_messages_final.clone()));
+                let _ = prometheus::register(Box::new(messages_pool.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -457,6 +464,7 @@ impl MassaMetrics {
                 operations_pool,
                 endorsements_pool,
                 denunciations_pool,
+                messages_pool,
                 sc_messages_final,
                 bootstrap_success,
                 bootstrap_failed,
@@ -662,6 +670,10 @@ impl MassaMetrics {
 
     pub fn inc_sc_messages_final_by(&self, diff: usize) {
         self.sc_messages_final.inc_by(diff as u64);
+    }
+
+    pub fn set_messages_pool(&self, nb: usize) {
+        self.messages_pool.set(nb as i64);
     }
 
     /// Update the bandwidth metrics for all peers

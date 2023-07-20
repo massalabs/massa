@@ -983,6 +983,7 @@ async fn launch(
     let massa_survey_stopper = MassaSurvey::run(
         SETTINGS.metrics.tick_delay.to_duration(),
         execution_controller,
+        pool_controller,
         massa_metrics,
         (
             api_config.thread_count,
