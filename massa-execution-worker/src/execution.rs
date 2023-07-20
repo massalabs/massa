@@ -262,6 +262,9 @@ impl ExecutionState {
         self.massa_metrics
             .set_active_history(self.active_history.read().0.len());
 
+        self.massa_metrics
+            .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.0.len());
+
         // Broadcast a final slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
             let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out_2);
