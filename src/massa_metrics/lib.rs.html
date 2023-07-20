@@ -801,6 +801,19 @@
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -901,10 +914,12 @@
     <span class="comment">// number of autonomous SC messages executed as final
     </span>sc_messages_final: IntCounter,
 
+    <span class="doccomment">/// number of times our node (re-)bootstrapped
+    </span>bootstrap_counter: IntCounter,
     <span class="doccomment">/// number of times we successfully bootstrapped someone
-    </span>bootstrap_success: IntCounter,
+    </span>bootstrap_peers_success: IntCounter,
     <span class="doccomment">/// number of times we failed/refused to bootstrap someone
-    </span>bootstrap_failed: IntCounter,
+    </span>bootstrap_peers_failed: IntCounter,
 
     <span class="doccomment">/// number of times we successfully tested someone
     </span>protocol_tester_success: IntCounter,
@@ -1056,13 +1071,18 @@
         )
         .unwrap();
 
+        <span class="kw">let </span>bootstrap_counter = IntCounter::new(
+            <span class="string">&quot;bootstrap_counter&quot;</span>,
+            <span class="string">&quot;number of times our node (re-)bootstrapped&quot;</span>,
+        )
+        .unwrap();
         <span class="kw">let </span>bootstrap_success = IntCounter::new(
-            <span class="string">&quot;bootstrap_success&quot;</span>,
+            <span class="string">&quot;bootstrap_peers_success&quot;</span>,
             <span class="string">&quot;number of times we successfully bootstrapped someone&quot;</span>,
         )
         .unwrap();
         <span class="kw">let </span>bootstrap_failed = IntCounter::new(
-            <span class="string">&quot;bootstrap_failed&quot;</span>,
+            <span class="string">&quot;bootstrap_peers_failed&quot;</span>,
             <span class="string">&quot;number of times we failed/refused to bootstrap someone&quot;</span>,
         )
         .unwrap();
@@ -1234,6 +1254,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(executed_final_slot.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(executed_final_slot_with_block.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(active_history.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(bootstrap_counter.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(bootstrap_success.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(bootstrap_failed.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(available_processors));
@@ -1269,8 +1290,9 @@
                 denunciations_pool,
                 messages_pool,
                 sc_messages_final,
-                bootstrap_success,
-                bootstrap_failed,
+                bootstrap_counter,
+                bootstrap_peers_success: bootstrap_success,
+                bootstrap_peers_failed: bootstrap_failed,
                 protocol_tester_success,
                 protocol_tester_failed,
                 protocol_known_peers: know_peers,
@@ -1435,12 +1457,16 @@
         <span class="self">self</span>.active_history.set(nb <span class="kw">as </span>i64);
     }
 
-    <span class="kw">pub fn </span>inc_bootstrap_success(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.bootstrap_success.inc();
+    <span class="kw">pub fn </span>inc_bootstrap_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.bootstrap_counter.inc();
     }
 
-    <span class="kw">pub fn </span>inc_bootstrap_failed(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.bootstrap_failed.inc();
+    <span class="kw">pub fn </span>inc_bootstrap_peers_success(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.bootstrap_peers_success.inc();
+    }
+
+    <span class="kw">pub fn </span>inc_bootstrap_peers_failed(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.bootstrap_peers_failed.inc();
     }
 
     <span class="kw">pub fn </span>set_operations_pool(<span class="kw-2">&amp;</span><span class="self">self</span>, nb: usize) {

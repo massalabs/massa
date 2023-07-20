@@ -1056,7 +1056,7 @@
                         remote_addr,
                         <span class="kw">move </span>|| {},
                     );
-                    <span class="self">self</span>.massa_metrics.inc_bootstrap_failed();
+                    <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
                     <span class="kw">continue</span>;
                 };
 
@@ -1102,7 +1102,7 @@
                             })
                         };
                         server_binding.close_and_send_error(msg, remote_addr, tracer);
-                        <span class="self">self</span>.massa_metrics.inc_bootstrap_failed();
+                        <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
                         <span class="kw">continue</span>;
                     };
 
@@ -1144,7 +1144,7 @@
                         remote_addr,
                         <span class="kw">move </span>|| <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr),
                     );
-                    <span class="self">self</span>.massa_metrics.inc_bootstrap_failed();
+                    <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
                 }
             }
         }
@@ -1226,25 +1226,25 @@
                 <span class="string">&quot;Bootstrap process timedout ({})&quot;</span>,
                 format_duration(config.bootstrap_timeout.to_duration())
             ));
-            massa_metrics.inc_bootstrap_failed();
+            massa_metrics.inc_bootstrap_peers_failed();
         }
         <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; {
             <span class="macro">debug!</span>(
                 <span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>,
                 remote_addr, error
             );
-            massa_metrics.inc_bootstrap_failed();
+            massa_metrics.inc_bootstrap_peers_failed();
         }
         <span class="prelude-val">Err</span>(err) =&gt; {
             <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
             <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
             // sending the error message to the server we will close the socket anyway.
             </span><span class="kw">let _ </span>= server.send_error_timeout(err.to_string());
-            massa_metrics.inc_bootstrap_failed();
+            massa_metrics.inc_bootstrap_peers_failed();
         }
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr);
-            massa_metrics.inc_bootstrap_success();
+            massa_metrics.inc_bootstrap_peers_success();
         }
     }
 }
