@@ -99,9 +99,9 @@ pub struct MassaMetrics {
     sc_messages_final: IntCounter,
 
     /// number of times we successfully bootstrapped someone
-    bootstrap_success: IntCounter,
+    bootstrap_peers_success: IntCounter,
     /// number of times we failed/refused to bootstrap someone
-    bootstrap_failed: IntCounter,
+    bootstrap_peers_failed: IntCounter,
 
     /// number of times we successfully tested someone
     protocol_tester_success: IntCounter,
@@ -254,12 +254,12 @@ impl MassaMetrics {
         .unwrap();
 
         let bootstrap_success = IntCounter::new(
-            "bootstrap_success",
+            "bootstrap_peers_success",
             "number of times we successfully bootstrapped someone",
         )
         .unwrap();
         let bootstrap_failed = IntCounter::new(
-            "bootstrap_failed",
+            "bootstrap_peers_failed",
             "number of times we failed/refused to bootstrap someone",
         )
         .unwrap();
@@ -466,8 +466,8 @@ impl MassaMetrics {
                 denunciations_pool,
                 messages_pool,
                 sc_messages_final,
-                bootstrap_success,
-                bootstrap_failed,
+                bootstrap_peers_success: bootstrap_success,
+                bootstrap_peers_failed: bootstrap_failed,
                 protocol_tester_success,
                 protocol_tester_failed,
                 protocol_known_peers: know_peers,
@@ -632,12 +632,12 @@ impl MassaMetrics {
         self.active_history.set(nb as i64);
     }
 
-    pub fn inc_bootstrap_success(&self) {
-        self.bootstrap_success.inc();
+    pub fn inc_bootstrap_peers_success(&self) {
+        self.bootstrap_peers_success.inc();
     }
 
-    pub fn inc_bootstrap_failed(&self) {
-        self.bootstrap_failed.inc();
+    pub fn inc_bootstrap_peers_failed(&self) {
+        self.bootstrap_peers_failed.inc();
     }
 
     pub fn set_operations_pool(&self, nb: usize) {
