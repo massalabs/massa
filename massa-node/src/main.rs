@@ -403,6 +403,7 @@ async fn launch(
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
         sig_int_toggled.clone(),
+        massa_metrics.clone(),
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {

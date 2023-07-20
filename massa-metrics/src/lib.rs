@@ -98,6 +98,8 @@ pub struct MassaMetrics {
     // number of autonomous SC messages executed as final
     sc_messages_final: IntCounter,
 
+    /// number of times our node (re-)bootstrapped
+    bootstrap_counter: IntCounter,
     /// number of times we successfully bootstrapped someone
     bootstrap_peers_success: IntCounter,
     /// number of times we failed/refused to bootstrap someone
@@ -253,6 +255,11 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let bootstrap_counter = IntCounter::new(
+            "bootstrap_counter",
+            "number of times our node (re-)bootstrapped",
+        )
+        .unwrap();
         let bootstrap_success = IntCounter::new(
             "bootstrap_peers_success",
             "number of times we successfully bootstrapped someone",
@@ -431,6 +438,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(executed_final_slot.clone()));
                 let _ = prometheus::register(Box::new(executed_final_slot_with_block.clone()));
                 let _ = prometheus::register(Box::new(active_history.clone()));
+                let _ = prometheus::register(Box::new(bootstrap_counter.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_success.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_failed.clone()));
                 let _ = prometheus::register(Box::new(available_processors));
@@ -466,6 +474,7 @@ impl MassaMetrics {
                 denunciations_pool,
                 messages_pool,
                 sc_messages_final,
+                bootstrap_counter,
                 bootstrap_peers_success: bootstrap_success,
                 bootstrap_peers_failed: bootstrap_failed,
                 protocol_tester_success,
@@ -630,6 +639,10 @@ impl MassaMetrics {
 
     pub fn set_active_history(&self, nb: usize) {
         self.active_history.set(nb as i64);
+    }
+
+    pub fn inc_bootstrap_counter(&self) {
+        self.bootstrap_counter.inc();
     }
 
     pub fn inc_bootstrap_peers_success(&self) {

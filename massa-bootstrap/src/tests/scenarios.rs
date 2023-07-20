@@ -423,6 +423,16 @@ fn test_bootstrap_server() {
         .expect_clone_box()
         .return_once(move || stream_mock2);
 
+    let metrics = MassaMetrics::new(
+        false,
+        "0.0.0.0:31248".parse().unwrap(),
+        thread_count,
+        Duration::from_secs(5),
+    )
+    .0;
+
+    let metrics_cloned = metrics.clone();
+
     // Start the bootstrap server thread
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
@@ -438,13 +448,7 @@ fn test_bootstrap_server() {
                 bootstrap_config.clone(),
                 keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
-                MassaMetrics::new(
-                    false,
-                    "0.0.0.0:31248".parse().unwrap(),
-                    thread_count,
-                    Duration::from_secs(5),
-                )
-                .0,
+                metrics_cloned,
             )
             .unwrap()
         })
@@ -526,6 +530,7 @@ fn test_bootstrap_server() {
         None,
         None,
         Arc::new((Mutex::new(false), Condvar::new())),
+        metrics,
     )
     .unwrap();
 

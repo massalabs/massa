@@ -2,6 +2,7 @@ use humantime::format_duration;
 use massa_db_exports::DBBatch;
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
@@ -402,6 +403,7 @@ pub fn get_state(
     end_timestamp: Option<MassaTime>,
     restart_from_snapshot_at_period: Option<u64>,
     interupted: Arc<(Mutex<bool>, Condvar)>,
+    massa_metrics: MassaMetrics,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
 
@@ -494,6 +496,7 @@ pub fn get_state(
             );
             match conn {
                 Ok(mut client) => {
+                    massa_metrics.inc_bootstrap_counter();
                     let bs = bootstrap_from_server(
                         bootstrap_config,
                         &mut client,
