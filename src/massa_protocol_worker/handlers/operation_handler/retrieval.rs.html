@@ -511,6 +511,11 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -730,28 +735,27 @@
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         )<span class="question-mark">?</span>;
 
-        <span class="lifetime">&#39;write_cache</span>: {
+        {
             <span class="comment">// add to checked operations
             </span><span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-            <span class="kw">for </span>op_id <span class="kw">in </span>new_operations.keys().copied() {
+
+            <span class="comment">// add checked operations
+            </span><span class="kw">for </span>op_id <span class="kw">in </span>new_operations.keys().copied() {
                 cache_write.insert_checked_operation(op_id);
             }
 
             <span class="comment">// add to known ops
-            </span><span class="kw">let </span><span class="prelude-val">Ok</span>(known_ops) = cache_write
+            </span><span class="kw">let </span>known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(source_peer_id.clone(), || {
+                .entry(source_peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         <span class="self">self</span>.config
                             .max_node_known_ops_size
                             .try_into()
-                            .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
+                            .expect(<span class="string">&quot;max_node_known_ops_size in config must fit in u32&quot;</span>),
                     ))
-                })
-                .ok_or(()) <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
-                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                };
+                });
             <span class="kw">for </span>id <span class="kw">in </span>all_received_ids {
                 known_ops.insert(id.prefix(), ());
             }
@@ -762,7 +766,8 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
             ops.store_operations(new_operations.into_values().collect());
 
-            <span class="self">self</span>.internal_sender
+            <span class="comment">// propagate new operations
+            </span><span class="self">self</span>.internal_sender
                 .try_send(OperationHandlerPropagationCommand::PropagateOperations(
                     ops.clone(),
                 ))
@@ -800,25 +805,31 @@
         <span class="kw-2">mut </span>op_batch: OperationPrefixIds,
         peer_id: <span class="kw-2">&amp;</span>PeerId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="comment">// ignore announcement from disconnected peers
+        </span><span class="kw">if </span>!<span class="self">self
+            </span>.active_connections
+            .get_peer_ids_connected()
+            .contains(peer_id)
+        {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+
         <span class="comment">// mark sender as knowing the ops
-        </span><span class="lifetime">&#39;write_cache</span>: {
+        </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-            <span class="kw">let </span><span class="prelude-val">Ok</span>(known_ops) = cache_write
+            <span class="kw">let </span>known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(peer_id.clone(), || {
+                .entry(peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         <span class="self">self</span>.config
                             .max_node_known_ops_size
                             .try_into()
-                            .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
+                            .expect(<span class="string">&quot;max_node_known_ops_size in config must fit in u32&quot;</span>),
                     ))
-                })
-                .ok_or(()) <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
-                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                };
-            <span class="kw">for </span>prefix <span class="kw">in </span><span class="kw-2">&amp;</span>op_batch {
-                known_ops.insert(<span class="kw-2">*</span>prefix, ());
+                });
+            <span class="kw">for </span>prefix_id <span class="kw">in </span><span class="kw-2">&amp;</span>op_batch {
+                known_ops.insert(<span class="kw-2">*</span>prefix_id, ());
             }
         }
 
@@ -834,33 +845,34 @@
         </span><span class="kw">let </span>now = Instant::now();
         <span class="kw">let </span><span class="kw-2">mut </span>count_reask = <span class="number">0</span>;
         <span class="kw">for </span>op_id <span class="kw">in </span>op_batch {
-            <span class="kw">let </span>wish = <span class="kw">match </span><span class="self">self</span>.asked_operations.get(<span class="kw-2">&amp;</span>op_id) {
-                <span class="prelude-val">Some</span>(wish) =&gt; {
-                    <span class="kw">if </span>wish.<span class="number">1</span>.contains(peer_id) {
-                        <span class="kw">continue</span>; <span class="comment">// already asked to the `peer_id`
+            <span class="kw">let </span>opt_previous_ask = <span class="kw">match </span><span class="self">self</span>.asked_operations.get(<span class="kw-2">&amp;</span>op_id) {
+                <span class="prelude-val">Some</span>(previous_ask) =&gt; {
+                    <span class="kw">if </span>previous_ask.<span class="number">1</span>.contains(peer_id) {
+                        <span class="kw">continue</span>; <span class="comment">// already asked to the origin `peer_id` =&gt; ignore
                     </span>} <span class="kw">else </span>{
-                        <span class="prelude-val">Some</span>(wish) <span class="comment">// already asked but at someone else
+                        <span class="prelude-val">Some</span>(previous_ask) <span class="comment">// already asked but to someone else
                     </span>}
                 }
                 <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
             };
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(wish) = wish {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((previous_ask_time, previous_ask_peers)) = opt_previous_ask {
                 <span class="comment">// Ask now if latest ask instant &lt; now - operation_batch_proc_period
                 // otherwise add in future_set
-                </span><span class="kw">if </span>wish.<span class="number">0
-                    </span>&lt; now
-                        .checked_sub(<span class="self">self</span>.config.operation_batch_proc_period.into())
-                        .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?
-                </span>{
+                </span><span class="kw">if </span>now
+                    .checked_duration_since(<span class="kw-2">*</span>previous_ask_time)
+                    .unwrap_or_default()
+                    &gt; <span class="self">self</span>.config.operation_batch_proc_period.to_duration()
+                {
                     count_reask += <span class="number">1</span>;
                     ask_set.insert(op_id);
-                    wish.<span class="number">0 </span>= now;
-                    wish.<span class="number">1</span>.push(peer_id.clone());
+                    <span class="kw-2">*</span>previous_ask_time = now;
+                    previous_ask_peers.push(peer_id.clone());
                 } <span class="kw">else </span>{
                     future_set.insert(op_id);
                 }
             } <span class="kw">else </span>{
-                ask_set.insert(op_id);
+                <span class="comment">// the same peer announced this op for a second time, ask them immediately
+                </span>ask_set.insert(op_id);
                 <span class="self">self</span>.asked_operations
                     .insert(op_id, (now, <span class="macro">vec!</span>[peer_id.clone()]));
             }
@@ -901,9 +913,8 @@
                     <span class="bool-val">false</span>,
                 ) {
                     <span class="macro">warn!</span>(<span class="string">&quot;Failed to send AskForOperations message to peer: {}&quot;</span>, err);
-                    {
-                        <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                        cache_write.ops_known_by_peer.remove(peer_id);
+                    <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                        <span class="kw">break</span>;
                     }
                 }
             }
@@ -965,9 +976,8 @@
                 <span class="bool-val">false</span>,
             ) {
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send Operations message to peer: {}&quot;</span>, err);
-                {
-                    <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-                    cache_write.ops_known_by_peer.remove(peer_id);
+                <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                    <span class="kw">break</span>;
                 }
             }
         }

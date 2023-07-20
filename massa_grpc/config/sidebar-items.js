@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["GrpcApiConfig","GrpcConfig"]};
+window.SIDEBAR_ITEMS = {"struct":["GrpcConfig"]};

@@ -681,25 +681,6 @@
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
 <a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -744,8 +725,7 @@
     prehash::{PreHashMap, PreHashSet},
     version::Version,
 };
-<span class="kw">use </span>massa_proto_rs::massa::api::v1::private_service_client::PrivateServiceClient;
-<span class="kw">use </span>massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1::massa_service_client::MassaServiceClient;
 <span class="kw">use </span>std::net::{IpAddr, SocketAddr};
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>thiserror::Error;
@@ -772,10 +752,8 @@
     </span><span class="kw">pub </span>public: RpcClient,
     <span class="doccomment">/// private component
     </span><span class="kw">pub </span>private: RpcClient,
-    <span class="doccomment">/// grpc public client
-    </span><span class="kw">pub </span>grpc_public: <span class="prelude-ty">Option</span>&lt;PublicServiceClient&lt;tonic::transport::Channel&gt;&gt;,
-    <span class="doccomment">/// grpc private client
-    </span><span class="kw">pub </span>grpc_private: <span class="prelude-ty">Option</span>&lt;PrivateServiceClient&lt;tonic::transport::Channel&gt;&gt;,
+    <span class="doccomment">/// grpc client
+    </span><span class="kw">pub </span>grpc: <span class="prelude-ty">Option</span>&lt;MassaServiceClient&lt;tonic::transport::Channel&gt;&gt;,
 }
 
 <span class="kw">impl </span>Client {
@@ -784,37 +762,22 @@
         ip: IpAddr,
         public_port: u16,
         private_port: u16,
-        grpc_public_port: u16,
-        grpc_private_port: u16,
+        grpc_port: u16,
         http_config: <span class="kw-2">&amp;</span>HttpConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Client, ClientError&gt; {
         <span class="kw">let </span>public_socket_addr = SocketAddr::new(ip, public_port);
         <span class="kw">let </span>private_socket_addr = SocketAddr::new(ip, private_port);
-        <span class="kw">let </span>grpc_public_socket_addr = SocketAddr::new(ip, grpc_public_port);
-        <span class="kw">let </span>grpc_private_socket_addr = SocketAddr::new(ip, grpc_private_port);
+        <span class="kw">let </span>grpc_socket_addr = SocketAddr::new(ip, grpc_port);
         <span class="kw">let </span>public_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, public_socket_addr);
         <span class="kw">let </span>private_url = <span class="macro">format!</span>(<span class="string">&quot;http://{}&quot;</span>, private_socket_addr);
-        <span class="kw">let </span>grpc_public_url = <span class="macro">format!</span>(<span class="string">&quot;grpc://{}&quot;</span>, grpc_public_socket_addr);
-        <span class="kw">let </span>grpc_private_url = <span class="macro">format!</span>(<span class="string">&quot;grpc://{}&quot;</span>, grpc_private_socket_addr);
+        <span class="kw">let </span>grpc_url = <span class="macro">format!</span>(<span class="string">&quot;grpc://{}&quot;</span>, grpc_socket_addr);
 
-        <span class="comment">// try to start grpc client (public api) and connect to the server
-        </span><span class="kw">let </span>grpc_pub_client = <span class="kw">match </span>tonic::transport::Channel::from_shared(grpc_public_url)<span class="question-mark">?
+        <span class="comment">// try to start grpc client and connect to the server
+        </span><span class="kw">let </span>grpc_opts = <span class="kw">match </span>tonic::transport::Channel::from_shared(grpc_url)<span class="question-mark">?
             </span>.connect()
             .<span class="kw">await
         </span>{
-            <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(PublicServiceClient::new(channel)),
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">tracing::warn!</span>(<span class="string">&quot;unable to connect to grpc server {}&quot;</span>, e);
-                <span class="prelude-val">None
-            </span>}
-        };
-
-        <span class="comment">// try to start grpc client (private api) and connect to the server
-        </span><span class="kw">let </span>grpc_priv_client = <span class="kw">match </span>tonic::transport::Channel::from_shared(grpc_private_url)<span class="question-mark">?
-            </span>.connect()
-            .<span class="kw">await
-        </span>{
-            <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(PrivateServiceClient::new(channel)),
+            <span class="prelude-val">Ok</span>(channel) =&gt; <span class="prelude-val">Some</span>(MassaServiceClient::new(channel)),
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">tracing::warn!</span>(<span class="string">&quot;unable to connect to grpc server {}&quot;</span>, e);
                 <span class="prelude-val">None
@@ -824,8 +787,7 @@
         <span class="prelude-val">Ok</span>(Client {
             public: RpcClient::from_url(<span class="kw-2">&amp;</span>public_url, http_config).<span class="kw">await</span>,
             private: RpcClient::from_url(<span class="kw-2">&amp;</span>private_url, http_config).<span class="kw">await</span>,
-            grpc_public: grpc_pub_client,
-            grpc_private: grpc_priv_client,
+            grpc: grpc_opts,
         })
     }
 }

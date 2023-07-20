@@ -163,6 +163,12 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{
@@ -309,12 +315,16 @@
     </span><span class="kw">pub </span>last_start_period: u64,
     <span class="doccomment">/// try connection timer
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
+    <span class="doccomment">/// try connection timer same peer
+    </span><span class="kw">pub </span>try_connection_timer_same_peer: MassaTime,
     <span class="doccomment">/// Max in connections
     </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Timeout message
     </span><span class="kw">pub </span>message_timeout: MassaTime,
+    <span class="doccomment">/// Timeout for the tester operations
+    </span><span class="kw">pub </span>tester_timeout: MassaTime,
     <span class="doccomment">/// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u128,
     <span class="doccomment">/// Optional routable ip
@@ -327,5 +337,7 @@
     </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
     <span class="doccomment">/// Version
     </span><span class="kw">pub </span>version: Version,
+    <span class="doccomment">/// Cooldown before testing again an old peer
+    </span><span class="kw">pub </span>test_oldest_peer_cooldown: MassaTime,
 }
 </code></pre></div></section></main></body></html>

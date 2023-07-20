@@ -49,13 +49,10 @@
 <a href="#49" id="49">49</a>
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
-<a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, sync::Arc};
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 <span class="kw">use </span>massa_models::operation::{OperationId, OperationPrefixId};
 <span class="kw">use </span>massa_protocol_exports::PeerId;
@@ -65,16 +62,16 @@
 <span class="kw">pub struct </span>OperationCache {
     <span class="kw">pub </span>checked_operations: LruMap&lt;OperationId, ()&gt;,
     <span class="kw">pub </span>checked_operations_prefix: LruMap&lt;OperationPrefixId, ()&gt;,
-    <span class="kw">pub </span>ops_known_by_peer: LruMap&lt;PeerId, LruMap&lt;OperationPrefixId, ()&gt;&gt;,
+    <span class="kw">pub </span>ops_known_by_peer: HashMap&lt;PeerId, LruMap&lt;OperationPrefixId, ()&gt;&gt;,
     <span class="kw">pub </span>max_known_ops_by_peer: u32,
 }
 
 <span class="kw">impl </span>OperationCache {
-    <span class="kw">pub fn </span>new(max_known_ops: u32, max_known_ops_by_peer: u32, max_peers: u32) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(max_known_ops: u32, max_known_ops_by_peer: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             checked_operations: LruMap::new(ByLength::new(max_known_ops)),
             checked_operations_prefix: LruMap::new(ByLength::new(max_known_ops)),
-            ops_known_by_peer: LruMap::new(ByLength::new(max_peers)),
+            ops_known_by_peer: HashMap::new(),
             max_known_ops_by_peer,
         }
     }
@@ -85,27 +82,18 @@
             .insert(operation_id.prefix(), ());
     }
 
-    <span class="kw">pub fn </span>update_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peers_connected: HashSet&lt;PeerId&gt;) {
-        <span class="kw">let </span>peers: Vec&lt;PeerId&gt; = <span class="self">self
-            </span>.ops_known_by_peer
-            .iter()
-            .map(|(id, <span class="kw">_</span>)| id.clone())
-            .collect();
+    <span class="kw">pub fn </span>update_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peers_connected: <span class="kw-2">&amp;</span>HashSet&lt;PeerId&gt;) {
+        <span class="comment">// Remove disconnected peers from cache
+        </span><span class="self">self</span>.ops_known_by_peer
+            .retain(|peer_id, <span class="kw">_</span>| peers_connected.contains(peer_id));
 
-        <span class="comment">// Clean shared cache if peers do not exist anymore
-        </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers {
-            <span class="kw">if </span>!peers_connected.contains(<span class="kw-2">&amp;</span>peer_id) {
-                <span class="self">self</span>.ops_known_by_peer.remove(<span class="kw-2">&amp;</span>peer_id);
-            }
-        }
-
-        <span class="comment">// Add new potential peers
+        <span class="comment">// Add new connected peers to cache
         </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
-            <span class="kw">if </span><span class="self">self</span>.ops_known_by_peer.peek(<span class="kw-2">&amp;</span>peer_id).is_none() {
-                <span class="self">self</span>.ops_known_by_peer.insert(
-                    peer_id.clone(),
-                    LruMap::new(ByLength::new(<span class="self">self</span>.max_known_ops_by_peer)),
-                );
+            <span class="kw">match </span><span class="self">self</span>.ops_known_by_peer.entry(peer_id.clone()) {
+                std::collections::hash_map::Entry::Occupied(<span class="kw">_</span>) =&gt; {}
+                std::collections::hash_map::Entry::Vacant(entry) =&gt; {
+                    entry.insert(LruMap::new(ByLength::new(<span class="self">self</span>.max_known_ops_by_peer)));
+                }
             }
         }
     }

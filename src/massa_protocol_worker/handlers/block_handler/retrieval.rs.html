@@ -1508,6 +1508,15 @@
 <a href="#1508" id="1508">1508</a>
 <a href="#1509" id="1509">1509</a>
 <a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     thread::JoinHandle,
@@ -1852,6 +1861,9 @@
                     <span class="string">&quot;Error while sending reply for blocks to {}: {:?}&quot;</span>,
                     from_peer_id, err
                 );
+                <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                    <span class="kw">break</span>;
+                }
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -2322,22 +2334,19 @@
         </span><span class="kw">let </span>operation_ids_set: PreHashSet&lt;OperationId&gt; = operation_ids.iter().cloned().collect();
 
         <span class="comment">// add to known ops
-        </span><span class="lifetime">&#39;write_cache</span>: {
+        </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.operation_cache.write();
-            <span class="kw">let </span><span class="prelude-val">Ok</span>(known_ops) = cache_write
+            <span class="kw">let </span>known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(from_peer_id.clone(), || {
+                .entry(from_peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         <span class="self">self</span>.config
                             .max_node_known_ops_size
                             .try_into()
-                            .expect(<span class="string">&quot;max_node_known_ops_size in config should be &gt; 0&quot;</span>),
+                            .expect(<span class="string">&quot;max_node_known_ops_size in config must fit in u32&quot;</span>),
                     ))
-                })
-                .ok_or(()) <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
-                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                };
+                });
             <span class="kw">for </span>op_id <span class="kw">in </span>operation_ids_set.iter() {
                 known_ops.insert(op_id.prefix(), ());
             }
@@ -2681,28 +2690,27 @@
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         )<span class="question-mark">?</span>;
 
-        <span class="lifetime">&#39;write_cache</span>: {
+        {
             <span class="comment">// add to checked operations
             </span><span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.operation_cache.write();
-            <span class="kw">for </span>op_id <span class="kw">in </span>new_operations.keys().copied() {
+
+            <span class="comment">// add checked operations
+            </span><span class="kw">for </span>op_id <span class="kw">in </span>new_operations.keys().copied() {
                 cache_write.insert_checked_operation(op_id);
             }
 
             <span class="comment">// add to known ops
-            </span><span class="kw">let </span><span class="prelude-val">Ok</span>(known_ops) = cache_write
+            </span><span class="kw">let </span>known_ops = cache_write
                 .ops_known_by_peer
-                .get_or_insert(source_peer_id.clone(), || {
+                .entry(source_peer_id.clone())
+                .or_insert_with(|| {
                     LruMap::new(ByLength::new(
                         <span class="self">self</span>.config
                             .max_node_known_ops_size
                             .try_into()
                             .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
                     ))
-                })
-                .ok_or(()) <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
-                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                };
+                });
             <span class="kw">for </span>id <span class="kw">in </span>all_received_ids {
                 known_ops.insert(id.prefix(), ());
             }
@@ -2955,6 +2963,16 @@
                             <span class="string">&quot;Failed to send AskForBlocks to peer {} err: {}&quot;</span>,
                             peer_id, err
                         );
+
+                        <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                            <span class="comment">// remove from active block requests
+                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(asked_blocks) = <span class="self">self</span>.asked_blocks.get_mut(peer_id) {
+                                <span class="kw">for </span>(hash, <span class="kw">_</span>) <span class="kw">in </span>sub_list {
+                                    asked_blocks.remove(hash);
+                                }
+                            }
+                            <span class="kw">break</span>;
+                        }
                     }
                 }
             }
