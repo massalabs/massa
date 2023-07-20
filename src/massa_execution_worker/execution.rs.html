@@ -1860,6 +1860,9 @@
 <a href="#1860" id="1860">1860</a>
 <a href="#1861" id="1861">1861</a>
 <a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
+<a href="#1864" id="1864">1864</a>
+<a href="#1865" id="1865">1865</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2123,6 +2126,9 @@
         );
         <span class="self">self</span>.massa_metrics
             .set_active_history(<span class="self">self</span>.active_history.read().<span class="number">0</span>.len());
+
+        <span class="self">self</span>.massa_metrics
+            .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.<span class="number">0</span>.len());
 
         <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
         </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {

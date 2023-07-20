@@ -774,6 +774,21 @@
 <a href="#774" id="774">774</a>
 <a href="#775" id="775">775</a>
 <a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -867,6 +882,9 @@
     </span>endorsements_pool: IntGauge,
     <span class="doccomment">/// number of elements in the denunciation pool
     </span>denunciations_pool: IntGauge,
+
+    <span class="comment">// number of autonomous SC messages executed as final
+    </span>sc_messages_final: IntCounter,
 
     <span class="doccomment">/// number of times we successfully bootstrapped someone
     </span>bootstrap_success: IntCounter,
@@ -1011,6 +1029,12 @@
         <span class="kw">let </span>denunciations_pool = IntGauge::new(
             <span class="string">&quot;denunciations_pool&quot;</span>,
             <span class="string">&quot;number of elements in the denunciation pool&quot;</span>,
+        )
+        .unwrap();
+
+        <span class="kw">let </span>sc_messages_final = IntCounter::new(
+            <span class="string">&quot;sc_messages_final&quot;</span>,
+            <span class="string">&quot;number of autonomous SC messages executed as final&quot;</span>,
         )
         .unwrap();
 
@@ -1200,6 +1224,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(denunciations_pool.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(protocol_tester_success.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(protocol_tester_failed.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(sc_messages_final.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -1223,6 +1248,7 @@
                 operations_pool,
                 endorsements_pool,
                 denunciations_pool,
+                sc_messages_final,
                 bootstrap_success,
                 bootstrap_failed,
                 protocol_tester_success,
@@ -1423,6 +1449,10 @@
 
     <span class="kw">pub fn </span>set_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, nb: usize) {
         <span class="self">self</span>.rolls.set(nb <span class="kw">as </span>i64);
+    }
+
+    <span class="kw">pub fn </span>inc_sc_messages_final_by(<span class="kw-2">&amp;</span><span class="self">self</span>, diff: usize) {
+        <span class="self">self</span>.sc_messages_final.inc_by(diff <span class="kw">as </span>u64);
     }
 
     <span class="doccomment">/// Update the bandwidth metrics for all peers
