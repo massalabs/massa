@@ -50,7 +50,7 @@ lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
     /// In sandbox mode, the value depends on starting time and on the --restart-from-snapshot-at-period argument in CLI,
     /// so that the network starts or restarts 10 seconds after launch
-    pub static ref GENESIS_TIMESTAMP: MassaTime = 1689844121767.into();
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1689844577521.into();
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;

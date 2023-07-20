@@ -27,7 +27,7 @@ enable_cors = false
 enable_health = true
 enable_reflection = true
 enable_mtls = false
-bind = "127.0.0.1:33037"
+bind = "0.0.0.0:33037"
 accept_compressed = "Gzip"
 send_compressed = "Gzip"
 max_decoding_message_size = 52428800
@@ -44,13 +44,14 @@ max_operation_ids_per_request = 250
 server_certificate_path = "config/tls/server.pem"
 server_private_key_path = "config/tls/server.key"
 client_certificate_authority_root_path = "config/tls/client_ca.pem"
+enable = true
 
 [execution]
 max_final_events = 10000
 readonly_queue_length = 10
 cursor_delay = 2000
 stats_time_window_duration = 60000
-max_read_only_gas = 4294967295
+max_read_only_gas = 4294967296
 abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
 wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
 initial_vesting_path = "base_config/initial_vesting.json"
@@ -109,6 +110,7 @@ thread_tester_count = 25
 max_in_connections = 100
 
 [network]
+routable_ip = "37.187.156.118"
 
 [metrics]
 enabled = true
@@ -152,7 +154,7 @@ initial_rolls_path = "base_config/initial_rolls.json"
 [factory]
 initial_delay = 100
 staking_wallet_path = "config/staking_wallet.dat"
-stop_production_when_zero_connections = true
+stop_production_when_zero_connections = false
 
 [versioning]
 mip_stats_warn_announced_version = 30
@@ -164,7 +166,13 @@ max_in_connections = 15
 allow_local_peers = false
 
 [protocol.peers_categories.Bootstrap]
-target_out_connections = 1
+target_out_connections = 2
 max_in_connections_per_ip = 1
-max_in_connections = 1
+max_in_connections = 2
+allow_local_peers = false
+
+[protocol.peers_categories.Standard]
+target_out_connections = 3
+max_in_connections_per_ip = 1
+max_in_connections = 10
 allow_local_peers = false
