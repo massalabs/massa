@@ -8,7 +8,6 @@ use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
-use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use peernet::peer::PeerConnectionType;
@@ -18,6 +17,7 @@ use std::{collections::HashMap, net::IpAddr};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::{info, warn};
 
+use crate::handlers::peer_handler::models::ConnectionMetadata;
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
     worker::ProtocolChannels,
@@ -258,7 +258,9 @@ pub(crate) fn start_connectivity_thread(
                         let mut slot_default_category = config.default_category_info.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                             peer.1 == PeerConnectionType::OUT && peer.2.is_none()
                         }).count());
-                        let mut addresses_to_connect: Vec<SocketAddr> = Vec::new();
+
+                        // Get all the addresses we can cannot to, without any filter or priorisation done yet
+                        let mut addresses_can_connect  = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
                             for (_, peer_id) in &peer_db_read.index_by_newest {
@@ -284,9 +286,13 @@ pub(crate) fn start_connectivity_thread(
                                             continue;
                                         }
 
+                                        let connection_metadata = match peer_db_read.try_connect_history.get(addr) {
+                                            Some(e) => e.clone(),
+                                            None => ConnectionMetadata::default(),
+                                        };
                                         // check if the peer last connect attempt has not been too recent
-                                        if let Some(last_try) = peer_db_read.try_connect_history.get(addr) {
-                                            let last_try = last_try.estimate_instant().expect("Time went backward");
+                                        if let ConnectionMetadata { last_try: Some(lt), .. } = connection_metadata {
+                                            let last_try = lt.estimate_instant().expect("Time went backward");
                                             if last_try.elapsed() < config.try_connection_timer_same_peer.to_duration() {
                                                 continue;
                                             }
@@ -310,35 +316,58 @@ pub(crate) fn start_connectivity_thread(
                                             continue;
                                         }
 
-                                        if let Some(category) = category_found {
-                                            for (name, category_infos) in &mut slots_per_category {
-                                                if name == category && category_infos > &mut 0 {
-                                                        addresses_to_connect.push(*addr);
-                                                        *category_infos -= 1;
-                                                }
-                                            }
-                                        } else if slot_default_category > 0 &&  !addresses_to_connect.contains(addr) {
-                                            addresses_to_connect.push(*addr);
-                                            slot_default_category -= 1;
-                                        }
+                                        addresses_can_connect.push((*addr, connection_metadata, category_found));
+                                    }
+                                }
+                            }
+                        }
 
-                                            // IF all slots are filled, stop
-                                        if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
-                                            break;
+                        // Sort addresses using the metadata
+                        addresses_can_connect.sort_by(|a, b| a.1.cmp(&b.1));
+
+                        let mut addresses_to_connect = vec![];
+                        for (addr, _, category) in addresses_can_connect.iter() {
+                            match category {
+                                Some(cat) => {
+                                    for (name, category_infos) in &mut slots_per_category {
+                                        if name == *cat && category_infos > &mut 0 {
+                                            addresses_to_connect.push(*addr);
+                                            *category_infos -= 1;
                                         }
                                     }
                                 }
+                                None if !addresses_to_connect.contains(&addr) => {
+                                    slot_default_category -= 1;
+                                    addresses_to_connect.push(*addr);
+                                }
+                                _ => continue,
+                            }
+
+                            // IF all slots are filled, stop
+                            if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
+                                break;
                             }
                         }
 
                         for addr in addresses_to_connect {
                             info!("Trying to connect to addr {}", addr);
 
-                            peer_db.write().try_connect_history.insert(addr, MassaTime::now().unwrap());
+                            let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
+                            {
+                                let mut peer_db_write = peer_db.write();
+                                let addr_conn_history = peer_db_write.try_connect_history.remove(&addr);    // Remove it to own it, then re-insert it modified
 
-                            // We only manage TCP for now
-                            if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
-                                warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+                                let new_addr_conn_history = match (addr_conn_history, &conn_res) {
+                                    (Some(md), Ok(_)) => md.new_success(),
+                                    (None, Ok(_)) => ConnectionMetadata::default().new_success(),
+                                    (Some(md), Err(_)) => md.new_failure(),
+                                    (None, Err(_)) => ConnectionMetadata::default().new_failure(),
+                                };
+
+                                peer_db_write.try_connect_history.insert(addr, new_addr_conn_history);
+                                if let Err(err) = conn_res {
+                                    warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+                                }
                             }
                         }
                     }

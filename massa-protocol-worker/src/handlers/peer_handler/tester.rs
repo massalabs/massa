@@ -23,7 +23,7 @@ use tracing::info;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
-    models::PeerInfo,
+    models::{PeerInfo, ConnectionMetadata},
     SharedPeerDB,
 };
 use crate::wrap_network::ActiveConnectionsTrait;
@@ -233,20 +233,30 @@ impl Tester {
                 }
             };
 
-            // if handshake failed, we set the peer state to HandshakeFailed
-            if res.is_err() {
+            {
                 let mut peer_db_write = peer_db.write();
-                peer_db_write
-                    .peers
-                    .entry(peer_id)
-                    .and_modify(|info| {
-                        info.state = super::PeerState::HandshakeFailed;
-                    })
-                    .or_insert(PeerInfo {
-                        last_announce: None,
-                        state: super::PeerState::HandshakeFailed,
-                    });
+                // if handshake failed, we set the peer state to HandshakeFailed
+                if res.is_err() {
+                    peer_db_write
+                        .peers
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            info.state = super::PeerState::HandshakeFailed;
+                        })
+                        .or_insert(PeerInfo {
+                            last_announce: None,
+                            state: super::PeerState::HandshakeFailed,
+                        });
+                } else {
+                    let new_md = if let Some(md) = peer_db_write.try_connect_history.remove(&addr) {
+                        md.new_try()
+                    } else {
+                        ConnectionMetadata::default().new_try()
+                    };
+                    peer_db_write.try_connect_history.insert(addr, new_md);
+                }
             }
+
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
                 tracing::log::error!("Failed to shutdown socket: {}", e);
             }

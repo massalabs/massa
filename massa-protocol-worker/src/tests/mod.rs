@@ -15,6 +15,7 @@ use tempfile::NamedTempFile;
 
 use crate::{create_protocol_controller, start_protocol_controller};
 
+mod peer_priorization;
 mod ban_nodes_scenarios;
 mod block_scenarios;
 mod cache_scenarios;
