@@ -28,6 +28,7 @@ use massa_final_state::{
     FinalState, FinalStateConfig, StateChanges,
 };
 use massa_ledger_exports::LedgerConfig;
+use massa_metrics::MassaMetrics;
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
@@ -179,6 +180,13 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         bootstrap_config.clone(),
         keypair.clone(),
         Version::from_str("TEST.1.10").unwrap(),
+        MassaMetrics::new(
+            false,
+            "0.0.0.0:31248".parse().unwrap(),
+            thread_count,
+            Duration::from_secs(5),
+        )
+        .0,
     )
     .unwrap()
 }
@@ -430,6 +438,13 @@ fn test_bootstrap_server() {
                 bootstrap_config.clone(),
                 keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
+                MassaMetrics::new(
+                    false,
+                    "0.0.0.0:31248".parse().unwrap(),
+                    thread_count,
+                    Duration::from_secs(5),
+                )
+                .0,
             )
             .unwrap()
         })
@@ -684,6 +699,13 @@ fn test_bootstrap_accept_err() {
                 bootstrap_config.clone(),
                 keypair.clone(),
                 Version::from_str("TEST.1.10").unwrap(),
+                MassaMetrics::new(
+                    false,
+                    "0.0.0.0:31248".parse().unwrap(),
+                    thread_count,
+                    Duration::from_secs(5),
+                )
+                .0,
             )
             .unwrap()
         })
