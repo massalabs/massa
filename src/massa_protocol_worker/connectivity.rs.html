@@ -329,9 +329,6 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -578,9 +575,6 @@
                         <span class="kw">let </span>peer_db_read = peer_db.read();
                         massa_metrics.set_known_peers(peer_db_read.peers.len());
                         massa_metrics.set_banned_peers(peer_db_read.peers.iter().filter(|(_id, info)| info.state == PeerState::Banned).count());
-                        massa_metrics.set_operations_pool(pool_controller.get_operation_count());
-                        massa_metrics.set_endorsements_pool(pool_controller.get_endorsement_count());
-                        massa_metrics.set_denunciations_pool(pool_controller.get_denunciation_count());
                     },
                     recv(tick_try_connect) -&gt; <span class="kw">_ </span>=&gt; {
                         <span class="kw">let </span>active_conn = network_controller.get_active_connections();

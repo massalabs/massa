@@ -117,11 +117,20 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{address::Address, slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
+<span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>tracing::info;
 <span class="comment">// use std::time::Duration;
@@ -151,6 +160,7 @@
     </span><span class="kw">pub fn </span>run(
         tick_delay: std::time::Duration,
         execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
+        pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
         massa_metrics: MassaMetrics,
         config: (u8, MassaTime, MassaTime, u64, u64),
     ) -&gt; MassaSurveyStopper {
@@ -217,6 +227,12 @@
                             massa_metrics.set_stakers(staker_vec.len());
                             <span class="kw">let </span>rolls_count = staker_vec.iter().map(|(<span class="kw">_</span>, r)| <span class="kw-2">*</span>r).sum::&lt;u64&gt;();
                             massa_metrics.set_rolls(rolls_count <span class="kw">as </span>usize);
+                        }
+
+                        {
+                            massa_metrics.set_operations_pool(pool_controller.get_operation_count());
+                            massa_metrics.set_endorsements_pool(pool_controller.get_endorsement_count());
+                            massa_metrics.set_denunciations_pool(pool_controller.get_denunciation_count());
                         }
                     }) {
                     <span class="prelude-val">Ok</span>(handle) =&gt; MassaSurveyStopper { handle: <span class="prelude-val">Some</span>(handle) },
