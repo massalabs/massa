@@ -1,26 +1,20 @@
-[
-  {
-    "advertised": true,
-    "banned": false,
-    "peer_type": "Bootstrap",
-    "ip": "149.202.84.7",
-    "last_alive": null,
-    "last_failure": null
+{
+  "P1kKfgrCveVnosUkxTzaBw5cf9f2cbTvK3R5Ssb2Pf76au8xwmH": {
+    "listeners": {
+      "149.202.84.7:31244": "Tcp"
+    },
+    "category": "Bootstrap"
   },
-  {
-    "advertised": true,
-    "banned": false,
-    "peer_type": "Bootstrap",
-    "ip": "149.202.84.39",
-    "last_alive": null,
-    "last_failure": null
+  "P12sNdL7YwSawpnJrk9XCWDjKbgfNamAobp62AX5qfkgpBkGh2wC": {
+    "listeners": {
+      "149.202.84.39:31244": "Tcp"
+    },
+    "category": "Bootstrap"
   },
-  {
-    "advertised": true,
-    "banned": false,
-    "peer_type": "Bootstrap",
-    "ip": "37.187.156.118",
-    "last_alive": null,
-    "last_failure": null
+  "P1NnuSW48GKGaYZamAVKXfXbbnt3StxWoHpYtBZSJvY9e8U1BTC": {
+    "listeners": {
+      "37.187.156.118:31244": "Tcp"
+    },
+    "category": "Bootstrap"
   }
-]
+}
