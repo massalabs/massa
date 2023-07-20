@@ -286,10 +286,8 @@ pub(crate) fn start_connectivity_thread(
                                             continue;
                                         }
 
-                                        let connection_metadata = match peer_db_read.try_connect_history.get(addr) {
-                                            Some(e) => e.clone(),
-                                            None => ConnectionMetadata::default(),
-                                        };
+                                        let connection_metadata = peer_db_read.try_connect_history.get(addr).cloned().unwrap_or(ConnectionMetadata::default());
+
                                         // check if the peer last connect attempt has not been too recent
                                         if let ConnectionMetadata { last_try: Some(lt), .. } = connection_metadata {
                                             let last_try = lt.estimate_instant().expect("Time went backward");

@@ -2,8 +2,6 @@
 // After sorting the vec of samples, the priority number has to go from increasingly
 // If numbers doesn't increase for all vec, the test fails
 
-// TODO IMPORTANT    Add unit test to validate ConnectionMetadata sorting algorithm
-
 use massa_time::MassaTime;
 use rand::thread_rng;
 use rand::seq::SliceRandom;
