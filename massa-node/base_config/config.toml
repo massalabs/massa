@@ -54,6 +54,10 @@
         enable_tls = false
         # whether to enable mTLS (requires `enable_tls` to be true)
         enable_mtls = false
+        # Whether to generate a self-signed certificate if none is provided
+        generate_self_signed_certificates = false
+        # whether to use the same certificate_authority for client and server certificates(requires `generate_self_signed_certificates` to be true)
+        use_same_certificate_authority_for_client = true
         # bind for the Massa gRPC API
         bind = "0.0.0.0:33037"
         # which compression encodings does the server accept for requests
@@ -102,9 +106,13 @@
         # whether to enable gRPC reflection(introspection)
         enable_reflection = true
         # whether to enable TLS
-        enable_tls = false
+        enable_tls = true
         # whether to enable mTLS (requires `enable_tls` to be true)
-        enable_mtls = false
+        enable_mtls = true
+        # Whether to generate a self-signed certificate if none is provided
+        generate_self_signed_certificates = true
+        # whether to use the same certificate_authority for client and server certificates(requires `generate_self_signed_certificates` to be true)
+        use_same_certificate_authority_for_client = true
         # bind for the Massa gRPC API
         bind = "127.0.0.1:33038"
         # which compression encodings does the server accept for requests

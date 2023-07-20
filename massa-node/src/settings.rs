@@ -287,6 +287,10 @@ pub struct GrpcSettings {
     pub enable_tls: bool,
     /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
+    /// whether to generate a self-signed certificate if none is provided
+    pub generate_self_signed_certificates: bool,
+    /// whether to use the same certificate_authority for client and server certificates(requires `generate_self_signed_certificates` to be true)
+    pub use_same_certificate_authority_for_client: bool,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,
     /// which compression encodings does the server accept for requests

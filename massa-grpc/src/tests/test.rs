@@ -66,6 +66,8 @@ async fn test_start_grpc_server() {
         enable_reflection: true,
         enable_tls: false,
         enable_mtls: false,
+        generate_self_signed_certificates: false,
+        use_same_certificate_authority_for_client: true,
         bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8888),
         accept_compressed: None,
         send_compressed: None,

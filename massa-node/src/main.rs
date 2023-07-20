@@ -1049,6 +1049,9 @@ fn configure_grpc(
         enable_reflection: settings.enable_reflection,
         enable_tls: settings.enable_tls,
         enable_mtls: settings.enable_mtls,
+        generate_self_signed_certificates: settings.generate_self_signed_certificates,
+        use_same_certificate_authority_for_client: settings
+            .use_same_certificate_authority_for_client,
         bind: settings.bind,
         accept_compressed: settings.accept_compressed.clone(),
         send_compressed: settings.send_compressed.clone(),

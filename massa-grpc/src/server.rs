@@ -35,7 +35,7 @@ use openssl::x509::extension::{
     AuthorityKeyIdentifier, BasicConstraints, KeyUsage, SubjectAlternativeName,
     SubjectKeyIdentifier,
 };
-use openssl::x509::{X509NameBuilder, X509Ref, X509Req, X509ReqBuilder, X509VerifyResult, X509};
+use openssl::x509::{X509NameBuilder, X509Ref, X509Req, X509ReqBuilder, X509};
 
 use tokio::sync::oneshot;
 use tonic::body::BoxBody;
@@ -204,6 +204,39 @@ where
         .max_frame_size(config.max_frame_size);
 
     if config.enable_tls {
+        if config.generate_self_signed_certificates {
+            let (ca_cert, ca_key_pair) = mk_ca_cert().expect("error, failed to generate CA cert");
+            let (cert, key_pair) =
+                mk_ca_signed_cert(&ca_cert, &ca_key_pair).expect("error, failed to generate cert");
+
+            // Convert the X509 certificates to PEM-encoded bytes
+            let cert_pem_bytes = cert.to_pem().expect("Error: Failed to convert cert to PEM");
+            let private_key_pem_bytes = key_pair
+                .private_key_to_pem_pkcs8()
+                .expect("Error: Failed to convert private key to PEM");
+
+            if config.use_same_certificate_authority_for_client {
+                let ca_cert_pem_bytes = ca_cert
+                    .to_pem()
+                    .expect("Error: Failed to convert CA cert to PEM");
+
+                std::fs::write(
+                    config.client_certificate_authority_root_path.clone(),
+                    ca_cert_pem_bytes,
+                )
+                .expect("error, failed to write client certificate authority root");
+            }
+
+            std::fs::write(config.server_certificate_path.clone(), cert_pem_bytes)
+                .expect("error, failed to write server certificat");
+
+            std::fs::write(
+                config.server_private_key_path.clone(),
+                private_key_pem_bytes,
+            )
+            .expect("error, failed to write server private key");
+        }
+
         let cert = std::fs::read_to_string(config.server_certificate_path.clone())
             .expect("error, failed to read server certificat");
         let key = std::fs::read_to_string(config.server_private_key_path.clone())
