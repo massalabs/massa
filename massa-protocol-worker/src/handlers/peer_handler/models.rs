@@ -4,6 +4,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use rand::seq::SliceRandom;
+use rand::{thread_rng, Rng};
 use std::cmp::Ordering;
 use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
@@ -59,9 +60,12 @@ impl PartialOrd for ConnectionMetadata {
         if let Some(res) = try_check {
             Some(res)
         } else {
-            Some(Ordering::Equal)
+            if thread_rng().gen_bool(0.5) {
+                Some(Ordering::Greater)
+            } else {
+                Some(Ordering::Less)
+            }
         }
-        // TODO    If nothing is able to prioritize one over the other, random pick
     }
 }
 

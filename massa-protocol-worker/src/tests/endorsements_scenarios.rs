@@ -140,9 +140,7 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Endorsement(EndorsementMessage::Endorsements(vec![
-                        endorsement
-                    ])),
+                    Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement])),
                 )
                 .unwrap();
 
