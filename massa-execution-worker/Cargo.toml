@@ -40,6 +40,7 @@ massa_hash = {workspace = true}
 massa-sc-runtime = {workspace = true}
 massa_metrics = {workspace = true}
 massa_module_cache = {workspace = true}
+massa_serialization = {workspace = true}
 massa_signature = {workspace = true}
 massa_time = {workspace = true}
 massa_ledger_exports = {workspace = true}

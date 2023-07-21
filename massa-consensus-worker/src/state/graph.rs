@@ -5,7 +5,13 @@ use massa_consensus_exports::{
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
-use massa_models::{block_id::BlockId, clique::Clique, prehash::PreHashSet, slot::Slot};
+use massa_models::{
+    block_id::{BlockId, BlockIdSerializer},
+    clique::Clique,
+    prehash::PreHashSet,
+    slot::Slot,
+};
+use massa_serialization::Serializer;
 
 use super::ConsensusState;
 
@@ -49,6 +55,7 @@ impl ConsensusState {
         &mut self,
         add_block_id: &BlockId,
     ) -> Result<usize, ConsensusError> {
+        let block_id_serializer = BlockIdSerializer::new();
         let mut blockclique_i = 0usize;
         let mut max_clique_fitness = (0u64, num::BigInt::default());
         for (clique_i, clique) in self.max_cliques.iter_mut().enumerate() {
@@ -64,7 +71,11 @@ impl ConsensusState {
                     .fitness
                     .checked_add(fitness)
                     .ok_or(ConsensusError::FitnessOverflow)?;
-                sum_hash -= num::BigInt::from_bytes_be(num::bigint::Sign::Plus, block_h.to_bytes());
+                let mut bytes = Vec::new();
+                block_id_serializer
+                    .serialize(block_h, &mut bytes)
+                    .map_err(|err| ConsensusError::SerializationError(err.to_string()))?;
+                sum_hash -= num::BigInt::from_bytes_be(num::bigint::Sign::Plus, &bytes);
             }
             let cur_fit = (clique.fitness, sum_hash);
             if cur_fit > max_clique_fitness {

@@ -15,6 +15,7 @@ tracing = {workspace = true}
 massa_channel = {workspace = true}
 massa_models = {workspace = true}
 massa_factory_exports = {workspace = true}
+massa_serialization = {workspace = true}
 massa_signature = {workspace = true}
 massa_storage = {workspace = true}
 massa_time = {workspace = true}

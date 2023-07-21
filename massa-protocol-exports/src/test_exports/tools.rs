@@ -2,7 +2,7 @@
 
 use massa_hash::Hash;
 use massa_models::endorsement::EndorsementSerializer;
-use massa_models::operation::OperationSerializer;
+use massa_models::operation::{OperationIdSerializer, OperationSerializer};
 use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
@@ -14,6 +14,7 @@ use massa_models::{
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
 };
+use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 
 /// Creates a block for use in protocol,
@@ -26,8 +27,8 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
             announced_version: None,
             slot: Slot::new(1, 0),
             parents: vec![
-                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
@@ -59,9 +60,14 @@ pub fn create_block_with_operations(
     slot: Slot,
     operations: Vec<SecureShareOperation>,
 ) -> SecureShareBlock {
+    let operation_id_serializer = OperationIdSerializer::new();
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.id.to_bytes().to_vec()].concat()
+            let mut bytes = Vec::new();
+            operation_id_serializer
+                .serialize(&v.id, &mut bytes)
+                .unwrap();
+            [acc, bytes].concat()
         })[..],
     );
     let header = BlockHeader::new_verifiable(
@@ -70,8 +76,8 @@ pub fn create_block_with_operations(
             announced_version: None,
             slot,
             parents: vec![
-                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root,
             endorsements: Vec::new(),
@@ -110,8 +116,8 @@ pub fn create_block_with_endorsements(
             announced_version: None,
             slot,
             parents: vec![
-                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
@@ -141,7 +147,7 @@ pub fn create_endorsement() -> SecureShareEndorsement {
     let content = Endorsement {
         slot: Slot::new(10, 1),
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from(&[])),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[])),
     };
     Endorsement::new_verifiable(content, EndorsementSerializer::new(), &keypair).unwrap()
 }

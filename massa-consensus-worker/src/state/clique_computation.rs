@@ -85,9 +85,7 @@ mod tests {
             let mut gi_head = PreHashMap::default();
             for i in 0..size {
                 gi_head.insert(
-                    BlockId::from_bytes(
-                        massa_hash::Hash::compute_from(&i.to_be_bytes()).to_bytes(),
-                    ),
+                    BlockId::generate_from_hash(massa_hash::Hash::compute_from(&i.to_be_bytes())),
                     PreHashSet::default(),
                 );
             }
@@ -97,12 +95,12 @@ mod tests {
                     let is_compatible = rng.gen_bool(0.5);
 
                     if !is_compatible {
-                        let i_id = BlockId::from_bytes(
-                            massa_hash::Hash::compute_from(&i.to_be_bytes()).to_bytes(),
-                        );
-                        let j_id = BlockId::from_bytes(
-                            massa_hash::Hash::compute_from(&j.to_be_bytes()).to_bytes(),
-                        );
+                        let i_id = BlockId::generate_from_hash(massa_hash::Hash::compute_from(
+                            &i.to_be_bytes(),
+                        ));
+                        let j_id = BlockId::generate_from_hash(massa_hash::Hash::compute_from(
+                            &j.to_be_bytes(),
+                        ));
                         // Add the incompatibility relationship to gi_head
                         gi_head.entry(i_id).or_default().insert(j_id);
                         gi_head.entry(j_id).or_default().insert(i_id);
