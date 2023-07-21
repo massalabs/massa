@@ -23,6 +23,7 @@ mod propagation;
 mod retrieval;
 
 pub(crate) use messages::{EndorsementMessage, EndorsementMessageSerializer};
+pub(crate) use retrieval::note_endorsements_from_peer;
 
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 
@@ -64,11 +65,16 @@ impl EndorsementHandler {
             pool_controller,
             config.clone(),
             storage.clone_without_refs(),
-            massa_metrics,
+            massa_metrics.clone(),
         );
 
-        let endorsement_propagation_thread =
-            start_propagation_thread(local_receiver, cache, config, active_connections);
+        let endorsement_propagation_thread = start_propagation_thread(
+            local_receiver,
+            cache,
+            config,
+            active_connections,
+            massa_metrics,
+        );
         Self {
             endorsement_retrieval_thread: Some((
                 sender_retrieval_ext,

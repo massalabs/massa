@@ -9,6 +9,7 @@ use crate::{
         endorsement_handler::{
             cache::SharedEndorsementCache,
             commands_propagation::EndorsementHandlerPropagationCommand,
+            note_endorsements_from_peer,
         },
         operation_handler::{
             cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
@@ -16,7 +17,6 @@ use crate::{
         peer_handler::models::{PeerManagementCmd, PeerMessageTuple},
     },
     messages::{Message, MessagesSerializer},
-    sig_verifier::verify_sigs_batch,
     wrap_network::ActiveConnectionsTrait,
 };
 use crossbeam::{
@@ -31,9 +31,8 @@ use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
     block_id::BlockId,
-    endorsement::SecureShareEndorsement,
     operation::{OperationId, SecureShareOperation},
-    prehash::{CapacityAllocator, PreHashMap, PreHashSet},
+    prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShare,
     timeslots::get_block_slot_timestamp,
 };
@@ -43,11 +42,10 @@ use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{ProtocolConfig, ProtocolError};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_storage::Storage;
-use massa_time::{MassaTime, TimeError};
+use massa_time::TimeError;
 use massa_versioning::versioning::MipStore;
 use rand::thread_rng;
 use rand::{seq::SliceRandom, Rng};
-use schnellru::{ByLength, LruMap};
 use tracing::{debug, info, warn};
 
 use super::{
@@ -398,7 +396,7 @@ impl RetrievalThread {
                     "peer {} sent us critically incorrect header: {}",
                     from_peer_id, err
                 );
-                if let Err(err) = self.ban_node(&from_peer_id) {
+                if let Err(err) = self.ban_peer(&from_peer_id) {
                     warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
                 }
                 return;
@@ -537,9 +535,16 @@ impl RetrievalThread {
         }
 
         // check endorsements
-        if let Err(err) =
-            self.note_endorsements_from_peer(header.content.endorsements.clone(), from_peer_id)
-        {
+        if let Err(err) = note_endorsements_from_peer(
+            header.content.endorsements.clone(),
+            from_peer_id,
+            &self.endorsement_cache,
+            &self.selector_controller,
+            &self.storage,
+            &self.config,
+            &self.sender_propagation_endorsements,
+            &self.pool_controller,
+        ) {
             return Err(ProtocolError::InvalidBlock(format!(
                 "invalid endorsements: {}",
                 err
@@ -610,7 +615,7 @@ impl RetrievalThread {
     }
 
     /// send a ban peer command to the peer handler
-    fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
+    fn ban_peer(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
@@ -624,156 +629,6 @@ impl RetrievalThread {
                 asked_blocks.remove(remove_h);
             }
         }
-    }
-
-    /// Note endorsements coming from a given node,
-    /// and propagate them when they were received outside of a header.
-    ///
-    /// Caches knowledge of valid ones.
-    ///
-    /// Does not ban if the endorsement is invalid
-    ///
-    /// Checks performed:
-    /// - Valid signature.
-    pub(crate) fn note_endorsements_from_peer(
-        &mut self,
-        endorsements: Vec<SecureShareEndorsement>,
-        from_peer_id: &PeerId,
-    ) -> Result<(), ProtocolError> {
-        todo_refactor_endorsmeent_system_and_align_this(); // SHARE SAME FUNC
-        massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": from_peer_id, "endorsements": endorsements});
-        let length = endorsements.len();
-        let mut new_endorsements = PreHashMap::with_capacity(length);
-        let mut endorsement_ids = PreHashSet::with_capacity(length);
-        for endorsement in endorsements.into_iter() {
-            let endorsement_id = endorsement.id;
-            endorsement_ids.insert(endorsement_id);
-            // check endorsement signature if not already checked
-            {
-                let read_cache = self.endorsement_cache.read();
-                if read_cache
-                    .checked_endorsements
-                    .peek(&endorsement_id)
-                    .is_none()
-                {
-                    new_endorsements.insert(endorsement_id, endorsement);
-                }
-            }
-        }
-
-        // Batch signature verification
-        // optimized signature verification
-        verify_sigs_batch(
-            &new_endorsements
-                .values()
-                .map(|endorsement| {
-                    (
-                        endorsement.compute_signed_hash(),
-                        endorsement.signature,
-                        endorsement.content_creator_pub_key,
-                    )
-                })
-                .collect::<Vec<_>>(),
-        )?;
-
-        // Check PoS draws
-        for endorsement in new_endorsements.values() {
-            let selection = self
-                .selector_controller
-                .get_selection(endorsement.content.slot)?;
-            let Some(address) = selection.endorsements.get(endorsement.content.index as usize) else {
-                return Err(ProtocolError::GeneralProtocolError(
-                    format!(
-                        "No selection on slot {} for index {}",
-                        endorsement.content.slot, endorsement.content.index
-                    )
-                ))
-            };
-            if address != &endorsement.content_creator_address {
-                return Err(ProtocolError::GeneralProtocolError(format!(
-                    "Invalid endorsement: expected address {}, got {}",
-                    address, endorsement.content_creator_address
-                )));
-            }
-        }
-
-        'write_cache: {
-            let mut cache_write = self.endorsement_cache.write();
-            // add to verified signature cache
-            for endorsement_id in endorsement_ids.iter() {
-                cache_write.checked_endorsements.insert(*endorsement_id, ());
-            }
-            // add to known endorsements for source node.
-            let Ok(endorsements) = cache_write
-                .endorsements_known_by_peer
-                .get_or_insert(from_peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        self.config
-                            .max_node_known_endorsements_size
-                            .try_into()
-                            .expect("max_node_known_endorsements_size in config should be > 0"),
-                    ))
-                })
-                .ok_or(()) else {
-                    warn!("endorsements_known_by_peer limit reached");
-                    break 'write_cache;
-                };
-            for endorsement_id in endorsement_ids.iter() {
-                endorsements.insert(*endorsement_id, ());
-            }
-        }
-
-        if !new_endorsements.is_empty() {
-            let mut endorsements = self.storage.clone_without_refs();
-            endorsements.store_endorsements(new_endorsements.into_values().collect());
-
-            // Propagate endorsements
-            // Propagate endorsements when the slot of the block they endorse isn't `max_endorsements_propagation_time` old.
-            let mut endorsements_to_propagate = endorsements.clone();
-            let endorsements_to_not_propagate = {
-                let now = MassaTime::now()?;
-                let read_endorsements = endorsements_to_propagate.read_endorsements();
-                endorsements_to_propagate
-                    .get_endorsement_refs()
-                    .iter()
-                    .filter_map(|endorsement_id| {
-                        let slot_endorsed_block =
-                            read_endorsements.get(endorsement_id).unwrap().content.slot;
-                        let slot_timestamp = get_block_slot_timestamp(
-                            self.config.thread_count,
-                            self.config.t0,
-                            self.config.genesis_timestamp,
-                            slot_endorsed_block,
-                        );
-                        match slot_timestamp {
-                            Ok(slot_timestamp) => {
-                                if slot_timestamp
-                                    .saturating_add(self.config.max_endorsements_propagation_time)
-                                    < now
-                                {
-                                    Some(*endorsement_id)
-                                } else {
-                                    None
-                                }
-                            }
-                            Err(_) => Some(*endorsement_id),
-                        }
-                    })
-                    .collect()
-            };
-            endorsements_to_propagate.drop_endorsement_refs(&endorsements_to_not_propagate);
-            if let Err(err) = self.sender_propagation_endorsements.try_send(
-                EndorsementHandlerPropagationCommand::PropagateEndorsements(
-                    endorsements_to_propagate,
-                ),
-            ) {
-                warn!("Failed to send from block retrieval thread of endorsement handler to propagation: {:?}", err);
-            }
-            // Add to pool
-            self.pool_controller.add_endorsements(endorsements);
-        }
-
-        Ok(())
     }
 
     /// Mark a block as invalid
@@ -845,7 +700,7 @@ impl RetrievalThread {
             != computed_operations_hash
         {
             warn!("Peer id {} sent us a operation list for block id {} but the hash in the header doesn't match.", from_peer_id, block_id);
-            if let Err(err) = self.ban_node(&from_peer_id) {
+            if let Err(err) = self.ban_peer(&from_peer_id) {
                 warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
             }
             return;
@@ -951,7 +806,7 @@ impl RetrievalThread {
                 "Peer id {} sent us operations for block id {} but they failed validity checks: {}",
                 from_peer_id, block_id, err
             );
-            if let Err(err) = self.ban_node(&from_peer_id) {
+            if let Err(err) = self.ban_peer(&from_peer_id) {
                 warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
             }
             return;
