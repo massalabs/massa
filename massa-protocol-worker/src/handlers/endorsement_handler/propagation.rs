@@ -22,16 +22,44 @@ struct PropagationThread {
 
 impl PropagationThread {
     fn run(&mut self) {
+        let mut next_message = None;
         loop {
-            match self.receiver.recv() {
-                Ok(EndorsementHandlerPropagationCommand::PropagateEndorsements(endorsements)) => {
+            // get the next message to process
+            let msg = match next_message.take() {
+                Some(msg) => msg,
+                None => match self.receiver.recv() {
+                    Ok(msg) => msg,
+                    Err(_) => {
+                        info!("Stop endorsement propagation thread");
+                        return;
+                    }
+                },
+            };
+
+            match msg {
+                // endorsements to propagate
+                EndorsementHandlerPropagationCommand::PropagateEndorsements(mut endorsements) => {
+                    // also drain any remaining propagation messages that might have accumulated
+                    while let Ok(msg) = self.receiver.try_recv() {
+                        match msg {
+                            // we got more endorsements to propagate: extend the buffer
+                            EndorsementHandlerPropagationCommand::PropagateEndorsements(
+                                mut new_endorsements,
+                            ) => {
+                                endorsements.extend(new_endorsements);
+                            }
+                            // we grabbed a message that is not a propagation message, mark it for processing
+                            other_msg => {
+                                next_message = Some(other_msg);
+                                break;
+                            }
+                        }
+                    }
+                    // propagate the endorsements
                     self.propagate_endorsements(endorsements);
                 }
-                Ok(EndorsementHandlerPropagationCommand::Stop) => {
-                    info!("Stop endorsement propagation thread");
-                    return;
-                }
-                Err(_) => {
+                // stop the handler
+                EndorsementHandlerPropagationCommand::Stop => {
                     info!("Stop endorsement propagation thread");
                     return;
                 }
@@ -78,9 +106,10 @@ impl PropagationThread {
                 .iter()
                 .filter(|endorsement| peer_knowledge.peek(&endorsement.id).is_none())
                 .collect();
+
             if to_send.is_empty() {
-                // nothing to send to that peer
-                continue;
+                // nothing to send to that peer, try the next one
+                continue 'peer_loop;
             }
 
             // send by chunks
