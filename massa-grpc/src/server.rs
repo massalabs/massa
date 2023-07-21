@@ -219,22 +219,24 @@ where
                 let ca_cert_pem_bytes = ca_cert
                     .to_pem()
                     .expect("Error: Failed to convert CA cert to PEM");
-
+                let ca_cert_pem_str = String::from_utf8(ca_cert_pem_bytes)
+                    .expect("Error: Failed to convert CA cert to UTF-8");
                 std::fs::write(
                     config.client_certificate_authority_root_path.clone(),
-                    ca_cert_pem_bytes,
+                    ca_cert_pem_str,
                 )
                 .expect("error, failed to write client certificate authority root");
             }
 
-            std::fs::write(config.server_certificate_path.clone(), cert_pem_bytes)
+            let cert_pem_str =
+                String::from_utf8(cert_pem_bytes).expect("Error: Failed to convert cert to UTF-8");
+            std::fs::write(config.server_certificate_path.clone(), cert_pem_str)
                 .expect("error, failed to write server certificat");
 
-            std::fs::write(
-                config.server_private_key_path.clone(),
-                private_key_pem_bytes,
-            )
-            .expect("error, failed to write server private key");
+            let private_key_pem_str = String::from_utf8(private_key_pem_bytes)
+                .expect("Error: Failed to convert private key to UTF-8");
+            std::fs::write(config.server_private_key_path.clone(), private_key_pem_str)
+                .expect("error, failed to write server private key");
         }
 
         let cert = std::fs::read_to_string(config.server_certificate_path.clone())
