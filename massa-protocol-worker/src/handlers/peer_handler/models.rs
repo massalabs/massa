@@ -16,11 +16,23 @@ const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
-#[derive(Default, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct ConnectionMetadata {
     pub last_try: Option<MassaTime>,
     pub last_success: Option<MassaTime>,
     pub last_failure: Option<MassaTime>,
+    random_priority: u64,
+}
+
+impl Default for ConnectionMetadata {
+    fn default() -> Self {
+        ConnectionMetadata {
+            last_try: Default::default(),
+            last_success: Default::default(),
+            last_failure: Default::default(),
+            random_priority: thread_rng().gen(),
+        }
+    }
 }
 
 impl Ord for ConnectionMetadata {
@@ -60,11 +72,7 @@ impl PartialOrd for ConnectionMetadata {
         if let Some(res) = try_check {
             Some(res)
         } else {
-            if thread_rng().gen_bool(0.5) {
-                Some(Ordering::Greater)
-            } else {
-                Some(Ordering::Less)
-            }
+            Some(self.random_priority.cmp(&other.random_priority))
         }
     }
 }
