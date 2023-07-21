@@ -28,7 +28,7 @@ impl BlockCache {
     /// * `from_peer_id` - The peer id of the peer to mark
     /// * `block_ids` - The list of block ids to mark
     /// * `known` - Whether the blocks are known or unknown by the peer
-    pub fn insert_blocks_known(
+    pub fn insert_peer_known_block(
         &mut self,
         from_peer_id: &PeerId,
         block_ids: &[BlockId],

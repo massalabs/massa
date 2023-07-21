@@ -31,12 +31,12 @@ impl EndorsementCache {
     /// Mark a list of endorsement IDs prefixes as known by a peer
     pub fn insert_peer_known_endorsements(
         &mut self,
-        peer_id: PeerId,
+        peer_id: &PeerId,
         endorsements: &[EndorsementId],
     ) {
         let known_endorsements = self
             .endorsements_known_by_peer
-            .entry(peer_id)
+            .entry(peer_id.clone())
             .or_insert_with(|| LruMap::new(ByLength::new(self.max_known_endorsements_by_peer)));
         for endorsement in endorsements {
             known_endorsements.insert(*endorsement, ());

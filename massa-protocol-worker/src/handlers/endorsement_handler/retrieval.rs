@@ -126,7 +126,7 @@ impl RetrievalThread {
                     &self.storage,
                     &self.config,
                     &self.internal_sender,
-                    &self.pool_controller,
+                    &mut self.pool_controller,
                 ) {
                     warn!(
                         "peer {} sent us critically incorrect endorsements, \
@@ -168,7 +168,7 @@ pub(crate) fn note_endorsements_from_peer(
     storage: &Storage,
     config: &ProtocolConfig,
     endorsement_propagation_sender: &MassaSender<EndorsementHandlerPropagationCommand>,
-    pool_controller: &Box<dyn PoolController>,
+    pool_controller: &mut Box<dyn PoolController>,
 ) -> Result<(), ProtocolError> {
     let mut new_endorsements = PreHashMap::with_capacity(endorsements.len());
     let mut all_endorsement_ids = PreHashSet::with_capacity(endorsements.len());
@@ -236,7 +236,7 @@ pub(crate) fn note_endorsements_from_peer(
 
         // add to the cache of endorsements known by the source node
         cache_write.insert_peer_known_endorsements(
-            *from_peer_id,
+            from_peer_id,
             &all_endorsement_ids.iter().copied().collect::<Vec<_>>(),
         );
     }

@@ -31,6 +31,7 @@ use massa_models::{
     block::{Block, BlockSerializer},
     block_header::SecuredHeader,
     block_id::BlockId,
+    endorsement::EndorsementId,
     operation::{OperationId, SecureShareOperation},
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShare,
@@ -59,8 +60,6 @@ use super::{
     },
     BlockMessageSerializer,
 };
-
-static BLOCK_HEADER: &str = "protocol.protocol_worker.on_network_event.received_block_header";
 
 /// Info about a block we've seen
 #[derive(Debug, Clone)]
@@ -263,8 +262,14 @@ impl RetrievalThread {
 
                 // once sent, the peer will know about the endorsements in that block,
                 // no need to announce those endorsements to that peer anymore
-                endorsement_knowledge_updates
-                    .extend(header.content.endorsements.iter().map(|e| e.id).collect());
+                endorsement_knowledge_updates.extend(
+                    header
+                        .content
+                        .endorsements
+                        .iter()
+                        .map(|e| e.id)
+                        .collect::<PreHashSet<EndorsementId>>(),
+                );
 
                 BlockInfoReply::Header(header)
             }
@@ -299,7 +304,12 @@ impl RetrievalThread {
 
                 // mark the peer as knowing about those operations,
                 // no need to announce their IDs to them anymore
-                operation_knowledge_updates.extend(returned_ops.iter().map(|op| op.id).collect());
+                operation_knowledge_updates.extend(
+                    returned_ops
+                        .iter()
+                        .map(|op| op.id)
+                        .collect::<PreHashSet<OperationId>>(),
+                );
 
                 BlockInfoReply::Operations(returned_ops)
             }
@@ -328,25 +338,30 @@ impl RetrievalThread {
         // here we know that the response was successfully sent to the peer
         // so we can update our vision of the peer's knowledge on blocks, operations and endorsements
         if !block_knowledge_updates.is_empty() {
-            self.cache.write().insert_blocks_known(
+            self.cache.write().insert_peer_known_block(
                 &from_peer_id,
                 &block_knowledge_updates.into_iter().collect::<Vec<_>>(),
                 true,
             );
         }
         if !operation_knowledge_updates.is_empty() {
-            self.operation_cache.write().insert_ops_known(
+            self.operation_cache.write().insert_peer_known_ops(
                 &from_peer_id,
-                &operation_knowledge_updates.into_iter().collect::<Vec<_>>(),
+                &operation_knowledge_updates
+                    .into_iter()
+                    .map(|op_id| op_id.prefix())
+                    .collect::<Vec<_>>(),
             );
         }
         if !endorsement_knowledge_updates.is_empty() {
-            self.endorsement_cache.write().insert_endorsements_known(
-                &from_peer_id,
-                &endorsement_knowledge_updates
-                    .into_iter()
-                    .collect::<Vec<_>>(),
-            );
+            self.endorsement_cache
+                .write()
+                .insert_peer_known_endorsements(
+                    &from_peer_id,
+                    &endorsement_knowledge_updates
+                        .into_iter()
+                        .collect::<Vec<_>>(),
+                );
         }
     }
 
@@ -379,7 +394,7 @@ impl RetrievalThread {
                 // The peer doesn't know about the block. Mark it as such.
                 self.cache
                     .write()
-                    .insert_blocks_known(&from_peer_id, &[block_id], false);
+                    .insert_peer_known_block(&from_peer_id, &[block_id], false);
             }
         }
     }
@@ -394,10 +409,10 @@ impl RetrievalThread {
             Err(err) => {
                 warn!(
                     "peer {} sent us critically incorrect header: {}",
-                    from_peer_id, err
+                    &from_peer_id, err
                 );
-                if let Err(err) = self.ban_peer(&from_peer_id) {
-                    warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
+                if let Err(err) = self.ban_peers(&[from_peer_id.clone()]) {
+                    warn!("Error while banning peer {} err: {:?}", &from_peer_id, err);
                 }
                 return;
             }
@@ -500,7 +515,7 @@ impl RetrievalThread {
                 // the header was previously verified
 
                 // mark the sender peer as knowing the block and its parents
-                cache_write.insert_blocks_known(
+                cache_write.insert_peer_known_block(
                     from_peer_id,
                     &[&[block_id], header.content.parents.as_slice()].concat(),
                     true,
@@ -512,22 +527,26 @@ impl RetrievalThread {
         if !is_new {
             // mark the sender peer as knowing the endorsements in the block
             {
-                let endorsement_ids = header.content.endorsements.iter().map(|e| e.id).collect();
+                let endorsement_ids: Vec<_> =
+                    header.content.endorsements.iter().map(|e| e.id).collect();
                 self.endorsement_cache
                     .write()
-                    .insert_known_endorsements(&from_peer_id, &endorsement_ids);
+                    .insert_peer_known_endorsements(from_peer_id, &endorsement_ids);
             }
 
             // mark the sender peer as knowing the operations of the block (if we know them)
-            let opt_block_ops = self
-                .storage
-                .read_blocks()
-                .get(&block_id)
-                .map(|b| b.content.operations.clone());
+            let opt_block_ops: Option<Vec<_>> =
+                self.storage.read_blocks().get(&block_id).map(|b| {
+                    b.content
+                        .operations
+                        .iter()
+                        .map(|op_id| op_id.prefix())
+                        .collect()
+                });
             if let Some(block_ops) = opt_block_ops {
                 self.operation_cache
                     .write()
-                    .insert_known_operations(&from_peer_id, &block_ops);
+                    .insert_peer_known_ops(from_peer_id, &block_ops);
             }
 
             // return that we already know that header
@@ -543,7 +562,7 @@ impl RetrievalThread {
             &self.storage,
             &self.config,
             &self.sender_propagation_endorsements,
-            &self.pool_controller,
+            &mut self.pool_controller,
         ) {
             return Err(ProtocolError::InvalidBlock(format!(
                 "invalid endorsements: {}",
@@ -591,17 +610,18 @@ impl RetrievalThread {
 
         // mark the sender peer as knowing the endorsements in the block
         {
-            let endorsement_ids = header.content.endorsements.iter().map(|e| e.id).collect();
+            let endorsement_ids: Vec<_> =
+                header.content.endorsements.iter().map(|e| e.id).collect();
             self.endorsement_cache
                 .write()
-                .insert_known_endorsements(&from_peer_id, &endorsement_ids);
+                .insert_peer_known_endorsements(from_peer_id, &endorsement_ids);
         }
 
         {
-            let cache_lock = self.cache.write();
+            let mut cache_lock = self.cache.write();
 
             // mark the sender peer as knowing the block and its parents
-            self.cache.write().insert_blocks_known(
+            self.cache.write().insert_peer_known_block(
                 from_peer_id,
                 &[&[block_id], header.content.parents.as_slice()].concat(),
                 true,
@@ -615,10 +635,9 @@ impl RetrievalThread {
     }
 
     /// send a ban peer command to the peer handler
-    fn ban_peer(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
-        massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
+    fn ban_peers(&mut self, peer_ids: &[PeerId]) -> Result<(), ProtocolError> {
         self.peer_cmd_sender
-            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(peer_ids.to_vec()))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 
@@ -642,7 +661,24 @@ impl RetrievalThread {
             }
         }
 
-        todo(); // ban all peers that know about it
+        // ban all peers that know about this block
+        let mut peers_to_ban = Vec::new();
+        {
+            let cache_read = self.cache.read();
+            for (peer_id, peer_known_blocks) in cache_read.blocks_known_by_peer.iter() {
+                if peer_known_blocks.peek(block_id).is_some() {
+                    peers_to_ban.push(peer_id.clone());
+                }
+            }
+        }
+        if !peers_to_ban.is_empty() {
+            if let Err(err) = self.ban_peers(&peers_to_ban) {
+                warn!(
+                    "Error while banning peers {:?} err: {:?}",
+                    peers_to_ban, err
+                );
+            }
+        }
 
         // clear retrieval cache
         self.remove_asked_blocks(&[*block_id].into_iter().collect());
@@ -666,12 +702,12 @@ impl RetrievalThread {
         let operation_ids_set: PreHashSet<OperationId> = operation_ids.iter().cloned().collect();
 
         // mark the sender node as knowing those ops
-        self.operation_cache.write().insert_known_operations(
+        self.operation_cache.write().insert_peer_known_ops(
             &from_peer_id,
             &operation_ids_set
                 .iter()
                 .map(|op_id| op_id.prefix())
-                .collect(),
+                .collect::<Vec<_>>(),
         );
 
         // check if we were looking to retrieve the list of ops for that block
@@ -679,9 +715,13 @@ impl RetrievalThread {
             // we were actively looking for this data
             info
         } else {
-            // we were not actively looking for that data, but mark the remote node as knowing the block and listed ops
+            // we were not actively looking for that data, but mark the remote node as knowing the block
             debug!("peer {} sent us a list of operation IDs for block id {} but we were not looking for it", from_peer_id, block_id);
-            todo_mark_remote_as_knowing_block_and_ops_and_possibly_header_and_endorsements();
+            self.cache.write().insert_peer_known_block(
+                &from_peer_id,
+                &[block_id],
+                true
+            );
             return;
         };
 
@@ -694,13 +734,14 @@ impl RetrievalThread {
         );
         if wishlist_info
             .header
+            .as_ref()
             .expect("header presence in wishlist should have been checked above")
             .content
             .operation_merkle_root
             != computed_operations_hash
         {
             warn!("Peer id {} sent us a operation list for block id {} but the hash in the header doesn't match.", from_peer_id, block_id);
-            if let Err(err) = self.ban_peer(&from_peer_id) {
+            if let Err(err) = self.ban_peers(&[from_peer_id.clone()]) {
                 warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
             }
             return;
@@ -709,13 +750,13 @@ impl RetrievalThread {
         // Mark the sender as knowing this block
         self.cache
             .write()
-            .insert_blocks_known(&from_peer_id, &[block_id], true);
-
-        // free up all the nodes that we asked for that operation list
-        self.remove_asked_blocks(&[block_id].into_iter().collect());
+            .insert_peer_known_block(&from_peer_id, &[block_id], true);
 
         // Save the received operation ID list to the wishlist
         wishlist_info.operation_ids = Some(operation_ids.clone());
+
+        // free up all the nodes that we asked for that operation list
+        self.remove_asked_blocks(&[block_id].into_iter().collect());
     }
 
     /// Return the sum of all operation's serialized sizes in the id list
@@ -739,8 +780,21 @@ impl RetrievalThread {
         let wishlist_info = if let Some(wishlist_info) = self.block_wishlist.get_mut(&block_id) && wishlist_info.header.is_some() && wishlist_info.operation_ids.is_some() {
             wishlist_info
         } else {
+            // we were not looking for this data
             debug!("Peer id {} sent us full operations for block id {} but we were not looking for it", from_peer_id, block_id);
-            todo_mark_remote_as_knowing_block_and_ops_and_possibly_header_and_endorsements();
+            // still mark the sender as knowing the block and operations
+            self.cache.write().insert_peer_known_block(
+                &from_peer_id,
+                &[block_id],
+                true
+            );
+            self.operation_cache.write().insert_peer_known_ops(
+                &from_peer_id,
+                &operations
+                    .into_iter()
+                    .map(|op| op.id.prefix())
+                    .collect::<Vec<_>>(),
+            );
             return;
         };
 
@@ -774,12 +828,12 @@ impl RetrievalThread {
             });
 
             // mark sender as knowing the dropped_ops
-            self.operation_cache.write().insert_known_operations(
+            self.operation_cache.write().insert_peer_known_ops(
                 &from_peer_id,
                 &dropped_ops
                     .into_iter()
                     .map(|op_id| op_id.prefix())
-                    .collect(),
+                    .collect::<Vec<_>>(),
             );
         }
         if operations.is_empty() {
@@ -806,7 +860,7 @@ impl RetrievalThread {
                 "Peer id {} sent us operations for block id {} but they failed validity checks: {}",
                 from_peer_id, block_id, err
             );
-            if let Err(err) = self.ban_peer(&from_peer_id) {
+            if let Err(err) = self.ban_peers(&[from_peer_id.clone()]) {
                 warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
             }
             return;
@@ -824,7 +878,7 @@ impl RetrievalThread {
             // Mark the sender as knowing this block
             self.cache
                 .write()
-                .insert_blocks_known(&from_peer_id, &[block_id], true);
+                .insert_peer_known_block(&from_peer_id, &[block_id], true);
         } else {
             // otherwise, we should remove the current peer ask only and mark it as not knowing the block
             // because it did not send us everything
@@ -835,7 +889,7 @@ impl RetrievalThread {
             // Mark the sender as not knowing this block
             self.cache
                 .write()
-                .insert_blocks_known(&from_peer_id, &[block_id], false);
+                .insert_peer_known_block(&from_peer_id, &[block_id], false);
         }
     }
 
@@ -880,7 +934,7 @@ impl RetrievalThread {
                     // we mark this peer as not knowing this block
                     self.cache
                         .write()
-                        .insert_blocks_known(peer_id, &[*block_id], false);
+                        .insert_peer_known_block(peer_id, &[*block_id], false);
                 } else {
                     // this block was recently asked to this peer: no need to ask for the block for now
                     to_ask.remove(block_id);
@@ -929,7 +983,7 @@ impl RetrievalThread {
                                     ), // the older the info the better
                                     peer_load, // the lower the load the better
                                     thread_rng().gen::<u64>(), // random tie breaker,
-                                    *peer_id,
+                                    peer_id.clone(),
                                 ))
                             }
                             None => {
@@ -939,7 +993,7 @@ impl RetrievalThread {
                                     None,                      // N/A
                                     peer_load,                 // the lower the load the better
                                     thread_rng().gen::<u64>(), // random tie breaker,
-                                    *peer_id,
+                                    peer_id.clone(),
                                 ))
                             }
                             Some((true, info_t)) => {
@@ -949,7 +1003,7 @@ impl RetrievalThread {
                                     Some(now.saturating_duration_since(info_t).as_millis() as i64), // the newer the info the better
                                     peer_load, // the lower the load the better
                                     thread_rng().gen::<u64>(), // random tie breaker,
-                                    *peer_id,
+                                    peer_id.clone(),
                                 ))
                             }
                         }
@@ -991,7 +1045,7 @@ impl RetrievalThread {
                         &self.block_message_serializer,
                         Message::Block(Box::new(BlockMessage::BlockDataRequest {
                             block_id,
-                            block_info: request,
+                            block_info: request.clone(),
                         })),
                         true,
                     ) {
@@ -1037,8 +1091,9 @@ impl RetrievalThread {
         };
 
         // Construct a hashset from the ID list for deduplication and faster lookup
-        let op_id_list = &wishlist_info
+        let op_id_list = wishlist_info
             .operation_ids
+            .as_ref()
             .expect("operation IDs should be present");
         let op_id_set: PreHashSet<OperationId> = op_id_list.iter().copied().collect();
 
@@ -1150,7 +1205,6 @@ impl RetrievalThread {
 }
 
 #[allow(clippy::too_many_arguments)]
-// bookmark
 pub fn start_retrieval_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
     selector_controller: Box<dyn SelectorController>,

@@ -196,10 +196,9 @@ impl RetrievalThread {
         }
 
         // mark sender as knowing the ops
-        self.cache.write().insert_peer_known_ops(
-            peer_id.clone(),
-            &op_batch.iter().copied().collect::<Vec<_>>(),
-        );
+        self.cache
+            .write()
+            .insert_peer_known_ops(peer_id, &op_batch.iter().copied().collect::<Vec<_>>());
 
         // filter out the operations that we already know about
         {
@@ -432,7 +431,7 @@ pub(crate) fn note_operations_from_peer(
 
         // add to known ops
         cache_write.insert_peer_known_ops(
-            source_peer_id.clone(),
+            source_peer_id,
             &all_received_ids
                 .into_iter()
                 .map(|id| id.into_prefix())

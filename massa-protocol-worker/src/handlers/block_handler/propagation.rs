@@ -37,10 +37,8 @@ use tracing::{info, warn};
 struct BlockPropagationData {
     /// Time when propagation was initiated
     pub time_added: Instant,
-    /// Block ID
-    pub block_id: BlockId,
     /// Storage holding the block and its dependencies during its propagation time
-    pub storage: Storage,
+    pub _storage: Storage,
     /// Clone of the block header to avoid locking storage during propagation
     pub header: SecuredHeader,
 }
@@ -101,8 +99,7 @@ impl PropagationThread {
                                 block_id,
                                 BlockPropagationData {
                                     time_added: Instant::now(),
-                                    block_id,
-                                    storage,
+                                    _storage: storage,
                                     header,
                                 },
                             );
@@ -178,7 +175,7 @@ impl PropagationThread {
 
         // update caches based on currently connected peers
         let peers_connected = self.active_connections.get_peer_ids_connected();
-        let cache_lock = self.cache.write();
+        let mut cache_lock = self.cache.write();
         cache_lock.update_cache(&peers_connected);
         'peer_loop: for (peer_id, known_by_peer) in cache_lock.blocks_known_by_peer.iter_mut() {
             for (block_id, BlockPropagationData { header, .. }) in

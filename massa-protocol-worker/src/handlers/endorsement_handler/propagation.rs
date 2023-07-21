@@ -44,7 +44,7 @@ impl PropagationThread {
                         match msg {
                             // we got more endorsements to propagate: extend the buffer
                             EndorsementHandlerPropagationCommand::PropagateEndorsements(
-                                mut new_endorsements,
+                                new_endorsements,
                             ) => {
                                 endorsements.extend(new_endorsements);
                             }

@@ -32,10 +32,10 @@ impl OperationCache {
     }
 
     /// Mark a list of operation ID prefixes as known by a peer
-    pub fn insert_peer_known_ops(&mut self, peer_id: PeerId, ops: &[OperationPrefixId]) {
+    pub fn insert_peer_known_ops(&mut self, peer_id: &PeerId, ops: &[OperationPrefixId]) {
         let known_ops = self
             .ops_known_by_peer
-            .entry(peer_id)
+            .entry(peer_id.clone())
             .or_insert_with(|| LruMap::new(ByLength::new(self.max_known_ops_by_peer)));
         for op in ops {
             known_ops.insert(*op, ());
