@@ -22,7 +22,7 @@ use tracing::info;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
-    models::{PeerInfo, ConnectionMetadata},
+    models::{ConnectionMetadata, PeerInfo},
     SharedPeerDB,
 };
 use crate::wrap_network::ActiveConnectionsTrait;

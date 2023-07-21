@@ -70,20 +70,38 @@ impl ConnectionMetadata {
     #[allow(dead_code)]
     pub fn edit(self, data_type: usize, data: Option<MassaTime>) -> ConnectionMetadata {
         match data_type {
-            0 => ConnectionMetadata { last_failure: data, ..self },
-            1 => ConnectionMetadata { last_success: data, ..self },
-            2 => ConnectionMetadata { last_try: data, ..self },
+            0 => ConnectionMetadata {
+                last_failure: data,
+                ..self
+            },
+            1 => ConnectionMetadata {
+                last_success: data,
+                ..self
+            },
+            2 => ConnectionMetadata {
+                last_try: data,
+                ..self
+            },
             _ => unreachable!("connection metadata data_type not recognized: {data_type}"),
         }
     }
     pub fn new_failure(self) -> ConnectionMetadata {
-        ConnectionMetadata { last_failure: Some(MassaTime::now().unwrap()), ..self }
+        ConnectionMetadata {
+            last_failure: Some(MassaTime::now().unwrap()),
+            ..self
+        }
     }
     pub fn new_try(self) -> ConnectionMetadata {
-        ConnectionMetadata { last_try: Some(MassaTime::now().unwrap()), ..self }
+        ConnectionMetadata {
+            last_try: Some(MassaTime::now().unwrap()),
+            ..self
+        }
     }
     pub fn new_success(self) -> ConnectionMetadata {
-        ConnectionMetadata { last_success: Some(MassaTime::now().unwrap()), ..self }
+        ConnectionMetadata {
+            last_success: Some(MassaTime::now().unwrap()),
+            ..self
+        }
     }
 }
 

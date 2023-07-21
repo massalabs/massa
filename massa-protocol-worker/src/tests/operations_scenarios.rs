@@ -630,7 +630,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
                 )
                 .unwrap();
             //8. Propagate operations that is not in the block and so should be propagated to everyone
-            storage.store_operations(vec![operation_2.clone()]);
+            storage.store_operations(vec![operation_2]);
             protocol_controller.propagate_operations(storage).unwrap();
 
             let _ = (

@@ -372,25 +372,27 @@ fn try_connect_peer(
     network_controller: &mut Box<dyn NetworkController>,
     peer_db: &Arc<RwLock<PeerDB>>,
     config: &ProtocolConfig,
-    ) -> Result<(), ProtocolError> {
-        info!("Trying to connect to addr {}", addr);
+) -> Result<(), ProtocolError> {
+    info!("Trying to connect to addr {}", addr);
 
-        let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
-        {
-            let mut peer_db_write = peer_db.write();
-            let addr_conn_history = peer_db_write.try_connect_history.remove(&addr);    // Remove it to own it, then re-insert it modified
+    let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
+    {
+        let mut peer_db_write = peer_db.write();
+        let addr_conn_history = peer_db_write.try_connect_history.remove(&addr); // Remove it to own it, then re-insert it modified
 
-            let new_addr_conn_history = match (addr_conn_history, &conn_res) {
-                (Some(md), Ok(_)) => md.new_success(),
-                (None, Ok(_)) => ConnectionMetadata::default().new_success(),
-                (Some(md), Err(_)) => md.new_failure(),
-                (None, Err(_)) => ConnectionMetadata::default().new_failure(),
-            };
+        let new_addr_conn_history = match (addr_conn_history, &conn_res) {
+            (Some(md), Ok(_)) => md.new_success(),
+            (None, Ok(_)) => ConnectionMetadata::default().new_success(),
+            (Some(md), Err(_)) => md.new_failure(),
+            (None, Err(_)) => ConnectionMetadata::default().new_failure(),
+        };
 
-            peer_db_write.try_connect_history.insert(addr, new_addr_conn_history);
-        }
-        if let Err(ref err) = conn_res {
-            warn!("Failed to connect to peer {:?}: {:?}", addr, err);
-        }
-        conn_res
+        peer_db_write
+            .try_connect_history
+            .insert(addr, new_addr_conn_history);
     }
+    if let Err(ref err) = conn_res {
+        warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+    }
+    conn_res
+}

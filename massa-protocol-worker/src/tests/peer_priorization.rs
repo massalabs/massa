@@ -3,8 +3,8 @@
 // If numbers doesn't increase for all vec, the test fails
 
 use massa_time::MassaTime;
-use rand::thread_rng;
 use rand::seq::SliceRandom;
+use rand::thread_rng;
 
 use crate::handlers::peer_handler::models::ConnectionMetadata;
 
@@ -20,7 +20,8 @@ fn get_md(md: &ConnectionMetadata, mdidx: usize) -> Option<MassaTime> {
 fn test_prio(mut vec: Vec<(u64, ConnectionMetadata)>, mdidx: usize, none_first: bool) {
     vec.shuffle(&mut thread_rng());
     vec.sort_by(|a, b| a.1.cmp(&b.1));
-    println!("First: {:?}, Last: {:?}",
+    println!(
+        "First: {:?}, Last: {:?}",
         get_md(&vec.first().unwrap().1, mdidx),
         get_md(&vec.last().unwrap().1, mdidx),
     );
@@ -39,7 +40,11 @@ fn test_prio(mut vec: Vec<(u64, ConnectionMetadata)>, mdidx: usize, none_first: 
             } else {
                 assert!(!trigger);
             }
-            assert!(*p >= n as u64, "Prio {n} failed:\n\t{:?}", vec.iter().map(|(p, _)| *p).collect::<Vec<u64>>());
+            assert!(
+                *p >= n as u64,
+                "Prio {n} failed:\n\t{:?}",
+                vec.iter().map(|(p, _)| *p).collect::<Vec<u64>>()
+            );
         }
     }
 }
@@ -48,13 +53,20 @@ fn test_prio(mut vec: Vec<(u64, ConnectionMetadata)>, mdidx: usize, none_first: 
 //    If None, more prio than any failure
 #[test]
 fn test_last_failure_prio() {
-    let test_vec = (1..500).map(|n| (n, {
-        ConnectionMetadata::default().edit(0, if n < 50 {
-            None
-        } else {
-            Some(MassaTime::from_millis(n))
+    let test_vec = (1..500)
+        .map(|n| {
+            (n, {
+                ConnectionMetadata::default().edit(
+                    0,
+                    if n < 50 {
+                        None
+                    } else {
+                        Some(MassaTime::from_millis(n))
+                    },
+                )
+            })
         })
-    })).collect();
+        .collect();
     test_prio(test_vec, 0, true);
 }
 
@@ -62,13 +74,20 @@ fn test_last_failure_prio() {
 //    If None, less prio than any success
 #[test]
 fn test_last_success_prio() {
-    let test_vec = (1..500).map(|n| (n, {
-        ConnectionMetadata::default().edit(1, if n > 450 {
-            None
-        } else {
-            Some(MassaTime::from_millis(1000 - n))
+    let test_vec = (1..500)
+        .map(|n| {
+            (n, {
+                ConnectionMetadata::default().edit(
+                    1,
+                    if n > 450 {
+                        None
+                    } else {
+                        Some(MassaTime::from_millis(1000 - n))
+                    },
+                )
+            })
         })
-    })).collect();
+        .collect();
     test_prio(test_vec, 1, false);
 }
 
@@ -76,12 +95,19 @@ fn test_last_success_prio() {
 //    If None, less prio than any success
 #[test]
 fn test_last_try_prio() {
-    let test_vec = (1..500).map(|n| (n, {
-        ConnectionMetadata::default().edit(2, if n > 450 {
-            None
-        } else {
-            Some(MassaTime::from_millis(1000 - n))
+    let test_vec = (1..500)
+        .map(|n| {
+            (n, {
+                ConnectionMetadata::default().edit(
+                    2,
+                    if n > 450 {
+                        None
+                    } else {
+                        Some(MassaTime::from_millis(1000 - n))
+                    },
+                )
+            })
         })
-    })).collect();
+        .collect();
     test_prio(test_vec, 2, false);
 }
