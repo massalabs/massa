@@ -733,6 +733,9 @@
 <a href="#733" id="733">733</a>
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -1042,10 +1045,10 @@
 
         <span class="kw">match </span>version {
             &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">UserAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
-                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
+                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
             )),
             &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">UserAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
-                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
+                &lt;<span class="macro">UserAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>,
             )),
             unhandled_version =&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError(<span class="macro">format!</span>(
                 <span class="string">&quot;version {} is not handled for UserAddress&quot;</span>,
@@ -1093,7 +1096,7 @@
     }
 
     <span class="doccomment">/// Deserialize the address without considering the version byte
-    </span><span class="kw">fn </span>from_bytes_without_version(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;UserAddress, ModelsError&gt; {
+    </span><span class="kw">fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;UserAddress, ModelsError&gt; {
         <span class="prelude-val">Ok</span>(UserAddress(Hash::from_bytes(<span class="kw-2">&amp;</span>data.try_into().map_err(
             |<span class="kw">_</span>| {
                 ModelsError::BufferError(<span class="macro">format!</span>(
@@ -1139,12 +1142,12 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">match </span>version {
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
-            )),
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(rest)<span class="question-mark">?</span>,
-            )),
+            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
+            }
+            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](&lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
+            }
             unhandled_version =&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError(<span class="macro">format!</span>(
                 <span class="string">&quot;version {} is not handled for SCAddress&quot;</span>,
                 unhandled_version
@@ -1157,22 +1160,6 @@
         <span class="kw">match </span><span class="self">self </span>{
             SCAddress::SCAddressV0(addr) =&gt; addr.to_prefixed_bytes(),
             SCAddress::SCAddressV1(addr) =&gt; addr.to_prefixed_bytes(),
-        }
-    }
-
-    <span class="doccomment">/// Deserialize the address without considering the version byte
-    </span><span class="kw">pub fn </span>from_bytes_without_version(version: u64, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;SCAddress, ModelsError&gt; {
-        <span class="kw">match </span>version {
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;0&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes_without_version(data)<span class="question-mark">?</span>,
-            )),
-            &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">SCAddressVariant!</span>[<span class="string">&quot;1&quot;</span>](
-                &lt;<span class="macro">SCAddress!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes_without_version(data)<span class="question-mark">?</span>,
-            )),
-            unhandled_version =&gt; <span class="prelude-val">Err</span>(ModelsError::AddressParseError(<span class="macro">format!</span>(
-                <span class="string">&quot;version {} is not handled for SCAddress&quot;</span>,
-                unhandled_version
-            ))),
         }
     }
 }
@@ -1203,7 +1190,7 @@
     }
 
     <span class="doccomment">/// Deserialize the address without considering the version byte
-    </span><span class="kw">fn </span>from_bytes_without_version(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;SCAddress, ModelsError&gt; {
+    </span><span class="kw">fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;SCAddress, ModelsError&gt; {
         <span class="prelude-val">Ok</span>(SCAddress(Hash::from_bytes(<span class="kw-2">&amp;</span>data.try_into().map_err(
             |<span class="kw">_</span>| {
                 ModelsError::BufferError(<span class="macro">format!</span>(
@@ -1315,7 +1302,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Address, E&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
+        <span class="comment">// Verify that we at least have a version and something else
+        </span><span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
         <span class="kw">let </span>(rest, addr_type) =
@@ -1343,7 +1331,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], UserAddress, E&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
+        <span class="comment">// Verify that we at least have a version and something else
+        </span><span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
         <span class="kw">let </span>(rest, addr_vers) =
@@ -1385,7 +1374,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SCAddress, E&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
+        <span class="comment">// Verify that we at least have a version and something else
+        </span><span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
         <span class="kw">let </span>(rest, addr_vers) =
@@ -1439,6 +1429,8 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
+    <span class="kw">use </span><span class="kw">crate</span>::config::THREAD_COUNT;
+
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="attr">#[test]
@@ -1466,6 +1458,20 @@
             .unwrap();
 
         <span class="macro">assert_eq!</span>(addr, addr2);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_address_get_thread() {
+        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span><span class="string">&quot;ADDR&quot;</span>.as_bytes());
+
+        <span class="kw">let </span>user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        <span class="kw">let </span>thread_addr_0 = user_addr_0.get_thread(THREAD_COUNT);
+        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span><span class="string">&quot;ADDR2&quot;</span>.as_bytes());
+
+        <span class="kw">let </span>user_addr_1 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        <span class="kw">let </span>thread_addr_1 = user_addr_1.get_thread(THREAD_COUNT);
+
+        <span class="macro">assert_ne!</span>(thread_addr_0, thread_addr_1);
     }
 }
 </code></pre></div></section></main></body></html>
