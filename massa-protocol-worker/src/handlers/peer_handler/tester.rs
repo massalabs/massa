@@ -18,7 +18,6 @@ use peernet::{
     messages::MessagesHandler as PeerNetMessagesHandler,
     transports::TransportType,
 };
-use std::cmp::Reverse;
 use tracing::info;
 
 use super::{
@@ -185,15 +184,6 @@ impl Tester {
                         //TODO: Check ip we are connected match one of the announced ips
                         {
                             let mut peer_db_write = peer_db.write();
-                            //TODO: Hacky change it when better management ip/listeners
-                            if !announcement.listeners.is_empty() {
-                                peer_db_write
-                                    .index_by_newest
-                                    .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
-                                peer_db_write
-                                    .index_by_newest
-                                    .insert((Reverse(announcement.timestamp), peer_id.clone()));
-                            }
                             peer_db_write
                                 .peers
                                 .entry(peer_id.clone())

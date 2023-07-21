@@ -17,7 +17,7 @@ use std::{collections::HashMap, net::IpAddr};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::{info, warn};
 
-use crate::handlers::peer_handler::models::ConnectionMetadata;
+use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
     worker::ProtocolChannels,
@@ -263,19 +263,13 @@ pub(crate) fn start_connectivity_thread(
                         let mut addresses_can_connect  = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
-                            for (_, peer_id) in &peer_db_read.index_by_newest {
+                            for (peer_id, peer_info) in &peer_db_read.peers {
                                 if peers_connected.contains_key(peer_id) {
                                     continue;
                                 }
 
-                                if let Some(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
-                                    if peer.state == PeerState::Trusted {
-                                        Some(peer.clone())
-                                    } else {
-                                        None
-                                    }
-                                }) {
-                                    if let Some(last_announce) = peer_info.last_announce {
+                                if peer_info.state == PeerState::Trusted {
+                                    if let Some(ref last_announce) = peer_info.last_announce {
                                         if last_announce.listeners.is_empty() {
                                             continue;
                                         }
@@ -323,49 +317,43 @@ pub(crate) fn start_connectivity_thread(
                         // Sort addresses using the metadata
                         addresses_can_connect.sort_by(|a, b| a.1.cmp(&b.1));
 
-                        let mut addresses_to_connect = vec![];
+                        // Connect to the given addresses, trying to fill all the slots available
+                        let mut addresses_connected = vec![];
                         for (addr, _, category) in addresses_can_connect.iter() {
+                            if addresses_connected.contains(addr) {
+                                continue;
+                            }
+
+                            // Connect to the peer
                             match category {
+
+                                // In case has a special category
                                 Some(cat) => {
                                     for (name, category_infos) in &mut slots_per_category {
-                                        if name == *cat && category_infos > &mut 0 {
-                                            addresses_to_connect.push(*addr);
-                                            *category_infos -= 1;
+                                        if name == *cat && *category_infos > 0 {
+                                            // In case the connection succeeds, we take a place in a slot
+                                            if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
+                                                *category_infos -= 1;
+                                                addresses_connected.push(*addr);
+                                            }
                                         }
                                     }
                                 }
-                                None if !addresses_to_connect.contains(&addr) => {
-                                    slot_default_category -= 1;
-                                    addresses_to_connect.push(*addr);
+
+                                // Default category
+                                None if slot_default_category > 0 => {
+                                    // In case the connection succeeds, we take a place in a slot
+                                    if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
+                                        slot_default_category -= 1;
+                                        addresses_connected.push(*addr);
+                                    }
                                 }
-                                _ => continue,
+                                None => continue,
                             }
 
                             // IF all slots are filled, stop
                             if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
                                 break;
-                            }
-                        }
-
-                        for addr in addresses_to_connect {
-                            info!("Trying to connect to addr {}", addr);
-
-                            let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
-                            {
-                                let mut peer_db_write = peer_db.write();
-                                let addr_conn_history = peer_db_write.try_connect_history.remove(&addr);    // Remove it to own it, then re-insert it modified
-
-                                let new_addr_conn_history = match (addr_conn_history, &conn_res) {
-                                    (Some(md), Ok(_)) => md.new_success(),
-                                    (None, Ok(_)) => ConnectionMetadata::default().new_success(),
-                                    (Some(md), Err(_)) => md.new_failure(),
-                                    (None, Err(_)) => ConnectionMetadata::default().new_failure(),
-                                };
-
-                                peer_db_write.try_connect_history.insert(addr, new_addr_conn_history);
-                                if let Err(err) = conn_res {
-                                    warn!("Failed to connect to peer {:?}: {:?}", addr, err);
-                                }
                             }
                         }
                     }
@@ -377,3 +365,32 @@ pub(crate) fn start_connectivity_thread(
     // Start controller
     Ok((protocol_channels.connectivity_thread.0, handle))
 }
+
+// Attempt to connect to peer
+fn try_connect_peer(
+    addr: SocketAddr,
+    network_controller: &mut Box<dyn NetworkController>,
+    peer_db: &Arc<RwLock<PeerDB>>,
+    config: &ProtocolConfig,
+    ) -> Result<(), ProtocolError> {
+        info!("Trying to connect to addr {}", addr);
+
+        let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
+        {
+            let mut peer_db_write = peer_db.write();
+            let addr_conn_history = peer_db_write.try_connect_history.remove(&addr);    // Remove it to own it, then re-insert it modified
+
+            let new_addr_conn_history = match (addr_conn_history, &conn_res) {
+                (Some(md), Ok(_)) => md.new_success(),
+                (None, Ok(_)) => ConnectionMetadata::default().new_success(),
+                (Some(md), Err(_)) => md.new_failure(),
+                (None, Err(_)) => ConnectionMetadata::default().new_failure(),
+            };
+
+            peer_db_write.try_connect_history.insert(addr, new_addr_conn_history);
+        }
+        if let Err(ref err) = conn_res {
+            warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+        }
+        conn_res
+    }

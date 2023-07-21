@@ -4,8 +4,7 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use rand::seq::SliceRandom;
-use std::cmp::{Reverse, Ordering};
-use std::collections::BTreeSet;
+use std::cmp::Ordering;
 use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tracing::log::info;
@@ -91,8 +90,6 @@ impl ConnectionMetadata {
 #[derive(Default)]
 pub struct PeerDB {
     pub peers: HashMap<PeerId, PeerInfo>,
-    /// peers tested successfully last is the oldest value (only routable peers) //TODO: need to be pruned
-    pub index_by_newest: BTreeSet<(Reverse<u64>, PeerId)>,
     /// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
     pub tested_addresses: HashMap<SocketAddr, MassaTime>,
     /// history of try connection to peers

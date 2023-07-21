@@ -1,4 +1,3 @@
-use std::cmp::Reverse;
 use std::net::IpAddr;
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -500,15 +499,6 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             match &res {
                 Ok((peer_id, Some(announcement))) => {
                     info!("Peer connected: {:?}", peer_id);
-                    //TODO: Hacky organize better when multiple ip/listeners
-                    if !announcement.listeners.is_empty() {
-                        peer_db_write
-                            .index_by_newest
-                            .retain(|(_, peer_id_stored)| peer_id_stored != peer_id);
-                        peer_db_write
-                            .index_by_newest
-                            .insert((Reverse(announcement.timestamp), peer_id.clone()));
-                    }
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())
