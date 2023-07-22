@@ -6,7 +6,9 @@ use crate::server::MassaPublicGrpc;
 use massa_execution_exports::mapping_grpc::{
     to_event_filter, to_execution_query_response, to_querystate_filter,
 };
-use massa_execution_exports::ExecutionQueryRequest;
+use massa_execution_exports::{
+    ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+};
 use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
@@ -16,20 +18,101 @@ use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::model::v1 as grpc_model;
+use massa_proto_rs::massa::model::v1::{self as grpc_model, read_only_execution_call};
 use massa_time::MassaTime;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 use tracing::log::warn;
 
-/// Get blocks
+/// Execute read only call (function or bytecode)
 pub(crate) fn execute_read_only_call(
-    _grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
 ) -> Result<grpc_api::ExecuteReadOnlyCallResponse, GrpcError> {
-    Err(GrpcError::Unimplemented(
-        "execute_read_only_call".to_string(),
-    ))
+    let inner_req = request.into_inner();
+    let call: grpc_model::ReadOnlyExecutionCall = inner_req
+        .call
+        .ok_or_else(|| GrpcError::InvalidArgument("no call provided".to_string()))?;
+
+    let mut call_stack = Vec::new();
+
+    let target = if let Some(call_target) = call.target {
+        match call_target {
+            read_only_execution_call::Target::BytecodeCall(value) => {
+                let caller_address = Address::from_str(&call.caller_address)?;
+                // TODO check if we keep the old format of operation datastore
+                let op_datastore = if value.operation_datastore.is_empty() {
+                    None
+                } else {
+                    let operation_datastore: BTreeMap<_, _> = value
+                        .operation_datastore
+                        .into_iter()
+                        .map(|entry| (entry.key, entry.value))
+                        .collect();
+
+                    Some(operation_datastore)
+                };
+
+                call_stack.push(ExecutionStackElement {
+                    address: caller_address,
+                    coins: Default::default(),
+                    owned_addresses: vec![caller_address],
+                    operation_datastore: op_datastore,
+                });
+
+                ReadOnlyExecutionTarget::BytecodeExecution(value.bytecode)
+            }
+            read_only_execution_call::Target::FunctionCall(value) => {
+                //TODO check if creating an address if not exist
+                let caller_address = Address::from_str(&call.caller_address)?;
+                let target_address = Address::from_str(&value.target_addr)?;
+                call_stack.push(ExecutionStackElement {
+                    address: caller_address,
+                    coins: Default::default(),
+                    owned_addresses: vec![caller_address],
+                    operation_datastore: None, // should always be None
+                });
+                call_stack.push(ExecutionStackElement {
+                    address: target_address,
+                    coins: Default::default(),
+                    owned_addresses: vec![target_address],
+                    operation_datastore: None, //TODO chech why it should always be None
+                });
+
+                ReadOnlyExecutionTarget::FunctionCall {
+                    target_addr: Address::from_str(&value.target_addr)?,
+                    target_func: value.target_func,
+                    parameter: value.parameter,
+                }
+            }
+        }
+    } else {
+        return Err(GrpcError::InvalidArgument(
+            "no call target provided".to_string(),
+        ));
+    };
+
+    let read_only_call = ReadOnlyExecutionRequest {
+        max_gas: call.max_gas,
+        call_stack,
+        target,
+        is_final: call.is_final,
+    };
+
+    let output = grpc
+        .execution_controller
+        .execute_readonly_request(read_only_call)?;
+
+    let result = grpc_model::ReadOnlyExecutionOutput {
+        out: Some(output.out.into()),
+        max_gas: output.gas_cost,
+        call_result: output.call_result,
+    };
+
+    Ok(grpc_api::ExecuteReadOnlyCallResponse {
+        //TODO to be fixed in proto files
+        output: vec![result],
+    })
 }
 
 /// Get blocks
@@ -337,7 +420,7 @@ pub(crate) fn get_stakers(
 /// Get next block best parents
 pub(crate) fn get_next_block_best_parents(
     grpc: &MassaPublicGrpc,
-    _massa_modelsrequest: tonic::Request<grpc_api::GetNextBlockBestParentsRequest>,
+    _request: tonic::Request<grpc_api::GetNextBlockBestParentsRequest>,
 ) -> Result<grpc_api::GetNextBlockBestParentsResponse, GrpcError> {
     let block_parents = grpc
         .consensus_controller
