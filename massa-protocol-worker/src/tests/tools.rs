@@ -20,9 +20,8 @@ pub fn assert_hash_asked_to_node(node: &MassaReceiver<Message>, block_id: &Block
         .expect("Node didn't receive the ask for block message");
     match msg {
         Message::Block(message) => {
-            if let BlockMessage::BlockDataRequest(asked) = *message {
-                assert_eq!(asked.len(), 1);
-                assert_eq!(&asked[0].0, block_id);
+            if let BlockMessage::BlockDataRequest { block_id: b_id, .. } = *message {
+                assert_eq!(&b_id, block_id);
             } else {
                 panic!("Node didn't receive the ask for block message");
             }
@@ -51,11 +50,14 @@ pub fn assert_block_info_sent_to_node(node: &MassaReceiver<Message>, block_id: &
         .expect("Node didn't receive the infos block message");
     match msg {
         Message::Block(message) => {
-            if let BlockMessage::BlockDataResponse(asked) = *message {
-                assert_eq!(asked.len(), 1);
-                assert_eq!(&asked[0].0, block_id);
-                match asked[0].1 {
-                    BlockInfoReply::Info(_) => {}
+            if let BlockMessage::BlockDataResponse {
+                block_id: b_id,
+                block_info,
+            } = *message
+            {
+                assert_eq!(&b_id, block_id);
+                match block_info {
+                    BlockInfoReply::OperationIds(_) => {}
                     _ => panic!("Node didn't receive the infos block message"),
                 }
             } else {
@@ -93,23 +95,24 @@ pub fn send_and_propagate_block(
         .unwrap();
 
     // Send block info to protocol.
-    let info = vec![(
-        block.id,
-        BlockInfoReply::Info(block.content.operations.clone()),
-    )];
     network_controller
         .send_from_peer(
             node_id,
-            Message::Block(Box::new(BlockMessage::BlockDataResponse(info))),
+            Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                block_id: block.id,
+                block_info: BlockInfoReply::OperationIds(block.content.operations.clone()),
+            })),
         )
         .unwrap();
 
     // Send full ops.
-    let info = vec![(block.id, BlockInfoReply::Operations(operations))];
     network_controller
         .send_from_peer(
             node_id,
-            Message::Block(Box::new(BlockMessage::BlockDataResponse(info))),
+            Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                block_id: block.id,
+                block_info: BlockInfoReply::Operations(operations),
+            })),
         )
         .unwrap();
 }

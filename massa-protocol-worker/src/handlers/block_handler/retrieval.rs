@@ -228,8 +228,8 @@ impl RetrievalThread {
 
     /// A remote node asked the local node for block data
     ///
-    /// We send the block's operation ids if the foreign node asked for `AskForBlocksInfo::Info`
-    /// or a subset of the full operations of the block if it asked for `AskForBlocksInfo::Operations`.
+    /// We send the block's operation ids if the foreign node asked for `AskForBlockInfo::Info`
+    /// or a subset of the full operations of the block if it asked for `AskForBlockInfo::Operations`.
     fn on_ask_for_block_info_received(
         &mut self,
         from_peer_id: PeerId,

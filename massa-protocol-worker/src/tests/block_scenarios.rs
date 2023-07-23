@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
-use crate::handlers::block_handler::{AskForBlocksInfo, BlockInfoReply, BlockMessage};
+use crate::handlers::block_handler::{AskForBlockInfo, BlockInfoReply, BlockMessage};
 use crate::messages::Message;
 
 use super::context::{protocol_test, protocol_test_with_storage};
@@ -112,10 +112,10 @@ fn test_full_ask_block_workflow() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
-                        block.id,
-                        BlockInfoReply::Info(vec![op_1.id, op_2.id]),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::OperationIds(vec![op_1.id, op_2.id]),
+                    })),
                 )
                 .unwrap();
 
@@ -125,12 +125,15 @@ fn test_full_ask_block_workflow() {
                 .expect("Node B didn't receive the ask for operations message");
             match msg {
                 Message::Block(message) => {
-                    if let BlockMessage::BlockDataRequest(asked) = *message {
-                        assert_eq!(asked.len(), 1);
-                        assert_eq!(asked[0].0, block.id);
+                    if let BlockMessage::BlockDataRequest {
+                        block_id,
+                        block_info,
+                    } = *message
+                    {
+                        assert_eq!(block_id, block.id);
                         assert_eq!(
-                            asked[0].1,
-                            AskForBlocksInfo::Operations(vec![op_1.id, op_2.id])
+                            block_info,
+                            AskForBlockInfo::Operations(vec![op_1.id, op_2.id])
                         );
                     } else {
                         panic!("Node B didn't receive the ask for operations message");
@@ -143,10 +146,10 @@ fn test_full_ask_block_workflow() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
-                        block.id,
-                        BlockInfoReply::Operations(vec![op_1, op_2]),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::Operations(vec![op_1, op_2]),
+                    })),
                 )
                 .unwrap();
 
@@ -251,10 +254,10 @@ fn test_empty_block() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
-                        block.id,
-                        BlockInfoReply::Info(vec![]),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::OperationIds(vec![]),
+                    })),
                 )
                 .unwrap();
 
@@ -378,10 +381,10 @@ fn test_dont_want_it_anymore() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
-                        block.id,
-                        BlockInfoReply::Info(vec![op_1.id, op_2.id]),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::OperationIds(vec![op_1.id, op_2.id]),
+                    })),
                 )
                 .unwrap();
 
@@ -457,10 +460,10 @@ fn test_no_one_has_it() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
-                        block.id,
-                        BlockInfoReply::NotFound,
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::NotFound,
+                    })),
                 )
                 .unwrap();
 
@@ -542,9 +545,8 @@ fn test_multiple_blocks_without_a_priori() {
             let message = node_b.recv_timeout(Duration::from_millis(1500)).unwrap();
             match message {
                 Message::Block(message) => {
-                    if let BlockMessage::BlockDataRequest(asked) = *message {
-                        assert_eq!(asked.len(), 1);
-                        to_be_asked_blocks.remove(&asked[0].0);
+                    if let BlockMessage::BlockDataRequest { block_id, .. } = *message {
+                        to_be_asked_blocks.remove(&block_id);
                     } else {
                         panic!("Node didn't receive the ask for block message");
                     }
@@ -554,9 +556,8 @@ fn test_multiple_blocks_without_a_priori() {
             let message = node_c.recv_timeout(Duration::from_millis(1500)).unwrap();
             match message {
                 Message::Block(message) => {
-                    if let BlockMessage::BlockDataRequest(asked) = *message {
-                        assert_eq!(asked.len(), 1);
-                        to_be_asked_blocks.remove(&asked[0].0);
+                    if let BlockMessage::BlockDataRequest { block_id, .. } = *message {
+                        to_be_asked_blocks.remove(&block_id);
                     } else {
                         panic!("Node didn't receive the ask for block message");
                     }
@@ -623,19 +624,19 @@ fn test_protocol_sends_blocks_when_asked_for() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataRequest(vec![(
-                        block.id,
-                        AskForBlocksInfo::Info,
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataRequest {
+                        block_id: block.id,
+                        block_info: AskForBlockInfo::OperationIds,
+                    })),
                 )
                 .unwrap();
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataRequest(vec![(
-                        block.id,
-                        AskForBlocksInfo::Info,
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataRequest {
+                        block_id: block.id,
+                        block_info: AskForBlockInfo::OperationIds,
+                    })),
                 )
                 .unwrap();
 
@@ -745,10 +746,10 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataRequest(vec![(
-                        block.id,
-                        AskForBlocksInfo::Info,
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataRequest {
+                        block_id: block.id,
+                        block_info: AskForBlockInfo::OperationIds,
+                    })),
                 )
                 .unwrap();
 

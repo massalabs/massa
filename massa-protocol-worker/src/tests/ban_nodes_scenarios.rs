@@ -217,10 +217,10 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockDataResponse(vec![(
-                        block.id,
-                        BlockInfoReply::Info(vec![operation_2.id].into_iter().collect()),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::BlockDataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::OperationIds(vec![operation_2.id]),
+                    })),
                 )
                 .unwrap();
             std::thread::sleep(std::time::Duration::from_millis(1000));
