@@ -288,36 +288,21 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
-<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
-    operation::OperationIdSerializer,
+    operation::{compute_operations_hash, OperationIdSerializer},
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
-<span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
@@ -527,17 +512,6 @@
         }
 
         block_storage.extend(op_storage);
-        <span class="kw">let </span>global_operations_hash = Hash::compute_from(
-            <span class="kw-2">&amp;</span>op_ids
-                .iter()
-                .flat_map(|op_id| {
-                    <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
-                    <span class="comment">//It was a to_bytes() there before, we know the op is valid because it comes from the pool
-                    </span><span class="self">self</span>.op_id_serializer.serialize(op_id, <span class="kw-2">&amp;mut </span>buffer).unwrap();
-                    buffer
-                })
-                .collect::&lt;Vec&lt;u8&gt;&gt;(),
-        );
 
         <span class="comment">// create header
         </span><span class="kw">let </span>current_version = <span class="self">self</span>.mip_store.get_network_version_current();
@@ -548,7 +522,7 @@
                 announced_version,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
-                operation_merkle_root: global_operations_hash,
+                operation_merkle_root: compute_operations_hash(<span class="kw-2">&amp;</span>op_ids, <span class="kw-2">&amp;</span><span class="self">self</span>.op_id_serializer),
                 endorsements,
                 denunciations: <span class="self">self</span>.channels.pool.get_block_denunciations(<span class="kw-2">&amp;</span>slot),
             },
