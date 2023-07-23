@@ -32,7 +32,9 @@ use massa_models::{
     block_header::SecuredHeader,
     block_id::BlockId,
     endorsement::EndorsementId,
-    operation::{OperationId, OperationIdSerializer, SecureShareOperation},
+    operation::{
+        compute_operations_hash, OperationId, OperationIdSerializer, SecureShareOperation,
+    },
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShare,
     timeslots::get_block_slot_timestamp,
@@ -105,6 +107,7 @@ pub struct RetrievalThread {
     storage: Storage,
     mip_store: MipStore,
     massa_metrics: MassaMetrics,
+    operation_id_serializer: OperationIdSerializer,
 }
 
 impl RetrievalThread {
@@ -726,25 +729,8 @@ impl RetrievalThread {
         };
 
         // check that the hash of the received operations list matches the one in the header
-        let computed_operations_hash = {
-            let op_id_serializer = OperationIdSerializer::new();
-            let op_ids = operation_ids
-                .iter()
-                .map(|op_id| {
-                    let mut serialized = Vec::new();
-                    op_id_serializer
-                        .serialize(op_id, &mut serialized)
-                        .expect("serialization of operation id should not fail");
-                    serialized
-                })
-                .collect::<Vec<Vec<u8>>>();
-            massa_hash::Hash::compute_from_tuple(
-                &op_ids
-                    .iter()
-                    .map(|data| data.as_slice())
-                    .collect::<Vec<_>>(),
-            )
-        };
+        let computed_operations_hash =
+            compute_operations_hash(&operation_ids, &self.operation_id_serializer);
 
         if wishlist_info
             .header
@@ -1276,6 +1262,7 @@ pub fn start_retrieval_thread(
                 storage,
                 mip_store,
                 massa_metrics,
+                operation_id_serializer: OperationIdSerializer::new(),
             };
             retrieval_thread.run();
         })

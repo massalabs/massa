@@ -2,7 +2,9 @@
 
 use massa_hash::Hash;
 use massa_models::endorsement::EndorsementSerializer;
-use massa_models::operation::{OperationIdSerializer, OperationSerializer};
+use massa_models::operation::{
+    compute_operations_hash, OperationIdSerializer, OperationSerializer,
+};
 use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
@@ -14,7 +16,6 @@ use massa_models::{
     operation::{Operation, OperationType, SecureShareOperation},
     slot::Slot,
 };
-use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 
 /// Creates a block for use in protocol,
@@ -60,25 +61,10 @@ pub fn create_block_with_operations(
     slot: Slot,
     operations: Vec<SecureShareOperation>,
 ) -> SecureShareBlock {
-    let operation_merkle_root = {
-        let op_id_serializer = OperationIdSerializer::new();
-        let op_ids = operations
-            .iter()
-            .map(|op| {
-                let mut serialized = Vec::new();
-                op_id_serializer
-                    .serialize(&op.id, &mut serialized)
-                    .expect("serialization of operation id should not fail");
-                serialized
-            })
-            .collect::<Vec<Vec<u8>>>();
-        massa_hash::Hash::compute_from_tuple(
-            &op_ids
-                .iter()
-                .map(|data| data.as_slice())
-                .collect::<Vec<_>>(),
-        )
-    };
+    let operation_merkle_root = compute_operations_hash(
+        &operations.iter().map(|op| op.id).collect::<Vec<_>>(),
+        &OperationIdSerializer::new(),
+    );
 
     let header = BlockHeader::new_verifiable(
         BlockHeader {

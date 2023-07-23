@@ -2,19 +2,17 @@
 
 use massa_channel::receiver::MassaReceiver;
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
-use massa_hash::Hash;
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
-    operation::OperationIdSerializer,
+    operation::{compute_operations_hash, OperationIdSerializer},
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
-use massa_serialization::Serializer;
 use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
@@ -224,17 +222,6 @@ impl BlockFactoryWorker {
         }
 
         block_storage.extend(op_storage);
-        let global_operations_hash = Hash::compute_from(
-            &op_ids
-                .iter()
-                .flat_map(|op_id| {
-                    let mut buffer = Vec::new();
-                    //It was a to_bytes() there before, we know the op is valid because it comes from the pool
-                    self.op_id_serializer.serialize(op_id, &mut buffer).unwrap();
-                    buffer
-                })
-                .collect::<Vec<u8>>(),
-        );
 
         // create header
         let current_version = self.mip_store.get_network_version_current();
@@ -245,7 +232,7 @@ impl BlockFactoryWorker {
                 announced_version,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
-                operation_merkle_root: global_operations_hash,
+                operation_merkle_root: compute_operations_hash(&op_ids, &self.op_id_serializer),
                 endorsements,
                 denunciations: self.channels.pool.get_block_denunciations(&slot),
             },
