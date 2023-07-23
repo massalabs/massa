@@ -357,17 +357,6 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
     block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
@@ -382,33 +371,33 @@
 };
 <span class="kw">use </span>nom::{
     error::{context, ContextError, ParseError},
-    multi::length_count,
     sequence::tuple,
     IResult, Parser,
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
 <span class="kw">use </span>std::ops::Bound::Included;
 
-<span class="doccomment">/// Ask for the info about a block.
+<span class="doccomment">/// Request block data
 </span><span class="attr">#[derive(Debug, Clone, Default, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>AskForBlocksInfo {
+</span><span class="kw">pub enum </span>AskForBlockInfo {
     <span class="doccomment">/// Ask header
     </span>Header,
-    <span class="doccomment">/// The info about the block is required(list of operations ids).
+    <span class="doccomment">/// Ask for the list of operation IDs of the block
     </span><span class="attr">#[default]
-    </span>Info,
-    <span class="doccomment">/// The actual operations are required.
+    </span>OperationIds,
+    <span class="doccomment">/// Ask for a subset of operations of the block
     </span>Operations(Vec&lt;OperationId&gt;),
 }
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="doccomment">/// Reply to a block data request
+</span><span class="attr">#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>BlockInfoReply {
     <span class="doccomment">/// Header
     </span>Header(SecuredHeader),
-    <span class="doccomment">/// The info about the block is required(list of operations ids).
-    </span>Info(Vec&lt;OperationId&gt;),
-    <span class="doccomment">/// The actual operations required.
+    <span class="doccomment">/// List of operation IDs within the block
+    </span>OperationIds(Vec&lt;OperationId&gt;),
+    <span class="doccomment">/// Requested full operations of the block
     </span>Operations(Vec&lt;SecureShareOperation&gt;),
     <span class="doccomment">/// Block not found
     </span>NotFound,
@@ -421,25 +410,35 @@
     <span class="doccomment">/// Block header
     </span>BlockHeader(SecuredHeader),
     <span class="doccomment">/// Message asking the peer for info on a list of blocks.
-    </span>AskForBlocks(Vec&lt;(BlockId, AskForBlocksInfo)&gt;),
+    </span>BlockDataRequest {
+        <span class="doccomment">/// ID of the block to ask info for.
+        </span>block_id: BlockId,
+        <span class="doccomment">/// Block info to ask for.
+        </span>block_info: AskForBlockInfo,
+    },
     <span class="doccomment">/// Message replying with info on a list of blocks.
-    </span>ReplyForBlocks(Vec&lt;(BlockId, BlockInfoReply)&gt;),
+    </span>BlockDataResponse {
+        <span class="doccomment">/// ID of the block to reply info for.
+        </span>block_id: BlockId,
+        <span class="doccomment">/// Block info reply.
+        </span>block_info: BlockInfoReply,
+    },
 }
 
 <span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 </span><span class="kw">pub enum </span>MessageTypeId {
     BlockHeader,
-    AskForBlocks,
-    ReplyForBlocks,
+    BlockDataRequest,
+    BlockDataResponse,
 }
 
 <span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>BlockMessage&gt; <span class="kw">for </span>MessageTypeId {
     <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>BlockMessage) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
             BlockMessage::BlockHeader(<span class="kw">_</span>) =&gt; MessageTypeId::BlockHeader,
-            BlockMessage::AskForBlocks(<span class="kw">_</span>) =&gt; MessageTypeId::AskForBlocks,
-            BlockMessage::ReplyForBlocks(<span class="kw">_</span>) =&gt; MessageTypeId::ReplyForBlocks,
+            BlockMessage::BlockDataRequest { .. } =&gt; MessageTypeId::BlockDataRequest,
+            BlockMessage::BlockDataResponse { .. } =&gt; MessageTypeId::BlockDataResponse,
         }
     }
 }
@@ -448,7 +447,7 @@
 #[repr(u64)]
 </span><span class="kw">pub enum </span>BlockInfoType {
     Header = <span class="number">0</span>,
-    Info = <span class="number">1</span>,
+    OperationIds = <span class="number">1</span>,
     Operations = <span class="number">2</span>,
     NotFound = <span class="number">3</span>,
 }
@@ -487,71 +486,68 @@
             buffer,
         )<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
-            BlockMessage::BlockHeader(endorsements) =&gt; {
-                <span class="self">self</span>.secure_share_serializer
-                    .serialize(endorsements, buffer)<span class="question-mark">?</span>;
+            BlockMessage::BlockHeader(header) =&gt; {
+                <span class="self">self</span>.secure_share_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
             }
-            BlockMessage::AskForBlocks(ask_for_blocks) =&gt; {
-                <span class="self">self</span>.length_serializer
-                    .serialize(<span class="kw-2">&amp;</span>(ask_for_blocks.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                <span class="kw">for </span>(block_id, ask_for_block_info) <span class="kw">in </span>ask_for_blocks {
-                    <span class="self">self</span>.block_id_serializer.serialize(block_id, buffer)<span class="question-mark">?</span>;
-                    <span class="kw">match </span>ask_for_block_info {
-                        AskForBlocksInfo::Header =&gt; {
-                            <span class="self">self</span>.id_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Header <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                        }
-                        AskForBlocksInfo::Info =&gt; {
-                            <span class="self">self</span>.id_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Info <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                        }
-                        AskForBlocksInfo::Operations(operations_ids) =&gt; {
-                            <span class="self">self</span>.id_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Operations <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                            <span class="self">self</span>.length_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(operations_ids.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                            <span class="kw">for </span>operation_id <span class="kw">in </span>operations_ids {
-                                <span class="self">self</span>.operation_id_serializer
-                                    .serialize(operation_id, buffer)<span class="question-mark">?</span>;
-                            }
+            BlockMessage::BlockDataRequest {
+                block_id,
+                block_info,
+            } =&gt; {
+                <span class="self">self</span>.block_id_serializer.serialize(block_id, buffer)<span class="question-mark">?</span>;
+                <span class="kw">match </span>block_info {
+                    AskForBlockInfo::Header =&gt; {
+                        <span class="self">self</span>.id_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Header <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                    }
+                    AskForBlockInfo::OperationIds =&gt; {
+                        <span class="self">self</span>.id_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::OperationIds <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                    }
+                    AskForBlockInfo::Operations(operations_ids) =&gt; {
+                        <span class="self">self</span>.id_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Operations <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.length_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(operations_ids.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                        <span class="kw">for </span>operation_id <span class="kw">in </span>operations_ids {
+                            <span class="self">self</span>.operation_id_serializer
+                                .serialize(operation_id, buffer)<span class="question-mark">?</span>;
                         }
                     }
                 }
             }
-            BlockMessage::ReplyForBlocks(reply_for_blocks) =&gt; {
-                <span class="self">self</span>.length_serializer
-                    .serialize(<span class="kw-2">&amp;</span>(reply_for_blocks.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                <span class="kw">for </span>(block_id, reply_for_block_info) <span class="kw">in </span>reply_for_blocks {
-                    <span class="self">self</span>.block_id_serializer.serialize(block_id, buffer)<span class="question-mark">?</span>;
-                    <span class="kw">match </span>reply_for_block_info {
-                        BlockInfoReply::Header(header) =&gt; {
-                            <span class="self">self</span>.id_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Header <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                            <span class="self">self</span>.secure_share_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
+            BlockMessage::BlockDataResponse {
+                block_id,
+                block_info,
+            } =&gt; {
+                <span class="self">self</span>.block_id_serializer.serialize(block_id, buffer)<span class="question-mark">?</span>;
+                <span class="kw">match </span>block_info {
+                    BlockInfoReply::Header(header) =&gt; {
+                        <span class="self">self</span>.id_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Header <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.secure_share_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
+                    }
+                    BlockInfoReply::OperationIds(operations_ids) =&gt; {
+                        <span class="self">self</span>.id_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::OperationIds <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.length_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(operations_ids.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                        <span class="kw">for </span>operation_id <span class="kw">in </span>operations_ids {
+                            <span class="self">self</span>.operation_id_serializer
+                                .serialize(operation_id, buffer)<span class="question-mark">?</span>;
                         }
-                        BlockInfoReply::Info(operations_ids) =&gt; {
-                            <span class="self">self</span>.id_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Info <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                            <span class="self">self</span>.length_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(operations_ids.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                            <span class="kw">for </span>operation_id <span class="kw">in </span>operations_ids {
-                                <span class="self">self</span>.operation_id_serializer
-                                    .serialize(operation_id, buffer)<span class="question-mark">?</span>;
-                            }
+                    }
+                    BlockInfoReply::Operations(operations) =&gt; {
+                        <span class="self">self</span>.id_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Operations <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.length_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(operations.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
+                        <span class="kw">for </span>operation <span class="kw">in </span>operations {
+                            <span class="self">self</span>.secure_share_serializer.serialize(operation, buffer)<span class="question-mark">?</span>;
                         }
-                        BlockInfoReply::Operations(operations) =&gt; {
-                            <span class="self">self</span>.id_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::Operations <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                            <span class="self">self</span>.length_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(operations.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                            <span class="kw">for </span>operation <span class="kw">in </span>operations {
-                                <span class="self">self</span>.secure_share_serializer.serialize(operation, buffer)<span class="question-mark">?</span>;
-                            }
-                        }
-                        BlockInfoReply::NotFound =&gt; {
-                            <span class="self">self</span>.id_serializer
-                                .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::NotFound <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-                        }
+                    }
+                    BlockInfoReply::NotFound =&gt; {
+                        <span class="self">self</span>.id_serializer
+                            .serialize(<span class="kw-2">&amp;</span>(BlockInfoType::NotFound <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
                     }
                 }
             }
@@ -563,7 +559,6 @@
 <span class="kw">pub struct </span>BlockMessageDeserializer {
     id_deserializer: U64VarIntDeserializer,
     block_header_deserializer: SecureShareDeserializer&lt;BlockHeader, BlockHeaderDeserializer&gt;,
-    block_infos_length_deserializer: U64VarIntDeserializer,
     block_id_deserializer: BlockIdDeserializer,
     operation_ids_deserializer: OperationIdsDeserializer,
     operations_deserializer: OperationsDeserializer,
@@ -572,7 +567,6 @@
 <span class="kw">pub struct </span>BlockMessageDeserializerArgs {
     <span class="kw">pub </span>thread_count: u8,
     <span class="kw">pub </span>endorsement_count: u32,
-    <span class="kw">pub </span>block_infos_length_max: u64,
     <span class="kw">pub </span>max_operations_per_block: u32,
     <span class="kw">pub </span>max_datastore_value_length: u64,
     <span class="kw">pub </span>max_function_name_length: u16,
@@ -594,10 +588,6 @@
                 args.max_denunciations_in_block_header,
                 args.last_start_period,
             )),
-            block_infos_length_deserializer: U64VarIntDeserializer::new(
-                Included(<span class="number">0</span>),
-                Included(args.block_infos_length_max),
-            ),
             block_id_deserializer: BlockIdDeserializer::new(),
             operation_ids_deserializer: OperationIdsDeserializer::new(
                 args.max_operations_per_block,
@@ -636,102 +626,90 @@
                     .map(BlockMessage::BlockHeader)
                     .parse(buffer)
                 }
-                MessageTypeId::AskForBlocks =&gt; context(
-                    <span class="string">&quot;Failed AskForBlocks deserialization&quot;</span>,
-                    length_count(
-                        context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                            <span class="self">self</span>.block_infos_length_deserializer.deserialize(input)
+                MessageTypeId::BlockDataRequest =&gt; context(
+                    <span class="string">&quot;Failed BlockDataRequest deserialization&quot;</span>,
+                    tuple((
+                        context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.block_id_deserializer
+                                .deserialize(input)
+                                .map(|(rest, id)| (rest, id))
                         }),
-                        context(
-                            <span class="string">&quot;Failed Block infos deserialization&quot;</span>,
-                            tuple((
-                                context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
-                                    <span class="self">self</span>.block_id_deserializer.deserialize(input)
-                                }),
-                                context(<span class="string">&quot;Failed infos deserialization&quot;</span>, |input| {
-                                    <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
-                                    <span class="kw">let </span>info_type: BlockInfoType =
-                                        raw_id.try_into().map_err(|<span class="kw">_</span>| {
-                                            nom::Err::Error(ParseError::from_error_kind(
-                                                buffer,
-                                                nom::error::ErrorKind::Digit,
-                                            ))
-                                        })<span class="question-mark">?</span>;
-                                    <span class="kw">match </span>info_type {
-                                        BlockInfoType::Header =&gt; {
-                                            <span class="prelude-val">Ok</span>((rest, AskForBlocksInfo::Header))
-                                        }
-                                        BlockInfoType::Info =&gt; <span class="prelude-val">Ok</span>((rest, AskForBlocksInfo::Info)),
-                                        BlockInfoType::Operations =&gt; <span class="self">self
-                                            </span>.operation_ids_deserializer
-                                            .deserialize(rest)
-                                            .map(|(rest, operation_ids)| {
-                                                (rest, AskForBlocksInfo::Operations(operation_ids))
-                                            }),
-                                        BlockInfoType::NotFound =&gt; {
-                                            <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
-                                                buffer,
-                                                nom::error::ErrorKind::Digit,
-                                            )))
-                                        }
-                                    }
-                                }),
-                            )),
-                        ),
-                    ),
+                        context(<span class="string">&quot;Failed infos deserialization&quot;</span>, |input| {
+                            <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                            <span class="kw">let </span>info_type: BlockInfoType = raw_id.try_into().map_err(|<span class="kw">_</span>| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    buffer,
+                                    nom::error::ErrorKind::Digit,
+                                ))
+                            })<span class="question-mark">?</span>;
+                            <span class="kw">match </span>info_type {
+                                BlockInfoType::Header =&gt; <span class="prelude-val">Ok</span>((rest, AskForBlockInfo::Header)),
+                                BlockInfoType::OperationIds =&gt; {
+                                    <span class="prelude-val">Ok</span>((rest, AskForBlockInfo::OperationIds))
+                                }
+                                BlockInfoType::Operations =&gt; <span class="self">self
+                                    </span>.operation_ids_deserializer
+                                    .deserialize(rest)
+                                    .map(|(rest, operation_ids)| {
+                                        (rest, AskForBlockInfo::Operations(operation_ids))
+                                    }),
+                                BlockInfoType::NotFound =&gt; {
+                                    <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                                        buffer,
+                                        nom::error::ErrorKind::Digit,
+                                    )))
+                                }
+                            }
+                        }),
+                    )),
                 )
-                .map(BlockMessage::AskForBlocks)
+                .map(|(block_id, block_info)| BlockMessage::BlockDataRequest {
+                    block_id,
+                    block_info,
+                })
                 .parse(buffer),
-                MessageTypeId::ReplyForBlocks =&gt; context(
-                    <span class="string">&quot;Failed ReplyForBlocks deserialization&quot;</span>,
-                    length_count(
-                        context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                            <span class="self">self</span>.block_infos_length_deserializer.deserialize(input)
+                MessageTypeId::BlockDataResponse =&gt; context(
+                    <span class="string">&quot;Failed BlockDataResponse deserialization&quot;</span>,
+                    tuple((
+                        context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
+                            <span class="self">self</span>.block_id_deserializer
+                                .deserialize(input)
+                                .map(|(rest, id)| (rest, id))
                         }),
-                        context(
-                            <span class="string">&quot;Failed block infos deserialization&quot;</span>,
-                            tuple((
-                                context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
-                                    <span class="self">self</span>.block_id_deserializer.deserialize(input)
-                                }),
-                                context(<span class="string">&quot;Failed infos deserialization&quot;</span>, |input| {
-                                    <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
-                                    <span class="kw">let </span>info_type: BlockInfoType =
-                                        raw_id.try_into().map_err(|<span class="kw">_</span>| {
-                                            nom::Err::Error(ParseError::from_error_kind(
-                                                buffer,
-                                                nom::error::ErrorKind::Digit,
-                                            ))
-                                        })<span class="question-mark">?</span>;
-                                    <span class="kw">match </span>info_type {
-                                        BlockInfoType::Header =&gt; <span class="self">self
-                                            </span>.block_header_deserializer
-                                            .deserialize(rest)
-                                            .map(|(rest, header)| {
-                                                (rest, BlockInfoReply::Header(header))
-                                            }),
-                                        BlockInfoType::Info =&gt; <span class="self">self
-                                            </span>.operation_ids_deserializer
-                                            .deserialize(rest)
-                                            .map(|(rest, operation_ids)| {
-                                                (rest, BlockInfoReply::Info(operation_ids))
-                                            }),
-                                        BlockInfoType::Operations =&gt; <span class="self">self
-                                            </span>.operations_deserializer
-                                            .deserialize(rest)
-                                            .map(|(rest, operations)| {
-                                                (rest, BlockInfoReply::Operations(operations))
-                                            }),
-                                        BlockInfoType::NotFound =&gt; {
-                                            <span class="prelude-val">Ok</span>((rest, BlockInfoReply::NotFound))
-                                        }
-                                    }
-                                }),
-                            )),
-                        ),
-                    ),
+                        context(<span class="string">&quot;Failed infos deserialization&quot;</span>, |input| {
+                            <span class="kw">let </span>(rest, raw_id) = <span class="self">self</span>.id_deserializer.deserialize(input)<span class="question-mark">?</span>;
+                            <span class="kw">let </span>info_type: BlockInfoType = raw_id.try_into().map_err(|<span class="kw">_</span>| {
+                                nom::Err::Error(ParseError::from_error_kind(
+                                    buffer,
+                                    nom::error::ErrorKind::Digit,
+                                ))
+                            })<span class="question-mark">?</span>;
+                            <span class="kw">match </span>info_type {
+                                BlockInfoType::Header =&gt; <span class="self">self
+                                    </span>.block_header_deserializer
+                                    .deserialize(rest)
+                                    .map(|(rest, header)| (rest, BlockInfoReply::Header(header))),
+                                BlockInfoType::OperationIds =&gt; <span class="self">self
+                                    </span>.operation_ids_deserializer
+                                    .deserialize(rest)
+                                    .map(|(rest, operation_ids)| {
+                                        (rest, BlockInfoReply::OperationIds(operation_ids))
+                                    }),
+                                BlockInfoType::Operations =&gt; <span class="self">self
+                                    </span>.operations_deserializer
+                                    .deserialize(rest)
+                                    .map(|(rest, operations)| {
+                                        (rest, BlockInfoReply::Operations(operations))
+                                    }),
+                                BlockInfoType::NotFound =&gt; <span class="prelude-val">Ok</span>((rest, BlockInfoReply::NotFound)),
+                            }
+                        }),
+                    )),
                 )
-                .map(BlockMessage::ReplyForBlocks)
+                .map(|(block_id, block_info)| BlockMessage::BlockDataResponse {
+                    block_id,
+                    block_info,
+                })
                 .parse(buffer),
             }
         })

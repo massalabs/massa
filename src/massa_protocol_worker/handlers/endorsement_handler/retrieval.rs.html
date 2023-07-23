@@ -321,7 +321,6 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -340,7 +339,6 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
@@ -369,55 +367,20 @@
     storage: Storage,
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
     metrics: MassaMetrics,
+    endorsement_message_deserializer: EndorsementMessageDeserializer,
 }
 
 <span class="kw">impl </span>RetrievalThread {
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>endorsement_message_deserializer =
-            EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
-                thread_count: <span class="self">self</span>.config.thread_count,
-                max_length_endorsements: <span class="self">self</span>.config.max_endorsements_per_message,
-                endorsement_count: <span class="self">self</span>.config.endorsement_count,
-            });
-        <span class="kw">let </span>tick_metrics = tick(<span class="self">self</span>.metrics.tick_delay);
+        <span class="comment">// regular interval ticks for metrics
+        </span><span class="kw">let </span>tick_metrics = tick(<span class="self">self</span>.metrics.tick_delay);
 
         <span class="kw">loop </span>{
             <span class="macro">select! </span>{
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
                     <span class="self">self</span>.receiver.update_metrics();
                     <span class="kw">match </span>msg {
-                        <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; {
-                            <span class="kw">let </span>(rest, message) = <span class="kw">match </span>endorsement_message_deserializer
-                                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
-                                <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
-                                <span class="prelude-val">Err</span>(err) =&gt; {
-                                    <span class="macro">warn!</span>(<span class="string">&quot;Error while deserializing message from peer {} err: {:?}&quot;</span>, peer_id, err);
-                                    <span class="kw">continue</span>;
-                                }
-                            };
-                            <span class="kw">if </span>!rest.is_empty() {
-                                <span class="macro">println!</span>(<span class="string">&quot;Error: message not fully consumed&quot;</span>);
-                                <span class="kw">return</span>;
-                            }
-                            <span class="kw">match </span>message {
-                                EndorsementMessage::Endorsements(endorsements) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Received endorsement message: Endorsement from {}&quot;</span>, peer_id);
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                                        <span class="self">self</span>.note_endorsements_from_peer(endorsements, <span class="kw-2">&amp;</span>peer_id)
-                                    {
-                                        <span class="macro">warn!</span>(
-                                            <span class="string">&quot;peer {} sent us critically incorrect endorsements, \
-                                            which may be an attack attempt by the remote node or a \
-                                            loss of sync between us and the remote node. Err = {}&quot;</span>,
-                                            peer_id, err
-                                        );
-                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>peer_id) {
-                                            <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, peer_id, err);
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        <span class="prelude-val">Ok</span>((peer_id, message)) =&gt; <span class="self">self</span>.process_message(peer_id, message),
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                             <span class="macro">info!</span>(<span class="string">&quot;Stop endorsement retrieval thread&quot;</span>);
                             <span class="kw">return</span>;
@@ -443,175 +406,203 @@
                 },
                 recv(tick_metrics) -&gt; <span class="kw">_ </span>=&gt; {
                     <span class="comment">// update metrics
-                    </span><span class="kw">let </span>read = <span class="self">self</span>.cache.read();
-                    <span class="kw">let </span>count = read
+                    </span><span class="kw">let </span>cache_lock = <span class="self">self</span>.cache.read();
+                    <span class="kw">let </span>count = cache_lock
                         .endorsements_known_by_peer
                         .iter()
                         .map(|(_peer_id, map)| map.len())
                         .sum();
                     <span class="self">self</span>.metrics
-                        .set_endorsements_cache_metrics(read.checked_endorsements.len(), count);
+                        .set_endorsements_cache_metrics(cache_lock.checked_endorsements.len(), count);
                 }
             }
         }
     }
 
-    <span class="doccomment">/// Note endorsements coming from a given node,
-    /// and propagate them when they were received outside of a header.
-    ///
-    /// Caches knowledge of valid ones.
-    ///
-    /// Does not ban if the endorsement is invalid
-    ///
-    /// Checks performed:
-    /// - Valid signature.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        endorsements: Vec&lt;SecureShareEndorsement&gt;,
-        from_peer_id: <span class="kw-2">&amp;</span>PeerId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_endorsements_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: from_peer_id, <span class="string">&quot;endorsements&quot;</span>: endorsements});
-        <span class="kw">let </span>length = endorsements.len();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_endorsements = PreHashMap::with_capacity(length);
-        <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids = PreHashSet::with_capacity(length);
-        <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements.into_iter() {
-            <span class="kw">let </span>endorsement_id = endorsement.id;
-            endorsement_ids.insert(endorsement_id);
-            <span class="comment">// check endorsement signature if not already checked
-            </span>{
-                <span class="kw">let </span>read_cache = <span class="self">self</span>.cache.read();
-                <span class="kw">if </span>read_cache
-                    .checked_endorsements
-                    .peek(<span class="kw-2">&amp;</span>endorsement_id)
-                    .is_none()
-                {
-                    new_endorsements.insert(endorsement_id, endorsement);
+    <span class="doccomment">/// Process incoming message
+    </span><span class="kw">fn </span>process_message(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: PeerId, message: Vec&lt;u8&gt;) {
+        <span class="kw">let </span>(rest, message) = <span class="kw">match </span><span class="self">self
+            </span>.endorsement_message_deserializer
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message)
+        {
+            <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="macro">debug!</span>(
+                    <span class="string">&quot;Error while deserializing message from peer {} err: {:?}&quot;</span>,
+                    peer_id, err
+                );
+                <span class="kw">return</span>;
+            }
+        };
+        <span class="kw">if </span>!rest.is_empty() {
+            <span class="macro">debug!</span>(<span class="string">&quot;Message not fully consumed&quot;</span>);
+            <span class="kw">return</span>;
+        }
+        <span class="kw">match </span>message {
+            EndorsementMessage::Endorsements(endorsements) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;Received endorsement message: Endorsement from {}&quot;</span>, peer_id);
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_endorsements_from_peer(
+                    endorsements,
+                    <span class="kw-2">&amp;</span>peer_id,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.cache,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.selector_controller,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.config,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.internal_sender,
+                    <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
+                ) {
+                    <span class="macro">warn!</span>(
+                        <span class="string">&quot;peer {} sent us critically incorrect endorsements, \
+                        which may be an attack attempt by the remote node or a \
+                        loss of sync between us and the remote node. Err = {}&quot;</span>,
+                        peer_id, err
+                    );
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peer(<span class="kw-2">&amp;</span>peer_id) {
+                        <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, peer_id, err);
+                    }
                 }
             }
         }
-
-        <span class="comment">// Batch signature verification
-        // optimized signature verification
-        </span>verify_sigs_batch(
-            <span class="kw-2">&amp;</span>new_endorsements
-                .values()
-                .map(|endorsement| {
-                    (
-                        endorsement.compute_signed_hash(),
-                        endorsement.signature,
-                        endorsement.content_creator_pub_key,
-                    )
-                })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-        )<span class="question-mark">?</span>;
-
-        <span class="comment">// Check PoS draws
-        </span><span class="kw">for </span>endorsement <span class="kw">in </span>new_endorsements.values() {
-            <span class="kw">let </span>selection = <span class="self">self
-                </span>.selector_controller
-                .get_selection(endorsement.content.slot)<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="prelude-val">Some</span>(address) = selection.endorsements.get(endorsement.content.index <span class="kw">as </span>usize) <span class="kw">else </span>{
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::GeneralProtocolError(
-                            <span class="macro">format!</span>(
-                                <span class="string">&quot;No selection on slot {} for index {}&quot;</span>,
-                                endorsement.content.slot, endorsement.content.index
-                            )
-                        ))
-                    };
-            <span class="kw">if </span>address != <span class="kw-2">&amp;</span>endorsement.content_creator_address {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::GeneralProtocolError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Invalid endorsement: expected address {}, got {}&quot;</span>,
-                    address, endorsement.content_creator_address
-                )));
-            }
-        }
-
-        <span class="lifetime">&#39;write_cache</span>: {
-            <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
-            <span class="comment">// add to verified signature cache
-            </span><span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                cache_write.checked_endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
-            }
-            <span class="comment">// add to known endorsements for source node.
-            </span><span class="kw">let </span><span class="prelude-val">Ok</span>(endorsements) = cache_write
-                .endorsements_known_by_peer
-                .get_or_insert(from_peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        <span class="self">self</span>.config
-                            .max_node_known_endorsements_size
-                            .try_into()
-                            .expect(<span class="string">&quot;max_node_known_endorsements_size in config should be &gt; 0&quot;</span>),
-                    ))
-                })
-                .ok_or(()) <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">&quot;endorsements_known_by_peer limit reached&quot;</span>);
-                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
-                };
-            <span class="kw">for </span>endorsement_id <span class="kw">in </span>endorsement_ids.iter() {
-                endorsements.insert(<span class="kw-2">*</span>endorsement_id, ());
-            }
-        }
-
-        <span class="kw">if </span>!new_endorsements.is_empty() {
-            <span class="kw">let </span><span class="kw-2">mut </span>endorsements = <span class="self">self</span>.storage.clone_without_refs();
-            endorsements.store_endorsements(new_endorsements.into_values().collect());
-
-            <span class="comment">// Propagate endorsements
-            // Propagate endorsements when the slot of the block they endorse isn&#39;t `max_endorsements_propagation_time` old.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>endorsements_to_propagate = endorsements.clone();
-            <span class="kw">let </span>endorsements_to_not_propagate = {
-                <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
-                <span class="kw">let </span>read_endorsements = endorsements_to_propagate.read_endorsements();
-                endorsements_to_propagate
-                    .get_endorsement_refs()
-                    .iter()
-                    .filter_map(|endorsement_id| {
-                        <span class="kw">let </span>slot_endorsed_block =
-                            read_endorsements.get(endorsement_id).unwrap().content.slot;
-                        <span class="kw">let </span>slot_timestamp = get_block_slot_timestamp(
-                            <span class="self">self</span>.config.thread_count,
-                            <span class="self">self</span>.config.t0,
-                            <span class="self">self</span>.config.genesis_timestamp,
-                            slot_endorsed_block,
-                        );
-                        <span class="kw">match </span>slot_timestamp {
-                            <span class="prelude-val">Ok</span>(slot_timestamp) =&gt; {
-                                <span class="kw">if </span>slot_timestamp
-                                    .saturating_add(<span class="self">self</span>.config.max_endorsements_propagation_time)
-                                    &lt; now
-                                {
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>endorsement_id)
-                                } <span class="kw">else </span>{
-                                    <span class="prelude-val">None
-                                </span>}
-                            }
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>endorsement_id),
-                        }
-                    })
-                    .collect()
-            };
-            endorsements_to_propagate.drop_endorsement_refs(<span class="kw-2">&amp;</span>endorsements_to_not_propagate);
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.internal_sender.try_send(
-                EndorsementHandlerPropagationCommand::PropagateEndorsements(
-                    endorsements_to_propagate,
-                ),
-            ) {
-                <span class="macro">warn!</span>(<span class="string">&quot;Failed to send from retrieval thread of endorsement handler to propagation: {:?}&quot;</span>, err);
-            }
-            <span class="comment">// Add to pool
-            </span><span class="self">self</span>.pool_controller.add_endorsements(endorsements);
-        }
-
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// send a ban peer command to the peer handler
-    </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    </span><span class="kw">fn </span>ban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
         <span class="self">self</span>.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
+}
+
+<span class="doccomment">/// Note endorsements coming from a given node,
+/// and propagate them when they were received outside of a header.
+///
+/// Caches knowledge of valid ones.
+///
+/// Does not ban if the endorsement is invalid
+///
+/// Checks performed:
+/// - Valid signature.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
+    endorsements: Vec&lt;SecureShareEndorsement&gt;,
+    from_peer_id: <span class="kw-2">&amp;</span>PeerId,
+    cache: <span class="kw-2">&amp;</span>SharedEndorsementCache,
+    selector_controller: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+    storage: <span class="kw-2">&amp;</span>Storage,
+    config: <span class="kw-2">&amp;</span>ProtocolConfig,
+    endorsement_propagation_sender: <span class="kw-2">&amp;</span>MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
+    pool_controller: <span class="kw-2">&amp;mut </span>Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>new_endorsements = PreHashMap::with_capacity(endorsements.len());
+    <span class="kw">let </span><span class="kw-2">mut </span>all_endorsement_ids = PreHashSet::with_capacity(endorsements.len());
+
+    <span class="comment">// cache check
+    </span>{
+        <span class="kw">let </span>cache_read = cache.read();
+        <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements.into_iter() {
+            <span class="kw">let </span>endorsement_id = endorsement.id;
+            all_endorsement_ids.insert(endorsement_id);
+
+            <span class="comment">// only consider the endorsement as new if we have not already checked it
+            </span><span class="kw">if </span>cache_read
+                .checked_endorsements
+                .peek(<span class="kw-2">&amp;</span>endorsement_id)
+                .is_none()
+            {
+                new_endorsements.insert(endorsement_id, endorsement);
+            }
+        }
+    }
+
+    <span class="comment">// Batch signature verification
+    </span>verify_sigs_batch(
+        <span class="kw-2">&amp;</span>new_endorsements
+            .values()
+            .map(|endorsement| {
+                (
+                    endorsement.compute_signed_hash(),
+                    endorsement.signature,
+                    endorsement.content_creator_pub_key,
+                )
+            })
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+    )<span class="question-mark">?</span>;
+
+    <span class="comment">// Check PoS draws
+    </span><span class="kw">for </span>endorsement <span class="kw">in </span>new_endorsements.values() {
+        <span class="kw">let </span>selection = selector_controller
+            .get_selection(endorsement.content.slot)<span class="question-mark">?
+            </span>.endorsements;
+        <span class="kw">let </span><span class="prelude-val">Some</span>(address) = selection.get(endorsement.content.index <span class="kw">as </span>usize) <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::GeneralProtocolError(
+                        <span class="macro">format!</span>(
+                            <span class="string">&quot;No selection on slot {} for index {}&quot;</span>,
+                            endorsement.content.slot, endorsement.content.index
+                        )
+                    ))
+                };
+        <span class="kw">if </span>address != <span class="kw-2">&amp;</span>endorsement.content_creator_address {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::GeneralProtocolError(<span class="macro">format!</span>(
+                <span class="string">&quot;Invalid endorsement producer selection: expected address {}, got {}&quot;</span>,
+                address, endorsement.content_creator_address
+            )));
+        }
+    }
+
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>cache_write = cache.write();
+
+        <span class="comment">// add to the cache of endorsements we have checked
+        </span><span class="kw">for </span>endorsement_id <span class="kw">in </span>all_endorsement_ids.iter() {
+            cache_write.insert_checked_endorsement(<span class="kw-2">*</span>endorsement_id);
+        }
+
+        <span class="comment">// add to the cache of endorsements known by the source node
+        </span>cache_write.insert_peer_known_endorsements(
+            from_peer_id,
+            <span class="kw-2">&amp;</span>all_endorsement_ids.iter().copied().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        );
+    }
+
+    <span class="comment">// From there we note new endorsements and propagate them
+
+    // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
+    </span><span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
+    new_endorsements.retain(|_id, endorsement| {
+        <span class="kw">match </span>get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            endorsement.content.slot,
+        ) {
+            <span class="prelude-val">Ok</span>(t) =&gt; t.saturating_add(config.max_endorsements_propagation_time) &gt;= now,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+        }
+    });
+
+    <span class="kw">if </span>new_endorsements.is_empty() {
+        <span class="comment">// no endorsements to note or propagate
+        </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
+    }
+
+    <span class="comment">// Store new endorsements
+    </span><span class="kw">let </span><span class="kw-2">mut </span>endorsement_store = storage.clone_without_refs();
+    endorsement_store.store_endorsements(new_endorsements.into_values().collect());
+
+    <span class="comment">// Propagate to other peers
+    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = endorsement_propagation_sender.try_send(
+        EndorsementHandlerPropagationCommand::PropagateEndorsements(endorsement_store.clone()),
+    ) {
+        <span class="macro">warn!</span>(
+            <span class="string">&quot;Failed to send from retrieval thread of endorsement handler to propagation: {:?}&quot;</span>,
+            err
+        );
+    }
+
+    <span class="comment">// Add to pool
+    </span>pool_controller.add_endorsements(endorsement_store);
+
+    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
@@ -627,6 +618,12 @@
     storage: Storage,
     metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
+    <span class="kw">let </span>endorsement_message_deserializer =
+        EndorsementMessageDeserializer::new(EndorsementMessageDeserializerArgs {
+            thread_count: config.thread_count,
+            max_length_endorsements: config.max_endorsements_per_message,
+            endorsement_count: config.endorsement_count,
+        });
     std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-endorsement-handler-retrieval&quot;</span>.to_string())
         .spawn(<span class="kw">move </span>|| {
@@ -641,6 +638,7 @@
                 config,
                 storage,
                 metrics,
+                endorsement_message_deserializer,
             };
             retrieval_thread.run();
         })
