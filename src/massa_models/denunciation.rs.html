@@ -1482,15 +1482,6 @@
 <a href="#1482" id="1482">1482</a>
 <a href="#1483" id="1483">1483</a>
 <a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
-<a href="#1487" id="1487">1487</a>
-<a href="#1488" id="1488">1488</a>
-<a href="#1489" id="1489">1489</a>
-<a href="#1490" id="1490">1490</a>
-<a href="#1491" id="1491">1491</a>
-<a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Denunciation intro
@@ -2701,8 +2692,8 @@
             gen_endorsements_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2).try_into().unwrap();
 
-        <span class="macro">assert_eq!</span>(denunciation.is_for_endorsement(), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(denunciation.is_valid(), <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(denunciation.is_for_endorsement());
+        <span class="macro">assert!</span>(denunciation.is_valid());
     }
 
     <span class="attr">#[test]
@@ -2743,8 +2734,8 @@
 
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_2).try_into().unwrap();
 
-        <span class="macro">assert_eq!</span>(denunciation.is_for_endorsement(), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(denunciation.is_valid(), <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(denunciation.is_for_endorsement());
+        <span class="macro">assert!</span>(denunciation.is_valid());
 
         <span class="comment">// Try to create a denunciation from 2 endorsements @ != index
         </span><span class="kw">let </span>endorsement_4 = Endorsement {
@@ -2756,19 +2747,13 @@
             Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
                 .unwrap();
 
-        <span class="macro">assert_eq!</span>(
-            denunciation
-                .is_also_for_endorsement(<span class="kw-2">&amp;</span>s_endorsement_4)
-                .unwrap(),
-            <span class="bool-val">false
-        </span>);
-        <span class="macro">assert_eq!</span>(
-            denunciation
-                .is_also_for_endorsement(<span class="kw-2">&amp;</span>s_endorsement_3)
-                .unwrap(),
-            <span class="bool-val">true
-        </span>);
-        <span class="macro">assert_eq!</span>(denunciation.is_valid(), <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(!denunciation
+            .is_also_for_endorsement(<span class="kw-2">&amp;</span>s_endorsement_4)
+            .unwrap());
+        <span class="macro">assert!</span>(denunciation
+            .is_also_for_endorsement(<span class="kw-2">&amp;</span>s_endorsement_3)
+            .unwrap());
+        <span class="macro">assert!</span>(denunciation.is_valid());
     }
 
     <span class="attr">#[test]
@@ -2778,14 +2763,11 @@
             gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="kw">let </span>denunciation: Denunciation = (<span class="kw-2">&amp;</span>s_block_header_1, <span class="kw-2">&amp;</span>s_block_header_2).try_into().unwrap();
 
-        <span class="macro">assert_eq!</span>(denunciation.is_for_block_header(), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(denunciation.is_valid(), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(
-            denunciation
-                .is_also_for_block_header(<span class="kw-2">&amp;</span>s_block_header_3)
-                .unwrap(),
-            <span class="bool-val">true
-        </span>);
+        <span class="macro">assert!</span>(denunciation.is_for_block_header());
+        <span class="macro">assert!</span>(denunciation.is_valid());
+        <span class="macro">assert!</span>(denunciation
+            .is_also_for_block_header(<span class="kw-2">&amp;</span>s_block_header_3)
+            .unwrap());
     }
 
     <span class="attr">#[test]
@@ -2826,7 +2808,7 @@
         });
 
         <span class="comment">// hash_1 == hash_2 -&gt; this is invalid
-        </span><span class="macro">assert_eq!</span>(de_forged_1.is_valid(), <span class="bool-val">false</span>);
+        </span><span class="macro">assert!</span>(!de_forged_1.is_valid());
 
         <span class="comment">// from an attacker - building manually a Denunciation object
         </span><span class="kw">let </span>de_forged_2 = Denunciation::Endorsement(EndorsementDenunciation {
@@ -2841,7 +2823,7 @@
 
         <span class="comment">// An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
         // This has to be detected if Denunciation are send via the network
-        </span><span class="macro">assert_eq!</span>(de_forged_2.is_valid(), <span class="bool-val">false</span>);
+        </span><span class="macro">assert!</span>(!de_forged_2.is_valid());
     }
 
     <span class="comment">// SER / DER
@@ -2863,7 +2845,7 @@
 
                 <span class="kw">let </span>(rem, de_der_res) = de_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
 
-                <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
+                <span class="macro">assert!</span>(rem.is_empty());
                 <span class="macro">assert_eq!</span>(de, de_der_res);
             }
             Denunciation::BlockHeader(<span class="kw">_</span>) =&gt; {
@@ -2891,7 +2873,7 @@
 
                 <span class="kw">let </span>(rem, de_der_res) = de_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
 
-                <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
+                <span class="macro">assert!</span>(rem.is_empty());
                 <span class="macro">assert_eq!</span>(de, de_der_res);
             }
         }
@@ -2911,7 +2893,7 @@
 
         <span class="kw">let </span>(rem, de_der_res) = de_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
 
-        <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(rem.is_empty());
         <span class="macro">assert_eq!</span>(denunciation, de_der_res);
 
         <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, s_endorsement_1, s_endorsement_2, <span class="kw">_</span>) =
@@ -2921,7 +2903,7 @@
 
         de_ser.serialize(<span class="kw-2">&amp;</span>denunciation, <span class="kw-2">&amp;mut </span>buffer).unwrap();
         <span class="kw">let </span>(rem, de_der_res) = de_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
-        <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(rem.is_empty());
         <span class="macro">assert_eq!</span>(denunciation, de_der_res);
     }
 

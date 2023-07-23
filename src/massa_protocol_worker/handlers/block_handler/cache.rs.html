@@ -131,7 +131,7 @@
     <span class="kw">pub fn </span>update_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peers_connected: <span class="kw-2">&amp;</span>HashSet&lt;PeerId&gt;) {
         <span class="comment">// Remove disconnected peers from cache
         </span><span class="self">self</span>.blocks_known_by_peer
-            .retain(|peer_id, <span class="kw">_</span>| !peers_connected.contains(peer_id));
+            .retain(|peer_id, <span class="kw">_</span>| peers_connected.contains(peer_id));
 
         <span class="comment">// Add new connected peers to cache
         </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {

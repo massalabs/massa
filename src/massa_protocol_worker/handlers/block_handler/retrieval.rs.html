@@ -1270,6 +1270,17 @@
 <a href="#1270" id="1270">1270</a>
 <a href="#1271" id="1271">1271</a>
 <a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1416,14 +1427,14 @@
                                 <span class="kw">return</span>;
                             }
                             <span class="kw">match </span>message {
-                                BlockMessage::BlockDataRequest{block_id, block_info} =&gt; {
+                                BlockMessage::DataRequest{block_id, block_info} =&gt; {
                                     <span class="self">self</span>.on_ask_for_block_info_received(peer_id.clone(), block_id, block_info);
                                 }
-                                BlockMessage::BlockDataResponse{block_id, block_info} =&gt; {
+                                BlockMessage::DataResponse{block_id, block_info} =&gt; {
                                    <span class="self">self</span>.on_block_info_received(peer_id.clone(), block_id, block_info);
                                    <span class="self">self</span>.update_block_retrieval();
                                 }
-                                BlockMessage::BlockHeader(header) =&gt; {
+                                BlockMessage::Header(header) =&gt; {
                                     <span class="self">self</span>.on_block_header_received(peer_id.clone(), header);
                                     <span class="self">self</span>.update_block_retrieval();
                                 }
@@ -1593,7 +1604,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
             <span class="kw-2">&amp;</span>from_peer_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
-            BlockMessage::BlockDataResponse {
+            BlockMessage::DataResponse {
                 block_id,
                 block_info: block_info_response,
             }
@@ -1770,7 +1781,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ProtocolError&gt; {
         <span class="comment">// refuse genesis blocks
         </span><span class="kw">if </span>header.content.slot.period == <span class="number">0 </span>|| header.content.parents.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(<span class="string">&quot;block is genesis&quot;</span>)));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="string">&quot;block is genesis&quot;</span>.to_string()));
         }
 
         <span class="comment">// Check that our node supports the block version
@@ -1830,11 +1841,11 @@
             header.content.endorsements.clone(),
             from_peer_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_cache,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.selector_controller,
+            <span class="self">self</span>.selector_controller.as_ref(),
             <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
             <span class="kw-2">&amp;</span><span class="self">self</span>.config,
             <span class="kw-2">&amp;</span><span class="self">self</span>.sender_propagation_endorsements,
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
+            <span class="self">self</span>.pool_controller.as_mut(),
         ) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
                 <span class="string">&quot;invalid endorsements: {}&quot;</span>,
@@ -1893,7 +1904,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>cache_lock = <span class="self">self</span>.cache.write();
 
             <span class="comment">// mark the sender peer as knowing the block and its parents
-            </span><span class="self">self</span>.cache.write().insert_peer_known_block(
+            </span>cache_lock.insert_peer_known_block(
                 from_peer_id,
                 <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>[block_id], header.content.parents.as_slice()].concat(),
                 <span class="bool-val">true</span>,
@@ -1925,7 +1936,7 @@
     <span class="doccomment">/// Mark a block as invalid
     </span><span class="kw">fn </span>mark_block_as_invalid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) {
         <span class="comment">// stop retrieving the block
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(wishlist_info) = <span class="self">self</span>.block_wishlist.remove(<span class="kw-2">&amp;</span>block_id) {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(wishlist_info) = <span class="self">self</span>.block_wishlist.remove(block_id) {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = wishlist_info.header {
                 <span class="comment">// notify consensus that the block is invalid
                 </span><span class="self">self</span>.consensus_controller
@@ -2039,7 +2050,7 @@
             .insert_peer_known_block(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>);
 
         <span class="comment">// Save the received operation ID list to the wishlist
-        </span>wishlist_info.operation_ids = <span class="prelude-val">Some</span>(operation_ids.clone());
+        </span>wishlist_info.operation_ids = <span class="prelude-val">Some</span>(operation_ids);
 
         <span class="comment">// free up all the nodes that we asked for that operation list
         </span><span class="self">self</span>.remove_asked_blocks(<span class="kw-2">&amp;</span>[block_id].into_iter().collect());
@@ -2209,8 +2220,10 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>to_ask: PreHashSet&lt;BlockId&gt; = <span class="self">self</span>.block_wishlist.keys().copied().collect();
         <span class="comment">// the number of things already being asked to those peers
         </span><span class="kw">let </span><span class="kw-2">mut </span>peer_loads: HashMap&lt;PeerId, usize&gt; = Default::default();
-        <span class="kw">for </span>(peer_id, asked_blocks) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.asked_blocks {
-            <span class="kw">for </span>(block_id, ask_time) <span class="kw">in </span>asked_blocks {
+        <span class="kw">for </span>(peer_id, asked_blocks) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.asked_blocks {
+            <span class="comment">// init the list of items to remove from asked_blocks
+            </span><span class="kw">let </span><span class="kw-2">mut </span>to_remove_from_asked_blocks = Vec::new();
+            <span class="kw">for </span>(block_id, ask_time) <span class="kw">in </span>asked_blocks.iter() {
                 <span class="kw">let </span>expiry = ask_time
                     .checked_add(ask_block_timeout)
                     .expect(<span class="string">&quot;could not compute block ask expiry&quot;</span>);
@@ -2221,8 +2234,13 @@
                     </span><span class="self">self</span>.cache
                         .write()
                         .insert_peer_known_block(peer_id, <span class="kw-2">&amp;</span>[<span class="kw-2">*</span>block_id], <span class="bool-val">false</span>);
+
+                    <span class="comment">// We mark the block for removal from the asked_blocks list.
+                    // This prevents us from re-detecting the timeout many times.
+                    </span>to_remove_from_asked_blocks.push(<span class="kw-2">*</span>block_id);
                 } <span class="kw">else </span>{
                     <span class="comment">// this block was recently asked to this peer: no need to ask for the block for now
+
                     </span>to_ask.remove(block_id);
 
                     <span class="comment">// mark this peer as loaded with an angoing ask
@@ -2235,122 +2253,128 @@
                     </span>next_tick = next_tick.min(expiry);
                 }
             }
+            <span class="comment">// remove the blocks marked for removal from asked_blocks
+            </span><span class="kw">for </span>remove_id <span class="kw">in </span>to_remove_from_asked_blocks {
+                asked_blocks.remove(<span class="kw-2">&amp;</span>remove_id);
+            }
         }
 
         <span class="comment">// for each block to ask, choose a peer to ask it from and perform the ask
         </span><span class="kw">let </span><span class="kw-2">mut </span>to_ask = to_ask.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         to_ask.shuffle(<span class="kw-2">&amp;mut </span>thread_rng()); <span class="comment">// shuffle ask order
-        </span>{
-            <span class="kw">for </span>block_id <span class="kw">in </span>to_ask {
-                <span class="comment">// prioritize peers by (max knowledge, min knowledge age, min load, max random)
-                </span><span class="kw">let </span><span class="kw-2">mut </span>peer_scores: Vec&lt;<span class="kw">_</span>&gt; = connected_peers
-                    .iter()
-                    .filter_map(|peer_id| {
-                        <span class="comment">// Get the peer load. Look for the minimum score for asking.
-                        </span><span class="kw">let </span>peer_load = peer_loads.get(peer_id).copied().unwrap_or_default();
-                        <span class="kw">if </span>peer_load &gt;= <span class="self">self</span>.config.max_simultaneous_ask_blocks_per_node {
-                            <span class="comment">// this peer is already loaded with too many asks
-                            </span><span class="kw">return </span><span class="prelude-val">None</span>;
+        </span><span class="kw">for </span>block_id <span class="kw">in </span>to_ask {
+            <span class="comment">// prioritize peers by (max knowledge, min knowledge age, min load, max random)
+            </span><span class="kw">let </span><span class="kw-2">mut </span>peer_scores: Vec&lt;<span class="kw">_</span>&gt; = connected_peers
+                .iter()
+                .filter_map(|peer_id| {
+                    <span class="comment">// Get the peer load. Look for the minimum score for asking.
+                    </span><span class="kw">let </span>peer_load = peer_loads.get(peer_id).copied().unwrap_or_default();
+                    <span class="kw">if </span>peer_load &gt;= <span class="self">self</span>.config.max_simultaneous_ask_blocks_per_node {
+                        <span class="comment">// this peer is already loaded with too many asks
+                        </span><span class="kw">return </span><span class="prelude-val">None</span>;
+                    }
+                    <span class="comment">// get peer knowledge info about that block
+                    </span><span class="kw">let </span>peer_knowledge_of_block = <span class="self">self
+                        </span>.cache
+                        .read()
+                        .blocks_known_by_peer
+                        .get(peer_id)
+                        .and_then(|blocks_known| blocks_known.peek(<span class="kw-2">&amp;</span>block_id).copied());
+                    <span class="kw">match </span>peer_knowledge_of_block {
+                        <span class="prelude-val">Some</span>((<span class="bool-val">false</span>, info_t)) =&gt; {
+                            <span class="comment">// we think that the peer doesn&#39;t know the block
+                            </span><span class="prelude-val">Some</span>((
+                                <span class="number">1i8</span>,                                                               <span class="comment">// worst knowledge
+                                </span><span class="prelude-val">Some</span>(-(now.saturating_duration_since(info_t).as_millis() <span class="kw">as </span>i64)), <span class="comment">// the older the info the better
+                                </span>peer_load,                 <span class="comment">// the lower the load the better
+                                </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
+                                </span>peer_id.clone(),
+                            ))
                         }
-                        <span class="comment">// get peer knowledge info about that block
-                        </span><span class="kw">let </span>peer_knowledge_of_block = <span class="self">self
-                            </span>.cache
-                            .read()
-                            .blocks_known_by_peer
-                            .get(peer_id)
-                            .and_then(|blocks_known| blocks_known.peek(<span class="kw-2">&amp;</span>block_id).copied());
-                        <span class="kw">match </span>peer_knowledge_of_block {
-                            <span class="prelude-val">Some</span>((<span class="bool-val">false</span>, info_t)) =&gt; {
-                                <span class="comment">// we think that the peer doesn&#39;t know the block
-                                </span><span class="prelude-val">Some</span>((
-                                    <span class="number">1i8</span>, <span class="comment">// worst knowledge
-                                    </span><span class="prelude-val">Some</span>(
-                                        -(now.saturating_duration_since(info_t).as_millis() <span class="kw">as </span>i64),
-                                    ), <span class="comment">// the older the info the better
-                                    </span>peer_load, <span class="comment">// the lower the load the better
-                                    </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
-                                    </span>peer_id.clone(),
-                                ))
-                            }
-                            <span class="prelude-val">None </span>=&gt; {
-                                <span class="comment">// we don&#39;t know if the peer knows the block
-                                </span><span class="prelude-val">Some</span>((
-                                    <span class="number">0i8</span>,                       <span class="comment">// medium knowledge
-                                    </span><span class="prelude-val">None</span>,                      <span class="comment">// N/A
-                                    </span>peer_load,                 <span class="comment">// the lower the load the better
-                                    </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
-                                    </span>peer_id.clone(),
-                                ))
-                            }
-                            <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, info_t)) =&gt; {
-                                <span class="comment">// we think that the peer knows the block
-                                </span><span class="prelude-val">Some</span>((
-                                    -<span class="number">1i8</span>,                                                           <span class="comment">// best knowledge
-                                    </span><span class="prelude-val">Some</span>(now.saturating_duration_since(info_t).as_millis() <span class="kw">as </span>i64), <span class="comment">// the newer the info the better
-                                    </span>peer_load, <span class="comment">// the lower the load the better
-                                    </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
-                                    </span>peer_id.clone(),
-                                ))
-                            }
+                        <span class="prelude-val">None </span>=&gt; {
+                            <span class="comment">// we don&#39;t know if the peer knows the block
+                            </span><span class="prelude-val">Some</span>((
+                                <span class="number">0i8</span>,                       <span class="comment">// medium knowledge
+                                </span><span class="prelude-val">None</span>,                      <span class="comment">// N/A
+                                </span>peer_load,                 <span class="comment">// the lower the load the better
+                                </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
+                                </span>peer_id.clone(),
+                            ))
                         }
-                    })
-                    .collect();
+                        <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, info_t)) =&gt; {
+                            <span class="comment">// we think that the peer knows the block
+                            </span><span class="prelude-val">Some</span>((
+                                -<span class="number">1i8</span>,                                                           <span class="comment">// best knowledge
+                                </span><span class="prelude-val">Some</span>(now.saturating_duration_since(info_t).as_millis() <span class="kw">as </span>i64), <span class="comment">// the newer the info the better
+                                </span>peer_load,                 <span class="comment">// the lower the load the better
+                                </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
+                                </span>peer_id.clone(),
+                            ))
+                        }
+                    }
+                })
+                .collect();
 
-                <span class="comment">// sort peers from best to worst to ask
-                </span>peer_scores.sort_unstable();
+            <span class="comment">// sort peers from best to worst to ask
+            </span>peer_scores.sort_unstable();
 
-                <span class="comment">// get wishlist info to deduce message to send
-                </span><span class="kw">let </span>wishlist_info = <span class="self">self
-                    </span>.block_wishlist
-                    .get_mut(<span class="kw-2">&amp;</span>block_id)
-                    .expect(<span class="string">&quot;block presence in wishlist should have been checked above&quot;</span>);
-                <span class="kw">let </span>request = <span class="kw">match </span>(
-                    wishlist_info.header.is_some(),
-                    wishlist_info.operation_ids.is_some(),
+            <span class="comment">// get wishlist info to deduce message to send
+            </span><span class="kw">let </span>wishlist_info = <span class="self">self
+                </span>.block_wishlist
+                .get_mut(<span class="kw-2">&amp;</span>block_id)
+                .expect(<span class="string">&quot;block presence in wishlist should have been checked above&quot;</span>);
+            <span class="kw">let </span>request = <span class="kw">match </span>(
+                wishlist_info.header.is_some(),
+                wishlist_info.operation_ids.is_some(),
+            ) {
+                <span class="comment">// ask for header
+                </span>(<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; AskForBlockInfo::Header,
+                <span class="comment">// ask for the list of operation IDs in the block
+                </span>(<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; AskForBlockInfo::OperationIds,
+                <span class="comment">// ask for missing operations in the block
+                </span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; {
+                    <span class="comment">// gather missing block operations and perform necessary followups
+                    </span><span class="kw">match </span><span class="self">self</span>.gather_missing_block_ops(<span class="kw-2">&amp;</span>block_id) {
+                        <span class="prelude-val">Some</span>(ops) =&gt; AskForBlockInfo::Operations(ops),
+                        <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
+                    }
+                }
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid wishlist state&quot;</span>),
+            };
+
+            <span class="comment">// try to ask peers from best to worst
+            </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, peer_id) <span class="kw">in </span>peer_scores {
+                <span class="macro">debug!</span>(<span class="string">&quot;Send ask for block {} to {}&quot;</span>, block_id, peer_id);
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
+                    <span class="kw-2">&amp;</span>peer_id,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
+                    Message::Block(Box::new(BlockMessage::DataRequest {
+                        block_id,
+                        block_info: request.clone(),
+                    })),
+                    <span class="bool-val">true</span>,
                 ) {
-                    <span class="comment">// ask for header
-                    </span>(<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; AskForBlockInfo::Header,
-                    <span class="comment">// ask for the list of operation IDs in the block
-                    </span>(<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; AskForBlockInfo::OperationIds,
-                    <span class="comment">// ask for missing operations in the block
-                    </span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; {
-                        <span class="comment">// gather missing block operations and perform necessary followups
-                        </span><span class="kw">match </span><span class="self">self</span>.gather_missing_block_ops(<span class="kw-2">&amp;</span>block_id) {
-                            <span class="prelude-val">Some</span>(ops) =&gt; AskForBlockInfo::Operations(ops),
-                            <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
-                        }
-                    }
-                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid wishlist state&quot;</span>),
-                };
+                    <span class="macro">warn!</span>(
+                        <span class="string">&quot;Failed to send BlockDataRequest to peer {} err: {}&quot;</span>,
+                        peer_id, err
+                    );
+                } <span class="kw">else </span>{
+                    <span class="comment">// The request was sent.
 
-                <span class="comment">// try to ask peers from best to worst
-                </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, peer_id) <span class="kw">in </span>peer_scores {
-                    <span class="macro">debug!</span>(<span class="string">&quot;Send ask for block {} to {}&quot;</span>, block_id, peer_id);
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
-                        <span class="kw-2">&amp;</span>peer_id,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
-                        Message::Block(Box::new(BlockMessage::BlockDataRequest {
-                            block_id,
-                            block_info: request.clone(),
-                        })),
-                        <span class="bool-val">true</span>,
-                    ) {
-                        <span class="macro">warn!</span>(
-                            <span class="string">&quot;Failed to send BlockDataRequest to peer {} err: {}&quot;</span>,
-                            peer_id, err
-                        );
-                    } <span class="kw">else </span>{
-                        <span class="comment">// The request was sent.
+                    // Update the asked_blocks list
+                    </span><span class="self">self</span>.asked_blocks
+                        .entry(peer_id.clone())
+                        .or_insert_with(Default::default)
+                        .insert(block_id, now);
 
-                        // Increment the load of the peer.
-                        </span>peer_loads
-                            .entry(peer_id)
-                            .and_modify(|v| <span class="kw-2">*</span>v += <span class="number">1</span>)
-                            .or_insert(<span class="number">1</span>);
+                    <span class="comment">// Increment the load of the peer.
+                    </span>peer_loads
+                        .entry(peer_id)
+                        .and_modify(|v| <span class="kw-2">*</span>v += <span class="number">1</span>)
+                        .or_insert(<span class="number">1</span>);
 
-                        <span class="comment">// No need to look for other peers.
-                        </span><span class="kw">break</span>;
-                    }
+                    <span class="comment">// No need to look for other peers.
+                    </span><span class="kw">break</span>;
                 }
             }
         }
@@ -2402,9 +2426,7 @@
                 .operation_ids
                 .as_ref()
                 .expect(<span class="string">&quot;operation_ids presence in wishlist should have been checked above&quot;</span>)
-                .iter()
-                .copied()
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                .to_vec(),
         );
 
         <span class="comment">// Check if the total size of the operations we know about is greater than the max block size.
@@ -2417,7 +2439,7 @@
             );
 
             <span class="comment">// stop retrieving the block
-            </span><span class="self">self</span>.mark_block_as_invalid(<span class="kw-2">&amp;</span>block_id);
+            </span><span class="self">self</span>.mark_block_as_invalid(block_id);
 
             <span class="comment">// quit
             </span><span class="kw">return </span><span class="prelude-val">None</span>;
@@ -2429,7 +2451,7 @@
         }
 
         <span class="comment">// there are no missing ops, we can finish the block
-        </span><span class="self">self</span>.fully_gathered_block(<span class="kw-2">&amp;</span>block_id);
+        </span><span class="self">self</span>.fully_gathered_block(block_id);
 
         <span class="prelude-val">None
     </span>}
@@ -2439,7 +2461,7 @@
         <span class="comment">// Gather all the elements needed to create the block. We must have it all by now.
         </span><span class="kw">let </span>wishlist_info = <span class="self">self
             </span>.block_wishlist
-            .remove(<span class="kw-2">&amp;</span>block_id)
+            .remove(block_id)
             .expect(<span class="string">&quot;block presence in wishlist should have been checked before&quot;</span>);
 
         <span class="comment">// Create the block
@@ -2459,9 +2481,9 @@
 
         <span class="comment">// wrap block
         </span><span class="kw">let </span>signed_block = SecureShare {
-            signature: block.header.signature.clone(),
-            content_creator_pub_key: block.header.content_creator_pub_key.clone(),
-            content_creator_address: block.header.content_creator_address.clone(),
+            signature: block.header.signature,
+            content_creator_pub_key: block.header.content_creator_pub_key,
+            content_creator_address: block.header.content_creator_address,
             id: <span class="kw-2">*</span>block_id,
             content: block,
             serialized_data: content_serialized,

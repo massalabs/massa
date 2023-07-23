@@ -246,11 +246,6 @@
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file deals with the announcement of block headers to other nodes
@@ -407,22 +402,17 @@
         <span class="kw">let </span>now = Instant::now();
 
         <span class="comment">// stop propagating blocks that have been propagating for too long
-        </span><span class="kw">loop </span>{
-            <span class="kw">match </span><span class="self">self
-                </span>.stored_for_propagation
-                .peek_oldest()
-                .map(|(<span class="kw">_</span>, BlockPropagationData { time_added, .. })| <span class="kw-2">*</span>time_added)
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(time_added) = <span class="self">self
+            </span>.stored_for_propagation
+            .peek_oldest()
+            .map(|(<span class="kw">_</span>, BlockPropagationData { time_added, .. })| <span class="kw-2">*</span>time_added)
+        {
+            <span class="kw">if </span>now.saturating_duration_since(time_added)
+                &gt; <span class="self">self</span>.config.max_block_propagation_time.to_duration()
             {
-                <span class="prelude-val">Some</span>(time_added) =&gt; {
-                    <span class="kw">if </span>now.saturating_duration_since(time_added)
-                        &gt; <span class="self">self</span>.config.max_block_propagation_time.to_duration()
-                    {
-                        <span class="self">self</span>.stored_for_propagation.pop_oldest();
-                    } <span class="kw">else </span>{
-                        <span class="kw">break</span>;
-                    }
-                }
-                <span class="prelude-val">None </span>=&gt; <span class="kw">break</span>,
+                <span class="self">self</span>.stored_for_propagation.pop_oldest();
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
             }
         }
 
@@ -443,7 +433,7 @@
                 </span><span class="kw">match </span><span class="self">self</span>.active_connections.send_to_peer(
                     peer_id,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.block_serializer,
-                    BlockMessage::BlockHeader(header.clone()).into(),
+                    BlockMessage::Header(header.clone()).into(),
                     <span class="bool-val">true</span>,
                 ) {
                     <span class="prelude-val">Ok</span>(()) =&gt; {

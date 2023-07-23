@@ -1435,7 +1435,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_address() {
-        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span><span class="string">&quot;ADDR&quot;</span>.as_bytes());
+        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="string">&quot;ADDR&quot;</span>.as_bytes());
 
         <span class="kw">let </span>user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
         <span class="kw">let </span>user_addr_1 = Address::User(UserAddress::UserAddressV1(UserAddressV1(hash)));
@@ -1462,11 +1462,11 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_address_get_thread() {
-        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span><span class="string">&quot;ADDR&quot;</span>.as_bytes());
+        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="string">&quot;ADDR&quot;</span>.as_bytes());
 
         <span class="kw">let </span>user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
         <span class="kw">let </span>thread_addr_0 = user_addr_0.get_thread(THREAD_COUNT);
-        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span><span class="string">&quot;ADDR2&quot;</span>.as_bytes());
+        <span class="kw">let </span>hash = massa_hash::Hash::compute_from(<span class="string">&quot;ADDR2&quot;</span>.as_bytes());
 
         <span class="kw">let </span>user_addr_1 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
         <span class="kw">let </span>thread_addr_1 = user_addr_1.get_thread(THREAD_COUNT);

@@ -1350,9 +1350,9 @@
             .collect();
 
         <span class="kw">let </span>endorsement_1 = Endorsement {
-            slot: slot.clone(),
+            slot,
             index: <span class="number">1</span>,
-            endorsed_block: parents_1[<span class="number">1</span>].clone(),
+            endorsed_block: parents_1[<span class="number">1</span>],
         };
 
         <span class="macro">assert_eq!</span>(parents_1[<span class="number">1</span>], endorsement_1.endorsed_block);
@@ -1374,8 +1374,8 @@
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
-            endorsements: <span class="macro">vec!</span>[s_endorsement_1.clone()],
-            denunciations: <span class="macro">vec!</span>[de_a.clone(), de_b.clone()],
+            endorsements: <span class="macro">vec!</span>[s_endorsement_1],
+            denunciations: <span class="macro">vec!</span>[de_a, de_b],
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
@@ -1390,7 +1390,7 @@
 
         <span class="kw">let </span>(rem, block_header_der) = der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
 
-        <span class="macro">assert_eq!</span>(rem.is_empty(), <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(rem.is_empty());
         <span class="macro">assert_eq!</span>(block_header_1, block_header_der);
     }
 

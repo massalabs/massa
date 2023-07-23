@@ -2335,13 +2335,13 @@
 
         <span class="comment">// create block
         </span><span class="kw">let </span>orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2421,13 +2421,13 @@
 
         <span class="comment">// create block
         </span><span class="kw">let </span>orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)

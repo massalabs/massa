@@ -321,6 +321,7 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -409,8 +410,8 @@
                     </span><span class="kw">let </span>cache_lock = <span class="self">self</span>.cache.read();
                     <span class="kw">let </span>count = cache_lock
                         .endorsements_known_by_peer
-                        .iter()
-                        .map(|(_peer_id, map)| map.len())
+                        .values()
+                        .map(|v| v.len())
                         .sum();
                     <span class="self">self</span>.metrics
                         .set_endorsements_cache_metrics(cache_lock.checked_endorsements.len(), count);
@@ -445,11 +446,11 @@
                     endorsements,
                     <span class="kw-2">&amp;</span>peer_id,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.cache,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.selector_controller,
+                    <span class="self">self</span>.selector_controller.as_ref(),
                     <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.config,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.internal_sender,
-                    <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
+                    <span class="self">self</span>.pool_controller.as_mut(),
                 ) {
                     <span class="macro">warn!</span>(
                         <span class="string">&quot;peer {} sent us critically incorrect endorsements, \
@@ -483,15 +484,16 @@
 ///
 /// Checks performed:
 /// - Valid signature.
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_endorsements_from_peer(
     endorsements: Vec&lt;SecureShareEndorsement&gt;,
     from_peer_id: <span class="kw-2">&amp;</span>PeerId,
     cache: <span class="kw-2">&amp;</span>SharedEndorsementCache,
-    selector_controller: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+    selector_controller: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SelectorController,
     storage: <span class="kw-2">&amp;</span>Storage,
     config: <span class="kw-2">&amp;</span>ProtocolConfig,
     endorsement_propagation_sender: <span class="kw-2">&amp;</span>MassaSender&lt;EndorsementHandlerPropagationCommand&gt;,
-    pool_controller: <span class="kw-2">&amp;mut </span>Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+    pool_controller: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>PoolController,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>new_endorsements = PreHashMap::with_capacity(endorsements.len());
     <span class="kw">let </span><span class="kw-2">mut </span>all_endorsement_ids = PreHashSet::with_capacity(endorsements.len());

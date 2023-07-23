@@ -148,7 +148,6 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -212,7 +211,6 @@
 
 <span class="kw">impl </span>PeerDB {
     <span class="kw">pub fn </span>ban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
-        <span class="macro">println!</span>(<span class="string">&quot;peers: {:?}&quot;</span>, <span class="self">self</span>.peers);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get_mut(peer_id) {
             peer.state = PeerState::Banned;
             <span class="macro">info!</span>(<span class="string">&quot;Banned peer: {:?}&quot;</span>, peer_id);

@@ -355,8 +355,6 @@
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
 <a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
     block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
@@ -408,16 +406,16 @@
 </span><span class="attr">#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>BlockMessage {
     <span class="doccomment">/// Block header
-    </span>BlockHeader(SecuredHeader),
+    </span>Header(SecuredHeader),
     <span class="doccomment">/// Message asking the peer for info on a list of blocks.
-    </span>BlockDataRequest {
+    </span>DataRequest {
         <span class="doccomment">/// ID of the block to ask info for.
         </span>block_id: BlockId,
         <span class="doccomment">/// Block info to ask for.
         </span>block_info: AskForBlockInfo,
     },
     <span class="doccomment">/// Message replying with info on a list of blocks.
-    </span>BlockDataResponse {
+    </span>DataResponse {
         <span class="doccomment">/// ID of the block to reply info for.
         </span>block_id: BlockId,
         <span class="doccomment">/// Block info reply.
@@ -428,17 +426,17 @@
 <span class="attr">#[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 </span><span class="kw">pub enum </span>MessageTypeId {
-    BlockHeader,
-    BlockDataRequest,
-    BlockDataResponse,
+    Header,
+    DataRequest,
+    DataResponse,
 }
 
 <span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>BlockMessage&gt; <span class="kw">for </span>MessageTypeId {
     <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>BlockMessage) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
-            BlockMessage::BlockHeader(<span class="kw">_</span>) =&gt; MessageTypeId::BlockHeader,
-            BlockMessage::BlockDataRequest { .. } =&gt; MessageTypeId::BlockDataRequest,
-            BlockMessage::BlockDataResponse { .. } =&gt; MessageTypeId::BlockDataResponse,
+            BlockMessage::Header(<span class="kw">_</span>) =&gt; MessageTypeId::Header,
+            BlockMessage::DataRequest { .. } =&gt; MessageTypeId::DataRequest,
+            BlockMessage::DataResponse { .. } =&gt; MessageTypeId::DataResponse,
         }
     }
 }
@@ -486,10 +484,10 @@
             buffer,
         )<span class="question-mark">?</span>;
         <span class="kw">match </span>value {
-            BlockMessage::BlockHeader(header) =&gt; {
+            BlockMessage::Header(header) =&gt; {
                 <span class="self">self</span>.secure_share_serializer.serialize(header, buffer)<span class="question-mark">?</span>;
             }
-            BlockMessage::BlockDataRequest {
+            BlockMessage::DataRequest {
                 block_id,
                 block_info,
             } =&gt; {
@@ -515,7 +513,7 @@
                     }
                 }
             }
-            BlockMessage::BlockDataResponse {
+            BlockMessage::DataResponse {
                 block_id,
                 block_info,
             } =&gt; {
@@ -619,14 +617,12 @@
                 ))
             })<span class="question-mark">?</span>;
             <span class="kw">match </span>id {
-                MessageTypeId::BlockHeader =&gt; {
-                    context(<span class="string">&quot;Failed BlockHeader deserialization&quot;</span>, |input| {
-                        <span class="self">self</span>.block_header_deserializer.deserialize(input)
-                    })
-                    .map(BlockMessage::BlockHeader)
-                    .parse(buffer)
-                }
-                MessageTypeId::BlockDataRequest =&gt; context(
+                MessageTypeId::Header =&gt; context(<span class="string">&quot;Failed BlockHeader deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.block_header_deserializer.deserialize(input)
+                })
+                .map(BlockMessage::Header)
+                .parse(buffer),
+                MessageTypeId::DataRequest =&gt; context(
                     <span class="string">&quot;Failed BlockDataRequest deserialization&quot;</span>,
                     tuple((
                         context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
@@ -663,12 +659,12 @@
                         }),
                     )),
                 )
-                .map(|(block_id, block_info)| BlockMessage::BlockDataRequest {
+                .map(|(block_id, block_info)| BlockMessage::DataRequest {
                     block_id,
                     block_info,
                 })
                 .parse(buffer),
-                MessageTypeId::BlockDataResponse =&gt; context(
+                MessageTypeId::DataResponse =&gt; context(
                     <span class="string">&quot;Failed BlockDataResponse deserialization&quot;</span>,
                     tuple((
                         context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
@@ -706,7 +702,7 @@
                         }),
                     )),
                 )
-                .map(|(block_id, block_info)| BlockMessage::BlockDataResponse {
+                .map(|(block_id, block_info)| BlockMessage::DataResponse {
                     block_id,
                     block_info,
                 })
