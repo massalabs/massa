@@ -1109,13 +1109,13 @@ mod test {
 
         // create block
         let orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1195,13 +1195,13 @@ mod test {
 
         // create block
         let orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)

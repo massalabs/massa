@@ -86,8 +86,8 @@ impl RetrievalThread {
                     let cache_lock = self.cache.read();
                     let count = cache_lock
                         .endorsements_known_by_peer
-                        .iter()
-                        .map(|(_peer_id, map)| map.len())
+                        .values()
+                        .map(|v| v.len())
                         .sum();
                     self.metrics
                         .set_endorsements_cache_metrics(cache_lock.checked_endorsements.len(), count);
@@ -122,11 +122,11 @@ impl RetrievalThread {
                     endorsements,
                     &peer_id,
                     &self.cache,
-                    &self.selector_controller,
+                    self.selector_controller.as_ref(),
                     &self.storage,
                     &self.config,
                     &self.internal_sender,
-                    &mut self.pool_controller,
+                    self.pool_controller.as_mut(),
                 ) {
                     warn!(
                         "peer {} sent us critically incorrect endorsements, \
@@ -160,15 +160,16 @@ impl RetrievalThread {
 ///
 /// Checks performed:
 /// - Valid signature.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn note_endorsements_from_peer(
     endorsements: Vec<SecureShareEndorsement>,
     from_peer_id: &PeerId,
     cache: &SharedEndorsementCache,
-    selector_controller: &Box<dyn SelectorController>,
+    selector_controller: &dyn SelectorController,
     storage: &Storage,
     config: &ProtocolConfig,
     endorsement_propagation_sender: &MassaSender<EndorsementHandlerPropagationCommand>,
-    pool_controller: &mut Box<dyn PoolController>,
+    pool_controller: &mut dyn PoolController,
 ) -> Result<(), ProtocolError> {
     let mut new_endorsements = PreHashMap::with_capacity(endorsements.len());
     let mut all_endorsement_ids = PreHashSet::with_capacity(endorsements.len());

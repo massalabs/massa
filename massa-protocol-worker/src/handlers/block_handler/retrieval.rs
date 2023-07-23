@@ -558,11 +558,11 @@ impl RetrievalThread {
             header.content.endorsements.clone(),
             from_peer_id,
             &self.endorsement_cache,
-            &self.selector_controller,
+            self.selector_controller.as_ref(),
             &self.storage,
             &self.config,
             &self.sender_propagation_endorsements,
-            &mut self.pool_controller,
+            self.pool_controller.as_mut(),
         ) {
             return Err(ProtocolError::InvalidBlock(format!(
                 "invalid endorsements: {}",
@@ -1143,9 +1143,7 @@ impl RetrievalThread {
                 .operation_ids
                 .as_ref()
                 .expect("operation_ids presence in wishlist should have been checked above")
-                .iter()
-                .copied()
-                .collect::<Vec<_>>(),
+                .to_vec(),
         );
 
         // Check if the total size of the operations we know about is greater than the max block size.
@@ -1158,7 +1156,7 @@ impl RetrievalThread {
             );
 
             // stop retrieving the block
-            self.mark_block_as_invalid(&block_id);
+            self.mark_block_as_invalid(block_id);
 
             // quit
             return None;
@@ -1170,7 +1168,7 @@ impl RetrievalThread {
         }
 
         // there are no missing ops, we can finish the block
-        self.fully_gathered_block(&block_id);
+        self.fully_gathered_block(block_id);
 
         None
     }
@@ -1180,7 +1178,7 @@ impl RetrievalThread {
         // Gather all the elements needed to create the block. We must have it all by now.
         let wishlist_info = self
             .block_wishlist
-            .remove(&block_id)
+            .remove(block_id)
             .expect("block presence in wishlist should have been checked before");
 
         // Create the block
@@ -1200,9 +1198,9 @@ impl RetrievalThread {
 
         // wrap block
         let signed_block = SecureShare {
-            signature: block.header.signature.clone(),
-            content_creator_pub_key: block.header.content_creator_pub_key.clone(),
-            content_creator_address: block.header.content_creator_address.clone(),
+            signature: block.header.signature,
+            content_creator_pub_key: block.header.content_creator_pub_key,
+            content_creator_address: block.header.content_creator_address,
             id: *block_id,
             content: block,
             serialized_data: content_serialized,

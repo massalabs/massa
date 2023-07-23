@@ -142,12 +142,7 @@ impl PropagationThread {
             cache_write.update_cache(&peers_connected);
 
             // Propagate to peers
-            let all_keys: Vec<PeerId> = cache_write
-                .ops_known_by_peer
-                .iter()
-                .map(|(k, _)| k)
-                .cloned()
-                .collect();
+            let all_keys: Vec<PeerId> = cache_write.ops_known_by_peer.keys().cloned().collect();
             for peer_id in all_keys {
                 let ops = cache_write.ops_known_by_peer.get_mut(&peer_id).unwrap();
                 let new_ops: Vec<OperationId> = operation_ids

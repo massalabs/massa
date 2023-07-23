@@ -1521,7 +1521,7 @@ impl PoSFinalState {
                 .deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
-                .deserialize::<DeserializeError>(&rest)
+                .deserialize::<DeserializeError>(rest)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             let (_, amount) = self
@@ -1812,7 +1812,7 @@ mod tests {
         let cycles = pos_state.get_cycle_history_cycles();
         assert_eq!(cycles.len(), 1, "wrong number of cycles");
         assert_eq!(cycles[0].0, 0, "cycle should be the 1st one");
-        assert_eq!(cycles[0].1, false, "cycle should not be complete yet");
+        assert!(!cycles[0].1, "cycle should not be complete yet");
 
         let cycle_info_a = pos_state.get_cycle_info(0).unwrap();
 

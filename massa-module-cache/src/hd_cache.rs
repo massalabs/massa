@@ -252,7 +252,7 @@ mod tests {
         let init_cost = 100;
         let gas_costs = GasCosts::default();
 
-        cache.insert(hash, module.clone());
+        cache.insert(hash, module);
         let cached_module_v1 = cache.get(hash, limit, gas_costs.clone()).unwrap();
         assert!(matches!(cached_module_v1, ModuleInfo::Module(_)));
 
@@ -280,7 +280,7 @@ mod tests {
 
         // insert one more entry
         let key = Hash::compute_from(cache.max_entry_count.to_string().as_bytes());
-        cache.insert(key, module.clone());
+        cache.insert(key, module);
         assert_eq!(
             cache.entry_count,
             cache.max_entry_count - cache.snip_amount + 1
