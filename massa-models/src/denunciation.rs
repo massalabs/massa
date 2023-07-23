@@ -1221,7 +1221,7 @@ mod tests {
         let endorsement_4 = Endorsement {
             slot,
             index: 9,
-            endorsed_block: BlockId(Hash::compute_from("foo".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("foo".as_bytes())),
         };
         let s_endorsement_4 =
             Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), &keypair)
@@ -1257,7 +1257,7 @@ mod tests {
         let endorsement_4 = Endorsement {
             slot,
             index: 9,
-            endorsed_block: BlockId(Hash::compute_from("foo".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("foo".as_bytes())),
         };
         let s_endorsement_4 =
             Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), &keypair)
@@ -1304,7 +1304,7 @@ mod tests {
         let endorsement_1 = Endorsement {
             slot: slot_1,
             index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
         };
 
         let s_endorsement_1: SecureShareEndorsement =
@@ -1314,7 +1314,7 @@ mod tests {
         let endorsement_2 = Endorsement {
             slot: slot_2,
             index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
         };
 
         let s_endorsement_2: SecureShareEndorsement =

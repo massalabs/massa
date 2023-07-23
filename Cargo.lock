@@ -2544,7 +2544,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serial_test 1.0.0",
+ "serial_test",
  "sha2 0.10.6",
  "thiserror",
  "tracing",
@@ -2606,7 +2606,7 @@ dependencies = [
  "massa_wallet",
  "paginate",
  "serde",
- "serial_test 1.0.0",
+ "serial_test",
  "strum",
  "thiserror",
 ]
@@ -2668,7 +2668,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "serial_test 2.0.0",
+ "serial_test",
  "socket2",
  "substruct",
  "tempfile",
@@ -2741,6 +2741,7 @@ dependencies = [
  "massa_pos_exports",
  "massa_pos_worker",
  "massa_protocol_exports",
+ "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2839,6 +2840,7 @@ dependencies = [
  "massa_module_cache",
  "massa_pos_exports",
  "massa_pos_worker",
+ "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2849,7 +2851,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_xoshiro",
  "serde_json",
- "serial_test 1.0.0",
+ "serial_test",
  "sha2 0.10.6",
  "sha3",
  "tempfile",
@@ -2887,6 +2889,7 @@ dependencies = [
  "massa_pool_exports",
  "massa_pos_exports",
  "massa_protocol_exports",
+ "massa_serialization",
  "massa_signature",
  "massa_storage",
  "massa_time",
@@ -2975,7 +2978,7 @@ dependencies = [
  "nom",
  "serde",
  "serde_json",
- "serial_test 1.0.0",
+ "serial_test",
  "thiserror",
 ]
 
@@ -3054,7 +3057,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "serde_with",
- "serial_test 1.0.0",
+ "serial_test",
  "thiserror",
  "transition",
 ]
@@ -3074,7 +3077,7 @@ dependencies = [
  "rand 0.8.5",
  "rocksdb",
  "schnellru",
- "serial_test 1.0.0",
+ "serial_test",
  "tempfile",
  "thiserror",
  "tracing",
@@ -3202,7 +3205,7 @@ dependencies = [
  "rayon",
  "schnellru",
  "serde_json",
- "serial_test 2.0.0",
+ "serial_test",
  "tempfile",
  "tracing",
 ]
@@ -3248,7 +3251,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
- "serial_test 1.0.0",
+ "serial_test",
  "thiserror",
  "transition",
 ]
@@ -4822,21 +4825,7 @@ dependencies = [
  "lazy_static",
  "log",
  "parking_lot",
- "serial_test_derive 1.0.0",
-]
-
-[[package]]
-name = "serial_test"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e56dd856803e253c8f298af3f4d7eb0ae5e23a737252cd90bb4f3b435033b2d"
-dependencies = [
- "dashmap",
- "futures",
- "lazy_static",
- "log",
- "parking_lot",
- "serial_test_derive 2.0.0",
+ "serial_test_derive",
 ]
 
 [[package]]
@@ -4848,17 +4837,6 @@ dependencies = [
  "proc-macro2 1.0.63",
  "quote 1.0.29",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "serial_test_derive"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91d129178576168c589c9ec973feedf7d3126c01ac2bf08795109aa35b69fb8f"
-dependencies = [
- "proc-macro2 1.0.63",
- "quote 1.0.29",
- "syn 2.0.23",
 ]
 
 [[package]]
@@ -5083,7 +5061,7 @@ dependencies = [
 [[package]]
 name = "substruct"
 version = "0.1.0"
-source = "git+https://github.com/sydhds/substruct#2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"
+source = "git+https://github.com/sydhds/substruct?branch=main#2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"
 dependencies = [
  "quote 1.0.29",
  "syn 1.0.109",

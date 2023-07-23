@@ -1,99 +1,62 @@
+[[bench]]
+name = "basic"
+harness = false
+
 [package]
 name = "massa_execution_worker"
 version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-anyhow = "1.0"
-rand = "0.8"
-rand_xoshiro = "0.6"
-parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-tracing = "0.1"
-serde_json = "1.0"
-num = { version = "0.4", features = ["serde"] }
-sha2 = "0.10.6"
-sha3 = "0.10.8"
-libsecp256k1 = "0.7.1"
-# use with features
-criterion = { version = "0.4", optional = true }
-tempfile = { version = "3.3", optional = true }
-massa_ledger_worker = { path = "../massa-ledger-worker", optional = true }
-massa_pos_worker = { path = "../massa-pos-worker", optional = true }
-# custom modules
-massa_async_pool = { path = "../massa-async-pool" }
-massa_channel = { path = "../massa-channel" }
-massa_executed_ops = { path = "../massa-executed-ops" }
-massa_execution_exports = { path = "../massa-execution-exports" }
-massa_models = { path = "../massa-models" }
-massa_storage = { path = "../massa-storage" }
-massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main" }
-massa_metrics = { path = "../massa-metrics" }
-massa_module_cache = { path = "../massa-module-cache" }
-massa_signature = { path = "../massa-signature" }
-massa_time = { path = "../massa-time" }
-massa_ledger_exports = { path = "../massa-ledger-exports" }
-massa_pos_exports = { path = "../massa-pos-exports" }
-massa_final_state = { path = "../massa-final-state" }
-massa_versioning = { path = "../massa-versioning" }
-massa_db_exports = { path = "../massa-db-exports" }
-massa_db_worker = { path = "../massa-db-worker", optional = true }
-massa_wallet = { path = "../massa-wallet" }
-
-[dev-dependencies]
-tokio = { version = "1.23", features = ["sync"] }
-massa_pos_worker = { path = "../massa-pos-worker" }
-massa_ledger_worker = { path = "../massa-ledger-worker" }
-serial_test = "1.0.0"
-tempfile = "3.2"
-hex-literal = "0.3.4"
-# custom modules with testing enabled
-massa_execution_exports = { path = "../massa-execution-exports", features = [
-    "testing",
-] }
-massa_final_state = { path = "../massa-final-state", features = ["testing"] }
-
-[[bench]]
-name = "basic"
-harness = false
-
 [features]
 sandbox = ["massa_async_pool/sandbox"]
-gas_calibration = [
-    "massa-sc-runtime/gas_calibration",
-    "massa_execution_exports/gas_calibration",
-    "massa_final_state/testing",
-    "massa_pos_worker",
-    "massa_ledger_worker",
-    "massa_db_worker",
-    "tempfile",
-]
-testing = [
-    "massa_execution_exports/testing",
-    "massa_ledger_exports/testing",
-    "massa_pos_exports/testing",
-    "massa_final_state/testing",
-    "massa-sc-runtime/testing",
-    "massa_wallet/testing",
-    "tempfile",
-    "massa_pos_worker",
-    "massa_ledger_worker",
-    "massa_metrics/testing",
-    "massa_db_worker",
-    "massa_metrics/testing"
-]
-
-# This feature is useful as we want to have code that is compiled only when running benchmarks
-benchmarking = [
-    "massa-sc-runtime/gas_calibration",
-    "criterion",
-    "massa_pos_worker",
-    "massa_ledger_worker",
-    "massa_db_worker",
-    "tempfile",
-]
-
+gas_calibration = ["massa-sc-runtime/gas_calibration", "massa_execution_exports/gas_calibration", "massa_final_state/testing", "massa_pos_worker", "massa_ledger_worker", "massa_db_worker", "tempfile"]
+testing = ["massa_execution_exports/testing", "massa_ledger_exports/testing", "massa_pos_exports/testing", "massa_final_state/testing", "massa-sc-runtime/testing", "massa_wallet/testing", "tempfile", "massa_pos_worker", "massa_ledger_worker", "massa_metrics/testing", "massa_db_worker", "massa_metrics/testing"]
+benchmarking = ["massa-sc-runtime/gas_calibration", "criterion", "massa_pos_worker", "massa_ledger_worker", "massa_db_worker", "tempfile"]
 metrics = []
+
+[dependencies]
+anyhow = {workspace = true}
+rand = {workspace = true}
+rand_xoshiro = {workspace = true}
+parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+tracing = {workspace = true}
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
+sha2 = {workspace = true}
+sha3 = {workspace = true}
+libsecp256k1 = {workspace = true}
+criterion = {workspace = true, "optional" = true}
+tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
+massa_ledger_worker = {workspace = true, "optional" = true}
+massa_pos_worker = {workspace = true, "optional" = true}
+massa_async_pool = {workspace = true}
+massa_channel = {workspace = true}
+massa_executed_ops = {workspace = true}
+massa_execution_exports = {workspace = true}
+massa_models = {workspace = true}
+massa_storage = {workspace = true}
+massa_hash = {workspace = true}
+massa-sc-runtime = {workspace = true}
+massa_metrics = {workspace = true}
+massa_module_cache = {workspace = true}
+massa_serialization = {workspace = true}
+massa_signature = {workspace = true}
+massa_time = {workspace = true}
+massa_ledger_exports = {workspace = true}
+massa_pos_exports = {workspace = true}
+massa_final_state = {workspace = true}
+massa_versioning = {workspace = true}
+massa_db_exports = {workspace = true}
+massa_db_worker = {workspace = true, "optional" = true}
+massa_wallet = {workspace = true}
+
+[dev-dependencies]
+tokio = {workspace = true, "features" = ["sync"]}
+massa_pos_worker = {workspace = true}
+massa_ledger_worker = {workspace = true}
+serial_test = {workspace = true}
+tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.2" if problem
+hex-literal = {workspace = true}
+massa_execution_exports = {workspace = true, "features" = ["testing"]}
+massa_final_state = {workspace = true, "features" = ["testing"]}

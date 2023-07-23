@@ -240,7 +240,7 @@ impl ExecutedOps {
             return false;
         }
 
-        let Ok((rest, _id)) = self.operation_id_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..]) else {
+        let Ok((rest, _id)): Result<(&[u8], OperationId), nom::Err<DeserializeError>> = self.operation_id_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..]) else {
             return false;
         };
         if !rest.is_empty() {
@@ -377,6 +377,7 @@ fn test_executed_ops_hash_computing() {
 pub struct ExecutedOpsSerializer {
     slot_serializer: SlotSerializer,
     u64_serializer: U64VarIntSerializer,
+    op_id_serializer: OperationIdSerializer,
 }
 
 impl Default for ExecutedOpsSerializer {
@@ -391,6 +392,7 @@ impl ExecutedOpsSerializer {
         ExecutedOpsSerializer {
             slot_serializer: SlotSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
+            op_id_serializer: OperationIdSerializer::new(),
         }
     }
 }
@@ -412,7 +414,7 @@ impl Serializer<BTreeMap<Slot, PreHashSet<OperationId>>> for ExecutedOpsSerializ
             self.u64_serializer.serialize(&(ids.len() as u64), buffer)?;
             // slots ids
             for op_id in ids {
-                buffer.extend(op_id.to_bytes());
+                self.op_id_serializer.serialize(op_id, buffer)?;
             }
         }
         Ok(())

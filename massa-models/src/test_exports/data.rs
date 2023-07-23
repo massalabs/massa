@@ -27,7 +27,7 @@ pub fn gen_endorsements_for_denunciation(
     let endorsement_1 = Endorsement {
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     };
 
     let v_endorsement1 =
@@ -36,7 +36,7 @@ pub fn gen_endorsements_for_denunciation(
     let endorsement_2 = Endorsement {
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
     };
 
     let v_endorsement2 =
@@ -45,7 +45,7 @@ pub fn gen_endorsements_for_denunciation(
     let endorsement_3 = Endorsement {
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from("blk3".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk3".as_bytes())),
     };
     let v_endorsement_3 =
         Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), &keypair).unwrap();
@@ -68,19 +68,19 @@ pub fn gen_block_headers_for_denunciation(
     let slot = with_slot.unwrap_or(Slot::new(2, 1));
 
     let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i])))
+        .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
         .collect();
     let parents_2: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i + 1])))
+        .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i + 1])))
         .collect();
     let parents_3: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i + 2])))
+        .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i + 2])))
         .collect();
 
     let endorsement_1 = Endorsement {
         slot: Slot::new(1, 1),
         index: 1,
-        endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     };
     let s_endorsement_1 =
         Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), &keypair)

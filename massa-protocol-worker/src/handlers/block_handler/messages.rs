@@ -1,7 +1,6 @@
-use massa_hash::HashDeserializer;
 use massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
-    block_id::{BlockId, BlockIdSerializer},
+    block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
     operation::{
         OperationId, OperationIdSerializer, OperationIdsDeserializer, OperationsDeserializer,
         SecureShareOperation,
@@ -201,7 +200,7 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
 pub struct BlockMessageDeserializer {
     id_deserializer: U64VarIntDeserializer,
     block_header_deserializer: SecureShareDeserializer<BlockHeader, BlockHeaderDeserializer>,
-    hash_deserializer: HashDeserializer,
+    block_id_deserializer: BlockIdDeserializer,
     operation_ids_deserializer: OperationIdsDeserializer,
     operations_deserializer: OperationsDeserializer,
 }
@@ -230,7 +229,7 @@ impl BlockMessageDeserializer {
                 args.max_denunciations_in_block_header,
                 args.last_start_period,
             )),
-            hash_deserializer: HashDeserializer::new(),
+            block_id_deserializer: BlockIdDeserializer::new(),
             operation_ids_deserializer: OperationIdsDeserializer::new(
                 args.max_operations_per_block,
             ),
@@ -272,9 +271,9 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                     "Failed BlockDataRequest deserialization",
                     tuple((
                         context("Failed BlockId deserialization", |input| {
-                            self.hash_deserializer
+                            self.block_id_deserializer
                                 .deserialize(input)
-                                .map(|(rest, id)| (rest, BlockId(id)))
+                                .map(|(rest, id)| (rest, id))
                         }),
                         context("Failed infos deserialization", |input| {
                             let (rest, raw_id) = self.id_deserializer.deserialize(input)?;
@@ -314,9 +313,9 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                     "Failed BlockDataResponse deserialization",
                     tuple((
                         context("Failed BlockId deserialization", |input| {
-                            self.hash_deserializer
+                            self.block_id_deserializer
                                 .deserialize(input)
-                                .map(|(rest, id)| (rest, BlockId(id)))
+                                .map(|(rest, id)| (rest, id))
                         }),
                         context("Failed infos deserialization", |input| {
                             let (rest, raw_id) = self.id_deserializer.deserialize(input)?;

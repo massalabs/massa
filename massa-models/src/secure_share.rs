@@ -43,6 +43,7 @@ where
 }
 
 /// Used by signed structure
+/// TODO: Make this trait use versions
 pub trait Id {
     /// New id from hash
     fn new(hash: Hash) -> Self;
@@ -370,7 +371,7 @@ where
     /// let content = Endorsement {
     ///    slot: Slot::new(10, 1),
     ///    index: 0,
-    ///    endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
+    ///    endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk".as_bytes())),
     /// };
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let secured: SecureShare<Endorsement, BlockId> = Endorsement::new_verifiable(
