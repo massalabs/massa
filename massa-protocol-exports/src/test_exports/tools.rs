@@ -60,16 +60,26 @@ pub fn create_block_with_operations(
     slot: Slot,
     operations: Vec<SecureShareOperation>,
 ) -> SecureShareBlock {
-    let operation_id_serializer = OperationIdSerializer::new();
-    let operation_merkle_root = Hash::compute_from(
-        &operations.iter().fold(Vec::new(), |acc, v| {
-            let mut bytes = Vec::new();
-            operation_id_serializer
-                .serialize(&v.id, &mut bytes)
-                .unwrap();
-            [acc, bytes].concat()
-        })[..],
-    );
+    let operation_merkle_root = {
+        let op_id_serializer = OperationIdSerializer::new();
+        let op_ids = operations
+            .iter()
+            .map(|op| {
+                let mut serialized = Vec::new();
+                op_id_serializer
+                    .serialize(&op.id, &mut serialized)
+                    .expect("serialization of operation id should not fail");
+                serialized
+            })
+            .collect::<Vec<Vec<u8>>>();
+        massa_hash::Hash::compute_from_tuple(
+            &op_ids
+                .iter()
+                .map(|data| data.as_slice())
+                .collect::<Vec<_>>(),
+        )
+    };
+
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,

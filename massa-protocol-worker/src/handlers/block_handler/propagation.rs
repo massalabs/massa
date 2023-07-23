@@ -154,22 +154,17 @@ impl PropagationThread {
         let now = Instant::now();
 
         // stop propagating blocks that have been propagating for too long
-        loop {
-            match self
-                .stored_for_propagation
-                .peek_oldest()
-                .map(|(_, BlockPropagationData { time_added, .. })| *time_added)
+        while let Some(time_added) = self
+            .stored_for_propagation
+            .peek_oldest()
+            .map(|(_, BlockPropagationData { time_added, .. })| *time_added)
+        {
+            if now.saturating_duration_since(time_added)
+                > self.config.max_block_propagation_time.to_duration()
             {
-                Some(time_added) => {
-                    if now.saturating_duration_since(time_added)
-                        > self.config.max_block_propagation_time.to_duration()
-                    {
-                        self.stored_for_propagation.pop_oldest();
-                    } else {
-                        break;
-                    }
-                }
-                None => break,
+                self.stored_for_propagation.pop_oldest();
+            } else {
+                break;
             }
         }
 
@@ -190,7 +185,7 @@ impl PropagationThread {
                 match self.active_connections.send_to_peer(
                     peer_id,
                     &self.block_serializer,
-                    BlockMessage::BlockHeader(header.clone()).into(),
+                    BlockMessage::Header(header.clone()).into(),
                     true,
                 ) {
                     Ok(()) => {

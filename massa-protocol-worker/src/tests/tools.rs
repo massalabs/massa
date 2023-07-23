@@ -8,20 +8,28 @@ use massa_models::{
 use massa_protocol_exports::{PeerId, ProtocolController};
 
 use crate::{
-    handlers::block_handler::{BlockInfoReply, BlockMessage},
+    handlers::block_handler::{AskForBlockInfo, BlockInfoReply, BlockMessage},
     messages::Message,
 };
 
 use super::mock_network::MockNetworkController;
 
-pub fn assert_hash_asked_to_node(node: &MassaReceiver<Message>, block_id: &BlockId) {
+pub fn assert_hash_asked_to_node(
+    node: &MassaReceiver<Message>,
+    block_id: &BlockId,
+) -> AskForBlockInfo {
     let msg = node
         .recv_timeout(Duration::from_millis(1500))
         .expect("Node didn't receive the ask for block message");
     match msg {
         Message::Block(message) => {
-            if let BlockMessage::BlockDataRequest { block_id: b_id, .. } = *message {
+            if let BlockMessage::DataRequest {
+                block_id: b_id,
+                block_info,
+            } = *message
+            {
                 assert_eq!(&b_id, block_id);
+                block_info
             } else {
                 panic!("Node didn't receive the ask for block message");
             }
@@ -36,7 +44,7 @@ pub fn assert_block_info_sent_to_node(node: &MassaReceiver<Message>, block_id: &
         .expect("Node didn't receive the infos block message");
     match msg {
         Message::Block(message) => {
-            if let BlockMessage::BlockHeader(header) = *message {
+            if let BlockMessage::Header(header) = *message {
                 assert_eq!(&header.id, block_id);
             } else {
                 panic!("Node didn't receive the block header message")
@@ -50,7 +58,7 @@ pub fn assert_block_info_sent_to_node(node: &MassaReceiver<Message>, block_id: &
         .expect("Node didn't receive the infos block message");
     match msg {
         Message::Block(message) => {
-            if let BlockMessage::BlockDataResponse {
+            if let BlockMessage::DataResponse {
                 block_id: b_id,
                 block_info,
             } = *message
@@ -79,9 +87,7 @@ pub fn send_and_propagate_block(
     network_controller
         .send_from_peer(
             node_id,
-            Message::Block(Box::new(BlockMessage::BlockHeader(
-                block.content.header.clone(),
-            ))),
+            Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
         )
         .unwrap();
 
@@ -98,7 +104,7 @@ pub fn send_and_propagate_block(
     network_controller
         .send_from_peer(
             node_id,
-            Message::Block(Box::new(BlockMessage::BlockDataResponse {
+            Message::Block(Box::new(BlockMessage::DataResponse {
                 block_id: block.id,
                 block_info: BlockInfoReply::OperationIds(block.content.operations.clone()),
             })),
@@ -109,7 +115,7 @@ pub fn send_and_propagate_block(
     network_controller
         .send_from_peer(
             node_id,
-            Message::Block(Box::new(BlockMessage::BlockDataResponse {
+            Message::Block(Box::new(BlockMessage::DataResponse {
                 block_id: block.id,
                 block_info: BlockInfoReply::Operations(operations),
             })),

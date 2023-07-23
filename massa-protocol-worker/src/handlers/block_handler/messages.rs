@@ -49,16 +49,16 @@ pub enum BlockInfoReply {
 #[allow(clippy::large_enum_variant)]
 pub enum BlockMessage {
     /// Block header
-    BlockHeader(SecuredHeader),
+    Header(SecuredHeader),
     /// Message asking the peer for info on a list of blocks.
-    BlockDataRequest {
+    DataRequest {
         /// ID of the block to ask info for.
         block_id: BlockId,
         /// Block info to ask for.
         block_info: AskForBlockInfo,
     },
     /// Message replying with info on a list of blocks.
-    BlockDataResponse {
+    DataResponse {
         /// ID of the block to reply info for.
         block_id: BlockId,
         /// Block info reply.
@@ -69,17 +69,17 @@ pub enum BlockMessage {
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u64)]
 pub enum MessageTypeId {
-    BlockHeader,
-    BlockDataRequest,
-    BlockDataResponse,
+    Header,
+    DataRequest,
+    DataResponse,
 }
 
 impl From<&BlockMessage> for MessageTypeId {
     fn from(value: &BlockMessage) -> Self {
         match value {
-            BlockMessage::BlockHeader(_) => MessageTypeId::BlockHeader,
-            BlockMessage::BlockDataRequest { .. } => MessageTypeId::BlockDataRequest,
-            BlockMessage::BlockDataResponse { .. } => MessageTypeId::BlockDataResponse,
+            BlockMessage::Header(_) => MessageTypeId::Header,
+            BlockMessage::DataRequest { .. } => MessageTypeId::DataRequest,
+            BlockMessage::DataResponse { .. } => MessageTypeId::DataResponse,
         }
     }
 }
@@ -127,10 +127,10 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
             buffer,
         )?;
         match value {
-            BlockMessage::BlockHeader(header) => {
+            BlockMessage::Header(header) => {
                 self.secure_share_serializer.serialize(header, buffer)?;
             }
-            BlockMessage::BlockDataRequest {
+            BlockMessage::DataRequest {
                 block_id,
                 block_info,
             } => {
@@ -156,7 +156,7 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
                     }
                 }
             }
-            BlockMessage::BlockDataResponse {
+            BlockMessage::DataResponse {
                 block_id,
                 block_info,
             } => {
@@ -260,14 +260,12 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                 ))
             })?;
             match id {
-                MessageTypeId::BlockHeader => {
-                    context("Failed BlockHeader deserialization", |input| {
-                        self.block_header_deserializer.deserialize(input)
-                    })
-                    .map(BlockMessage::BlockHeader)
-                    .parse(buffer)
-                }
-                MessageTypeId::BlockDataRequest => context(
+                MessageTypeId::Header => context("Failed BlockHeader deserialization", |input| {
+                    self.block_header_deserializer.deserialize(input)
+                })
+                .map(BlockMessage::Header)
+                .parse(buffer),
+                MessageTypeId::DataRequest => context(
                     "Failed BlockDataRequest deserialization",
                     tuple((
                         context("Failed BlockId deserialization", |input| {
@@ -304,12 +302,12 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                         }),
                     )),
                 )
-                .map(|(block_id, block_info)| BlockMessage::BlockDataRequest {
+                .map(|(block_id, block_info)| BlockMessage::DataRequest {
                     block_id,
                     block_info,
                 })
                 .parse(buffer),
-                MessageTypeId::BlockDataResponse => context(
+                MessageTypeId::DataResponse => context(
                     "Failed BlockDataResponse deserialization",
                     tuple((
                         context("Failed BlockId deserialization", |input| {
@@ -347,7 +345,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                         }),
                     )),
                 )
-                .map(|(block_id, block_info)| BlockMessage::BlockDataResponse {
+                .map(|(block_id, block_info)| BlockMessage::DataResponse {
                     block_id,
                     block_info,
                 })

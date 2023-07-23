@@ -304,7 +304,7 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(block.content.header))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header))),
                 )
                 .unwrap();
 
