@@ -1694,7 +1694,7 @@
         }
 
         <span class="comment">// parse the message
-        </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(<span class="kw-2">&amp;</span>hash_).unwrap();
+        </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(hash_).unwrap();
 
         <span class="comment">// parse the signature as being (r, s, v) use only r and s
         </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>]).unwrap();
@@ -1709,7 +1709,7 @@
         </span><span class="prelude-val">Ok</span>(recovered.serialize().to_vec())
     }
 
-    <span class="comment">// Return true if the address is an User address, otherwise false if it is an SC address.
+    <span class="comment">// Return true if the address is a User address, false if it is an SC address.
     </span><span class="kw">fn </span>is_address_eoa(<span class="kw-2">&amp;</span><span class="self">self</span>, address_: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="kw">let </span>address = Address::from_str(address_)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(address, Address::User(..)))
