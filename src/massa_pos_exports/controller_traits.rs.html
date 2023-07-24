@@ -88,6 +88,12 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting
@@ -97,7 +103,10 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::PosResult;
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    slot::{IndexedSlot, Slot},
+};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>std::collections::{HashMap, VecDeque};
@@ -132,22 +141,25 @@
         lookback_seed: Hash,
     ) -&gt; PosResult&lt;()&gt;;
 
-    <span class="doccomment">/// Get [Selection] computed for a slot
+    <span class="doccomment">/// Get [Selection] computed for a slot:
+    /// # Arguments
+    /// * `slot`: target slot of the selection
     </span><span class="kw">fn </span>get_selection(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Selection&gt;;
 
-    <span class="doccomment">/// Get [Address] of the selected block producer for a given slot
-    </span><span class="kw">fn </span>get_producer(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Address&gt;;
-
-    <span class="doccomment">/// Get selections computed for a slot range (only returns available selections):
-    /// # Arguments
-    /// * `slot_range`: range of slots to get the selection for
-    /// * `restrict_to_addresses`: optionally restrict only to slots involving a given address
-    </span><span class="attr">#[allow(clippy::needless_lifetimes)] </span><span class="comment">// lifetime elision conflicts with Mockall
-    </span><span class="kw">fn </span>get_available_selections_in_range&lt;<span class="lifetime">&#39;a</span>&gt;(
+    <span class="doccomment">/// Return a list of slots where `address` has been chosen to produce a
+    /// block and a list where he is chosen for the endorsements.
+    /// Look from the `start` slot to the `end` slot.
+    </span><span class="kw">fn </span>get_address_selections(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        slot_range: std::ops::RangeInclusive&lt;Slot&gt;,
-        restrict_to_addresses: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreHashSet&lt;Address&gt;&gt;,
-    ) -&gt; PosResult&lt;BTreeMap&lt;Slot, Selection&gt;&gt;;
+        address: <span class="kw-2">&amp;</span>Address,
+        start: Slot,
+        end: Slot,
+    ) -&gt; PosResult&lt;(Vec&lt;Slot&gt;, Vec&lt;IndexedSlot&gt;)&gt;;
+
+    <span class="doccomment">/// Get [Address] of the selected block producer for a given slot
+    /// # Arguments
+    /// * `slot`: target slot of the selection
+    </span><span class="kw">fn </span>get_producer(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PosResult&lt;Address&gt;;
 
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Useful to allow cloning `Box&lt;dyn SelectorController&gt;`.

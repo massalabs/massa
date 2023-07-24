@@ -336,13 +336,6 @@
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -481,7 +474,7 @@
     <span class="kw">pub </span>ledger: LedgerSettings,
     <span class="kw">pub </span>selector: SelectionSettings,
     <span class="kw">pub </span>factory: FactorySettings,
-    <span class="kw">pub </span>grpc: GrpcApiSettings,
+    <span class="kw">pub </span>grpc: GrpcSettings,
     <span class="kw">pub </span>metrics: MetricsSettings,
     <span class="kw">pub </span>versioning: VersioningSettings,
 }
@@ -534,9 +527,15 @@
 </span><span class="kw">pub struct </span>ProtocolSettings {
     <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
     </span><span class="kw">pub </span>ask_block_timeout: MassaTime,
-    <span class="doccomment">/// max known blocks of current nodes we keep in memory (by node)
+    <span class="doccomment">/// Max known blocks we keep during their propagation
+    </span><span class="kw">pub </span>max_blocks_kept_for_propagation: usize,
+    <span class="doccomment">/// Time during which a block is expected to propagate
+    </span><span class="kw">pub </span>max_block_propagation_time: MassaTime,
+    <span class="doccomment">/// Block propagation tick interval, useful for propagating blocks quickly to newly connected peers.
+    </span><span class="kw">pub </span>block_propagation_tick: MassaTime,
+    <span class="doccomment">/// max known blocks our node keeps in its knowledge cache
     </span><span class="kw">pub </span>max_known_blocks_size: usize,
-    <span class="doccomment">/// max known blocks of foreign nodes we keep in memory (by node)
+    <span class="doccomment">/// max cache size for which blocks a foreign node knows about
     </span><span class="kw">pub </span>max_node_known_blocks_size: usize,
     <span class="doccomment">/// max wanted blocks per node kept in memory
     </span><span class="kw">pub </span>max_node_wanted_blocks_size: usize,
@@ -614,9 +613,7 @@
     </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
-    <span class="doccomment">/// whether to enable TLS
-    </span><span class="kw">pub </span>enable_tls: bool,
-    <span class="doccomment">/// whether to enable mTLS (requires `enable_tls` to be true)
+    <span class="doccomment">/// whether to enable mTLS
     </span><span class="kw">pub </span>enable_mtls: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
@@ -640,8 +637,6 @@
     </span><span class="kw">pub </span>initial_connection_window_size: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     <span class="doccomment">/// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     </span><span class="kw">pub </span>max_concurrent_streams: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    <span class="doccomment">/// max number of arguments per gRPC request
-    </span><span class="kw">pub </span>max_arguments: u64,
     <span class="doccomment">/// set whether TCP keepalive messages are enabled on accepted connections
     </span><span class="kw">pub </span>tcp_keepalive: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
     <span class="doccomment">/// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -666,15 +661,6 @@
     </span><span class="kw">pub </span>server_private_key_path: PathBuf,
     <span class="doccomment">/// client certificate authority root path
     </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
-}
-
-<span class="doccomment">/// gRPC API settings.
-</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
-</span><span class="kw">pub struct </span>GrpcApiSettings {
-    <span class="doccomment">/// Public server gRPC configuration.
-    </span><span class="kw">pub </span>public: GrpcSettings,
-    <span class="doccomment">/// Private server gRPC configuration.
-    </span><span class="kw">pub </span>private: GrpcSettings,
 }
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]

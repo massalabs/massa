@@ -72,94 +72,74 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, sync::Arc, time::Instant};
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    time::Instant,
+};
 
 <span class="kw">use </span>massa_models::{block_header::SecuredHeader, block_id::BlockId};
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
-<span class="kw">use </span>tracing::log::warn;
 
-<span class="kw">pub struct </span>BlockCache {
-    <span class="kw">pub </span>checked_headers: LruMap&lt;BlockId, SecuredHeader&gt;,
-    <span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="kw">pub </span>blocks_known_by_peer: LruMap&lt;PeerId, (LruMap&lt;BlockId, (bool, Instant)&gt;, Instant)&gt;,
-    <span class="kw">pub </span>max_known_blocks_by_peer: u32,
+<span class="doccomment">/// Cache on block knowledge by our node and its peers
+</span><span class="kw">pub struct </span>BlockCache {
+    <span class="doccomment">/// cache of previously checked headers
+    </span><span class="kw">pub </span>checked_headers: LruMap&lt;BlockId, SecuredHeader&gt;,
+    <span class="doccomment">/// cache of blocks known by peers
+    </span><span class="kw">pub </span>blocks_known_by_peer: HashMap&lt;PeerId, LruMap&lt;BlockId, (bool, Instant)&gt;&gt;,
+    <span class="doccomment">/// max number of blocks known in peer knowledge cache
+    </span><span class="kw">pub </span>max_known_blocks_by_peer: u32,
 }
 
 <span class="kw">impl </span>BlockCache {
-    <span class="kw">pub fn </span>insert_blocks_known(
+    <span class="doccomment">/// Mark a given node&#39;s knowledge of a list of blocks
+    /// as either known or unknown.
+    ///
+    /// # Arguments
+    ///
+    /// * `from_peer_id` - The peer id of the peer to mark
+    /// * `block_ids` - The list of block ids to mark
+    /// * `known` - Whether the blocks are known or unknown by the peer
+    </span><span class="kw">pub fn </span>insert_peer_known_block(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         from_peer_id: <span class="kw-2">&amp;</span>PeerId,
         block_ids: <span class="kw-2">&amp;</span>[BlockId],
-        val: bool,
-        timeout: Instant,
+        known: bool,
     ) {
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((blocks, <span class="kw">_</span>)) = <span class="self">self
+        <span class="kw">let </span>now = Instant::now();
+        <span class="kw">let </span>known_blocks = <span class="self">self
             </span>.blocks_known_by_peer
-            .get_or_insert(from_peer_id.clone(), || {
-                (
-                    LruMap::new(ByLength::new(<span class="self">self</span>.max_known_blocks_by_peer)),
-                    Instant::now(),
-                )
-            })
-            .ok_or(()) <span class="kw">else </span>{
-                <span class="macro">warn!</span>(<span class="string">&quot;blocks_known_by_peer limit reached&quot;</span>);
-                <span class="kw">return</span>;
-            };
+            .entry(from_peer_id.clone())
+            .or_insert_with(|| LruMap::new(ByLength::new(<span class="self">self</span>.max_known_blocks_by_peer)));
         <span class="kw">for </span>block_id <span class="kw">in </span>block_ids {
-            blocks.insert(<span class="kw-2">*</span>block_id, (val, timeout));
+            known_blocks.insert(<span class="kw-2">*</span>block_id, (known, now));
         }
     }
 }
 
 <span class="kw">impl </span>BlockCache {
-    <span class="kw">pub fn </span>new(max_known_blocks: u32, max_peers: u32, max_known_blocks_by_peer: u32) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(max_known_blocks: u32, max_known_blocks_by_peer: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             checked_headers: LruMap::new(ByLength::new(max_known_blocks)),
-            blocks_known_by_peer: LruMap::new(ByLength::new(max_peers)),
+            blocks_known_by_peer: HashMap::new(),
             max_known_blocks_by_peer,
         }
     }
 
-    <span class="kw">pub fn </span>update_cache(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        peers_connected: HashSet&lt;PeerId&gt;,
-        max_known_blocks_by_peer: u32,
-    ) {
-        <span class="kw">let </span>peers: Vec&lt;PeerId&gt; = <span class="self">self
-            </span>.blocks_known_by_peer
-            .iter()
-            .map(|(id, <span class="kw">_</span>)| id.clone())
-            .collect();
+    <span class="kw">pub fn </span>update_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peers_connected: <span class="kw-2">&amp;</span>HashSet&lt;PeerId&gt;) {
+        <span class="comment">// Remove disconnected peers from cache
+        </span><span class="self">self</span>.blocks_known_by_peer
+            .retain(|peer_id, <span class="kw">_</span>| peers_connected.contains(peer_id));
 
-        <span class="comment">// Clean shared cache if peers do not exist anymore
-        </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers {
-            <span class="kw">if </span>!peers_connected.contains(<span class="kw-2">&amp;</span>peer_id) {
-                <span class="self">self</span>.blocks_known_by_peer.remove(<span class="kw-2">&amp;</span>peer_id);
-            }
-        }
-
-        <span class="comment">// Add new potential peers
+        <span class="comment">// Add new connected peers to cache
         </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
-            <span class="kw">if </span><span class="self">self</span>.blocks_known_by_peer.peek(<span class="kw-2">&amp;</span>peer_id).is_none() {
-                <span class="self">self</span>.blocks_known_by_peer.insert(
-                    peer_id.clone(),
-                    (
-                        LruMap::new(ByLength::new(max_known_blocks_by_peer)),
-                        Instant::now(),
-                    ),
-                );
+            <span class="kw">match </span><span class="self">self</span>.blocks_known_by_peer.entry(peer_id.clone()) {
+                std::collections::hash_map::Entry::Occupied(<span class="kw">_</span>) =&gt; {}
+                std::collections::hash_map::Entry::Vacant(entry) =&gt; {
+                    entry.insert(LruMap::new(ByLength::new(<span class="self">self</span>.max_known_blocks_by_peer)));
+                }
             }
         }
     }
