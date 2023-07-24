@@ -685,7 +685,7 @@ impl Interface for InterfaceImpl {
         }
 
         // parse the message
-        let message = libsecp256k1::Message::parse_slice(&hash_).unwrap();
+        let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
 
         // parse the signature as being (r, s, v) use only r and s
         let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
