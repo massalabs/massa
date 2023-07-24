@@ -185,7 +185,7 @@ async fn serve<T>(
         .await
         .expect("failed to build server");
 
-    let server_handler = server.start(api).expect("server start failed");
+    let server_handler = server.start(api);
     let stop_handler = StopHandle { server_handler };
 
     Ok(stop_handler)

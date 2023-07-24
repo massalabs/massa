@@ -4,9 +4,9 @@ version = "0.24.0"
 edition = "2021"
 
 [dependencies]
-jsonrpsee = { version = "0.18.2", features = ["client"] }
-jsonrpsee-http-client = { version = "0.18.2", features = ["webpki-tls"] }
-jsonrpsee-ws-client = { version = "0.18.2", features = ["webpki-tls"] }
+jsonrpsee = { version = "0.19.0", features = ["client"] }
+jsonrpsee-http-client = { version = "0.19.0", features = ["webpki-tls"] }
+jsonrpsee-ws-client = { version = "0.19.0", features = ["webpki-tls"] }
 http = "0.2.8"
 tonic = { version = "0.9.1", features = ["gzip"] }
 thiserror = "1.0"
