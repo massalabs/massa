@@ -1,81 +1,71 @@
-use std::{collections::HashSet, sync::Arc, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    time::Instant,
+};
 
 use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_protocol_exports::PeerId;
 use parking_lot::RwLock;
 use schnellru::{ByLength, LruMap};
-use tracing::log::warn;
 
+/// Cache on block knowledge by our node and its peers
 pub struct BlockCache {
+    /// cache of previously checked headers
     pub checked_headers: LruMap<BlockId, SecuredHeader>,
-    #[allow(clippy::type_complexity)]
-    pub blocks_known_by_peer: LruMap<PeerId, (LruMap<BlockId, (bool, Instant)>, Instant)>,
+    /// cache of blocks known by peers
+    pub blocks_known_by_peer: HashMap<PeerId, LruMap<BlockId, (bool, Instant)>>,
+    /// max number of blocks known in peer knowledge cache
     pub max_known_blocks_by_peer: u32,
 }
 
 impl BlockCache {
-    pub fn insert_blocks_known(
+    /// Mark a given node's knowledge of a list of blocks
+    /// as either known or unknown.
+    ///
+    /// # Arguments
+    ///
+    /// * `from_peer_id` - The peer id of the peer to mark
+    /// * `block_ids` - The list of block ids to mark
+    /// * `known` - Whether the blocks are known or unknown by the peer
+    pub fn insert_peer_known_block(
         &mut self,
         from_peer_id: &PeerId,
         block_ids: &[BlockId],
-        val: bool,
-        timeout: Instant,
+        known: bool,
     ) {
-        let Ok((blocks, _)) = self
+        let now = Instant::now();
+        let known_blocks = self
             .blocks_known_by_peer
-            .get_or_insert(from_peer_id.clone(), || {
-                (
-                    LruMap::new(ByLength::new(self.max_known_blocks_by_peer)),
-                    Instant::now(),
-                )
-            })
-            .ok_or(()) else {
-                warn!("blocks_known_by_peer limit reached");
-                return;
-            };
+            .entry(from_peer_id.clone())
+            .or_insert_with(|| LruMap::new(ByLength::new(self.max_known_blocks_by_peer)));
         for block_id in block_ids {
-            blocks.insert(*block_id, (val, timeout));
+            known_blocks.insert(*block_id, (known, now));
         }
     }
 }
 
 impl BlockCache {
-    pub fn new(max_known_blocks: u32, max_peers: u32, max_known_blocks_by_peer: u32) -> Self {
+    pub fn new(max_known_blocks: u32, max_known_blocks_by_peer: u32) -> Self {
         Self {
             checked_headers: LruMap::new(ByLength::new(max_known_blocks)),
-            blocks_known_by_peer: LruMap::new(ByLength::new(max_peers)),
+            blocks_known_by_peer: HashMap::new(),
             max_known_blocks_by_peer,
         }
     }
 
-    pub fn update_cache(
-        &mut self,
-        peers_connected: HashSet<PeerId>,
-        max_known_blocks_by_peer: u32,
-    ) {
-        let peers: Vec<PeerId> = self
-            .blocks_known_by_peer
-            .iter()
-            .map(|(id, _)| id.clone())
-            .collect();
+    pub fn update_cache(&mut self, peers_connected: &HashSet<PeerId>) {
+        // Remove disconnected peers from cache
+        self.blocks_known_by_peer
+            .retain(|peer_id, _| peers_connected.contains(peer_id));
 
-        // Clean shared cache if peers do not exist anymore
-        for peer_id in peers {
-            if !peers_connected.contains(&peer_id) {
-                self.blocks_known_by_peer.remove(&peer_id);
-            }
-        }
-
-        // Add new potential peers
+        // Add new connected peers to cache
         for peer_id in peers_connected {
-            if self.blocks_known_by_peer.peek(&peer_id).is_none() {
-                self.blocks_known_by_peer.insert(
-                    peer_id.clone(),
-                    (
-                        LruMap::new(ByLength::new(max_known_blocks_by_peer)),
-                        Instant::now(),
-                    ),
-                );
+            match self.blocks_known_by_peer.entry(peer_id.clone()) {
+                std::collections::hash_map::Entry::Occupied(_) => {}
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    entry.insert(LruMap::new(ByLength::new(self.max_known_blocks_by_peer)));
+                }
             }
         }
     }

@@ -34,8 +34,6 @@ pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
 pub const MAX_MESSAGE_SIZE: u32 = 1048576000;
-/// Max number of hash in the message `AskForBlocks`
-pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 128;
 /// Max number of operations per message
 pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
 /// Length of the handshake random signature

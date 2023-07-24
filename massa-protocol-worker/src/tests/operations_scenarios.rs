@@ -445,9 +445,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
                 )
                 .unwrap();
 
@@ -493,10 +491,12 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
-                        block.id,
-                        BlockInfoReply::Info(vec![operation.id].into_iter().collect()),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::DataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::OperationIds(
+                            vec![operation.id].into_iter().collect(),
+                        ),
+                    })),
                 )
                 .unwrap();
 

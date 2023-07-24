@@ -13,7 +13,9 @@ impl Default for ProtocolConfig {
                 .path()
                 .to_path_buf(),
             ask_block_timeout: MassaTime::from_millis(500),
-            max_known_blocks_saved_size: 300,
+            max_blocks_kept_for_propagation: 300,
+            max_block_propagation_time: MassaTime::from_millis(40000),
+            block_propagation_tick: MassaTime::from_millis(1000),
             max_known_blocks_size: 100,
             max_node_known_blocks_size: 100,
             max_node_wanted_blocks_size: 100,
@@ -61,7 +63,6 @@ impl Default for ProtocolConfig {
             max_size_channel_commands_peers: 300,
             max_message_size: MAX_MESSAGE_SIZE as usize,
             endorsement_count: ENDORSEMENT_COUNT,
-            max_size_block_infos: 200,
             max_size_value_datastore: 1_000_000,
             max_size_function_name: u16::MAX,
             max_size_call_sc_parameter: 10_000_000,

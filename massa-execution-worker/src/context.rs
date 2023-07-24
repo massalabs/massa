@@ -24,6 +24,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -37,6 +38,7 @@ use massa_models::{
 };
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
+use massa_serialization::Serializer;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::MipStore;
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
@@ -1087,12 +1089,17 @@ fn generate_execution_trail_hash(
             &slot.to_bytes_key(),
             &[if read_only { 1u8 } else { 0u8 }, 0u8],
         ]),
-        Some(block_id) => massa_hash::Hash::compute_from_tuple(&[
-            previous_execution_trail_hash.to_bytes(),
-            &slot.to_bytes_key(),
-            &[if read_only { 1u8 } else { 0u8 }, 1u8],
-            block_id.to_bytes(),
-        ]),
+        Some(block_id) => {
+            let mut bytes = Vec::new();
+            let block_id_serializer = BlockIdSerializer::new();
+            block_id_serializer.serialize(block_id, &mut bytes).unwrap();
+            massa_hash::Hash::compute_from_tuple(&[
+                previous_execution_trail_hash.to_bytes(),
+                &slot.to_bytes_key(),
+                &[if read_only { 1u8 } else { 0u8 }, 1u8],
+                &bytes,
+            ])
+        }
     }
 }
 
