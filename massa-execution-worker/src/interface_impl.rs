@@ -700,7 +700,7 @@ impl Interface for InterfaceImpl {
         Ok(recovered.serialize().to_vec())
     }
 
-    // Return true if the address is an User address, otherwise false if it is an SC address.
+    // Return true if the address is a User address, false if it is an SC address.
     fn is_address_eoa(&self, address_: &str) -> Result<bool> {
         let address = Address::from_str(address_)?;
         Ok(matches!(address, Address::User(..)))
