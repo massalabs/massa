@@ -50,13 +50,13 @@ pub fn gen_endorsements_for_denunciation(
     let v_endorsement_3 =
         Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), &keypair).unwrap();
 
-    return (
+    (
         slot,
         keypair,
         v_endorsement1,
         v_endorsement2,
         v_endorsement_3,
-    );
+    )
 }
 
 /// Helper to generate block headers ready for denunciation
@@ -128,7 +128,7 @@ pub fn gen_block_headers_for_denunciation(
         slot,
         parents: parents_3,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-        endorsements: vec![s_endorsement_1.clone()],
+        endorsements: vec![s_endorsement_1],
         denunciations: vec![],
     };
 
@@ -140,11 +140,11 @@ pub fn gen_block_headers_for_denunciation(
     )
     .expect("error while producing block header");
 
-    return (
+    (
         slot,
         keypair,
-        s_block_header_1.clone(),
+        s_block_header_1,
         s_block_header_2,
         s_block_header_3,
-    );
+    )
 }

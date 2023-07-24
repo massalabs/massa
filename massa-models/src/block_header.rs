@@ -635,9 +635,9 @@ mod test {
             .collect();
 
         let endorsement_1 = Endorsement {
-            slot: slot.clone(),
+            slot,
             index: 1,
-            endorsed_block: parents_1[1].clone(),
+            endorsed_block: parents_1[1],
         };
 
         assert_eq!(parents_1[1], endorsement_1.endorsed_block);
@@ -659,8 +659,8 @@ mod test {
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-            denunciations: vec![de_a.clone(), de_b.clone()],
+            endorsements: vec![s_endorsement_1],
+            denunciations: vec![de_a, de_b],
         };
 
         let mut buffer = Vec::new();
@@ -675,7 +675,7 @@ mod test {
 
         let (rem, block_header_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
 
-        assert_eq!(rem.is_empty(), true);
+        assert!(rem.is_empty());
         assert_eq!(block_header_1, block_header_der);
     }
 

@@ -1439,6 +1439,29 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     }
 }
 
+/// Compute the hash of a list of operations(used typically in block headers)
+pub fn compute_operations_hash(
+    op_ids: &[OperationId],
+    op_id_serializer: &OperationIdSerializer,
+) -> Hash {
+    let op_ids = op_ids
+        .iter()
+        .map(|op_id| {
+            let mut serialized = Vec::new();
+            op_id_serializer
+                .serialize(op_id, &mut serialized)
+                .expect("serialization of operation id should not fail");
+            serialized
+        })
+        .collect::<Vec<Vec<u8>>>();
+    massa_hash::Hash::compute_from_tuple(
+        &op_ids
+            .iter()
+            .map(|data| data.as_slice())
+            .collect::<Vec<_>>(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::config::{
