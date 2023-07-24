@@ -273,41 +273,42 @@ pub(crate) fn start_connectivity_thread(
                                             continue;
                                         }
 
-                                        //TODO: Adapt for multiple listeners
-                                        let (addr, _) = last_announce.listeners.iter().next().unwrap();
-                                        if peers_connection_queue.contains(addr) {
-                                            continue;
-                                        }
-
-                                        let connection_metadata = peer_db_read.try_connect_history.get(addr).cloned().unwrap_or(ConnectionMetadata::default());
-
-                                        // check if the peer last connect attempt has not been too recent
-                                        if let ConnectionMetadata { last_try: Some(lt), .. } = connection_metadata {
-                                            let last_try = lt.estimate_instant().expect("Time went backward");
-                                            if last_try.elapsed() < config.try_connection_timer_same_peer.to_duration() {
+                                        for (addr, _) in last_announce.listeners.iter() {
+                                            if peers_connection_queue.contains(addr) {
                                                 continue;
                                             }
-                                        }
 
-                                        if config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
-                                            continue;
-                                        }
+                                            let connection_metadata = peer_db_read.try_connect_history.get(addr).cloned().unwrap_or(ConnectionMetadata::default());
 
-                                        let canonical_ip = addr.ip().to_canonical();
-                                        let mut allowed_local_ips = false;
-                                        // Check if the peer is in a category and we didn't reached out target yet
-                                        let mut category_found = None;
-                                        for (name, (ips, cat)) in &peer_categories {
-                                            if ips.contains(&canonical_ip) {
-                                                category_found = Some(name);
-                                                allowed_local_ips = cat.allow_local_peers;
+                                            // check if the peer last connect attempt has not been too recent
+                                            if let ConnectionMetadata { last_try: Some(lt), .. } = connection_metadata {
+                                                let last_try = lt.estimate_instant().expect("Time went backward");
+                                                if last_try.elapsed() < config.try_connection_timer_same_peer.to_duration() {
+                                                    continue;
+                                                }
                                             }
-                                        }
-                                        if !canonical_ip.is_global() && !allowed_local_ips {
-                                            continue;
-                                        }
 
-                                        addresses_can_connect.push((*addr, connection_metadata, category_found));
+                                            if config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
+                                                continue;
+                                            }
+
+                                            let canonical_ip = addr.ip().to_canonical();
+                                            let mut allowed_local_ips = false;
+                                            // Check if the peer is in a category and we didn't reached out target yet
+                                            let mut category_found = None;
+                                            for (name, (ips, cat)) in &peer_categories {
+                                                if ips.contains(&canonical_ip) {
+                                                    category_found = Some(name);
+                                                    allowed_local_ips = cat.allow_local_peers;
+                                                }
+                                            }
+                                            if !canonical_ip.is_global() && !allowed_local_ips {
+                                                continue;
+                                            }
+
+                                            addresses_can_connect.push((*addr, connection_metadata, category_found));
+                                            break;
+                                        }
                                     }
                                 }
                             }
