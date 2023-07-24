@@ -948,6 +948,65 @@
 <a href="#948" id="948">948</a>
 <a href="#949" id="949">949</a>
 <a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -1568,9 +1627,9 @@
     /// * Expects a SECP256K1 signature in full ETH format.
     ///   Format: (r, s, v) v will be ignored
     ///   Length: 65 bytes
-    /// * Expects a public key in full ETH format.
-    ///   Length: 65 bytes
-    </span><span class="kw">fn </span>verify_evm_signature(
+    /// * Expects a public key in raw secp256k1 format.
+    ///   Length: 64 bytes
+    </span><span class="kw">fn </span>evm_signature_verify(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message_: <span class="kw-2">&amp;</span>[u8],
         signature_: <span class="kw-2">&amp;</span>[u8],
@@ -1578,13 +1637,13 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="comment">// check the signature length
         </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;invalid signature length&quot;</span>));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;invalid signature length in evm_signature_verify&quot;</span>));
         }
 
         <span class="comment">// parse the public key
         </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(
             public_key_,
-            <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Full),
+            <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Raw),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// build the message
@@ -1604,6 +1663,56 @@
 
         <span class="comment">// verify the signature
         </span><span class="prelude-val">Ok</span>(libsecp256k1::verify(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>public_key))
+    }
+
+    <span class="doccomment">/// Get an EVM address from a raw secp256k1 public key (64 bytes).
+    /// Address is the last 20 bytes of the hash of the public key.
+    </span><span class="kw">fn </span>evm_get_address_from_pubkey(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key_: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="comment">// parse the public key
+        </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(
+            public_key_,
+            <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Raw),
+        )<span class="question-mark">?</span>;
+
+        <span class="comment">// compute the hash of the public key
+        </span><span class="kw">let </span>hash = sha3::Keccak256::digest(public_key.serialize());
+
+        <span class="comment">// ignore the first 12 bytes of the hash
+        </span><span class="kw">let </span>address = hash[<span class="number">12</span>..].to_vec();
+
+        <span class="comment">// return the address (last 20 bytes of the hash)
+        </span><span class="prelude-val">Ok</span>(address)
+    }
+
+    <span class="doccomment">/// Get a raw secp256k1 public key from an EVM signature and the signed hash.
+    </span><span class="kw">fn </span>evm_get_pubkey_from_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, hash_: <span class="kw-2">&amp;</span>[u8], signature_: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="comment">// check the signature length
+        </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">&quot;invalid signature length in evm_get_pubkey_from_signature&quot;
+            </span>));
+        }
+
+        <span class="comment">// parse the message
+        </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(<span class="kw-2">&amp;</span>hash_).unwrap();
+
+        <span class="comment">// parse the signature as being (r, s, v) use only r and s
+        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>]).unwrap();
+
+        <span class="comment">// parse v as a recovery id
+        </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>]).unwrap();
+
+        <span class="comment">// recover the public key
+        </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id).unwrap();
+
+        <span class="comment">// return its serialized value
+        </span><span class="prelude-val">Ok</span>(recovered.serialize().to_vec())
+    }
+
+    <span class="comment">// Return true if the address is an User address, otherwise false if it is an SC address.
+    </span><span class="kw">fn </span>is_address_eoa(<span class="kw-2">&amp;</span><span class="self">self</span>, address_: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="kw">let </span>address = Address::from_str(address_)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(address, Address::User(..)))
     }
 
     <span class="doccomment">/// Transfer coins from the current address (top of the call stack) towards a target address.
@@ -1862,8 +1971,9 @@
 </span><span class="kw">fn </span>test_evm_verify() {
     <span class="kw">use </span>hex_literal::hex;
 
-    <span class="comment">// corresponding address is 0x807a7Bb5193eDf9898b9092c1597bB966fe52514
-    </span><span class="kw">let </span>message_ = <span class="string">b&quot;test&quot;</span>;
+    <span class="comment">// signature info
+    </span><span class="kw">let </span>address_ = <span class="macro">hex!</span>(<span class="string">&quot;807a7bb5193edf9898b9092c1597bb966fe52514&quot;</span>);
+    <span class="kw">let </span>message_ = <span class="string">b&quot;test&quot;</span>;
     <span class="kw">let </span>signature_ = <span class="macro">hex!</span>(<span class="string">&quot;d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b&quot;</span>);
     <span class="kw">let </span>private_key_ = <span class="macro">hex!</span>(<span class="string">&quot;ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3&quot;</span>);
 
@@ -1897,5 +2007,13 @@
     // sign the message and match it with the original signature
     </span><span class="kw">let </span>(second_signature, <span class="kw">_</span>) = libsecp256k1::sign(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>private_key);
     <span class="macro">assert_eq!</span>(signature, second_signature);
+
+    <span class="comment">// check 4
+    // generate the address from the public key and match it with the original address
+    // address is the last 20 bytes of the hash of the public key in raw format (64 bytes)
+    </span><span class="kw">let </span>raw_public_key = public_key.serialize();
+    <span class="kw">let </span>hash = sha3::Keccak256::digest(<span class="kw-2">&amp;</span>raw_public_key[<span class="number">1</span>..]).to_vec();
+    <span class="kw">let </span>generated_address = <span class="kw-2">&amp;</span>hash[<span class="number">12</span>..];
+    <span class="macro">assert_eq!</span>(generated_address, address_);
 }
 </code></pre></div></section></main></body></html>
