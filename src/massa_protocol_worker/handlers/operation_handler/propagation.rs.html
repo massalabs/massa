@@ -220,10 +220,6 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::{mem, thread::JoinHandle};
 
@@ -326,6 +322,15 @@
     </span><span class="kw">fn </span>prune_propagation_storage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span><span class="kw-2">mut </span>removed = PreHashSet::default();
 
+        <span class="comment">// cap cache size
+        </span><span class="kw">while </span><span class="self">self</span>.stored_for_propagation.len() &gt; <span class="self">self</span>.config.max_ops_kept_for_propagation {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((_t, op_ids)) = <span class="self">self</span>.stored_for_propagation.pop_front() {
+                removed.extend(op_ids);
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
+            }
+        }
+
         <span class="comment">// remove expired
         </span><span class="kw">let </span>max_op_prop_time = <span class="self">self</span>.config.max_operations_propagation_time.to_duration();
         <span class="kw">while let </span><span class="prelude-val">Some</span>((t, <span class="kw">_</span>)) = <span class="self">self</span>.stored_for_propagation.front() {
@@ -334,24 +339,6 @@
                     </span>.stored_for_propagation
                     .pop_front()
                     .expect(<span class="string">&quot;there should be at least one element, checked above&quot;</span>);
-                removed.extend(op_ids);
-            } <span class="kw">else </span>{
-                <span class="kw">break</span>;
-            }
-        }
-
-        <span class="comment">// Cap cache size
-        // Note that we directly remove batches of operations, not individual operations
-        // to favor simplicity and performance over precision.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>excess_count = <span class="self">self
-            </span>.stored_for_propagation
-            .iter()
-            .map(|(<span class="kw">_</span>, ops)| ops.len())
-            .sum::&lt;usize&gt;()
-            .saturating_sub(<span class="self">self</span>.config.max_ops_kept_for_propagation);
-        <span class="kw">while </span>excess_count &gt; <span class="number">0 </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((_t, op_ids)) = <span class="self">self</span>.stored_for_propagation.pop_front() {
-                excess_count = excess_count.saturating_sub(op_ids.len());
                 removed.extend(op_ids);
             } <span class="kw">else </span>{
                 <span class="kw">break</span>;
@@ -374,12 +361,17 @@
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
             <span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
-            cache_write.update_cache(<span class="kw-2">&amp;</span>peers_connected);
+            cache_write.update_cache(peers_connected);
 
             <span class="comment">// Propagate to peers
-            </span><span class="kw">let </span>all_keys: Vec&lt;PeerId&gt; = cache_write.ops_known_by_peer.keys().cloned().collect();
+            </span><span class="kw">let </span>all_keys: Vec&lt;PeerId&gt; = cache_write
+                .ops_known_by_peer
+                .iter()
+                .map(|(k, <span class="kw">_</span>)| k)
+                .cloned()
+                .collect();
             <span class="kw">for </span>peer_id <span class="kw">in </span>all_keys {
-                <span class="kw">let </span>ops = cache_write.ops_known_by_peer.get_mut(<span class="kw-2">&amp;</span>peer_id).unwrap();
+                <span class="kw">let </span>ops = cache_write.ops_known_by_peer.peek_mut(<span class="kw-2">&amp;</span>peer_id).unwrap();
                 <span class="kw">let </span>new_ops: Vec&lt;OperationId&gt; = operation_ids
                     .iter()
                     .filter(|id| ops.peek(<span class="kw-2">&amp;</span>id.prefix()).is_none())

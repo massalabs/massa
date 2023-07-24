@@ -499,6 +499,18 @@
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -600,15 +612,7 @@
                             <span class="kw">match </span>message {
                                 OperationMessage::Operations(ops) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">&quot;Received operation message: Operations from {}&quot;</span>, peer_id);
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_operations_from_peer(
-                                        <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
-                                        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cache,
-                                        <span class="kw-2">&amp;</span><span class="self">self</span>.config,
-                                        ops,
-                                        <span class="kw-2">&amp;</span>peer_id,
-                                        <span class="kw-2">&amp;mut </span><span class="self">self</span>.internal_sender,
-                                        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller
-                                    ) {
+                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.note_operations_from_peer(ops, <span class="kw-2">&amp;</span>peer_id) {
                                         <span class="macro">warn!</span>(<span class="string">&quot;peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}&quot;</span>, peer_id, err);
 
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>peer_id) {
@@ -662,6 +666,115 @@
         }
     }
 
+    <span class="kw">fn </span>note_operations_from_peer(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        operations: Vec&lt;SecureShareOperation&gt;,
+        source_peer_id: <span class="kw-2">&amp;</span>PeerId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_peer&quot;</span>, { <span class="string">&quot;peer&quot;</span>: source_peer_id, <span class="string">&quot;operations&quot;</span>: operations });
+        <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>new_operations = PreHashMap::with_capacity(operations.len());
+        <span class="kw">for </span>operation <span class="kw">in </span>operations {
+            <span class="comment">// ignore if op is too old
+            </span><span class="kw">let </span>expire_period_timestamp = get_block_slot_timestamp(
+                <span class="self">self</span>.config.thread_count,
+                <span class="self">self</span>.config.t0,
+                <span class="self">self</span>.config.genesis_timestamp,
+                Slot::new(
+                    operation.content.expire_period,
+                    operation
+                        .content_creator_address
+                        .get_thread(<span class="self">self</span>.config.thread_count),
+                ),
+            );
+            <span class="kw">match </span>expire_period_timestamp {
+                <span class="prelude-val">Ok</span>(slot_timestamp) =&gt; {
+                    <span class="kw">if </span>slot_timestamp.saturating_add(<span class="self">self</span>.config.max_operations_propagation_time)
+                        &lt; now
+                    {
+                        <span class="kw">continue</span>;
+                    }
+                }
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
+            }
+
+            <span class="comment">// quit if op is too big
+            </span><span class="kw">if </span>operation.serialized_size() &gt; <span class="self">self</span>.config.max_serialized_operations_size_per_block {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidOperationError(<span class="macro">format!</span>(
+                    <span class="string">&quot;Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes&quot;</span>,
+                    operation.id,
+                    operation.serialized_size(),
+                    <span class="self">self</span>.config.max_serialized_operations_size_per_block
+                )));
+            };
+
+            <span class="comment">// add to new operations
+            </span>new_operations.insert(operation.id, operation);
+        }
+
+        <span class="comment">// all valid received ids (not only new ones) for knowledge marking
+        </span><span class="kw">let </span>all_received_ids: PreHashSet&lt;<span class="kw">_</span>&gt; = new_operations.keys().copied().collect();
+
+        <span class="comment">// retain only new ops that are not already known
+        </span>{
+            <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
+            new_operations.retain(|op_id, <span class="kw">_</span>| cache_read.checked_operations.peek(op_id).is_none());
+        }
+
+        <span class="comment">// optimized signature verification
+        </span>verify_sigs_batch(
+            <span class="kw-2">&amp;</span>new_operations
+                .iter()
+                .map(|(op_id, op)| (<span class="kw-2">*</span>op_id.get_hash(), op.signature, op.content_creator_pub_key))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        )<span class="question-mark">?</span>;
+
+        <span class="lifetime">&#39;write_cache</span>: {
+            <span class="comment">// add to checked operations
+            </span><span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
+            <span class="kw">for </span>op_id <span class="kw">in </span>new_operations.keys().copied() {
+                cache_write.insert_checked_operation(op_id);
+            }
+
+            <span class="comment">// add to known ops
+            </span><span class="kw">let </span><span class="prelude-val">Ok</span>(known_ops) = cache_write
+                .ops_known_by_peer
+                .get_or_insert(source_peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        <span class="self">self</span>.config
+                            .max_node_known_ops_size
+                            .try_into()
+                            .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
+                    ))
+                })
+                .ok_or(()) <span class="kw">else </span>{
+                    <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
+                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
+                };
+            <span class="kw">for </span>id <span class="kw">in </span>all_received_ids {
+                known_ops.insert(id.prefix(), ());
+            }
+        }
+
+        <span class="kw">if </span>!new_operations.is_empty() {
+            <span class="comment">// Store new operations, claim locally
+            </span><span class="kw">let </span><span class="kw-2">mut </span>ops = <span class="self">self</span>.storage.clone_without_refs();
+            ops.store_operations(new_operations.into_values().collect());
+
+            <span class="self">self</span>.internal_sender
+                .try_send(OperationHandlerPropagationCommand::PropagateOperations(
+                    ops.clone(),
+                ))
+                .map_err(|err| ProtocolError::SendError(err.to_string()))<span class="question-mark">?</span>;
+
+            <span class="comment">// Add to pool
+            </span><span class="self">self</span>.pool_controller.add_operations(ops);
+        }
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
     <span class="doccomment">/// On receive a batch of operation ids `op_batch` from another `peer_id`
     /// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
     ///
@@ -687,19 +800,27 @@
         <span class="kw-2">mut </span>op_batch: OperationPrefixIds,
         peer_id: <span class="kw-2">&amp;</span>PeerId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="comment">// ignore announcement from disconnected peers
-        </span><span class="kw">if </span>!<span class="self">self
-            </span>.active_connections
-            .get_peer_ids_connected()
-            .contains(peer_id)
-        {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-        }
-
         <span class="comment">// mark sender as knowing the ops
-        </span><span class="self">self</span>.cache
-            .write()
-            .insert_peer_known_ops(peer_id, <span class="kw-2">&amp;</span>op_batch.iter().copied().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;());
+        </span><span class="lifetime">&#39;write_cache</span>: {
+            <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
+            <span class="kw">let </span><span class="prelude-val">Ok</span>(known_ops) = cache_write
+                .ops_known_by_peer
+                .get_or_insert(peer_id.clone(), || {
+                    LruMap::new(ByLength::new(
+                        <span class="self">self</span>.config
+                            .max_node_known_ops_size
+                            .try_into()
+                            .expect(<span class="string">&quot;max_node_known_ops_size in config must be &gt; 0&quot;</span>),
+                    ))
+                })
+                .ok_or(()) <span class="kw">else </span>{
+                    <span class="macro">warn!</span>(<span class="string">&quot;ops_known_by_peer limitation reached&quot;</span>);
+                    <span class="kw">break </span><span class="lifetime">&#39;write_cache</span>;
+                };
+            <span class="kw">for </span>prefix <span class="kw">in </span><span class="kw-2">&amp;</span>op_batch {
+                known_ops.insert(<span class="kw-2">*</span>prefix, ());
+            }
+        }
 
         <span class="comment">// filter out the operations that we already know about
         </span>{
@@ -713,34 +834,33 @@
         </span><span class="kw">let </span>now = Instant::now();
         <span class="kw">let </span><span class="kw-2">mut </span>count_reask = <span class="number">0</span>;
         <span class="kw">for </span>op_id <span class="kw">in </span>op_batch {
-            <span class="kw">let </span>opt_previous_ask = <span class="kw">match </span><span class="self">self</span>.asked_operations.get(<span class="kw-2">&amp;</span>op_id) {
-                <span class="prelude-val">Some</span>(previous_ask) =&gt; {
-                    <span class="kw">if </span>previous_ask.<span class="number">1</span>.contains(peer_id) {
-                        <span class="kw">continue</span>; <span class="comment">// already asked to the origin `peer_id` =&gt; ignore
+            <span class="kw">let </span>wish = <span class="kw">match </span><span class="self">self</span>.asked_operations.get(<span class="kw-2">&amp;</span>op_id) {
+                <span class="prelude-val">Some</span>(wish) =&gt; {
+                    <span class="kw">if </span>wish.<span class="number">1</span>.contains(peer_id) {
+                        <span class="kw">continue</span>; <span class="comment">// already asked to the `peer_id`
                     </span>} <span class="kw">else </span>{
-                        <span class="prelude-val">Some</span>(previous_ask) <span class="comment">// already asked but to someone else
+                        <span class="prelude-val">Some</span>(wish) <span class="comment">// already asked but at someone else
                     </span>}
                 }
                 <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
             };
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((previous_ask_time, previous_ask_peers)) = opt_previous_ask {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(wish) = wish {
                 <span class="comment">// Ask now if latest ask instant &lt; now - operation_batch_proc_period
                 // otherwise add in future_set
-                </span><span class="kw">if </span>now
-                    .checked_duration_since(<span class="kw-2">*</span>previous_ask_time)
-                    .unwrap_or_default()
-                    &gt; <span class="self">self</span>.config.operation_batch_proc_period.to_duration()
-                {
+                </span><span class="kw">if </span>wish.<span class="number">0
+                    </span>&lt; now
+                        .checked_sub(<span class="self">self</span>.config.operation_batch_proc_period.into())
+                        .ok_or(TimeError::TimeOverflowError)<span class="question-mark">?
+                </span>{
                     count_reask += <span class="number">1</span>;
                     ask_set.insert(op_id);
-                    <span class="kw-2">*</span>previous_ask_time = now;
-                    previous_ask_peers.push(peer_id.clone());
+                    wish.<span class="number">0 </span>= now;
+                    wish.<span class="number">1</span>.push(peer_id.clone());
                 } <span class="kw">else </span>{
                     future_set.insert(op_id);
                 }
             } <span class="kw">else </span>{
-                <span class="comment">// the same peer announced this op for a second time, ask them immediately
-                </span>ask_set.insert(op_id);
+                ask_set.insert(op_id);
                 <span class="self">self</span>.asked_operations
                     .insert(op_id, (now, <span class="macro">vec!</span>[peer_id.clone()]));
             }
@@ -781,6 +901,10 @@
                     <span class="bool-val">false</span>,
                 ) {
                     <span class="macro">warn!</span>(<span class="string">&quot;Failed to send AskForOperations message to peer: {}&quot;</span>, err);
+                    {
+                        <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
+                        cache_write.ops_known_by_peer.remove(peer_id);
+                    }
                 }
             }
         }
@@ -841,6 +965,10 @@
                 <span class="bool-val">false</span>,
             ) {
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send Operations message to peer: {}&quot;</span>, err);
+                {
+                    <span class="kw">let </span><span class="kw-2">mut </span>cache_write = <span class="self">self</span>.cache.write();
+                    cache_write.ops_known_by_peer.remove(peer_id);
+                }
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -853,110 +981,6 @@
             .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
-}
-
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>note_operations_from_peer(
-    base_storage: <span class="kw-2">&amp;</span>Storage,
-    operations_cache: <span class="kw-2">&amp;mut </span>SharedOperationCache,
-    config: <span class="kw-2">&amp;</span>ProtocolConfig,
-    operations: Vec&lt;SecureShareOperation&gt;,
-    source_peer_id: <span class="kw-2">&amp;</span>PeerId,
-    ops_propagation_sender: <span class="kw-2">&amp;mut </span>MassaSender&lt;OperationHandlerPropagationCommand&gt;,
-    pool_controller: <span class="kw-2">&amp;mut </span>Box&lt;<span class="kw">dyn </span>PoolController&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_peer&quot;</span>, { <span class="string">&quot;peer&quot;</span>: source_peer_id, <span class="string">&quot;operations&quot;</span>: operations });
-    <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
-
-    <span class="kw">let </span><span class="kw-2">mut </span>new_operations = PreHashMap::with_capacity(operations.len());
-    <span class="kw">for </span>operation <span class="kw">in </span>operations {
-        <span class="comment">// ignore if op is too old
-        </span><span class="kw">let </span>expire_period_timestamp = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            Slot::new(
-                operation.content.expire_period,
-                operation
-                    .content_creator_address
-                    .get_thread(config.thread_count),
-            ),
-        );
-        <span class="kw">match </span>expire_period_timestamp {
-            <span class="prelude-val">Ok</span>(slot_timestamp) =&gt; {
-                <span class="kw">if </span>slot_timestamp.saturating_add(config.max_operations_propagation_time) &lt; now {
-                    <span class="kw">continue</span>;
-                }
-            }
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
-        }
-
-        <span class="comment">// quit if op is too big
-        </span><span class="kw">if </span>operation.serialized_size() &gt; config.max_serialized_operations_size_per_block {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidOperationError(<span class="macro">format!</span>(
-                <span class="string">&quot;Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes&quot;</span>,
-                operation.id,
-                operation.serialized_size(),
-                config.max_serialized_operations_size_per_block
-            )));
-        };
-
-        <span class="comment">// add to new operations
-        </span>new_operations.insert(operation.id, operation);
-    }
-
-    <span class="comment">// all valid received ids (not only new ones) for knowledge marking
-    </span><span class="kw">let </span>all_received_ids: PreHashSet&lt;<span class="kw">_</span>&gt; = new_operations.keys().copied().collect();
-
-    <span class="comment">// retain only new ops that are not already known
-    </span>{
-        <span class="kw">let </span>cache_read = operations_cache.read();
-        new_operations.retain(|op_id, <span class="kw">_</span>| cache_read.checked_operations.peek(op_id).is_none());
-    }
-
-    <span class="comment">// optimized signature verification
-    </span>verify_sigs_batch(
-        <span class="kw-2">&amp;</span>new_operations
-            .iter()
-            .map(|(op_id, op)| (<span class="kw-2">*</span>op_id.get_hash(), op.signature, op.content_creator_pub_key))
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-    )<span class="question-mark">?</span>;
-
-    {
-        <span class="comment">// add to checked operations
-        </span><span class="kw">let </span><span class="kw-2">mut </span>cache_write = operations_cache.write();
-
-        <span class="comment">// add checked operations
-        </span><span class="kw">for </span>op_id <span class="kw">in </span>new_operations.keys().copied() {
-            cache_write.insert_checked_operation(op_id);
-        }
-
-        <span class="comment">// add to known ops
-        </span>cache_write.insert_peer_known_ops(
-            source_peer_id,
-            <span class="kw-2">&amp;</span>all_received_ids
-                .into_iter()
-                .map(|id| id.into_prefix())
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-        );
-    }
-
-    <span class="kw">if </span>!new_operations.is_empty() {
-        <span class="comment">// Store new operations, claim locally
-        </span><span class="kw">let </span><span class="kw-2">mut </span>ops = base_storage.clone_without_refs();
-        ops.store_operations(new_operations.into_values().collect());
-
-        <span class="comment">// propagate new operations
-        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(_err) = ops_propagation_sender.try_send(
-            OperationHandlerPropagationCommand::PropagateOperations(ops.clone()),
-        ) {
-            <span class="macro">warn!</span>(<span class="string">&quot;Error sending operations to propagation channel&quot;</span>);
-        }
-
-        <span class="comment">// Add to pool
-        </span>pool_controller.add_operations(ops);
-    }
-
-    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]

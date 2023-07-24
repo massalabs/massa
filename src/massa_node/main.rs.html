@@ -1319,6 +1319,44 @@
 <a href="#1319" id="1319">1319</a>
 <a href="#1320" id="1320">1320</a>
 <a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1357,7 +1395,7 @@
 <span class="kw">use </span>massa_factory_worker::start_factory;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
 <span class="kw">use </span>massa_grpc::config::GrpcConfig;
-<span class="kw">use </span>massa_grpc::server::MassaGrpc;
+<span class="kw">use </span>massa_grpc::server::{MassaPrivateGrpc, MassaPublicGrpc};
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
 <span class="kw">use </span>massa_logging::massa_trace;
@@ -1367,19 +1405,20 @@
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
     DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
     GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
-    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA,
-    MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
-    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
-    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
-    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
-    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
+    MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
+    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+    MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE, MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
+    MAX_SIZE_CHANNEL_COMMANDS_PEERS, MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
@@ -1402,6 +1441,7 @@
 <span class="kw">use </span>massa_pos_worker::start_selector_worker;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolManager, TransportType};
 <span class="kw">use </span>massa_protocol_worker::{create_protocol_controller, start_protocol_controller};
+<span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::mips::get_mip_list;
@@ -1409,6 +1449,7 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>settings::GrpcSettings;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
@@ -1440,6 +1481,7 @@
     StopHandle,
     StopHandle,
     StopHandle,
+    <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
     <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
     MetricsStopper,
 ) {
@@ -1605,54 +1647,34 @@
     };
     <span class="comment">// Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
-    // Create final state, either from a snapshot, or from scratch
+    </span><span class="kw">let </span>mip_list = get_mip_list();
+    <span class="macro">debug!</span>(<span class="string">&quot;MIP list: {:?}&quot;</span>, mip_list);
+    <span class="kw">let </span>mip_store =
+        MipStore::try_from((mip_list, mip_stats_config)).expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+
+    <span class="comment">// Create final state, either from a snapshot, or from scratch
     </span><span class="kw">let </span>final_state = Arc::new(parking_lot::RwLock::new(
         <span class="kw">match </span>args.restart_from_snapshot_at_period {
-            <span class="prelude-val">Some</span>(last_start_period) =&gt; {
-                <span class="comment">// The node is restarted from a snapshot:
-                // MIP store by reading from the db as it must have been updated by the massa ledger editor
-                // (to shift transitions that might have happened during the network shutdown)
-                // Note that FinalState::new_derived_from_snapshot will check if MIP store is consistent
-                // No Bootstrap are expected after this
-                </span><span class="kw">let </span>mip_store: MipStore = MipStore::try_from_db(db.clone(), mip_stats_config)
-                    .expect(<span class="string">&quot;MIP store creation failed&quot;</span>);
-                <span class="macro">debug!</span>(<span class="string">&quot;After read from db, Mip store: {:?}&quot;</span>, mip_store);
-
-                FinalState::new_derived_from_snapshot(
-                    db.clone(),
-                    final_state_config,
-                    Box::new(ledger),
-                    selector_controller.clone(),
-                    mip_store,
-                    last_start_period,
-                )
-                .expect(<span class="string">&quot;could not init final state&quot;</span>)
-            }
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="comment">// The node is started in a normal way
-                // Read the mip list supported by the current software
-                // The resulting MIP store will likely be updated by the boostrap process in order
-                // to get the latest information for the MIP store (new states, votes...)
-
-                </span><span class="kw">let </span>mip_list = get_mip_list();
-                <span class="macro">debug!</span>(<span class="string">&quot;MIP list: {:?}&quot;</span>, mip_list);
-                <span class="kw">let </span>mip_store = MipStore::try_from((mip_list, mip_stats_config))
-                    .expect(<span class="string">&quot;mip store creation failed&quot;</span>);
-
-                FinalState::new(
-                    db.clone(),
-                    final_state_config,
-                    Box::new(ledger),
-                    selector_controller.clone(),
-                    mip_store,
-                    <span class="bool-val">true</span>,
-                )
-                .expect(<span class="string">&quot;could not init final state&quot;</span>)
-            }
+            <span class="prelude-val">Some</span>(last_start_period) =&gt; FinalState::new_derived_from_snapshot(
+                db.clone(),
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+                mip_store.clone(),
+                last_start_period,
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
+            <span class="prelude-val">None </span>=&gt; FinalState::new(
+                db.clone(),
+                final_state_config,
+                Box::new(ledger),
+                selector_controller.clone(),
+                mip_store.clone(),
+                <span class="bool-val">true</span>,
+            )
+            .expect(<span class="string">&quot;could not init final state&quot;</span>),
         },
     ));
-
-    <span class="kw">let </span>mip_store = final_state.read().mip_store.clone();
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -1751,8 +1773,7 @@
         <span class="kw">let </span>last_shutdown_end = Slot::new(final_state.read().last_start_period, <span class="number">0</span>)
             .get_prev_slot(THREAD_COUNT)
             .unwrap();
-
-        final_state
+        <span class="kw">if </span>!final_state
             .read()
             .mip_store
             .is_consistent_with_shutdown_period(
@@ -1762,7 +1783,13 @@
                 T0,
                 <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             )
-            .expect(<span class="string">&quot;Mip store is not consistent with shutdown period&quot;</span>)
+            .unwrap_or(<span class="bool-val">false</span>)
+        {
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;MIP store is not consistent with last shutdown period ({} - {})&quot;</span>,
+                last_shutdown_start, last_shutdown_end
+            );
+        }
     }
 
     <span class="comment">// Storage costs constants
@@ -1885,7 +1912,6 @@
         ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
         max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
         max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
-        max_block_propagation_time: SETTINGS.protocol.max_block_propagation_time,
         max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
         max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
         max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
@@ -1919,8 +1945,7 @@
         initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
-        max_blocks_kept_for_propagation: SETTINGS.protocol.max_blocks_kept_for_propagation,
-        block_propagation_tick: SETTINGS.protocol.block_propagation_tick,
+        max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
         asked_operations_buffer_capacity: SETTINGS.protocol.asked_operations_buffer_capacity,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
         max_operation_storage_time: MAX_OPERATION_STORAGE_TIME,
@@ -1949,6 +1974,7 @@
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_size_function_name: MAX_FUNCTION_NAME_LENGTH,
         max_size_call_sc_parameter: MAX_PARAMETERS_SIZE,
+        max_size_block_infos: MAX_ASK_BLOCKS_PER_MESSAGE <span class="kw">as </span>u64,
         max_size_listeners_per_peer: MAX_LISTENERS_PER_PEER,
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
@@ -2081,6 +2107,7 @@
                     <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
                 )
             });
+
         start_bootstrap_server(
             listener,
             listener_stopper,
@@ -2120,7 +2147,7 @@
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         thread_count: THREAD_COUNT,
-        keypair,
+        keypair: keypair.clone(),
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -2150,98 +2177,75 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>api_config = api_config.clone();
     api_config.enable_ws = <span class="bool-val">false</span>;
 
-    <span class="comment">// Whether to spawn gRPC API
-    </span><span class="kw">let </span>grpc_handle = <span class="kw">if </span>SETTINGS.grpc.enabled {
-        <span class="kw">let </span>grpc_config = GrpcConfig {
-            enabled: SETTINGS.grpc.enabled,
-            accept_http1: SETTINGS.grpc.accept_http1,
-            enable_cors: SETTINGS.grpc.enable_cors,
-            enable_health: SETTINGS.grpc.enable_health,
-            enable_reflection: SETTINGS.grpc.enable_reflection,
-            enable_mtls: SETTINGS.grpc.enable_mtls,
-            bind: SETTINGS.grpc.bind,
-            accept_compressed: SETTINGS.grpc.accept_compressed.clone(),
-            send_compressed: SETTINGS.grpc.send_compressed.clone(),
-            max_decoding_message_size: SETTINGS.grpc.max_decoding_message_size,
-            max_encoding_message_size: SETTINGS.grpc.max_encoding_message_size,
-            concurrency_limit_per_connection: SETTINGS.grpc.concurrency_limit_per_connection,
-            timeout: SETTINGS.grpc.timeout.to_duration(),
-            initial_stream_window_size: SETTINGS.grpc.initial_stream_window_size,
-            initial_connection_window_size: SETTINGS.grpc.initial_connection_window_size,
-            max_concurrent_streams: SETTINGS.grpc.max_concurrent_streams,
-            tcp_keepalive: SETTINGS.grpc.tcp_keepalive.map(|t| t.to_duration()),
-            tcp_nodelay: SETTINGS.grpc.tcp_nodelay,
-            http2_keepalive_interval: SETTINGS
-                .grpc
-                .http2_keepalive_interval
-                .map(|t| t.to_duration()),
-            http2_keepalive_timeout: SETTINGS
-                .grpc
-                .http2_keepalive_timeout
-                .map(|t| t.to_duration()),
-            http2_adaptive_window: SETTINGS.grpc.http2_adaptive_window,
-            max_frame_size: SETTINGS.grpc.max_frame_size,
-            thread_count: THREAD_COUNT,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            endorsement_count: ENDORSEMENT_COUNT,
-            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-            max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-            max_parameter_size: MAX_PARAMETERS_SIZE,
-            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
-            genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-            t0: T0,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            max_channel_size: SETTINGS.grpc.max_channel_size,
-            draw_lookahead_period_count: SETTINGS.grpc.draw_lookahead_period_count,
-            last_start_period: final_state.read().last_start_period,
-            max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-            max_block_ids_per_request: SETTINGS.grpc.max_block_ids_per_request,
-            max_operation_ids_per_request: SETTINGS.grpc.max_operation_ids_per_request,
-            server_certificate_path: SETTINGS.grpc.server_certificate_path.clone(),
-            server_private_key_path: SETTINGS.grpc.server_private_key_path.clone(),
-            client_certificate_authority_root_path: SETTINGS
-                .grpc
-                .client_certificate_authority_root_path
-                .clone(),
-        };
+    <span class="comment">// Whether to spawn gRPC PUBLIC API
+    </span><span class="kw">let </span>grpc_public_handle = <span class="kw">if </span>SETTINGS.grpc.public.enabled {
+        <span class="kw">let </span>grpc_public_config =
+            configure_grpc(<span class="kw-2">&amp;</span>SETTINGS.grpc.public, keypair.clone(), <span class="kw-2">&amp;</span>final_state);
 
-        <span class="kw">let </span>grpc_api = MassaGrpc {
+        <span class="kw">let </span>grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
             consensus_channels: consensus_channels.clone(),
             execution_controller: execution_controller.clone(),
             execution_channels,
             pool_channels,
-            pool_command_sender: pool_controller.clone(),
-            protocol_command_sender: protocol_controller.clone(),
+            pool_controller: pool_controller.clone(),
+            protocol_controller: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),
             storage: shared_storage.clone(),
-            grpc_config: grpc_config.clone(),
-            version: <span class="kw-2">*</span>VERSION,
+            grpc_config: grpc_public_config.clone(),
+            protocol_config: protocol_config.clone(),
+            node_id,
             mip_store: mip_store.clone(),
+            version: <span class="kw-2">*</span>VERSION,
         };
 
-        <span class="comment">// HACK maybe should remove timeout later
-        </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(result) =
-            tokio::time::timeout(Duration::from_secs(<span class="number">3</span>), grpc_api.serve(<span class="kw-2">&amp;</span>grpc_config)).<span class="kw">await
-        </span>{
-            <span class="kw">match </span>result {
-                <span class="prelude-val">Ok</span>(stop) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;API | gRPC | listening on: {}&quot;</span>, grpc_config.bind);
-                    <span class="prelude-val">Some</span>(stop)
-                }
-                <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e);
-                    <span class="prelude-val">None
-                </span>}
-            }
-        } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Timeout on start grpc API&quot;</span>);
-            <span class="prelude-val">None
-        </span>}
+        <span class="comment">// Spawn gRPC PUBLIC API
+        </span><span class="kw">let </span>grpc_public_stop_handle = grpc_public_api
+            .serve(<span class="kw-2">&amp;</span>grpc_public_config)
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;failed to start gRPC PUBLIC API&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;gRPC | PUBLIC | listening on: {}&quot;</span>, grpc_public_config.bind);
+
+        <span class="prelude-val">Some</span>(grpc_public_stop_handle)
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>};
+
+    <span class="comment">// Whether to spawn gRPC PRIVATE API
+    </span><span class="kw">let </span>grpc_private_handle = <span class="kw">if </span>SETTINGS.grpc.private.enabled {
+        <span class="kw">let </span>grpc_private_config =
+            configure_grpc(<span class="kw-2">&amp;</span>SETTINGS.grpc.private, keypair.clone(), <span class="kw-2">&amp;</span>final_state);
+
+        <span class="kw">let </span>bs_white_black_list = bootstrap_manager
+            .as_ref()
+            .map(|manager| manager.white_black_list.clone());
+
+        <span class="kw">let </span>grpc_private_api = MassaPrivateGrpc {
+            consensus_controller: consensus_controller.clone(),
+            execution_controller: execution_controller.clone(),
+            pool_controller: pool_controller.clone(),
+            protocol_controller: protocol_controller.clone(),
+            grpc_config: grpc_private_config.clone(),
+            protocol_config: protocol_config.clone(),
+            node_id,
+            mip_store: mip_store.clone(),
+            version: <span class="kw-2">*</span>VERSION,
+            stop_cv: sig_int_toggled.clone(),
+            node_wallet: node_wallet.clone(),
+            bs_white_black_list,
+        };
+
+        <span class="comment">// Spawn gRPC PRIVATE API
+        </span><span class="kw">let </span>grpc_private_stop_handle = grpc_private_api
+            .serve(<span class="kw-2">&amp;</span>grpc_private_config)
+            .<span class="kw">await
+            </span>.expect(<span class="string">&quot;failed to start gRPC PRIVATE API&quot;</span>);
+        <span class="macro">info!</span>(
+            <span class="string">&quot;gRPC | PRIVATE | listening on: {}&quot;</span>,
+            grpc_private_config.bind
+        );
+
+        <span class="prelude-val">Some</span>(grpc_private_stop_handle)
     } <span class="kw">else </span>{
         <span class="prelude-val">None
     </span>};
@@ -2337,9 +2341,70 @@
         api_private_handle,
         api_public_handle,
         api_handle,
-        grpc_handle,
+        grpc_private_handle,
+        grpc_public_handle,
         metrics_stopper,
     )
+}
+
+<span class="comment">// Get the configuration of the gRPC server
+</span><span class="kw">fn </span>configure_grpc(
+    settings: <span class="kw-2">&amp;</span>GrpcSettings,
+    keypair: KeyPair,
+    final_state: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+) -&gt; GrpcConfig {
+    GrpcConfig {
+        enabled: settings.enabled,
+        accept_http1: settings.accept_http1,
+        enable_cors: settings.enable_cors,
+        enable_health: settings.enable_health,
+        enable_reflection: settings.enable_reflection,
+        enable_tls: settings.enable_tls,
+        enable_mtls: settings.enable_mtls,
+        bind: settings.bind,
+        accept_compressed: settings.accept_compressed.clone(),
+        send_compressed: settings.send_compressed.clone(),
+        max_decoding_message_size: settings.max_decoding_message_size,
+        max_encoding_message_size: settings.max_encoding_message_size,
+        concurrency_limit_per_connection: settings.concurrency_limit_per_connection,
+        timeout: settings.timeout.to_duration(),
+        initial_stream_window_size: settings.initial_stream_window_size,
+        initial_connection_window_size: settings.initial_connection_window_size,
+        max_concurrent_streams: settings.max_concurrent_streams,
+        max_arguments: settings.max_arguments,
+        tcp_keepalive: settings.tcp_keepalive.map(|t| t.to_duration()),
+        tcp_nodelay: settings.tcp_nodelay,
+        http2_keepalive_interval: settings.http2_keepalive_interval.map(|t| t.to_duration()),
+        http2_keepalive_timeout: settings.http2_keepalive_timeout.map(|t| t.to_duration()),
+        http2_adaptive_window: settings.http2_adaptive_window,
+        max_frame_size: settings.max_frame_size,
+        thread_count: THREAD_COUNT,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+        endorsement_count: ENDORSEMENT_COUNT,
+        max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameter_size: MAX_PARAMETERS_SIZE,
+        max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+        genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
+        t0: T0,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        keypair,
+        max_channel_size: settings.max_channel_size,
+        draw_lookahead_period_count: settings.draw_lookahead_period_count,
+        last_start_period: final_state.read().last_start_period,
+        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_block_ids_per_request: settings.max_block_ids_per_request,
+        max_operation_ids_per_request: settings.max_operation_ids_per_request,
+        server_certificate_path: settings.server_certificate_path.clone(),
+        server_private_key_path: settings.server_private_key_path.clone(),
+        client_certificate_authority_root_path: settings
+            .client_certificate_authority_root_path
+            .clone(),
+    }
 }
 
 <span class="kw">struct </span>Managers {
@@ -2352,7 +2417,8 @@
     factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
 }
 
-<span class="kw">async fn </span>stop(
+<span class="attr">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">async fn </span>stop(
     _consensus_event_receiver: MassaReceiver&lt;ConsensusEvent&gt;,
     Managers {
         bootstrap_manager,
@@ -2366,7 +2432,8 @@
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
     api_handle: StopHandle,
-    grpc_handle: <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
+    grpc_private_handle: <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
+    grpc_public_handle: <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
     <span class="kw-2">mut </span>metrics_stopper: MetricsStopper,
 ) {
     <span class="comment">// stop bootstrap
@@ -2376,12 +2443,19 @@
             .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
     }
 
-    <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC, EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC(PUBLIC, PRIVATE), EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);
 
-    <span class="comment">// stop Massa gRPC API
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_handle {
+    <span class="comment">// stop Massa gRPC PUBLIC API
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_public_handle {
         handle.stop();
     }
+    <span class="macro">info!</span>(<span class="string">&quot;API | PUBLIC gRPC | stopped&quot;</span>);
+
+    <span class="comment">// stop Massa gRPC PRIVATE API
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_private_handle {
+        handle.stop();
+    }
+    <span class="macro">info!</span>(<span class="string">&quot;API | PRIVATE gRPC | stopped&quot;</span>);
 
     <span class="comment">// stop Massa API
     </span>api_handle.stop().<span class="kw">await</span>;
@@ -2562,7 +2636,8 @@
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
+            grpc_private_handle,
+            grpc_public_handle,
             metrics_stopper,
         ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone(), Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled)).<span class="kw">await</span>;
 
@@ -2627,7 +2702,8 @@
             api_private_handle,
             api_public_handle,
             api_handle,
-            grpc_handle,
+            grpc_private_handle,
+            grpc_public_handle,
             metrics_stopper,
         )
         .<span class="kw">await</span>;
