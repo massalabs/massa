@@ -157,12 +157,17 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     cache::SharedEndorsementCache, commands_propagation::EndorsementHandlerPropagationCommand,
     messages::EndorsementMessageSerializer, EndorsementMessage,
 };
 <span class="kw">use crate</span>::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
 <span class="kw">use </span>massa_channel::receiver::MassaReceiver;
+<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_protocol_exports::ProtocolConfig;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::thread::JoinHandle;
@@ -175,6 +180,7 @@
     cache: SharedEndorsementCache,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
     endorsement_serializer: MessagesSerializer,
+    _metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>PropagationThread {
@@ -299,6 +305,7 @@
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
     active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
+    metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-endorsement-handler-propagation&quot;</span>.to_string())
@@ -311,6 +318,7 @@
                 active_connections,
                 cache,
                 endorsement_serializer,
+                _metrics: metrics,
             };
             propagation_thread.run();
         })
