@@ -571,7 +571,7 @@
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to build server&quot;</span>);
 
-    <span class="kw">let </span>server_handler = server.start(api).expect(<span class="string">&quot;server start failed&quot;</span>);
+    <span class="kw">let </span>server_handler = server.start(api);
     <span class="kw">let </span>stop_handler = StopHandle { server_handler };
 
     <span class="prelude-val">Ok</span>(stop_handler)
