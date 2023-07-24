@@ -239,12 +239,13 @@ impl Tester {
                             state: super::PeerState::HandshakeFailed,
                         });
                 } else {
-                    let new_md = if let Some(md) = peer_db_write.try_connect_history.remove(&addr) {
-                        md.new_try()
+                    if let Some(md) = peer_db_write.try_connect_history.get_mut(&addr) {
+                        md.new_try();
                     } else {
-                        ConnectionMetadata::default().new_try()
-                    };
-                    peer_db_write.try_connect_history.insert(addr, new_md);
+                        let mut md = ConnectionMetadata::default();
+                        md.new_try();
+                        peer_db_write.try_connect_history.insert(addr, md);
+                    }
                 }
             }
 

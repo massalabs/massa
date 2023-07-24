@@ -97,23 +97,16 @@ impl ConnectionMetadata {
             _ => unreachable!("connection metadata data_type not recognized: {data_type}"),
         }
     }
-    pub fn new_failure(self) -> ConnectionMetadata {
-        ConnectionMetadata {
-            last_failure: Some(MassaTime::now().unwrap()),
-            ..self
-        }
+    pub fn new_failure(&mut self) {
+        self.last_failure = Some(MassaTime::now().unwrap());
     }
-    pub fn new_try(self) -> ConnectionMetadata {
-        ConnectionMetadata {
-            last_try: Some(MassaTime::now().unwrap()),
-            ..self
-        }
+
+    pub fn new_try(&mut self) {
+        self.last_try = Some(MassaTime::now().unwrap());
     }
-    pub fn new_success(self) -> ConnectionMetadata {
-        ConnectionMetadata {
-            last_success: Some(MassaTime::now().unwrap()),
-            ..self
-        }
+
+    pub fn new_success(&mut self) {
+        self.last_success = Some(MassaTime::now().unwrap());
     }
 }
 

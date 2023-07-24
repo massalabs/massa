@@ -378,18 +378,21 @@ fn try_connect_peer(
     let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
     {
         let mut peer_db_write = peer_db.write();
-        let addr_conn_history = peer_db_write.try_connect_history.remove(&addr); // Remove it to own it, then re-insert it modified
-
-        let new_addr_conn_history = match (addr_conn_history, &conn_res) {
-            (Some(md), Ok(_)) => md.new_success(),
-            (None, Ok(_)) => ConnectionMetadata::default().new_success(),
-            (Some(md), Err(_)) => md.new_failure(),
-            (None, Err(_)) => ConnectionMetadata::default().new_failure(),
-        };
-
-        peer_db_write
-            .try_connect_history
-            .insert(addr, new_addr_conn_history);
+        if let Some(md) = peer_db_write.try_connect_history.get_mut(&addr) {
+            if conn_res.is_ok() {
+                md.new_success();
+            } else {
+                md.new_failure();
+            }
+        } else {
+            let mut md = ConnectionMetadata::default();
+            if conn_res.is_ok() {
+                md.new_success();
+            } else {
+                md.new_failure();
+            }
+            peer_db_write.try_connect_history.insert(addr, md);
+        }
     }
     if let Err(ref err) = conn_res {
         warn!("Failed to connect to peer {:?}: {:?}", addr, err);
