@@ -12,7 +12,7 @@ fn get_md(md: &ConnectionMetadata, mdidx: usize) -> Option<MassaTime> {
     match mdidx {
         0 => md.last_failure,
         1 => md.last_success,
-        2 => md.last_try,
+        2 => md.last_test,
         _ => unreachable!(),
     }
 }
