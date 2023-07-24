@@ -336,6 +336,12 @@
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -587,16 +593,22 @@
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u64,
     <span class="doccomment">/// try connection timer
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
+    <span class="doccomment">/// try connection timer for the same peer
+    </span><span class="kw">pub </span>try_connection_timer_same_peer: MassaTime,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Message timeout
     </span><span class="kw">pub </span>message_timeout: MassaTime,
+    <span class="doccomment">/// Timeout for the tester operations
+    </span><span class="kw">pub </span>tester_timeout: MassaTime,
     <span class="doccomment">/// Nb in connections
     </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Peers limits per category
     </span><span class="kw">pub </span>peers_categories: HashMap&lt;String, PeerCategoryInfo&gt;,
     <span class="doccomment">/// Limits for default category
     </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
+    <span class="doccomment">/// Cooldown before testing again an old peer
+    </span><span class="kw">pub </span>test_oldest_peer_cooldown: MassaTime,
 }
 
 <span class="doccomment">/// gRPC settings

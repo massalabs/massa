@@ -499,6 +499,12 @@
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -781,6 +787,9 @@
                     <span class="bool-val">false</span>,
                 ) {
                     <span class="macro">warn!</span>(<span class="string">&quot;Failed to send AskForOperations message to peer: {}&quot;</span>, err);
+                    <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                        <span class="kw">break</span>;
+                    }
                 }
             }
         }
@@ -841,6 +850,9 @@
                 <span class="bool-val">false</span>,
             ) {
                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to send Operations message to peer: {}&quot;</span>, err);
+                <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
+                    <span class="kw">break</span>;
+                }
             }
         }
         <span class="prelude-val">Ok</span>(())
