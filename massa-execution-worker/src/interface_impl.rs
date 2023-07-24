@@ -701,8 +701,9 @@ impl Interface for InterfaceImpl {
     }
 
     // Return true if the address is an User address, otherwise false if it is an SC address.
-    fn is_address_eoa(&self, address: &str) -> Result<bool> {
-        unimplemented!("is_address_eoa")
+    fn is_address_eoa(&self, address_: &str) -> Result<bool> {
+        let address = Address::from_str(address_)?;
+        Ok(matches!(address, Address::User(..)))
     }
 
     /// Transfer coins from the current address (top of the call stack) towards a target address.
