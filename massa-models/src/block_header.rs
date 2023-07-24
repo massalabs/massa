@@ -1,4 +1,4 @@
-use crate::block_id::BlockId;
+use crate::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use crate::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 use crate::endorsement::{
     Endorsement, EndorsementDeserializerLW, EndorsementId, EndorsementSerializer,
@@ -141,6 +141,7 @@ pub struct BlockHeaderSerializer {
     denunciation_serializer: DenunciationSerializer,
     u32_serializer: U32VarIntSerializer,
     opt_serializer: OptionSerializer<u32, U32VarIntSerializer>,
+    block_id_serializer: BlockIdSerializer,
 }
 
 impl BlockHeaderSerializer {
@@ -153,6 +154,7 @@ impl BlockHeaderSerializer {
             opt_serializer: OptionSerializer::new(U32VarIntSerializer),
             endorsement_content_serializer: EndorsementSerializerLW::new(),
             denunciation_serializer: DenunciationSerializer::new(),
+            block_id_serializer: BlockIdSerializer::new(),
         }
     }
 }
@@ -176,7 +178,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
-    ///   .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///   .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
@@ -189,7 +191,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
-    ///          endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///          endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
@@ -199,7 +201,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
-    ///         endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &keypair,
@@ -228,7 +230,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
             buffer.push(1);
         }
         for parent_h in value.parents.iter() {
-            buffer.extend(parent_h.0.to_bytes());
+            self.block_id_serializer.serialize(parent_h, buffer)?;
         }
 
         // operations merkle root
@@ -276,12 +278,13 @@ pub struct BlockHeaderDeserializer {
     denunciation_deserializer: DenunciationDeserializer,
     network_versions_deserializer: U32VarIntDeserializer,
     opt_deserializer: OptionDeserializer<u32, U32VarIntDeserializer>,
+    block_id_deserializer: BlockIdDeserializer,
 }
 
 impl BlockHeaderDeserializer {
     /// Creates a new `BlockHeaderDeserializer`
     /// If last_start_period is Some(lsp), then the deserializer will check for valid (non)-genesis blocks
-    pub const fn new(
+    pub fn new(
         thread_count: u8,
         endorsement_count: u32,
         max_denunciations_in_block_header: u32,
@@ -314,6 +317,7 @@ impl BlockHeaderDeserializer {
                 thread_count,
                 endorsement_count,
             ),
+            block_id_deserializer: BlockIdDeserializer::new(),
             thread_count,
             endorsement_count,
             last_start_period,
@@ -334,7 +338,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
-    ///   .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///   .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
     ///   .collect();
     /// let header = BlockHeader {
     ///   current_version: 0,
@@ -401,9 +405,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
                             tag(&[1]),
                             count(
                                 context("Failed block_id deserialization", |input| {
-                                    self.hash_deserializer
-                                        .deserialize(input)
-                                        .map(|(rest, hash)| (rest, BlockId(hash)))
+                                    self.block_id_deserializer.deserialize(input)
                                 }),
                                 self.thread_count as usize,
                             ),
@@ -629,13 +631,13 @@ mod test {
 
         let slot = Slot::new(7, 1);
         let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
             .collect();
 
         let endorsement_1 = Endorsement {
-            slot: slot.clone(),
+            slot,
             index: 1,
-            endorsed_block: parents_1[1].clone(),
+            endorsed_block: parents_1[1],
         };
 
         assert_eq!(parents_1[1], endorsement_1.endorsed_block);
@@ -657,8 +659,8 @@ mod test {
             slot,
             parents: parents_1,
             operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-            endorsements: vec![s_endorsement_1.clone()],
-            denunciations: vec![de_a.clone(), de_b.clone()],
+            endorsements: vec![s_endorsement_1],
+            denunciations: vec![de_a, de_b],
         };
 
         let mut buffer = Vec::new();
@@ -673,7 +675,7 @@ mod test {
 
         let (rem, block_header_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
 
-        assert_eq!(rem.is_empty(), true);
+        assert!(rem.is_empty());
         assert_eq!(block_header_1, block_header_der);
     }
 

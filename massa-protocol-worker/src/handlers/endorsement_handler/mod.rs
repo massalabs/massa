@@ -23,6 +23,7 @@ mod propagation;
 mod retrieval;
 
 pub(crate) use messages::{EndorsementMessage, EndorsementMessageSerializer};
+pub(crate) use retrieval::note_endorsements_from_peer;
 
 use super::peer_handler::models::{PeerManagementCmd, PeerMessageTuple};
 

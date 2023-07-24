@@ -1,9 +1,8 @@
 use crate::error::ConsensusError;
-use massa_hash::HashDeserializer;
 use massa_models::{
     active_block::ActiveBlock,
     block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
-    block_id::BlockId,
+    block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
     prehash::PreHashMap,
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
@@ -92,6 +91,7 @@ impl ExportActiveBlock {
 pub struct ExportActiveBlockSerializer {
     sec_share_serializer: SecureShareSerializer,
     period_serializer: U64VarIntSerializer,
+    block_id_serializer: BlockIdSerializer,
 }
 
 impl ExportActiveBlockSerializer {
@@ -100,6 +100,7 @@ impl ExportActiveBlockSerializer {
         ExportActiveBlockSerializer {
             sec_share_serializer: SecureShareSerializer::new(),
             period_serializer: U64VarIntSerializer::new(),
+            block_id_serializer: BlockIdSerializer::new(),
         }
     }
 }
@@ -117,7 +118,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
         // note: there should be no parents for genesis blocks
         buffer.push(u8::from(!value.parents.is_empty()));
         for (hash, period) in value.parents.iter() {
-            buffer.extend(hash.0.to_bytes());
+            self.block_id_serializer.serialize(hash, buffer)?;
             self.period_serializer.serialize(period, buffer)?;
         }
 
@@ -131,7 +132,7 @@ impl Serializer<ExportActiveBlock> for ExportActiveBlockSerializer {
 /// Basic deserializer of `ExportActiveBlock`
 pub struct ExportActiveBlockDeserializer {
     sec_share_block_deserializer: SecureShareDeserializer<Block, BlockDeserializer>,
-    hash_deserializer: HashDeserializer,
+    block_id_deserializer: BlockIdDeserializer,
     period_deserializer: U64VarIntDeserializer,
     thread_count: u8,
 }
@@ -146,7 +147,7 @@ impl ExportActiveBlockDeserializer {
             sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
                 block_der_args,
             )),
-            hash_deserializer: HashDeserializer::new(),
+            block_id_deserializer: BlockIdDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             thread_count,
         }
@@ -168,7 +169,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
-    ///     .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///     .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
     ///     .collect();
     ///
     /// // create block header
@@ -184,7 +185,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&[1])),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[1])),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
@@ -194,7 +195,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&[1])),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[1])),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
@@ -250,9 +251,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
                             count(
                                 tuple((
                                     context("Failed block_id deserialization", |input| {
-                                        self.hash_deserializer
-                                            .deserialize(input)
-                                            .map(|(rest, hash)| (rest, BlockId(hash)))
+                                        self.block_id_deserializer.deserialize(input)
                                     }),
                                     context("Failed period deserialization", |input| {
                                         self.period_deserializer.deserialize(input)

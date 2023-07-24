@@ -347,7 +347,7 @@ mod tests {
             let endorsement_1 = Endorsement {
                 slot: Slot::new(u64::from(i), 0),
                 index: i % ENDORSEMENT_COUNT,
-                endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+                endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
             };
 
             let s_endorsement1 =
