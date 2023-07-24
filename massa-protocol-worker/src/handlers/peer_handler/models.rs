@@ -21,6 +21,7 @@ pub struct ConnectionMetadata {
     pub last_test: Option<MassaTime>,
     pub last_success: Option<MassaTime>,
     pub last_failure: Option<MassaTime>,
+    pub last_try_connect: Option<MassaTime>,
     random_priority: u64,
 }
 
@@ -30,6 +31,7 @@ impl Default for ConnectionMetadata {
             last_test: Default::default(),
             last_success: Default::default(),
             last_failure: Default::default(),
+            last_try_connect: Default::default(),
             random_priority: thread_rng().gen(),
         }
     }
@@ -107,6 +109,10 @@ impl ConnectionMetadata {
 
     pub fn success(&mut self) {
         self.last_success = Some(MassaTime::now().unwrap());
+    }
+
+    pub fn try_connect(&mut self) {
+        self.last_try_connect = Some(MassaTime::now().unwrap());
     }
 }
 

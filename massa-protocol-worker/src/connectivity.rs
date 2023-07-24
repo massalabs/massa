@@ -281,9 +281,9 @@ pub(crate) fn start_connectivity_thread(
                                             let connection_metadata = peer_db_read.try_connect_history.get(addr).cloned().unwrap_or(ConnectionMetadata::default());
 
                                             // check if the peer last connect attempt has not been too recent
-                                            if let ConnectionMetadata { last_test: Some(lt), .. } = connection_metadata {
-                                                let last_try = lt.estimate_instant().expect("Time went backward");
-                                                if last_try.elapsed() < config.try_connection_timer_same_peer.to_duration() {
+                                            if let ConnectionMetadata { last_try_connect: Some(lt), .. } = connection_metadata {
+                                                let last_try_connect = lt.estimate_instant().expect("Time went backward");
+                                                if last_try_connect.elapsed() < config.try_connection_timer_same_peer.to_duration() {
                                                     continue;
                                                 }
                                             }
@@ -382,10 +382,15 @@ fn try_connect_peer(
             .try_connect_history
             .entry(addr)
             .or_insert(ConnectionMetadata::default())
-            .failure();
-    }
-    if let Err(ref err) = conn_res {
-        warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+            .try_connect();
+        if let Err(ref err) = conn_res {
+            warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+            peer_db_write
+                .try_connect_history
+                .entry(addr)
+                .or_insert(ConnectionMetadata::default())
+                .failure();
+        }
     }
     conn_res
 }
