@@ -49,7 +49,7 @@
   "assembly_script_evm_signature_verify": 662,
   "assembly_script_evm_get_address_from_pubkey": 224,
   "assembly_script_evm_get_pubkey_from_signature": 308,
-  "assembly_script_is_address_eoa": 79,
+  "assembly_script_is_address_eoa": 90,
   "assembly_script_transfer_coins": 209,
   "assembly_script_transfer_coins_for": 238,
   "assembly_script_unsafe_random": 158,
