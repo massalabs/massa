@@ -240,10 +240,10 @@ impl Tester {
                         });
                 } else {
                     if let Some(md) = peer_db_write.try_connect_history.get_mut(&addr) {
-                        md.new_try();
+                        md.test();
                     } else {
                         let mut md = ConnectionMetadata::default();
-                        md.new_try();
+                        md.test();
                         peer_db_write.try_connect_history.insert(addr, md);
                     }
                 }

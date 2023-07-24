@@ -18,7 +18,7 @@ pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct ConnectionMetadata {
-    pub last_try: Option<MassaTime>,
+    pub last_test: Option<MassaTime>,
     pub last_success: Option<MassaTime>,
     pub last_failure: Option<MassaTime>,
     random_priority: u64,
@@ -27,7 +27,7 @@ pub struct ConnectionMetadata {
 impl Default for ConnectionMetadata {
     fn default() -> Self {
         ConnectionMetadata {
-            last_try: Default::default(),
+            last_test: Default::default(),
             last_success: Default::default(),
             last_failure: Default::default(),
             random_priority: thread_rng().gen(),
@@ -63,7 +63,7 @@ impl PartialOrd for ConnectionMetadata {
         if let Some(res) = success_check {
             return Some(res);
         }
-        let try_check = match (self.last_try, other.last_try) {
+        let try_check = match (self.last_test, other.last_test) {
             (Some(st), Some(ot)) => Some(st.cmp(&ot).reverse()),
             (Some(_), None) => Some(Ordering::Less),
             (None, Some(_)) => Some(Ordering::Greater),
@@ -91,21 +91,21 @@ impl ConnectionMetadata {
                 ..self
             },
             2 => ConnectionMetadata {
-                last_try: data,
+                last_test: data,
                 ..self
             },
             _ => unreachable!("connection metadata data_type not recognized: {data_type}"),
         }
     }
-    pub fn new_failure(&mut self) {
+    pub fn failure(&mut self) {
         self.last_failure = Some(MassaTime::now().unwrap());
     }
 
-    pub fn new_try(&mut self) {
-        self.last_try = Some(MassaTime::now().unwrap());
+    pub fn test(&mut self) {
+        self.last_test = Some(MassaTime::now().unwrap());
     }
 
-    pub fn new_success(&mut self) {
+    pub fn success(&mut self) {
         self.last_success = Some(MassaTime::now().unwrap());
     }
 }
