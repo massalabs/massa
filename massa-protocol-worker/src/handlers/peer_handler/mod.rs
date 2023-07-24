@@ -29,7 +29,7 @@ use crate::handlers::peer_handler::models::PeerState;
 use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
 
-use self::models::{PeerInfo, ConnectionMetadata};
+use self::models::{ConnectionMetadata, PeerInfo};
 use self::{
     models::{
         InitialPeers, PeerManagementChannel, PeerManagementCmd, PeerMessageTuple, SharedPeerDB,
@@ -545,7 +545,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                         info.state = PeerState::HandshakeFailed;
                     });
-                     peer_db_write
+                    peer_db_write
                         .try_connect_history
                         .entry(*addr)
                         .or_insert(ConnectionMetadata::default())
@@ -556,7 +556,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     ));
                 }
                 Err(_) => {
-                     peer_db_write
+                    peer_db_write
                         .try_connect_history
                         .entry(*addr)
                         .or_insert(ConnectionMetadata::default())
