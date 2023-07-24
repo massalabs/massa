@@ -76,7 +76,7 @@ pub(crate) fn execute_read_only_call(
                     address: target_address,
                     coins: Default::default(),
                     owned_addresses: vec![target_address],
-                    operation_datastore: None, //TODO chech why it should always be None
+                    operation_datastore: None, //TODO check why it should always be None
                 });
 
                 ReadOnlyExecutionTarget::FunctionCall {
@@ -110,8 +110,7 @@ pub(crate) fn execute_read_only_call(
     };
 
     Ok(grpc_api::ExecuteReadOnlyCallResponse {
-        //TODO to be fixed in proto files
-        output: vec![result],
+        output: Some(result),
     })
 }
 
