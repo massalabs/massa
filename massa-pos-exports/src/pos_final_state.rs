@@ -243,7 +243,7 @@ impl PoSFinalState {
         rng_seed.extend(vec![false; self.config.thread_count as usize]);
 
         self.put_new_cycle_info(
-            &CycleInfo::new_with_hash(
+            &CycleInfo::new(
                 0,
                 false,
                 self.initial_rolls.clone(),
@@ -289,7 +289,7 @@ impl PoSFinalState {
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
 
         self.put_new_cycle_info(
-            &CycleInfo::new_with_hash(
+            &CycleInfo::new(
                 cycle,
                 complete,
                 last_cycle_info.roll_counts.clone(),
@@ -408,7 +408,7 @@ impl PoSFinalState {
 
                 let roll_counts = self.get_all_roll_counts(info.0);
                 self.put_new_cycle_info(
-                    &CycleInfo::new_with_hash(
+                    &CycleInfo::new(
                         cycle,
                         false,
                         roll_counts,
@@ -1021,7 +1021,7 @@ impl PoSFinalState {
             .unwrap_or(PreHashMap::default());
 
         let mut cycle_info =
-            CycleInfo::new_with_hash(cycle, complete, roll_counts, rng_seed, production_stats);
+            CycleInfo::new(cycle, complete, roll_counts, rng_seed, production_stats);
         cycle_info.final_state_hash_snapshot = final_state_hash_snapshot;
         Some(cycle_info)
     }
@@ -1613,7 +1613,7 @@ mod tests {
         // Populate the disk with some cycle infos
         let mut cycle_infos = Vec::new();
         for cycle in 509..516 {
-            cycle_infos.push(CycleInfo::new_with_hash(
+            cycle_infos.push(CycleInfo::new(
                 cycle,
                 Default::default(),
                 Default::default(),
@@ -1825,7 +1825,7 @@ mod tests {
             },
         );
 
-        let cycle_info_b = CycleInfo::new_with_hash(
+        let cycle_info_b = CycleInfo::new(
             0,
             false,
             BTreeMap::default(),
@@ -1833,17 +1833,6 @@ mod tests {
             prod_stats,
         );
 
-        assert_eq!(
-            cycle_info_a.roll_counts_hash, cycle_info_b.roll_counts_hash,
-            "roll_counts_hash mismatch"
-        );
-        assert_eq!(
-            cycle_info_a.production_stats_hash, cycle_info_b.production_stats_hash,
-            "production_stats_hash mismatch"
-        );
-        assert_eq!(
-            cycle_info_a.cycle_global_hash, cycle_info_b.cycle_global_hash,
-            "global_hash mismatch"
-        );
+        assert_eq!(cycle_info_a, cycle_info_b, "cycle_info mismatch");
     }
 }
