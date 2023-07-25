@@ -121,7 +121,7 @@ pub(crate) fn get_blocks(
 ) -> Result<grpc_api::GetBlocksResponse, GrpcError> {
     let inner_req = request.into_inner();
 
-    let mut blocks_ids: Vec<BlockId> = Vec::new();
+    let mut block_ids: Vec<BlockId> = Vec::new();
     let mut addresses: Option<Vec<String>> = None;
     let (mut slot_min, mut slot_max) = (None, None);
 
@@ -140,10 +140,9 @@ pub(crate) fn get_blocks(
                 }
                 grpc_api::get_blocks_filter::Filter::BlockIds(ids) => {
                     for id in ids.block_ids {
-                        if blocks_ids.len()
-                            < grpc.grpc_config.max_block_ids_per_request as usize + 1
+                        if block_ids.len() < grpc.grpc_config.max_block_ids_per_request as usize + 1
                         {
-                            blocks_ids.push(BlockId::from_str(&id).map_err(|_| {
+                            block_ids.push(BlockId::from_str(&id).map_err(|_| {
                                 GrpcError::InvalidArgument(format!("invalid block id: {}", id))
                             })?);
                         }
@@ -158,22 +157,22 @@ pub(crate) fn get_blocks(
     }
 
     // if no filter provided return an error
-    if blocks_ids.is_empty() && addresses.is_none() && slot_min.is_none() && slot_max.is_none() {
+    if block_ids.is_empty() && addresses.is_none() && slot_min.is_none() && slot_max.is_none() {
         return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
     }
 
     let storage = grpc.storage.clone_without_refs();
     let read_blocks = storage.read_blocks();
 
-    let blocks = if !blocks_ids.is_empty() {
-        if blocks_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
+    let blocks = if !block_ids.is_empty() {
+        if block_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
             return Err(GrpcError::InvalidArgument(format!(
                 "too many block ids received. Only a maximum of {} block ids are accepted per request",
                 grpc.grpc_config.max_block_ids_per_request
             )));
         }
 
-        blocks_ids
+        block_ids
             .into_iter()
             .filter_map(|id| {
                 let content = if let Some(wrapped_block) = read_blocks.get(&id) {
@@ -208,40 +207,37 @@ pub(crate) fn get_blocks(
             .collect::<Vec<Block>>()
     } else if let Some(addresses) = addresses {
         let mut blocks = Vec::new();
-
         for addr in addresses.into_iter() {
-            if let Ok(address) = &Address::from_str(&addr)
-                .map_err(|_| GrpcError::InvalidArgument(format!("invalid address: {}", addr)))
-            {
-                if let Some(hash_set) = read_blocks.get_blocks_created_by(address) {
-                    let result = hash_set
-                        .iter()
-                        .filter_map(|block_id| {
-                            if let Some(block) = read_blocks
-                                .get(block_id)
-                                .map(|wrapped_block| wrapped_block.content.clone())
-                            {
-                                // check slot filter
-                                if let Some(slot_min) = &slot_min {
-                                    if block.header.content.slot < slot_min.clone().into() {
-                                        return None;
-                                    }
+            let address = Address::from_str(&addr)
+                .map_err(|_| GrpcError::InvalidArgument(format!("invalid address: {}", addr)))?;
+            if let Some(hash_set) = read_blocks.get_blocks_created_by(&address) {
+                let result = hash_set
+                    .iter()
+                    .filter_map(|block_id| {
+                        if let Some(block) = read_blocks
+                            .get(block_id)
+                            .map(|wrapped_block| wrapped_block.content.clone())
+                        {
+                            // check slot filter
+                            if let Some(slot_min) = &slot_min {
+                                if block.header.content.slot < slot_min.clone().into() {
+                                    return None;
                                 }
-                                if let Some(slot_max) = &slot_max {
-                                    if block.header.content.slot > slot_max.clone().into() {
-                                        return None;
-                                    }
+                            }
+                            if let Some(slot_max) = &slot_max {
+                                if block.header.content.slot > slot_max.clone().into() {
+                                    return None;
                                 }
-
-                                return Some(block);
                             }
 
-                            None
-                        })
-                        .collect::<Vec<Block>>();
+                            return Some(block);
+                        }
 
-                    blocks.extend_from_slice(&result);
-                }
+                        None
+                    })
+                    .collect::<Vec<Block>>();
+
+                blocks.extend_from_slice(&result);
             }
         }
         blocks
@@ -262,12 +258,12 @@ pub(crate) fn get_blocks(
             .collect::<Vec<Block>>()
     };
 
-    let blocks_ids = blocks
+    let block_ids = blocks
         .iter()
         .map(|block| block.header.id)
         .collect::<Vec<BlockId>>();
 
-    let blocks_status = grpc.consensus_controller.get_block_statuses(&blocks_ids);
+    let blocks_status = grpc.consensus_controller.get_block_statuses(&block_ids);
 
     let result = blocks
         .iter()
@@ -441,41 +437,38 @@ pub(crate) fn get_operations(
     let storage = grpc.storage.clone_without_refs();
     let inner_req: grpc_api::GetOperationsRequest = request.into_inner();
 
-    let mut operations_ids = Vec::new();
+    let mut operation_ids = Vec::new();
     let mut filter_ope_types = Vec::new();
 
-    inner_req.filters.into_iter().for_each(|query| {
+    // Get params filter from the request.
+    for query in inner_req.filters.into_iter() {
         if let Some(filter) = query.filter {
             match filter {
                 grpc_api::get_operations_filter::Filter::OperationIds(ids) => {
-                    let ids = ids
-                        .operation_ids
-                        .into_iter()
-                        .filter_map(|id| match OperationId::from_str(id.as_str()) {
-                            Ok(ope) => Some(ope),
-                            Err(e) => {
-                                warn!("Invalid operation id: {}", e);
-                                None
-                            }
-                        })
-                        .collect::<Vec<OperationId>>();
-
-                    operations_ids.extend(ids.iter().copied());
+                    for id in ids.operation_ids {
+                        if operation_ids.len()
+                            < grpc.grpc_config.max_operation_ids_per_request as usize + 1
+                        {
+                            operation_ids.push(OperationId::from_str(&id).map_err(|_| {
+                                GrpcError::InvalidArgument(format!("invalid operation id: {}", id))
+                            })?);
+                        }
+                    }
                 }
                 grpc_api::get_operations_filter::Filter::OperationTypes(ope_types) => {
                     filter_ope_types.extend_from_slice(&ope_types.op_types);
                 }
             }
         }
-    });
+    }
 
-    if operations_ids.is_empty() {
+    if operation_ids.is_empty() {
         return Err(GrpcError::InvalidArgument(
             "no operations ids specified".to_string(),
         ));
     }
 
-    if operations_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
+    if operation_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
     }
 
@@ -483,7 +476,7 @@ pub(crate) fn get_operations(
     let read_ops = storage.read_operations();
 
     // Get the operations and the list of blocks that contain them from storage
-    let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operations_ids
+    let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
         .iter()
         .filter_map(|ope_id| {
             read_ops.get(ope_id).map(|secure_share| {
@@ -697,7 +690,6 @@ pub(crate) fn get_transactions_throughput(
         .to_duration()
         .as_secs();
 
-    // checked_div
     let throughput = stats
         .final_executed_operations_count
         .checked_div(nb_sec_range as usize)
