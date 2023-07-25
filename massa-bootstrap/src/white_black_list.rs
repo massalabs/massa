@@ -50,11 +50,10 @@ impl SharedWhiteBlackList<'_> {
         let mut write_lock = self.inner.write();
         let list = if let Some(black_list) = &mut write_lock.black_list {
             black_list.extend(ips);
-            black_list.clone()
+            write_lock.black_list.as_ref().unwrap()
         } else {
-            let hash_set = HashSet::from_iter(ips);
-            write_lock.black_list = Some(hash_set.clone());
-            hash_set
+            write_lock.black_list = Some(HashSet::from_iter(ips));
+            write_lock.black_list.as_ref().unwrap()
         };
         self.write_to_file(&self.black_path, &list)?;
         Ok(())
