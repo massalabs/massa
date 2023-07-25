@@ -3140,7 +3140,7 @@ mod tests {
         )));
 
         for i in 1..10 {
-            let message = AsyncMessage::new_with_hash(
+            let message = AsyncMessage::new(
                 Slot::new(0, 0),
                 0,
                 address,
