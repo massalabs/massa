@@ -865,7 +865,7 @@ impl Interface for InterfaceImpl {
         execution_context.transfer_coins(Some(sender), None, coins, true)?;
         let fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(Some(sender), None, fee, true)?;
-        execution_context.push_new_message(AsyncMessage::new_with_hash(
+        execution_context.push_new_message(AsyncMessage::new(
             emission_slot,
             emission_index,
             sender,
