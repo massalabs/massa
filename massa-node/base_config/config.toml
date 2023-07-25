@@ -18,7 +18,7 @@ batch_request_limit = 16
 ping_interval = 60000
 enable_http = true
 enable_ws = true
-enable_broadcast = false
+enable_broadcast = true
 
 [grpc]
 enabled = true
