@@ -606,6 +606,7 @@
 <a href="#606" id="606">606</a>
 <a href="#607" id="607">607</a>
 <a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -715,6 +716,7 @@
                     max_peers_per_announcement: config.max_size_peers_announcement,
                     max_listeners_per_peer: config.max_size_listeners_per_peer,
                 });
+
             <span class="kw">move </span>|| {
                 <span class="kw">loop </span>{
                     <span class="macro">select! </span>{
@@ -805,9 +807,9 @@
                             <span class="kw">match </span>message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: NewPeerConnected from {}&quot;</span>, peer_id);
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
-                                        <span class="macro">debug!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
-                                    }
+                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
+                                            <span class="macro">debug!</span>(<span class="string">&quot;error when sending msg to peer connect : {}&quot;</span>, e);
+                                        }
                                 }
                                 PeerManagementMessage::ListPeers(peers) =&gt; {
                                     <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: List peers from {}&quot;</span>, peer_id);
@@ -1120,11 +1122,11 @@
                         .peers
                         .entry(peer_id.clone())
                         .and_modify(|info| {
-                            info.last_announce = announcement.clone();
+                            info.last_announce = <span class="prelude-val">Some</span>(announcement.clone());
                             info.state = PeerState::Trusted;
                         })
                         .or_insert(PeerInfo {
-                            last_announce: announcement.clone(),
+                            last_announce: <span class="prelude-val">Some</span>(announcement.clone()),
                             state: PeerState::Trusted,
                         });
                 }

@@ -431,20 +431,63 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::Read,
     net::{IpAddr, SocketAddr},
+    sync::Arc,
     thread::JoinHandle,
     time::Duration,
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
-<span class="kw">use </span>massa_models::version::{Version, VersionDeserializer};
+<span class="kw">use </span>massa_models::version::VersionDeserializer;
 <span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler <span class="kw">as </span>PeerNetMessagesHandler,
@@ -487,6 +530,9 @@
             <span class="prelude-val">Some</span>(config.max_size_channel_commands_peer_testers),
         );
 
+        <span class="comment">// Peers currently tested by one of the thread
+        </span><span class="kw">let </span>peers_in_test = Arc::new(RwLock::new(HashSet::new()));
+
         <span class="kw">for _ in </span><span class="number">0</span>..config.thread_tester_count {
             testers.push(Tester::new(
                 peer_db.clone(),
@@ -496,6 +542,7 @@
                 messages_handler.clone(),
                 target_out_connections.clone(),
                 default_target_out_connections,
+                peers_in_test.clone(),
             ));
         }
 
@@ -509,13 +556,19 @@
         version_deserializer: VersionDeserializer,
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
-        our_version: Version,
+        config: <span class="kw-2">&amp;</span>ProtocolConfig,
     ) -&gt; PeerNetResult&lt;PeerId&gt; {
+        <span class="kw">let </span>our_version = config.version;
         <span class="kw">let </span>result = {
             <span class="kw">let </span><span class="kw-2">mut </span>socket =
-                std::net::TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, Duration::from_millis(<span class="number">500</span>))
+                std::net::TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, config.tester_timeout.into())
                     .map_err(|e| PeerNetError::PeerConnectionError.new(<span class="string">&quot;connect&quot;</span>, e, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
-
+            socket
+                .set_read_timeout(<span class="prelude-val">Some</span>(config.tester_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;read timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+            socket
+                .set_write_timeout(<span class="prelude-val">Some</span>(config.tester_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;write timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
             <span class="comment">// data.receive() from Endpoint
             </span><span class="kw">let </span><span class="kw-2">mut </span>len_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="number">4</span>];
             socket
@@ -620,13 +673,17 @@
                                 .peers
                                 .entry(peer_id.clone())
                                 .and_modify(|info| {
-                                    <span class="kw">if </span>info.last_announce.timestamp &lt; announcement.timestamp {
-                                        info.last_announce = announcement.clone();
+                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(last_announce) = <span class="kw-2">&amp;</span>info.last_announce {
+                                        <span class="kw">if </span>last_announce.timestamp &lt; announcement.timestamp {
+                                            info.last_announce = <span class="prelude-val">Some</span>(announcement.clone());
+                                        }
+                                    } <span class="kw">else </span>{
+                                        info.last_announce = <span class="prelude-val">Some</span>(announcement.clone());
                                     }
                                     info.state = <span class="kw">super</span>::PeerState::Trusted;
                                 })
                                 .or_insert(PeerInfo {
-                                    last_announce: announcement,
+                                    last_announce: <span class="prelude-val">Some</span>(announcement),
                                     state: <span class="kw">super</span>::PeerState::Trusted,
                                 });
                         }
@@ -654,9 +711,16 @@
             <span class="comment">// if handshake failed, we set the peer state to HandshakeFailed
             </span><span class="kw">if </span>res.is_err() {
                 <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-                peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                    info.state = <span class="kw">super</span>::PeerState::HandshakeFailed;
-                });
+                peer_db_write
+                    .peers
+                    .entry(peer_id)
+                    .and_modify(|info| {
+                        info.state = <span class="kw">super</span>::PeerState::HandshakeFailed;
+                    })
+                    .or_insert(PeerInfo {
+                        last_announce: <span class="prelude-val">None</span>,
+                        state: <span class="kw">super</span>::PeerState::HandshakeFailed,
+                    });
             }
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = socket.shutdown(std::net::Shutdown::Both) {
                 <span class="macro">tracing::log::error!</span>(<span class="string">&quot;Failed to shutdown socket: {}&quot;</span>, e);
@@ -668,6 +732,7 @@
     }
 
     <span class="doccomment">/// Create a new tester (spawn a thread)
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(
         peer_db: SharedPeerDB,
         active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
@@ -676,6 +741,7 @@
         messages_handler: MessagesHandler,
         target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
         default_target_out_connections: usize,
+        peers_in_test: Arc&lt;RwLock&lt;HashSet&lt;SocketAddr&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;running new tester&quot;</span>);
 
@@ -694,7 +760,7 @@
 
             <span class="comment">//let mut network_manager = PeerNetManager::new(config);
             </span><span class="kw">let </span>protocol_config = protocol_config.clone();
-            <span class="kw">loop </span>{
+            <span class="lifetime">&#39;main_loop</span>: <span class="kw">loop </span>{
                 <span class="macro">crossbeam::select! </span>{
                     recv(receiver) -&gt; res =&gt; {
                         receiver.update_metrics();
@@ -736,6 +802,14 @@
                                     <span class="kw">let </span>db = db.clone();
                                     <span class="comment">// receive new listener to test
                                     </span><span class="kw">for </span>(addr, <span class="kw">_</span>) <span class="kw">in </span>listener.<span class="number">1</span>.iter() {
+                                        <span class="kw">if </span>peers_in_test.read().contains(addr) {
+                                            <span class="kw">continue</span>;
+                                        }
+                                        {
+                                            <span class="kw">let </span><span class="kw-2">mut </span>peers_in_test = peers_in_test.write();
+                                            peers_in_test.insert(<span class="kw-2">*</span>addr);
+                                        }
+
                                         <span class="comment">//Find category of that address
                                         </span><span class="kw">let </span>ip_canonical = addr.ip().to_canonical();
                                         <span class="kw">let </span>cooldown = <span class="lifetime">&#39;cooldown</span>: {
@@ -760,6 +834,7 @@
                                             <span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db_write.tested_addresses.get(addr) {
                                                 <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
                                                 <span class="kw">if </span>last_tested_time.elapsed() &lt; cooldown {
+                                                    peers_in_test.write().remove(addr);
                                                     <span class="kw">continue</span>;
                                                 }
                                             }
@@ -769,15 +844,16 @@
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         </span><span class="kw">if </span>!active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
                                             <span class="comment">//Don&#39;t test our local addresses
-                                            </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
-                                                <span class="kw">if </span>addr == local_addr {
-                                                    <span class="kw">continue</span>;
-                                                }
+                                            </span><span class="kw">if </span>protocol_config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
+                                                peers_in_test.write().remove(addr);
+                                                <span class="kw">continue </span><span class="lifetime">&#39;main_loop</span>;
                                             }
+
                                             <span class="comment">//Don&#39;t test our proper ip
                                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
                                                 <span class="kw">if </span>ip.to_canonical() == ip_canonical {
-                                                    <span class="kw">continue</span>;
+                                                    peers_in_test.write().remove(addr);
+                                                    <span class="kw">continue </span><span class="lifetime">&#39;main_loop</span>;
                                                 }
                                             }
                                             <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
@@ -790,8 +866,10 @@
                                                 VersionDeserializer::new(),
                                                 PeerIdDeserializer::new(),
                                                 <span class="kw-2">*</span>addr,
-                                                protocol_config.version,
+                                                <span class="kw-2">&amp;</span>protocol_config,
                                             );
+
+                                            peers_in_test.write().remove(addr);
 
                                             <span class="comment">// let _res =  network_manager.try_connect(
                                             //     *addr,
@@ -810,10 +888,11 @@
                     default(Duration::from_secs(<span class="number">2</span>)) =&gt; {
                         <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
 
-                        </span><span class="kw">let </span><span class="prelude-val">Some</span>(listener) = db.read().get_oldest_peer(Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>)) <span class="kw">else </span>{
+                        </span><span class="kw">let </span><span class="prelude-val">Some</span>(listener) = db.read().get_oldest_peer(protocol_config.test_oldest_peer_cooldown.into()) <span class="kw">else </span>{
                             <span class="kw">continue</span>;
                         };
 
+                        peers_in_test.write().insert(listener);
                         {
                             <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
                             db.tested_addresses.insert(listener, MassaTime::now().unwrap());
@@ -828,12 +907,14 @@
                         <span class="comment">//Don&#39;t test our local addresses
                         </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
                             <span class="kw">if </span>listener == <span class="kw-2">*</span>local_addr {
+                                peers_in_test.write().remove(<span class="kw-2">&amp;</span>listener);
                                 <span class="kw">continue</span>;
                             }
                         }
                         <span class="comment">//Don&#39;t test our proper ip
                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
                             <span class="kw">if </span>ip.to_canonical() == ip_canonical {
+                                peers_in_test.write().remove(<span class="kw-2">&amp;</span>listener);
                                 <span class="kw">continue</span>;
                             }
                         }
@@ -846,14 +927,15 @@
                             VersionDeserializer::new(),
                             PeerIdDeserializer::new(),
                             listener,
-                            protocol_config.version,
+                            <span class="kw-2">&amp;</span>protocol_config,
                         );
                         <span class="comment">// let res =  network_manager.try_connect(
                         //     listener,
                         //     protocol_config.timeout_connection.to_duration(),
                         //     &amp;OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         // );
-                        </span><span class="macro">tracing::log::debug!</span>(<span class="string">&quot;{:?}&quot;</span>, res);
+                        </span>peers_in_test.write().remove(<span class="kw-2">&amp;</span>listener);
+                        <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;{:?}&quot;</span>, res);
                     }
                 }
             }
