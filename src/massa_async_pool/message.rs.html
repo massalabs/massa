@@ -1086,11 +1086,52 @@
 <a href="#1086" id="1086">1086</a>
 <a href="#1087" id="1087">1087</a>
 <a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
 
-</span><span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
+</span><span class="kw">use </span>massa_hash::{Hash, HashDeserializer, HashSerializer};
+<span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 <span class="kw">use </span>massa_models::address::{AddressDeserializer, AddressSerializer};
 <span class="kw">use </span>massa_models::amount::{AmountDeserializer, AmountSerializer};
 <span class="kw">use </span>massa_models::config::GENESIS_KEY;
@@ -1148,7 +1189,7 @@
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
     ///
-    /// let message = AsyncMessage::new(
+    /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
@@ -1208,7 +1249,7 @@
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
     ///
-    /// let message = AsyncMessage::new(
+    /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
@@ -1392,6 +1433,9 @@
     <span class="doccomment">/// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
     /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
     </span><span class="kw">pub </span>can_be_executed: bool,
+
+    <span class="doccomment">/// Hash of the message
+    </span><span class="kw">pub </span>hash: Hash,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>AsyncMessage {
@@ -1405,6 +1449,7 @@
             destination: genesis_address,
             validity_start: slot_zero,
             validity_end: slot_zero,
+            hash: Hash::zero(),
             ..Default::default()
         }
     }
@@ -1412,8 +1457,8 @@
 
 <span class="kw">impl </span>AsyncMessage {
     <span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="doccomment">/// Take an `AsyncMessage` and return it
-    </span><span class="kw">pub fn </span>new(
+    </span><span class="doccomment">/// Take an `AsyncMessage` and return it with its hash computed
+    </span><span class="kw">pub fn </span>new_with_hash(
         emission_slot: Slot,
         emission_index: u64,
         sender: Address,
@@ -1428,7 +1473,9 @@
         trigger: <span class="prelude-ty">Option</span>&lt;AsyncMessageTrigger&gt;,
         can_be_executed: <span class="prelude-ty">Option</span>&lt;bool&gt;,
     ) -&gt; <span class="self">Self </span>{
-        AsyncMessage {
+        <span class="kw">let </span>async_message_ser = AsyncMessageSerializer::new(can_be_executed.is_some());
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>message = AsyncMessage {
             emission_slot,
             emission_index,
             sender,
@@ -1442,7 +1489,14 @@
             data,
             can_be_executed: can_be_executed.unwrap_or(trigger.is_none()),
             trigger,
-        }
+            <span class="comment">// placeholder hash to serialize the message, replaced below
+            </span>hash: Hash::zero(),
+        };
+        async_message_ser
+            .serialize(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;mut </span>buffer)
+            .expect(<span class="string">&quot;critical: asynchronous message serialization should never fail here&quot;</span>);
+        message.hash = Hash::compute_from(<span class="kw-2">&amp;</span>buffer);
+        message
     }
 
     <span class="doccomment">/// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
@@ -1453,6 +1507,16 @@
             <span class="self">self</span>.emission_slot,
             <span class="self">self</span>.emission_index,
         )
+    }
+
+    <span class="doccomment">/// Recompute the hash of the message. Must be used each time we modify one field
+    </span><span class="kw">pub fn </span>compute_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, for_db: bool) {
+        <span class="kw">let </span>async_message_ser = AsyncMessageSerializer::new(for_db);
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        async_message_ser.serialize(<span class="self">self</span>, <span class="kw-2">&amp;mut </span>buffer).expect(
+            <span class="string">&quot;critical: asynchronous message serialization should never fail in recompute hash&quot;</span>,
+        );
+        <span class="self">self</span>.hash = Hash::compute_from(<span class="kw-2">&amp;</span>buffer);
     }
 }
 
@@ -1497,7 +1561,7 @@
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
-    /// let message = AsyncMessage::new(
+    /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
@@ -1612,7 +1676,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let message = AsyncMessage::new(
+    /// let message = AsyncMessage::new_with_hash(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
@@ -1638,6 +1702,7 @@
     /// let (rest, message_deserialized) = message_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
+    /// assert_eq!(message.hash, message_deserialized.hash);
     /// ```
     </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -1722,7 +1787,7 @@
                 filter,
                 can_be_executed,
             )| {
-                AsyncMessage::new(
+                AsyncMessage::new_with_hash(
                     emission_slot,
                     emission_index,
                     sender,
@@ -1814,6 +1879,9 @@
     <span class="doccomment">/// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
     /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
     </span><span class="kw">pub </span>can_be_executed: SetOrKeep&lt;bool&gt;,
+
+    <span class="doccomment">/// Hash of the message
+    </span><span class="kw">pub </span>hash: SetOrKeep&lt;Hash&gt;,
 }
 
 <span class="doccomment">/// Serializer for `AsyncMessageUpdate`
@@ -1829,6 +1897,7 @@
     &gt;,
     bool_serializer: SetOrKeepSerializer&lt;bool, BoolSerializer&gt;,
     regular_bool_serializer: BoolSerializer,
+    hash_serializer: SetOrKeepSerializer&lt;Hash, HashSerializer&gt;,
     for_db: bool,
 }
 
@@ -1846,6 +1915,7 @@
             )),
             bool_serializer: SetOrKeepSerializer::new(BoolSerializer::new()),
             regular_bool_serializer: BoolSerializer::new(),
+            hash_serializer: SetOrKeepSerializer::new(HashSerializer::new()),
             for_db,
         }
     }
@@ -1901,6 +1971,7 @@
             <span class="self">self</span>.bool_serializer
                 .serialize(<span class="kw-2">&amp;</span>value.can_be_executed, buffer)<span class="question-mark">?</span>;
         }
+        <span class="self">self</span>.hash_serializer.serialize(<span class="kw-2">&amp;</span>value.hash, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -1919,6 +1990,7 @@
     &gt;,
     bool_deserializer: SetOrKeepDeserializer&lt;bool, BoolDeserializer&gt;,
     regular_bool_deserializer: BoolDeserializer,
+    hash_deserializer: SetOrKeepDeserializer&lt;Hash, HashDeserializer&gt;,
     for_db: bool,
 }
 
@@ -1957,6 +2029,7 @@
             )),
             bool_deserializer: SetOrKeepDeserializer::new(BoolDeserializer::new()),
             regular_bool_deserializer: BoolDeserializer::new(),
+            hash_deserializer: SetOrKeepDeserializer::new(HashDeserializer::new()),
             for_db,
         }
     }
@@ -2033,6 +2106,9 @@
                         <span class="prelude-val">Ok</span>((input, SetOrKeep::Keep))
                     }
                 }),
+                context(<span class="string">&quot;Failed hash deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.hash_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(
@@ -2050,6 +2126,7 @@
                 data,
                 trigger,
                 can_be_executed,
+                hash,
             )| {
                 AsyncMessageUpdate {
                     emission_slot,
@@ -2065,6 +2142,7 @@
                     data,
                     trigger,
                     can_be_executed,
+                    hash,
                 }
             },
         )
@@ -2088,6 +2166,7 @@
         <span class="self">self</span>.data.apply(update.data);
         <span class="self">self</span>.trigger.apply(update.trigger);
         <span class="self">self</span>.can_be_executed.apply(update.can_be_executed);
+        <span class="self">self</span>.hash.apply(update.hash);
     }
 }
 
@@ -2107,6 +2186,7 @@
         update.data.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.data);
         update.trigger.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.trigger);
         update.can_be_executed.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.can_be_executed);
+        update.hash.apply_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>.hash);
     }
 }
 
@@ -2138,7 +2218,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>bad_serialization_version() {
-        <span class="kw">let </span>message = AsyncMessage::new(
+        <span class="kw">let </span>message = AsyncMessage::new_with_hash(
             Slot::new(<span class="number">1</span>, <span class="number">2</span>),
             <span class="number">0</span>,
             Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),

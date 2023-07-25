@@ -348,6 +348,8 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
@@ -549,15 +551,17 @@
 
     <span class="doccomment">/// Gets all the deferred credits that will be credited until a given slot (included)
     </span><span class="kw">pub fn </span>get_all_deferred_credits_until(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; DeferredCredits {
-        <span class="self">self</span>.<span class="number">0</span>.iter().fold(DeferredCredits::new(), |<span class="kw-2">mut </span>acc, e| {
-            acc.extend(
-                e.state_changes
-                    .pos_changes
-                    .deferred_credits
-                    .get_slot_range(..=slot),
-            );
-            acc
-        })
+        <span class="self">self</span>.<span class="number">0
+            </span>.iter()
+            .fold(DeferredCredits::new_without_hash(), |<span class="kw-2">mut </span>acc, e| {
+                acc.extend(
+                    e.state_changes
+                        .pos_changes
+                        .deferred_credits
+                        .get_slot_range(..=slot, <span class="bool-val">false</span>),
+                );
+                acc
+            })
     }
 
     <span class="doccomment">/// Gets the deferred credits for a given address that will be credited at a given slot

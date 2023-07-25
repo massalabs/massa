@@ -1874,7 +1874,7 @@
         execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, coins, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>fee = Amount::from_raw(raw_fee);
         execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, fee, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-        execution_context.push_new_message(AsyncMessage::new(
+        execution_context.push_new_message(AsyncMessage::new_with_hash(
             emission_slot,
             emission_index,
             sender,
