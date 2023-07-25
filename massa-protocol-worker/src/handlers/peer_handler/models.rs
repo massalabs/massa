@@ -12,7 +12,7 @@ use tracing::log::info;
 
 use super::announcement::Announcement;
 
-const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000_000;
+const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
@@ -25,6 +25,7 @@ pub struct PeerDB {
     pub tested_addresses: HashMap<SocketAddr, MassaTime>,
     /// history of try connection to peers
     pub try_connect_history: HashMap<SocketAddr, MassaTime>,
+    pub last_unban: Option<MassaTime>,
 }
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;

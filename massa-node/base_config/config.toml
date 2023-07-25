@@ -207,6 +207,8 @@
     try_connection_timer = 250
     # Number of millis seconds between each try out connections for same peer
     try_connection_timer_same_peer = 10000
+    # Number of millis seconds between each unban of every peer
+    unban_everyone_timer = 86400000
     # Number of millis seconds that create a timeout for out connections
     timeout_connection = 1000
     # max number of operations kept for propagation

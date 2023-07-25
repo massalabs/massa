@@ -5,6 +5,8 @@ use massa_models::config::{ENDORSEMENT_COUNT, MAX_MESSAGE_SIZE};
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
 
+const ONE_DAY_MS: u64 = 24 * 60 * 60 * 1000;
+
 impl Default for ProtocolConfig {
     fn default() -> Self {
         ProtocolConfig {
@@ -79,6 +81,7 @@ impl Default for ProtocolConfig {
             read_write_limit_bytes_per_second: 1024 * 1000,
             timeout_connection: MassaTime::from_millis(1000),
             try_connection_timer: MassaTime::from_millis(5000),
+            unban_everyone_timer: MassaTime::from_millis(ONE_DAY_MS),
             routable_ip: None,
             max_in_connections: 10,
             debug: true,
