@@ -1585,10 +1585,8 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
-            pos_config.thread_count,
-            pos_config.max_credit_length
-        );
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             pos_config.cycle_history_length as u64,
             pos_config.max_rolls_length,
@@ -1699,10 +1697,8 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
-            pos_config.thread_count,
-            pos_config.max_credit_length
-        );
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             pos_config.cycle_history_length as u64,
             pos_config.max_rolls_length,
