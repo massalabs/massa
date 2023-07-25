@@ -56,7 +56,7 @@ impl SharedWhiteBlackList<'_> {
             write_lock.black_list = Some(hash_set.clone());
             hash_set
         };
-        self.write_list_to_file(&self.black_path, &list)?;
+        self.write_to_file(&self.black_path, &list)?;
         Ok(())
     }
 
@@ -67,7 +67,7 @@ impl SharedWhiteBlackList<'_> {
             for ip in ips {
                 black_list.remove(&ip);
             }
-            self.write_list_to_file(&self.black_path, black_list)?;
+            self.write_to_file(&self.black_path, black_list)?;
         }
         Ok(())
     }
@@ -83,7 +83,7 @@ impl SharedWhiteBlackList<'_> {
             write_lock.white_list = Some(hash_set.clone());
             hash_set
         };
-        self.write_list_to_file(&self.white_path, &list)?;
+        self.write_to_file(&self.white_path, &list)?;
         Ok(())
     }
 
@@ -94,13 +94,13 @@ impl SharedWhiteBlackList<'_> {
             for ip in ips {
                 white_list.remove(&ip);
             }
-            self.write_list_to_file(&self.white_path, white_list)?;
+            self.write_to_file(&self.white_path, white_list)?;
         }
         Ok(())
     }
 
     /// write list to file
-    fn write_list_to_file(
+    fn write_to_file(
         &self,
         file_path: &Path,
         data: &HashSet<IpAddr>,

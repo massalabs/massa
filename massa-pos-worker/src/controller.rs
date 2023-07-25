@@ -90,7 +90,9 @@ impl SelectorController for SelectorControllerImpl {
         Ok(())
     }
 
-    /// Get [Selection] computed for a slot
+    /// Get [Selection] computed for a slot:
+    /// # Arguments
+    /// * `slot`: target slot of the selection
     fn get_selection(&self, slot: Slot) -> PosResult<Selection> {
         let cycle = slot.get_cycle(self.periods_per_cycle);
         let (_cache_cv, cache_lock) = &*self.cache;

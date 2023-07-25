@@ -1,6 +1,5 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use std::collections::HashSet;
 use std::net::IpAddr;
 use std::str::FromStr;
 
@@ -164,7 +163,7 @@ pub(crate) fn get_bootstrap_blacklist(
         match grpc.bs_white_black_list {
             Some(ref bs_list) => bs_list
                 .get_black_list()
-                .unwrap_or(HashSet::new())
+                .unwrap_or_default()
                 .into_iter()
                 .map(|ip| ip.to_string())
                 .collect(),
@@ -182,7 +181,7 @@ pub(crate) fn get_bootstrap_whitelist(
         match grpc.bs_white_black_list {
             Some(ref bs_list) => bs_list
                 .get_white_list()
-                .unwrap_or(HashSet::new())
+                .unwrap_or_default()
                 .into_iter()
                 .map(|ip| ip.to_string())
                 .collect(),
@@ -286,7 +285,7 @@ pub(crate) fn get_node_status(
         .protocol_config
         .routable_ip
         .map(|ip| ip.to_string())
-        .unwrap_or("".to_string());
+        .unwrap_or_default();
 
     let status = grpc_model::NodeStatus {
         node_id: grpc.node_id.to_string(),

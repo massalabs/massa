@@ -853,14 +853,14 @@ impl MassaRpcServer for API<Public> {
                 .map(|addr| {
                     let mut producer_slots = Vec::new();
                     let mut endorser_slots = Vec::new();
-                    for (s_slot, s_sel) in &selections {
-                        if s_sel.producer == *addr {
-                            producer_slots.push(*s_slot);
+                    for (selection_slot, selection) in &selections {
+                        if selection.producer == *addr {
+                            producer_slots.push(*selection_slot);
                         }
-                        for (index, endorser) in s_sel.endorsements.iter().enumerate() {
+                        for (index, endorser) in selection.endorsements.iter().enumerate() {
                             if endorser == addr {
                                 endorser_slots.push(IndexedSlot {
-                                    slot: *s_slot,
+                                    slot: *selection_slot,
                                     index,
                                 });
                             }

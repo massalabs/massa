@@ -110,7 +110,7 @@ impl From<BlockHeader> for grpc_model::BlockHeader {
             endorsements: res,
             current_version: value.current_version,
             announced_version: value.announced_version,
-            //TODO to be updated
+            //TODO to be updated in Massa models
             operations_hash: value.operation_merkle_root.to_string(),
         }
     }
