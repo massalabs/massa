@@ -10,6 +10,7 @@ use massa_models::prehash::CapacityAllocator;
 use massa_models::prehash::PreHashSet;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
+use massa_protocol_exports::ProtocolError;
 use massa_storage::Storage;
 use tracing::{debug, info, log::warn};
 
@@ -183,6 +184,11 @@ impl PropagationThread {
                                 "Failed to send OperationsAnnouncement message to peer: {}",
                                 err
                             );
+
+                            if let ProtocolError::PeerDisconnected(_) = err {
+                                // cache of this peer is removed in next call of cache_write.update_cache
+                                break;
+                            }
                         }
                     }
                 }

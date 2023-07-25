@@ -146,12 +146,16 @@ pub struct ProtocolConfig {
     pub last_start_period: u64,
     /// try connection timer
     pub try_connection_timer: MassaTime,
+    /// try connection timer same peer
+    pub try_connection_timer_same_peer: MassaTime,
     /// Max in connections
     pub max_in_connections: usize,
     /// Timeout connection
     pub timeout_connection: MassaTime,
     /// Timeout message
     pub message_timeout: MassaTime,
+    /// Timeout for the tester operations
+    pub tester_timeout: MassaTime,
     /// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     pub read_write_limit_bytes_per_second: u128,
     /// Optional routable ip
@@ -164,4 +168,6 @@ pub struct ProtocolConfig {
     pub default_category_info: PeerCategoryInfo,
     /// Version
     pub version: Version,
+    /// Cooldown before testing again an old peer
+    pub test_oldest_peer_cooldown: MassaTime,
 }

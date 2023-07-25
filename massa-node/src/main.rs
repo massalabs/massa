@@ -636,6 +636,7 @@ async fn launch(
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         message_timeout: SETTINGS.protocol.message_timeout,
+        tester_timeout: SETTINGS.protocol.tester_timeout,
         routable_ip: SETTINGS
             .protocol
             .routable_ip
@@ -644,6 +645,8 @@ async fn launch(
         peers_categories: SETTINGS.protocol.peers_categories.clone(),
         default_category_info: SETTINGS.protocol.default_category_info,
         version: *VERSION,
+        try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
+        test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
     };
 
     let (protocol_controller, protocol_channels) =

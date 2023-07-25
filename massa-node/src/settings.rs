@@ -249,16 +249,22 @@ pub struct ProtocolSettings {
     pub read_write_limit_bytes_per_second: u64,
     /// try connection timer
     pub try_connection_timer: MassaTime,
+    /// try connection timer for the same peer
+    pub try_connection_timer_same_peer: MassaTime,
     /// Timeout connection
     pub timeout_connection: MassaTime,
     /// Message timeout
     pub message_timeout: MassaTime,
+    /// Timeout for the tester operations
+    pub tester_timeout: MassaTime,
     /// Nb in connections
     pub max_in_connections: usize,
     /// Peers limits per category
     pub peers_categories: HashMap<String, PeerCategoryInfo>,
     /// Limits for default category
     pub default_category_info: PeerCategoryInfo,
+    /// Cooldown before testing again an old peer
+    pub test_oldest_peer_cooldown: MassaTime,
 }
 
 /// gRPC settings

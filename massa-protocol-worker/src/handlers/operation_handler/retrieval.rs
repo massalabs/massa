@@ -280,6 +280,9 @@ impl RetrievalThread {
                     false,
                 ) {
                     warn!("Failed to send AskForOperations message to peer: {}", err);
+                    if let ProtocolError::PeerDisconnected(_) = err {
+                        break;
+                    }
                 }
             }
         }
@@ -340,6 +343,9 @@ impl RetrievalThread {
                 false,
             ) {
                 warn!("Failed to send Operations message to peer: {}", err);
+                if let ProtocolError::PeerDisconnected(_) = err {
+                    break;
+                }
             }
         }
         Ok(())

@@ -4,7 +4,6 @@ use super::{
 };
 use crate::{messages::MessagesSerializer, wrap_network::ActiveConnectionsTrait};
 use massa_channel::receiver::MassaReceiver;
-use massa_metrics::MassaMetrics;
 use massa_protocol_exports::ProtocolConfig;
 use massa_storage::Storage;
 use std::thread::JoinHandle;
@@ -17,7 +16,6 @@ struct PropagationThread {
     cache: SharedEndorsementCache,
     active_connections: Box<dyn ActiveConnectionsTrait>,
     endorsement_serializer: MessagesSerializer,
-    _metrics: MassaMetrics,
 }
 
 impl PropagationThread {
@@ -142,7 +140,6 @@ pub fn start_propagation_thread(
     cache: SharedEndorsementCache,
     config: ProtocolConfig,
     active_connections: Box<dyn ActiveConnectionsTrait>,
-    metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
         .name("protocol-endorsement-handler-propagation".to_string())
@@ -155,7 +152,6 @@ pub fn start_propagation_thread(
                 active_connections,
                 cache,
                 endorsement_serializer,
-                _metrics: metrics,
             };
             propagation_thread.run();
         })

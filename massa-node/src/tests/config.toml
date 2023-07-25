@@ -25,6 +25,7 @@
 
 [protocol]
     message_timeout = 5000
+    tester_timeout = 500
     ask_block_timeout = 10000
     max_known_blocks_size = 1024
     max_node_known_blocks_size = 1024

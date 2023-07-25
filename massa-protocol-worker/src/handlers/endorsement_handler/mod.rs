@@ -65,16 +65,11 @@ impl EndorsementHandler {
             pool_controller,
             config.clone(),
             storage.clone_without_refs(),
-            massa_metrics.clone(),
-        );
-
-        let endorsement_propagation_thread = start_propagation_thread(
-            local_receiver,
-            cache,
-            config,
-            active_connections,
             massa_metrics,
         );
+
+        let endorsement_propagation_thread =
+            start_propagation_thread(local_receiver, cache, config, active_connections);
         Self {
             endorsement_retrieval_thread: Some((
                 sender_retrieval_ext,

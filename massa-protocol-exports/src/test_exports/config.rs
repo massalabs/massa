@@ -74,6 +74,7 @@ impl Default for ProtocolConfig {
             max_size_listeners_per_peer: 100,
             max_size_peers_announcement: 100,
             message_timeout: MassaTime::from_millis(10000),
+            tester_timeout: MassaTime::from_millis(500),
             last_start_period: 0,
             read_write_limit_bytes_per_second: 1024 * 1000,
             timeout_connection: MassaTime::from_millis(1000),
@@ -89,6 +90,8 @@ impl Default for ProtocolConfig {
                 max_in_connections_per_ip: 0,
             },
             version: "TEST.23.2".parse().unwrap(),
+            try_connection_timer_same_peer: MassaTime::from_millis(1000),
+            test_oldest_peer_cooldown: MassaTime::from_millis(720000),
         }
     }
 }

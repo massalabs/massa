@@ -98,6 +98,10 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
     fn get_peers_connections_bandwidth(&self) -> HashMap<String, (u64, u64)> {
         HashMap::new()
     }
+
+    fn get_peer_ids_connection_queue(&self) -> HashSet<std::net::SocketAddr> {
+        HashSet::new()
+    }
 }
 
 pub struct MockNetworkController {
