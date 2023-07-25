@@ -81,6 +81,8 @@
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::io::ErrorKind;
@@ -108,6 +110,8 @@
     </span>GeneralError(String),
     <span class="doccomment">/// deserialization error: {0}
     </span>DeserializeError(String),
+    <span class="doccomment">/// serialization error: {0}
+    </span>SerializationError(String),
     <span class="doccomment">/// models error: {0}
     </span>ModelsError(<span class="attr">#[from] </span>massa_models::error::ModelsError),
     <span class="doccomment">/// serialize error: {0}

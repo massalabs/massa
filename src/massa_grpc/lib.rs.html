@@ -35,6 +35,8 @@
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 //
 </span><span class="doccomment">//! ## **Overview**
@@ -57,14 +59,16 @@
 <span class="kw">use </span>tonic_reflection <span class="kw">as _</span>;
 <span class="kw">use </span>tonic_web <span class="kw">as _</span>;
 
-<span class="doccomment">/// business code for non stream methods
-</span><span class="kw">pub mod </span>api;
 <span class="doccomment">/// gRPC configuration
 </span><span class="kw">pub mod </span>config;
 <span class="doccomment">/// models error
 </span><span class="kw">pub mod </span>error;
 <span class="doccomment">/// gRPC API implementation
 </span><span class="kw">pub mod </span>handler;
+<span class="doccomment">/// business code for node management methods
+</span><span class="kw">pub mod </span>private;
+<span class="doccomment">/// business code for non stream methods
+</span><span class="kw">pub mod </span>public;
 <span class="doccomment">/// gRPC service initialization and serve
 </span><span class="kw">pub mod </span>server;
 <span class="doccomment">/// business code for stream methods

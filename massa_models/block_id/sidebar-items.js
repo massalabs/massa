@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["BLOCKID_PREFIX"],"enum":["BlockId"],"macro":["BlockId","BlockIdVariant"],"struct":["BlockIdDeserializer","BlockIdSerializer","BlockIdV0"]};
+window.SIDEBAR_ITEMS = {"constant":["BLOCKID_PREFIX","BLOCKID_VERSION","BLOCK_ID_SIZE_BYTES"],"struct":["BlockId","BlockIdDeserializer","BlockIdSerializer"]};
