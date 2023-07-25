@@ -48,14 +48,12 @@ impl SharedWhiteBlackList<'_> {
     /// Add IP address to the black list
     pub fn add_ips_to_blacklist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
         let mut write_lock = self.inner.write();
-        let list = if let Some(black_list) = &mut write_lock.black_list {
+        if let Some(black_list) = &mut write_lock.black_list {
             black_list.extend(ips);
-            write_lock.black_list.as_ref().unwrap()
         } else {
             write_lock.black_list = Some(HashSet::from_iter(ips));
-            write_lock.black_list.as_ref().unwrap()
         };
-        self.write_to_file(&self.black_path, &list)?;
+        self.write_to_file(&self.black_path, write_lock.black_list.as_ref().unwrap())?;
         Ok(())
     }
 
@@ -74,15 +72,12 @@ impl SharedWhiteBlackList<'_> {
     /// Add IP address to the white list
     pub fn add_ips_to_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), BootstrapError> {
         let mut write_lock = self.inner.write();
-        let list = if let Some(white_list) = &mut write_lock.white_list {
+        if let Some(white_list) = &mut write_lock.white_list {
             white_list.extend(ips);
-            white_list.clone()
         } else {
-            let hash_set = HashSet::from_iter(ips);
-            write_lock.white_list = Some(hash_set.clone());
-            hash_set
+            write_lock.white_list = Some(HashSet::from_iter(ips));
         };
-        self.write_to_file(&self.white_path, &list)?;
+        self.write_to_file(&self.white_path, write_lock.white_list.as_ref().unwrap())?;
         Ok(())
     }
 
