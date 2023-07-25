@@ -179,7 +179,7 @@ impl PoSFinalState {
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
         let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(config.thread_count, config.max_credit_length, true);
+            DeferredCreditsDeserializer::new(config.thread_count, config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             config.cycle_history_length as u64,
             config.max_rolls_length,
@@ -658,7 +658,7 @@ impl PoSFinalState {
     {
         let db = self.db.read();
 
-        let mut deferred_credits = DeferredCredits::new_without_hash();
+        let mut deferred_credits = DeferredCredits::new();
 
         let mut start_key_buffer = Vec::new();
         start_key_buffer.extend_from_slice(DEFERRED_CREDITS_PREFIX.as_bytes());
@@ -1504,7 +1504,7 @@ impl PoSFinalState {
     pub fn get_deferred_credits(&self) -> DeferredCredits {
         let db = self.db.read();
 
-        let mut deferred_credits = DeferredCredits::new_with_hash();
+        let mut deferred_credits = DeferredCredits::new();
 
         for (serialized_key, serialized_value) in
             db.prefix_iterator_cf(STATE_CF, DEFERRED_CREDITS_PREFIX.as_bytes())
@@ -1587,8 +1587,7 @@ mod tests {
 
         let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
             pos_config.thread_count,
-            pos_config.max_credit_length,
-            true,
+            pos_config.max_credit_length
         );
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             pos_config.cycle_history_length as u64,
@@ -1702,8 +1701,7 @@ mod tests {
 
         let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
             pos_config.thread_count,
-            pos_config.max_credit_length,
-            true,
+            pos_config.max_credit_length
         );
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             pos_config.cycle_history_length as u64,
@@ -1748,7 +1746,7 @@ mod tests {
             seed_bits: bitvec![u8, Lsb0; 0, 1],
             roll_changes: roll_changes.clone(),
             production_stats: production_stats.clone(),
-            deferred_credits: DeferredCredits::new_with_hash(),
+            deferred_credits: DeferredCredits::new(),
         };
 
         let mut batch = DBBatch::new();
@@ -1773,7 +1771,7 @@ mod tests {
             seed_bits: bitvec![u8, Lsb0; 1, 0],
             roll_changes: roll_changes.clone(),
             production_stats: production_stats.clone(),
-            deferred_credits: DeferredCredits::new_with_hash(),
+            deferred_credits: DeferredCredits::new(),
         };
 
         let mut batch = DBBatch::new();
@@ -1799,7 +1797,7 @@ mod tests {
             seed_bits: bitvec![u8, Lsb0; 0, 1],
             roll_changes,
             production_stats,
-            deferred_credits: DeferredCredits::new_with_hash(),
+            deferred_credits: DeferredCredits::new(),
         };
 
         let mut batch = DBBatch::new();
