@@ -310,7 +310,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MessagesHandler,
     ) -> PeerNetResult<PeerId> {
-        let addr = endpoint.get_target_addr().clone();
+        let addr = *endpoint.get_target_addr();
         let mut bytes = vec![];
         self.peer_id_serializer
             .serialize(&context.get_peer_id(), &mut bytes)

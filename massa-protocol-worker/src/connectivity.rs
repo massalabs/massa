@@ -8,7 +8,6 @@ use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
-use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use peernet::peer::PeerConnectionType;
