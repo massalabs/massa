@@ -171,6 +171,8 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::{
@@ -321,6 +323,8 @@
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
     <span class="doccomment">/// try connection timer same peer
     </span><span class="kw">pub </span>try_connection_timer_same_peer: MassaTime,
+    <span class="doccomment">/// periodically unban every peer
+    </span><span class="kw">pub </span>unban_everyone_timer: MassaTime,
     <span class="doccomment">/// Max in connections
     </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Timeout connection
