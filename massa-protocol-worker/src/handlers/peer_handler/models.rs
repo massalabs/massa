@@ -25,7 +25,6 @@ pub struct PeerDB {
     pub tested_addresses: HashMap<SocketAddr, MassaTime>,
     /// history of try connection to peers
     pub try_connect_history: HashMap<SocketAddr, MassaTime>,
-    pub last_unban: Option<MassaTime>,
 }
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
