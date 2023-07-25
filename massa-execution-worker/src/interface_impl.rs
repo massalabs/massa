@@ -618,9 +618,9 @@ impl Interface for InterfaceImpl {
     /// * Expects a SECP256K1 signature in full ETH format.
     ///   Format: (r, s, v) v will be ignored
     ///   Length: 65 bytes
-    /// * Expects a public key in full ETH format.
-    ///   Length: 65 bytes
-    fn verify_evm_signature(
+    /// * Expects a public key in raw secp256k1 format.
+    ///   Length: 64 bytes
+    fn evm_signature_verify(
         &self,
         message_: &[u8],
         signature_: &[u8],
@@ -628,13 +628,13 @@ impl Interface for InterfaceImpl {
     ) -> Result<bool> {
         // check the signature length
         if signature_.len() != 65 {
-            return Err(anyhow!("invalid signature length"));
+            return Err(anyhow!("invalid signature length in evm_signature_verify"));
         }
 
         // parse the public key
         let public_key = libsecp256k1::PublicKey::parse_slice(
             public_key_,
-            Some(libsecp256k1::PublicKeyFormat::Full),
+            Some(libsecp256k1::PublicKeyFormat::Raw),
         )?;
 
         // build the message
@@ -654,6 +654,56 @@ impl Interface for InterfaceImpl {
 
         // verify the signature
         Ok(libsecp256k1::verify(&message, &signature, &public_key))
+    }
+
+    /// Get an EVM address from a raw secp256k1 public key (64 bytes).
+    /// Address is the last 20 bytes of the hash of the public key.
+    fn evm_get_address_from_pubkey(&self, public_key_: &[u8]) -> Result<Vec<u8>> {
+        // parse the public key
+        let public_key = libsecp256k1::PublicKey::parse_slice(
+            public_key_,
+            Some(libsecp256k1::PublicKeyFormat::Raw),
+        )?;
+
+        // compute the hash of the public key
+        let hash = sha3::Keccak256::digest(public_key.serialize());
+
+        // ignore the first 12 bytes of the hash
+        let address = hash[12..].to_vec();
+
+        // return the address (last 20 bytes of the hash)
+        Ok(address)
+    }
+
+    /// Get a raw secp256k1 public key from an EVM signature and the signed hash.
+    fn evm_get_pubkey_from_signature(&self, hash_: &[u8], signature_: &[u8]) -> Result<Vec<u8>> {
+        // check the signature length
+        if signature_.len() != 65 {
+            return Err(anyhow!(
+                "invalid signature length in evm_get_pubkey_from_signature"
+            ));
+        }
+
+        // parse the message
+        let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+
+        // parse the signature as being (r, s, v) use only r and s
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+
+        // parse v as a recovery id
+        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
+
+        // recover the public key
+        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+
+        // return its serialized value
+        Ok(recovered.serialize().to_vec())
+    }
+
+    // Return true if the address is a User address, false if it is an SC address.
+    fn is_address_eoa(&self, address_: &str) -> Result<bool> {
+        let address = Address::from_str(address_)?;
+        Ok(matches!(address, Address::User(..)))
     }
 
     /// Transfer coins from the current address (top of the call stack) towards a target address.
@@ -912,7 +962,8 @@ impl Interface for InterfaceImpl {
 fn test_evm_verify() {
     use hex_literal::hex;
 
-    // corresponding address is 0x807a7Bb5193eDf9898b9092c1597bB966fe52514
+    // signature info
+    let address_ = hex!("807a7bb5193edf9898b9092c1597bb966fe52514");
     let message_ = b"test";
     let signature_ = hex!("d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b");
     let private_key_ = hex!("ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3");
@@ -947,4 +998,12 @@ fn test_evm_verify() {
     // sign the message and match it with the original signature
     let (second_signature, _) = libsecp256k1::sign(&message, &private_key);
     assert_eq!(signature, second_signature);
+
+    // check 4
+    // generate the address from the public key and match it with the original address
+    // address is the last 20 bytes of the hash of the public key in raw format (64 bytes)
+    let raw_public_key = public_key.serialize();
+    let hash = sha3::Keccak256::digest(&raw_public_key[1..]).to_vec();
+    let generated_address = &hash[12..];
+    assert_eq!(generated_address, address_);
 }
