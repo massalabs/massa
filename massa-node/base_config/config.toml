@@ -202,7 +202,7 @@
     # interval at which operations are announced in batches.
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
-    max_operations_per_message = 1024
+    max_operations_per_message = 5000
     # Number of millis seconds between each try out connections
     try_connection_timer = 250
     # Number of millis seconds between each try out connections for same peer

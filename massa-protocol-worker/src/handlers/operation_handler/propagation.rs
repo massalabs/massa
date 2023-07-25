@@ -101,15 +101,6 @@ impl PropagationThread {
     fn prune_propagation_storage(&mut self) {
         let mut removed = PreHashSet::default();
 
-        // cap cache size
-        while self.stored_for_propagation.len() > self.config.max_ops_kept_for_propagation {
-            if let Some((_t, op_ids)) = self.stored_for_propagation.pop_front() {
-                removed.extend(op_ids);
-            } else {
-                break;
-            }
-        }
-
         // remove expired
         let max_op_prop_time = self.config.max_operations_propagation_time.to_duration();
         while let Some((t, _)) = self.stored_for_propagation.front() {
@@ -118,6 +109,24 @@ impl PropagationThread {
                     .stored_for_propagation
                     .pop_front()
                     .expect("there should be at least one element, checked above");
+                removed.extend(op_ids);
+            } else {
+                break;
+            }
+        }
+
+        // Cap cache size
+        // Note that we directly remove batches of operations, not individual operations
+        // to favor simplicity and performance over precision.
+        let mut excess_count = self
+            .stored_for_propagation
+            .iter()
+            .map(|(_, ops)| ops.len())
+            .sum::<usize>()
+            .saturating_sub(self.config.max_ops_kept_for_propagation);
+        while excess_count > 0 {
+            if let Some((_t, op_ids)) = self.stored_for_propagation.pop_front() {
+                excess_count = excess_count.saturating_sub(op_ids.len());
                 removed.extend(op_ids);
             } else {
                 break;
