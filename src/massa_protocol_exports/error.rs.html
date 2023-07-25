@@ -70,10 +70,6 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
@@ -91,8 +87,6 @@
     </span>WrongSignature,
     <span class="doccomment">/// Protocol error: {0}
     </span>GeneralProtocolError(String),
-    <span class="doccomment">/// Invalid block: {0}
-    </span>InvalidBlock(String),
     <span class="doccomment">/// An error occurred during channel communication: {0}
     </span>ChannelError(String),
     <span class="doccomment">/// Error during network connection: `{0:?}`
@@ -115,8 +109,6 @@
     </span>ModelsError(<span class="attr">#[from] </span>ModelsError),
     <span class="doccomment">/// Send error: {0}
     </span>SendError(String),
-    <span class="doccomment">/// Peer disconnected : {0}
-    </span>PeerDisconnected(String),
     <span class="doccomment">/// Container inconsistency error: {0}
     </span>ContainerInconsistencyError(String),
     <span class="doccomment">/// Invalid operation error: {0}

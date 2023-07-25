@@ -60,6 +60,8 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep};
@@ -68,9 +70,9 @@
 <span class="kw">impl </span>From&lt;LedgerEntry&gt; <span class="kw">for </span>grpc_model::LedgerEntry {
     <span class="kw">fn </span>from(value: LedgerEntry) -&gt; <span class="self">Self </span>{
         grpc_model::LedgerEntry {
-            balance: value.balance.to_raw(),
+            balance: <span class="prelude-val">Some</span>(value.balance.into()),
             bytecode: value.bytecode.<span class="number">0</span>,
-            entries: value
+            datastore: value
                 .datastore
                 .into_iter()
                 .map(|(key, value)| grpc_model::BytesMapFieldEntry { key, value })
@@ -84,22 +86,22 @@
         grpc_model::LedgerEntryUpdate {
             balance: <span class="kw">match </span>value.balance {
                 SetOrKeep::Set(value) =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepBalance {
-                    r#type: grpc_model::LedgerChangeType::Set <span class="kw">as </span>i32,
-                    balance: <span class="prelude-val">Some</span>(value.to_raw()),
+                    change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_balance::Change::Set(value.into())),
                 }),
                 SetOrKeep::Keep =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepBalance {
-                    r#type: grpc_model::LedgerChangeType::Delete <span class="kw">as </span>i32,
-                    balance: <span class="prelude-val">None</span>,
+                    change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_balance::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             bytecode: <span class="kw">match </span>value.bytecode {
-                SetOrKeep::Set(value) =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepBytecode {
-                    r#type: grpc_model::LedgerChangeType::Set <span class="kw">as </span>i32,
-                    bytecode: <span class="prelude-val">Some</span>(value.<span class="number">0</span>),
+                SetOrKeep::Set(value) =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepBytes {
+                    change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_bytes::Change::Set(value.<span class="number">0</span>)),
                 }),
-                SetOrKeep::Keep =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepBytecode {
-                    r#type: grpc_model::LedgerChangeType::Delete <span class="kw">as </span>i32,
-                    bytecode: <span class="prelude-val">None</span>,
+                SetOrKeep::Keep =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepBytes {
+                    change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_bytes::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             datastore: value
@@ -107,15 +109,17 @@
                 .into_iter()
                 .map(|entry| <span class="kw">match </span>entry.<span class="number">1 </span>{
                     SetOrDelete::Set(value) =&gt; grpc_model::SetOrDeleteDatastoreEntry {
-                        r#type: grpc_model::LedgerChangeType::Set <span class="kw">as </span>i32,
-                        datastore_entry: <span class="prelude-val">Some</span>(grpc_model::BytesMapFieldEntry {
-                            key: entry.<span class="number">0</span>,
-                            value,
-                        }),
+                        change: <span class="prelude-val">Some</span>(grpc_model::set_or_delete_datastore_entry::Change::Set(
+                            grpc_model::BytesMapFieldEntry {
+                                key: entry.<span class="number">0</span>,
+                                value,
+                            },
+                        )),
                     },
                     SetOrDelete::Delete =&gt; grpc_model::SetOrDeleteDatastoreEntry {
-                        r#type: grpc_model::LedgerChangeType::Delete <span class="kw">as </span>i32,
-                        datastore_entry: <span class="prelude-val">None</span>,
+                        change: <span class="prelude-val">Some</span>(grpc_model::set_or_delete_datastore_entry::Change::Delete(
+                            grpc_model::Empty {},
+                        )),
                     },
                 })
                 .collect(),

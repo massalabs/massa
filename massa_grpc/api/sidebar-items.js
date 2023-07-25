@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["DEFAULT_LIMIT","DEFAULT_OFFSET"],"fn":["get_blocks","get_blocks_by_slots","get_datastore_entries","get_largest_stakers","get_mip_status","get_next_block_best_parents","get_operations","get_sc_execution_events","get_selector_draws","get_transactions_throughput","get_version"]};

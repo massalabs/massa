@@ -153,6 +153,8 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file is responsible for clique computation
@@ -240,7 +242,9 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>gi_head = PreHashMap::default();
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..size {
                 gi_head.insert(
-                    BlockId::generate_from_hash(massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>i.to_be_bytes())),
+                    BlockId::from_bytes(
+                        massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>i.to_be_bytes()).to_bytes(),
+                    ),
                     PreHashSet::default(),
                 );
             }
@@ -250,12 +254,12 @@
                     </span><span class="kw">let </span>is_compatible = rng.gen_bool(<span class="number">0.5</span>);
 
                     <span class="kw">if </span>!is_compatible {
-                        <span class="kw">let </span>i_id = BlockId::generate_from_hash(massa_hash::Hash::compute_from(
-                            <span class="kw-2">&amp;</span>i.to_be_bytes(),
-                        ));
-                        <span class="kw">let </span>j_id = BlockId::generate_from_hash(massa_hash::Hash::compute_from(
-                            <span class="kw-2">&amp;</span>j.to_be_bytes(),
-                        ));
+                        <span class="kw">let </span>i_id = BlockId::from_bytes(
+                            massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>i.to_be_bytes()).to_bytes(),
+                        );
+                        <span class="kw">let </span>j_id = BlockId::from_bytes(
+                            massa_hash::Hash::compute_from(<span class="kw-2">&amp;</span>j.to_be_bytes()).to_bytes(),
+                        );
                         <span class="comment">// Add the incompatibility relationship to gi_head
                         </span>gi_head.entry(i_id).or_default().insert(j_id);
                         gi_head.entry(j_id).or_default().insert(i_id);
