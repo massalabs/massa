@@ -34,7 +34,7 @@
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 
 <span class="kw">let </span><span class="kw-2">mut </span>state_changes = StateChanges::default();
-<span class="kw">let </span>message = AsyncMessage::new_with_hash(
+<span class="kw">let </span>message = AsyncMessage::new(
     Slot::new(<span class="number">1</span>, <span class="number">0</span>),
     <span class="number">0</span>,
     Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
