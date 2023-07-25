@@ -15,9 +15,13 @@ use peernet::{
 
 use crate::{
     handlers::{
-        block_handler::BlockMessageSerializer, endorsement_handler::EndorsementMessageSerializer,
+        block_handler::BlockMessageSerializer,
+        endorsement_handler::EndorsementMessageSerializer,
         operation_handler::OperationMessageSerializer,
-        peer_handler::PeerManagementMessageSerializer,
+        peer_handler::{
+            models::{PeerInfo, PeerState, SharedPeerDB},
+            PeerManagementMessageSerializer,
+        },
     },
     messages::{Message, MessagesHandler, MessagesSerializer},
     wrap_network::{ActiveConnectionsTrait, NetworkController},
@@ -108,6 +112,7 @@ pub struct MockNetworkController {
     connections: SharedMockActiveConnections,
     messages_handler: MessagesHandler,
     message_serializer: MessagesSerializer,
+    peer_db: SharedPeerDB,
 }
 
 impl Clone for MockNetworkController {
@@ -120,12 +125,13 @@ impl Clone for MockNetworkController {
                 .with_endorsement_message_serializer(EndorsementMessageSerializer::new())
                 .with_operation_message_serializer(OperationMessageSerializer::new())
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
+            peer_db: self.peer_db.clone(),
         }
     }
 }
 
 impl MockNetworkController {
-    pub fn new(messages_handler: MessagesHandler) -> Self {
+    pub fn new(messages_handler: MessagesHandler, peer_db: SharedPeerDB) -> Self {
         Self {
             connections: Arc::new(RwLock::new(MockActiveConnections::new())),
             messages_handler,
@@ -134,6 +140,7 @@ impl MockNetworkController {
                 .with_endorsement_message_serializer(EndorsementMessageSerializer::new())
                 .with_operation_message_serializer(OperationMessageSerializer::new())
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
+            peer_db,
         }
     }
 }
@@ -141,10 +148,24 @@ impl MockNetworkController {
 impl MockNetworkController {
     pub fn create_fake_connection(&mut self, peer_id: PeerId) -> (PeerId, MassaReceiver<Message>) {
         let (sender, receiver) = MassaChannel::new("create_fake_connection".to_string(), None);
+
+        if let Some(peer_info) = self.peer_db.read().peers.get(&peer_id) {
+            if peer_info.state == PeerState::Banned {
+                return (peer_id, receiver);
+            }
+        }
+
         self.connections
             .write()
             .connections
             .insert(peer_id.clone(), sender);
+        self.peer_db.write().peers.insert(
+            peer_id.clone(),
+            PeerInfo {
+                last_announce: None,
+                state: PeerState::Trusted,
+            },
+        );
         (peer_id, receiver)
     }
 
