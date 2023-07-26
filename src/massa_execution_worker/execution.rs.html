@@ -1847,6 +1847,25 @@
 <a href="#1847" id="1847">1847</a>
 <a href="#1848" id="1848">1848</a>
 <a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
+<a href="#1852" id="1852">1852</a>
+<a href="#1853" id="1853">1853</a>
+<a href="#1854" id="1854">1854</a>
+<a href="#1855" id="1855">1855</a>
+<a href="#1856" id="1856">1856</a>
+<a href="#1857" id="1857">1857</a>
+<a href="#1858" id="1858">1858</a>
+<a href="#1859" id="1859">1859</a>
+<a href="#1860" id="1860">1860</a>
+<a href="#1861" id="1861">1861</a>
+<a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
+<a href="#1864" id="1864">1864</a>
+<a href="#1865" id="1865">1865</a>
+<a href="#1866" id="1866">1866</a>
+<a href="#1867" id="1867">1867</a>
+<a href="#1868" id="1868">1868</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1967,12 +1986,13 @@
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        </span><span class="kw">let </span>last_final_slot = final_state
-            .read()
-            .db
-            .read()
-            .get_change_id()
-            .expect(<span class="string">&quot;Critical error: Final state has no slot attached&quot;</span>);
+        </span><span class="kw">let </span>last_final_slot;
+        <span class="kw">let </span>execution_trail_hash;
+        {
+            <span class="kw">let </span>final_state_read = final_state.read();
+            last_final_slot = final_state_read.get_slot();
+            execution_trail_hash = final_state_read.get_execution_trail_hash();
+        }
 
         <span class="comment">// Create default active history
         </span><span class="kw">let </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt; = Default::default();
@@ -2009,6 +2029,7 @@
             module_cache.clone(),
             vesting_manager.clone(),
             mip_store.clone(),
+            execution_trail_hash,
         )));
 
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -2103,10 +2124,17 @@
             .set_active_cursor(<span class="self">self</span>.active_cursor.period, <span class="self">self</span>.active_cursor.thread);
         <span class="self">self</span>.massa_metrics
             .set_final_cursor(<span class="self">self</span>.final_cursor.period, <span class="self">self</span>.final_cursor.thread);
-
         <span class="self">self</span>.massa_metrics.inc_operations_final_counter(
             exec_out_2.state_changes.executed_ops_changes.len() <span class="kw">as </span>u64,
         );
+        <span class="self">self</span>.massa_metrics
+            .set_active_history(<span class="self">self</span>.active_history.read().<span class="number">0</span>.len());
+
+        <span class="self">self</span>.massa_metrics
+            .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.<span class="number">0</span>.len());
+
+        <span class="self">self</span>.massa_metrics
+            .set_messages_pool(<span class="self">self</span>.final_state.read().async_pool.message_info_cache.len());
 
         <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
         </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
@@ -2143,6 +2171,10 @@
 
         <span class="comment">// add the execution output at the end of the output history
         </span><span class="self">self</span>.active_history.write().<span class="number">0</span>.push_back(exec_out);
+
+        <span class="comment">// update the prometheus metrics
+        </span><span class="self">self</span>.massa_metrics
+            .set_active_history(<span class="self">self</span>.active_history.read().<span class="number">0</span>.len())
     }
 
     <span class="doccomment">/// Helper function.
@@ -3209,9 +3241,15 @@
         <span class="comment">// execute slot
         </span><span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution started&quot;</span>);
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
-
+        <span class="kw">let </span>has_block = exec_out.block_info.is_some();
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
+
+        <span class="comment">// update metrics
+        </span><span class="self">self</span>.massa_metrics.inc_executed_final_slot();
+        <span class="kw">if </span>has_block {
+            <span class="self">self</span>.massa_metrics.inc_executed_final_slot_with_block();
+        }
 
         <span class="macro">debug!</span>(
             <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
