@@ -10,7 +10,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [dependencies]
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "ed30430", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "32179e2", features = ["tonic"] }
 displaydoc = "0.2"
 thiserror = "1.0"
 tonic = { version = "0.9.2", features = ["gzip", "tls"] }
