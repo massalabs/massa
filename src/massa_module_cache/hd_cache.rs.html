@@ -565,7 +565,7 @@
         <span class="kw">let </span>init_cost = <span class="number">100</span>;
         <span class="kw">let </span>gas_costs = GasCosts::default();
 
-        cache.insert(hash, module.clone());
+        cache.insert(hash, module);
         <span class="kw">let </span>cached_module_v1 = cache.get(hash, limit, gas_costs.clone()).unwrap();
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(cached_module_v1, ModuleInfo::Module(<span class="kw">_</span>)));
 
@@ -593,7 +593,7 @@
 
         <span class="comment">// insert one more entry
         </span><span class="kw">let </span>key = Hash::compute_from(cache.max_entry_count.to_string().as_bytes());
-        cache.insert(key, module.clone());
+        cache.insert(key, module);
         <span class="macro">assert_eq!</span>(
             cache.entry_count,
             cache.max_entry_count - cache.snip_amount + <span class="number">1
