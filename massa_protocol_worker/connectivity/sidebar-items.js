@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ConnectivityCommand"],"fn":["start_connectivity_thread"]};
+window.SIDEBAR_ITEMS = {"enum":["ConnectivityCommand"],"fn":["start_connectivity_thread","try_connect_peer"]};
