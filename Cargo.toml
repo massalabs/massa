@@ -100,7 +100,7 @@ massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
 massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "df9f5b24955bd76030add0945338226309531261" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "feature/Improve_ABI_types_in_wasmv1" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "ad4f65330b186c2f83440c2362c34d1faa84dc58" }
 peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
