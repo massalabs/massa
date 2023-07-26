@@ -34,6 +34,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    protocol_config.unban_everyone_timer = MassaTime::from_millis(5000);
     protocol_test(
         &protocol_config,
         move |mut network_controller,
@@ -78,6 +79,42 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
                 }
                 None => {}
             }
+
+            //6. Check that the node is NOT unbanned after 1 seconds
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            let (_node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+
+            assert_eq!(
+                network_controller
+                    .get_connections()
+                    .get_peer_ids_connected()
+                    .len(),
+                0
+            );
+
+            //7. Check that the node is unbanned after 5 seconds
+            std::thread::sleep(std::time::Duration::from_millis(2000));
+            let (_node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            let block = tools::create_block(&node_a_keypair);
+            network_controller
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header))),
+                )
+                .unwrap();
+
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            assert_eq!(
+                network_controller
+                    .get_connections()
+                    .get_peer_ids_connected()
+                    .len(),
+                1
+            );
+
             (
                 network_controller,
                 protocol_controller,

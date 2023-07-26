@@ -12,7 +12,7 @@ use tracing::log::info;
 
 use super::announcement::Announcement;
 
-const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000_000;
+const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
@@ -72,8 +72,9 @@ impl PeerDB {
     }
 
     pub fn unban_peer(&mut self, peer_id: &PeerId) {
-        if self.peers.contains_key(peer_id) {
-            self.peers.remove(peer_id);
+        if let Some(peer) = self.peers.get_mut(peer_id) {
+            // We set the state to HandshakeFailed to force the peer to be tested again
+            peer.state = PeerState::HandshakeFailed;
             info!("Unbanned peer: {:?}", peer_id);
         } else {
             info!("Tried to unban unknown peer: {:?}", peer_id);

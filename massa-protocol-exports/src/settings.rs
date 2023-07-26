@@ -148,6 +148,8 @@ pub struct ProtocolConfig {
     pub try_connection_timer: MassaTime,
     /// try connection timer same peer
     pub try_connection_timer_same_peer: MassaTime,
+    /// periodically unban every peer
+    pub unban_everyone_timer: MassaTime,
     /// Max in connections
     pub max_in_connections: usize,
     /// Timeout connection
