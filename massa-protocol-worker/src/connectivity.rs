@@ -243,7 +243,7 @@ pub(crate) fn start_connectivity_thread(
                         massa_metrics.update_peers_tx_rx(peers_map);
                         let peer_db_read = peer_db.read();
                         massa_metrics.set_known_peers(peer_db_read.peers.len());
-                        massa_metrics.set_banned_peers(peer_db_read.peers.iter().filter(|(_id, info)| info.state == PeerState::Banned).count());
+                        massa_metrics.set_banned_peers(peer_db_read.get_banned_peer_count() as usize);
                     },
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
