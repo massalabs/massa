@@ -18,7 +18,7 @@ config = "0.13"
 bs58 = { version = "=0.4", features = ["check"] }
 bitvec = { version = "=1.0", features = ["serde"] }
 nom = "=7.1"
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "2d9d2aa", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "ed30430", features = ["tonic"] }
 
 # custom modules
 massa_hash = { path = "../massa-hash" }

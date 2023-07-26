@@ -13,14 +13,16 @@ use massa_models::address::Address;
 use massa_models::block::Block;
 use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
+use massa_models::datastore::DatastoreDeserializer;
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1::{self as grpc_model, read_only_execution_call};
+use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::str::FromStr;
 use tracing::log::warn;
 
@@ -39,18 +41,32 @@ pub(crate) fn execute_read_only_call(
     let target = if let Some(call_target) = call.target {
         match call_target {
             read_only_execution_call::Target::BytecodeCall(value) => {
-                let caller_address = Address::from_str(&call.caller_address)?;
-                // TODO check if we keep the old format of operation datastore
+                let caller_address = match call.caller_address {
+                    Some(addr) => Address::from_str(&addr)?,
+                    //TODO generate address
+                    None => {
+                        return Err(GrpcError::InvalidArgument(
+                            "no caller address provided".to_string(),
+                        ))?
+                    }
+                };
                 let op_datastore = if value.operation_datastore.is_empty() {
                     None
                 } else {
-                    let operation_datastore: BTreeMap<_, _> = value
-                        .operation_datastore
-                        .into_iter()
-                        .map(|entry| (entry.key, entry.value))
-                        .collect();
-
-                    Some(operation_datastore)
+                    let deserializer = DatastoreDeserializer::new(
+                        grpc.grpc_config.max_op_datastore_entry_count,
+                        grpc.grpc_config.max_op_datastore_key_length,
+                        grpc.grpc_config.max_op_datastore_value_length,
+                    );
+                    match deserializer.deserialize::<DeserializeError>(&value.operation_datastore) {
+                        Ok((_, deserialized)) => Some(deserialized),
+                        Err(e) => {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "Operation datastore error: {}",
+                                e
+                            )))
+                        }
+                    }
                 };
 
                 call_stack.push(ExecutionStackElement {
@@ -63,8 +79,16 @@ pub(crate) fn execute_read_only_call(
                 ReadOnlyExecutionTarget::BytecodeExecution(value.bytecode)
             }
             read_only_execution_call::Target::FunctionCall(value) => {
-                //TODO check if creating an address if not exist
-                let caller_address = Address::from_str(&call.caller_address)?;
+                let caller_address = match call.caller_address {
+                    Some(addr) => Address::from_str(&addr)?,
+                    //TODO generate address
+                    None => {
+                        return Err(GrpcError::InvalidArgument(
+                            "no caller address provided".to_string(),
+                        ))?
+                    }
+                };
+
                 let target_address = Address::from_str(&value.target_addr)?;
                 call_stack.push(ExecutionStackElement {
                     address: caller_address,
@@ -76,7 +100,7 @@ pub(crate) fn execute_read_only_call(
                     address: target_address,
                     coins: Default::default(),
                     owned_addresses: vec![target_address],
-                    operation_datastore: None, //TODO check why it should always be None
+                    operation_datastore: None, // should always be None
                 });
 
                 ReadOnlyExecutionTarget::FunctionCall {

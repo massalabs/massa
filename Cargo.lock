@@ -2299,9 +2299,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.10"
+version = "1.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24e6ab01971eb092ffe6a7d42f49f9ff42662f17604681e2843ad65077ba47dc"
+checksum = "d97137b25e321a73eef1418d1d5d2eda4d77e12813f8e6dead84bc52c5870a7b"
 dependencies = [
  "cc",
  "pkg-config",
@@ -2485,7 +2485,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=2d9d2aa#2d9d2aa488608ce0492ea674bf061a68f943ffc9"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=ed30430#ed30430151a707f7b341838eedbee12268a4568c"
 dependencies = [
  "glob",
  "prost",
