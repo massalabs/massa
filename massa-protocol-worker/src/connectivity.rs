@@ -300,10 +300,8 @@ pub(crate) fn start_connectivity_thread(
                                                     if let Some(slots) = connection_slots.get_mut(peer_category.as_str()) {
                                                         *slots -= 1;
                                                     }
-                                                } else {
-                                                    if let Some(v) = connection_slots.get_mut("default") {
-                                                        *v -= 1;
-                                                    }
+                                                } else if let Some(v) = connection_slots.get_mut("default") {
+                                                    *v -= 1;
                                                 }
                                                 continue;
                                             }
