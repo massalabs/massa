@@ -72,8 +72,8 @@ impl PeerDB {
     }
 
     pub fn unban_peer(&mut self, peer_id: &PeerId) {
-        if self.peers.contains_key(peer_id) {
-            self.peers.remove(peer_id);
+        if let Some(peer) = self.peers.get_mut(peer_id) {
+            peer.state = PeerState::Trusted;
             info!("Unbanned peer: {:?}", peer_id);
         } else {
             info!("Tried to unban unknown peer: {:?}", peer_id);
