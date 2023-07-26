@@ -30,7 +30,7 @@ No add/delete compensations are done.</p>
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageTrigger, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
 <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
 
-<span class="kw">let </span>message = AsyncMessage::new(
+<span class="kw">let </span>message = AsyncMessage::new_with_hash(
     Slot::new(<span class="number">1</span>, <span class="number">0</span>),
     <span class="number">0</span>,
     Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
@@ -77,7 +77,7 @@ sufficient, and should not be overridden without very good reason.</div></detail
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolChangesSerializer};
 <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
 
-<span class="kw">let </span>message = AsyncMessage::new(
+<span class="kw">let </span>message = AsyncMessage::new_with_hash(
     Slot::new(<span class="number">1</span>, <span class="number">0</span>),
     <span class="number">0</span>,
     Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["amount_from_native_amount","amount_to_native_amount","get_address_from_opt_or_context","massa_time_from_native_time","massa_time_to_native_time"],"macro":["context_guard"],"struct":["InterfaceImpl"]};
+window.SIDEBAR_ITEMS = {"macro":["context_guard"],"struct":["InterfaceImpl"]};
