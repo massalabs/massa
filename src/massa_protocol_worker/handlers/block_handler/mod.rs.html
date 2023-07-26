@@ -113,6 +113,7 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -143,7 +144,7 @@
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">pub use </span>messages::{
-    AskForBlockInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
+    AskForBlocksInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
 };
 
 <span class="kw">use super</span>::{
@@ -210,6 +211,7 @@
             peer_cmd_sender,
             config,
             cache,
+            storage,
         );
         <span class="self">Self </span>{
             block_retrieval_thread: <span class="prelude-val">Some</span>((sender_ext, block_retrieval_thread)),

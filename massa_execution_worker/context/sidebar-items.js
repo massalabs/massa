@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["generate_execution_trail_hash","init_prng"],"struct":["ExecutionContext","ExecutionContextSnapshot"]};
+window.SIDEBAR_ITEMS = {"struct":["ExecutionContext","ExecutionContextSnapshot"]};

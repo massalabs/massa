@@ -486,24 +486,8 @@
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{process::BlockInfos, ConsensusState};
+
 <span class="kw">use </span>massa_consensus_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
@@ -833,6 +817,24 @@
             }
         }
 
+        <span class="comment">// get parent in own thread
+        </span><span class="kw">let </span>parent_in_own_thread = <span class="kw">match </span><span class="self">self
+            </span>.blocks_state
+            .get(<span class="kw-2">&amp;</span>parents[header.content.slot.thread <span class="kw">as </span>usize].<span class="number">0</span>)
+        {
+            <span class="prelude-val">Some</span>(BlockStatus::Active {
+                a_block,
+                storage: <span class="kw">_</span>,
+            }) =&gt; <span class="prelude-val">Some</span>(a_block),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+        .unwrap_or_else(|| {
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;inconsistency inside block statuses searching parent {} in own thread of block {}&quot;</span>,
+                parents[header.content.slot.thread <span class="kw">as </span>usize].<span class="number">0</span>, block_id
+            )
+        });
+
         <span class="comment">// check endorsements
         </span><span class="kw">match </span><span class="self">self</span>.check_endorsements(header) {
             EndorsementsCheckOutcome::Proceed =&gt; {}
@@ -842,99 +844,63 @@
             EndorsementsCheckOutcome::WaitForSlot =&gt; <span class="kw">return </span>HeaderCheckOutcome::WaitForSlot,
         }
 
-        <span class="comment">// incompatibility test
-        </span>{
-            <span class="comment">// list all ancestors until we reach a final block (included)
-            </span><span class="kw">let </span><span class="kw-2">mut </span>ancestor_ids: PreHashSet&lt;BlockId&gt; = Default::default();
-            <span class="kw">let </span><span class="kw-2">mut </span>to_traverse = header.content.parents.clone();
-            <span class="kw">let </span><span class="kw-2">mut </span>earliest_visited_periods: Vec&lt;u64&gt; = parents.iter().map(|(<span class="kw">_</span>, p)| <span class="kw-2">*</span>p).collect();
-            <span class="kw">while let </span><span class="prelude-val">Some</span>(ancestor_id) = to_traverse.pop() {
-                <span class="kw">if </span>!ancestor_ids.insert(ancestor_id) {
-                    <span class="comment">// ancestor already visited
-                    </span><span class="kw">continue</span>;
-                }
+        <span class="comment">// thread incompatibility test
+        </span>parent_in_own_thread.children[header.content.slot.thread <span class="kw">as </span>usize]
+            .keys()
+            .filter(|<span class="kw-2">&amp;</span>sibling_h| sibling_h != block_id)
+            .for_each(|<span class="kw-2">&amp;</span>sibling_h| {
+                incomp.extend(<span class="self">self</span>.get_active_block_and_descendants(<span class="kw-2">&amp;</span>sibling_h));
+            });
 
-                <span class="comment">// get ancestor
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
-                    a_block: ancestor, ..
-                }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>ancestor_id)
-                {
-                    <span class="comment">// update earliest_visited_periods
-                    </span>earliest_visited_periods[ancestor.slot.thread <span class="kw">as </span>usize] = std::cmp::min(
-                        earliest_visited_periods[ancestor.slot.thread <span class="kw">as </span>usize],
-                        ancestor.slot.period,
+        <span class="comment">// grandpa incompatibility test
+        </span><span class="kw">for </span>tau <span class="kw">in </span>(<span class="number">0u8</span>..<span class="self">self</span>.config.thread_count).filter(|<span class="kw-2">&amp;</span>t| t != header.content.slot.thread) {
+            <span class="comment">// for each parent in a different thread tau
+            // traverse parent&#39;s descendants in tau
+            </span><span class="kw">let </span><span class="kw-2">mut </span>to_explore = <span class="macro">vec!</span>[(<span class="number">0usize</span>, header.content.parents[tau <span class="kw">as </span>usize])];
+            <span class="kw">while let </span><span class="prelude-val">Some</span>((cur_gen, cur_h)) = to_explore.pop() {
+                <span class="kw">let </span>cur_b = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>cur_h) {
+                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; <span class="prelude-val">Some</span>(a_block),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                }.unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}&quot;</span>,cur_h,  block_id));
+
+                <span class="comment">// traverse but do not check up to generation 1
+                </span><span class="kw">if </span>cur_gen &lt;= <span class="number">1 </span>{
+                    to_explore.extend(
+                        cur_b.children[tau <span class="kw">as </span>usize]
+                            .keys()
+                            .map(|<span class="kw-2">&amp;</span>c_h| (cur_gen + <span class="number">1</span>, c_h)),
                     );
-
-                    <span class="comment">// Continue traversing if not final.
-                    // Note that we use an optimization:
-                    // only traverse in the same thread,
-                    // which is OK because of the parent time consistency check done before
-                    </span><span class="kw">if </span>!ancestor.is_final {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_id_slot) =
-                            ancestor.parents.get(ancestor.slot.thread <span class="kw">as </span>usize)
-                        {
-                            to_traverse.push(parent_id_slot.<span class="number">0</span>);
-                        }
-                    }
-                }
-            }
-
-            <span class="comment">// check incompatibilities with non-ancestors
-            </span><span class="kw">for </span>traversed_id <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks() {
-                <span class="comment">// skip if the traversed block is an ancestor of the incoming block
-                </span><span class="kw">if </span>ancestor_ids.contains(traversed_id) {
                     <span class="kw">continue</span>;
                 }
 
-                <span class="comment">// get information on the traversed block
-                </span><span class="kw">let </span>traversed_block = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(traversed_id) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block,
-                    <span class="kw">_ </span>=&gt; {
-                        <span class="macro">panic!</span>(
-                            <span class="string">&quot;inconsistency inside block statuses searching traversed {} of block {}&quot;</span>,
-                            traversed_id, block_id
-                        )
+                <span class="kw">let </span>parent_id = {
+                    <span class="kw">if let </span>BlockStatus::Active {
+                        a_block,
+                        storage: <span class="kw">_</span>,
+                    } = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>cur_b.block_id).unwrap_or_else(|| {
+                        <span class="macro">panic!</span>(<span class="string">&quot;missing block in grandpa incomp test: {}&quot;</span>, cur_b.block_id)
+                    }) {
+                        a_block.parents[header.content.slot.thread <span class="kw">as </span>usize].<span class="number">0
+                    </span>} <span class="kw">else </span>{
+                        <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}&quot;</span>,cur_b.block_id,  block_id);
                     }
                 };
 
-                <span class="comment">// skip if the block is before the earliest listed ancestors of that thread
-                </span><span class="kw">if </span>traversed_block.slot.period
-                    &lt; earliest_visited_periods[traversed_block.slot.thread <span class="kw">as </span>usize]
-                {
-                    <span class="kw">continue</span>;
-                }
-
-                <span class="comment">// check incompatibility
-                </span><span class="kw">let </span>incompatible = <span class="kw">match </span>header.content.slot.cmp(<span class="kw-2">&amp;</span>traversed_block.slot) {
-                    <span class="comment">// the traversed block is at the same slot as the incoming block =&gt; they are incompatible
-                    </span>std::cmp::Ordering::Equal =&gt; <span class="bool-val">true</span>,
-                    <span class="comment">// the time interval between the traversed block and the incoming block is higher or equal to t0 =&gt; they are incompatible
-                    </span>std::cmp::Ordering::Greater =&gt; {
-                        header
-                            .content
-                            .slot
-                            .slots_since(<span class="kw-2">&amp;</span>traversed_block.slot, <span class="self">self</span>.config.thread_count)
-                            .expect(<span class="string">&quot;arithmetic overflow on slots while checking incompatibilities&quot;</span>)
-                            &gt;= <span class="self">self</span>.config.thread_count <span class="kw">as </span>u64
-                    }
-                    <span class="comment">// the time interval between the traversed block and the incoming block is higher or equal to t0 =&gt; they are incompatible
-                    </span>std::cmp::Ordering::Less =&gt; {
-                        traversed_block
-                            .slot
-                            .slots_since(<span class="kw-2">&amp;</span>header.content.slot, <span class="self">self</span>.config.thread_count)
-                            .expect(<span class="string">&quot;arithmetic overflow on slots while checking incompatibilities&quot;</span>)
-                            &gt;= <span class="self">self</span>.config.thread_count <span class="kw">as </span>u64
-                    }
-                };
-
-                <span class="comment">// if incompatible, add to incompatibilities and exit early if the incoming header is incompatible with a final block
-                </span><span class="kw">if </span>incompatible {
-                    <span class="kw">if </span>traversed_block.is_final {
-                        <span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Stale);
-                    }
-                    incomp.extend(<span class="self">self</span>.get_active_block_and_descendants(traversed_id));
-                }
-            }
+                <span class="comment">// check if the parent in tauB has a strictly lower period number than B&#39;s parent in tauB
+                // note: cur_b cannot be genesis at gen &gt; 1
+                </span><span class="kw">let </span>parent_period = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>parent_id) {
+                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; <span class="prelude-val">Some</span>(a_block),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                }.unwrap_or_else(||
+                        <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses searching {} check if the parent in tauB has a strictly lower period number than B&#39;s parent in tauB while checking grandpa incompatibility of block {}&quot;</span>,
+                        parent_id,
+                        block_id)
+                    ).slot.period;
+                <span class="kw">if </span>parent_period &lt; parent_in_own_thread.slot.period {
+                    <span class="comment">// GPI detected
+                    </span>incomp.extend(<span class="self">self</span>.get_active_block_and_descendants(<span class="kw-2">&amp;</span>cur_h));
+                } <span class="comment">// otherwise, cur_b and its descendants cannot be GPI with the block: don&#39;t traverse
+            </span>}
         }
 
         <span class="comment">// check if the block is incompatible with a parent

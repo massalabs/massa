@@ -304,17 +304,6 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -322,13 +311,7 @@
     error::ConsensusError,
 };
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::{
-    block_id::{BlockId, BlockIdSerializer},
-    clique::Clique,
-    prehash::PreHashSet,
-    slot::Slot,
-};
-<span class="kw">use </span>massa_serialization::Serializer;
+<span class="kw">use </span>massa_models::{block_id::BlockId, clique::Clique, prehash::PreHashSet, slot::Slot};
 
 <span class="kw">use </span><span class="kw">super</span>::ConsensusState;
 
@@ -372,7 +355,6 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         add_block_id: <span class="kw-2">&amp;</span>BlockId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, ConsensusError&gt; {
-        <span class="kw">let </span>block_id_serializer = BlockIdSerializer::new();
         <span class="kw">let </span><span class="kw-2">mut </span>blockclique_i = <span class="number">0usize</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>max_clique_fitness = (<span class="number">0u64</span>, num::BigInt::default());
         <span class="kw">for </span>(clique_i, clique) <span class="kw">in </span><span class="self">self</span>.max_cliques.iter_mut().enumerate() {
@@ -388,11 +370,7 @@
                     .fitness
                     .checked_add(fitness)
                     .ok_or(ConsensusError::FitnessOverflow)<span class="question-mark">?</span>;
-                <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
-                block_id_serializer
-                    .serialize(block_h, <span class="kw-2">&amp;mut </span>bytes)
-                    .map_err(|err| ConsensusError::SerializationError(err.to_string()))<span class="question-mark">?</span>;
-                sum_hash -= num::BigInt::from_bytes_be(num::bigint::Sign::Plus, <span class="kw-2">&amp;</span>bytes);
+                sum_hash -= num::BigInt::from_bytes_be(num::bigint::Sign::Plus, block_h.to_bytes());
             }
             <span class="kw">let </span>cur_fit = (clique.fitness, sum_hash);
             <span class="kw">if </span>cur_fit &gt; max_clique_fitness {

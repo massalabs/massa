@@ -16,7 +16,7 @@
 <span class="kw">use </span>massa_serialization::{Serializer, Deserializer, DeserializeError};
 <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
-    .map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+    .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
     .collect();
 
 <span class="comment">// create block header
@@ -32,7 +32,7 @@
                 Endorsement {
                     slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                     index: <span class="number">1</span>,
-                    endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
+                    endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
                 },
                 EndorsementSerializer::new(),
                 <span class="kw-2">&amp;</span>keypair,
@@ -42,7 +42,7 @@
                 Endorsement {
                     slot: Slot::new(<span class="number">4</span>, <span class="number">0</span>),
                     index: <span class="number">3</span>,
-                    endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
+                    endorsed_block: BlockId(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
                 },
                 EndorsementSerializer::new(),
                 <span class="kw-2">&amp;</span>keypair,

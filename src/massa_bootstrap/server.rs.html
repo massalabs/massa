@@ -774,17 +774,6 @@
 <a href="#774" id="774">774</a>
 <a href="#775" id="775">775</a>
 <a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -811,15 +800,13 @@
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
-</span><span class="kw">mod </span>white_black_list;
 
-<span class="kw">use </span>crossbeam::channel::tick;
+</span><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 <span class="kw">use </span>massa_db_exports::CHANGE_ID_DESER_ERROR;
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
@@ -838,7 +825,6 @@
     time::{Duration, Instant},
 };
 <span class="kw">use </span>tracing::{debug, error, info, warn};
-<span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
 <span class="attr">#[cfg(not(test))]
 </span><span class="kw">use </span><span class="kw">crate</span>::listener::BootstrapTcpListener;
@@ -849,6 +835,7 @@
     error::BootstrapError,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
+    white_black_list::SharedWhiteBlackList,
     BootstrapConfig,
 };
 <span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
@@ -867,6 +854,8 @@
     </span>main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
     listener_stopper: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
+    <span class="doccomment">/// shared white/black list
+    </span><span class="kw">pub </span>white_black_list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;static</span>&gt;,
 }
 
 <span class="kw">impl </span>BootstrapManager {
@@ -877,12 +866,14 @@
         main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
         update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
         listener_stopper: BootstrapListenerStopHandle,
+        white_black_list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;static</span>&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             update_handle,
             main_handle,
             update_stopper_tx,
             listener_stopper,
+            white_black_list,
         }
     }
 
@@ -924,7 +915,6 @@
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
-    massa_metrics: MassaMetrics,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BootstrapManager, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.start_bootstrap_server&quot;</span>, {});
 
@@ -957,6 +947,7 @@
         })
         .expect(<span class="string">&quot;in `start_bootstrap_server`, OS failed to spawn list-updater thread&quot;</span>);
 
+    <span class="kw">let </span>w_b_list = white_black_list.clone();
     <span class="kw">let </span>main_handle = thread::Builder::new()
         .name(<span class="string">&quot;bs-main-loop&quot;</span>.to_string())
         .spawn(<span class="kw">move </span>|| {
@@ -965,12 +956,11 @@
                 protocol_controller,
                 final_state,
                 ev_poller,
-                white_black_list,
+                white_black_list: w_b_list,
                 keypair,
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
-                massa_metrics,
             }
             .event_loop(max_bootstraps)
         })
@@ -982,6 +972,7 @@
         main_handle,
         update_stopper_tx,
         listener_stopper,
+        white_black_list,
     ))
 }
 
@@ -995,7 +986,6 @@
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap&lt;IpAddr, Instant&gt;,
-    massa_metrics: MassaMetrics,
 }
 
 <span class="kw">impl </span>BootstrapServer&lt;<span class="lifetime">&#39;_</span>&gt; {
@@ -1056,7 +1046,6 @@
                         remote_addr,
                         <span class="kw">move </span>|| {},
                     );
-                    <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
                     <span class="kw">continue</span>;
                 };
 
@@ -1102,7 +1091,6 @@
                             })
                         };
                         server_binding.close_and_send_error(msg, remote_addr, tracer);
-                        <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
                         <span class="kw">continue</span>;
                     };
 
@@ -1117,7 +1105,6 @@
                     <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
 
                     <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
-                    <span class="kw">let </span>massa_metrics = <span class="self">self</span>.massa_metrics.clone();
 
                     <span class="kw">let _ </span>= thread::Builder::new()
                         .name(<span class="macro">format!</span>(<span class="string">&quot;bootstrap thread, peer: {}&quot;</span>, remote_addr))
@@ -1131,7 +1118,6 @@
                                 version,
                                 consensus_command_sender,
                                 protocol_controller,
-                                massa_metrics,
                             )
                         });
 
@@ -1144,7 +1130,6 @@
                         remote_addr,
                         <span class="kw">move </span>|| <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, remote_addr),
                     );
-                    <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
                 }
             }
         }
@@ -1196,7 +1181,6 @@
     version: Version,
     consensus_command_sender: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
-    massa_metrics: MassaMetrics,
 ) {
     <span class="macro">debug!</span>(<span class="string">&quot;running bootstrap for peer {}&quot;</span>, remote_addr);
     <span class="kw">let </span>deadline = Instant::now() + config.bootstrap_timeout.to_duration();
@@ -1226,25 +1210,19 @@
                 <span class="string">&quot;Bootstrap process timedout ({})&quot;</span>,
                 format_duration(config.bootstrap_timeout.to_duration())
             ));
-            massa_metrics.inc_bootstrap_peers_failed();
         }
-        <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; {
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>,
-                remote_addr, error
-            );
-            massa_metrics.inc_bootstrap_peers_failed();
-        }
+        <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; <span class="macro">debug!</span>(
+            <span class="string">&quot;bootstrap serving error received from peer {}: {}&quot;</span>,
+            remote_addr, error
+        ),
         <span class="prelude-val">Err</span>(err) =&gt; {
             <span class="macro">debug!</span>(<span class="string">&quot;bootstrap serving error for peer {}: {}&quot;</span>, remote_addr, err);
             <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when
             // sending the error message to the server we will close the socket anyway.
             </span><span class="kw">let _ </span>= server.send_error_timeout(err.to_string());
-            massa_metrics.inc_bootstrap_peers_failed();
         }
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;bootstrapped peer {}&quot;</span>, remote_addr);
-            massa_metrics.inc_bootstrap_peers_success();
         }
     }
 }
