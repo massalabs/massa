@@ -11,13 +11,14 @@ use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use peernet::peer::PeerConnectionType;
+use peernet::peer_id::PeerId as PeernetPeerId;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::{collections::HashMap, net::IpAddr};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::{info, warn};
 
-use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
+use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB, PeerInfo};
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
     worker::ProtocolChannels,
@@ -184,6 +185,24 @@ pub(crate) fn start_connectivity_thread(
             let tick_metrics = tick(massa_metrics.tick_delay);
             let tick_try_connect = tick(config.try_connection_timer.to_duration());
 
+            {
+                //  1000:    ~ 3 ms
+                //  5000:    ~ 10.5 ms
+                // 10000:    ~ 17 ms
+                // 30000:    ~ 63 ms
+                let mut peer_db_write = peer_db.write();
+                for _ in 0..1000 {
+                    peer_db_write.peers.insert(
+                        PeerId::generate(),
+                        PeerInfo {
+                            last_announce: None,
+                            state: PeerState::Trusted,
+                        }
+                    );
+                }
+            }
+
+
             //Try to connect to peers
             loop {
                 select! {
@@ -246,6 +265,9 @@ pub(crate) fn start_connectivity_thread(
                         let peers_connected = active_conn.get_peers_connected();
                         let peers_connection_queue = active_conn.get_peer_ids_connection_queue();
 
+
+                        let tstart = std::time::Instant::now();
+
                         let mut connection_slots = HashMap::new();
                         connection_slots.insert("default", config.default_category_info.target_out_connections);
                         for (category, infos) in peer_categories.iter() {
@@ -256,6 +278,7 @@ pub(crate) fn start_connectivity_thread(
                         let mut addresses_can_connect  = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
+                            let mut n = 0;
                             for (peer_id, peer_info) in &peer_db_read.peers {
 
                                 // If peer already connected, decrement the slots for the given category, or default category if none
@@ -271,16 +294,17 @@ pub(crate) fn start_connectivity_thread(
                                             *connection_slots.get_mut("default").unwrap() -= 1;
                                         }
                                     }
-                                    continue;
+                                    // continue;
                                 }
 
                                 if peer_info.state == PeerState::Trusted {
-                                    if let Some(ref last_announce) = peer_info.last_announce {
-                                        if last_announce.listeners.is_empty() {
-                                            continue;
-                                        }
+                                    if true { //let Some(ref last_announce) = peer_info.last_announce {
+                                        // if last_announce.listeners.is_empty() {
+                                        //     continue;
+                                        // }
 
-                                        if let Some((addr, _)) = last_announce.listeners.iter().next() {
+                                        let addr: &SocketAddr = &(format!("102.135.22.1:{}", 34000 + n).parse().unwrap());
+                                        if true {
                                             let canonical_ip = addr.ip().to_canonical();
                                             let mut allowed_local_ips = false;
                                             // Check if the peer is in a category and we didn't reached out target yet
@@ -300,7 +324,7 @@ pub(crate) fn start_connectivity_thread(
                                                 } else {
                                                     connection_slots.get_mut("default").map(|v| *v -= 1);
                                                 }
-                                                continue;
+                                                // continue;
                                             }
 
                                             let connection_metadata = peer_db_read.try_connect_history.get(addr).cloned().unwrap_or(ConnectionMetadata::default());
@@ -308,18 +332,18 @@ pub(crate) fn start_connectivity_thread(
                                             // check if the peer last connect attempt has not been too recent
                                             if let ConnectionMetadata { last_try_connect: Some(lt), .. } = connection_metadata {
                                                 let last_try_connect = lt.estimate_instant().expect("Time went backward");
-                                                if last_try_connect.elapsed() < config.try_connection_timer_same_peer.to_duration() {
-                                                    continue;
-                                                }
+                                                // if last_try_connect.elapsed() < config.try_connection_timer_same_peer.to_duration() {
+                                                //     continue;
+                                                // }
                                             }
 
-                                            if config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
-                                                continue;
-                                            }
+                                            // if config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
+                                            //     continue;
+                                            // }
 
-                                            if !canonical_ip.is_global() && !allowed_local_ips {
-                                                continue;
-                                            }
+                                            // if !canonical_ip.is_global() && !allowed_local_ips {
+                                            //     continue;
+                                            // }
 
                                             addresses_can_connect.push((*addr, connection_metadata, category_found));
                                         } else {
@@ -327,8 +351,11 @@ pub(crate) fn start_connectivity_thread(
                                         }
                                     }
                                 }
+                                n += 1;
                             }
                         }
+
+                        tracing::log::info!("TIM sorting {} addresses", addresses_can_connect.len());
 
                         // Sort addresses using the metadata
                         addresses_can_connect.sort_by(|a, b| a.1.cmp(&b.1));
@@ -371,6 +398,9 @@ pub(crate) fn start_connectivity_thread(
                                 break;
                             }
                         }
+
+                        let dur = std::time::Instant::now() - tstart;
+                        tracing::log::info!("TIM    Duration for peer priorization: {dur:?}");
                     }
                 }
             }
@@ -390,7 +420,8 @@ fn try_connect_peer(
 ) -> Result<(), ProtocolError> {
     info!("Trying to connect to addr {}", addr);
 
-    let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
+    // let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
+    let conn_res = Err(ProtocolError::WrongSignature);
     {
         let mut peer_db_write = peer_db.write();
         peer_db_write
@@ -399,7 +430,6 @@ fn try_connect_peer(
             .or_insert(ConnectionMetadata::default())
             .try_connect();
         if let Err(ref err) = conn_res {
-            warn!("Failed to connect to peer {:?}: {:?}", addr, err);
             peer_db_write
                 .try_connect_history
                 .entry(addr)
