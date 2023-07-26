@@ -96,9 +96,8 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
     };
 
     // start proof-of-stake selectors
-    let (mut _selector_manager, selector_controller) =
-        start_selector_worker(selector_local_config.clone())
-            .expect("could not start server selector controller");
+    let (mut _selector_manager, selector_controller) = start_selector_worker(selector_local_config)
+        .expect("could not start server selector controller");
 
     // MIP store
     let mip_store = MipStore::try_from((
@@ -114,19 +113,17 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
 
     let ledger = FinalLedger::new(final_state_local_config.ledger_config.clone(), db.clone());
 
-    let final_state = Arc::new(RwLock::new(
+    Arc::new(RwLock::new(
         FinalState::new(
             db.clone(),
-            final_state_local_config.clone(),
+            final_state_local_config,
             Box::new(ledger),
             selector_controller,
             mip_store,
             reset_final_state,
         )
         .unwrap(),
-    ));
-
-    final_state
+    ))
 }
 
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
@@ -170,7 +167,7 @@ fn test_final_state() {
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();
 
-        let message = AsyncMessage::new_with_hash(
+        let message = AsyncMessage::new(
             Slot::new(1, 0),
             0,
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -186,10 +183,9 @@ fn test_final_state() {
             None,
         );
         let mut async_pool_changes = AsyncPoolChanges::default();
-        async_pool_changes.0.insert(
-            message.compute_id(),
-            SetUpdateOrDelete::Set(message.clone()),
-        );
+        async_pool_changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
         let amount = Amount::from_str("1").unwrap();
@@ -213,7 +209,7 @@ fn test_final_state() {
         fs.write().db.write().flush().unwrap();
     }
 
-    copy_dir_all(temp_dir.path(), &temp_dir2.path()).unwrap();
+    copy_dir_all(temp_dir.path(), temp_dir2.path()).unwrap();
 
     let fs2 = create_final_state(&temp_dir2, false);
     let hash2 = fs2.read().db.read().get_xof_db_hash();

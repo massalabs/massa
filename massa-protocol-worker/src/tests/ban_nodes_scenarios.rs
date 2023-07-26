@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::HashSet;
 use std::time::Duration;
 
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
@@ -33,6 +34,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    protocol_config.unban_everyone_timer = MassaTime::from_millis(5000);
     protocol_test(
         &protocol_config,
         move |mut network_controller,
@@ -56,7 +58,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(block.content.header))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header))),
                 )
                 .unwrap();
 
@@ -77,6 +79,42 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
                 }
                 None => {}
             }
+
+            //6. Check that the node is NOT unbanned after 1 seconds
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            let (_node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+
+            assert_eq!(
+                network_controller
+                    .get_connections()
+                    .get_peer_ids_connected()
+                    .len(),
+                0
+            );
+
+            //7. Check that the node is unbanned after 5 seconds
+            std::thread::sleep(std::time::Duration::from_millis(2000));
+            let (_node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+            let block = tools::create_block(&node_a_keypair);
+            network_controller
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header))),
+                )
+                .unwrap();
+
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            assert_eq!(
+                network_controller
+                    .get_connections()
+                    .get_peer_ids_connected()
+                    .len(),
+                1
+            );
+
             (
                 network_controller,
                 protocol_controller,
@@ -195,9 +233,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
                 )
                 .unwrap();
 
@@ -217,10 +253,10 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
-                        block.id,
-                        BlockInfoReply::Info(vec![operation_2.id].into_iter().collect()),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::DataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::OperationIds(vec![operation_2.id]),
+                    })),
                 )
                 .unwrap();
             std::thread::sleep(std::time::Duration::from_millis(1000));
@@ -249,7 +285,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(block_2.content.header))),
+                    Message::Block(Box::new(BlockMessage::Header(block_2.content.header))),
                 )
                 .expect_err("Node A should not be able to send a block");
             std::thread::sleep(std::time::Duration::from_millis(1000));
@@ -298,9 +334,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
                 )
                 .unwrap();
 
@@ -333,9 +367,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
                 )
                 .unwrap();
             //7. Check that node connection is closed (node should be banned)
@@ -391,7 +423,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
               mut consensus_event_receiver,
               pool_event_receiver,
               selector_event_receiver| {
-            //1. Create 2 node
+            //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
             let node_b_keypair = KeyPair::generate(0).unwrap();
             let (node_a_peer_id, _node_a) = network_controller
@@ -407,11 +439,10 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
                 )
                 .unwrap();
+
             //4. Check that protocol does send block to consensus the first time.
             match consensus_event_receiver.wait_command(
                 MassaTime::from_millis(500),
@@ -434,9 +465,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
                 )
                 .unwrap();
             //5. Check that protocol does send block to consensus the second time.
@@ -444,30 +473,21 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                 Some(()) => panic!("Protocol should not send block to consensus"),
                 None => {}
             }
-            //6. Connect a new node that don't known about the attack.
+            //6. Connect a new node that is not involved in the attack.
             let node_c_keypair = KeyPair::generate(0).unwrap();
-            let (_node_c_peer_id, _node_c) = network_controller
+            let (node_c_peer_id, _node_c) = network_controller
                 .create_fake_connection(PeerId::from_public_key(node_c_keypair.get_public_key()));
 
-            //7. Notify the attack
+            //7. Notify protocol of the attack
             protocol_controller.notify_block_attack(block.id).unwrap();
             std::thread::sleep(std::time::Duration::from_millis(1000));
-            //8. Check that there is only node C not banned.
+
+            //8. Check all nodes are banned except node C.
             assert_eq!(
                 network_controller
                     .get_connections()
-                    .get_peer_ids_connected()
-                    .len(),
-                1
-            );
-            assert_eq!(
-                network_controller
-                    .get_connections()
-                    .get_peer_ids_connected()
-                    .iter()
-                    .next()
-                    .unwrap(),
-                &_node_c_peer_id
+                    .get_peer_ids_connected(),
+                [node_c_peer_id].into_iter().collect::<HashSet<PeerId>>()
             );
             (
                 network_controller,
@@ -480,119 +500,3 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
         },
     )
 }
-
-//TODO: Is this behavior still wanted ?
-// #[tokio::test]
-// #[serial]
-// async fn test_protocol_removes_banned_node_on_disconnection() {
-//     let protocol_config = &tools::PROTOCOL_CONFIG;
-//     protocol_test(
-//         protocol_config,
-//         async move |mut network_controller,
-//                     protocol_command_sender,
-//                     protocol_manager,
-//                     mut protocol_consensus_event_receiver,
-//                     protocol_pool_event_receiver| {
-//             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-//             let creator_node = nodes.pop().expect("Failed to get node info.");
-
-//             // Get the node banned.
-//             let mut block = tools::create_block(&creator_node.keypair);
-//             block.content.header.id = BlockId::new(Hash::compute_from("invalid".as_bytes()));
-//             network_controller
-//                 .send_header(creator_node.id, block.content.header)
-//                 .await;
-//             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
-
-//             // Close the connection.
-//             network_controller.close_connection(creator_node.id).await;
-
-//             // Re-connect the node.
-//             network_controller.new_connection(creator_node.id).await;
-
-//             // The node is not banned anymore.
-//             let block = tools::create_block(&creator_node.keypair);
-//             network_controller
-//                 .send_header(creator_node.id, block.content.header.clone())
-//                 .await;
-
-//             // Check protocol sends header to consensus.
-//             let (protocol_consensus_event_receiver, received_hash) =
-//                 tokio::task::spawn_blocking(move || {
-//                     let id = protocol_consensus_event_receiver
-//                         .wait_command(MassaTime::from_millis(1000), |command| match command {
-//                             MockConsensusControllerMessage::RegisterBlockHeader {
-//                                 block_id,
-//                                 header: _,
-//                             } => Some(block_id),
-//                             _ => panic!("unexpected protocol event"),
-//                         })
-//                         .unwrap();
-//                     (protocol_consensus_event_receiver, id)
-//                 })
-//                 .await
-//                 .unwrap();
-
-//             // Check that protocol sent the right header to consensus.
-//             let expected_hash = block.id;
-//             assert_eq!(expected_hash, received_hash);
-//             (
-//                 network_controller,
-//                 protocol_command_sender,
-//                 protocol_manager,
-//                 protocol_consensus_event_receiver,
-//                 protocol_pool_event_receiver,
-//             )
-//         },
-//     )
-//     .await;
-// }
-
-// #[tokio::test]
-// #[serial]
-// async fn test_protocol_bans_node_sending_operation_with_size_bigger_than_max_block_size() {
-//     let protocol_config = &tools::PROTOCOL_CONFIG;
-//     protocol_test(
-//         protocol_config,
-//         async move |mut network_controller,
-//                     protocol_event_receiver,
-//                     protocol_command_sender,
-//                     protocol_manager,
-//                     mut pool_event_receiver| {
-//             // Create 1 node.
-//             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
-
-//             let creator_node = nodes.pop().expect("Failed to get node info.");
-
-//             // 1. Create an operation
-//             let mut operation =
-//                 tools::create_operation_with_expire_period(&creator_node.keypair, 1);
-
-//             // 2. Change the serialized data
-//             operation.serialized_data = vec![1; 500_001];
-
-//             // 3. Send block to protocol.
-//             network_controller
-//                 .send_operations(creator_node.id, vec![operation])
-//                 .await;
-
-//             // The node is banned.
-//             tools::assert_banned_nodes(vec![creator_node.id], &mut network_controller).await;
-
-//             // Check protocol does not send operation to pool.
-//             pool_event_receiver.wait_command(1000.into(), |evt| match evt {
-//                 evt @ MockPoolControllerMessage::AddOperations { .. } => Some(evt),
-//                 _ => None,
-//             });
-//             (
-//                 network_controller,
-//                 protocol_event_receiver,
-//                 protocol_command_sender,
-//                 protocol_manager,
-//                 pool_event_receiver,
-//             )
-//         },
-//     )
-//     .await;
-// }

@@ -4,14 +4,10 @@ version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-time = { version = "0.3", features = ["serde", "formatting"] }
-displaydoc = "0.2"
-serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
-nom = "=7.1"
-
-# Custom dependencies
-massa_serialization = { path = "../massa-serialization" }
+time = {workspace = true, "features" = ["serde", "formatting"]}
+displaydoc = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
+thiserror = {workspace = true}
+nom = {workspace = true}
+massa_serialization = {workspace = true}

@@ -18,7 +18,7 @@ use massa_serialization::{
     U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-use nom::error::context;
+use nom::error::{context, ErrorKind};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::AsBytes;
@@ -33,33 +33,83 @@ use serde_with::{serde_as, DeserializeFromStr, SerializeDisplay};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
+use transition::Versioned;
 
 /// Size in bytes of the serialized operation ID
-pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
 /// Size in bytes of the serialized operation ID prefix
 pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 
 /// operation id
+#[allow(missing_docs)]
+#[transition::versioned(versions("0"))]
 #[derive(
     Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
 )]
 pub struct OperationId(Hash);
 
 const OPERATIONID_PREFIX: char = 'O';
-const OPERATIONID_VERSION: u64 = 0;
 
 /// Left part of the operation id hash stored in a vector of size [`OPERATION_ID_PREFIX_SIZE_BYTES`]
+#[allow(missing_docs)]
+#[transition::versioned(versions("0"))]
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[allow(unused_macros)]
 pub struct OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
+impl std::fmt::Display for OperationPrefixId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationPrefixId::OperationPrefixIdV0(prefix) => write!(f, "{}", prefix),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl std::fmt::Display for OperationPrefixId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let u64_serializer = U64VarIntSerializer::new();
+        // might want to allocate the vector with capacity in order to avoid re-allocation
+        let mut bytes: Vec<u8> = Vec::new();
+        u64_serializer
+            .serialize(&Self::VERSION, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        bytes.extend(self.0.as_bytes());
+        write!(f, "{}", bs58::encode(bytes).into_string())
+    }
+}
+
+impl std::fmt::Debug for OperationPrefixId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationPrefixId::OperationPrefixIdV0(prefix) => write!(f, "{:?}", prefix),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl std::fmt::Debug for OperationPrefixId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl std::fmt::Display for OperationId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationId::OperationIdV0(id) => write!(f, "{}", id),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let u64_serializer = U64VarIntSerializer::new();
         // might want to allocate the vector with capacity in order to avoid re-allocation
         let mut bytes: Vec<u8> = Vec::new();
         u64_serializer
-            .serialize(&OPERATIONID_VERSION, &mut bytes)
+            .serialize(&Self::VERSION, &mut bytes)
             .map_err(|_| std::fmt::Error)?;
         bytes.extend(self.0.to_bytes());
         write!(
@@ -72,20 +122,17 @@ impl std::fmt::Display for OperationId {
 }
 
 impl std::fmt::Debug for OperationId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationId::OperationIdV0(id) => write!(f, "{:?}", id),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl std::fmt::Debug for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
-    }
-}
-
-impl std::fmt::Display for OperationPrefixId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
-    }
-}
-
-impl std::fmt::Debug for OperationPrefixId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", bs58::encode(self.0.as_bytes()).into_string())
     }
 }
 
@@ -95,8 +142,10 @@ impl FromStr for OperationId {
     /// ```rust
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
-    /// # use massa_models::operation::OperationId;
-    /// # let op_id = OperationId::from_bytes(&[0; 32]);
+    /// # use massa_serialization::{Deserializer, DeserializeError};
+    /// # use massa_models::operation::{OperationId, OperationIdDeserializer};
+    /// # let op_id_deserializer = OperationIdDeserializer::new();
+    /// # let (_, op_id): (&[u8], OperationId) = op_id_deserializer.deserialize::<DeserializeError>(&[0; 33]).unwrap();
     /// let ser = op_id.to_string();
     /// let res_op_id = OperationId::from_str(&ser).unwrap();
     /// assert_eq!(op_id, res_op_id);
@@ -110,30 +159,59 @@ impl FromStr for OperationId {
                     .with_check(None)
                     .into_vec()
                     .map_err(|_| ModelsError::OperationIdParseError)?;
-                let u64_deserializer = U64VarIntDeserializer::new(Included(0), Included(u64::MAX));
-                let (rest, _version) = u64_deserializer
+                let operation_id_deserializer = OperationIdDeserializer::new();
+                let (rest, op_id) = operation_id_deserializer
                     .deserialize::<DeserializeError>(&decoded_bs58_check[..])
                     .map_err(|_| ModelsError::OperationIdParseError)?;
-                Ok(OperationId(Hash::from_bytes(
-                    rest.try_into()
-                        .map_err(|_| ModelsError::OperationIdParseError)?,
-                )))
+                if rest.is_empty() {
+                    Ok(op_id)
+                } else {
+                    Err(ModelsError::OperationIdParseError)
+                }
             }
             _ => Err(ModelsError::OperationIdParseError),
         }
     }
 }
 
-// note: would be probably unused after the merge of
-//       prefix
+#[transition::impl_version(versions("0"))]
+impl FromStr for OperationId {
+    type Err = ModelsError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(prefix) if prefix == OPERATIONID_PREFIX => {
+                let data = chars.collect::<String>();
+                let decoded_bs58_check = bs58::decode(data)
+                    .with_check(None)
+                    .into_vec()
+                    .map_err(|_| ModelsError::OperationIdParseError)?;
+                let operation_id_deserializer = OperationIdDeserializer::new();
+                let (rest, op_id) = operation_id_deserializer
+                    .deserialize::<DeserializeError>(&decoded_bs58_check[..])
+                    .map_err(|_| ModelsError::OperationIdParseError)?;
+                if rest.is_empty() {
+                    Ok(op_id)
+                } else {
+                    Err(ModelsError::OperationIdParseError)
+                }
+            }
+            _ => Err(ModelsError::OperationIdParseError),
+        }
+    }
+}
+
 impl PreHashed for OperationId {}
+
 impl Id for OperationId {
     fn new(hash: Hash) -> Self {
-        OperationId(hash)
+        OperationId::OperationIdV0(OperationIdV0(hash))
     }
 
     fn get_hash(&self) -> &Hash {
-        &self.0
+        match self {
+            OperationId::OperationIdV0(op_id) => op_id.get_hash(),
+        }
     }
 }
 
@@ -142,73 +220,108 @@ impl PreHashed for OperationPrefixId {}
 impl From<&[u8; OPERATION_ID_PREFIX_SIZE_BYTES]> for OperationPrefixId {
     /// get prefix of the operation id of size `OPERATION_ID_PREFIX_SIZE_BIT`
     fn from(bytes: &[u8; OPERATION_ID_PREFIX_SIZE_BYTES]) -> Self {
-        Self(*bytes)
+        OperationPrefixIdVariant!["0"](OperationPrefixId!["0"](*bytes))
     }
 }
 
 impl From<&OperationPrefixId> for Vec<u8> {
     fn from(prefix: &OperationPrefixId) -> Self {
-        prefix.0.to_vec()
+        match prefix {
+            OperationPrefixId::OperationPrefixIdV0(prefix) => prefix.0.to_vec(),
+        }
     }
 }
 
 impl OperationId {
-    /// op id to bytes
-    pub fn to_bytes(&self) -> &[u8; OPERATION_ID_SIZE_BYTES] {
-        self.0.to_bytes()
-    }
-
-    /// op id into bytes
-    pub fn into_bytes(self) -> [u8; OPERATION_ID_SIZE_BYTES] {
-        self.0.into_bytes()
-    }
-
-    /// op id from bytes
-    pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> OperationId {
-        OperationId(Hash::from_bytes(data))
-    }
-
     /// convert the [`OperationId`] into a [`OperationPrefixId`]
     pub fn into_prefix(self) -> OperationPrefixId {
-        OperationPrefixId(
-            self.0.into_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
-                .try_into()
-                .expect("failed to truncate prefix from OperationId"),
-        )
+        match self {
+            OperationId::OperationIdV0(op_id) => op_id.into_prefix(),
+        }
     }
 
     /// get a prefix from the [`OperationId`] by copying it
     pub fn prefix(&self) -> OperationPrefixId {
-        OperationPrefixId(
+        match self {
+            OperationId::OperationIdV0(op_id) => op_id.prefix(),
+        }
+    }
+
+    /// Get the version of the operation by looking at the first bytes of the id
+    pub fn get_version(&self) -> u64 {
+        match self {
+            OperationId::OperationIdV0(op_id) => op_id.get_version(),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"))]
+impl OperationId {
+    /// convert the [`OperationId`] into a [`OperationPrefixId`]
+    pub fn into_prefix(self) -> OperationPrefixId {
+        OperationPrefixId::OperationPrefixIdV0(OperationPrefixIdV0(
+            self.0.into_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
+                .try_into()
+                .expect("failed to truncate prefix from OperationId"),
+        ))
+    }
+
+    /// get a prefix from the [`OperationId`] by copying it
+    pub fn prefix(&self) -> OperationPrefixId {
+        OperationPrefixId::OperationPrefixIdV0(OperationPrefixIdV0(
             self.0.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
                 .try_into()
                 .expect("failed to truncate prefix from OperationId"),
-        )
+        ))
+    }
+
+    fn get_hash(&self) -> &Hash {
+        &self.0
+    }
+
+    fn get_version(&self) -> u64 {
+        Self::VERSION
     }
 }
 
 /// Serializer for `OperationId`
 #[derive(Default, Clone)]
-pub struct OperationIdSerializer;
+pub struct OperationIdSerializer {
+    version_serializer: U64VarIntSerializer,
+}
 
 impl OperationIdSerializer {
     /// Creates a new serializer for `OperationId`
     pub fn new() -> Self {
-        Self
+        Self {
+            version_serializer: U64VarIntSerializer::new(),
+        }
     }
 }
 
 impl Serializer<OperationId> for OperationIdSerializer {
     fn serialize(&self, value: &OperationId, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
-        buffer.extend(value.to_bytes());
+        self.version_serializer
+            .serialize(&value.get_version(), buffer)?;
+        match value {
+            OperationId::OperationIdV0(id) => self.serialize(id, buffer),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"), structures("OperationId"))]
+impl Serializer<OperationId> for OperationIdSerializer {
+    fn serialize(&self, value: &OperationId, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        buffer.extend(value.0.to_bytes());
         Ok(())
     }
 }
 
 /// Deserializer for `OperationId`
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct OperationIdDeserializer {
     hash_deserializer: HashDeserializer,
+    version_deserializer: U64VarIntDeserializer,
 }
 
 impl OperationIdDeserializer {
@@ -216,7 +329,14 @@ impl OperationIdDeserializer {
     pub fn new() -> Self {
         Self {
             hash_deserializer: HashDeserializer::new(),
+            version_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
+    }
+}
+
+impl Default for OperationIdDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -225,10 +345,37 @@ impl Deserializer<OperationId> for OperationIdDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], OperationId, E> {
+        // Verify that we at least have a version and something else
+        if buffer.len() < 2 {
+            return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
+        }
+        let (rest, op_id_version) =
+            self.version_deserializer
+                .deserialize(buffer)
+                .map_err(|_: nom::Err<E>| {
+                    nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
+                })?;
+        match op_id_version {
+            <OperationId!["0"]>::VERSION => {
+                let (rest, op_id) = self.deserialize(rest)?;
+                Ok((rest, OperationIdVariant!["0"](op_id)))
+            }
+            _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
+        }
+    }
+}
+
+#[transition::impl_version(versions("0"), structures("OperationId"))]
+impl Deserializer<OperationId> for OperationIdDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], OperationId, E> {
         context("Failed OperationId deserialization", |input| {
-            let (rest, hash) = self.hash_deserializer.deserialize(input)?;
-            Ok((rest, OperationId(hash)))
-        })(buffer)
+            self.hash_deserializer.deserialize(input)
+        })
+        .map(OperationId)
+        .parse(buffer)
     }
 }
 
@@ -895,6 +1042,7 @@ pub type OperationPrefixIds = PreHashSet<OperationPrefixId>;
 /// Serializer for `Vec<OperationId>`
 pub struct OperationIdsSerializer {
     u32_serializer: U32VarIntSerializer,
+    op_id_serializer: OperationIdSerializer,
 }
 
 impl OperationIdsSerializer {
@@ -902,6 +1050,7 @@ impl OperationIdsSerializer {
     pub fn new() -> Self {
         Self {
             u32_serializer: U32VarIntSerializer::new(),
+            op_id_serializer: OperationIdSerializer::new(),
         }
     }
 }
@@ -937,7 +1086,7 @@ impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
         })?;
         self.u32_serializer.serialize(&list_len, buffer)?;
         for hash in value {
-            buffer.extend(hash.into_bytes());
+            self.op_id_serializer.serialize(hash, buffer)?;
         }
         Ok(())
     }
@@ -946,7 +1095,7 @@ impl Serializer<Vec<OperationId>> for OperationIdsSerializer {
 /// Deserializer for `Vec<OperationId>`
 pub struct OperationIdsDeserializer {
     length_deserializer: U32VarIntDeserializer,
-    hash_deserializer: HashDeserializer,
+    op_id_deserializer: OperationIdDeserializer,
 }
 
 impl OperationIdsDeserializer {
@@ -957,7 +1106,7 @@ impl OperationIdsDeserializer {
                 Included(0),
                 Included(max_operations_per_message),
             ),
-            hash_deserializer: HashDeserializer::new(),
+            op_id_deserializer: OperationIdDeserializer::new(),
         }
     }
 }
@@ -989,11 +1138,10 @@ impl Deserializer<Vec<OperationId>> for OperationIdsDeserializer {
                     self.length_deserializer.deserialize(input)
                 }),
                 context("Failed OperationId deserialization", |input| {
-                    self.hash_deserializer.deserialize(input)
+                    self.op_id_deserializer.deserialize(input)
                 }),
             ),
         )
-        .map(|hashes| hashes.into_iter().map(OperationId).collect())
         .parse(buffer)
     }
 }
@@ -1289,6 +1437,29 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
         )
         .parse(buffer)
     }
+}
+
+/// Compute the hash of a list of operations(used typically in block headers)
+pub fn compute_operations_hash(
+    op_ids: &[OperationId],
+    op_id_serializer: &OperationIdSerializer,
+) -> Hash {
+    let op_ids = op_ids
+        .iter()
+        .map(|op_id| {
+            let mut serialized = Vec::new();
+            op_id_serializer
+                .serialize(op_id, &mut serialized)
+                .expect("serialization of operation id should not fail");
+            serialized
+        })
+        .collect::<Vec<Vec<u8>>>();
+    massa_hash::Hash::compute_from_tuple(
+        &op_ids
+            .iter()
+            .map(|data| data.as_slice())
+            .collect::<Vec<_>>(),
+    )
 }
 
 #[cfg(test)]

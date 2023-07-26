@@ -4,23 +4,19 @@ version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-displaydoc = "0.2"
-thiserror = "1.0"
-# custom modules
-massa_hash = { path = "../massa-hash" }
-massa_models = { path = "../massa-models" }
-massa_time = { path = "../massa-time" }
-massa_signature = { path = "../massa-signature" }
-massa_pos_exports = { path = "../massa-pos-exports" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_pool_exports = { path = "../massa-pool-exports" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_storage = { path = "../massa-storage" }
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = ["massa_models/testing", "massa_protocol_exports/testing", "massa_pool_exports/testing"]
 sandbox = []
+
+[dependencies]
+displaydoc = {workspace = true}
+thiserror = {workspace = true}
+massa_hash = {workspace = true}
+massa_models = {workspace = true}
+massa_time = {workspace = true}
+massa_signature = {workspace = true}
+massa_pos_exports = {workspace = true}
+massa_consensus_exports = {workspace = true}
+massa_pool_exports = {workspace = true}
+massa_protocol_exports = {workspace = true}
+massa_storage = {workspace = true}

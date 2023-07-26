@@ -1,8 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::HashSet;
 use std::time::Duration;
 
 use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
+use massa_models::operation::OperationId;
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
@@ -11,7 +13,7 @@ use massa_time::MassaTime;
 use serial_test::serial;
 
 use crate::{
-    handlers::block_handler::{AskForBlocksInfo, BlockInfoReply, BlockMessage},
+    handlers::block_handler::{AskForBlockInfo, BlockInfoReply, BlockMessage},
     messages::Message,
 };
 
@@ -63,9 +65,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
             network_controller
                 .send_from_peer(
                     &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::BlockHeader(
-                        block.content.header.clone(),
-                    ))),
+                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
                 )
                 .unwrap();
 
@@ -104,18 +104,20 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
                 )
                 .unwrap();
 
-            //6. Assert that we asked the block to node a then node b
+            //6. Assert that we asked the block to node a then node b then a again then b
+            assert_hash_asked_to_node(&node_a, &block.id);
+            assert_hash_asked_to_node(&node_b, &block.id);
             assert_hash_asked_to_node(&node_a, &block.id);
             assert_hash_asked_to_node(&node_b, &block.id);
 
-            //7. Node B answer with the infos
+            //7. Node B answers with the list of operation IDs
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
-                        block.id,
-                        BlockInfoReply::Info(vec![op_1.id, op_2.id]),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::DataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::OperationIds(vec![op_1.id, op_2.id]),
+                    })),
                 )
                 .unwrap();
 
@@ -125,13 +127,22 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
                 .expect("Node B didn't receive the ask for operations message");
             match msg {
                 Message::Block(message) => {
-                    if let BlockMessage::AskForBlocks(asked) = *message {
-                        assert_eq!(asked.len(), 1);
-                        assert_eq!(asked[0].0, block.id);
-                        assert_eq!(
-                            asked[0].1,
-                            AskForBlocksInfo::Operations(vec![op_1.id, op_2.id])
-                        );
+                    if let BlockMessage::DataRequest {
+                        block_id,
+                        block_info,
+                    } = *message
+                    {
+                        assert_eq!(block_id, block.id);
+                        if let AskForBlockInfo::Operations(operations) = block_info {
+                            assert_eq!(
+                                operations.into_iter().collect::<HashSet<OperationId>>(),
+                                vec![op_1.id, op_2.id]
+                                    .into_iter()
+                                    .collect::<HashSet<OperationId>>()
+                            );
+                        } else {
+                            panic!("Node B didn't receive the ask for operations message");
+                        }
                     } else {
                         panic!("Node B didn't receive the ask for operations message");
                     }
@@ -143,10 +154,10 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
             network_controller
                 .send_from_peer(
                     &node_b_peer_id,
-                    Message::Block(Box::new(BlockMessage::ReplyForBlocks(vec![(
-                        block.id,
-                        BlockInfoReply::Operations(vec![op_1, op_2]),
-                    )]))),
+                    Message::Block(Box::new(BlockMessage::DataResponse {
+                        block_id: block.id,
+                        block_info: BlockInfoReply::Operations(vec![op_1, op_2]),
+                    })),
                 )
                 .unwrap();
 

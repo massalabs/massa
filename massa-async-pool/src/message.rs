@@ -2,7 +2,6 @@
 
 //! This file defines the structure representing an asynchronous message
 
-use massa_hash::{Hash, HashDeserializer, HashSerializer};
 use massa_ledger_exports::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 use massa_models::address::{AddressDeserializer, AddressSerializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
@@ -61,7 +60,7 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
     ///
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -121,7 +120,7 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     /// use std::str::FromStr;
     /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
     ///
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -305,9 +304,6 @@ pub struct AsyncMessage {
     /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
     /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
     pub can_be_executed: bool,
-
-    /// Hash of the message
-    pub hash: Hash,
 }
 
 impl Default for AsyncMessage {
@@ -321,7 +317,6 @@ impl Default for AsyncMessage {
             destination: genesis_address,
             validity_start: slot_zero,
             validity_end: slot_zero,
-            hash: Hash::from_bytes(&[0; 32]),
             ..Default::default()
         }
     }
@@ -329,8 +324,8 @@ impl Default for AsyncMessage {
 
 impl AsyncMessage {
     #[allow(clippy::too_many_arguments)]
-    /// Take an `AsyncMessage` and return it with its hash computed
-    pub fn new_with_hash(
+    /// Take an `AsyncMessage` and return it
+    pub fn new(
         emission_slot: Slot,
         emission_index: u64,
         sender: Address,
@@ -345,9 +340,7 @@ impl AsyncMessage {
         trigger: Option<AsyncMessageTrigger>,
         can_be_executed: Option<bool>,
     ) -> Self {
-        let async_message_ser = AsyncMessageSerializer::new(can_be_executed.is_some());
-        let mut buffer = Vec::new();
-        let mut message = AsyncMessage {
+        AsyncMessage {
             emission_slot,
             emission_index,
             sender,
@@ -361,14 +354,7 @@ impl AsyncMessage {
             data,
             can_be_executed: can_be_executed.unwrap_or(trigger.is_none()),
             trigger,
-            // placeholder hash to serialize the message, replaced below
-            hash: Hash::from_bytes(&[0; 32]),
-        };
-        async_message_ser
-            .serialize(&message, &mut buffer)
-            .expect("critical: asynchronous message serialization should never fail here");
-        message.hash = Hash::compute_from(&buffer);
-        message
+        }
     }
 
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
@@ -379,16 +365,6 @@ impl AsyncMessage {
             self.emission_slot,
             self.emission_index,
         )
-    }
-
-    /// Recompute the hash of the message. Must be used each time we modify one field
-    pub fn compute_hash(&mut self, for_db: bool) {
-        let async_message_ser = AsyncMessageSerializer::new(for_db);
-        let mut buffer = Vec::new();
-        async_message_ser.serialize(self, &mut buffer).expect(
-            "critical: asynchronous message serialization should never fail in recompute hash",
-        );
-        self.hash = Hash::compute_from(&buffer);
     }
 }
 
@@ -433,7 +409,7 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -548,7 +524,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -574,7 +550,6 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
-    /// assert_eq!(message.hash, message_deserialized.hash);
     /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -659,7 +634,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 filter,
                 can_be_executed,
             )| {
-                AsyncMessage::new_with_hash(
+                AsyncMessage::new(
                     emission_slot,
                     emission_index,
                     sender,
@@ -751,9 +726,6 @@ pub struct AsyncMessageUpdate {
     /// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
     /// For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
     pub can_be_executed: SetOrKeep<bool>,
-
-    /// Hash of the message
-    pub hash: SetOrKeep<Hash>,
 }
 
 /// Serializer for `AsyncMessageUpdate`
@@ -769,7 +741,6 @@ pub struct AsyncMessageUpdateSerializer {
     >,
     bool_serializer: SetOrKeepSerializer<bool, BoolSerializer>,
     regular_bool_serializer: BoolSerializer,
-    hash_serializer: SetOrKeepSerializer<Hash, HashSerializer>,
     for_db: bool,
 }
 
@@ -787,7 +758,6 @@ impl AsyncMessageUpdateSerializer {
             )),
             bool_serializer: SetOrKeepSerializer::new(BoolSerializer::new()),
             regular_bool_serializer: BoolSerializer::new(),
-            hash_serializer: SetOrKeepSerializer::new(HashSerializer::new()),
             for_db,
         }
     }
@@ -843,7 +813,6 @@ impl Serializer<AsyncMessageUpdate> for AsyncMessageUpdateSerializer {
             self.bool_serializer
                 .serialize(&value.can_be_executed, buffer)?;
         }
-        self.hash_serializer.serialize(&value.hash, buffer)?;
         Ok(())
     }
 }
@@ -862,7 +831,6 @@ pub struct AsyncMessageUpdateDeserializer {
     >,
     bool_deserializer: SetOrKeepDeserializer<bool, BoolDeserializer>,
     regular_bool_deserializer: BoolDeserializer,
-    hash_deserializer: SetOrKeepDeserializer<Hash, HashDeserializer>,
     for_db: bool,
 }
 
@@ -901,7 +869,6 @@ impl AsyncMessageUpdateDeserializer {
             )),
             bool_deserializer: SetOrKeepDeserializer::new(BoolDeserializer::new()),
             regular_bool_deserializer: BoolDeserializer::new(),
-            hash_deserializer: SetOrKeepDeserializer::new(HashDeserializer::new()),
             for_db,
         }
     }
@@ -978,9 +945,6 @@ impl Deserializer<AsyncMessageUpdate> for AsyncMessageUpdateDeserializer {
                         Ok((input, SetOrKeep::Keep))
                     }
                 }),
-                context("Failed hash deserialization", |input| {
-                    self.hash_deserializer.deserialize(input)
-                }),
             )),
         )
         .map(
@@ -998,7 +962,6 @@ impl Deserializer<AsyncMessageUpdate> for AsyncMessageUpdateDeserializer {
                 data,
                 trigger,
                 can_be_executed,
-                hash,
             )| {
                 AsyncMessageUpdate {
                     emission_slot,
@@ -1014,7 +977,6 @@ impl Deserializer<AsyncMessageUpdate> for AsyncMessageUpdateDeserializer {
                     data,
                     trigger,
                     can_be_executed,
-                    hash,
                 }
             },
         )
@@ -1038,7 +1000,6 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessageUpdate {
         self.data.apply(update.data);
         self.trigger.apply(update.trigger);
         self.can_be_executed.apply(update.can_be_executed);
-        self.hash.apply(update.hash);
     }
 }
 
@@ -1058,7 +1019,6 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessage {
         update.data.apply_to(&mut self.data);
         update.trigger.apply_to(&mut self.trigger);
         update.can_be_executed.apply_to(&mut self.can_be_executed);
-        update.hash.apply_to(&mut self.hash);
     }
 }
 
@@ -1090,7 +1050,7 @@ mod tests {
 
     #[test]
     fn bad_serialization_version() {
-        let message = AsyncMessage::new_with_hash(
+        let message = AsyncMessage::new(
             Slot::new(1, 2),
             0,
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),

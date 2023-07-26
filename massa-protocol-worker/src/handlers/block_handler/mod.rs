@@ -28,7 +28,7 @@ pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
 #[cfg(feature = "testing")]
 pub use messages::{
-    AskForBlocksInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
+    AskForBlockInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
 };
 
 use super::{
@@ -95,7 +95,6 @@ impl BlockHandler {
             peer_cmd_sender,
             config,
             cache,
-            storage,
         );
         Self {
             block_retrieval_thread: Some((sender_ext, block_retrieval_thread)),

@@ -1208,8 +1208,8 @@ mod tests {
             gen_endorsements_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
-        assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid(), true);
+        assert!(denunciation.is_for_endorsement());
+        assert!(denunciation.is_valid());
     }
 
     #[test]
@@ -1221,7 +1221,7 @@ mod tests {
         let endorsement_4 = Endorsement {
             slot,
             index: 9,
-            endorsed_block: BlockId(Hash::compute_from("foo".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("foo".as_bytes())),
         };
         let s_endorsement_4 =
             Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), &keypair)
@@ -1250,32 +1250,26 @@ mod tests {
 
         let denunciation: Denunciation = (&s_endorsement_1, &s_endorsement_2).try_into().unwrap();
 
-        assert_eq!(denunciation.is_for_endorsement(), true);
-        assert_eq!(denunciation.is_valid(), true);
+        assert!(denunciation.is_for_endorsement());
+        assert!(denunciation.is_valid());
 
         // Try to create a denunciation from 2 endorsements @ != index
         let endorsement_4 = Endorsement {
             slot,
             index: 9,
-            endorsed_block: BlockId(Hash::compute_from("foo".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("foo".as_bytes())),
         };
         let s_endorsement_4 =
             Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), &keypair)
                 .unwrap();
 
-        assert_eq!(
-            denunciation
-                .is_also_for_endorsement(&s_endorsement_4)
-                .unwrap(),
-            false
-        );
-        assert_eq!(
-            denunciation
-                .is_also_for_endorsement(&s_endorsement_3)
-                .unwrap(),
-            true
-        );
-        assert_eq!(denunciation.is_valid(), true);
+        assert!(!denunciation
+            .is_also_for_endorsement(&s_endorsement_4)
+            .unwrap());
+        assert!(denunciation
+            .is_also_for_endorsement(&s_endorsement_3)
+            .unwrap());
+        assert!(denunciation.is_valid());
     }
 
     #[test]
@@ -1285,14 +1279,11 @@ mod tests {
             gen_block_headers_for_denunciation(None, None);
         let denunciation: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
 
-        assert_eq!(denunciation.is_for_block_header(), true);
-        assert_eq!(denunciation.is_valid(), true);
-        assert_eq!(
-            denunciation
-                .is_also_for_block_header(&s_block_header_3)
-                .unwrap(),
-            true
-        );
+        assert!(denunciation.is_for_block_header());
+        assert!(denunciation.is_valid());
+        assert!(denunciation
+            .is_also_for_block_header(&s_block_header_3)
+            .unwrap());
     }
 
     #[test]
@@ -1304,7 +1295,7 @@ mod tests {
         let endorsement_1 = Endorsement {
             slot: slot_1,
             index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
         };
 
         let s_endorsement_1: SecureShareEndorsement =
@@ -1314,7 +1305,7 @@ mod tests {
         let endorsement_2 = Endorsement {
             slot: slot_2,
             index: 0,
-            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
         };
 
         let s_endorsement_2: SecureShareEndorsement =
@@ -1333,7 +1324,7 @@ mod tests {
         });
 
         // hash_1 == hash_2 -> this is invalid
-        assert_eq!(de_forged_1.is_valid(), false);
+        assert!(!de_forged_1.is_valid());
 
         // from an attacker - building manually a Denunciation object
         let de_forged_2 = Denunciation::Endorsement(EndorsementDenunciation {
@@ -1348,7 +1339,7 @@ mod tests {
 
         // An attacker uses an old s_endorsement_1 to forge a Denunciation object @ slot_2
         // This has to be detected if Denunciation are send via the network
-        assert_eq!(de_forged_2.is_valid(), false);
+        assert!(!de_forged_2.is_valid());
     }
 
     // SER / DER
@@ -1370,7 +1361,7 @@ mod tests {
 
                 let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
 
-                assert_eq!(rem.is_empty(), true);
+                assert!(rem.is_empty());
                 assert_eq!(de, de_der_res);
             }
             Denunciation::BlockHeader(_) => {
@@ -1398,7 +1389,7 @@ mod tests {
 
                 let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
 
-                assert_eq!(rem.is_empty(), true);
+                assert!(rem.is_empty());
                 assert_eq!(de, de_der_res);
             }
         }
@@ -1418,7 +1409,7 @@ mod tests {
 
         let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
 
-        assert_eq!(rem.is_empty(), true);
+        assert!(rem.is_empty());
         assert_eq!(denunciation, de_der_res);
 
         let (_, _, s_endorsement_1, s_endorsement_2, _) =
@@ -1428,7 +1419,7 @@ mod tests {
 
         de_ser.serialize(&denunciation, &mut buffer).unwrap();
         let (rem, de_der_res) = de_der.deserialize::<DeserializeError>(&buffer).unwrap();
-        assert_eq!(rem.is_empty(), true);
+        assert!(rem.is_empty());
         assert_eq!(denunciation, de_der_res);
     }
 

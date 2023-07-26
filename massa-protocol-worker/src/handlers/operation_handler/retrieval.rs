@@ -99,7 +99,15 @@ impl RetrievalThread {
                             match message {
                                 OperationMessage::Operations(ops) => {
                                     debug!("Received operation message: Operations from {}", peer_id);
-                                    if let Err(err) = self.note_operations_from_peer(ops, &peer_id) {
+                                    if let Err(err) = note_operations_from_peer(
+                                        &self.storage,
+                                        &mut self.cache,
+                                        &self.config,
+                                        ops,
+                                        &peer_id,
+                                        &mut self.internal_sender,
+                                        &mut self.pool_controller
+                                    ) {
                                         warn!("peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}", peer_id, err);
 
                                         if let Err(e) = self.ban_node(&peer_id) {
@@ -153,115 +161,6 @@ impl RetrievalThread {
         }
     }
 
-    fn note_operations_from_peer(
-        &mut self,
-        operations: Vec<SecureShareOperation>,
-        source_peer_id: &PeerId,
-    ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
-        let now = MassaTime::now().expect("could not get current time");
-
-        let mut new_operations = PreHashMap::with_capacity(operations.len());
-        for operation in operations {
-            // ignore if op is too old
-            let expire_period_timestamp = get_block_slot_timestamp(
-                self.config.thread_count,
-                self.config.t0,
-                self.config.genesis_timestamp,
-                Slot::new(
-                    operation.content.expire_period,
-                    operation
-                        .content_creator_address
-                        .get_thread(self.config.thread_count),
-                ),
-            );
-            match expire_period_timestamp {
-                Ok(slot_timestamp) => {
-                    if slot_timestamp.saturating_add(self.config.max_operations_propagation_time)
-                        < now
-                    {
-                        continue;
-                    }
-                }
-                Err(_) => continue,
-            }
-
-            // quit if op is too big
-            if operation.serialized_size() > self.config.max_serialized_operations_size_per_block {
-                return Err(ProtocolError::InvalidOperationError(format!(
-                    "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
-                    operation.id,
-                    operation.serialized_size(),
-                    self.config.max_serialized_operations_size_per_block
-                )));
-            };
-
-            // add to new operations
-            new_operations.insert(operation.id, operation);
-        }
-
-        // all valid received ids (not only new ones) for knowledge marking
-        let all_received_ids: PreHashSet<_> = new_operations.keys().copied().collect();
-
-        // retain only new ops that are not already known
-        {
-            let cache_read = self.cache.read();
-            new_operations.retain(|op_id, _| cache_read.checked_operations.peek(op_id).is_none());
-        }
-
-        // optimized signature verification
-        verify_sigs_batch(
-            &new_operations
-                .iter()
-                .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.content_creator_pub_key))
-                .collect::<Vec<_>>(),
-        )?;
-
-        'write_cache: {
-            // add to checked operations
-            let mut cache_write = self.cache.write();
-            for op_id in new_operations.keys().copied() {
-                cache_write.insert_checked_operation(op_id);
-            }
-
-            // add to known ops
-            let Ok(known_ops) = cache_write
-                .ops_known_by_peer
-                .get_or_insert(source_peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        self.config
-                            .max_node_known_ops_size
-                            .try_into()
-                            .expect("max_node_known_ops_size in config must be > 0"),
-                    ))
-                })
-                .ok_or(()) else {
-                    warn!("ops_known_by_peer limitation reached");
-                    break 'write_cache;
-                };
-            for id in all_received_ids {
-                known_ops.insert(id.prefix(), ());
-            }
-        }
-
-        if !new_operations.is_empty() {
-            // Store new operations, claim locally
-            let mut ops = self.storage.clone_without_refs();
-            ops.store_operations(new_operations.into_values().collect());
-
-            self.internal_sender
-                .try_send(OperationHandlerPropagationCommand::PropagateOperations(
-                    ops.clone(),
-                ))
-                .map_err(|err| ProtocolError::SendError(err.to_string()))?;
-
-            // Add to pool
-            self.pool_controller.add_operations(ops);
-        }
-
-        Ok(())
-    }
-
     /// On receive a batch of operation ids `op_batch` from another `peer_id`
     /// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
     ///
@@ -287,27 +186,19 @@ impl RetrievalThread {
         mut op_batch: OperationPrefixIds,
         peer_id: &PeerId,
     ) -> Result<(), ProtocolError> {
-        // mark sender as knowing the ops
-        'write_cache: {
-            let mut cache_write = self.cache.write();
-            let Ok(known_ops) = cache_write
-                .ops_known_by_peer
-                .get_or_insert(peer_id.clone(), || {
-                    LruMap::new(ByLength::new(
-                        self.config
-                            .max_node_known_ops_size
-                            .try_into()
-                            .expect("max_node_known_ops_size in config must be > 0"),
-                    ))
-                })
-                .ok_or(()) else {
-                    warn!("ops_known_by_peer limitation reached");
-                    break 'write_cache;
-                };
-            for prefix in &op_batch {
-                known_ops.insert(*prefix, ());
-            }
+        // ignore announcement from disconnected peers
+        if !self
+            .active_connections
+            .get_peer_ids_connected()
+            .contains(peer_id)
+        {
+            return Ok(());
         }
+
+        // mark sender as knowing the ops
+        self.cache
+            .write()
+            .insert_peer_known_ops(peer_id, &op_batch.iter().copied().collect::<Vec<_>>());
 
         // filter out the operations that we already know about
         {
@@ -321,32 +212,33 @@ impl RetrievalThread {
         let now = Instant::now();
         let mut count_reask = 0;
         for op_id in op_batch {
-            let wish = match self.asked_operations.get(&op_id) {
-                Some(wish) => {
-                    if wish.1.contains(peer_id) {
-                        continue; // already asked to the `peer_id`
+            let opt_previous_ask = match self.asked_operations.get(&op_id) {
+                Some(previous_ask) => {
+                    if previous_ask.1.contains(peer_id) {
+                        continue; // already asked to the origin `peer_id` => ignore
                     } else {
-                        Some(wish) // already asked but at someone else
+                        Some(previous_ask) // already asked but to someone else
                     }
                 }
                 None => None,
             };
-            if let Some(wish) = wish {
+            if let Some((previous_ask_time, previous_ask_peers)) = opt_previous_ask {
                 // Ask now if latest ask instant < now - operation_batch_proc_period
                 // otherwise add in future_set
-                if wish.0
-                    < now
-                        .checked_sub(self.config.operation_batch_proc_period.into())
-                        .ok_or(TimeError::TimeOverflowError)?
+                if now
+                    .checked_duration_since(*previous_ask_time)
+                    .unwrap_or_default()
+                    > self.config.operation_batch_proc_period.to_duration()
                 {
                     count_reask += 1;
                     ask_set.insert(op_id);
-                    wish.0 = now;
-                    wish.1.push(peer_id.clone());
+                    *previous_ask_time = now;
+                    previous_ask_peers.push(peer_id.clone());
                 } else {
                     future_set.insert(op_id);
                 }
             } else {
+                // the same peer announced this op for a second time, ask them immediately
                 ask_set.insert(op_id);
                 self.asked_operations
                     .insert(op_id, (now, vec![peer_id.clone()]));
@@ -388,9 +280,8 @@ impl RetrievalThread {
                     false,
                 ) {
                     warn!("Failed to send AskForOperations message to peer: {}", err);
-                    {
-                        let mut cache_write = self.cache.write();
-                        cache_write.ops_known_by_peer.remove(peer_id);
+                    if let ProtocolError::PeerDisconnected(_) = err {
+                        break;
                     }
                 }
             }
@@ -452,9 +343,8 @@ impl RetrievalThread {
                 false,
             ) {
                 warn!("Failed to send Operations message to peer: {}", err);
-                {
-                    let mut cache_write = self.cache.write();
-                    cache_write.ops_known_by_peer.remove(peer_id);
+                if let ProtocolError::PeerDisconnected(_) = err {
+                    break;
                 }
             }
         }
@@ -468,6 +358,110 @@ impl RetrievalThread {
             .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
+}
+
+pub(crate) fn note_operations_from_peer(
+    base_storage: &Storage,
+    operations_cache: &mut SharedOperationCache,
+    config: &ProtocolConfig,
+    operations: Vec<SecureShareOperation>,
+    source_peer_id: &PeerId,
+    ops_propagation_sender: &mut MassaSender<OperationHandlerPropagationCommand>,
+    pool_controller: &mut Box<dyn PoolController>,
+) -> Result<(), ProtocolError> {
+    massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
+    let now = MassaTime::now().expect("could not get current time");
+
+    let mut new_operations = PreHashMap::with_capacity(operations.len());
+    for operation in operations {
+        // ignore if op is too old
+        let expire_period_timestamp = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            Slot::new(
+                operation.content.expire_period,
+                operation
+                    .content_creator_address
+                    .get_thread(config.thread_count),
+            ),
+        );
+        match expire_period_timestamp {
+            Ok(slot_timestamp) => {
+                if slot_timestamp.saturating_add(config.max_operations_propagation_time) < now {
+                    continue;
+                }
+            }
+            Err(_) => continue,
+        }
+
+        // quit if op is too big
+        if operation.serialized_size() > config.max_serialized_operations_size_per_block {
+            return Err(ProtocolError::InvalidOperationError(format!(
+                "Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes",
+                operation.id,
+                operation.serialized_size(),
+                config.max_serialized_operations_size_per_block
+            )));
+        };
+
+        // add to new operations
+        new_operations.insert(operation.id, operation);
+    }
+
+    // all valid received ids (not only new ones) for knowledge marking
+    let all_received_ids: PreHashSet<_> = new_operations.keys().copied().collect();
+
+    // retain only new ops that are not already known
+    {
+        let cache_read = operations_cache.read();
+        new_operations.retain(|op_id, _| cache_read.checked_operations.peek(op_id).is_none());
+    }
+
+    // optimized signature verification
+    verify_sigs_batch(
+        &new_operations
+            .iter()
+            .map(|(op_id, op)| (*op_id.get_hash(), op.signature, op.content_creator_pub_key))
+            .collect::<Vec<_>>(),
+    )?;
+
+    {
+        // add to checked operations
+        let mut cache_write = operations_cache.write();
+
+        // add checked operations
+        for op_id in new_operations.keys().copied() {
+            cache_write.insert_checked_operation(op_id);
+        }
+
+        // add to known ops
+        cache_write.insert_peer_known_ops(
+            source_peer_id,
+            &all_received_ids
+                .into_iter()
+                .map(|id| id.into_prefix())
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    if !new_operations.is_empty() {
+        // Store new operations, claim locally
+        let mut ops = base_storage.clone_without_refs();
+        ops.store_operations(new_operations.into_values().collect());
+
+        // propagate new operations
+        if let Err(_err) = ops_propagation_sender.try_send(
+            OperationHandlerPropagationCommand::PropagateOperations(ops.clone()),
+        ) {
+            warn!("Error sending operations to propagation channel");
+        }
+
+        // Add to pool
+        pool_controller.add_operations(ops);
+    }
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]

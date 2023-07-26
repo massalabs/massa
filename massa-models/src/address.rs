@@ -307,10 +307,10 @@ impl UserAddress {
 
         match version {
             <UserAddress!["0"]>::VERSION => Ok(UserAddressVariant!["0"](
-                <UserAddress!["0"]>::from_bytes_without_version(rest)?,
+                <UserAddress!["0"]>::from_bytes(rest)?,
             )),
             <UserAddress!["1"]>::VERSION => Ok(UserAddressVariant!["1"](
-                <UserAddress!["1"]>::from_bytes_without_version(rest)?,
+                <UserAddress!["1"]>::from_bytes(rest)?,
             )),
             unhandled_version => Err(ModelsError::AddressParseError(format!(
                 "version {} is not handled for UserAddress",
@@ -358,7 +358,7 @@ impl UserAddress {
     }
 
     /// Deserialize the address without considering the version byte
-    fn from_bytes_without_version(data: &[u8]) -> Result<UserAddress, ModelsError> {
+    fn from_bytes(data: &[u8]) -> Result<UserAddress, ModelsError> {
         Ok(UserAddress(Hash::from_bytes(&data.try_into().map_err(
             |_| {
                 ModelsError::BufferError(format!(
@@ -404,12 +404,12 @@ impl SCAddress {
             })?;
 
         match version {
-            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
-                <SCAddress!["0"]>::from_bytes_without_version(rest)?,
-            )),
-            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
-                <SCAddress!["1"]>::from_bytes_without_version(rest)?,
-            )),
+            <SCAddress!["0"]>::VERSION => {
+                Ok(SCAddressVariant!["0"](<SCAddress!["0"]>::from_bytes(rest)?))
+            }
+            <SCAddress!["1"]>::VERSION => {
+                Ok(SCAddressVariant!["1"](<SCAddress!["1"]>::from_bytes(rest)?))
+            }
             unhandled_version => Err(ModelsError::AddressParseError(format!(
                 "version {} is not handled for SCAddress",
                 unhandled_version
@@ -422,22 +422,6 @@ impl SCAddress {
         match self {
             SCAddress::SCAddressV0(addr) => addr.to_prefixed_bytes(),
             SCAddress::SCAddressV1(addr) => addr.to_prefixed_bytes(),
-        }
-    }
-
-    /// Deserialize the address without considering the version byte
-    pub fn from_bytes_without_version(version: u64, data: &[u8]) -> Result<SCAddress, ModelsError> {
-        match version {
-            <SCAddress!["0"]>::VERSION => Ok(SCAddressVariant!["0"](
-                <SCAddress!["0"]>::from_bytes_without_version(data)?,
-            )),
-            <SCAddress!["1"]>::VERSION => Ok(SCAddressVariant!["1"](
-                <SCAddress!["1"]>::from_bytes_without_version(data)?,
-            )),
-            unhandled_version => Err(ModelsError::AddressParseError(format!(
-                "version {} is not handled for SCAddress",
-                unhandled_version
-            ))),
         }
     }
 }
@@ -468,7 +452,7 @@ impl SCAddress {
     }
 
     /// Deserialize the address without considering the version byte
-    fn from_bytes_without_version(data: &[u8]) -> Result<SCAddress, ModelsError> {
+    fn from_bytes(data: &[u8]) -> Result<SCAddress, ModelsError> {
         Ok(SCAddress(Hash::from_bytes(&data.try_into().map_err(
             |_| {
                 ModelsError::BufferError(format!(
@@ -580,6 +564,7 @@ impl Deserializer<Address> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], Address, E> {
+        // Verify that we at least have a version and something else
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
@@ -608,6 +593,7 @@ impl Deserializer<UserAddress> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], UserAddress, E> {
+        // Verify that we at least have a version and something else
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
@@ -650,6 +636,7 @@ impl Deserializer<SCAddress> for AddressDeserializer {
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], SCAddress, E> {
+        // Verify that we at least have a version and something else
         if buffer.len() < 2 {
             return Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
         }
@@ -704,11 +691,13 @@ pub struct ExecutionAddressCycleInfo {
 
 #[cfg(test)]
 mod test {
+    use crate::config::THREAD_COUNT;
+
     use super::*;
 
     #[test]
     fn test_address() {
-        let hash = massa_hash::Hash::compute_from(&"ADDR".as_bytes());
+        let hash = massa_hash::Hash::compute_from("ADDR".as_bytes());
 
         let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
         let user_addr_1 = Address::User(UserAddress::UserAddressV1(UserAddressV1(hash)));
@@ -731,5 +720,19 @@ mod test {
             .unwrap();
 
         assert_eq!(addr, addr2);
+    }
+
+    #[test]
+    fn test_address_get_thread() {
+        let hash = massa_hash::Hash::compute_from("ADDR".as_bytes());
+
+        let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        let thread_addr_0 = user_addr_0.get_thread(THREAD_COUNT);
+        let hash = massa_hash::Hash::compute_from("ADDR2".as_bytes());
+
+        let user_addr_1 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        let thread_addr_1 = user_addr_1.get_thread(THREAD_COUNT);
+
+        assert_ne!(thread_addr_0, thread_addr_1);
     }
 }

@@ -20,7 +20,7 @@ impl From<AsyncMessage> for grpc_model::AsyncMessage {
             data: value.data,
             trigger: value.trigger.map(|trigger| trigger.into()),
             can_be_executed: value.can_be_executed,
-            hash: value.hash.to_string(),
+            hash: "".to_string(),
         }
     }
 }
@@ -158,16 +158,10 @@ impl From<AsyncMessageUpdate> for grpc_model::AsyncMessageUpdate {
                     value: None,
                 }),
             },
-            hash: match value.hash {
-                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.to_string()),
-                }),
-                SetOrKeep::Keep => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
-                }),
-            },
+            hash: Some(grpc_model::SetOrKeepString {
+                r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
+                value: None,
+            }),
         }
     }
 }

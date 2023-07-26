@@ -46,20 +46,19 @@ use massa_models::config::constants::{
     BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
     DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
     GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
-    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASK_BLOCKS_PER_MESSAGE,
-    MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE,
-    MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
-    MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
-    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
-    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
-    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-    MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE, MAX_PEERS_IN_ANNOUNCEMENT_LIST,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
-    MAX_SIZE_CHANNEL_COMMANDS_PEERS, MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
-    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA,
+    MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
+    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS,
+    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
+    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
+    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
+    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
+    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
@@ -285,34 +284,54 @@ async fn launch(
     };
     // Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
-    let mip_list = get_mip_list();
-    debug!("MIP list: {:?}", mip_list);
-    let mip_store =
-        MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
-
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
-            Some(last_start_period) => FinalState::new_derived_from_snapshot(
-                db.clone(),
-                final_state_config,
-                Box::new(ledger),
-                selector_controller.clone(),
-                mip_store.clone(),
-                last_start_period,
-            )
-            .expect("could not init final state"),
-            None => FinalState::new(
-                db.clone(),
-                final_state_config,
-                Box::new(ledger),
-                selector_controller.clone(),
-                mip_store.clone(),
-                true,
-            )
-            .expect("could not init final state"),
+            Some(last_start_period) => {
+                // The node is restarted from a snapshot:
+                // MIP store by reading from the db as it must have been updated by the massa ledger editor
+                // (to shift transitions that might have happened during the network shutdown)
+                // Note that FinalState::new_derived_from_snapshot will check if MIP store is consistent
+                // No Bootstrap are expected after this
+                let mip_store: MipStore = MipStore::try_from_db(db.clone(), mip_stats_config)
+                    .expect("MIP store creation failed");
+                debug!("After read from db, Mip store: {:?}", mip_store);
+
+                FinalState::new_derived_from_snapshot(
+                    db.clone(),
+                    final_state_config,
+                    Box::new(ledger),
+                    selector_controller.clone(),
+                    mip_store,
+                    last_start_period,
+                )
+                .expect("could not init final state")
+            }
+            None => {
+                // The node is started in a normal way
+                // Read the mip list supported by the current software
+                // The resulting MIP store will likely be updated by the boostrap process in order
+                // to get the latest information for the MIP store (new states, votes...)
+
+                let mip_list = get_mip_list();
+                debug!("MIP list: {:?}", mip_list);
+                let mip_store = MipStore::try_from((mip_list, mip_stats_config))
+                    .expect("mip store creation failed");
+
+                FinalState::new(
+                    db.clone(),
+                    final_state_config,
+                    Box::new(ledger),
+                    selector_controller.clone(),
+                    mip_store,
+                    true,
+                )
+                .expect("could not init final state")
+            }
         },
     ));
+
+    let mip_store = final_state.read().mip_store.clone();
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -411,7 +430,8 @@ async fn launch(
         let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
             .get_prev_slot(THREAD_COUNT)
             .unwrap();
-        if !final_state
+
+        final_state
             .read()
             .mip_store
             .is_consistent_with_shutdown_period(
@@ -421,13 +441,7 @@ async fn launch(
                 T0,
                 *GENESIS_TIMESTAMP,
             )
-            .unwrap_or(false)
-        {
-            panic!(
-                "MIP store is not consistent with last shutdown period ({} - {})",
-                last_shutdown_start, last_shutdown_end
-            );
-        }
+            .expect("Mip store is not consistent with shutdown period")
     }
 
     // Storage costs constants
@@ -550,6 +564,7 @@ async fn launch(
         ask_block_timeout: SETTINGS.protocol.ask_block_timeout,
         max_known_blocks_size: SETTINGS.protocol.max_known_blocks_size,
         max_node_known_blocks_size: SETTINGS.protocol.max_node_known_blocks_size,
+        max_block_propagation_time: SETTINGS.protocol.max_block_propagation_time,
         max_node_wanted_blocks_size: SETTINGS.protocol.max_node_wanted_blocks_size,
         max_known_ops_size: SETTINGS.protocol.max_known_ops_size,
         max_node_known_ops_size: SETTINGS.protocol.max_node_known_ops_size,
@@ -583,7 +598,8 @@ async fn launch(
         initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
         listeners,
         keypair_file: SETTINGS.protocol.keypair_file.clone(),
-        max_known_blocks_saved_size: SETTINGS.protocol.max_known_blocks_size,
+        max_blocks_kept_for_propagation: SETTINGS.protocol.max_blocks_kept_for_propagation,
+        block_propagation_tick: SETTINGS.protocol.block_propagation_tick,
         asked_operations_buffer_capacity: SETTINGS.protocol.asked_operations_buffer_capacity,
         thread_tester_count: SETTINGS.protocol.thread_tester_count,
         max_operation_storage_time: MAX_OPERATION_STORAGE_TIME,
@@ -612,15 +628,16 @@ async fn launch(
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_size_function_name: MAX_FUNCTION_NAME_LENGTH,
         max_size_call_sc_parameter: MAX_PARAMETERS_SIZE,
-        max_size_block_infos: MAX_ASK_BLOCKS_PER_MESSAGE as u64,
         max_size_listeners_per_peer: MAX_LISTENERS_PER_PEER,
         max_size_peers_announcement: MAX_PEERS_IN_ANNOUNCEMENT_LIST,
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             as u128,
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        unban_everyone_timer: SETTINGS.protocol.unban_everyone_timer,
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         message_timeout: SETTINGS.protocol.message_timeout,
+        tester_timeout: SETTINGS.protocol.tester_timeout,
         routable_ip: SETTINGS
             .protocol
             .routable_ip
@@ -629,6 +646,8 @@ async fn launch(
         peers_categories: SETTINGS.protocol.peers_categories.clone(),
         default_category_info: SETTINGS.protocol.default_category_info,
         version: *VERSION,
+        try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
+        test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
     };
 
     let (protocol_controller, protocol_channels) =

@@ -118,12 +118,13 @@ impl ExecutionState {
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_state
-            .read()
-            .db
-            .read()
-            .get_change_id()
-            .expect("Critical error: Final state has no slot attached");
+        let last_final_slot;
+        let execution_trail_hash;
+        {
+            let final_state_read = final_state.read();
+            last_final_slot = final_state_read.get_slot();
+            execution_trail_hash = final_state_read.get_execution_trail_hash();
+        }
 
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
@@ -160,6 +161,7 @@ impl ExecutionState {
             module_cache.clone(),
             vesting_manager.clone(),
             mip_store.clone(),
+            execution_trail_hash,
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it

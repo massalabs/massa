@@ -4,14 +4,14 @@ version = "0.24.0"
 edition = "2021"
 
 [dependencies]
-jsonrpsee = { version = "0.18.2", features = ["client"] }
-jsonrpsee-http-client = { version = "0.18.2", features = ["webpki-tls"] }
-jsonrpsee-ws-client = { version = "0.18.2", features = ["webpki-tls"] }
-http = "0.2.8"
-tonic = { version = "0.9.1", features = ["gzip"] }
-thiserror = "1.0"
-tracing = {version =  "0.1", features = ["log"]}
-massa_api_exports = { path = "../massa-api-exports" }
-massa_models = { path = "../massa-models" }
-massa_time = { path = "../massa-time" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "feature/Improve_ABI_types_in_wasmv1", features = ["tonic"]}
+jsonrpsee = {workspace = true, "features" = ["client"]}
+jsonrpsee-http-client = {workspace = true, "features" = ["webpki-tls"]}
+jsonrpsee-ws-client = {workspace = true, "features" = ["webpki-tls"]}
+http = {workspace = true}
+tonic = {workspace = true, "features" = ["gzip"]}   # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
+thiserror = {workspace = true}
+tracing = {workspace = true, "features" = ["log"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem
+massa_api_exports = {workspace = true}
+massa_models = {workspace = true}
+massa_time = {workspace = true}
+massa-proto-rs = {workspace = true, "features" = ["tonic"]}

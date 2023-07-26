@@ -8,6 +8,7 @@
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use massa_async_pool::AsyncPool;
+use massa_db_exports::EXECUTION_TRAIL_HASH_PREFIX;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     CHANGE_ID_DESER_ERROR, CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX,
@@ -16,6 +17,7 @@ use massa_db_exports::{
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_ledger_exports::LedgerController;
+use massa_ledger_exports::SetOrKeep;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
@@ -117,6 +119,11 @@ impl FinalState {
         };
 
         if reset_final_state {
+            // delete the execution trail hash
+            final_state
+                .db
+                .write()
+                .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
             final_state.async_pool.reset();
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
@@ -139,6 +146,30 @@ impl FinalState {
     pub fn get_fingerprint(&self) -> massa_hash::Hash {
         let internal_hash = self.db.read().get_xof_db_hash();
         massa_hash::Hash::compute_from(internal_hash.to_bytes())
+    }
+
+    /// Get the slot at the end of which the final state is attached
+    pub fn get_slot(&self) -> Slot {
+        self.db
+            .read()
+            .get_change_id()
+            .expect("Critical error: Final state has no slot attached")
+    }
+
+    /// Gets the hash of the execution trail
+    pub fn get_execution_trail_hash(&self) -> massa_hash::Hash {
+        let hash_bytes = self
+            .db
+            .read()
+            .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
+            .expect("could not read execution trail hash from state DB")
+            .expect("could not find execution trail hash in state DB");
+        massa_hash::Hash::from_bytes(
+            hash_bytes
+                .as_slice()
+                .try_into()
+                .expect("invalid execution trail hash in state DB"),
+        )
     }
 
     /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
@@ -202,7 +233,7 @@ impl FinalState {
             shutdown_start, shutdown_end
         );
 
-        if !final_state
+        final_state
             .mip_store
             .is_consistent_with_shutdown_period(
                 shutdown_start,
@@ -211,12 +242,7 @@ impl FinalState {
                 config.t0,
                 config.genesis_timestamp,
             )
-            .unwrap_or(false)
-        {
-            return Err(FinalStateError::InvalidSlot(
-                "MIP store is Not consistent".to_string(),
-            ));
-        }
+            .map_err(FinalStateError::from)?;
 
         debug!(
             "Latest consistent slot found in snapshot data: {}",
@@ -535,6 +561,10 @@ impl FinalState {
         self.executed_ops.reset();
         self.executed_denunciations.reset();
         self.mip_store.reset_db(self.db.clone());
+        // delete the execution trail hash
+        self.db
+            .write()
+            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
     }
 
     /// Performs the initial draws.
@@ -616,6 +646,14 @@ impl FinalState {
                 )
             });
 
+        // Update execution trail hash
+        if let SetOrKeep::Set(new_hash) = changes.execution_trail_hash_change {
+            db_batch.insert(
+                EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
+                Some(new_hash.to_bytes().to_vec()),
+            );
+        }
+
         self.db
             .write()
             .write_batch(db_batch, db_versioning_batch, Some(slot));
@@ -666,23 +704,29 @@ impl FinalState {
     pub fn is_db_valid(&self) -> bool {
         let db = self.db.read();
 
-        for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
+        // check if the execution trial hash is present and valid
         {
-            if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())
-                && !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes())
-                && !serialized_key.starts_with(ASYNC_POOL_PREFIX.as_bytes())
-                && !serialized_key.starts_with(EXECUTED_OPS_PREFIX.as_bytes())
-                && !serialized_key.starts_with(EXECUTED_DENUNCIATIONS_PREFIX.as_bytes())
-                && !serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
-                && !serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes())
-            {
-                warn!(
-                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
-                    serialized_key, serialized_value
-                );
+            let execution_trail_hash_serialized =
+                match db.get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec()) {
+                    Ok(Some(v)) => v,
+                    Ok(None) => {
+                        warn!("No execution trail hash found in DB");
+                        return false;
+                    }
+                    Err(err) => {
+                        warn!("Error reading execution trail hash from DB: {}", err);
+                        return false;
+                    }
+                };
+            if let Err(err) = massa_hash::Hash::try_from(&execution_trail_hash_serialized[..]) {
+                warn!("Invalid execution trail hash found in DB: {}", err);
                 return false;
             }
+        }
 
+        for (serialized_key, serialized_value) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
+        {
+            #[allow(clippy::if_same_then_else)]
             if serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                 if !self
                     .pos_state
@@ -735,13 +779,21 @@ impl FinalState {
                     warn!("Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
                     return false;
                 }
-            } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes())
-                && !self
+            } else if serialized_key.starts_with(LEDGER_PREFIX.as_bytes()) {
+                if !self
                     .ledger
                     .is_key_value_valid(&serialized_key, &serialized_value)
-            {
+                {
+                    warn!("Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
+                    return false;
+                }
+            } else if serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+                // TODO: check MIP_STORE_PREFIX
+            } else if serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
+                // no checks here as they are performed above by direct reading
+            } else {
                 warn!(
-                    "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
                 return false;
@@ -749,5 +801,15 @@ impl FinalState {
         }
 
         true
+    }
+
+    /// Initialize the execution trail hash to zero.
+    pub fn init_execution_trail_hash(&mut self) {
+        let mut db_batch = DBBatch::new();
+        db_batch.insert(
+            EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
+            Some(massa_hash::Hash::zero().to_bytes().to_vec()),
+        );
+        self.db.write().write_batch(db_batch, DBBatch::new(), None);
     }
 }
