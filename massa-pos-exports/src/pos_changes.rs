@@ -39,7 +39,7 @@ impl Default for PoSChanges {
             seed_bits: Default::default(),
             roll_changes: Default::default(),
             production_stats: Default::default(),
-            deferred_credits: DeferredCredits::new_with_hash(),
+            deferred_credits: DeferredCredits::new(),
         }
     }
 }
@@ -153,7 +153,6 @@ impl PoSChangesDeserializer {
             deferred_credits_deserializer: DeferredCreditsDeserializer::new(
                 thread_count,
                 max_credits_length,
-                true,
             ),
         }
     }

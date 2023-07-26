@@ -83,7 +83,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -213,7 +213,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),

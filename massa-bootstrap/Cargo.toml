@@ -1,6 +1,6 @@
 [package]
 name = "massa_bootstrap"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -35,6 +35,7 @@ massa_pos_exports = {workspace = true}
 massa_time = {workspace = true}
 massa_db_exports = {workspace = true}
 massa_versioning = {workspace = true}
+massa_metrics = {workspace = true}
 
 [dev-dependencies]
 mockall = {workspace = true}

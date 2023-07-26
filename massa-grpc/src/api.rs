@@ -258,23 +258,26 @@ pub(crate) fn get_largest_stakers(
         now,
     );
 
-    let (cur_cycle, cur_slot) = match latest_block_slot_at_timestamp_result {
+    let (cur_cycle, cur_slot, in_downtime) = match latest_block_slot_at_timestamp_result {
         Ok(Some(cur_slot)) if cur_slot.period <= grpc.grpc_config.last_start_period => (
             Slot::new(grpc.grpc_config.last_start_period, 0)
                 .get_cycle(grpc.grpc_config.periods_per_cycle),
             cur_slot,
+            true,
         ),
         Ok(Some(cur_slot)) => (
             cur_slot.get_cycle(grpc.grpc_config.periods_per_cycle),
             cur_slot,
+            false,
         ),
-        Ok(None) => (0, Slot::new(0, 0)),
+        Ok(None) => (0, Slot::new(0, 0), false),
         Err(e) => return Err(GrpcError::ModelsError(e)),
     };
 
     // Create the context for the response.
     let context = Some(grpc_api::LargestStakersContext {
         slot: Some(cur_slot.into()),
+        in_downtime,
     });
 
     // Get the list of stakers, filtered by the specified minimum and maximum roll counts.

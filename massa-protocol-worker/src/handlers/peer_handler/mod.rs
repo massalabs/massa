@@ -5,6 +5,7 @@ use crossbeam::channel::tick;
 use crossbeam::select;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_hash::Hash;
+use massa_metrics::MassaMetrics;
 use massa_models::config::SIGNATURE_DESER_SIZE;
 use massa_models::version::{VersionDeserializer, VersionSerializer};
 use massa_protocol_exports::{
@@ -81,6 +82,7 @@ impl PeerManagementHandler {
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
         config: &ProtocolConfig,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         let message_serializer = PeerManagementMessageSerializer::new();
 
@@ -91,6 +93,7 @@ impl PeerManagementHandler {
             messages_handler,
             target_out_connections,
             default_target_out_connections,
+            massa_metrics,
         );
 
         let thread_join = std::thread::Builder::new()

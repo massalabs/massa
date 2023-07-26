@@ -15,7 +15,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::{collections::HashMap, net::IpAddr};
 use std::{thread::JoinHandle, time::Duration};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
 use crate::{
@@ -128,6 +128,7 @@ pub(crate) fn start_connectivity_thread(
                 peer_categories.iter().map(|(key, value)|(key.clone(), (value.0.clone(), value.1.target_out_connections))).collect(),
                 config.default_category_info.target_out_connections,
                 &config,
+                massa_metrics.clone(),
             );
 
             let mut operation_handler = OperationHandler::new(
@@ -163,7 +164,7 @@ pub(crate) fn start_connectivity_thread(
                 network_controller.get_active_connections(),
                 selector_controller,
                 consensus_controller,
-                pool_controller,
+                pool_controller.clone(),
                 channel_blocks.1,
                 sender_blocks_retrieval_ext,
                 protocol_channels.block_handler_retrieval.1.clone(),
@@ -183,6 +184,7 @@ pub(crate) fn start_connectivity_thread(
 
             let tick_metrics = tick(massa_metrics.tick_delay);
             let tick_try_connect = tick(config.try_connection_timer.to_duration());
+            let tick_unban_everyone = tick(config.unban_everyone_timer.to_duration());
 
             //Try to connect to peers
             loop {
@@ -233,13 +235,14 @@ pub(crate) fn start_connectivity_thread(
                     },
                     recv(tick_metrics) -> _ => {
                         massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
-
                         massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
-
                         let active_conn = network_controller.get_active_connections();
                         massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
                         let peers_map = active_conn.get_peers_connections_bandwidth();
                         massa_metrics.update_peers_tx_rx(peers_map);
+                        let peer_db_read = peer_db.read();
+                        massa_metrics.set_known_peers(peer_db_read.peers.len());
+                        massa_metrics.set_banned_peers(peer_db_read.get_banned_peer_count() as usize);
                     },
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
@@ -369,6 +372,15 @@ pub(crate) fn start_connectivity_thread(
                             // IF all slots are filled, stop
                             if connection_slots.values().sum::<usize>() == 0 {
                                 break;
+                            }
+                        }
+                    }
+                    recv(tick_unban_everyone) -> _ => {
+                        debug!("Periodic unban of every peer");
+                        let mut peer_db_write = peer_db.write();
+                        for (peer_id, peer_status) in &peer_db_write.peers.clone() {
+                            if peer_status.state == PeerState::Banned {
+                                peer_db_write.unban_peer(peer_id);
                             }
                         }
                     }

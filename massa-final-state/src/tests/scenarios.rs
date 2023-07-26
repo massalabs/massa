@@ -167,7 +167,7 @@ fn test_final_state() {
         let slot = Slot::new(1, 0);
         let mut state_changes = StateChanges::default();
 
-        let message = AsyncMessage::new_with_hash(
+        let message = AsyncMessage::new(
             Slot::new(1, 0),
             0,
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),

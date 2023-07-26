@@ -1,4 +1,3 @@
-use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -21,16 +20,11 @@ use std::{
     ops::Bound::{Excluded, Included},
 };
 
-const DEFERRED_CREDITS_HASH_INITIAL_BYTES: &[u8; HASH_XOF_SIZE_BYTES] = &[0; HASH_XOF_SIZE_BYTES];
-
 #[derive(Clone, Serialize, Deserialize)]
 /// Structure containing all the PoS deferred credits information
 pub struct DeferredCredits {
     /// Deferred credits
     pub credits: BTreeMap<Slot, PreHashMap<Address, Amount>>,
-    /// Hash tracker, optional. Indeed, computing the hash is expensive, so we only compute it when finalizing a slot.
-    #[serde(skip_serializing, skip_deserializing)]
-    hash_tracker: Option<DeferredCreditsHashTracker>,
 }
 
 impl Debug for DeferredCredits {
@@ -39,48 +33,9 @@ impl Debug for DeferredCredits {
     }
 }
 
-#[derive(Clone)]
-struct DeferredCreditsHashTracker {
-    slot_ser: SlotSerializer,
-    address_ser: AddressSerializer,
-    amount_ser: AmountSerializer,
-    hash: HashXof<HASH_XOF_SIZE_BYTES>,
-}
-
-impl DeferredCreditsHashTracker {
-    /// Initialize hash tracker
-    fn new() -> Self {
-        Self {
-            slot_ser: SlotSerializer::new(),
-            address_ser: AddressSerializer::new(),
-            amount_ser: AmountSerializer::new(),
-            hash: HashXof::from_bytes(DEFERRED_CREDITS_HASH_INITIAL_BYTES),
-        }
-    }
-
-    /// Get resulting hash from the tracker
-    pub fn get_hash(&self) -> &HashXof<HASH_XOF_SIZE_BYTES> {
-        &self.hash
-    }
-
-    /// Apply adding an element (must not be an overwrite) or deleting an element (must exist)
-    pub fn toggle_entry(&mut self, slot: &Slot, address: &Address, amount: &Amount) {
-        self.hash ^= self.compute_hash(slot, address, amount);
-    }
-
-    /// Compute the hash for a specific entry
-    fn compute_hash(
-        &self,
-        slot: &Slot,
-        address: &Address,
-        amount: &Amount,
-    ) -> HashXof<HASH_XOF_SIZE_BYTES> {
-        // serialization can never fail in the following computations, unwrap is justified
-        let mut buffer = Vec::new();
-        self.slot_ser.serialize(slot, &mut buffer).unwrap();
-        self.address_ser.serialize(address, &mut buffer).unwrap();
-        self.amount_ser.serialize(amount, &mut buffer).unwrap();
-        HashXof::compute_from(&buffer)
+impl Default for DeferredCredits {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -91,24 +46,10 @@ impl DeferredCredits {
     }
 
     /// Create a new DeferredCredits with hash tracking
-    pub fn new_with_hash() -> Self {
+    pub fn new() -> Self {
         Self {
             credits: Default::default(),
-            hash_tracker: Some(DeferredCreditsHashTracker::new()),
         }
-    }
-
-    /// Create a new DeferredCredits without hash tracking
-    pub fn new_without_hash() -> Self {
-        Self {
-            credits: Default::default(),
-            hash_tracker: None,
-        }
-    }
-
-    /// Get hash from tracker, if any
-    pub fn get_hash(&self) -> Option<&HashXof<HASH_XOF_SIZE_BYTES>> {
-        self.hash_tracker.as_ref().map(|ht| ht.get_hash())
     }
 
     /// Apply a function to each element
@@ -123,43 +64,18 @@ impl DeferredCredits {
         }
     }
 
-    /// Enables the hash tracker (and compute the hash if absent)
-    pub fn enable_hash_tracker_and_compute_hash(&mut self) -> &HashXof<HASH_XOF_SIZE_BYTES> {
-        if self.hash_tracker.is_none() {
-            let mut hash_tracker = DeferredCreditsHashTracker::new();
-            self.for_each(|slot, address, amount| {
-                hash_tracker.toggle_entry(slot, address, amount);
-            });
-            self.hash_tracker = Some(hash_tracker);
-        }
-
-        self.hash_tracker.as_ref().unwrap().get_hash()
-    }
-
-    /// Disable the hash tracker, loses hash
-    pub fn disable_hash_tracker(&mut self) {
-        self.hash_tracker = None;
-    }
-
     /// Get all deferred credits within a slot range.
-    /// If `with_hash == true` then the resulting DeferredCredits contains the hash of the included data.
-    /// Note that computing the hash is heavy and should be done only at finalization.
-    pub fn get_slot_range<R>(&self, range: R, with_hash: bool) -> DeferredCredits
+    pub fn get_slot_range<R>(&self, range: R) -> DeferredCredits
     where
         R: RangeBounds<Slot>,
     {
-        let mut res = DeferredCredits {
+        DeferredCredits {
             credits: self
                 .credits
                 .range(range)
                 .map(|(s, map)| (*s, map.clone()))
                 .collect(),
-            hash_tracker: None,
-        };
-        if with_hash {
-            res.enable_hash_tracker_and_compute_hash();
         }
-        res
     }
 
     /// Extends the current `DeferredCredits` with another and replace the amounts for existing addresses
@@ -178,22 +94,13 @@ impl DeferredCredits {
         // We need to destructure self to be able to mutate both credits and the hash_tracker during iteration
         // Without it, the borrow-checker is angry that we try to mutate self twice.
         let Self {
-            ref mut credits,
-            ref mut hash_tracker,
-            ..
+            ref mut credits, ..
         } = self;
 
         for (slot, credits) in credits {
-            credits.retain(|address, amount| {
-                // if amount is zero XOR the credit hash and do not retain
-                if amount.is_zero() {
-                    if let Some(ht) = hash_tracker.as_mut() {
-                        ht.toggle_entry(slot, address, amount)
-                    }
-                    false
-                } else {
-                    true
-                }
+            credits.retain(|_, amount| {
+                // do not retain if amount is zero
+                !amount.is_zero()
             });
             if credits.is_empty() {
                 empty_slots.push(*slot);
@@ -214,19 +121,10 @@ impl DeferredCredits {
 
     /// Insert an element
     pub fn insert(&mut self, slot: Slot, address: Address, amount: Amount) -> Option<Amount> {
-        let prev = self
-            .credits
+        self.credits
             .entry(slot)
             .or_default()
-            .insert(address, amount);
-        if let Some(ht) = &mut self.hash_tracker {
-            if let Some(prev) = prev {
-                // remove overwritten value
-                ht.toggle_entry(&slot, &address, &prev);
-            }
-            ht.toggle_entry(&slot, &address, &amount);
-        }
-        prev
+            .insert(address, amount)
     }
 }
 
@@ -283,16 +181,11 @@ pub struct DeferredCreditsDeserializer {
     pub u64_deserializer: U64VarIntDeserializer,
     pub slot_deserializer: SlotDeserializer,
     pub credit_deserializer: CreditsDeserializer,
-    enable_hash: bool,
 }
 
 impl DeferredCreditsDeserializer {
     /// Creates a new `DeferredCredits` deserializer
-    pub fn new(
-        thread_count: u8,
-        max_credits_length: u64,
-        enable_hash: bool,
-    ) -> DeferredCreditsDeserializer {
+    pub fn new(thread_count: u8, max_credits_length: u64) -> DeferredCreditsDeserializer {
         DeferredCreditsDeserializer {
             u64_deserializer: U64VarIntDeserializer::new(
                 Included(u64::MIN),
@@ -303,7 +196,6 @@ impl DeferredCreditsDeserializer {
                 (Included(0), Excluded(thread_count)),
             ),
             credit_deserializer: CreditsDeserializer::new(max_credits_length),
-            enable_hash,
         }
     }
 }
@@ -329,15 +221,8 @@ impl Deserializer<DeferredCredits> for DeferredCreditsDeserializer {
                 )),
             ),
         )
-        .map(|elements| {
-            let mut res = DeferredCredits {
-                credits: elements.into_iter().collect(),
-                hash_tracker: None,
-            };
-            if self.enable_hash {
-                res.enable_hash_tracker_and_compute_hash();
-            }
-            res
+        .map(|elements| DeferredCredits {
+            credits: elements.into_iter().collect(),
         })
         .parse(buffer)
     }
