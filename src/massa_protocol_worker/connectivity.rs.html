@@ -357,6 +357,10 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -487,6 +491,7 @@
                 peer_categories.iter().map(|(key, value)|(key.clone(), (value.<span class="number">0</span>.clone(), value.<span class="number">1</span>.target_out_connections))).collect(),
                 config.default_category_info.target_out_connections,
                 <span class="kw-2">&amp;</span>config,
+                massa_metrics.clone(),
             );
 
             <span class="kw">let </span><span class="kw-2">mut </span>operation_handler = OperationHandler::new(
@@ -522,7 +527,7 @@
                 network_controller.get_active_connections(),
                 selector_controller,
                 consensus_controller,
-                pool_controller,
+                pool_controller.clone(),
                 channel_blocks.<span class="number">1</span>,
                 sender_blocks_retrieval_ext,
                 protocol_channels.block_handler_retrieval.<span class="number">1</span>.clone(),
@@ -598,6 +603,9 @@
                         massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
                         <span class="kw">let </span>peers_map = active_conn.get_peers_connections_bandwidth();
                         massa_metrics.update_peers_tx_rx(peers_map);
+                        <span class="kw">let </span>peer_db_read = peer_db.read();
+                        massa_metrics.set_known_peers(peer_db_read.peers.len());
+                        massa_metrics.set_banned_peers(peer_db_read.get_banned_peer_count() <span class="kw">as </span>usize);
                     },
                     recv(tick_try_connect) -&gt; <span class="kw">_ </span>=&gt; {
                         <span class="kw">let </span>active_conn = network_controller.get_active_connections();
