@@ -24,7 +24,7 @@ fn get_random_address() -> Address {
 
 pub fn get_random_message(fee: Option<Amount>, thread_count: u8) -> AsyncMessage {
     let mut rng = rand::thread_rng();
-    AsyncMessage::new_with_hash(
+    AsyncMessage::new(
         Slot::new(rng.gen_range(0..100_000), rng.gen_range(0..thread_count)),
         0,
         get_random_address(),

@@ -18,6 +18,7 @@ massa_channel = {workspace = true}
 massa_metrics = {workspace = true}
 massa_consensus_exports = {workspace = true}
 massa_models = {workspace = true}
+massa_serialization = {workspace = true}
 massa_storage = {workspace = true}
 massa_signature = {workspace = true}
 massa_time = {workspace = true}

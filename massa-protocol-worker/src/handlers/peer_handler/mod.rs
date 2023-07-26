@@ -110,6 +110,7 @@ impl PeerManagementHandler {
                     max_peers_per_announcement: config.max_size_peers_announcement,
                     max_listeners_per_peer: config.max_size_listeners_per_peer,
                 });
+
             move || {
                 loop {
                     select! {
@@ -200,9 +201,9 @@ impl PeerManagementHandler {
                             match message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                                     debug!("Received peer message: NewPeerConnected from {}", peer_id);
-                                    if let Err(e) = test_sender.try_send((peer_id, listeners)) {
-                                        debug!("error when sending msg to peer tester : {}", e);
-                                    }
+                                        if let Err(e) = test_sender.try_send((peer_id, listeners)) {
+                                            debug!("error when sending msg to peer connect : {}", e);
+                                        }
                                 }
                                 PeerManagementMessage::ListPeers(peers) => {
                                     debug!("Received peer message: List peers from {}", peer_id);
@@ -515,11 +516,11 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         .peers
                         .entry(peer_id.clone())
                         .and_modify(|info| {
-                            info.last_announce = announcement.clone();
+                            info.last_announce = Some(announcement.clone());
                             info.state = PeerState::Trusted;
                         })
                         .or_insert(PeerInfo {
-                            last_announce: announcement.clone(),
+                            last_announce: Some(announcement.clone()),
                             state: PeerState::Trusted,
                         });
                 }

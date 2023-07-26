@@ -8,6 +8,7 @@ use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
 use massa_storage::Storage;
+use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use peernet::peer::PeerConnectionType;
@@ -112,7 +113,6 @@ pub(crate) fn start_connectivity_thread(
 
             let block_cache = Arc::new(RwLock::new(BlockCache::new(
                 config.max_known_blocks_size.try_into().unwrap(),
-                (total_in_slots + total_out_slots).try_into().unwrap(),
                 config.max_node_known_blocks_size.try_into().unwrap(),
             )));
 
@@ -248,6 +248,7 @@ pub(crate) fn start_connectivity_thread(
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();
+                        let peers_connection_queue = active_conn.get_peer_ids_connection_queue();
                         let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
                             (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
                                 if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {
@@ -267,6 +268,7 @@ pub(crate) fn start_connectivity_thread(
                                 if peers_connected.contains_key(peer_id) {
                                     continue;
                                 }
+
                                 if let Some(peer_info) = peer_db_read.peers.get(peer_id).and_then(|peer| {
                                     if peer.state == PeerState::Trusted {
                                         Some(peer.clone())
@@ -274,47 +276,69 @@ pub(crate) fn start_connectivity_thread(
                                         None
                                     }
                                 }) {
-                                    if peer_info.last_announce.listeners.is_empty() {
-                                        continue;
-                                    }
-                                    //TODO: Adapt for multiple listeners
-                                    let (addr, _) = peer_info.last_announce.listeners.iter().next().unwrap();
-                                    let canonical_ip = addr.ip().to_canonical();
-                                    let mut allowed_local_ips = false;
-                                    // Check if the peer is in a category and we didn't reached out target yet
-                                    let mut category_found = None;
-                                    for (name, (ips, cat)) in &peer_categories {
-                                        if ips.contains(&canonical_ip) {
-                                            category_found = Some(name);
-                                            allowed_local_ips = cat.allow_local_peers;
+                                    if let Some(last_announce) = peer_info.last_announce {
+                                        if last_announce.listeners.is_empty() {
+                                            continue;
                                         }
-                                    }
-                                    if !canonical_ip.is_global() && !allowed_local_ips {
-                                        continue;
-                                    }
 
-                                    if let Some(category) = category_found {
-                                        for (name, category_infos) in &mut slots_per_category {
-                                            if name == category && category_infos > &mut 0 {
-                                                addresses_to_connect.push(*addr);
-                                                *category_infos -= 1;
+                                        //TODO: Adapt for multiple listeners
+                                        let (addr, _) = last_announce.listeners.iter().next().unwrap();
+                                        if peers_connection_queue.contains(addr) {
+                                            continue;
+                                        }
+
+                                        // check if the peer last connect attempt has not been too recent
+                                        if let Some(last_try) = peer_db_read.try_connect_history.get(addr) {
+                                            let last_try = last_try.estimate_instant().expect("Time went backward");
+                                            if last_try.elapsed() < config.try_connection_timer_same_peer.to_duration() {
+                                                continue;
                                             }
                                         }
-                                    } else if slot_default_category > 0 {
-                                        addresses_to_connect.push(*addr);
-                                        slot_default_category -= 1;
-                                    }
 
+                                        if config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
+                                            continue;
+                                        }
 
-                                    // IF all slots are filled, stop
-                                    if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
-                                        break;
+                                        let canonical_ip = addr.ip().to_canonical();
+                                        let mut allowed_local_ips = false;
+                                        // Check if the peer is in a category and we didn't reached out target yet
+                                        let mut category_found = None;
+                                        for (name, (ips, cat)) in &peer_categories {
+                                            if ips.contains(&canonical_ip) {
+                                                category_found = Some(name);
+                                                allowed_local_ips = cat.allow_local_peers;
+                                            }
+                                        }
+                                        if !canonical_ip.is_global() && !allowed_local_ips {
+                                            continue;
+                                        }
+
+                                        if let Some(category) = category_found {
+                                            for (name, category_infos) in &mut slots_per_category {
+                                                if name == category && category_infos > &mut 0 {
+                                                        addresses_to_connect.push(*addr);
+                                                        *category_infos -= 1;
+                                                }
+                                            }
+                                        } else if slot_default_category > 0 &&  !addresses_to_connect.contains(addr) {
+                                            addresses_to_connect.push(*addr);
+                                            slot_default_category -= 1;
+                                        }
+
+                                            // IF all slots are filled, stop
+                                        if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
+
                         for addr in addresses_to_connect {
                             info!("Trying to connect to addr {}", addr);
+
+                            peer_db.write().try_connect_history.insert(addr, MassaTime::now().unwrap());
+
                             // We only manage TCP for now
                             if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
                                 warn!("Failed to connect to peer {:?}: {:?}", addr, err);

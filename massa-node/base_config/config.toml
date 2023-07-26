@@ -162,8 +162,16 @@
     read_write_limit_bytes_per_second = 2_000_000_000
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000
+    # timeout after which a peer tester will consider the peer unreachable
+    tester_timeout = 500
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
+    # Max known blocks we keep during their propagation
+    max_blocks_kept_for_propagation = 300
+    # Time during which a block is expected to propagate (in milliseconds)
+    max_block_propagation_time = 40000
+    # Block propagation tick interval, useful for propagating blocks quickly to newly connected peers (in milliseconds)
+    block_propagation_tick = 1000
     # max cache size for which blocks our node knows about
     max_known_blocks_size = 1024
     # max cache size for which blocks a foreign node knows about
@@ -194,9 +202,11 @@
     # interval at which operations are announced in batches.
     operation_announcement_interval = 300
     # max number of operation per message, same as network param but can be smaller
-    max_operations_per_message = 1024
+    max_operations_per_message = 5000
     # Number of millis seconds between each try out connections
-    try_connection_timer = 5000
+    try_connection_timer = 250
+    # Number of millis seconds between each try out connections for same peer
+    try_connection_timer_same_peer = 10000
     # Number of millis seconds that create a timeout for out connections
     timeout_connection = 1000
     # max number of operations kept for propagation
@@ -209,6 +219,8 @@
     thread_tester_count = 25
     # Nb max in connections that we accept
     max_in_connections = 100
+    # Cooldown before testing again old peer
+    test_oldest_peer_cooldown = 720000
     # Peer default category limits
     default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 15, allow_local_peers = false }
     # Peer categories limits

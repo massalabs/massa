@@ -15,6 +15,8 @@ pub enum ProtocolError {
     WrongSignature,
     /// Protocol error: {0}
     GeneralProtocolError(String),
+    /// Invalid block: {0}
+    InvalidBlock(String),
     /// An error occurred during channel communication: {0}
     ChannelError(String),
     /// Error during network connection: `{0:?}`
@@ -37,6 +39,8 @@ pub enum ProtocolError {
     ModelsError(#[from] ModelsError),
     /// Send error: {0}
     SendError(String),
+    /// Peer disconnected : {0}
+    PeerDisconnected(String),
     /// Container inconsistency error: {0}
     ContainerInconsistencyError(String),
     /// Invalid operation error: {0}

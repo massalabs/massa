@@ -25,6 +25,7 @@
 
 [protocol]
     message_timeout = 5000
+    tester_timeout = 500
     ask_block_timeout = 10000
     max_known_blocks_size = 1024
     max_node_known_blocks_size = 1024
@@ -50,7 +51,6 @@
     message_timeout = 5000
     ask_peer_list_interval = 30000
     keypair_file = "../massa-node/config/node_privkey.key"
-    max_ask_blocks_per_message = 128
     max_operations_per_message = 1024
     max_endorsements_per_message = 1024
     max_send_wait = 500

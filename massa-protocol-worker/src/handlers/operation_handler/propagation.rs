@@ -5,10 +5,12 @@ use crossbeam::channel::RecvTimeoutError;
 use massa_channel::receiver::MassaReceiver;
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
-use massa_models::operation::{OperationId, OperationPrefixId};
+use massa_models::operation::OperationId;
 use massa_models::prehash::CapacityAllocator;
 use massa_models::prehash::PreHashSet;
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
+use massa_protocol_exports::ProtocolError;
 use massa_storage::Storage;
 use tracing::{debug, info, log::warn};
 
@@ -99,15 +101,6 @@ impl PropagationThread {
     fn prune_propagation_storage(&mut self) {
         let mut removed = PreHashSet::default();
 
-        // cap cache size
-        while self.stored_for_propagation.len() > self.config.max_ops_kept_for_propagation {
-            if let Some((_t, op_ids)) = self.stored_for_propagation.pop_front() {
-                removed.extend(op_ids);
-            } else {
-                break;
-            }
-        }
-
         // remove expired
         let max_op_prop_time = self.config.max_operations_propagation_time.to_duration();
         while let Some((t, _)) = self.stored_for_propagation.front() {
@@ -116,6 +109,24 @@ impl PropagationThread {
                     .stored_for_propagation
                     .pop_front()
                     .expect("there should be at least one element, checked above");
+                removed.extend(op_ids);
+            } else {
+                break;
+            }
+        }
+
+        // Cap cache size
+        // Note that we directly remove batches of operations, not individual operations
+        // to favor simplicity and performance over precision.
+        let mut excess_count = self
+            .stored_for_propagation
+            .iter()
+            .map(|(_, ops)| ops.len())
+            .sum::<usize>()
+            .saturating_sub(self.config.max_ops_kept_for_propagation);
+        while excess_count > 0 {
+            if let Some((_t, op_ids)) = self.stored_for_propagation.pop_front() {
+                excess_count = excess_count.saturating_sub(op_ids.len());
                 removed.extend(op_ids);
             } else {
                 break;
@@ -131,46 +142,40 @@ impl PropagationThread {
         if self.next_batch.is_empty() {
             return;
         }
-        let operation_id_prefixes = mem::take(&mut self.next_batch)
-            .into_iter()
-            .map(|id| id.prefix())
-            .collect::<Vec<_>>();
+        let operation_ids = mem::take(&mut self.next_batch);
         massa_trace!("protocol.protocol_worker.announce_ops.begin", {
-            "operation_id_prefixes": operation_id_prefixes
+            "operation_ids": operation_ids
         });
-        let peers_connected = self.active_connections.get_peer_ids_connected();
         {
             let mut cache_write = self.cache.write();
+            let peers_connected = self.active_connections.get_peer_ids_connected();
             cache_write.update_cache(&peers_connected);
 
             // Propagate to peers
-            for peer_id in peers_connected {
-                let peer_known_ops = cache_write
-                    .ops_known_by_peer
-                    .get_mut(&peer_id)
-                    .expect("expected update_cache to insert all available peers in ops_known_by_peer but one is absent");
-                let ops_unknown_to_peer: Vec<OperationPrefixId> = operation_id_prefixes
+            let all_keys: Vec<PeerId> = cache_write.ops_known_by_peer.keys().cloned().collect();
+            for peer_id in all_keys {
+                let ops = cache_write.ops_known_by_peer.get_mut(&peer_id).unwrap();
+                let new_ops: Vec<OperationId> = operation_ids
                     .iter()
-                    .filter(|&id_prefix| peer_known_ops.peek(id_prefix).is_none())
+                    .filter(|id| ops.peek(&id.prefix()).is_none())
                     .copied()
                     .collect();
-                if !ops_unknown_to_peer.is_empty() {
-                    for id_prefix in &ops_unknown_to_peer {
-                        peer_known_ops.insert(*id_prefix, ());
+                if !new_ops.is_empty() {
+                    for id in &new_ops {
+                        ops.insert(id.prefix(), ());
                     }
                     debug!(
                         "Send operations announcement of len {} to {}",
-                        ops_unknown_to_peer.len(),
+                        new_ops.len(),
                         peer_id
                     );
-                    for sub_list in
-                        ops_unknown_to_peer.chunks(self.config.max_operations_per_message as usize)
+                    for sub_list in new_ops.chunks(self.config.max_operations_per_message as usize)
                     {
                         if let Err(err) = self.active_connections.send_to_peer(
                             &peer_id,
                             &self.operation_message_serializer,
                             OperationMessage::OperationsAnnouncement(
-                                sub_list.iter().copied().collect(),
+                                sub_list.iter().map(|id| id.into_prefix()).collect(),
                             )
                             .into(),
                             false,
@@ -179,6 +184,11 @@ impl PropagationThread {
                                 "Failed to send OperationsAnnouncement message to peer: {}",
                                 err
                             );
+
+                            if let ProtocolError::PeerDisconnected(_) = err {
+                                // cache of this peer is removed in next call of cache_write.update_cache
+                                break;
+                            }
                         }
                     }
                 }
