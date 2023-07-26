@@ -1,2 +1,2 @@
 [alias]
-xtask = "run --package massa-xtask --"
+xtask = "run --package massa_xtask --"
