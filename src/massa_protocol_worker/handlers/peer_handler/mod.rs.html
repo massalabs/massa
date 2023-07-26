@@ -607,9 +607,6 @@
 <a href="#607" id="607">607</a>
 <a href="#608" id="608">608</a>
 <a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
@@ -618,7 +615,6 @@
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::config::SIGNATURE_DESER_SIZE;
 <span class="kw">use </span>massa_models::version::{VersionDeserializer, VersionSerializer};
 <span class="kw">use </span>massa_protocol_exports::{
@@ -695,7 +691,6 @@
         target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
         default_target_out_connections: usize,
         config: <span class="kw-2">&amp;</span>ProtocolConfig,
-        massa_metrics: MassaMetrics,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>message_serializer = PeerManagementMessageSerializer::new();
 
@@ -706,7 +701,6 @@
             messages_handler,
             target_out_connections,
             default_target_out_connections,
-            massa_metrics,
         );
 
         <span class="kw">let </span>thread_join = std::thread::Builder::new()

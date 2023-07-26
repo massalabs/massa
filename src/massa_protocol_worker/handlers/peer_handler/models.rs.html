@@ -152,6 +152,7 @@
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -166,7 +167,7 @@
 
 <span class="kw">use </span><span class="kw">super</span>::announcement::Announcement;
 
-<span class="kw">const </span>THREE_DAYS_MS: u64 = <span class="number">3 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1_000_000</span>;
+<span class="kw">const </span>THREE_DAYS_MS: u64 = <span class="number">3 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1_000</span>;
 
 <span class="kw">pub type </span>InitialPeers = HashMap&lt;PeerId, HashMap&lt;SocketAddr, TransportType&gt;&gt;;
 
@@ -226,8 +227,9 @@
     }
 
     <span class="kw">pub fn </span>unban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
-        <span class="kw">if </span><span class="self">self</span>.peers.contains_key(peer_id) {
-            <span class="self">self</span>.peers.remove(peer_id);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get_mut(peer_id) {
+            <span class="comment">// We set the state to HandshakeFailed to force the peer to be tested again
+            </span>peer.state = PeerState::HandshakeFailed;
             <span class="macro">info!</span>(<span class="string">&quot;Unbanned peer: {:?}&quot;</span>, peer_id);
         } <span class="kw">else </span>{
             <span class="macro">info!</span>(<span class="string">&quot;Tried to unban unknown peer: {:?}&quot;</span>, peer_id);

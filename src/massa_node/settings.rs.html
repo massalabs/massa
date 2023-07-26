@@ -342,6 +342,8 @@
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -595,6 +597,8 @@
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
     <span class="doccomment">/// try connection timer for the same peer
     </span><span class="kw">pub </span>try_connection_timer_same_peer: MassaTime,
+    <span class="doccomment">/// periodically unban every peer
+    </span><span class="kw">pub </span>unban_everyone_timer: MassaTime,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Message timeout

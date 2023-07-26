@@ -1323,33 +1323,6 @@
 <a href="#1323" id="1323">1323</a>
 <a href="#1324" id="1324">1324</a>
 <a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1361,7 +1334,6 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::operation_injector::start_operation_injector;
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
-<span class="kw">use </span><span class="kw">crate</span>::survey::MassaSurvey;
 
 <span class="kw">use </span>crossbeam_channel::TryRecvError;
 <span class="kw">use </span>dialoguer::Password;
@@ -1448,7 +1420,6 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 <span class="kw">use </span>structopt::StructOpt;
-<span class="kw">use </span>survey::MassaSurveyStopper;
 <span class="kw">use </span>tokio::sync::broadcast;
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 <span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
@@ -1456,7 +1427,6 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
 </span><span class="kw">mod </span>operation_injector;
 <span class="kw">mod </span>settings;
-<span class="kw">mod </span>survey;
 
 <span class="kw">async fn </span>launch(
     args: <span class="kw-2">&amp;</span>Args,
@@ -1476,7 +1446,6 @@
     StopHandle,
     <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
     MetricsStopper,
-    MassaSurveyStopper,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
     <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
@@ -1754,7 +1723,6 @@
         <span class="kw-2">*</span>END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
         sig_int_toggled.clone(),
-        massa_metrics.clone(),
     ) {
         <span class="prelude-val">Ok</span>(vals) =&gt; vals,
         <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
@@ -1990,6 +1958,7 @@
         read_write_limit_bytes_per_second: SETTINGS.protocol.read_write_limit_bytes_per_second
             <span class="kw">as </span>u128,
         try_connection_timer: SETTINGS.protocol.try_connection_timer,
+        unban_everyone_timer: SETTINGS.protocol.unban_everyone_timer,
         max_in_connections: SETTINGS.protocol.max_in_connections,
         timeout_connection: SETTINGS.protocol.timeout_connection,
         message_timeout: SETTINGS.protocol.message_timeout,
@@ -2129,7 +2098,6 @@
             bootstrap_config,
             keypair.clone(),
             <span class="kw-2">*</span>VERSION,
-            massa_metrics.clone(),
         )
         .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>)
     });
@@ -2336,20 +2304,6 @@
         api_config.bind_public
     );
 
-    <span class="kw">let </span>massa_survey_stopper = MassaSurvey::run(
-        SETTINGS.metrics.tick_delay.to_duration(),
-        execution_controller,
-        pool_controller,
-        massa_metrics,
-        (
-            api_config.thread_count,
-            api_config.t0,
-            api_config.genesis_timestamp,
-            api_config.periods_per_cycle,
-            api_config.last_start_period,
-        ),
-    );
-
     <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
     </span>{
         <span class="comment">// only for #[cfg]
@@ -2393,7 +2347,6 @@
         api_handle,
         grpc_handle,
         metrics_stopper,
-        massa_survey_stopper,
     )
 }
 
@@ -2407,8 +2360,7 @@
     factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
 }
 
-<span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">async fn </span>stop(
+<span class="kw">async fn </span>stop(
     _consensus_event_receiver: MassaReceiver&lt;ConsensusEvent&gt;,
     Managers {
         bootstrap_manager,
@@ -2424,7 +2376,6 @@
     api_handle: StopHandle,
     grpc_handle: <span class="prelude-ty">Option</span>&lt;massa_grpc::server::StopHandle&gt;,
     <span class="kw-2">mut </span>metrics_stopper: MetricsStopper,
-    <span class="kw-2">mut </span>massa_survey_stopper: MassaSurveyStopper,
 ) {
     <span class="comment">// stop bootstrap
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
@@ -2454,9 +2405,6 @@
 
     <span class="comment">// stop metrics
     </span>metrics_stopper.stop();
-
-    <span class="comment">// stop massa survey thread
-    </span>massa_survey_stopper.stop();
 
     <span class="comment">// stop factory
     </span>factory_manager.stop();
@@ -2624,7 +2572,6 @@
             api_handle,
             grpc_handle,
             metrics_stopper,
-            massa_survey_stopper,
         ) = launch(<span class="kw-2">&amp;</span>cur_args, node_wallet.clone(), Arc::clone(<span class="kw-2">&amp;</span>sig_int_toggled)).<span class="kw">await</span>;
 
         <span class="comment">// loop over messages
@@ -2690,7 +2637,6 @@
             api_handle,
             grpc_handle,
             metrics_stopper,
-            massa_survey_stopper,
         )
         .<span class="kw">await</span>;
 

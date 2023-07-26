@@ -472,18 +472,6 @@
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     io::Read,
@@ -495,7 +483,6 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::MessagesHandler;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
-<span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::version::VersionDeserializer;
 <span class="kw">use </span>massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
@@ -528,7 +515,6 @@
         messages_handler: MessagesHandler,
         target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
         default_target_out_connections: usize,
-        massa_metrics: MassaMetrics,
     ) -&gt; (
         (
             MassaSender&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt;,
@@ -557,15 +543,13 @@
                 target_out_connections.clone(),
                 default_target_out_connections,
                 peers_in_test.clone(),
-                massa_metrics.clone(),
             ));
         }
 
         ((test_sender, test_receiver), testers)
     }
 
-    <span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>tcp_handshake(
+    <span class="kw">pub fn </span>tcp_handshake(
         messages_handler: MessagesHandler,
         peer_db: SharedPeerDB,
         announcement_deserializer: AnnouncementDeserializer,
@@ -573,7 +557,6 @@
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
         config: <span class="kw-2">&amp;</span>ProtocolConfig,
-        massa_metrics: MassaMetrics,
     ) -&gt; PeerNetResult&lt;PeerId&gt; {
         <span class="kw">let </span>our_version = config.version;
         <span class="kw">let </span>result = {
@@ -738,11 +721,7 @@
                         last_announce: <span class="prelude-val">None</span>,
                         state: <span class="kw">super</span>::PeerState::HandshakeFailed,
                     });
-                massa_metrics.inc_protocol_tester_failed();
-            } <span class="kw">else </span>{
-                massa_metrics.inc_protocol_tester_success();
             }
-
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = socket.shutdown(std::net::Shutdown::Both) {
                 <span class="macro">tracing::log::error!</span>(<span class="string">&quot;Failed to shutdown socket: {}&quot;</span>, e);
             }
@@ -763,7 +742,6 @@
         target_out_connections: HashMap&lt;String, (Vec&lt;IpAddr&gt;, usize)&gt;,
         default_target_out_connections: usize,
         peers_in_test: Arc&lt;RwLock&lt;HashSet&lt;SocketAddr&gt;&gt;&gt;,
-        massa_metrics: MassaMetrics,
     ) -&gt; <span class="self">Self </span>{
         <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;running new tester&quot;</span>);
 
@@ -889,7 +867,6 @@
                                                 PeerIdDeserializer::new(),
                                                 <span class="kw-2">*</span>addr,
                                                 <span class="kw-2">&amp;</span>protocol_config,
-                                                massa_metrics.clone(),
                                             );
 
                                             peers_in_test.write().remove(addr);
@@ -951,7 +928,6 @@
                             PeerIdDeserializer::new(),
                             listener,
                             <span class="kw-2">&amp;</span>protocol_config,
-                            massa_metrics.clone(),
                         );
                         <span class="comment">// let res =  network_manager.try_connect(
                         //     listener,

@@ -353,6 +353,10 @@
 <a href="#353" id="353">353</a>
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -371,7 +375,7 @@
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
 <span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="kw">use crate</span>::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
@@ -483,7 +487,6 @@
                 peer_categories.iter().map(|(key, value)|(key.clone(), (value.<span class="number">0</span>.clone(), value.<span class="number">1</span>.target_out_connections))).collect(),
                 config.default_category_info.target_out_connections,
                 <span class="kw-2">&amp;</span>config,
-                massa_metrics.clone(),
             );
 
             <span class="kw">let </span><span class="kw-2">mut </span>operation_handler = OperationHandler::new(
@@ -519,7 +522,7 @@
                 network_controller.get_active_connections(),
                 selector_controller,
                 consensus_controller,
-                pool_controller.clone(),
+                pool_controller,
                 channel_blocks.<span class="number">1</span>,
                 sender_blocks_retrieval_ext,
                 protocol_channels.block_handler_retrieval.<span class="number">1</span>.clone(),
@@ -539,6 +542,7 @@
 
             <span class="kw">let </span>tick_metrics = tick(massa_metrics.tick_delay);
             <span class="kw">let </span>tick_try_connect = tick(config.try_connection_timer.to_duration());
+            <span class="kw">let </span>tick_unban_everyone = tick(config.unban_everyone_timer.to_duration());
 
             <span class="comment">//Try to connect to peers
             </span><span class="kw">loop </span>{
@@ -589,16 +593,11 @@
                     },
                     recv(tick_metrics) -&gt; <span class="kw">_ </span>=&gt; {
                         massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
-
                         massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
-
                         <span class="kw">let </span>active_conn = network_controller.get_active_connections();
                         massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
                         <span class="kw">let </span>peers_map = active_conn.get_peers_connections_bandwidth();
                         massa_metrics.update_peers_tx_rx(peers_map);
-                        <span class="kw">let </span>peer_db_read = peer_db.read();
-                        massa_metrics.set_known_peers(peer_db_read.peers.len());
-                        massa_metrics.set_banned_peers(peer_db_read.peers.iter().filter(|(_id, info)| info.state == PeerState::Banned).count());
                     },
                     recv(tick_try_connect) -&gt; <span class="kw">_ </span>=&gt; {
                         <span class="kw">let </span>active_conn = network_controller.get_active_connections();
@@ -697,6 +696,15 @@
                             <span class="comment">// We only manage TCP for now
                             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
                                 <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
+                            }
+                        }
+                    }
+                    recv(tick_unban_everyone) -&gt; <span class="kw">_ </span>=&gt; {
+                        <span class="macro">debug!</span>(<span class="string">&quot;Periodic unban of every peer&quot;</span>);
+                        <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
+                        <span class="kw">for </span>(peer_id, peer_status) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_write.peers.clone() {
+                            <span class="kw">if </span>peer_status.state == PeerState::Banned {
+                                peer_db_write.unban_peer(peer_id);
                             }
                         }
                     }
