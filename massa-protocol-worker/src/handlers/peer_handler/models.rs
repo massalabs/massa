@@ -73,7 +73,8 @@ impl PeerDB {
 
     pub fn unban_peer(&mut self, peer_id: &PeerId) {
         if let Some(peer) = self.peers.get_mut(peer_id) {
-            peer.state = PeerState::Trusted;
+            // We set the state to HandshakeFailed to force the peer to be tested again
+            peer.state = PeerState::HandshakeFailed;
             info!("Unbanned peer: {:?}", peer_id);
         } else {
             info!("Tried to unban unknown peer: {:?}", peer_id);
