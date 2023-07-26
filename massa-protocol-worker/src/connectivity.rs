@@ -16,7 +16,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::{collections::HashMap, net::IpAddr};
 use std::{thread::JoinHandle, time::Duration};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
@@ -183,6 +183,7 @@ pub(crate) fn start_connectivity_thread(
 
             let tick_metrics = tick(massa_metrics.tick_delay);
             let tick_try_connect = tick(config.try_connection_timer.to_duration());
+            let tick_unban_everyone = tick(config.unban_everyone_timer.to_duration());
 
             //Try to connect to peers
             loop {
@@ -233,9 +234,7 @@ pub(crate) fn start_connectivity_thread(
                     },
                     recv(tick_metrics) -> _ => {
                         massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
-
                         massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
-
                         let active_conn = network_controller.get_active_connections();
                         massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
                         let peers_map = active_conn.get_peers_connections_bandwidth();
@@ -338,6 +337,15 @@ pub(crate) fn start_connectivity_thread(
                             // We only manage TCP for now
                             if let Err(err) = network_controller.try_connect(addr, config.timeout_connection.to_duration()) {
                                 warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+                            }
+                        }
+                    }
+                    recv(tick_unban_everyone) -> _ => {
+                        debug!("Periodic unban of every peer");
+                        let mut peer_db_write = peer_db.write();
+                        for (peer_id, peer_status) in &peer_db_write.peers.clone() {
+                            if peer_status.state == PeerState::Banned {
+                                peer_db_write.unban_peer(peer_id);
                             }
                         }
                     }
