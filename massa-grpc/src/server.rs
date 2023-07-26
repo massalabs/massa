@@ -2,6 +2,7 @@
 
 use massa_bootstrap::white_black_list::SharedWhiteBlackList;
 use massa_models::node::NodeId;
+use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::convert::Infallible;
@@ -112,10 +113,10 @@ pub struct MassaPublicGrpc {
     pub protocol_config: ProtocolConfig,
     /// our node id
     pub node_id: NodeId,
-    /// database for all MIP info
-    pub mip_store: MipStore,
     /// node version
     pub version: massa_models::version::Version,
+    /// keypair factory
+    pub keypair_factory: KeyPairFactory,
 }
 
 impl MassaPublicGrpc {

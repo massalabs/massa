@@ -23,7 +23,10 @@ use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_protocol_exports::{MockProtocolController, ProtocolConfig};
 use massa_signature::KeyPair;
-use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use massa_versioning::{
+    keypair_factory::KeyPairFactory,
+    versioning::{MipStatsConfig, MipStore},
+};
 use num::rational::Ratio;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -133,8 +136,10 @@ async fn test_start_grpc_server() {
         storage: shared_storage,
         grpc_config: grpc_config.clone(),
         version: *VERSION,
-        mip_store,
         node_id: NodeId::new(keypair.get_public_key()),
+        keypair_factory: KeyPairFactory {
+            mip_store: mip_store.clone(),
+        },
     };
 
     let stop_handle = service.serve(&grpc_config).await.unwrap();

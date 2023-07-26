@@ -85,6 +85,7 @@ use massa_protocol_worker::{create_protocol_controller, start_protocol_controlle
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
+use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::mips::get_mip_list;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::Wallet;
@@ -836,8 +837,10 @@ async fn launch(
             grpc_config: grpc_public_config.clone(),
             protocol_config: protocol_config.clone(),
             node_id,
-            mip_store: mip_store.clone(),
             version: *VERSION,
+            keypair_factory: KeyPairFactory {
+                mip_store: mip_store.clone(),
+            },
         };
 
         // Spawn gRPC PUBLIC API

@@ -22,6 +22,7 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1::{self as grpc_model, read_only_execution_call};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
+use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use std::collections::HashSet;
 use std::str::FromStr;
 use tracing::log::warn;
@@ -38,18 +39,18 @@ pub(crate) fn execute_read_only_call(
 
     let mut call_stack = Vec::new();
 
+    let caller_address = match call.caller_address {
+        Some(addr) => Address::from_str(&addr)?,
+        None => {
+            let now = MassaTime::now()?;
+            let keypair = grpc.keypair_factory.create(&(), FactoryStrategy::At(now))?;
+            Address::from_public_key(&keypair.get_public_key())
+        }
+    };
+
     let target = if let Some(call_target) = call.target {
         match call_target {
             read_only_execution_call::Target::BytecodeCall(value) => {
-                let caller_address = match call.caller_address {
-                    Some(addr) => Address::from_str(&addr)?,
-                    //TODO generate address
-                    None => {
-                        return Err(GrpcError::InvalidArgument(
-                            "no caller address provided".to_string(),
-                        ))?
-                    }
-                };
                 let op_datastore = if value.operation_datastore.is_empty() {
                     None
                 } else {
@@ -62,7 +63,7 @@ pub(crate) fn execute_read_only_call(
                         Ok((_, deserialized)) => Some(deserialized),
                         Err(e) => {
                             return Err(GrpcError::InvalidArgument(format!(
-                                "Operation datastore error: {}",
+                                "Datastore deserializing error: {}",
                                 e
                             )))
                         }
@@ -79,16 +80,6 @@ pub(crate) fn execute_read_only_call(
                 ReadOnlyExecutionTarget::BytecodeExecution(value.bytecode)
             }
             read_only_execution_call::Target::FunctionCall(value) => {
-                let caller_address = match call.caller_address {
-                    Some(addr) => Address::from_str(&addr)?,
-                    //TODO generate address
-                    None => {
-                        return Err(GrpcError::InvalidArgument(
-                            "no caller address provided".to_string(),
-                        ))?
-                    }
-                };
-
                 let target_address = Address::from_str(&value.target_addr)?;
                 call_stack.push(ExecutionStackElement {
                     address: caller_address,
