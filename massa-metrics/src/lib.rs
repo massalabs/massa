@@ -180,8 +180,6 @@ impl MassaMetrics {
         nb_thread: u8,
         tick_delay: Duration,
     ) -> (Self, MetricsStopper) {
-        // TODO unwrap
-
         let mut consensus_vec = vec![];
         for i in 0..nb_thread {
             let gauge = Gauge::new(
@@ -401,8 +399,6 @@ impl MassaMetrics {
         if enabled {
             #[cfg(not(feature = "testing"))]
             {
-                // server::bind_metrics(addr);
-
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
                 let _ = prometheus::register(Box::new(final_cursor_period.clone()));
                 let _ = prometheus::register(Box::new(active_cursor_thread.clone()));
@@ -452,14 +448,6 @@ impl MassaMetrics {
 
                 stopper = server::bind_metrics(addr);
             }
-
-            // MassaSurvey::run(
-            //     tick_delay,
-            //     active_in_connections.clone(),
-            //     active_out_connections.clone(),
-            //     peernet_total_bytes_sent.clone(),
-            //     peernet_total_bytes_receive.clone(),
-            // );
         }
 
         (
@@ -748,69 +736,3 @@ impl MassaMetrics {
         }
     }
 }
-// mod test {
-//     use massa_channel::MassaChannel;
-
-//     use crate::start_metrics_server;
-
-//     #[tokio::test]
-//     async fn test_channel_metrics() {
-//         let addr = ([192, 168, 1, 183], 9898).into();
-
-//         start_metrics_server(addr);
-//         std::thread::sleep(std::time::Duration::from_millis(500));
-//         let (sender, receiver) = MassaChannel::new("operations".to_string(), None);
-
-//         let (sender2, receiver2) = MassaChannel::new("second_channel".to_string(), None);
-
-//         sender2.send("hello_world".to_string()).unwrap();
-//         let data = receiver2.recv().unwrap();
-//         assert_eq!(data, "hello_world".to_string());
-
-//         for i in 0..100 {
-//             sender.send(i).unwrap();
-//         }
-
-//         for _i in 0..20 {
-//             receiver.recv().unwrap();
-//         }
-
-//         assert_eq!(receiver.len(), 80);
-//         std::thread::sleep(std::time::std::time::Duration::from_secs(5));
-//         drop(sender2);
-//         drop(receiver2);
-//         std::thread::sleep(std::time::Duration::from_secs(100));
-//     }
-
-//     #[tokio::test]
-//     async fn test_channel() {
-//         let addr = ([192, 168, 1, 183], 9898).into();
-
-//         start_metrics_server(addr);
-//         std::thread::sleep(std::time::Duration::from_millis(500));
-
-//         let (sender, receiver) = MassaChannel::new("test2".to_string(), None);
-
-//         let cloned = receiver.clone();
-
-//         sender.send("msg".to_string()).unwrap();
-
-//         std::thread::spawn(move || {
-//             dbg!("spawned");
-
-//             loop {
-//                 dbg!("loop");
-//                 dbg!(receiver.recv().unwrap());
-//                 std::thread::sleep(std::time::Duration::from_secs(1));
-//             }
-//         });
-//         std::thread::sleep(std::time::Duration::from_secs(2));
-//         std::thread::spawn(move || {
-//             std::thread::sleep(std::time::std::time::Duration::from_secs(5));
-
-//             drop(sender);
-//         });
-
-//         std::thread::sleep(std::time::Duration::from_secs(20));
-//     }
-// }
