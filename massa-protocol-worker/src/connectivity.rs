@@ -252,7 +252,7 @@ pub(crate) fn start_connectivity_thread(
                             connection_slots.insert(category, infos.1.target_out_connections);
                         }
 
-                        // Get all the addresses we can cannot to, without any filter or priorisation done yet
+                        // Get all the addresses we can connect to, without any filter or prioritization done yet
                         let mut addresses_can_connect  = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
