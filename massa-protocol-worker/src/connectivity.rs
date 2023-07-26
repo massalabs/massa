@@ -302,7 +302,7 @@ pub(crate) fn start_connectivity_thread(
                                                     }
                                                 } else {
                                                     if let Some(v) = connection_slots.get_mut("default") {
-                                                        *v -= 1; 
+                                                        *v -= 1;
                                                     }
                                                 }
                                                 continue;
@@ -365,7 +365,7 @@ pub(crate) fn start_connectivity_thread(
                                     // In case the connection succeeds, we take a place in a slot
                                     if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
                                         if let Some(v) = connection_slots.get_mut("default") {
-                                            *v -= 1; 
+                                            *v -= 1;
                                         }
                                         addresses_connected.push(*addr);
                                     }
