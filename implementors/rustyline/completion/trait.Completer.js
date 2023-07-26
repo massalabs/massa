@@ -1,3 +1,3 @@
 (function() {var implementors = {
-"massa_client":[["impl Completer for <a class=\"struct\" href=\"massa_client/repl/struct.MyHelper.html\" title=\"struct massa_client::repl::MyHelper\">MyHelper</a>"],["impl Completer for <a class=\"struct\" href=\"massa_client/repl/struct.MassaCompleter.html\" title=\"struct massa_client::repl::MassaCompleter\">MassaCompleter</a>"]]
+"massa_client":[["impl Completer for <a class=\"struct\" href=\"massa_client/repl/struct.MassaCompleter.html\" title=\"struct massa_client::repl::MassaCompleter\">MassaCompleter</a>"],["impl Completer for <a class=\"struct\" href=\"massa_client/repl/struct.MyHelper.html\" title=\"struct massa_client::repl::MyHelper\">MyHelper</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -169,211 +169,126 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle};
 
-//! This file deals with the announcement of block headers to other nodes
-//! in order to propagate the blocks from our node to other nodes.
-//! It also manages peer banning for invalid blocks detected by consensus.
-//!
-//! The block propagation system works in the following way:
-//! * a node announces the headers of blocks to its neighbor nodes
-//! * the neighbor nodes that need that block then ask our Retrieval process for it
-//!
-//! Here we need to announce block headers to other nodes that haven&#39;t sene them,
-//! and keep the blocks alive long enough for our peers to be able to retrieve them from us.
+<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
+<span class="kw">use </span>massa_logging::massa_trace;
+<span class="kw">use </span>massa_models::{block_id::BlockId, prehash::PreHashSet};
+<span class="kw">use </span>massa_protocol_exports::PeerId;
+<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolError};
+<span class="kw">use </span>massa_storage::Storage;
+<span class="kw">use </span>tracing::{debug, info, warn};
 
-</span><span class="kw">use super</span>::{
-    cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
-    BlockMessageSerializer,
-};
 <span class="kw">use crate</span>::{
     handlers::{block_handler::BlockMessage, peer_handler::models::PeerManagementCmd},
     messages::MessagesSerializer,
     wrap_network::ActiveConnectionsTrait,
 };
-<span class="kw">use </span>crossbeam::channel::RecvTimeoutError;
-<span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
-<span class="kw">use </span>massa_logging::massa_trace;
-<span class="kw">use </span>massa_models::block_header::SecuredHeader;
-<span class="kw">use </span>massa_models::block_id::BlockId;
-<span class="kw">use </span>massa_protocol_exports::PeerId;
-<span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolError};
-<span class="kw">use </span>massa_storage::Storage;
-<span class="kw">use </span>schnellru::{ByLength, LruMap};
-<span class="kw">use </span>std::thread::JoinHandle;
-<span class="kw">use </span>std::time::Instant;
-<span class="kw">use </span>tracing::{info, warn};
 
-<span class="attr">#[derive(Debug)]
-</span><span class="kw">struct </span>BlockPropagationData {
-    <span class="doccomment">/// Time when propagation was initiated
-    </span><span class="kw">pub </span>time_added: Instant,
-    <span class="doccomment">/// Storage holding the block and its dependencies during its propagation time
-    </span><span class="kw">pub </span>_storage: Storage,
-    <span class="doccomment">/// Clone of the block header to avoid locking storage during propagation
-    </span><span class="kw">pub </span>header: SecuredHeader,
-}
+<span class="kw">use super</span>::{
+    cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
+    BlockMessageSerializer,
+};
 
 <span class="kw">pub struct </span>PropagationThread {
-    <span class="doccomment">/// Receiver for commands
-    </span>receiver: MassaReceiver&lt;BlockHandlerPropagationCommand&gt;,
-    <span class="doccomment">/// Protocol config
-    </span>config: ProtocolConfig,
-    <span class="doccomment">/// Shared access to the block cache
-    </span>cache: SharedBlockCache,
-    <span class="doccomment">/// Blocks stored for propagation
-    </span>stored_for_propagation: LruMap&lt;BlockId, BlockPropagationData&gt;,
-    <span class="doccomment">/// Shared access to the list of peers connected to us
-    </span>active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
-    <span class="doccomment">/// Channel to send commands to the peer management system (for banning peers)
-    </span>peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
-    <span class="doccomment">/// Serializer for block-related messages
-    </span>block_serializer: MessagesSerializer,
+    receiver: MassaReceiver&lt;BlockHandlerPropagationCommand&gt;,
+    config: ProtocolConfig,
+    cache: SharedBlockCache,
+    storage: Storage,
+    saved_blocks: VecDeque&lt;BlockId&gt;,
+    active_connections: Box&lt;<span class="kw">dyn </span>ActiveConnectionsTrait&gt;,
+    peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
+    block_serializer: MessagesSerializer,
 }
 
 <span class="kw">impl </span>PropagationThread {
     <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>tick_interval = <span class="self">self</span>.config.block_propagation_tick.to_duration();
-        <span class="kw">let </span><span class="kw-2">mut </span>deadline = Instant::now()
-            .checked_add(tick_interval)
-            .expect(<span class="string">&quot;could not get time of next propagation tick&quot;</span>);
         <span class="kw">loop </span>{
-            <span class="kw">match </span><span class="self">self</span>.receiver.recv_deadline(deadline) {
+            <span class="kw">match </span><span class="self">self</span>.receiver.recv() {
                 <span class="prelude-val">Ok</span>(command) =&gt; {
                     <span class="kw">match </span>command {
-                        <span class="comment">// Message: the block was integrated and should be propagated
-                        </span>BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } =&gt; {
+                        BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } =&gt; {
                             <span class="macro">massa_trace!</span>(
                                 <span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.begin&quot;</span>,
                                 { <span class="string">&quot;block_id&quot;</span>: block_id }
                             );
-
-                            <span class="comment">// get the block header
-                            </span><span class="kw">let </span>header = <span class="kw">match </span>storage
-                                .read_blocks()
-                                .get(<span class="kw-2">&amp;</span>block_id)
-                                .map(|block| block.content.header.clone())
-                            {
-                                <span class="prelude-val">Some</span>(h) =&gt; h,
-                                <span class="prelude-val">None </span>=&gt; {
-                                    <span class="macro">warn!</span>(
-                                        <span class="string">&quot;claimed block {} absent from storage on propagation&quot;</span>,
-                                        block_id
-                                    );
+                            <span class="kw">let </span>header = {
+                                <span class="kw">let </span>block = {
+                                    <span class="kw">let </span>blocks = storage.read_blocks();
+                                    blocks.get(<span class="kw-2">&amp;</span>block_id).cloned()
+                                };
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(block) = block {
+                                    <span class="self">self</span>.storage.store_block(block.clone());
+                                    <span class="self">self</span>.saved_blocks.push_back(block.id);
+                                    <span class="kw">if </span><span class="self">self</span>.saved_blocks.len()
+                                        &gt; <span class="self">self</span>.config.max_known_blocks_saved_size
+                                    {
+                                        <span class="kw">let </span>block_id = <span class="self">self</span>.saved_blocks.pop_front().unwrap();
+                                        <span class="kw">let </span><span class="kw-2">mut </span>ids_to_delete = PreHashSet::default();
+                                        ids_to_delete.insert(block_id);
+                                        <span class="self">self</span>.storage.drop_block_refs(<span class="kw-2">&amp;</span>ids_to_delete);
+                                    }
+                                    block.content.header.clone()
+                                } <span class="kw">else </span>{
+                                    <span class="macro">warn!</span>(<span class="string">&quot;Block {} not found in storage&quot;</span>, <span class="kw-2">&amp;</span>block_id);
                                     <span class="kw">continue</span>;
                                 }
                             };
-
-                            <span class="comment">// Add the block and its dependencies to the propagation LRU
-                            // to ensure they are stored for the time of the propagation.
-                            </span><span class="self">self</span>.stored_for_propagation.insert(
-                                block_id,
-                                BlockPropagationData {
-                                    time_added: Instant::now(),
-                                    _storage: storage,
-                                    header,
-                                },
+                            <span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
+                            <span class="self">self</span>.cache.write().update_cache(
+                                peers_connected,
+                                <span class="self">self</span>.config
+                                    .max_node_known_blocks_size
+                                    .try_into()
+                                    .expect(<span class="string">&quot;max_node_known_blocks_size is too big&quot;</span>),
                             );
-
-                            <span class="comment">// propagate everything that needs to be propagated
-                            </span><span class="self">self</span>.perform_propagations();
-
-                            <span class="comment">// renew tick because propagation propagations were updated
-                            </span>deadline = Instant::now()
-                                .checked_add(tick_interval)
-                                .expect(<span class="string">&quot;could not get time of next propagation tick&quot;</span>);
+                            {
+                                <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
+                                <span class="kw">for </span>(peer_id, (blocks_known, <span class="kw">_</span>)) <span class="kw">in
+                                    </span>cache_read.blocks_known_by_peer.iter()
+                                {
+                                    <span class="comment">// peer that isn&#39;t asking for that block
+                                    </span><span class="kw">let </span>cond = blocks_known.peek(<span class="kw-2">&amp;</span>block_id);
+                                    <span class="comment">// if we don&#39;t know if that peer knows that hash or if we know it doesn&#39;t
+                                    </span><span class="kw">if </span>!cond.map_or_else(|| <span class="bool-val">false</span>, |v| v.<span class="number">0</span>) {
+                                        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.send_header&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id, <span class="string">&quot;block_id&quot;</span>: block_id});
+                                        <span class="macro">debug!</span>(
+                                            <span class="string">&quot;Send block header for slot {} to peer {}&quot;</span>,
+                                            peer_id, header.content.slot
+                                        );
+                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
+                                            peer_id,
+                                            <span class="kw-2">&amp;</span><span class="self">self</span>.block_serializer,
+                                            BlockMessage::BlockHeader(header.clone()).into(),
+                                            <span class="bool-val">true</span>,
+                                        ) {
+                                            <span class="macro">warn!</span>(<span class="string">&quot;Error while sending block header to peer {} err: {:?}&quot;</span>, peer_id, err);
+                                        }
+                                    } <span class="kw">else </span>{
+                                        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.do_not_send&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id, <span class="string">&quot;block_id&quot;</span>: block_id });
+                                    }
+                                }
+                            }
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) =&gt; {
-                            <span class="kw">let </span>peers_to_ban: Vec&lt;PeerId&gt; = <span class="self">self
+                            <span class="kw">let </span>to_ban: Vec&lt;PeerId&gt; = <span class="self">self
                                 </span>.cache
                                 .read()
                                 .blocks_known_by_peer
                                 .iter()
-                                .filter_map(|(peer_id, knowledge)| {
-                                    <span class="kw">match </span>knowledge.peek(<span class="kw-2">&amp;</span>block_id) {
-                                        <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, <span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>(peer_id.clone()),
+                                .filter_map(|(id, (block_known, <span class="kw">_</span>))| {
+                                    <span class="kw">match </span>block_known.peek(<span class="kw-2">&amp;</span>block_id) {
+                                        <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, <span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>(id.clone()),
                                         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                                     }
                                 })
                                 .collect();
-                            <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>peers_to_ban);
+                            <span class="kw">for </span>id <span class="kw">in </span>to_ban.iter() {
+                                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.attack_block_detected.ban_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: id, <span class="string">&quot;block_id&quot;</span>: block_id });
+                                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_node(id) {
+                                    <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, id, err);
+                                }
+                            }
                         }
                         BlockHandlerPropagationCommand::Stop =&gt; {
                             <span class="macro">info!</span>(<span class="string">&quot;Stop block propagation thread&quot;</span>);
@@ -381,15 +296,7 @@
                         }
                     }
                 }
-                <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
-                    <span class="comment">// Propagation tick. This is useful to quickly propagate headers to newly connected nodes.
-                    </span><span class="self">self</span>.perform_propagations();
-                    <span class="comment">// renew deadline of next tick
-                    </span>deadline = Instant::now()
-                        .checked_add(tick_interval)
-                        .expect(<span class="string">&quot;could not get time of next propagation tick&quot;</span>);
-                }
-                <span class="prelude-val">Err</span>(RecvTimeoutError::Disconnected) =&gt; {
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;Stop block propagation thread&quot;</span>);
                     <span class="kw">return</span>;
                 }
@@ -397,70 +304,12 @@
         }
     }
 
-    <span class="doccomment">/// Propagate blocks to peers that need them
-    </span><span class="kw">fn </span>perform_propagations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>now = Instant::now();
-
-        <span class="comment">// stop propagating blocks that have been propagating for too long
-        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(time_added) = <span class="self">self
-            </span>.stored_for_propagation
-            .peek_oldest()
-            .map(|(<span class="kw">_</span>, BlockPropagationData { time_added, .. })| <span class="kw-2">*</span>time_added)
-        {
-            <span class="kw">if </span>now.saturating_duration_since(time_added)
-                &gt; <span class="self">self</span>.config.max_block_propagation_time.to_duration()
-            {
-                <span class="self">self</span>.stored_for_propagation.pop_oldest();
-            } <span class="kw">else </span>{
-                <span class="kw">break</span>;
-            }
-        }
-
-        <span class="comment">// update caches based on currently connected peers
-        </span><span class="kw">let </span>peers_connected = <span class="self">self</span>.active_connections.get_peer_ids_connected();
-        <span class="kw">let </span><span class="kw-2">mut </span>cache_lock = <span class="self">self</span>.cache.write();
-        cache_lock.update_cache(<span class="kw-2">&amp;</span>peers_connected);
-        <span class="lifetime">&#39;peer_loop</span>: <span class="kw">for </span>(peer_id, known_by_peer) <span class="kw">in </span>cache_lock.blocks_known_by_peer.iter_mut() {
-            <span class="kw">for </span>(block_id, BlockPropagationData { header, .. }) <span class="kw">in
-                </span><span class="self">self</span>.stored_for_propagation.iter()
-            {
-                <span class="comment">// if the peer already knows about the block, do not propagate it
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="bool-val">true</span>, <span class="kw">_</span>)) = known_by_peer.peek(block_id) {
-                    <span class="kw">continue</span>;
-                }
-
-                <span class="comment">// try to propagate
-                </span><span class="kw">match </span><span class="self">self</span>.active_connections.send_to_peer(
-                    peer_id,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.block_serializer,
-                    BlockMessage::Header(header.clone()).into(),
-                    <span class="bool-val">true</span>,
-                ) {
-                    <span class="prelude-val">Ok</span>(()) =&gt; {
-                        <span class="comment">// mark the block as known by the peer
-                        </span>known_by_peer.insert(<span class="kw-2">*</span>block_id, (<span class="bool-val">true</span>, now));
-                    }
-                    <span class="prelude-val">Err</span>(err) =&gt; {
-                        <span class="macro">warn!</span>(
-                            <span class="string">&quot;Error while sending block header to peer {} err: {:?}&quot;</span>,
-                            peer_id, err
-                        );
-                        <span class="kw">continue </span><span class="lifetime">&#39;peer_loop</span>; <span class="comment">// try next peer
-                    </span>}
-                }
-            }
-        }
-    }
-
-    <span class="doccomment">/// try to ban a list of peers
-    </span><span class="kw">fn </span>ban_peers(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_ids: <span class="kw-2">&amp;</span>[PeerId]) {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-            </span>.peer_cmd_sender
-            .try_send(PeerManagementCmd::Ban(peer_ids.to_vec()))
+    <span class="doccomment">/// send a ban peer command to the peer handler
+    </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
+        <span class="self">self</span>.peer_cmd_sender
+            .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[peer_id.clone()]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
-        {
-            <span class="macro">warn!</span>(<span class="string">&quot;could not send Ban command to peer manager: {}&quot;</span>, err);
-        }
     }
 }
 
@@ -470,6 +319,7 @@
     peer_cmd_sender: MassaSender&lt;PeerManagementCmd&gt;,
     config: ProtocolConfig,
     cache: SharedBlockCache,
+    storage: Storage,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-block-handler-propagation&quot;</span>.to_string())
@@ -477,18 +327,14 @@
             <span class="kw">let </span>block_serializer = MessagesSerializer::new()
                 .with_block_message_serializer(BlockMessageSerializer::new());
             <span class="kw">let </span><span class="kw-2">mut </span>propagation_thread = PropagationThread {
-                stored_for_propagation: LruMap::new(ByLength::new(
-                    config
-                        .max_blocks_kept_for_propagation
-                        .try_into()
-                        .expect(<span class="string">&quot;max_blocks_kept_for_propagation does not fit in u32&quot;</span>),
-                )),
                 receiver,
                 config,
                 cache,
                 peer_cmd_sender,
                 active_connections,
                 block_serializer,
+                storage,
+                saved_blocks: VecDeque::default(),
             };
             propagation_thread.run();
         })

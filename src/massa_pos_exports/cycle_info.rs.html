@@ -471,8 +471,105 @@
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>bitvec::vec::BitVec;
-<span class="kw">use </span>massa_hash::{HashXof, HashXofDeserializer, HashXofSerializer, HASH_XOF_SIZE_BYTES};
+<span class="kw">use </span>massa_hash::{Hash, HashXof, HashXofDeserializer, HashXofSerializer, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     prehash::PreHashMap,
@@ -496,6 +593,73 @@
 <span class="kw">use </span>std::collections::{BTreeMap, VecDeque};
 <span class="kw">use </span>std::ops::Bound::Included;
 
+<span class="kw">const </span>CYCLE_INFO_HASH_INITIAL_BYTES: <span class="kw-2">&amp;</span>[u8; HASH_XOF_SIZE_BYTES] = <span class="kw-2">&amp;</span>[<span class="number">0</span>; HASH_XOF_SIZE_BYTES];
+
+<span class="kw">struct </span>CycleInfoHashComputer {
+    u64_ser: U64VarIntSerializer,
+    address_ser: AddressSerializer,
+    bitvec_ser: BitVecSerializer,
+}
+
+<span class="kw">impl </span>CycleInfoHashComputer {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            u64_ser: U64VarIntSerializer::new(),
+            address_ser: AddressSerializer::new(),
+            bitvec_ser: BitVecSerializer::new(),
+        }
+    }
+
+    <span class="kw">fn </span>compute_cycle_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; Hash {
+        <span class="comment">// serialization can never fail in the following computations, unwrap is justified
+        </span><span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="self">self</span>.u64_ser.serialize(<span class="kw-2">&amp;</span>cycle, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
+    }
+
+    <span class="kw">fn </span>compute_complete_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, complete: bool) -&gt; Hash {
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="self">self</span>.u64_ser
+            .serialize(<span class="kw-2">&amp;</span>(complete <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
+            .unwrap();
+        Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
+    }
+
+    <span class="kw">fn </span>compute_seed_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, seed: <span class="kw-2">&amp;</span>BitVec&lt;u8&gt;) -&gt; Hash {
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="self">self</span>.bitvec_ser.serialize(seed, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        Hash::compute_from(<span class="kw-2">&amp;</span>buffer)
+    }
+
+    <span class="comment">// TODO: Remove hash from cycle and deferred credits as it&#39;s not saved in the DB.
+    </span><span class="kw">fn </span>compute_roll_entry_hash(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="kw-2">&amp;</span>Address,
+        roll_count: u64,
+    ) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="self">self</span>.address_ser.serialize(address, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        <span class="self">self</span>.u64_ser.serialize(<span class="kw-2">&amp;</span>roll_count, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        HashXof::compute_from(<span class="kw-2">&amp;</span>buffer)
+    }
+
+    <span class="kw">fn </span>compute_prod_stats_entry_hash(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="kw-2">&amp;</span>Address,
+        prod_stats: <span class="kw-2">&amp;</span>ProductionStats,
+    ) -&gt; HashXof&lt;HASH_XOF_SIZE_BYTES&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        <span class="self">self</span>.address_ser.serialize(address, <span class="kw-2">&amp;mut </span>buffer).unwrap();
+        <span class="self">self</span>.u64_ser
+            .serialize(<span class="kw-2">&amp;</span>prod_stats.block_success_count, <span class="kw-2">&amp;mut </span>buffer)
+            .unwrap();
+        <span class="self">self</span>.u64_ser
+            .serialize(<span class="kw-2">&amp;</span>prod_stats.block_failure_count, <span class="kw-2">&amp;mut </span>buffer)
+            .unwrap();
+        HashXof::compute_from(<span class="kw-2">&amp;</span>buffer)
+    }
+}
+
 <span class="doccomment">/// State of a cycle for all threads
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>CycleInfo {
@@ -509,20 +673,47 @@
     </span><span class="kw">pub </span>rng_seed: BitVec&lt;u8&gt;,
     <span class="doccomment">/// Per-address production statistics
     </span><span class="kw">pub </span>production_stats: PreHashMap&lt;Address, ProductionStats&gt;,
+    <span class="doccomment">/// Hash of the roll counts
+    </span><span class="kw">pub </span>roll_counts_hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
+    <span class="doccomment">/// Hash of the production statistics
+    </span><span class="kw">pub </span>production_stats_hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
+    <span class="doccomment">/// Hash of the cycle state
+    </span><span class="kw">pub </span>cycle_global_hash: HashXof&lt;HASH_XOF_SIZE_BYTES&gt;,
     <span class="doccomment">/// Snapshot of the final state hash
     /// Used for PoS selections
     </span><span class="kw">pub </span>final_state_hash_snapshot: <span class="prelude-ty">Option</span>&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;&gt;,
 }
 
 <span class="kw">impl </span>CycleInfo {
-    <span class="doccomment">/// Create a new `CycleInfo`
-    </span><span class="kw">pub fn </span>new(
+    <span class="doccomment">/// Create a new `CycleInfo` and compute its hash
+    </span><span class="kw">pub fn </span>new_with_hash(
         cycle: u64,
         complete: bool,
         roll_counts: BTreeMap&lt;Address, u64&gt;,
         rng_seed: BitVec&lt;u8&gt;,
         production_stats: PreHashMap&lt;Address, ProductionStats&gt;,
     ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>hash_computer = CycleInfoHashComputer::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>roll_counts_hash = HashXof::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+        <span class="kw">let </span><span class="kw-2">mut </span>production_stats_hash = HashXof::from_bytes(CYCLE_INFO_HASH_INITIAL_BYTES);
+
+        <span class="comment">// compute the cycle hash
+        </span><span class="kw">let </span><span class="kw-2">mut </span>hash_concat: Vec&lt;u8&gt; = Vec::new();
+        hash_concat.extend(hash_computer.compute_cycle_hash(cycle).to_bytes());
+        hash_concat.extend(hash_computer.compute_complete_hash(complete).to_bytes());
+        hash_concat.extend(hash_computer.compute_seed_hash(<span class="kw-2">&amp;</span>rng_seed).to_bytes());
+        <span class="kw">for </span>(addr, <span class="kw-2">&amp;</span>count) <span class="kw">in </span><span class="kw-2">&amp;</span>roll_counts {
+            roll_counts_hash ^= hash_computer.compute_roll_entry_hash(addr, count);
+        }
+        hash_concat.extend(roll_counts_hash.to_bytes());
+        <span class="kw">for </span>(addr, prod_stats) <span class="kw">in </span><span class="kw-2">&amp;</span>production_stats {
+            production_stats_hash ^= hash_computer.compute_prod_stats_entry_hash(addr, prod_stats);
+        }
+        hash_concat.extend(production_stats_hash.to_bytes());
+
+        <span class="comment">// compute the global hash
+        </span><span class="kw">let </span>cycle_global_hash = HashXof::compute_from(<span class="kw-2">&amp;</span>hash_concat);
+
         <span class="comment">// create the new cycle
         </span>CycleInfo {
             cycle,
@@ -530,6 +721,9 @@
             roll_counts,
             rng_seed,
             production_stats,
+            roll_counts_hash,
+            production_stats_hash,
+            cycle_global_hash,
             final_state_hash_snapshot: <span class="prelude-val">None</span>,
         }
     }
@@ -653,7 +847,7 @@
                 </span>PreHashMap&lt;Address, ProductionStats&gt;, <span class="comment">// production_stats (address, n_success, n_fail)
                 </span><span class="prelude-ty">Option</span>&lt;HashXof&lt;HASH_XOF_SIZE_BYTES&gt;&gt;, <span class="comment">// final_state_hash_snapshot
             </span>)| {
-                <span class="kw">let </span><span class="kw-2">mut </span>cycle = CycleInfo::new(
+                <span class="kw">let </span><span class="kw-2">mut </span>cycle = CycleInfo::new_with_hash(
                     cycle,
                     complete,
                     roll_counts.into_iter().collect(),
