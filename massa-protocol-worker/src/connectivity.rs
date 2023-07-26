@@ -245,25 +245,32 @@ pub(crate) fn start_connectivity_thread(
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();
                         let peers_connection_queue = active_conn.get_peer_ids_connection_queue();
-                        let mut slots_per_category: Vec<(String, usize)> = peer_categories.iter().map(|(category, category_infos)| {
-                            (category.clone(), category_infos.1.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
-                                if peer.1 == PeerConnectionType::OUT && let Some(peer_category) = &peer.2 {
-                                    category == peer_category
-                                } else {
-                                    false
-                                }
-                            }).count()))
-                        }).collect();
-                        let mut slot_default_category = config.default_category_info.target_out_connections.saturating_sub(peers_connected.iter().filter(|(_, peer)| {
-                            peer.1 == PeerConnectionType::OUT && peer.2.is_none()
-                        }).count());
+
+                        let mut connection_slots = HashMap::new();
+                        connection_slots.insert("default", config.default_category_info.target_out_connections);
+                        for (category, infos) in peer_categories.iter() {
+                            connection_slots.insert(category, infos.1.target_out_connections);
+                        }
 
                         // Get all the addresses we can cannot to, without any filter or priorisation done yet
                         let mut addresses_can_connect  = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
                             for (peer_id, peer_info) in &peer_db_read.peers {
-                                if peers_connected.contains_key(peer_id) {
+
+                                // If peer already connected, decrement the slots for the given category, or default category if none
+                                if let Some(peer) = peers_connected.get(peer_id) {
+                                    if peer.1 == PeerConnectionType::OUT {
+                                        if let Some(ref peer_category) = &peer.2 {
+                                            if let Some(slots) = connection_slots.get_mut(peer_category.as_str()) {
+                                                *slots -= 1;
+                                            } else {
+                                                tracing::log::warn!("Category of connected peer {peer_category} not known in configuration"); 
+                                            }
+                                        } else {
+                                            *connection_slots.get_mut("default").unwrap() -= 1;
+                                        }
+                                    }
                                     continue;
                                 }
 
@@ -273,8 +280,26 @@ pub(crate) fn start_connectivity_thread(
                                             continue;
                                         }
 
-                                        for (addr, _) in last_announce.listeners.iter() {
+                                        if let Some((addr, _)) = last_announce.listeners.iter().next() {
+                                            let canonical_ip = addr.ip().to_canonical();
+                                            let mut allowed_local_ips = false;
+                                            // Check if the peer is in a category and we didn't reached out target yet
+                                            let mut category_found = None;
+                                            for (name, (ips, cat)) in &peer_categories {
+                                                if ips.contains(&canonical_ip) {
+                                                    category_found = Some(name);
+                                                    allowed_local_ips = cat.allow_local_peers;
+                                                }
+                                            }
+
                                             if peers_connection_queue.contains(addr) {
+                                                if let Some(peer_category) = category_found {
+                                                    if let Some(slots) = connection_slots.get_mut(peer_category.as_str()) {
+                                                        *slots -= 1;
+                                                    }
+                                                } else {
+                                                    connection_slots.get_mut("default").map(|v| *v -= 1);
+                                                }
                                                 continue;
                                             }
 
@@ -292,22 +317,13 @@ pub(crate) fn start_connectivity_thread(
                                                 continue;
                                             }
 
-                                            let canonical_ip = addr.ip().to_canonical();
-                                            let mut allowed_local_ips = false;
-                                            // Check if the peer is in a category and we didn't reached out target yet
-                                            let mut category_found = None;
-                                            for (name, (ips, cat)) in &peer_categories {
-                                                if ips.contains(&canonical_ip) {
-                                                    category_found = Some(name);
-                                                    allowed_local_ips = cat.allow_local_peers;
-                                                }
-                                            }
                                             if !canonical_ip.is_global() && !allowed_local_ips {
                                                 continue;
                                             }
 
                                             addresses_can_connect.push((*addr, connection_metadata, category_found));
-                                            break;
+                                        } else {
+                                            tracing::log::warn!("No listeners for the peer {peer_id}"); 
                                         }
                                     }
                                 }
@@ -326,14 +342,13 @@ pub(crate) fn start_connectivity_thread(
 
                             // Connect to the peer
                             match category {
-
                                 // In case has a special category
                                 Some(cat) => {
-                                    for (name, category_infos) in &mut slots_per_category {
-                                        if name == *cat && *category_infos > 0 {
+                                    for (name, slots) in connection_slots.iter_mut() {
+                                        if name == *cat && *slots > 0 {
                                             // In case the connection succeeds, we take a place in a slot
                                             if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
-                                                *category_infos -= 1;
+                                                *slots -= 1;
                                                 addresses_connected.push(*addr);
                                             }
                                         }
@@ -341,10 +356,10 @@ pub(crate) fn start_connectivity_thread(
                                 }
 
                                 // Default category
-                                None if slot_default_category > 0 => {
+                                None if connection_slots["default"] > 0 => {
                                     // In case the connection succeeds, we take a place in a slot
                                     if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
-                                        slot_default_category -= 1;
+                                        connection_slots.get_mut("default").map(|v| *v -= 1);
                                         addresses_connected.push(*addr);
                                     }
                                 }
@@ -352,7 +367,7 @@ pub(crate) fn start_connectivity_thread(
                             }
 
                             // IF all slots are filled, stop
-                            if slot_default_category == 0 && slots_per_category.iter().all(|(_, slots)| *slots == 0) {
+                            if connection_slots.values().sum::<usize>() == 0 {
                                 break;
                             }
                         }

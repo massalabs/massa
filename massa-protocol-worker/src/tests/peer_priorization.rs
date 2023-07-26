@@ -12,7 +12,8 @@ fn get_md(md: &ConnectionMetadata, mdidx: usize) -> Option<MassaTime> {
     match mdidx {
         0 => md.last_failure,
         1 => md.last_success,
-        2 => md.last_test,
+        2 => md.last_test_failure,
+        3 => md.last_test_success,
         _ => unreachable!(),
     }
 }
@@ -91,15 +92,36 @@ fn test_last_success_prio() {
     test_prio(test_vec, 1, false);
 }
 
-//    Try more recent (nb milli > ) -> More prio
-//    If None, less prio than any success
+//    Test failure more recent (nb milli > ) -> Less prio
+//    If None, more prio than any failure
 #[test]
-fn test_last_try_prio() {
+fn test_last_test_failure_prio() {
     let test_vec = (1..500)
         .map(|n| {
             (n, {
                 ConnectionMetadata::default().edit(
                     2,
+                    if n < 50 {
+                        None
+                    } else {
+                        Some(MassaTime::from_millis(n))
+                    },
+                )
+            })
+        })
+        .collect();
+    test_prio(test_vec, 2, true);
+}
+
+//    Test success more recent (nb milli > ) -> More prio
+//    If None, less prio than any success
+#[test]
+fn test_last_test_success_prio() {
+    let test_vec = (1..500)
+        .map(|n| {
+            (n, {
+                ConnectionMetadata::default().edit(
+                    3,
                     if n > 450 {
                         None
                     } else {
@@ -109,5 +131,5 @@ fn test_last_try_prio() {
             })
         })
         .collect();
-    test_prio(test_vec, 2, false);
+    test_prio(test_vec, 3, false);
 }

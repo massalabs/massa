@@ -238,12 +238,18 @@ impl Tester {
                             last_announce: None,
                             state: super::PeerState::HandshakeFailed,
                         });
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_failure();
+                } else {
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_success();
                 }
-                peer_db_write
-                    .try_connect_history
-                    .entry(addr)
-                    .or_insert(ConnectionMetadata::default())
-                    .test();
             }
 
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
