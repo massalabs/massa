@@ -210,29 +210,15 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
-<span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
+<span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
 <span class="kw">use </span>massa_models::error::ModelsError;
 <span class="kw">use </span>massa_models::mapping_grpc::secure_share_to_vec;
 <span class="kw">use </span>massa_models::secure_share::SecureShareDeserializer;
-<span class="kw">use </span>massa_proto_rs::google::rpc::Status;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
 <span class="kw">use </span>std::io::ErrorKind;
@@ -255,11 +241,11 @@
 /// verifies, saves and propagates the block received in each message, and sends back a stream of
 /// block id messages
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>send_blocks(
-    grpc: <span class="kw-2">&amp;</span>MassaGrpc,
+    grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: Request&lt;tonic::Streaming&lt;grpc_api::SendBlocksRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;SendBlocksStreamType, GrpcError&gt; {
     <span class="kw">let </span>consensus_controller = grpc.consensus_controller.clone();
-    <span class="kw">let </span>protocol_command_sender = grpc.protocol_command_sender.clone();
+    <span class="kw">let </span>protocol_command_sender = grpc.protocol_controller.clone();
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
     <span class="kw">let </span>config = grpc.grpc_config.clone();
 
@@ -274,24 +260,22 @@
             <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(req_content) =&gt; {
                     <span class="kw">let </span><span class="prelude-val">Some</span>(proto_block) = req_content.block <span class="kw">else </span>{
-                        report_error(
-                            req_content.id.clone(),
-                            tx.clone(),
-                            tonic::Code::InvalidArgument,
-                            <span class="string">&quot;the request payload is empty&quot;</span>.to_owned(),
-                        ).<span class="kw">await</span>;
-                        <span class="kw">continue</span>;
-                    };
+                            report_error(
+                                tx.clone(),
+                                tonic::Code::InvalidArgument,
+                                <span class="string">&quot;the request payload is empty&quot;</span>.to_owned(),
+                            ).<span class="kw">await</span>;
+                            <span class="kw">continue</span>;
+                        };
 
                     <span class="kw">let </span><span class="prelude-val">Ok</span>(blk_serialized) = secure_share_to_vec(proto_block) <span class="kw">else </span>{
-                        report_error(
-                            req_content.id.clone(),
-                            tx.clone(),
-                            tonic::Code::InvalidArgument,
-                            <span class="string">&quot;failed to convert block secure share&quot;</span>.to_owned(),
-                        ).<span class="kw">await</span>;
-                        <span class="kw">continue</span>;
-                    };
+                            report_error(
+                                tx.clone(),
+                                tonic::Code::InvalidArgument,
+                                <span class="string">&quot;failed to convert block secure share&quot;</span>.to_owned(),
+                            ).<span class="kw">await</span>;
+                            <span class="kw">continue</span>;
+                        };
 
                     <span class="comment">// Create a block deserializer arguments
                     </span><span class="kw">let </span>args = BlockDeserializerArgs {
@@ -310,7 +294,6 @@
                             <span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) = tuple;
                             <span class="kw">if </span>!rest.is_empty() {
                                 report_error(
-                                    req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
                                     <span class="string">&quot;the request payload is too large&quot;</span>.to_owned(),
@@ -333,7 +316,6 @@
                                 })
                             {
                                 report_error(
-                                    req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
                                     <span class="macro">format!</span>(<span class="string">&quot;wrong signature: {}&quot;</span>, e),
@@ -361,7 +343,6 @@
                             {
                                 <span class="comment">// If propagation failed, send an error message back to the client
                                 </span>report_error(
-                                    req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::Internal,
                                     <span class="macro">format!</span>(<span class="string">&quot;failed to propagate block: {}&quot;</span>, e),
@@ -370,16 +351,11 @@
                                 <span class="kw">continue</span>;
                             };
 
-                            <span class="comment">// Build the response message
-                            </span><span class="kw">let </span>result = grpc_api::BlockResult {
-                                block_id: res_block.id.to_string(),
-                            };
                             <span class="comment">// Send the response message back to the client
                             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
                                 .send(<span class="prelude-val">Ok</span>(grpc_api::SendBlocksResponse {
-                                    id: req_content.id.clone(),
-                                    message: <span class="prelude-val">Some</span>(grpc_api::send_blocks_response::Message::Result(
-                                        result,
+                                    result: <span class="prelude-val">Some</span>(grpc_api::send_blocks_response::Result::BlockId(
+                                        res_block.id.to_string(),
                                     )),
                                 }))
                                 .<span class="kw">await
@@ -390,7 +366,6 @@
                         <span class="comment">// If the verification failed, send an error message back to the client
                         </span><span class="prelude-val">Err</span>(e) =&gt; {
                             report_error(
-                                req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
                                 <span class="macro">format!</span>(<span class="string">&quot;failed to deserialize block: {}&quot;</span>, e),
@@ -426,7 +401,6 @@
 
 <span class="doccomment">/// This function reports an error to the sender by sending a gRPC response message to the client
 </span><span class="kw">async fn </span>report_error(
-    id: String,
     sender: Sender&lt;<span class="prelude-ty">Result</span>&lt;grpc_api::SendBlocksResponse, tonic::Status&gt;&gt;,
     code: tonic::Code,
     error: String,
@@ -435,12 +409,12 @@
     <span class="comment">// Attempt to send the error response message to the sender
     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = sender
         .send(<span class="prelude-val">Ok</span>(grpc_api::SendBlocksResponse {
-            id,
-            message: <span class="prelude-val">Some</span>(grpc_api::send_blocks_response::Message::Error(Status {
-                code: code.into(),
-                message: error,
-                details: Vec::new(),
-            })),
+            result: <span class="prelude-val">Some</span>(grpc_api::send_blocks_response::Result::Error(
+                massa_proto_rs::massa::model::v1::Error {
+                    code: code.into(),
+                    message: error,
+                },
+            )),
         }))
         .<span class="kw">await
     </span>{

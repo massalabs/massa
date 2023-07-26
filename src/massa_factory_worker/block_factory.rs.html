@@ -288,16 +288,20 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig};
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
-    operation::{compute_operations_hash, OperationIdSerializer},
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -317,7 +321,6 @@
     channels: FactoryChannels,
     factory_receiver: MassaReceiver&lt;()&gt;,
     mip_store: MipStore,
-    op_id_serializer: OperationIdSerializer,
 }
 
 <span class="kw">impl </span>BlockFactoryWorker {
@@ -339,7 +342,6 @@
                     channels,
                     factory_receiver,
                     mip_store,
-                    op_id_serializer: OperationIdSerializer::new(),
                 };
                 this.run();
             })
@@ -512,6 +514,12 @@
         }
 
         block_storage.extend(op_storage);
+        <span class="kw">let </span>global_operations_hash = Hash::compute_from(
+            <span class="kw-2">&amp;</span>op_ids
+                .iter()
+                .flat_map(|op_id| <span class="kw-2">*</span>op_id.to_bytes())
+                .collect::&lt;Vec&lt;u8&gt;&gt;(),
+        );
 
         <span class="comment">// create header
         </span><span class="kw">let </span>current_version = <span class="self">self</span>.mip_store.get_network_version_current();
@@ -522,7 +530,7 @@
                 announced_version,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
-                operation_merkle_root: compute_operations_hash(<span class="kw-2">&amp;</span>op_ids, <span class="kw-2">&amp;</span><span class="self">self</span>.op_id_serializer),
+                operation_merkle_root: global_operations_hash,
                 endorsements,
                 denunciations: <span class="self">self</span>.channels.pool.get_block_denunciations(<span class="kw-2">&amp;</span>slot),
             },
