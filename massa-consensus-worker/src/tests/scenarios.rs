@@ -175,7 +175,7 @@ fn test_unsorted_block() {
 }
 
 #[test]
-fn test_grandpa_incompatibility() {
+fn test_parallel_incompatibility() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(200),
@@ -243,6 +243,7 @@ fn test_grandpa_incompatibility() {
             let status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
+
             assert!(if let Some(h) = status.gi_head.get(&block_4.id) {
                 h.contains(&block_3.id)
             } else {
@@ -258,12 +259,14 @@ fn test_grandpa_incompatibility() {
                 }
             }
 
-            let parents: Vec<BlockId> = status.best_parents.iter().map(|(b, _p)| *b).collect();
-            if block_4.id > block_3.id {
-                assert_eq!(parents[0], block_3.id)
-            } else {
-                assert_eq!(parents[1], block_4.id)
-            }
+            assert_eq!(
+                &status.best_parents,
+                &vec![
+                    (block_3.id, block_3.content.header.content.slot.period),
+                    (block_2.id, block_2.content.header.content.slot.period),
+                ],
+                "wrong best_parents"
+            );
 
             let mut latest_extra_blocks = VecDeque::new();
             for extend_i in 0..33 {

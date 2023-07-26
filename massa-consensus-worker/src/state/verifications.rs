@@ -1,5 +1,4 @@
 use super::{process::BlockInfos, ConsensusState};
-
 use massa_consensus_exports::block_status::{BlockStatus, DiscardReason, HeaderOrBlock};
 use massa_logging::massa_trace;
 use massa_models::{
@@ -329,24 +328,6 @@ impl ConsensusState {
             }
         }
 
-        // get parent in own thread
-        let parent_in_own_thread = match self
-            .blocks_state
-            .get(&parents[header.content.slot.thread as usize].0)
-        {
-            Some(BlockStatus::Active {
-                a_block,
-                storage: _,
-            }) => Some(a_block),
-            _ => None,
-        }
-        .unwrap_or_else(|| {
-            panic!(
-                "inconsistency inside block statuses searching parent {} in own thread of block {}",
-                parents[header.content.slot.thread as usize].0, block_id
-            )
-        });
-
         // check endorsements
         match self.check_endorsements(header) {
             EndorsementsCheckOutcome::Proceed => {}
@@ -356,62 +337,98 @@ impl ConsensusState {
             EndorsementsCheckOutcome::WaitForSlot => return HeaderCheckOutcome::WaitForSlot,
         }
 
-        // thread incompatibility test
-        parent_in_own_thread.children[header.content.slot.thread as usize]
-            .keys()
-            .filter(|&sibling_h| sibling_h != block_id)
-            .for_each(|&sibling_h| {
-                incomp.extend(self.get_active_block_and_descendants(&sibling_h));
-            });
-
-        // grandpa incompatibility test
-        for tau in (0u8..self.config.thread_count).filter(|&t| t != header.content.slot.thread) {
-            // for each parent in a different thread tau
-            // traverse parent's descendants in tau
-            let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
-            while let Some((cur_gen, cur_h)) = to_explore.pop() {
-                let cur_b = match self.blocks_state.get(&cur_h) {
-                    Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
-                    _ => None,
-                }.unwrap_or_else(|| panic!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_h,  block_id));
-
-                // traverse but do not check up to generation 1
-                if cur_gen <= 1 {
-                    to_explore.extend(
-                        cur_b.children[tau as usize]
-                            .keys()
-                            .map(|&c_h| (cur_gen + 1, c_h)),
-                    );
+        // incompatibility test
+        {
+            // list all ancestors until we reach a final block (included)
+            let mut ancestor_ids: PreHashSet<BlockId> = Default::default();
+            let mut to_traverse = header.content.parents.clone();
+            let mut earliest_visited_periods: Vec<u64> = parents.iter().map(|(_, p)| *p).collect();
+            while let Some(ancestor_id) = to_traverse.pop() {
+                if !ancestor_ids.insert(ancestor_id) {
+                    // ancestor already visited
                     continue;
                 }
 
-                let parent_id = {
-                    if let BlockStatus::Active {
-                        a_block,
-                        storage: _,
-                    } = self.blocks_state.get(&cur_b.block_id).unwrap_or_else(|| {
-                        panic!("missing block in grandpa incomp test: {}", cur_b.block_id)
-                    }) {
-                        a_block.parents[header.content.slot.thread as usize].0
-                    } else {
-                        panic!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_b.block_id,  block_id);
+                // get ancestor
+                if let Some(BlockStatus::Active {
+                    a_block: ancestor, ..
+                }) = self.blocks_state.get(&ancestor_id)
+                {
+                    // update earliest_visited_periods
+                    earliest_visited_periods[ancestor.slot.thread as usize] = std::cmp::min(
+                        earliest_visited_periods[ancestor.slot.thread as usize],
+                        ancestor.slot.period,
+                    );
+
+                    // Continue traversing if not final.
+                    // Note that we use an optimization:
+                    // only traverse in the same thread,
+                    // which is OK because of the parent time consistency check done before
+                    if !ancestor.is_final {
+                        if let Some(parent_id_slot) =
+                            ancestor.parents.get(ancestor.slot.thread as usize)
+                        {
+                            to_traverse.push(parent_id_slot.0);
+                        }
+                    }
+                }
+            }
+
+            // check incompatibilities with non-ancestors
+            for traversed_id in self.blocks_state.active_blocks() {
+                // skip if the traversed block is an ancestor of the incoming block
+                if ancestor_ids.contains(traversed_id) {
+                    continue;
+                }
+
+                // get information on the traversed block
+                let traversed_block = match self.blocks_state.get(traversed_id) {
+                    Some(BlockStatus::Active { a_block, .. }) => a_block,
+                    _ => {
+                        panic!(
+                            "inconsistency inside block statuses searching traversed {} of block {}",
+                            traversed_id, block_id
+                        )
                     }
                 };
 
-                // check if the parent in tauB has a strictly lower period number than B's parent in tauB
-                // note: cur_b cannot be genesis at gen > 1
-                let parent_period = match self.blocks_state.get(&parent_id) {
-                    Some(BlockStatus::Active { a_block, storage: _ }) => Some(a_block),
-                    _ => None,
-                }.unwrap_or_else(||
-                        panic!("inconsistency inside block statuses searching {} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking grandpa incompatibility of block {}",
-                        parent_id,
-                        block_id)
-                    ).slot.period;
-                if parent_period < parent_in_own_thread.slot.period {
-                    // GPI detected
-                    incomp.extend(self.get_active_block_and_descendants(&cur_h));
-                } // otherwise, cur_b and its descendants cannot be GPI with the block: don't traverse
+                // skip if the block is before the earliest listed ancestors of that thread
+                if traversed_block.slot.period
+                    < earliest_visited_periods[traversed_block.slot.thread as usize]
+                {
+                    continue;
+                }
+
+                // check incompatibility
+                let incompatible = match header.content.slot.cmp(&traversed_block.slot) {
+                    // the traversed block is at the same slot as the incoming block => they are incompatible
+                    std::cmp::Ordering::Equal => true,
+                    // the time interval between the traversed block and the incoming block is higher or equal to t0 => they are incompatible
+                    std::cmp::Ordering::Greater => {
+                        header
+                            .content
+                            .slot
+                            .slots_since(&traversed_block.slot, self.config.thread_count)
+                            .expect("arithmetic overflow on slots while checking incompatibilities")
+                            >= self.config.thread_count as u64
+                    }
+                    // the time interval between the traversed block and the incoming block is higher or equal to t0 => they are incompatible
+                    std::cmp::Ordering::Less => {
+                        traversed_block
+                            .slot
+                            .slots_since(&header.content.slot, self.config.thread_count)
+                            .expect("arithmetic overflow on slots while checking incompatibilities")
+                            >= self.config.thread_count as u64
+                    }
+                };
+
+                // if incompatible, add to incompatibilities and exit early if the incoming header is incompatible with a final block
+                if incompatible {
+                    if traversed_block.is_final {
+                        return HeaderCheckOutcome::Discard(DiscardReason::Stale);
+                    }
+                    incomp.extend(self.get_active_block_and_descendants(traversed_id));
+                }
             }
         }
 

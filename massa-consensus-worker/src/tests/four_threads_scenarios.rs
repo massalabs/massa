@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use massa_consensus_exports::ConsensusConfig;
-use massa_models::{address::Address, block::BlockGraphStatus, slot::Slot};
+use massa_models::{address::Address, block::BlockGraphStatus, block_id::BlockId, slot::Slot};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
@@ -290,102 +292,75 @@ fn test_fts_multiple_max_cliques_1() {
                 .consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
-            assert_eq!(
-                status.max_cliques.len(),
-                4,
-                "incorrect number of max cliques"
+
+            let hash_to_slot: HashMap<BlockId, Slot> = vec![
+                (genesis[0], Slot::new(0, 0)),
+                (genesis[1], Slot::new(0, 1)),
+                (genesis[2], Slot::new(0, 2)),
+                (genesis[3], Slot::new(0, 3)),
+                (block_1_0.id, Slot::new(1, 0)),
+                (block_1_1.id, Slot::new(1, 1)),
+                (block_1_2.id, Slot::new(1, 2)),
+                (block_1_3.id, Slot::new(1, 3)),
+                (block_2_0.id, Slot::new(2, 0)),
+                (block_2_1.id, Slot::new(2, 1)),
+                (block_2_2.id, Slot::new(2, 2)),
+                (block_2_3.id, Slot::new(2, 3)),
+            ]
+            .into_iter()
+            .collect();
+            for (from_id, to_ids) in &status.gi_head {
+                println!(
+                    "{:?} => {:?}",
+                    hash_to_slot[from_id],
+                    to_ids
+                        .iter()
+                        .map(|v| hash_to_slot[v].clone())
+                        .collect::<Vec<_>>()
+                );
+            }
+
+            // print cliques
+            for clique in &status.max_cliques {
+                println!(
+                    "clique: {:?}",
+                    clique
+                        .block_ids
+                        .iter()
+                        .map(|v| hash_to_slot[v].clone())
+                        .collect::<Vec<_>>()
+                );
+            }
+
+            let sorted_cliques = |cliques: Vec<Vec<BlockId>>| -> Vec<Vec<BlockId>> {
+                let mut res = cliques.clone();
+                res.iter_mut().for_each(|v| v.sort());
+                res.sort();
+                res
+            };
+
+            let expected_cliques = sorted_cliques(vec![
+                vec![block_1_3.id, block_1_2.id, block_2_3.id, block_1_0.id],
+                vec![
+                    block_1_3.id,
+                    block_1_1.id,
+                    block_2_0.id,
+                    block_1_2.id,
+                    block_2_1.id,
+                    block_1_2.id,
+                ],
+                vec![block_1_3.id, block_1_1.id, block_1_2.id, block_2_2.id],
+            ]);
+
+            let found_cliques: Vec<Vec<BlockId>> = sorted_cliques(
+                status
+                    .max_cliques
+                    .iter()
+                    .map(|v| v.block_ids.iter().cloned().collect())
+                    .collect(),
             );
-            for i in 0..4 {
-                if status.max_cliques[i].block_ids.contains(&block_2_0.id) {
-                    assert!(
-                        !status.max_cliques[i].block_ids.contains(&block_2_2.id),
-                        "incorrect max clique"
-                    );
-                    assert!(
-                        status.max_cliques[i].block_ids.contains(&block_2_1.id)
-                            || status.max_cliques[i].block_ids.contains(&block_2_3.id),
-                        "incorrect max clique"
-                    );
-                } else if status.max_cliques[i].block_ids.contains(&block_2_1.id) {
-                    assert!(
-                        !status.max_cliques[i].block_ids.contains(&block_2_3.id),
-                        "incorrect max clique"
-                    );
-                    assert!(
-                        status.max_cliques[i].block_ids.contains(&block_2_0.id)
-                            || status.max_cliques[i].block_ids.contains(&block_2_2.id),
-                        "incorrect max clique"
-                    );
-                } else if status.max_cliques[i].block_ids.contains(&block_2_2.id) {
-                    assert!(
-                        !status.max_cliques[i].block_ids.contains(&block_2_0.id),
-                        "incorrect max clique"
-                    );
-                    assert!(
-                        status.max_cliques[i].block_ids.contains(&block_2_1.id)
-                            || status.max_cliques[i].block_ids.contains(&block_2_3.id),
-                        "incorrect max clique"
-                    );
-                } else if status.max_cliques[i].block_ids.contains(&block_2_3.id) {
-                    assert!(
-                        !status.max_cliques[i].block_ids.contains(&block_2_1.id),
-                        "incorrect max clique"
-                    );
-                    assert!(
-                        status.max_cliques[i].block_ids.contains(&block_2_0.id)
-                            || status.max_cliques[i].block_ids.contains(&block_2_2.id),
-                        "incorrect max clique"
-                    );
-                }
-            }
 
-            // Determine the index of the max clique which will be extended.
-            // Check max cliques' fitnesses.
-            for i in 0..4 {
-                assert_eq!(
-                    status.max_cliques[i].block_ids.len(),
-                    6,
-                    "incorrect max clique's fitness"
-                );
-            }
-
-            // Check gi_head.
-            if let Some(h) = status.gi_head.get(&block_2_0.id) {
-                assert!(h.contains(&block_2_2.id), "incorrect gi_head");
-                assert!(
-                    !h.contains(&block_2_1.id) && !h.contains(&block_2_3.id),
-                    "incorrect gi_head"
-                );
-            } else {
-                panic!("missing block in gi_head");
-            }
-            if let Some(h) = status.gi_head.get(&block_2_1.id) {
-                assert!(h.contains(&block_2_3.id), "incorrect gi_head");
-                assert!(
-                    !h.contains(&block_2_0.id) && !h.contains(&block_2_2.id),
-                    "incorrect gi_head"
-                );
-            } else {
-                panic!("missing block in gi_head");
-            }
-            if let Some(h) = status.gi_head.get(&block_2_2.id) {
-                assert!(h.contains(&block_2_0.id), "incorrect gi_head");
-                assert!(
-                    !h.contains(&block_2_1.id) && !h.contains(&block_2_3.id),
-                    "incorrect gi_head"
-                );
-            } else {
-                panic!("missing block in gi_head");
-            }
-            if let Some(h) = status.gi_head.get(&block_2_3.id) {
-                assert!(h.contains(&block_2_1.id), "incorrect gi_head");
-                assert!(
-                    !h.contains(&block_2_0.id) && !h.contains(&block_2_2.id),
-                    "incorrect gi_head"
-                );
-            } else {
-                panic!("missing block in gi_head");
-            }
+            assert_eq!(found_cliques, expected_cliques, "wrong cliques");
 
             // Period 3.
             // Based on the max clique [block_2_0, block_2_1, (blocks in other periods...)].
@@ -420,25 +395,6 @@ fn test_fts_multiple_max_cliques_1() {
                 4,
                 "incorrect number of max cliques"
             );
-
-            // Check max cliques' fitnesses.
-            for i in 0..4 {
-                if status.max_cliques[i].block_ids.contains(&block_2_0.id)
-                    && status.max_cliques[i].block_ids.contains(&block_2_1.id)
-                {
-                    assert_eq!(
-                        status.max_cliques[i].block_ids.len(),
-                        10,
-                        "incorrect max clique's fitness"
-                    );
-                } else {
-                    assert_eq!(
-                        status.max_cliques[i].block_ids.len(),
-                        6,
-                        "incorrect max clique's fitness"
-                    );
-                }
-            }
 
             // Period 4, thread 0, 1, and 2.
             let block_4_0 = register_block_and_process_with_tc(
