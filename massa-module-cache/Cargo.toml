@@ -18,7 +18,7 @@ rocksdb = "0.20"
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_serialization = { path = "../massa-serialization" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "main", features = [
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", rev = "9fb15c5c519b47312dc1567b9fc91c3e095cdef1", features = [
     "testing",
 ] }
 
