@@ -423,8 +423,6 @@
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
 <a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -727,10 +725,8 @@
                                                     <span class="kw">if let </span><span class="prelude-val">Some</span>(slots) = connection_slots.get_mut(peer_category.as_str()) {
                                                         <span class="kw-2">*</span>slots -= <span class="number">1</span>;
                                                     }
-                                                } <span class="kw">else </span>{
-                                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = connection_slots.get_mut(<span class="string">&quot;default&quot;</span>) {
-                                                        <span class="kw-2">*</span>v -= <span class="number">1</span>;
-                                                    }
+                                                } <span class="kw">else if let </span><span class="prelude-val">Some</span>(v) = connection_slots.get_mut(<span class="string">&quot;default&quot;</span>) {
+                                                    <span class="kw-2">*</span>v -= <span class="number">1</span>;
                                                 }
                                                 <span class="kw">continue</span>;
                                             }
