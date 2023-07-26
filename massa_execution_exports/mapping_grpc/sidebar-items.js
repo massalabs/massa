@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["to_cycle_info","to_event_filter","to_execution_query_response","to_execution_query_result","to_execution_query_staker_info","to_querystate_filter"]};
+window.SIDEBAR_ITEMS = {};
