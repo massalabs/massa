@@ -331,7 +331,7 @@ impl PoSFinalState {
         // feed cycles 0, 1 to selector if necessary
         if !history_starts_late {
             for draw_cycle in 0u64..=1 {
-                self.feed_selector(draw_cycle)?;
+                self.feed_selector(draw_cycle, false)?;
                 max_cycle = Some(draw_cycle);
             }
         }
@@ -349,7 +349,7 @@ impl PoSFinalState {
             let draw_cycle = hist_item.0.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow in give_selector_controller".into())
             })?;
-            self.feed_selector(draw_cycle)?;
+            self.feed_selector(draw_cycle, false)?;
             max_cycle = Some(draw_cycle);
         }
 
@@ -493,69 +493,82 @@ impl PoSFinalState {
         if complete && feed_selector {
             self.feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 PosError::OverflowError("cycle overflow when feeding selector".into())
-            })?)
+            })?, false)
         } else {
             Ok(())
         }
     }
 
     /// Feeds the selector targeting a given draw cycle
-    pub fn feed_selector(&self, draw_cycle: u64) -> PosResult<()> {
+    pub fn feed_selector(&self, draw_cycle: u64, during_interpolation: bool) -> PosResult<()> {
         // get roll lookback
-
-        let (lookback_rolls, lookback_state_hash) = match draw_cycle.checked_sub(3) {
-            // looking back in history
-            Some(c) => {
-                let index = self
-                    .get_cycle_index(c)
-                    .ok_or(PosError::CycleUnavailable(c))?;
-                let cycle_info = &self.cycle_history_cache[index];
-                if !cycle_info.1 {
-                    return Err(PosError::CycleUnfinished(c));
+        let (lookback_rolls, lookback_state_hash) = match during_interpolation {
+            true => {
+                (self.initial_rolls.clone(), None)
+            },
+            false => {
+                match draw_cycle.checked_sub(3) {
+                    // looking back in history
+                    Some(c) => {
+                        let index = self
+                            .get_cycle_index(c, during_interpolation)
+                            .ok_or(PosError::CycleUnavailable(c))?;
+                        let cycle_info = &self.cycle_history_cache[index];
+                        if !cycle_info.1 {
+                            return Err(PosError::CycleUnfinished(c));
+                        }
+                        // take the final_state_hash_snapshot at cycle - 3
+                        // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
+                        // do this here to avoid a potential attacker manipulating the selections
+                        let state_hash = self.get_cycle_history_final_state_hash_snapshot(cycle_info.0);
+                        (
+                            self.get_all_roll_counts(cycle_info.0),
+                            Some(state_hash.expect(
+                                "critical: a complete cycle must contain a final state hash snapshot",
+                            )),
+                        )
+                    }
+                    // looking back to negative cycles
+                    None => (self.initial_rolls.clone(), None),
                 }
-                // take the final_state_hash_snapshot at cycle - 3
-                // it will later be combined with rng_seed from cycle - 2 to determine the selection seed
-                // do this here to avoid a potential attacker manipulating the selections
-                let state_hash = self.get_cycle_history_final_state_hash_snapshot(cycle_info.0);
-                (
-                    self.get_all_roll_counts(cycle_info.0),
-                    Some(state_hash.expect(
-                        "critical: a complete cycle must contain a final state hash snapshot",
-                    )),
-                )
             }
-            // looking back to negative cycles
-            None => (self.initial_rolls.clone(), None),
         };
 
         // get seed lookback
-        let lookback_seed = match draw_cycle.checked_sub(2) {
-            // looking back in history
-            Some(c) => {
-                let index = self
-                    .get_cycle_index(c)
-                    .ok_or(PosError::CycleUnavailable(c))?;
-                let cycle_info = &self.cycle_history_cache[index];
-                if !cycle_info.1 {
-                    return Err(PosError::CycleUnfinished(c));
+        let lookback_seed = match during_interpolation {
+            true => {
+                self.initial_seeds[0]
+            },
+            false => {
+                match draw_cycle.checked_sub(2) {
+                    // looking back in history
+                    Some(c) => {
+                        let index = self
+                            .get_cycle_index(c, during_interpolation)
+                            .ok_or(PosError::CycleUnavailable(c))?;
+                        let cycle_info = &self.cycle_history_cache[index];
+                        if !cycle_info.1 {
+                            return Err(PosError::CycleUnfinished(c));
+                        }
+                        let u64_ser = U64VarIntSerializer::new();
+                        let mut seed = Vec::new();
+                        u64_ser.serialize(&c, &mut seed).unwrap();
+                        seed.extend(
+                            self.get_cycle_history_rng_seed(cycle_info.0)
+                                .expect("missing RNG seed")
+                                .into_vec(),
+                        );
+                        if let Some(lookback_state_hash) = lookback_state_hash {
+                            seed.extend(lookback_state_hash.to_bytes());
+                        }
+                        Hash::compute_from(&seed)
+                    }
+                    // looking back to negative cycles
+                    None => self.initial_seeds[draw_cycle as usize],
                 }
-                let u64_ser = U64VarIntSerializer::new();
-                let mut seed = Vec::new();
-                u64_ser.serialize(&c, &mut seed).unwrap();
-                seed.extend(
-                    self.get_cycle_history_rng_seed(cycle_info.0)
-                        .expect("missing RNG seed")
-                        .into_vec(),
-                );
-                if let Some(lookback_state_hash) = lookback_state_hash {
-                    seed.extend(lookback_state_hash.to_bytes());
-                }
-                Hash::compute_from(&seed)
             }
-            // looking back to negative cycles
-            None => self.initial_seeds[draw_cycle as usize],
         };
-
+        
         // feed selector
         self.selector
             .as_ref()
@@ -567,8 +580,9 @@ impl PoSFinalState {
         &self,
         cycle: u64,
         final_state_hash: HashXof<HASH_XOF_SIZE_BYTES>,
+        during_interpolation: bool
     ) {
-        if self.get_cycle_index(cycle).is_some() {
+        if self.get_cycle_index(cycle, during_interpolation).is_some() {
             let mut batch = DBBatch::new();
             self.put_cycle_history_final_state_hash_snapshot(
                 cycle,
@@ -767,7 +781,13 @@ impl PoSFinalState {
     }
 
     /// Gets the index of a cycle in history
-    pub fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
+    pub fn get_cycle_index(&self, cycle: u64, during_interpolation: bool) -> Option<usize> {
+
+        // The cycle_history_cache is not continuous during interpolation
+        if during_interpolation {
+            return self.cycle_history_cache.iter().position(|&c| c.0 == cycle);
+        };
+
         let first_cycle = match self.cycle_history_cache.front() {
             Some(c) => c.0,
             None => return None, // history empty
@@ -789,7 +809,7 @@ impl PoSFinalState {
     pub fn get_all_roll_counts(&self, cycle: u64) -> BTreeMap<Address, u64> {
         let db = self.db.read();
 
-        if self.get_cycle_index(cycle).is_none() {
+        if self.get_cycle_index(cycle, false).is_none() {
             panic!("Cycle {} not in history", cycle)
         }
 
@@ -834,7 +854,7 @@ impl PoSFinalState {
         &self,
         cycle: u64,
     ) -> Option<PreHashMap<Address, ProductionStats>> {
-        self.get_cycle_index(cycle)
+        self.get_cycle_index(cycle, false)
             .map(|idx| self.get_all_production_stats_private(self.cycle_history_cache[idx].0))
     }
 
@@ -1158,7 +1178,7 @@ impl PoSFinalState {
 
         db.put_or_update_entry_value(batch, complete_key!(prefix), serialized_value);
 
-        if let Some(index) = self.get_cycle_index(cycle) {
+        if let Some(index) = self.get_cycle_index(cycle, false) {
             self.cycle_history_cache[index].1 = value;
         }
     }

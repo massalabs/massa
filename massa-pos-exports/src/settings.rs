@@ -16,4 +16,6 @@ pub struct SelectorConfig {
     pub genesis_address: Address,
     /// communication channel length
     pub channel_size: usize,
+    /// last_start_period, to know if we may expect cache cycle discontinuity
+    pub last_start_period: Option<u64>,
 }

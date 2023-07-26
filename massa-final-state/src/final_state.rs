@@ -313,7 +313,7 @@ impl FinalState {
         let cycle = end_slot.get_cycle(self.config.periods_per_cycle);
 
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, false);
 
         Ok(())
     }
@@ -441,11 +441,9 @@ impl FinalState {
         // Feed final_state_hash to the completed cycle
         self.feed_cycle_hash_and_selector_for_interpolation(current_slot_cycle)?;
 
-        // TODO: Bring back the following optimisation (it fails because of selector)
         // Then, build all the completed cycles in betweens. If we have to build more cycles than the cycle_history_length, we only build the last ones.
-        //let current_slot_cycle = (current_slot_cycle + 1)
-        //    .max(end_slot_cycle.saturating_sub(self.config.pos_config.cycle_history_length as u64));
-        let current_slot_cycle = current_slot_cycle + 1;
+        let current_slot_cycle = (current_slot_cycle + 1)
+            .max(end_slot_cycle.saturating_sub(self.config.pos_config.cycle_history_length as u64));
 
         for cycle in current_slot_cycle..end_slot_cycle {
             let first_slot = Slot::new_first_of_cycle(cycle, self.config.periods_per_cycle)
@@ -537,15 +535,16 @@ impl FinalState {
         let final_state_hash = self.db.read().get_xof_db_hash();
 
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, true);
 
         self.pos_state
             .feed_selector(cycle.checked_add(2).ok_or_else(|| {
                 FinalStateError::PosError("cycle overflow when feeding selector".into())
-            })?)
+            })?, true)
             .map_err(|_| {
                 FinalStateError::PosError("cycle overflow when feeding selector".into())
             })?;
+
         Ok(())
     }
 
@@ -689,7 +688,7 @@ impl FinalState {
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, false);
     }
 
     /// After bootstrap or load from disk, recompute all the caches.

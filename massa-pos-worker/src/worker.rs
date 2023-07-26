@@ -7,6 +7,7 @@ use crate::CycleDraws;
 use crate::DrawCache;
 use crate::RwLockCondvar;
 use crate::{Command, DrawCachePtr};
+use massa_models::slot::Slot;
 use massa_pos_exports::PosError;
 use massa_pos_exports::PosResult;
 use massa_pos_exports::SelectorConfig;
@@ -65,11 +66,26 @@ impl SelectorThread {
         let out_result = {
             // check cache validity and continuity
             let cache = cache_guard.as_mut().map_err(|err| err.clone())?;
+
             if let Some(last_cycle) = cache.0.back() {
-                if last_cycle.cycle.checked_add(1) != Some(cycle) {
-                    return Err(PosError::ContainerInconsistency(
-                        "discontinuity in cycle draws history".into(),
-                    ));
+
+                // If we are just after restart, we can have a discontinuity in the cycle draws history
+                if let Some(last_start_period) = self.cfg.last_start_period {
+                    let last_start_cycle = Slot::new(last_start_period, 0).get_cycle(self.cfg.periods_per_cycle);
+
+                    if cycle > last_start_cycle.saturating_add(2) {
+                        if last_cycle.cycle.checked_add(1) != Some(cycle) {
+                            return Err(PosError::ContainerInconsistency(
+                                "discontinuity in cycle draws history".into(),
+                            ));
+                        }
+                    }
+                } else {
+                    if last_cycle.cycle.checked_add(1) != Some(cycle) {
+                        return Err(PosError::ContainerInconsistency(
+                            "discontinuity in cycle draws history".into(),
+                        ));
+                    }    
                 }
             }
 
@@ -116,6 +132,8 @@ impl SelectorThread {
             }) = self.input_mpsc.recv() else {
                 break;
             };
+
+            println!("Command::DrawInput received for cycle: {}", cycle);
 
             // perform draws
             let draws_result = perform_draws(&self.cfg, cycle, lookback_rolls, lookback_seed);

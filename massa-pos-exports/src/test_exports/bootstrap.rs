@@ -20,6 +20,7 @@ impl Default for SelectorConfig {
                 &KeyPair::generate(0).unwrap().get_public_key(),
             ),
             channel_size: CHANNEL_SIZE,
+            last_start_period: 0
         }
     }
 }

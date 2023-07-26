@@ -271,6 +271,7 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         periods_per_cycle: PERIODS_PER_CYCLE,
         genesis_address: Address::from_public_key(&GENESIS_KEY.get_public_key()),
+        last_start_period: args.restart_from_snapshot_at_period
     })
     .expect("could not start selector worker");
 

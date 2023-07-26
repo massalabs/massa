@@ -345,7 +345,7 @@ fn test_bootstrap_server() {
         let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
         final_write
             .pos_state
-            .feed_cycle_state_hash(cycle, final_state_hash);
+            .feed_cycle_state_hash(cycle, final_state_hash, false);
 
         current_slot = next;
     }
@@ -489,7 +489,7 @@ fn test_bootstrap_server() {
                 let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
                 final_write
                     .pos_state
-                    .feed_cycle_state_hash(cycle, final_state_hash);
+                    .feed_cycle_state_hash(cycle, final_state_hash, false);
 
                 let mut list_changes_write = list_changes_clone.write();
                 list_changes_write.push((next, changes));
