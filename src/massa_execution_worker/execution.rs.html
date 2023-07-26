@@ -1847,6 +1847,8 @@
 <a href="#1847" id="1847">1847</a>
 <a href="#1848" id="1848">1848</a>
 <a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1967,12 +1969,13 @@
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        </span><span class="kw">let </span>last_final_slot = final_state
-            .read()
-            .db
-            .read()
-            .get_change_id()
-            .expect(<span class="string">&quot;Critical error: Final state has no slot attached&quot;</span>);
+        </span><span class="kw">let </span>last_final_slot;
+        <span class="kw">let </span>execution_trail_hash;
+        {
+            <span class="kw">let </span>final_state_read = final_state.read();
+            last_final_slot = final_state_read.get_slot();
+            execution_trail_hash = final_state_read.get_execution_trail_hash();
+        }
 
         <span class="comment">// Create default active history
         </span><span class="kw">let </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt; = Default::default();
@@ -2009,6 +2012,7 @@
             module_cache.clone(),
             vesting_manager.clone(),
             mip_store.clone(),
+            execution_trail_hash,
         )));
 
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
