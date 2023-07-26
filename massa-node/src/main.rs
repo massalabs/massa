@@ -9,6 +9,7 @@ extern crate massa_logging;
 #[cfg(feature = "op_spammer")]
 use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
+use crate::survey::MassaSurvey;
 
 use crossbeam_channel::TryRecvError;
 use dialoguer::Password;
@@ -95,6 +96,7 @@ use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 use structopt::StructOpt;
+use survey::MassaSurveyStopper;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
@@ -102,6 +104,7 @@ use tracing_subscriber::filter::{filter_fn, LevelFilter};
 #[cfg(feature = "op_spammer")]
 mod operation_injector;
 mod settings;
+mod survey;
 
 async fn launch(
     args: &Args,
@@ -121,6 +124,7 @@ async fn launch(
     StopHandle,
     Option<massa_grpc::server::StopHandle>,
     MetricsStopper,
+    MassaSurveyStopper,
 ) {
     info!("Node version : {}", *VERSION);
     let now = MassaTime::now().expect("could not get now time");
@@ -398,6 +402,7 @@ async fn launch(
         *END_TIMESTAMP,
         args.restart_from_snapshot_at_period,
         sig_int_toggled.clone(),
+        massa_metrics.clone(),
     ) {
         Ok(vals) => vals,
         Err(BootstrapError::Interupted(msg)) => {
@@ -773,6 +778,7 @@ async fn launch(
             bootstrap_config,
             keypair.clone(),
             *VERSION,
+            massa_metrics.clone(),
         )
         .expect("Could not start bootstrap server")
     });
@@ -979,6 +985,20 @@ async fn launch(
         api_config.bind_public
     );
 
+    let massa_survey_stopper = MassaSurvey::run(
+        SETTINGS.metrics.tick_delay.to_duration(),
+        execution_controller,
+        pool_controller,
+        massa_metrics,
+        (
+            api_config.thread_count,
+            api_config.t0,
+            api_config.genesis_timestamp,
+            api_config.periods_per_cycle,
+            api_config.last_start_period,
+        ),
+    );
+
     #[cfg(feature = "deadlock_detection")]
     {
         // only for #[cfg]
@@ -1022,6 +1042,7 @@ async fn launch(
         api_handle,
         grpc_handle,
         metrics_stopper,
+        massa_survey_stopper,
     )
 }
 
@@ -1035,6 +1056,7 @@ struct Managers {
     factory_manager: Box<dyn FactoryManager>,
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn stop(
     _consensus_event_receiver: MassaReceiver<ConsensusEvent>,
     Managers {
@@ -1051,6 +1073,7 @@ async fn stop(
     api_handle: StopHandle,
     grpc_handle: Option<massa_grpc::server::StopHandle>,
     mut metrics_stopper: MetricsStopper,
+    mut massa_survey_stopper: MassaSurveyStopper,
 ) {
     // stop bootstrap
     if let Some(bootstrap_manager) = bootstrap_manager {
@@ -1080,6 +1103,9 @@ async fn stop(
 
     // stop metrics
     metrics_stopper.stop();
+
+    // stop massa survey thread
+    massa_survey_stopper.stop();
 
     // stop factory
     factory_manager.stop();
@@ -1247,6 +1273,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_handle,
             grpc_handle,
             metrics_stopper,
+            massa_survey_stopper,
         ) = launch(&cur_args, node_wallet.clone(), Arc::clone(&sig_int_toggled)).await;
 
         // loop over messages
@@ -1312,6 +1339,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             api_handle,
             grpc_handle,
             metrics_stopper,
+            massa_survey_stopper,
         )
         .await;
 

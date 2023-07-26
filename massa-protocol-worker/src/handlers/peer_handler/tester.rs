@@ -9,6 +9,7 @@ use std::{
 
 use crate::messages::MessagesHandler;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
+use massa_metrics::MassaMetrics;
 use massa_models::version::VersionDeserializer;
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
@@ -41,6 +42,7 @@ impl Tester {
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
+        massa_metrics: MassaMetrics,
     ) -> (
         (
             MassaSender<(PeerId, HashMap<SocketAddr, TransportType>)>,
@@ -69,12 +71,14 @@ impl Tester {
                 target_out_connections.clone(),
                 default_target_out_connections,
                 peers_in_test.clone(),
+                massa_metrics.clone(),
             ));
         }
 
         ((test_sender, test_receiver), testers)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn tcp_handshake(
         messages_handler: MessagesHandler,
         peer_db: SharedPeerDB,
@@ -83,6 +87,7 @@ impl Tester {
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
         config: &ProtocolConfig,
+        massa_metrics: MassaMetrics,
     ) -> PeerNetResult<PeerId> {
         let our_version = config.version;
         let result = {
@@ -247,7 +252,11 @@ impl Tester {
                         last_announce: None,
                         state: super::PeerState::HandshakeFailed,
                     });
+                massa_metrics.inc_protocol_tester_failed();
+            } else {
+                massa_metrics.inc_protocol_tester_success();
             }
+
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
                 tracing::log::error!("Failed to shutdown socket: {}", e);
             }
@@ -268,6 +277,7 @@ impl Tester {
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
         peers_in_test: Arc<RwLock<HashSet<SocketAddr>>>,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -393,6 +403,7 @@ impl Tester {
                                                 PeerIdDeserializer::new(),
                                                 *addr,
                                                 &protocol_config,
+                                                massa_metrics.clone(),
                                             );
 
                                             peers_in_test.write().remove(addr);
@@ -454,6 +465,7 @@ impl Tester {
                             PeerIdDeserializer::new(),
                             listener,
                             &protocol_config,
+                            massa_metrics.clone(),
                         );
                         // let res =  network_manager.try_connect(
                         //     listener,

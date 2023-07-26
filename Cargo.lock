@@ -2625,6 +2625,7 @@ dependencies = [
  "massa_ledger_exports",
  "massa_ledger_worker",
  "massa_logging",
+ "massa_metrics",
  "massa_models",
  "massa_pos_exports",
  "massa_pos_worker",
