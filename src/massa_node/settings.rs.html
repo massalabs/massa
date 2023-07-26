@@ -330,6 +330,20 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -521,9 +535,15 @@
 </span><span class="kw">pub struct </span>ProtocolSettings {
     <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node
     </span><span class="kw">pub </span>ask_block_timeout: MassaTime,
-    <span class="doccomment">/// max known blocks of current nodes we keep in memory (by node)
+    <span class="doccomment">/// Max known blocks we keep during their propagation
+    </span><span class="kw">pub </span>max_blocks_kept_for_propagation: usize,
+    <span class="doccomment">/// Time during which a block is expected to propagate
+    </span><span class="kw">pub </span>max_block_propagation_time: MassaTime,
+    <span class="doccomment">/// Block propagation tick interval, useful for propagating blocks quickly to newly connected peers.
+    </span><span class="kw">pub </span>block_propagation_tick: MassaTime,
+    <span class="doccomment">/// max known blocks our node keeps in its knowledge cache
     </span><span class="kw">pub </span>max_known_blocks_size: usize,
-    <span class="doccomment">/// max known blocks of foreign nodes we keep in memory (by node)
+    <span class="doccomment">/// max cache size for which blocks a foreign node knows about
     </span><span class="kw">pub </span>max_node_known_blocks_size: usize,
     <span class="doccomment">/// max wanted blocks per node kept in memory
     </span><span class="kw">pub </span>max_node_wanted_blocks_size: usize,
@@ -575,16 +595,24 @@
     </span><span class="kw">pub </span>read_write_limit_bytes_per_second: u64,
     <span class="doccomment">/// try connection timer
     </span><span class="kw">pub </span>try_connection_timer: MassaTime,
+    <span class="doccomment">/// try connection timer for the same peer
+    </span><span class="kw">pub </span>try_connection_timer_same_peer: MassaTime,
+    <span class="doccomment">/// periodically unban every peer
+    </span><span class="kw">pub </span>unban_everyone_timer: MassaTime,
     <span class="doccomment">/// Timeout connection
     </span><span class="kw">pub </span>timeout_connection: MassaTime,
     <span class="doccomment">/// Message timeout
     </span><span class="kw">pub </span>message_timeout: MassaTime,
+    <span class="doccomment">/// Timeout for the tester operations
+    </span><span class="kw">pub </span>tester_timeout: MassaTime,
     <span class="doccomment">/// Nb in connections
     </span><span class="kw">pub </span>max_in_connections: usize,
     <span class="doccomment">/// Peers limits per category
     </span><span class="kw">pub </span>peers_categories: HashMap&lt;String, PeerCategoryInfo&gt;,
     <span class="doccomment">/// Limits for default category
     </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
+    <span class="doccomment">/// Cooldown before testing again an old peer
+    </span><span class="kw">pub </span>test_oldest_peer_cooldown: MassaTime,
 }
 
 <span class="doccomment">/// gRPC settings

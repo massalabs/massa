@@ -586,10 +586,6 @@
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -874,7 +870,7 @@
             }
         }
         <span class="kw">if </span>!target_credits.is_empty() {
-            <span class="kw">let </span><span class="kw-2">mut </span>credits = DeferredCredits::new_with_hash();
+            <span class="kw">let </span><span class="kw-2">mut </span>credits = DeferredCredits::new();
             credits.credits.insert(target_slot, target_credits);
             <span class="self">self</span>.added_changes.deferred_credits.extend(credits);
         }
@@ -1162,11 +1158,7 @@
         );
 
         <span class="comment">// added deferred credits
-        </span>credits.extend(
-            <span class="self">self</span>.added_changes
-                .deferred_credits
-                .get_slot_range(..=slot, <span class="bool-val">false</span>),
-        );
+        </span>credits.extend(<span class="self">self</span>.added_changes.deferred_credits.get_slot_range(..=slot));
 
         <span class="comment">// filter out zeros
         </span>credits.remove_zeros();

@@ -1223,6 +1223,7 @@
 <a href="#1223" id="1223">1223</a>
 <a href="#1224" id="1224">1224</a>
 <a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="comment">// use crate::config::THREAD_COUNT;
@@ -1377,7 +1378,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
-    ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
+    ///     .map(|i| BlockId::generate_from_hash(Hash::compute_from(&amp;[i])))
     ///     .collect();
     ///
     /// // create block header
@@ -1393,7 +1394,7 @@
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
@@ -1403,7 +1404,7 @@
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
@@ -1480,7 +1481,7 @@
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec&lt;BlockId&gt; = (0..THREAD_COUNT)
-    ///     .map(|i| BlockId(Hash::compute_from(&amp;[i])))
+    ///     .map(|i| BlockId::generate_from_hash(Hash::compute_from(&amp;[i])))
     ///     .collect();
     ///
     /// // create block header
@@ -1663,7 +1664,7 @@
             KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
-                BlockId(
+                BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 )
@@ -1674,7 +1675,7 @@
             Endorsement {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">0</span>,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 ),
@@ -1687,7 +1688,7 @@
             Endorsement {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: ENDORSEMENT_COUNT - <span class="number">1</span>,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 ),
@@ -1866,7 +1867,7 @@
         </span><span class="kw">let </span>endorsement = Endorsement {
             slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
             index: <span class="number">1</span>,
-            endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>])),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>])),
         };
 
         <span class="comment">// create block header
@@ -1928,7 +1929,7 @@
     </span><span class="kw">fn </span>test_invalid_genesis_block_serialization_with_parents() {
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
         <span class="comment">// create block header
@@ -2035,7 +2036,7 @@
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">0</span>..=THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
         <span class="comment">// create block header
@@ -2090,10 +2091,11 @@
     </span><span class="kw">fn </span>test_block_serialization_max_endo_count() {
         <span class="kw">let </span>keypair =
             KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
-        <span class="kw">let </span>endorsed = BlockId(
+        <span class="kw">let </span>endorsed = BlockId::generate_from_hash(
             Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>).unwrap(),
         );
-        <span class="kw">let </span>fillers = (<span class="number">1</span>..THREAD_COUNT).map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])));
+        <span class="kw">let </span>fillers =
+            (<span class="number">1</span>..THREAD_COUNT).map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])));
         <span class="kw">let </span>parents = std::iter::once(endorsed).chain(fillers).collect();
 
         <span class="kw">let </span>endorsements = (<span class="number">0</span>..ENDORSEMENT_COUNT)
@@ -2102,7 +2104,7 @@
                     Endorsement {
                         slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                         index: i,
-                        endorsed_block: BlockId(
+                        endorsed_block: BlockId::generate_from_hash(
                             Hash::from_bs58_check(
                                 <span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>,
                             )
@@ -2169,7 +2171,7 @@
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">1</span>..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
         <span class="comment">// create block header
@@ -2224,7 +2226,7 @@
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="comment">// Non genesis block must have THREAD_COUNT parents
         </span><span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
             .collect();
 
         <span class="kw">let </span>endorsements = (<span class="number">0</span>..=ENDORSEMENT_COUNT)
@@ -2233,7 +2235,7 @@
                     Endorsement {
                         slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                         index: i,
-                        endorsed_block: BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i <span class="kw">as </span>u8])),
+                        endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i <span class="kw">as </span>u8])),
                     },
                     EndorsementSerializer::new(),
                     <span class="kw-2">&amp;</span>keypair,
@@ -2294,7 +2296,7 @@
             KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
-                BlockId(
+                BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 )
@@ -2305,7 +2307,7 @@
             Endorsement {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: ENDORSEMENT_COUNT,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 ),
@@ -2333,13 +2335,13 @@
 
         <span class="comment">// create block
         </span><span class="kw">let </span>orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
@@ -2367,7 +2369,7 @@
             KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
-                BlockId(
+                BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 )
@@ -2378,7 +2380,7 @@
             Endorsement {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">0</span>,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 ),
@@ -2391,7 +2393,7 @@
             Endorsement {
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">0</span>,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
                         .unwrap(),
                 ),
@@ -2419,13 +2421,13 @@
 
         <span class="comment">// create block
         </span><span class="kw">let </span>orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         <span class="comment">// serialize block
         </span><span class="kw">let </span>secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>secured_block, <span class="kw-2">&amp;mut </span>ser_block)
