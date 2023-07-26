@@ -217,6 +217,44 @@ impl Amount {
     pub fn checked_div_u64(self, factor: u64) -> Option<Self> {
         self.0.checked_div(factor).map(Amount)
     }
+
+    /// safely divide self by an amount, returning None if the divisor is zero
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("7").unwrap();
+    /// let res : u64 = amount_1.checked_div(amount_2).unwrap();
+    /// assert_eq!(res, 6);
+    /// ```
+    pub fn checked_div(self, divisor: Self) -> Option<u64> {
+        self.0.checked_div(divisor.0)
+    }
+
+    /// compute self % divisor, return None if divisor is zero
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("10").unwrap();
+    /// let res : Amount = amount_1.checked_rem(&amount_2).unwrap();
+    /// assert_eq!(res, Amount::from_str("2").unwrap());
+    /// ```
+    pub fn checked_rem(&self, divisor: &Amount) -> Option<Amount> {
+        Some(Amount(self.0.checked_rem(divisor.0)?))
+    }
+
+    /// compute self % divisor, return None if divisor is zero
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let res : Amount = amount_1.checked_rem_u64(40000000000).unwrap();
+    /// assert_eq!(res, Amount::from_str("2").unwrap());
+    /// ```
+    pub fn checked_rem_u64(&self, divisor: u64) -> Option<Amount> {
+        Some(Amount(self.0.checked_rem(divisor)?))
+    }
 }
 
 /// display an Amount in decimal string form (like "10.33")

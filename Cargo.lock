@@ -2298,9 +2298,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.10"
+version = "1.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24e6ab01971eb092ffe6a7d42f49f9ff42662f17604681e2843ad65077ba47dc"
+checksum = "d97137b25e321a73eef1418d1d5d2eda4d77e12813f8e6dead84bc52c5870a7b"
 dependencies = [
  "cc",
  "pkg-config",
@@ -2484,7 +2484,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=18ec02f#18ec02ff5bccedc64b3788964e9d78ccb9559567"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=df9f5b24955bd76030add0945338226309531261#df9f5b24955bd76030add0945338226309531261"
 dependencies = [
  "glob",
  "prost",
@@ -2497,7 +2497,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#9fb15c5c519b47312dc1567b9fc91c3e095cdef1"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=main#ad4f65330b186c2f83440c2362c34d1faa84dc58"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2505,13 +2505,12 @@ dependencies = [
  "chrono",
  "displaydoc",
  "function_name",
- "glob",
  "loupe",
+ "massa-proto-rs",
  "more-asserts 0.3.1",
  "num_enum 0.6.1",
  "parking_lot",
  "prost",
- "prost-build",
  "prost-types",
  "rand 0.8.5",
  "regex",
@@ -2519,6 +2518,7 @@ dependencies = [
  "serde_json",
  "serial_test 2.0.0",
  "sha2 0.10.6",
+ "sha3",
  "thiserror",
  "tracing",
  "wasmer",
@@ -2526,6 +2526,7 @@ dependencies = [
  "wasmer-compiler-singlepass",
  "wasmer-middlewares",
  "wasmer-types",
+ "which",
 ]
 
 [[package]]
@@ -2794,9 +2795,12 @@ name = "massa_execution_worker"
 version = "0.24.0"
 dependencies = [
  "anyhow",
+ "blake3",
+ "bs58",
  "criterion",
  "hex-literal",
  "libsecp256k1",
+ "massa-proto-rs",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_channel",
@@ -6300,9 +6304,9 @@ checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 
 [[package]]
 name = "winnow"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81fac9742fd1ad1bd9643b991319f72dd031016d44b77039a26977eb667141e7"
+checksum = "25b5872fa2e10bd067ae946f927e726d7d603eaeb6e02fa6a350e0722d2b8c11"
 dependencies = [
  "memchr",
 ]

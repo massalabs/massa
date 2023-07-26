@@ -60,54 +60,54 @@ opt-level = 3 # Speed-up the CI
 [workspace.dependencies]
 
 # Internal packages
-massa_api = {path = "./massa-api"}
-massa_api_exports = {path = "./massa-api-exports"}
-massa_async_pool = {path = "./massa-async-pool"}
-massa_bootstrap = {path = "./massa-bootstrap"}
-massa_channel = {path = "./massa-channel"}
-massa_cipher = {path = "./massa-cipher"}
-massa_consensus_exports = {path = "./massa-consensus-exports"}
-massa_consensus_worker = {path = "./massa-consensus-worker"}
-massa_db_exports = {path = "./massa-db-exports"}
-massa_db_worker = {path = "./massa-db-worker"}
-massa_executed_ops = {path = "./massa-executed-ops"}
-massa_execution_exports = {path = "./massa-execution-exports"}
-massa_execution_worker = {path = "./massa-execution-worker"}
-massa_factory_exports = {path = "./massa-factory-exports"}
-massa_factory_worker = {path = "./massa-factory-worker"}
-massa_final_state = {path = "./massa-final-state"}
-massa_grpc = {path = "./massa-grpc"}
-massa_hash = {path = "./massa-hash"}
-massa_ledger_exports = {path = "./massa-ledger-exports"}
-massa_ledger_worker = {path = "./massa-ledger-worker"}
-massa_logging = {path = "./massa-logging"}
-massa_metrics = {path = "./massa-metrics"}
-massa_models = {path = "./massa-models"}
-massa_module_cache = {path = "./massa-module-cache"}
-massa_pool_exports = {path = "./massa-pool-exports"}
-massa_pool_worker = {path = "./massa-pool-worker"}
-massa_pos_exports = {path = "./massa-pos-exports"}
-massa_pos_worker = {path = "./massa-pos-worker"}
-massa_protocol_exports = {path = "./massa-protocol-exports"}
-massa_protocol_worker = {path = "./massa-protocol-worker"}
-massa_sdk = {path = "./massa-sdk"}
-massa_serialization = {path = "./massa-serialization"}
-massa_signature = {path = "./massa-signature"}
-massa_storage = {path = "./massa-storage"}
-massa_time = {path = "./massa-time"}
-massa_versioning = {path = "./massa-versioning"}
-massa_wallet = {path = "./massa-wallet"}
+massa_api = { path = "./massa-api" }
+massa_api_exports = { path = "./massa-api-exports" }
+massa_async_pool = { path = "./massa-async-pool" }
+massa_bootstrap = { path = "./massa-bootstrap" }
+massa_channel = { path = "./massa-channel" }
+massa_cipher = { path = "./massa-cipher" }
+massa_consensus_exports = { path = "./massa-consensus-exports" }
+massa_consensus_worker = { path = "./massa-consensus-worker" }
+massa_db_exports = { path = "./massa-db-exports" }
+massa_db_worker = { path = "./massa-db-worker" }
+massa_executed_ops = { path = "./massa-executed-ops" }
+massa_execution_exports = { path = "./massa-execution-exports" }
+massa_execution_worker = { path = "./massa-execution-worker" }
+massa_factory_exports = { path = "./massa-factory-exports" }
+massa_factory_worker = { path = "./massa-factory-worker" }
+massa_final_state = { path = "./massa-final-state" }
+massa_grpc = { path = "./massa-grpc" }
+massa_hash = { path = "./massa-hash" }
+massa_ledger_exports = { path = "./massa-ledger-exports" }
+massa_ledger_worker = { path = "./massa-ledger-worker" }
+massa_logging = { path = "./massa-logging" }
+massa_metrics = { path = "./massa-metrics" }
+massa_models = { path = "./massa-models" }
+massa_module_cache = { path = "./massa-module-cache" }
+massa_pool_exports = { path = "./massa-pool-exports" }
+massa_pool_worker = { path = "./massa-pool-worker" }
+massa_pos_exports = { path = "./massa-pos-exports" }
+massa_pos_worker = { path = "./massa-pos-worker" }
+massa_protocol_exports = { path = "./massa-protocol-exports" }
+massa_protocol_worker = { path = "./massa-protocol-worker" }
+massa_sdk = { path = "./massa-sdk" }
+massa_serialization = { path = "./massa-serialization" }
+massa_signature = { path = "./massa-signature" }
+massa_storage = { path = "./massa-storage" }
+massa_time = { path = "./massa-time" }
+massa_versioning = { path = "./massa-versioning" }
+massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = {git = "https://github.com/massalabs/massa-proto-rs", "rev" = "18ec02f"}
-massa-sc-runtime = {git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "main"}
-peernet = {git = "https://github.com/massalabs/PeerNet", "branch" = "main"}
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "df9f5b24955bd76030add0945338226309531261" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "main" }
+peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
-transition = {git = "https://github.com/massalabs/transition.git", "rev" = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75"}
-unsigned-varint = {version = "0.7.1", "git" = "https://github.com/cyphar/unsigned-varint.git", "branch" = "nom6-errors"}
-substruct = {git = "https://github.com/sydhds/substruct", branch = "main"}
-machine = {git = "https://github.com/antifuchs/machine", "branch" = "fix-workspace-build"}
+transition = { git = "https://github.com/massalabs/transition.git", "rev" = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
+unsigned-varint = { version = "0.7.1", "git" = "https://github.com/cyphar/unsigned-varint.git", "branch" = "nom6-errors" }
+substruct = { git = "https://github.com/sydhds/substruct", branch = "main" }
+machine = { git = "https://github.com/antifuchs/machine", "branch" = "fix-workspace-build" }
 aes-gcm = "0.10"
 anyhow = "1.0"
 async-trait = "0.1.58"
