@@ -244,8 +244,6 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file deals with the announcement of block headers to other nodes
@@ -270,7 +268,6 @@
 };
 <span class="kw">use </span>crossbeam::channel::RecvTimeoutError;
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
-<span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::block_header::SecuredHeader;
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_protocol_exports::PeerId;
@@ -279,7 +276,7 @@
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>std::thread::JoinHandle;
 <span class="kw">use </span>std::time::Instant;
-<span class="kw">use </span>tracing::{info, warn};
+<span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span>BlockPropagationData {
@@ -320,10 +317,7 @@
                     <span class="kw">match </span>command {
                         <span class="comment">// Message: the block was integrated and should be propagated
                         </span>BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } =&gt; {
-                            <span class="macro">massa_trace!</span>(
-                                <span class="string">&quot;protocol.protocol_worker.process_command.integrated_block.begin&quot;</span>,
-                                { <span class="string">&quot;block_id&quot;</span>: block_id }
-                            );
+                            <span class="macro">debug!</span>(<span class="string">&quot;received IntegratedBlock({})&quot;</span>, block_id);
 
                             <span class="comment">// get the block header
                             </span><span class="kw">let </span>header = <span class="kw">match </span>storage
@@ -361,6 +355,7 @@
                                 .expect(<span class="string">&quot;could not get time of next propagation tick&quot;</span>);
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) =&gt; {
+                            <span class="macro">debug!</span>(<span class="string">&quot;received AttackBlockDetected({})&quot;</span>, block_id);
                             <span class="kw">let </span>peers_to_ban: Vec&lt;PeerId&gt; = <span class="self">self
                                 </span>.cache
                                 .read()
@@ -430,7 +425,8 @@
                 }
 
                 <span class="comment">// try to propagate
-                </span><span class="kw">match </span><span class="self">self</span>.active_connections.send_to_peer(
+                </span><span class="macro">debug!</span>(<span class="string">&quot;announcing header {} to peer {}&quot;</span>, block_id, peer_id);
+                <span class="kw">match </span><span class="self">self</span>.active_connections.send_to_peer(
                     peer_id,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.block_serializer,
                     BlockMessage::Header(header.clone()).into(),
@@ -442,8 +438,8 @@
                     }
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="macro">warn!</span>(
-                            <span class="string">&quot;Error while sending block header to peer {} err: {:?}&quot;</span>,
-                            peer_id, err
+                            <span class="string">&quot;Error while announcing block header {} to peer {} err: {:?}&quot;</span>,
+                            block_id, peer_id, err
                         );
                         <span class="kw">continue </span><span class="lifetime">&#39;peer_loop</span>; <span class="comment">// try next peer
                     </span>}

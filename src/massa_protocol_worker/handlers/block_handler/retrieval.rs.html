@@ -1268,6 +1268,30 @@
 <a href="#1268" id="1268">1268</a>
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1509,6 +1533,11 @@
         block_id: BlockId,
         info_requested: AskForBlockInfo,
     ) {
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;peer {} asked for block info on block {}: {:?}&quot;</span>,
+            <span class="kw-2">&amp;</span>from_peer_id, block_id, <span class="kw-2">&amp;</span>info_requested
+        );
+
         <span class="comment">// updates on the remote peer&#39;s knowledge on blocks, operations and endorsements
         // only applied if the response is successfully sent to the peer
         </span><span class="kw">let </span><span class="kw-2">mut </span>block_knowledge_updates = PreHashSet::default();
@@ -1588,7 +1617,10 @@
             }
         };
 
-        <span class="macro">debug!</span>(<span class="string">&quot;Send reply for block info to {}&quot;</span>, from_peer_id);
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;sending reply for block {} info to {}&quot;</span>,
+            block_id, from_peer_id
+        );
 
         <span class="comment">// send response to peer
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
@@ -1602,8 +1634,8 @@
             <span class="bool-val">true</span>,
         ) {
             <span class="macro">warn!</span>(
-                <span class="string">&quot;Error while sending reply for blocks to {}: {:?}&quot;</span>,
-                from_peer_id, err
+                <span class="string">&quot;Error while sending reply for block {} to {}: {:?}&quot;</span>,
+                block_id, from_peer_id, err
             );
             <span class="kw">return</span>;
         }
@@ -1674,6 +1706,8 @@
 
     <span class="doccomment">/// On block header received from a node.
     </span><span class="kw">fn </span>on_block_header_received(<span class="kw-2">&amp;mut </span><span class="self">self</span>, from_peer_id: PeerId, header: SecuredHeader) {
+        <span class="macro">debug!</span>(<span class="string">&quot;received header {} from {}&quot;</span>, header.id, from_peer_id);
+
         <span class="kw">let </span>block_id = header.id;
 
         <span class="comment">// Check header and update knowledge info
@@ -1969,6 +2003,10 @@
         block_id: BlockId,
         operation_ids: Vec&lt;OperationId&gt;,
     ) {
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;received operation list for block {} from {}&quot;</span>,
+            block_id, <span class="kw-2">&amp;</span>from_peer_id
+        );
         <span class="comment">// Note that the length of the operation list was checked at deserialization to not overflow the max per block.
 
         // All operation ids sent into a set to deduplicate and search quickly for presence
@@ -2046,6 +2084,11 @@
         block_id: BlockId,
         operations: Vec&lt;SecureShareOperation&gt;,
     ) {
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;received full operations for block {} from {}&quot;</span>,
+            block_id, <span class="kw-2">&amp;</span>from_peer_id
+        );
+
         <span class="comment">// Ensure that we were looking for that data.
         </span><span class="kw">let </span>wishlist_info = <span class="kw">if let </span><span class="prelude-val">Some</span>(wishlist_info) = <span class="self">self</span>.block_wishlist.get_mut(<span class="kw-2">&amp;</span>block_id) &amp;&amp; wishlist_info.header.is_some() &amp;&amp; wishlist_info.operation_ids.is_some() {
             wishlist_info
@@ -2317,7 +2360,10 @@
 
             <span class="comment">// try to ask peers from best to worst
             </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, peer_id) <span class="kw">in </span>peer_scores {
-                <span class="macro">debug!</span>(<span class="string">&quot;Send ask for block {} to {}&quot;</span>, block_id, peer_id);
+                <span class="macro">debug!</span>(
+                    <span class="string">&quot;Sending ask for block {} data to {}: {:?}&quot;</span>,
+                    block_id, peer_id, <span class="kw-2">&amp;</span>request
+                );
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
                     <span class="kw-2">&amp;</span>peer_id,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.block_message_serializer,
@@ -2431,6 +2477,8 @@
 
     <span class="doccomment">/// Called when we have fully gathered a block
     </span><span class="kw">fn </span>fully_gathered_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) {
+        <span class="macro">debug!</span>(<span class="string">&quot;Fully gathered block {}&quot;</span>, block_id);
+
         <span class="comment">// Gather all the elements needed to create the block. We must have it all by now.
         </span><span class="kw">let </span>wishlist_info = <span class="self">self
             </span>.block_wishlist
