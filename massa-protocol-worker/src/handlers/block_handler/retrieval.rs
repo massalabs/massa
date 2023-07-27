@@ -855,10 +855,6 @@ impl RetrievalThread {
                     .collect::<Vec<_>>(),
             );
         }
-        if operations.is_empty() {
-            // we have most likely eliminated all the received operations in the filtering above
-            return;
-        }
 
         // Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
 
