@@ -1055,6 +1055,10 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn generate_event(&self, data: String) -> Result<()> {
+        if data.len() > self.config.max_event_size {
+            bail!("Event data size is too large");
+        };
+
         let mut context = context_guard!(self);
         let event = context.event_create(data, false);
         context.event_emit(event);
@@ -1066,8 +1070,11 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
-        let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
+        if data.len() > self.config.max_event_size {
+            bail!("Event data size is too large");
+        };
 
+        let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
         let mut context = context_guard!(self);
         let event = context.event_create(data_str, false);
         context.event_emit(event);

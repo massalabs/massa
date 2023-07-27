@@ -72,8 +72,9 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
-    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_SIZE, MAX_MESSAGE_SIZE,
+    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -497,6 +498,7 @@ async fn launch(
         broadcast_slot_execution_output_channel_capacity: SETTINGS
             .execution
             .broadcast_slot_execution_output_channel_capacity,
+        max_event_size: MAX_EVENT_SIZE,
     };
 
     let execution_channels = ExecutionChannels {
