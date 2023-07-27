@@ -14,7 +14,7 @@ use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{cmp::max, cmp::Ordering, cmp::PartialOrd, collections::BTreeSet, sync::Arc};
-use tracing::{debug, warn};
+use tracing::{debug, trace, warn};
 
 use crate::types::OperationInfo;
 
@@ -84,18 +84,25 @@ impl OperationPool {
         let max_slot = max(max_slot, min_slot);
 
         // search for all our PoS draws in the interval of interest
-        let mut pos_draws = BTreeSet::new();
-        let addrs = self.wallet.read().keys.keys().copied().collect::<Vec<_>>();
-        for addr in addrs {
-            let (d, _) = self
-                .channels
-                .selector
-                .get_address_selections(&addr, min_slot, max_slot)
-                .expect("could not get PoS draws");
-            pos_draws.extend(d.into_iter());
-        }
+        let addrs: PreHashSet<Address> = self.wallet.read().keys.keys().copied().collect();
+        let mut pos_draws: BTreeSet<Slot> = self
+            .channels
+            .selector
+            .get_available_selections_in_range(min_slot..=max_slot, Some(&addrs))
+            .expect("could not get PoS draws")
+            .into_iter()
+            .filter_map(|(v_slot, v_sel)| {
+                if addrs.contains(&v_sel.producer) {
+                    Some(v_slot)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         // retain only the ones that are strictly after the last final slot of their thread
         pos_draws.retain(|s| s.period > self.last_cs_final_periods[s.thread as usize]);
+
         pos_draws
     }
 
@@ -411,6 +418,14 @@ impl OperationPool {
                 let op = ops
                     .get(new_op_id)
                     .expect("operation not found in storage but listed as owned");
+
+                // Broadcast operations to active channel subscribers.
+                if self.config.broadcast_enabled {
+                    if let Err(err) = self.channels.operation_sender.send(op.clone()) {
+                        trace!("error, failed to broadcast operations {}: {}", op.id, err);
+                    }
+                }
+
                 self.sorted_ops.push(OperationInfo::from_op(
                     op,
                     self.config.operation_validity_periods,

@@ -160,8 +160,7 @@ async fn serve<T>(
         } else {
             BatchRequestConfig::Disabled
         })
-        .ping_interval(api_config.ping_interval.to_duration())
-        .custom_tokio_runtime(tokio::runtime::Handle::current());
+        .ping_interval(api_config.ping_interval.to_duration());
 
     if api_config.enable_http && !api_config.enable_ws {
         server_builder = server_builder.http_only();
@@ -186,7 +185,7 @@ async fn serve<T>(
         .await
         .expect("failed to build server");
 
-    let server_handler = server.start(api).expect("server start failed");
+    let server_handler = server.start(api);
     let stop_handler = StopHandle { server_handler };
 
     Ok(stop_handler)

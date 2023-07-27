@@ -1,6 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::{error::GrpcError, server::MassaGrpc};
+use crate::{error::GrpcError, server::MassaPublicGrpc};
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::pin::Pin;
@@ -28,7 +28,7 @@ pub type TransactionsThroughputStreamType = Pin<
 
 /// The function returns a stream of transaction throughput statistics
 pub(crate) async fn transactions_throughput(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<tonic::Streaming<grpc_api::TransactionsThroughputRequest>>,
 ) -> Result<TransactionsThroughputStreamType, GrpcError> {
     let execution_controller = grpc.execution_controller.clone();
@@ -40,7 +40,6 @@ pub(crate) async fn transactions_throughput(
 
     // Spawn a new Tokio task to handle the stream processing
     tokio::spawn(async move {
-        let mut request_id = "".to_string();
         let mut interval = time::interval(Duration::from_secs(DEFAULT_THROUGHPUT_INTERVAL));
 
         // Continuously loop until the stream ends or an error occurs
@@ -50,8 +49,6 @@ pub(crate) async fn transactions_throughput(
                 res = in_stream.next() => {
                     match res {
                         Some(Ok(req)) => {
-                            // Update the request ID
-                            request_id = req.id;
                             // Update the interval timer based on the request (or use the default)
                             let new_timer = req.interval.unwrap_or(DEFAULT_THROUGHPUT_INTERVAL);
                             interval = time::interval(Duration::from_secs(new_timer));
@@ -79,7 +76,6 @@ pub(crate) async fn transactions_throughput(
                     // Send the throughput response back to the client
                     if let Err(e) = tx
                         .send(Ok(grpc_api::TransactionsThroughputResponse {
-                            id: request_id.clone(),
                             throughput,
                         }))
                         .await

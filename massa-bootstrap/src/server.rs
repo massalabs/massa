@@ -24,7 +24,6 @@
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
-mod white_black_list;
 
 use crossbeam::channel::tick;
 use humantime::format_duration;
@@ -50,7 +49,6 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing::{debug, error, info, warn};
-use white_black_list::*;
 
 #[cfg(not(test))]
 use crate::listener::BootstrapTcpListener;
@@ -61,6 +59,7 @@ use crate::{
     error::BootstrapError,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
+    white_black_list::SharedWhiteBlackList,
     BootstrapConfig,
 };
 /// Specifies a common interface that can be used by standard, or mockers
@@ -79,6 +78,8 @@ pub struct BootstrapManager {
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     listener_stopper: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender<()>,
+    /// shared white/black list
+    pub white_black_list: SharedWhiteBlackList<'static>,
 }
 
 impl BootstrapManager {
@@ -89,12 +90,14 @@ impl BootstrapManager {
         main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         update_stopper_tx: crossbeam::channel::Sender<()>,
         listener_stopper: BootstrapListenerStopHandle,
+        white_black_list: SharedWhiteBlackList<'static>,
     ) -> Self {
         Self {
             update_handle,
             main_handle,
             update_stopper_tx,
             listener_stopper,
+            white_black_list,
         }
     }
 
@@ -168,6 +171,7 @@ pub fn start_bootstrap_server(
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
 
+    let w_b_list = white_black_list.clone();
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
         .spawn(move || {
@@ -176,7 +180,7 @@ pub fn start_bootstrap_server(
                 protocol_controller,
                 final_state,
                 ev_poller,
-                white_black_list,
+                white_black_list: w_b_list,
                 keypair,
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
@@ -192,6 +196,7 @@ pub fn start_bootstrap_server(
         main_handle,
         update_stopper_tx,
         listener_stopper,
+        white_black_list,
     ))
 }
 

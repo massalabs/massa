@@ -10,7 +10,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [dependencies]
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "32179e2", features = ["tonic"] }
 displaydoc = "0.2"
 thiserror = "1.0"
 tonic = { version = "0.9.2", features = ["gzip", "tls"] }
@@ -23,9 +23,9 @@ futures-util = "0.3.25"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
 tokio-stream = "0.1.12"
-itertools = "0.10"
 h2 = "0.3.17"
 tracing = "0.1"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_hash = { path = "../massa-hash" }
@@ -39,6 +39,8 @@ massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 massa_serialization = { path = "../massa-serialization" }
 massa_versioning = { path = "../massa-versioning" }
+massa_signature = { path = "../massa-signature" }
+massa_bootstrap = { path = "../massa-bootstrap" }
 
 [dev-dependencies]
 num = "0.4"
