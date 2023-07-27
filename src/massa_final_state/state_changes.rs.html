@@ -293,6 +293,32 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -305,7 +331,11 @@
     ExecutedDenunciationsChangesSerializer, ExecutedOpsChanges, ExecutedOpsChangesDeserializer,
     ExecutedOpsChangesSerializer,
 };
-<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+<span class="kw">use </span>massa_hash::{HashDeserializer, HashSerializer};
+<span class="kw">use </span>massa_ledger_exports::{
+    LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, SetOrKeep,
+    SetOrKeepDeserializer, SetOrKeepSerializer,
+};
 <span class="kw">use </span>massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::{
@@ -328,6 +358,8 @@
     </span><span class="kw">pub </span>executed_ops_changes: ExecutedOpsChanges,
     <span class="doccomment">/// executed denunciations changes
     </span><span class="kw">pub </span>executed_denunciations_changes: ExecutedDenunciationsChanges,
+    <span class="doccomment">/// execution trail hash change
+    </span><span class="kw">pub </span>execution_trail_hash_change: SetOrKeep&lt;massa_hash::Hash&gt;,
 }
 
 <span class="doccomment">/// Basic `StateChanges` serializer.
@@ -337,6 +369,7 @@
     pos_changes_serializer: PoSChangesSerializer,
     ops_changes_serializer: ExecutedOpsChangesSerializer,
     de_changes_serializer: ExecutedDenunciationsChangesSerializer,
+    execution_trail_hash_change_serializer: SetOrKeepSerializer&lt;massa_hash::Hash, HashSerializer&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>StateChangesSerializer {
@@ -354,6 +387,7 @@
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
             de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),
+            execution_trail_hash_change_serializer: SetOrKeepSerializer::new(HashSerializer::new()),
         }
     }
 }
@@ -370,7 +404,7 @@
     /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
@@ -418,6 +452,8 @@
             .serialize(<span class="kw-2">&amp;</span>value.executed_ops_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.de_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.executed_denunciations_changes, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.execution_trail_hash_change_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.execution_trail_hash_change, buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -429,6 +465,8 @@
     pos_changes_deserializer: PoSChangesDeserializer,
     ops_changes_deserializer: ExecutedOpsChangesDeserializer,
     de_changes_deserializer: ExecutedDenunciationsChangesDeserializer,
+    execution_trail_hash_change_deserializer:
+        SetOrKeepDeserializer&lt;massa_hash::Hash, HashDeserializer&gt;,
 }
 
 <span class="kw">impl </span>StateChangesDeserializer {
@@ -477,6 +515,9 @@
                 endorsement_count,
                 max_de_changes_length,
             ),
+            execution_trail_hash_change_deserializer: SetOrKeepDeserializer::new(
+                HashDeserializer::new(),
+            ),
         }
     }
 }
@@ -493,7 +534,7 @@
     /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
@@ -556,21 +597,30 @@
                 context(<span class="string">&quot;Failed de_changes deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.de_changes_deserializer.deserialize(input)
                 }),
+                context(
+                    <span class="string">&quot;Failed execution_trail_hash_change deserialization&quot;</span>,
+                    |input| {
+                        <span class="self">self</span>.execution_trail_hash_change_deserializer
+                            .deserialize(input)
+                    },
+                ),
             )),
         )
         .map(
             |(
                 ledger_changes,
                 async_pool_changes,
-                roll_state_changes,
-                executed_ops,
-                executed_denunciations,
+                pos_changes,
+                executed_ops_changes,
+                executed_denunciations_changes,
+                execution_trail_hash_change,
             )| StateChanges {
                 ledger_changes,
                 async_pool_changes,
-                pos_changes: roll_state_changes,
-                executed_ops_changes: executed_ops,
-                executed_denunciations_changes: executed_denunciations,
+                pos_changes,
+                executed_ops_changes,
+                executed_denunciations_changes,
+                execution_trail_hash_change,
             },
         )
         .parse(buffer)
@@ -586,6 +636,8 @@
         <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
         <span class="self">self</span>.executed_ops_changes
             .extend(changes.executed_ops_changes);
+        <span class="self">self</span>.execution_trail_hash_change
+            .apply(changes.execution_trail_hash_change);
     }
 }
 </code></pre></div></section></main></body></html>

@@ -85,6 +85,8 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -171,5 +173,7 @@
     </span><span class="kw">pub </span>broadcast_enabled: bool,
     <span class="doccomment">/// slot execution outputs channel capacity
     </span><span class="kw">pub </span>broadcast_slot_execution_output_channel_capacity: usize,
+    <span class="doccomment">/// max size of event data, in bytes
+    </span><span class="kw">pub </span>max_event_size: usize,
 }
 </code></pre></div></section></main></body></html>

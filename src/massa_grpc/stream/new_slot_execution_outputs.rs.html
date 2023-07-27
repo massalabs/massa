@@ -135,11 +135,10 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
-<span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
+<span class="kw">use </span><span class="kw">crate</span>::server::MassaGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_execution_exports::SlotExecutionOutput;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
@@ -163,7 +162,7 @@
 
 <span class="doccomment">/// Creates a new stream of new produced and received slot execution outputs
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_slot_execution_outputs(
-    grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
+    grpc: <span class="kw-2">&amp;</span>MassaGrpc,
     request: Request&lt;Streaming&lt;grpc_api::NewSlotExecutionOutputsRequest&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;NewSlotExecutionOutputsStreamType, GrpcError&gt; {
     <span class="comment">// Create a channel to handle communication with the client
@@ -179,8 +178,8 @@
     tokio::spawn(<span class="kw">async move </span>{
         <span class="comment">// Initialize the request_id string
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>filters: Vec&lt;grpc_api::NewSlotExecutionOutputsFilter&gt; = request.filters;
-
+            <span class="kw">let </span><span class="kw-2">mut </span>request_id = request.id;
+            <span class="kw">let </span><span class="kw-2">mut </span>filter = request.query.and_then(|q| q.filter);
             <span class="kw">loop </span>{
                 <span class="macro">select! </span>{
                     <span class="comment">// Receive a new slot execution output from the subscriber
@@ -188,11 +187,12 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(massa_slot_execution_output) =&gt; {
                                 <span class="comment">// Check if the slot execution output should be sent
-                                </span><span class="kw">if </span>!should_send(filters.clone(), <span class="kw-2">&amp;</span>massa_slot_execution_output) {
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>filter, <span class="kw-2">&amp;</span>massa_slot_execution_output) {
                                   <span class="kw">continue</span>;
                                 }
                                 <span class="comment">// Send the new slot execution output through the channel
                                 </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewSlotExecutionOutputsResponse {
+                                        id: request_id.clone(),
                                         output: <span class="prelude-val">Some</span>(massa_slot_execution_output.into())
                                 })).<span class="kw">await </span>{
                                     <span class="macro">error!</span>(<span class="string">&quot;failed to send new slot execution output : {}&quot;</span>, e);
@@ -211,7 +211,9 @@
                                     <span class="comment">// Get the request_id from the received data
                                     </span><span class="prelude-val">Ok</span>(data) =&gt; {
                                         <span class="comment">// Update current filter &amp;&amp; request id
-                                        </span>filters = data.filters;
+                                        </span>filter = data.query
+                                            .and_then(|q| q.filter);
+                                        request_id = data.id
                                     },
                                     <span class="comment">// Handle any errors that may occur during receiving the data
                                     </span><span class="prelude-val">Err</span>(err) =&gt; {
@@ -253,25 +255,21 @@
 
 <span class="doccomment">/// Return if the execution outputs should be send to client
 </span><span class="kw">fn </span>should_send(
-    filters: Vec&lt;grpc_api::NewSlotExecutionOutputsFilter&gt;,
+    filter_opt: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;grpc_api::NewSlotExecutionOutputsFilter&gt;,
     exec_out_status: <span class="kw-2">&amp;</span>SlotExecutionOutput,
 ) -&gt; bool {
-    <span class="kw">if </span>filters.is_empty() {
-        <span class="kw">return </span><span class="bool-val">true</span>;
-    }
-    <span class="kw">match </span>exec_out_status {
-        SlotExecutionOutput::ExecutedSlot(<span class="kw">_</span>) =&gt; {
-            <span class="kw">let </span>id = grpc_model::ExecutionOutputStatus::Candidate <span class="kw">as </span>i32;
-            filters.iter().any(|f| {
-                <span class="macro">matches!</span>(f.filter.as_ref(), <span class="prelude-val">Some</span>(grpc_api::new_slot_execution_outputs_filter::Filter::Status(status)) <span class="kw">if </span><span class="kw-2">*</span>status == id)
-            })
-        }
-        SlotExecutionOutput::FinalizedSlot(<span class="kw">_</span>) =&gt; {
-            <span class="kw">let </span>id = grpc_model::ExecutionOutputStatus::Final <span class="kw">as </span>i32;
-            filters.iter().any(|f| {
-                <span class="macro">matches!</span>(f.filter.as_ref(), <span class="prelude-val">Some</span>(grpc_api::new_slot_execution_outputs_filter::Filter::Status(status)) <span class="kw">if </span><span class="kw-2">*</span>status == id)
-            })
-        }
-    }
+    <span class="kw">match </span>filter_opt {
+        <span class="prelude-val">Some</span>(filter) =&gt; <span class="kw">match </span>exec_out_status {
+            SlotExecutionOutput::ExecutedSlot(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>id = grpc_model::ExecutionOutputStatus::Candidate <span class="kw">as </span>i32;
+                filter.status.contains(<span class="kw-2">&amp;</span>id)
+            }
+            SlotExecutionOutput::FinalizedSlot(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>id = grpc_model::ExecutionOutputStatus::Final <span class="kw">as </span>i32;
+                filter.status.contains(<span class="kw-2">&amp;</span>id)
+            }
+        },
+        <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>, <span class="comment">// if user has no filter = All execution outputs status are sent
+    </span>}
 }
 </code></pre></div></section></main></body></html>
