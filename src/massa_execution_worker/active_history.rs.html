@@ -339,6 +339,15 @@
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
@@ -540,17 +549,15 @@
 
     <span class="doccomment">/// Gets all the deferred credits that will be credited until a given slot (included)
     </span><span class="kw">pub fn </span>get_all_deferred_credits_until(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; DeferredCredits {
-        <span class="self">self</span>.<span class="number">0
-            </span>.iter()
-            .fold(DeferredCredits::new_without_hash(), |<span class="kw-2">mut </span>acc, e| {
-                acc.extend(
-                    e.state_changes
-                        .pos_changes
-                        .deferred_credits
-                        .get_slot_range(..=slot, <span class="bool-val">false</span>),
-                );
-                acc
-            })
+        <span class="self">self</span>.<span class="number">0</span>.iter().fold(DeferredCredits::new(), |<span class="kw-2">mut </span>acc, e| {
+            acc.extend(
+                e.state_changes
+                    .pos_changes
+                    .deferred_credits
+                    .get_slot_range(..=slot),
+            );
+            acc
+        })
     }
 
     <span class="doccomment">/// Gets the deferred credits for a given address that will be credited at a given slot
@@ -571,6 +578,17 @@
         }
         <span class="prelude-val">None
     </span>}
+
+    <span class="doccomment">/// Gets the execution trail hash
+    </span><span class="kw">pub fn </span>get_execution_trail_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HistorySearchResult&lt;massa_hash::Hash&gt; {
+        <span class="kw">for </span>history_element <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
+            <span class="kw">if let </span>SetOrKeep::Set(hash) = history_element.state_changes.execution_trail_hash_change
+            {
+                <span class="kw">return </span>HistorySearchResult::Present(hash);
+            }
+        }
+        HistorySearchResult::NoInfo
+    }
 
     <span class="doccomment">/// Gets the index of a slot in history
     </span><span class="kw">pub fn </span>get_slot_index(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot, thread_count: u8) -&gt; SlotIndexPosition {

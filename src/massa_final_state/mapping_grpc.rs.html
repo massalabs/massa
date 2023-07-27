@@ -103,7 +103,6 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::StateChanges;
@@ -122,10 +121,9 @@
                         operation_id: op_id.to_string(),
                         value: <span class="prelude-val">Some</span>(grpc_model::ExecutedOpsChangeValue {
                             status: <span class="kw">if </span>op_exec_status {
-                                <span class="comment">//TODO to be enhanced
-                                </span>grpc_model::OperationExecutionStatus::Success <span class="kw">as </span>i32
+                                <span class="macro">vec!</span>[grpc_model::OperationExecutionStatus::Success <span class="kw">as </span>i32]
                             } <span class="kw">else </span>{
-                                grpc_model::OperationExecutionStatus::Failed <span class="kw">as </span>i32
+                                <span class="macro">vec!</span>[grpc_model::OperationExecutionStatus::Failed <span class="kw">as </span>i32]
                             },
                             slot: <span class="prelude-val">Some</span>(op_valid_until_slot.into()),
                         }),
