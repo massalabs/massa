@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
@@ -18,7 +19,9 @@ pub struct GrpcConfig {
     pub enable_health: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
-    /// whether to enable mTLS
+    /// whether to enable TLS
+    pub enable_tls: bool,
+    /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,
@@ -40,6 +43,8 @@ pub struct GrpcConfig {
     pub initial_connection_window_size: Option<u32>,
     /// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     pub max_concurrent_streams: Option<u32>,
+    /// max number of arguments per gRPC request
+    pub max_arguments: u64,
     /// set whether TCP keepalive messages are enabled on accepted connections
     pub tcp_keepalive: Option<Duration>,
     /// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -80,6 +85,8 @@ pub struct GrpcConfig {
     pub t0: MassaTime,
     /// periods per cycle
     pub periods_per_cycle: u64,
+    /// keypair file
+    pub keypair: KeyPair,
     /// limits the maximum size of streaming channel
     pub max_channel_size: usize,
     /// when looking for next draw we want to look at max `draw_lookahead_period_count`
@@ -98,4 +105,13 @@ pub struct GrpcConfig {
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+}
+
+/// gRPC API configuration.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcApiConfig {
+    /// Public server gRPC configuration.
+    pub public: GrpcConfig,
+    /// Private server gRPC configuration.
+    pub private: GrpcConfig,
 }

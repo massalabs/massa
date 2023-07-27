@@ -13,155 +13,160 @@ impl From<AsyncMessage> for grpc_model::AsyncMessage {
             destination: value.destination.to_string(),
             handler: value.handler.to_string(),
             max_gas: value.max_gas,
-            fee: value.fee.to_raw(),
-            coins: value.coins.to_raw(),
+            fee: Some(value.fee.into()),
+            coins: Some(value.coins.into()),
             validity_start: Some(value.validity_start.into()),
             validity_end: Some(value.validity_start.into()),
             data: value.data,
             trigger: value.trigger.map(|trigger| trigger.into()),
             can_be_executed: value.can_be_executed,
-            hash: "".to_string(),
         }
     }
 }
 
+//TODO to be checked, use functions
 impl From<AsyncMessageUpdate> for grpc_model::AsyncMessageUpdate {
     fn from(value: AsyncMessageUpdate) -> Self {
         grpc_model::AsyncMessageUpdate {
             emission_slot: match value.emission_slot {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepSlot {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.into()),
+                    change: Some(grpc_model::set_or_keep_slot::Change::Set(value.into())),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepSlot {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_slot::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             emission_index: match value.emission_index {
-                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value),
+                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Set(value)),
                 }),
-                SetOrKeep::Keep => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                SetOrKeep::Keep => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             sender: match value.sender {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.to_string()),
+                    change: Some(grpc_model::set_or_keep_string::Change::Set(
+                        value.to_string(),
+                    )),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_string::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             destination: match value.destination {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.to_string()),
+                    change: Some(grpc_model::set_or_keep_string::Change::Set(
+                        value.to_string(),
+                    )),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_string::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             handler: match value.handler {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value),
+                    change: Some(grpc_model::set_or_keep_string::Change::Set(value)),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepString {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_string::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             max_gas: match value.max_gas {
-                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value),
+                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Set(value)),
                 }),
-                SetOrKeep::Keep => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                SetOrKeep::Keep => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
+            //TODO check Amount usage
             fee: match value.fee {
-                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.to_raw()),
+                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Set(value.to_raw())),
                 }),
-                SetOrKeep::Keep => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                SetOrKeep::Keep => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
+            //TODO check Amount usage
             coins: match value.coins {
-                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.to_raw()),
+                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Set(value.to_raw())),
                 }),
-                SetOrKeep::Keep => Some(grpc_model::SetOrKeepFixed64 {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                SetOrKeep::Keep => Some(grpc_model::SetOrKeepUint64 {
+                    change: Some(grpc_model::set_or_keep_uint64::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             validity_start: match value.validity_start {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepSlot {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.into()),
+                    change: Some(grpc_model::set_or_keep_slot::Change::Set(value.into())),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepSlot {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_slot::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             validity_end: match value.validity_end {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepSlot {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value.into()),
+                    change: Some(grpc_model::set_or_keep_slot::Change::Set(value.into())),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepSlot {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_slot::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             data: match value.data {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepBytes {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value),
+                    change: Some(grpc_model::set_or_keep_bytes::Change::Set(value)),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepBytes {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_bytes::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
+            //TODO remove unwrap
             trigger: match value.trigger {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: value.map(|trigger| trigger.into()),
+                    change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Set(
+                        value.map(|trigger| trigger.into()).unwrap(),
+                    )),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
             can_be_executed: match value.can_be_executed {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepBool {
-                    r#type: grpc_model::AsyncPoolChangeType::Set as i32,
-                    value: Some(value),
+                    change: Some(grpc_model::set_or_keep_bool::Change::Set(value)),
                 }),
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepBool {
-                    r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                    value: None,
+                    change: Some(grpc_model::set_or_keep_bool::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
                 }),
             },
-            hash: Some(grpc_model::SetOrKeepString {
-                r#type: grpc_model::AsyncPoolChangeType::Delete as i32,
-                value: None,
-            }),
         }
     }
 }

@@ -136,7 +136,7 @@ pub struct Settings {
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
-    pub grpc: GrpcSettings,
+    pub grpc: GrpcApiSettings,
     pub metrics: MetricsSettings,
     pub versioning: VersioningSettings,
 }
@@ -283,7 +283,9 @@ pub struct GrpcSettings {
     pub enable_health: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
-    /// whether to enable mTLS
+    /// whether to enable TLS
+    pub enable_tls: bool,
+    /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,
@@ -307,6 +309,8 @@ pub struct GrpcSettings {
     pub initial_connection_window_size: Option<u32>,
     /// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     pub max_concurrent_streams: Option<u32>,
+    /// max number of arguments per gRPC request
+    pub max_arguments: u64,
     /// set whether TCP keepalive messages are enabled on accepted connections
     pub tcp_keepalive: Option<MassaTime>,
     /// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -331,6 +335,15 @@ pub struct GrpcSettings {
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+}
+
+/// gRPC API settings.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcApiSettings {
+    /// Public server gRPC configuration.
+    pub public: GrpcSettings,
+    /// Private server gRPC configuration.
+    pub private: GrpcSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]

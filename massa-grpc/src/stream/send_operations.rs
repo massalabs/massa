@@ -1,12 +1,13 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::operation::{OperationDeserializer, SecureShareOperation};
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::collections::HashMap;
 use std::io::ErrorKind;
@@ -27,11 +28,11 @@ pub type SendOperationsStreamType = Pin<
 /// verifies, saves and propagates the operations received in each message, and sends back a stream of
 /// operations ids messages
 pub(crate) async fn send_operations(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<tonic::Streaming<grpc_api::SendOperationsRequest>>,
 ) -> Result<SendOperationsStreamType, GrpcError> {
-    let mut pool_command_sender = grpc.pool_command_sender.clone();
-    let protocol_command_sender = grpc.protocol_command_sender.clone();
+    let mut pool_controller = grpc.pool_controller.clone();
+    let protocol_controller = grpc.protocol_controller.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
 
@@ -48,7 +49,6 @@ pub(crate) async fn send_operations(
                     // If the incoming message has no operations, send an error message back to the client
                     if req_content.operations.is_empty() {
                         report_error(
-                            req_content.id.clone(),
                             tx.clone(),
                             tonic::Code::InvalidArgument,
                             "the request payload is empty".to_owned(),
@@ -58,7 +58,6 @@ pub(crate) async fn send_operations(
                         // If there are too many operations in the incoming message, send an error message back to the client
                         if req_content.operations.len() as u32 > config.max_operations_per_message {
                             report_error(
-                                req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
                                 "too many operations per message".to_owned(),
@@ -108,17 +107,16 @@ pub(crate) async fn send_operations(
                                     operation_storage
                                         .store_operations(verified_ops.values().cloned().collect());
                                     // Add the received operations to the operations pool
-                                    pool_command_sender.add_operations(operation_storage.clone());
+                                    pool_controller.add_operations(operation_storage.clone());
 
                                     // Propagate the operations to the network
-                                    if let Err(e) = protocol_command_sender
-                                        .propagate_operations(operation_storage)
+                                    if let Err(e) =
+                                        protocol_controller.propagate_operations(operation_storage)
                                     {
                                         // If propagation failed, send an error message back to the client
                                         let error =
                                             format!("failed to propagate operations: {}", e);
                                         report_error(
-                                            req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::Internal,
                                             error.to_owned(),
@@ -127,15 +125,14 @@ pub(crate) async fn send_operations(
                                     };
 
                                     // Build the response message
-                                    let result = grpc_api::OperationResult {
-                                        operations_ids: verified_ops.keys().cloned().collect(),
+                                    let result = grpc_model::OperationIds {
+                                        operation_ids: verified_ops.keys().cloned().collect(),
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
                                         .send(Ok(grpc_api::SendOperationsResponse {
-                                            id: req_content.id.clone(),
-                                            message: Some(
-                                                grpc_api::send_operations_response::Message::Result(
+                                            result: Some(
+                                                grpc_api::send_operations_response::Result::OperationsIds(
                                                     result,
                                                 ),
                                             ),
@@ -149,7 +146,6 @@ pub(crate) async fn send_operations(
                                 Err(e) => {
                                     let error = format!("invalid operation(s): {}", e);
                                     report_error(
-                                        req_content.id.clone(),
                                         tx.clone(),
                                         tonic::Code::InvalidArgument,
                                         error.to_owned(),
@@ -184,9 +180,8 @@ pub(crate) async fn send_operations(
     Ok(Box::pin(out_stream) as SendOperationsStreamType)
 }
 
-/// This function reports an error to the sender by sending a gRPC response message to the client
+// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
-    id: String,
     sender: tokio::sync::mpsc::Sender<Result<grpc_api::SendOperationsResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
@@ -195,12 +190,10 @@ async fn report_error(
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
         .send(Ok(grpc_api::SendOperationsResponse {
-            id,
-            message: Some(grpc_api::send_operations_response::Message::Error(
-                massa_proto_rs::google::rpc::Status {
+            result: Some(grpc_api::send_operations_response::Result::Error(
+                grpc_model::Error {
                     code: code.into(),
                     message: error,
-                    details: Vec::new(),
                 },
             )),
         }))

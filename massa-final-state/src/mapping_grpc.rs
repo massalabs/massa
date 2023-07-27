@@ -16,9 +16,10 @@ impl From<StateChanges> for grpc_model::StateChanges {
                         operation_id: op_id.to_string(),
                         value: Some(grpc_model::ExecutedOpsChangeValue {
                             status: if op_exec_status {
-                                vec![grpc_model::OperationExecutionStatus::Success as i32]
+                                //TODO to be enhanced
+                                grpc_model::OperationExecutionStatus::Success as i32
                             } else {
-                                vec![grpc_model::OperationExecutionStatus::Failed as i32]
+                                grpc_model::OperationExecutionStatus::Failed as i32
                             },
                             slot: Some(op_valid_until_slot.into()),
                         }),

@@ -1,12 +1,13 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
 use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::collections::HashMap;
 use std::io::ErrorKind;
@@ -27,11 +28,11 @@ pub type SendEndorsementsStreamType = Pin<
 /// verifies, saves and propagates the endorsements received in each message, and sends back a stream of
 /// endorsements ids messages
 pub(crate) async fn send_endorsements(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: tonic::Request<tonic::Streaming<grpc_api::SendEndorsementsRequest>>,
 ) -> Result<SendEndorsementsStreamType, GrpcError> {
-    let mut pool_command_sender = grpc.pool_command_sender.clone();
-    let protocol_command_sender = grpc.protocol_command_sender.clone();
+    let mut pool_command_sender = grpc.pool_controller.clone();
+    let protocol_command_sender = grpc.protocol_controller.clone();
     let config = grpc.grpc_config.clone();
     let storage = grpc.storage.clone_without_refs();
 
@@ -48,7 +49,6 @@ pub(crate) async fn send_endorsements(
                     // If the incoming message has no endorsements, send an error message back to the client
                     if req_content.endorsements.is_empty() {
                         report_error(
-                            req_content.id.clone(),
                             tx.clone(),
                             tonic::Code::InvalidArgument,
                             "the request payload is empty".to_owned(),
@@ -59,7 +59,6 @@ pub(crate) async fn send_endorsements(
                         let proto_endorsement = req_content.endorsements;
                         if proto_endorsement.len() as u32 > config.max_endorsements_per_message {
                             report_error(
-                                req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
                                 "too many endorsements per message".to_owned(),
@@ -118,7 +117,6 @@ pub(crate) async fn send_endorsements(
                                         let error =
                                             format!("failed to propagate endorsement: {}", e);
                                         report_error(
-                                            req_content.id.clone(),
                                             tx.clone(),
                                             tonic::Code::Internal,
                                             error.to_owned(),
@@ -127,15 +125,14 @@ pub(crate) async fn send_endorsements(
                                     };
 
                                     // Build the response message
-                                    let result = grpc_api::EndorsementResult {
+                                    let result = grpc_model::EndorsementsIds {
                                         endorsements_ids: verified_eds.keys().cloned().collect(),
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
                                         .send(Ok(grpc_api::SendEndorsementsResponse {
-                                            id: req_content.id.clone(),
-                                            message: Some(
-                                                grpc_api::send_endorsements_response::Message::Result(
+                                            result: Some(
+                                                grpc_api::send_endorsements_response::Result::EndorsementsIds(
                                                     result,
                                                 ),
                                             ),
@@ -149,7 +146,6 @@ pub(crate) async fn send_endorsements(
                                 Err(e) => {
                                     let error = format!("invalid endorsement(s): {}", e);
                                     report_error(
-                                        req_content.id.clone(),
                                         tx.clone(),
                                         tonic::Code::InvalidArgument,
                                         error.to_owned(),
@@ -187,9 +183,8 @@ pub(crate) async fn send_endorsements(
     Ok(Box::pin(out_stream) as SendEndorsementsStreamType)
 }
 
-/// This function reports an error to the sender by sending a gRPC response message to the client
+// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
-    id: String,
     sender: tokio::sync::mpsc::Sender<Result<grpc_api::SendEndorsementsResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
@@ -198,12 +193,10 @@ async fn report_error(
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
         .send(Ok(grpc_api::SendEndorsementsResponse {
-            id,
-            message: Some(grpc_api::send_endorsements_response::Message::Error(
-                massa_proto_rs::google::rpc::Status {
+            result: Some(grpc_api::send_endorsements_response::Result::Error(
+                massa_proto_rs::massa::model::v1::Error {
                     code: code.into(),
                     message: error,
-                    details: Vec::new(),
                 },
             )),
         }))

@@ -8,7 +8,7 @@ edition = "2021"
 beta = []
 resync_check = []
 deadlock_detection = []
-op_spammer = ["rand", "massa_signature"]
+op_spammer = ["rand"]
 bootstrap_server = ["massa_consensus_worker/bootstrap_server", "massa_final_state/bootstrap_server"]
 sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_factory_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox", "massa_metrics/sandbox"]
 testing = ["massa_metrics/testing"]
@@ -57,6 +57,6 @@ massa_factory_exports = {workspace = true}
 massa_factory_worker = {workspace = true}
 massa_grpc = {workspace = true}
 massa_versioning = {workspace = true}
-massa_signature = {workspace = true, "optional" = true}
+massa_signature = {workspace = true}
 massa_db_exports = {workspace = true}
 massa_db_worker = {workspace = true}

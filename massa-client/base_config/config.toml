@@ -7,7 +7,8 @@ timeout = 1000
 ip = "127.0.0.1"
 private_port = 33034
 public_port = 33035
-grpc_port = 33037
+grpc_public_port = 33037
+grpc_private_port = 33038
 
 [client]
     # maximum size in bytes of a request
