@@ -1288,10 +1288,6 @@
 <a href="#1288" id="1288">1288</a>
 <a href="#1289" id="1289">1289</a>
 <a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
-<a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -2148,10 +2144,6 @@
                     .map(|op_id| op_id.prefix())
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             );
-        }
-        <span class="kw">if </span>operations.is_empty() {
-            <span class="comment">// we have most likely eliminated all the received operations in the filtering above
-            </span><span class="kw">return</span>;
         }
 
         <span class="comment">// Here we know that we were looking for that block&#39;s operations and that the sender node sent us some of the missing ones.
