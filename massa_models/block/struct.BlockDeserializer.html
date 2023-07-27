@@ -15,7 +15,7 @@
 <span class="kw">use </span>massa_serialization::{Serializer, Deserializer, DeserializeError};
 <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 <span class="kw">let </span>parents: Vec&lt;BlockId&gt; = (<span class="number">0</span>..THREAD_COUNT)
-    .map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
+    .map(|i| BlockId(Hash::compute_from(<span class="kw-2">&amp;</span>[i])))
     .collect();
 
 <span class="comment">// create block header

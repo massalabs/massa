@@ -500,6 +500,21 @@
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
 <a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -516,7 +531,7 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{cmp::max, cmp::Ordering, cmp::PartialOrd, collections::BTreeSet, sync::Arc};
-<span class="kw">use </span>tracing::{debug, warn};
+<span class="kw">use </span>tracing::{debug, trace, warn};
 
 <span class="kw">use </span><span class="kw">crate</span>::types::OperationInfo;
 
@@ -586,18 +601,25 @@
         <span class="kw">let </span>max_slot = max(max_slot, min_slot);
 
         <span class="comment">// search for all our PoS draws in the interval of interest
-        </span><span class="kw">let </span><span class="kw-2">mut </span>pos_draws = BTreeSet::new();
-        <span class="kw">let </span>addrs = <span class="self">self</span>.wallet.read().keys.keys().copied().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-        <span class="kw">for </span>addr <span class="kw">in </span>addrs {
-            <span class="kw">let </span>(d, <span class="kw">_</span>) = <span class="self">self
-                </span>.channels
-                .selector
-                .get_address_selections(<span class="kw-2">&amp;</span>addr, min_slot, max_slot)
-                .expect(<span class="string">&quot;could not get PoS draws&quot;</span>);
-            pos_draws.extend(d.into_iter());
-        }
+        </span><span class="kw">let </span>addrs: PreHashSet&lt;Address&gt; = <span class="self">self</span>.wallet.read().keys.keys().copied().collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>pos_draws: BTreeSet&lt;Slot&gt; = <span class="self">self
+            </span>.channels
+            .selector
+            .get_available_selections_in_range(min_slot..=max_slot, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>addrs))
+            .expect(<span class="string">&quot;could not get PoS draws&quot;</span>)
+            .into_iter()
+            .filter_map(|(v_slot, v_sel)| {
+                <span class="kw">if </span>addrs.contains(<span class="kw-2">&amp;</span>v_sel.producer) {
+                    <span class="prelude-val">Some</span>(v_slot)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect();
+
         <span class="comment">// retain only the ones that are strictly after the last final slot of their thread
         </span>pos_draws.retain(|s| s.period &gt; <span class="self">self</span>.last_cs_final_periods[s.thread <span class="kw">as </span>usize]);
+
         pos_draws
     }
 
@@ -913,6 +935,14 @@
                 <span class="kw">let </span>op = ops
                     .get(new_op_id)
                     .expect(<span class="string">&quot;operation not found in storage but listed as owned&quot;</span>);
+
+                <span class="comment">// Broadcast operations to active channel subscribers.
+                </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.operation_sender.send(op.clone()) {
+                        <span class="macro">trace!</span>(<span class="string">&quot;error, failed to broadcast operations {}: {}&quot;</span>, op.id, err);
+                    }
+                }
+
                 <span class="self">self</span>.sorted_ops.push(OperationInfo::from_op(
                     op,
                     <span class="self">self</span>.config.operation_validity_periods,
