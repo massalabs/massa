@@ -1041,7 +1041,7 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
 // Other blocks use latest blocks as parents.
 // Block_2_1 and block_3_0 have a parallel incompatibility, because thread 0 is lagging too much.
 #[test]
-fn test_tts_multiple_blocks_depend_on_p0_grandpa_incomp() {
+fn test_tts_multiple_blocks_depend_on_p0_parallel_incomp() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(200),

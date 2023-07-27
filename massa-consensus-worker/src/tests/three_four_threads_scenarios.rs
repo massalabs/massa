@@ -206,7 +206,7 @@ fn test_fts_multiple_max_cliques_1() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(500),
-        thread_count: 4,
+        thread_count: 3,
         genesis_timestamp: MassaTime::now().unwrap(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
@@ -240,54 +240,42 @@ fn test_fts_multiple_max_cliques_1() {
             // Period 1.
             let block_1_0 = register_block_and_process_with_tc(
                 Slot::new(1, 0),
-                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
+                vec![genesis[0], genesis[1], genesis[2]],
                 &tc,
             );
             let block_1_1 = register_block_and_process_with_tc(
                 Slot::new(1, 1),
-                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
+                vec![genesis[0], genesis[1], genesis[2]],
                 &tc,
             );
             let block_1_2 = register_block_and_process_with_tc(
                 Slot::new(1, 2),
-                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
-            );
-            let block_1_3 = register_block_and_process_with_tc(
-                Slot::new(1, 3),
-                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
+                vec![genesis[0], genesis[1], genesis[2]],
                 &tc,
             );
 
             // Period 2.
-            // block_2_0 and block_2_2 are grandpa incompatibilities.
-            // block_2_1 and block_2_3 are grandpa incompatibilities.
+            // Thread incompatibilies with every blocks of period 1
             let block_2_0 = register_block_and_process_with_tc(
                 Slot::new(2, 0),
-                vec![block_1_0.id, block_1_1.id, genesis[2], block_1_3.id],
+                vec![genesis[0], genesis[1], genesis[2]],
                 &tc,
             );
             let block_2_1 = register_block_and_process_with_tc(
                 Slot::new(2, 1),
-                vec![block_1_0.id, block_1_1.id, block_1_2.id, genesis[3]],
+                vec![genesis[0], genesis[1], genesis[2]],
                 &tc,
             );
             let block_2_2 = register_block_and_process_with_tc(
                 Slot::new(2, 2),
-                vec![genesis[0], block_1_1.id, block_1_2.id, block_1_3.id],
+                vec![genesis[0], genesis[1], genesis[2]],
                 &tc,
             );
-            let block_2_3 = register_block_and_process_with_tc(
-                Slot::new(2, 3),
-                vec![block_1_0.id, genesis[1], block_1_2.id, block_1_3.id],
-                &tc,
-            );
-
             // Should have 4 max cliques:
-            // [block_2_0, block_2_1, (blocks in other periods...)]
-            // [block_2_0, block_2_3, (blocks in other periods...)]
-            // [block_2_1, block_2_2, (blocks in other periods...)]
-            // [block_2_2, block_2_3, (blocks in other periods...)]
+            // [block_1_0, block_1_1, block_1_2]
+            // [block_1_1, block_1_2, block_2_0]
+            // [block_1_2, block_2_0, block_2_1]
+            // [block_2_0, block_2_1, block_2_2]
             let mut status = tc
                 .consensus_controller
                 .get_block_graph_status(None, None)
@@ -297,27 +285,30 @@ fn test_fts_multiple_max_cliques_1() {
                 (genesis[0], Slot::new(0, 0)),
                 (genesis[1], Slot::new(0, 1)),
                 (genesis[2], Slot::new(0, 2)),
-                (genesis[3], Slot::new(0, 3)),
                 (block_1_0.id, Slot::new(1, 0)),
                 (block_1_1.id, Slot::new(1, 1)),
                 (block_1_2.id, Slot::new(1, 2)),
-                (block_1_3.id, Slot::new(1, 3)),
                 (block_2_0.id, Slot::new(2, 0)),
                 (block_2_1.id, Slot::new(2, 1)),
                 (block_2_2.id, Slot::new(2, 2)),
-                (block_2_3.id, Slot::new(2, 3)),
             ]
             .into_iter()
             .collect();
+
+            let mut print = vec![];
             for (from_id, to_ids) in &status.gi_head {
-                println!(
+                print.push(format!(
                     "{:?} => {:?}",
                     hash_to_slot[from_id],
                     to_ids
                         .iter()
                         .map(|v| hash_to_slot[v].clone())
                         .collect::<Vec<_>>()
-                );
+                ));
+            }
+            print.sort();
+            for i in print {
+                println!("{}", i);
             }
 
             // print cliques
@@ -340,16 +331,10 @@ fn test_fts_multiple_max_cliques_1() {
             };
 
             let expected_cliques = sorted_cliques(vec![
-                vec![block_1_3.id, block_1_2.id, block_2_3.id, block_1_0.id],
-                vec![
-                    block_1_3.id,
-                    block_1_1.id,
-                    block_2_0.id,
-                    block_1_2.id,
-                    block_2_1.id,
-                    block_1_2.id,
-                ],
-                vec![block_1_3.id, block_1_1.id, block_1_2.id, block_2_2.id],
+                vec![block_1_0.id, block_1_1.id, block_1_2.id],
+                vec![block_2_0.id, block_1_1.id, block_1_2.id],
+                vec![block_2_0.id, block_2_1.id, block_1_2.id],
+                vec![block_2_0.id, block_2_1.id, block_2_2.id],
             ]);
 
             let found_cliques: Vec<Vec<BlockId>> = sorted_cliques(
@@ -363,25 +348,21 @@ fn test_fts_multiple_max_cliques_1() {
             assert_eq!(found_cliques, expected_cliques, "wrong cliques");
 
             // Period 3.
-            // Based on the max clique [block_2_0, block_2_1, (blocks in other periods...)].
+            // Based on the max clique [block_2_0, block_2_1, block_1_2].
+            // Later, these blocks will be finalized while block_1_0, block_1_1, and block_2_2 will be discarded
             let block_3_0 = register_block_and_process_with_tc(
                 Slot::new(3, 0),
-                vec![block_2_0.id, block_2_1.id, block_1_2.id, block_1_3.id],
+                vec![block_2_0.id, block_2_1.id, block_1_2.id],
                 &tc,
             );
             let block_3_1 = register_block_and_process_with_tc(
                 Slot::new(3, 1),
-                vec![block_2_0.id, block_2_1.id, block_1_2.id, block_1_3.id],
+                vec![block_2_0.id, block_2_1.id, block_1_2.id],
                 &tc,
             );
             let block_3_2 = register_block_and_process_with_tc(
                 Slot::new(3, 2),
-                vec![block_2_0.id, block_2_1.id, block_1_2.id, block_1_3.id],
-                &tc,
-            );
-            let block_3_3 = register_block_and_process_with_tc(
-                Slot::new(3, 3),
-                vec![block_2_0.id, block_2_1.id, block_1_2.id, block_1_3.id],
+                vec![block_2_0.id, block_2_1.id, block_1_2.id],
                 &tc,
             );
 
@@ -399,57 +380,36 @@ fn test_fts_multiple_max_cliques_1() {
             // Period 4, thread 0, 1, and 2.
             let block_4_0 = register_block_and_process_with_tc(
                 Slot::new(4, 0),
-                vec![block_3_0.id, block_3_1.id, block_3_2.id, block_3_3.id],
+                vec![block_3_0.id, block_3_1.id, block_3_2.id],
                 &tc,
             );
             let block_4_1 = register_block_and_process_with_tc(
                 Slot::new(4, 1),
-                vec![block_3_0.id, block_3_1.id, block_3_2.id, block_3_3.id],
+                vec![block_3_0.id, block_3_1.id, block_3_2.id],
                 &tc,
             );
             let block_4_2 = register_block_and_process_with_tc(
                 Slot::new(4, 2),
-                vec![block_3_0.id, block_3_1.id, block_3_2.id, block_3_3.id],
+                vec![block_3_0.id, block_3_1.id, block_3_2.id],
                 &tc,
             );
 
-            // block_1_0 and block_1_1 have been finalized while block_1_2 and block_1_3 have not.
             assert_eq!(
                 tc.consensus_controller.get_block_statuses(&[
                     block_1_0.id,
                     block_1_1.id,
                     block_1_2.id,
-                    block_1_3.id
+                    block_2_0.id,
+                    block_2_1.id,
+                    block_2_2.id,
                 ]),
                 [
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
+                    BlockGraphStatus::ActiveInAlternativeCliques,
+                    BlockGraphStatus::ActiveInAlternativeCliques,
                     BlockGraphStatus::ActiveInBlockclique,
                     BlockGraphStatus::ActiveInBlockclique,
-                ],
-                "incorrect block statuses"
-            );
-
-            // Period 4, thread 3.
-            let block_4_3 = register_block_and_process_with_tc(
-                Slot::new(4, 3),
-                vec![block_3_0.id, block_3_1.id, block_3_2.id, block_3_3.id],
-                &tc,
-            );
-
-            // block_1_2 and block_1_3 have been finalized.
-            assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
-                    block_1_0.id,
-                    block_1_1.id,
-                    block_1_2.id,
-                    block_1_3.id
-                ]),
-                [
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
+                    BlockGraphStatus::ActiveInBlockclique,
+                    BlockGraphStatus::ActiveInAlternativeCliques,
                 ],
                 "incorrect block statuses"
             );
@@ -466,10 +426,41 @@ fn test_fts_multiple_max_cliques_1() {
             );
 
             // Period 5.
-            let _block_5_0 = register_block_and_process_with_tc(
+            let block_5_0 = register_block_and_process_with_tc(
                 Slot::new(5, 0),
-                vec![block_4_0.id, block_4_1.id, block_4_2.id, block_4_3.id],
+                vec![block_4_0.id, block_4_1.id, block_4_2.id],
                 &tc,
+            );
+
+            let block_5_1 = register_block_and_process_with_tc(
+                Slot::new(5, 1),
+                vec![block_4_0.id, block_4_1.id, block_4_2.id],
+                &tc,
+            );
+            let block_5_2 = register_block_and_process_with_tc(
+                Slot::new(5, 2),
+                vec![block_4_0.id, block_4_1.id, block_4_2.id],
+                &tc,
+            );
+
+            assert_eq!(
+                tc.consensus_controller.get_block_statuses(&[
+                    block_1_0.id,
+                    block_1_1.id,
+                    block_1_2.id,
+                    block_2_0.id,
+                    block_2_1.id,
+                    block_2_2.id,
+                ]),
+                [
+                    BlockGraphStatus::Discarded,
+                    BlockGraphStatus::Discarded,
+                    BlockGraphStatus::Final,
+                    BlockGraphStatus::Final,
+                    BlockGraphStatus::Final,
+                    BlockGraphStatus::Discarded,
+                ],
+                "incorrect block statuses"
             );
 
             // Should have only one max clique now.
@@ -483,22 +474,27 @@ fn test_fts_multiple_max_cliques_1() {
                 "incorrect number of max cliques"
             );
 
-            // block_2_0 and block_2_1 have been finalized while block_2_2 and block_2_3 have been discarded.
-            assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
-                    block_2_0.id,
-                    block_2_1.id,
-                    block_2_2.id,
-                    block_2_3.id
-                ]),
-                [
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Discarded,
-                    BlockGraphStatus::Discarded,
-                ],
-                "incorrect block statuses"
+            let expected_cliques = sorted_cliques(vec![vec![
+                block_3_0.id,
+                block_3_1.id,
+                block_3_2.id,
+                block_4_0.id,
+                block_4_1.id,
+                block_4_2.id,
+                block_5_0.id,
+                block_5_1.id,
+                block_5_2.id,
+            ]]);
+
+            let found_cliques: Vec<Vec<BlockId>> = sorted_cliques(
+                status
+                    .max_cliques
+                    .iter()
+                    .map(|v| v.block_ids.iter().cloned().collect())
+                    .collect(),
             );
+
+            assert_eq!(found_cliques, expected_cliques, "wrong cliques");
 
             (
                 protocol_controller,
@@ -512,7 +508,7 @@ fn test_fts_multiple_max_cliques_1() {
 }
 
 // Check max cliques when there are multiple incompatibilities.
-// Two of the max cliques are extended.
+// Three of the max cliques are extended.
 #[test]
 fn test_fts_multiple_max_cliques_2() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
@@ -572,49 +568,49 @@ fn test_fts_multiple_max_cliques_2() {
             );
 
             // Period 2.
-            // block_2_0 and block_2_2 are grandpa incompatibilities.
-            // block_2_1 and block_2_3 are grandpa incompatibilities.
+            // Thread incompatibilies with every blocks of period 1
             let block_2_0 = register_block_and_process_with_tc(
                 Slot::new(2, 0),
-                vec![block_1_0.id, block_1_1.id, genesis[2], block_1_3.id],
+                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
                 &tc,
             );
             let block_2_1 = register_block_and_process_with_tc(
                 Slot::new(2, 1),
-                vec![block_1_0.id, block_1_1.id, block_1_2.id, genesis[3]],
+                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
                 &tc,
             );
             let block_2_2 = register_block_and_process_with_tc(
                 Slot::new(2, 2),
-                vec![genesis[0], block_1_1.id, block_1_2.id, block_1_3.id],
+                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
                 &tc,
             );
             let block_2_3 = register_block_and_process_with_tc(
                 Slot::new(2, 3),
-                vec![block_1_0.id, genesis[1], block_1_2.id, block_1_3.id],
+                vec![genesis[0], genesis[1], genesis[2], genesis[3]],
                 &tc,
             );
 
-            // Should have 4 max cliques:
-            // [block_2_0, block_2_1, (blocks in other periods...)]
-            // [block_2_0, block_2_3, (blocks in other periods...)]
-            // [block_2_1, block_2_2, (blocks in other periods...)]
-            // [block_2_2, block_2_3, (blocks in other periods...)]
-            let mut status = tc
-                .consensus_controller
-                .get_block_graph_status(None, None)
-                .expect("could not get block graph status");
-            assert_eq!(
-                status.max_cliques.len(),
-                4,
-                "incorrect number of max cliques"
-            );
-
+            let mut hash_to_slot: HashMap<BlockId, Slot> = vec![
+                (genesis[0], Slot::new(0, 0)),
+                (genesis[1], Slot::new(0, 1)),
+                (genesis[2], Slot::new(0, 2)),
+                (genesis[3], Slot::new(0, 3)),
+                (block_1_0.id, Slot::new(1, 0)),
+                (block_1_1.id, Slot::new(1, 1)),
+                (block_1_2.id, Slot::new(1, 2)),
+                (block_1_3.id, Slot::new(1, 3)),
+                (block_2_0.id, Slot::new(2, 0)),
+                (block_2_1.id, Slot::new(2, 1)),
+                (block_2_2.id, Slot::new(2, 2)),
+                (block_2_3.id, Slot::new(2, 3)),
+            ]
+            .into_iter()
+            .collect();
             // Ignore other checks performed in test_fts_multiple_max_cliques_1.
 
             // Period 3 to 6.
             let mut prev_blocks = vec![block_2_0.id, block_2_1.id, block_2_2.id, block_2_3.id];
-            for i in 3..7 {
+            for i in 3..=6 {
                 // Max clique 1.
                 let new_block_0 = register_block_and_process_with_tc(
                     Slot::new(i, 0),
@@ -626,18 +622,22 @@ fn test_fts_multiple_max_cliques_2() {
                     vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
                     &tc,
                 );
-
                 // Max clique 2.
                 let new_block_2 = register_block_and_process_with_tc(
                     Slot::new(i, 2),
-                    vec![block_1_0.id, block_1_1.id, prev_blocks[2], prev_blocks[3]],
+                    vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
                     &tc,
                 );
                 let new_block_3 = register_block_and_process_with_tc(
                     Slot::new(i, 3),
-                    vec![block_1_0.id, block_1_1.id, prev_blocks[2], prev_blocks[3]],
+                    vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
                     &tc,
                 );
+
+                hash_to_slot.insert(new_block_0.id, Slot::new(i, 0));
+                hash_to_slot.insert(new_block_1.id, Slot::new(i, 1));
+                hash_to_slot.insert(new_block_2.id, Slot::new(i, 2));
+                hash_to_slot.insert(new_block_3.id, Slot::new(i, 3));
 
                 prev_blocks = vec![
                     new_block_0.id,
@@ -647,80 +647,19 @@ fn test_fts_multiple_max_cliques_2() {
                 ];
             }
 
-            // Blocks in period 1 have all be finalized, while none in period 2 have been finalized.
-            assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
-                    block_1_0.id,
-                    block_1_1.id,
-                    block_1_2.id,
-                    block_1_3.id,
-                ]),
-                [
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                ],
-                "incorrect block statuses"
-            );
-            assert_ne!(
-                tc.consensus_controller.get_block_statuses(&[
-                    block_2_0.id,
-                    block_2_1.id,
-                    block_2_2.id,
-                    block_2_3.id,
-                ]),
-                [
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                ],
-                "incorrect block statuses"
-            );
-            println!(
-                "> block_2_* status: {:?}",
-                tc.consensus_controller.get_block_statuses(&[
-                    block_2_0.id,
-                    block_2_1.id,
-                    block_2_2.id,
-                    block_2_3.id
-                ])
-            );
-
-            // Should still have 4 max cliques now.
-            status = tc
+            // Should still have 5 max cliques now.
+            let mut status = tc
                 .consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
             assert_eq!(
                 status.max_cliques.len(),
-                4,
+                5,
                 "incorrect number of max cliques"
             );
 
-            // Check max cliques' fitnesses.
-            for i in 0..4 {
-                if status.max_cliques[i].block_ids.contains(&block_2_0.id)
-                    && status.max_cliques[i].block_ids.contains(&block_2_1.id)
-                    || status.max_cliques[i].block_ids.contains(&block_2_2.id)
-                        && status.max_cliques[i].block_ids.contains(&block_2_3.id)
-                {
-                    assert_eq!(
-                        status.max_cliques[i].block_ids.len(),
-                        10,
-                        "incorrect max clique's fitness"
-                    );
-                } else {
-                    assert_eq!(
-                        status.max_cliques[i].block_ids.len(),
-                        2,
-                        "incorrect max clique's fitness"
-                    );
-                }
-            }
-
-            // Period 7, max clique 1.
+            // Period 7
+            // Max clique 1.
             let new_block_0 = register_block_and_process_with_tc(
                 Slot::new(7, 0),
                 vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
@@ -731,18 +670,22 @@ fn test_fts_multiple_max_cliques_2() {
                 vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
                 &tc,
             );
-
-            // Period 7, max clique 2.
+            // Max clique 2.
             let new_block_2 = register_block_and_process_with_tc(
                 Slot::new(7, 2),
-                vec![block_1_0.id, block_1_1.id, prev_blocks[2], prev_blocks[3]],
+                vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
                 &tc,
             );
             let new_block_3 = register_block_and_process_with_tc(
                 Slot::new(7, 3),
-                vec![block_1_0.id, block_1_1.id, prev_blocks[2], prev_blocks[3]],
+                vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
                 &tc,
             );
+
+            hash_to_slot.insert(new_block_0.id, Slot::new(7, 0));
+            hash_to_slot.insert(new_block_1.id, Slot::new(7, 1));
+            hash_to_slot.insert(new_block_2.id, Slot::new(7, 2));
+            hash_to_slot.insert(new_block_2.id, Slot::new(7, 3));
 
             // Should still have 2 max cliques now.
             status = tc
@@ -762,7 +705,7 @@ fn test_fts_multiple_max_cliques_2() {
                 new_block_2.id,
                 new_block_3.id,
             ];
-            for i in 8..16 {
+            for i in 8..=15 {
                 // Max clique 1.
                 let new_block_0 = register_block_and_process_with_tc(
                     Slot::new(i, 0),
@@ -774,18 +717,22 @@ fn test_fts_multiple_max_cliques_2() {
                     vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
                     &tc,
                 );
-
                 // Max clique 2.
                 let new_block_2 = register_block_and_process_with_tc(
                     Slot::new(i, 2),
-                    vec![block_1_0.id, block_1_1.id, prev_blocks[2], prev_blocks[3]],
+                    vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
                     &tc,
                 );
                 let new_block_3 = register_block_and_process_with_tc(
                     Slot::new(i, 3),
-                    vec![block_1_0.id, block_1_1.id, prev_blocks[2], prev_blocks[3]],
+                    vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
                     &tc,
                 );
+
+                hash_to_slot.insert(new_block_0.id, Slot::new(i, 0));
+                hash_to_slot.insert(new_block_1.id, Slot::new(i, 1));
+                hash_to_slot.insert(new_block_2.id, Slot::new(i, 2));
+                hash_to_slot.insert(new_block_3.id, Slot::new(i, 3));
 
                 prev_blocks = vec![
                     new_block_0.id,
@@ -795,7 +742,7 @@ fn test_fts_multiple_max_cliques_2() {
                 ];
             }
 
-            // Should still have 2 max cliques now.
+            // Should still have 3 max cliques now.
             status = tc
                 .consensus_controller
                 .get_block_graph_status(None, None)
