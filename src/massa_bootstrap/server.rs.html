@@ -785,6 +785,11 @@
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
 <a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -811,9 +816,8 @@
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
-</span><span class="kw">mod </span>white_black_list;
 
-<span class="kw">use </span>crossbeam::channel::tick;
+</span><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 <span class="kw">use </span>massa_db_exports::CHANGE_ID_DESER_ERROR;
@@ -838,7 +842,6 @@
     time::{Duration, Instant},
 };
 <span class="kw">use </span>tracing::{debug, error, info, warn};
-<span class="kw">use </span>white_black_list::<span class="kw-2">*</span>;
 
 <span class="attr">#[cfg(not(test))]
 </span><span class="kw">use </span><span class="kw">crate</span>::listener::BootstrapTcpListener;
@@ -849,6 +852,7 @@
     error::BootstrapError,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
+    white_black_list::SharedWhiteBlackList,
     BootstrapConfig,
 };
 <span class="doccomment">/// Specifies a common interface that can be used by standard, or mockers
@@ -867,6 +871,8 @@
     </span>main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
     listener_stopper: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
+    <span class="doccomment">/// shared white/black list
+    </span><span class="kw">pub </span>white_black_list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;static</span>&gt;,
 }
 
 <span class="kw">impl </span>BootstrapManager {
@@ -877,12 +883,14 @@
         main_handle: thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt;&gt;,
         update_stopper_tx: crossbeam::channel::Sender&lt;()&gt;,
         listener_stopper: BootstrapListenerStopHandle,
+        white_black_list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;static</span>&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             update_handle,
             main_handle,
             update_stopper_tx,
             listener_stopper,
+            white_black_list,
         }
     }
 
@@ -957,6 +965,7 @@
         })
         .expect(<span class="string">&quot;in `start_bootstrap_server`, OS failed to spawn list-updater thread&quot;</span>);
 
+    <span class="kw">let </span>w_b_list = white_black_list.clone();
     <span class="kw">let </span>main_handle = thread::Builder::new()
         .name(<span class="string">&quot;bs-main-loop&quot;</span>.to_string())
         .spawn(<span class="kw">move </span>|| {
@@ -965,7 +974,7 @@
                 protocol_controller,
                 final_state,
                 ev_poller,
-                white_black_list,
+                white_black_list: w_b_list,
                 keypair,
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
@@ -982,6 +991,7 @@
         main_handle,
         update_stopper_tx,
         listener_stopper,
+        white_black_list,
     ))
 }
 

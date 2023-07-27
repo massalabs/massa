@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["secure_share_to_vec"]};
+window.SIDEBAR_ITEMS = {"fn":["secure_share_to_vec","to_denunciation_index"]};

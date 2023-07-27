@@ -344,6 +344,19 @@
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -482,7 +495,7 @@
     <span class="kw">pub </span>ledger: LedgerSettings,
     <span class="kw">pub </span>selector: SelectionSettings,
     <span class="kw">pub </span>factory: FactorySettings,
-    <span class="kw">pub </span>grpc: GrpcSettings,
+    <span class="kw">pub </span>grpc: GrpcApiSettings,
     <span class="kw">pub </span>metrics: MetricsSettings,
     <span class="kw">pub </span>versioning: VersioningSettings,
 }
@@ -629,7 +642,9 @@
     </span><span class="kw">pub </span>enable_health: bool,
     <span class="doccomment">/// whether to enable gRPC reflection
     </span><span class="kw">pub </span>enable_reflection: bool,
-    <span class="doccomment">/// whether to enable mTLS
+    <span class="doccomment">/// whether to enable TLS
+    </span><span class="kw">pub </span>enable_tls: bool,
+    <span class="doccomment">/// whether to enable mTLS (requires `enable_tls` to be true)
     </span><span class="kw">pub </span>enable_mtls: bool,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
@@ -653,6 +668,8 @@
     </span><span class="kw">pub </span>initial_connection_window_size: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     <span class="doccomment">/// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     </span><span class="kw">pub </span>max_concurrent_streams: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="doccomment">/// max number of arguments per gRPC request
+    </span><span class="kw">pub </span>max_arguments: u64,
     <span class="doccomment">/// set whether TCP keepalive messages are enabled on accepted connections
     </span><span class="kw">pub </span>tcp_keepalive: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
     <span class="doccomment">/// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -677,6 +694,15 @@
     </span><span class="kw">pub </span>server_private_key_path: PathBuf,
     <span class="doccomment">/// client certificate authority root path
     </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
+}
+
+<span class="doccomment">/// gRPC API settings.
+</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>GrpcApiSettings {
+    <span class="doccomment">/// Public server gRPC configuration.
+    </span><span class="kw">pub </span>public: GrpcSettings,
+    <span class="doccomment">/// Private server gRPC configuration.
+    </span><span class="kw">pub </span>private: GrpcSettings,
 }
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
