@@ -736,10 +736,6 @@
 <a href="#736" id="736">736</a>
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -1017,13 +1013,9 @@
         )
         .unwrap();
 
-        <span class="kw">let </span>know_peers =
-            IntGauge::new(<span class="string">&quot;protocol_known_peers&quot;</span>, <span class="string">&quot;number of known peers in protocol&quot;</span>).unwrap();
-        <span class="kw">let </span>banned_peers = IntGauge::new(
-            <span class="string">&quot;protocol_banned_peers&quot;</span>,
-            <span class="string">&quot;number of banned peers in protocol&quot;</span>,
-        )
-        .unwrap();
+        <span class="kw">let </span>know_peers = IntGauge::new(<span class="string">&quot;known_peers&quot;</span>, <span class="string">&quot;number of known peers in protocol&quot;</span>).unwrap();
+        <span class="kw">let </span>banned_peers =
+            IntGauge::new(<span class="string">&quot;banned_peers&quot;</span>, <span class="string">&quot;number of banned peers in protocol&quot;</span>).unwrap();
 
         <span class="comment">// active cursor
         </span><span class="kw">let </span>active_cursor_thread =
