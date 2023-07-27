@@ -676,9 +676,28 @@ impl MipStore {
         thread_count: u8,
         t0: MassaTime,
         genesis_timestamp: MassaTime,
-    ) -> Result<bool, ModelsError> {
+    ) -> Result<(), IsConsistentWithShutdownPeriodError> {
         let guard = self.0.read();
         guard.is_consistent_with_shutdown_period(
+            shutdown_start,
+            shutdown_end,
+            thread_count,
+            t0,
+            genesis_timestamp,
+        )
+    }
+
+    #[allow(dead_code)]
+    pub fn update_for_network_shutdown(
+        &mut self,
+        shutdown_start: Slot,
+        shutdown_end: Slot,
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> Result<(), ModelsError> {
+        let mut guard = self.0.write();
+        guard.update_for_network_shutdown(
             shutdown_start,
             shutdown_end,
             thread_count,
@@ -715,6 +734,20 @@ impl MipStore {
             guard.delete_prefix(MIP_STORE_STATS_PREFIX, VERSIONING_CF, None);
         }
     }
+
+    /// Create a MIP store with what is written on the disk
+    pub fn try_from_db(
+        db: ShareableMassaDBController,
+        cfg: MipStatsConfig,
+    ) -> Result<Self, ExtendFromDbError> {
+        MipStoreRaw::try_from_db(db, cfg).map(|store_raw| Self(Arc::new(RwLock::new(store_raw))))
+    }
+
+    // debug
+    // pub fn len(&self) -> usize {
+    //     let guard = self.0.read();
+    //     guard.store.len()
+    // }
 }
 
 impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for MipStore {
@@ -789,6 +822,15 @@ pub enum ExtendFromDbError {
     Update(#[from] UpdateWithError),
     #[error("{0}")]
     Deserialize(String),
+}
+
+/// Error returned by 'is_consistent_with_shutdown_period`
+#[derive(Error, Debug)]
+pub enum IsConsistentWithShutdownPeriodError {
+    #[error("{0}")]
+    Update(#[from] ModelsError),
+    #[error("MipInfo: {0:?} (state: {1:?}) is not consistent with shutdown: {2} {3}")]
+    NonConsistent(MipInfo, ComponentState, MassaTime, MassaTime),
 }
 
 /// Store of all versioning info
@@ -1117,8 +1159,9 @@ impl MipStoreRaw {
         thread_count: u8,
         t0: MassaTime,
         genesis_timestamp: MassaTime,
-    ) -> Result<bool, ModelsError> {
-        let mut is_consistent = true;
+    ) -> Result<(), IsConsistentWithShutdownPeriodError> {
+        // let mut is_consistent = true;
+        let mut has_error: Result<(), IsConsistentWithShutdownPeriodError> = Ok(());
 
         let shutdown_start_ts =
             get_block_slot_timestamp(thread_count, t0, genesis_timestamp, shutdown_start)?;
@@ -1133,13 +1176,24 @@ impl MipStoreRaw {
                     if shutdown_range.contains(&mip_info.start)
                         || shutdown_range.contains(&mip_info.timeout)
                     {
-                        is_consistent = false;
+                        // is_consistent = false;
+                        has_error = Err(IsConsistentWithShutdownPeriodError::NonConsistent(
+                            mip_info.clone(),
+                            mip_state.state,
+                            shutdown_start_ts,
+                            shutdown_end_ts,
+                        ));
                         break;
                     }
                 }
-                ComponentState::Started(..) => {
+                ComponentState::Started(..) | ComponentState::LockedIn(..) => {
                     // assume this should have been reset
-                    is_consistent = false;
+                    has_error = Err(IsConsistentWithShutdownPeriodError::NonConsistent(
+                        mip_info.clone(),
+                        mip_state.state,
+                        shutdown_start_ts,
+                        shutdown_end_ts,
+                    ));
                     break;
                 }
                 _ => {
@@ -1149,10 +1203,9 @@ impl MipStoreRaw {
             }
         }
 
-        Ok(is_consistent)
+        has_error
     }
 
-    #[allow(dead_code)]
     fn update_for_network_shutdown(
         &mut self,
         shutdown_start: Slot,
@@ -1402,6 +1455,25 @@ impl MipStoreRaw {
         }
 
         Ok((updated, added))
+    }
+
+    /// Create a MIP store raw with what is written on the disk
+    fn try_from_db(
+        db: ShareableMassaDBController,
+        cfg: MipStatsConfig,
+    ) -> Result<Self, ExtendFromDbError> {
+        let mut store_raw = MipStoreRaw {
+            store: Default::default(),
+            stats: MipStoreStats {
+                config: cfg,
+                latest_announcements: Default::default(),
+                network_version_counters: Default::default(),
+            },
+        };
+
+        let (_updated, mut added) = store_raw.extend_from_db(db)?;
+        store_raw.store.append(&mut added);
+        Ok(store_raw)
     }
 }
 
@@ -2160,22 +2232,17 @@ mod test {
 
         let genesis_timestamp = MassaTime::from_millis(0);
 
-        let shutdown_start = Slot::new(2, 0);
-        let shutdown_end = Slot::new(8, 0);
-
         // helper functions so the test code is easy to read
         let get_slot_ts =
             |slot| get_block_slot_timestamp(THREAD_COUNT, T0, genesis_timestamp, slot).unwrap();
         let is_consistent = |store: &MipStoreRaw, shutdown_start, shutdown_end| {
-            store
-                .is_consistent_with_shutdown_period(
-                    shutdown_start,
-                    shutdown_end,
-                    THREAD_COUNT,
-                    T0,
-                    genesis_timestamp,
-                )
-                .unwrap()
+            store.is_consistent_with_shutdown_period(
+                shutdown_start,
+                shutdown_end,
+                THREAD_COUNT,
+                T0,
+                genesis_timestamp,
+            )
         };
         let update_store = |store: &mut MipStoreRaw, shutdown_start, shutdown_end| {
             store
@@ -2213,6 +2280,9 @@ mod test {
         };
         // end helpers
 
+        let shutdown_start = Slot::new(2, 0);
+        let shutdown_end = Slot::new(8, 0);
+
         let mip_stats_cfg = MipStatsConfig {
             block_count_considered: 10,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
@@ -2249,9 +2319,15 @@ mod test {
             ))
             .unwrap();
 
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), false);
+            match is_consistent(&store, shutdown_start, shutdown_end) {
+                Err(IsConsistentWithShutdownPeriodError::NonConsistent(mi, ..)) => {
+                    assert_eq!(mi, mi_1);
+                }
+                _ => panic!("is_consistent expects a non consistent error"),
+            }
+
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
+            assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
             // _dump_store(&store);
         }
 
@@ -2272,10 +2348,10 @@ mod test {
             let store_orig = store.clone();
 
             // Already ok even with a shutdown but let's check it
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
+            assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
             // _dump_store(&store);
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
+            assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
             // _dump_store(&store);
 
             // Check that nothing has changed
@@ -2297,9 +2373,12 @@ mod test {
             ))
             .unwrap();
 
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), false);
+            assert_matches!(
+                is_consistent(&store, shutdown_start, shutdown_end),
+                Err(IsConsistentWithShutdownPeriodError::NonConsistent(..))
+            );
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
+            assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
             // _dump_store(&store);
         }
 
@@ -2333,10 +2412,15 @@ mod test {
             ))
             .unwrap();
 
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), false);
+            match is_consistent(&store, shutdown_start, shutdown_end) {
+                Err(IsConsistentWithShutdownPeriodError::NonConsistent(mi, ..)) => {
+                    assert_eq!(mi, mi_1);
+                }
+                _ => panic!("is_consistent expects a non consistent error"),
+            }
             // _dump_store(&store);
             update_store(&mut store, shutdown_start, shutdown_end);
-            assert_eq!(is_consistent(&store, shutdown_start, shutdown_end), true);
+            assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
             // _dump_store(&store);
 
             // Update stats - so should force transitions if any

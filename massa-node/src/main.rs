@@ -289,34 +289,54 @@ async fn launch(
     };
     // Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
-    let mip_list = get_mip_list();
-    debug!("MIP list: {:?}", mip_list);
-    let mip_store =
-        MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
-
     // Create final state, either from a snapshot, or from scratch
     let final_state = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
-            Some(last_start_period) => FinalState::new_derived_from_snapshot(
-                db.clone(),
-                final_state_config,
-                Box::new(ledger),
-                selector_controller.clone(),
-                mip_store.clone(),
-                last_start_period,
-            )
-            .expect("could not init final state"),
-            None => FinalState::new(
-                db.clone(),
-                final_state_config,
-                Box::new(ledger),
-                selector_controller.clone(),
-                mip_store.clone(),
-                true,
-            )
-            .expect("could not init final state"),
+            Some(last_start_period) => {
+                // The node is restarted from a snapshot:
+                // MIP store by reading from the db as it must have been updated by the massa ledger editor
+                // (to shift transitions that might have happened during the network shutdown)
+                // Note that FinalState::new_derived_from_snapshot will check if MIP store is consistent
+                // No Bootstrap are expected after this
+                let mip_store: MipStore = MipStore::try_from_db(db.clone(), mip_stats_config)
+                    .expect("MIP store creation failed");
+                debug!("After read from db, Mip store: {:?}", mip_store);
+
+                FinalState::new_derived_from_snapshot(
+                    db.clone(),
+                    final_state_config,
+                    Box::new(ledger),
+                    selector_controller.clone(),
+                    mip_store,
+                    last_start_period,
+                )
+                .expect("could not init final state")
+            }
+            None => {
+                // The node is started in a normal way
+                // Read the mip list supported by the current software
+                // The resulting MIP store will likely be updated by the boostrap process in order
+                // to get the latest information for the MIP store (new states, votes...)
+
+                let mip_list = get_mip_list();
+                debug!("MIP list: {:?}", mip_list);
+                let mip_store = MipStore::try_from((mip_list, mip_stats_config))
+                    .expect("mip store creation failed");
+
+                FinalState::new(
+                    db.clone(),
+                    final_state_config,
+                    Box::new(ledger),
+                    selector_controller.clone(),
+                    mip_store,
+                    true,
+                )
+                .expect("could not init final state")
+            }
         },
     ));
+
+    let mip_store = final_state.read().mip_store.clone();
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -415,7 +435,8 @@ async fn launch(
         let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
             .get_prev_slot(THREAD_COUNT)
             .unwrap();
-        if !final_state
+
+        final_state
             .read()
             .mip_store
             .is_consistent_with_shutdown_period(
@@ -425,13 +446,7 @@ async fn launch(
                 T0,
                 *GENESIS_TIMESTAMP,
             )
-            .unwrap_or(false)
-        {
-            panic!(
-                "MIP store is not consistent with last shutdown period ({} - {})",
-                last_shutdown_start, last_shutdown_end
-            );
-        }
+            .expect("Mip store is not consistent with shutdown period")
     }
 
     // Storage costs constants

@@ -11,7 +11,7 @@ ed25519-dalek = {workspace = true, "features" = ["batch"]}
 serde = {workspace = true, "features" = ["derive"]}
 thiserror = {workspace = true}
 nom = {workspace = true}
-rand = {workspace = true}   # BOM UPGRADE     Revert to "0.7" if problem
+rand = "0.7"
 transition = {workspace = true}
 massa_hash = {workspace = true}
 massa_serialization = {workspace = true}

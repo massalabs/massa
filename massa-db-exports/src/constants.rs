@@ -1,6 +1,4 @@
 // Commons
-pub const LSMTREE_NODES_CF: &str = "lsmtree_nodes";
-pub const LSMTREE_VALUES_CF: &str = "lsmtree_values";
 pub const METADATA_CF: &str = "metadata";
 pub const STATE_CF: &str = "state";
 pub const VERSIONING_CF: &str = "versioning";
@@ -31,6 +29,7 @@ pub const EXECUTED_DENUNCIATIONS_PREFIX: &str = "executed_denunciations/";
 pub const LEDGER_PREFIX: &str = "ledger/";
 pub const MIP_STORE_PREFIX: &str = "versioning/";
 pub const MIP_STORE_STATS_PREFIX: &str = "versioning_stats/";
+pub const EXECUTION_TRAIL_HASH_PREFIX: &str = "execution_trail_hash/";
 
 // Async Pool
 pub const MESSAGE_DESER_ERROR: &str = "critical: message deserialization failed";

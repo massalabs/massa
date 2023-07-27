@@ -429,6 +429,7 @@ pub fn get_state(
                             err
                         ))
                     })?;
+                final_state_guard.init_execution_trail_hash();
             }
 
             // create the initial cycle of PoS cycle_history
