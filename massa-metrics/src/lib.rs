@@ -275,9 +275,13 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let know_peers = IntGauge::new("known_peers", "number of known peers in protocol").unwrap();
-        let banned_peers =
-            IntGauge::new("banned_peers", "number of banned peers in protocol").unwrap();
+        let know_peers =
+            IntGauge::new("protocol_known_peers", "number of known peers in protocol").unwrap();
+        let banned_peers = IntGauge::new(
+            "protocol_banned_peers",
+            "number of banned peers in protocol",
+        )
+        .unwrap();
 
         // active cursor
         let active_cursor_thread =
