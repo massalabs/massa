@@ -39,52 +39,108 @@
     enable_broadcast = false
 
 [grpc]
-    # whether to enable gRPC
-    enabled = true
-    # whether to add HTTP 1 layer
-    accept_http1 = false
-    # whether to enable CORS. works only if `accept_http1` is true
-    enable_cors = false
-    # whether to enable gRPC health service
-    enable_health = true
-    # whether to enable gRPC reflection(introspection)
-    enable_reflection = true
-    # whether to enable mTLS
-    enable_mtls = false
-    # bind for the Massa gRPC API
-    bind = "127.0.0.1:33037"
-    # which compression encodings does the server accept for requests
-    accept_compressed = "Gzip"
-    # which compression encodings might the server use for responses
-    send_compressed = "Gzip"
-    # limits the maximum size of a decoded message. Defaults to 50MB
-    max_decoding_message_size = 52428800
-    # limits the maximum size of an encoded message. Defaults to 50MB
-    max_encoding_message_size = 52428800
-    # limits the maximum size of streaming channel
-    max_channel_size = 128
-    # set a timeout on for all request handlers in seconds. Defaults to 60s
-    timeout = 60
-    # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
-    max_frame_size = 16777215
-    # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
-    concurrency_limit_per_connection = 32
-    # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
-    max_concurrent_streams = 1024
-    # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
-    tcp_nodelay = true
-    # max number of future periods considered during requests
-    draw_lookahead_period_count = 10
-    # The maximum number of block IDs that can be included in a single request
-    max_block_ids_per_request = 50
-    # max number of operation ids that can be included in a single request
-    max_operation_ids_per_request = 250
-    # server certificate path
-    server_certificate_path = "config/tls/server.pem"
-    # server private key path
-    server_private_key_path = "config/tls/server.key"
-    # client certificate authority root path
-    client_certificate_authority_root_path = "config/tls/client_ca.pem"
+    [grpc.public]
+        # whether to enable gRPC
+        enabled = true
+        # whether to add HTTP 1 layer
+        accept_http1 = false
+        # whether to enable CORS. works only if `accept_http1` is true
+        enable_cors = false
+        # whether to enable gRPC health service
+        enable_health = true
+        # whether to enable gRPC reflection(introspection)
+        enable_reflection = true
+        # whether to enable TLS
+        enable_tls = false
+        # whether to enable mTLS (requires `enable_tls` to be true)
+        enable_mtls = false
+        # bind for the Massa gRPC API
+        bind = "0.0.0.0:33037"
+        # which compression encodings does the server accept for requests
+        accept_compressed = "Gzip"
+        # which compression encodings might the server use for responses
+        send_compressed = "Gzip"
+        # limits the maximum size of a decoded message. Defaults to 50MB
+        max_decoding_message_size = 52428800
+        # limits the maximum size of an encoded message. Defaults to 50MB
+        max_encoding_message_size = 52428800
+        # limits the maximum size of streaming channel
+        max_channel_size = 128
+        # set a timeout on for all request handlers in seconds. Defaults to 60s
+        timeout = 60
+        # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
+        max_frame_size = 16777215
+        # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+        concurrency_limit_per_connection = 32
+        # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
+        max_concurrent_streams = 1024
+        # max number of arguments per gRPC request
+        max_arguments = 128
+        # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+        tcp_nodelay = true
+        # max number of future periods considered during requests
+        draw_lookahead_period_count = 10
+        # The maximum number of block IDs that can be included in a single request
+        max_block_ids_per_request = 50
+        # max number of operation ids that can be included in a single request
+        max_operation_ids_per_request = 250
+        # server certificate path
+        server_certificate_path = "config/tls/public/server.pem"
+        # server private key path
+        server_private_key_path = "config/tls/public/server.key"
+        # client certificate authority root path
+        client_certificate_authority_root_path = "config/tls/public/client_ca.pem"
+    [grpc.private]
+        # whether to enable gRPC
+        enabled = true
+        # whether to add HTTP 1 layer
+        accept_http1 = false
+        # whether to enable CORS. works only if `accept_http1` is true
+        enable_cors = false
+        # whether to enable gRPC health service
+        enable_health = true
+        # whether to enable gRPC reflection(introspection)
+        enable_reflection = true
+        # whether to enable TLS
+        enable_tls = false
+        # whether to enable mTLS (requires `enable_tls` to be true)
+        enable_mtls = false
+        # bind for the Massa gRPC API
+        bind = "127.0.0.1:33038"
+        # which compression encodings does the server accept for requests
+        accept_compressed = "Gzip"
+        # which compression encodings might the server use for responses
+        send_compressed = "Gzip"
+        # limits the maximum size of a decoded message. Defaults to 50MB
+        max_decoding_message_size = 52428800
+        # limits the maximum size of an encoded message. Defaults to 50MB
+        max_encoding_message_size = 52428800
+        # limits the maximum size of streaming channel
+        max_channel_size = 128
+        # set a timeout on for all request handlers in seconds. Defaults to 60s
+        timeout = 60
+        # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
+        max_frame_size = 16777215
+        # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
+        concurrency_limit_per_connection = 32
+        # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
+        max_concurrent_streams = 1024
+        # max number of arguments per gRPC request
+        max_arguments = 128
+        # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
+        tcp_nodelay = true
+        # max number of future periods considered during requests
+        draw_lookahead_period_count = 10
+        # The maximum number of block IDs that can be included in a single request
+        max_block_ids_per_request = 50
+        # max number of operation ids that can be included in a single request
+        max_operation_ids_per_request = 250
+        # server certificate path
+        server_certificate_path = "config/tls/private/server.pem"
+        # server private key path
+        server_private_key_path = "config/tls/private/server.key"
+        # client certificate authority root path
+        client_certificate_authority_root_path = "config/tls/private/client_ca.pem"
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000

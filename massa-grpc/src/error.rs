@@ -9,7 +9,9 @@ use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
 use massa_protocol_exports::ProtocolError;
+use massa_signature::MassaSignatureError;
 use massa_time::TimeError;
+use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
 use tracing::log::error;
 
@@ -19,6 +21,8 @@ use tracing::log::error;
 pub enum GrpcError {
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
+    /// `massa_hash` error: {0}
+    MassaSignatureError(#[from] MassaSignatureError),
     /// consensus error: {0}
     ConsensusError(#[from] ConsensusError),
     /// execution error: {0}
@@ -31,12 +35,16 @@ pub enum GrpcError {
     ModelsError(#[from] ModelsError),
     /// Time error: {0}
     TimeError(#[from] TimeError),
+    /// Versioning factory error: {0}
+    FactoryError(#[from] FactoryError),
     /// Wallet error: {0}
     WalletError(#[from] WalletError),
     /// Internal server error: {0}
     InternalServerError(String),
     /// Invalid argument error: {0}
     InvalidArgument(String),
+    /// Not implemented error: {0}
+    Unimplemented(String),
 }
 
 impl From<GrpcError> for tonic::Status {
@@ -44,15 +52,18 @@ impl From<GrpcError> for tonic::Status {
         error!("{}", error);
         match error {
             GrpcError::MassaHashError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::MassaSignatureError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ConsensusError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ExecutionError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ProtocolError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::ModelsError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::TimeError(e) => tonic::Status::internal(e.to_string()),
+            GrpcError::FactoryError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::WalletError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::InternalServerError(e) => tonic::Status::internal(e),
             GrpcError::ReflectionError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::InvalidArgument(e) => tonic::Status::invalid_argument(e),
+            GrpcError::Unimplemented(e) => tonic::Status::unimplemented(e),
         }
     }
 }

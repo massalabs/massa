@@ -10,4 +10,5 @@ displaydoc = {workspace = true}
 serde = {workspace = true, "features" = ["derive"]}
 thiserror = {workspace = true}
 nom = {workspace = true}
+massa-proto-rs = {workspace = true, "features" = ["tonic"]}
 massa_serialization = {workspace = true}

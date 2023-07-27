@@ -669,7 +669,6 @@ impl MipStore {
     }
 
     // Network restart
-
     pub fn is_consistent_with_shutdown_period(
         &self,
         shutdown_start: Slot,

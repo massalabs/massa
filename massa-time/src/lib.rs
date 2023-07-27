@@ -5,6 +5,7 @@
 #![feature(bound_map)]
 
 mod error;
+mod mapping_grpc;
 pub use error::TimeError;
 use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};

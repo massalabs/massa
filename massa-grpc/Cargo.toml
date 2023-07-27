@@ -21,9 +21,10 @@ futures-util = {workspace = true}
 serde = {workspace = true, "features" = ["derive"]}
 tokio = {workspace = true, "features" = ["rt-multi-thread", "macros"]}
 tokio-stream = {workspace = true}   # BOM UPGRADE     Revert to "0.1.12" if problem
-itertools = {workspace = true}
-h2 = {workspace = true}
 tracing = {workspace = true}
+parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+h2 = {workspace = true}
+
 massa_consensus_exports = {workspace = true}
 massa_hash = {workspace = true}
 massa_models = {workspace = true}
@@ -36,6 +37,8 @@ massa_time = {workspace = true}
 massa_wallet = {workspace = true}
 massa_serialization = {workspace = true}
 massa_versioning = {workspace = true}
+massa_signature = {workspace = true}
+massa_bootstrap = {workspace = true}
 
 [dev-dependencies]
 num = {workspace = true}

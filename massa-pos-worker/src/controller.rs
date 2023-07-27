@@ -7,10 +7,7 @@ use std::collections::BTreeMap;
 
 use crate::{Command, DrawCachePtr};
 use massa_hash::Hash;
-use massa_models::{
-    address::Address,
-    slot::{IndexedSlot, Slot},
-};
+use massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
 use massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
 #[cfg(feature = "testing")]
 use std::collections::{HashMap, VecDeque};
@@ -108,52 +105,83 @@ impl SelectorController for SelectorControllerImpl {
     }
 
     /// Get [Address] of the selected block producer for a given slot
-    /// # Arguments
-    /// * `slot`: target slot of the selection
     fn get_producer(&self, slot: Slot) -> PosResult<Address> {
-        let cycle = slot.get_cycle(self.periods_per_cycle);
-        let (_cache_cv, cache_lock) = &*self.cache;
-        let cache_guard = cache_lock.read();
-        let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
-
-        cache
-            .get(cycle)
-            .and_then(|selections| selections.draws.get(&slot).map(|s| s.producer))
-            .ok_or(PosError::CycleUnavailable(cycle))
+        self.get_selection(slot).map(|selection| selection.producer)
     }
 
-    /// Return a list of slots where `address` has been chosen to produce a
-    /// block and a list where he is chosen for the endorsements.
-    /// Look from the `start` slot to the `end` slot.
-    fn get_address_selections(
+    /// Get selections computed for a slot range (only lists available selections):
+    /// # Arguments
+    /// * `slot_range`: target slot of the selection (from included, to included)
+    /// * `restrict_to_addresses`: optionally restrict only to slots involving a given address
+    #[allow(clippy::needless_lifetimes)] // lifetime elision conflicts with Mockall
+    fn get_available_selections_in_range<'a>(
         &self,
-        address: &Address,
-        mut slot: Slot, /* starting slot */
-        end: Slot,
-    ) -> PosResult<(Vec<Slot>, Vec<IndexedSlot>)> {
+        slot_range: std::ops::RangeInclusive<Slot>,
+        restrict_to_addresses: Option<&'a PreHashSet<Address>>,
+    ) -> PosResult<BTreeMap<Slot, Selection>> {
+        // get range bounds, reject empty case
+        if slot_range.is_empty() {
+            return Ok(BTreeMap::new());
+        }
+        if let Some(r) = &restrict_to_addresses && r.is_empty() {
+            return Ok(BTreeMap::new());
+        }
+        // take lock
         let (_cache_cv, cache_lock) = &*self.cache;
         let cache_guard = cache_lock.read();
         let cache = cache_guard.as_ref().map_err(|err| err.clone())?;
-        let mut slot_producers = vec![];
-        let mut slot_endorsers = vec![];
-        while slot < end {
-            if let Some(selection) = cache
-                .get(slot.get_cycle(self.periods_per_cycle))
+
+        // check if the requested cycles are available
+        let slot_begin;
+        let slot_end_included;
+        {
+            let available_cycles = match cache.get_available_cycles_range() {
+                Some(c) => c,
+                None => return Ok(BTreeMap::new()),
+            };
+            slot_begin = std::cmp::max(
+                *slot_range.start(),
+                Slot::new_first_of_cycle(*available_cycles.start(), self.periods_per_cycle)
+                    .expect("could not get first slot of available cycle"),
+            );
+            slot_end_included = std::cmp::min(
+                *slot_range.end(),
+                Slot::new_last_of_cycle(
+                    *available_cycles.end(),
+                    self.periods_per_cycle,
+                    self.thread_count,
+                )
+                .expect("could not get last slot of available cycle"),
+            );
+        }
+
+        // get the selections
+        let mut res = BTreeMap::new();
+        let mut slot = slot_begin;
+        while slot <= slot_end_included {
+            let cycle = slot.get_cycle(self.periods_per_cycle);
+            let slot_selection = cache
+                .get(cycle)
                 .and_then(|selections| selections.draws.get(&slot))
-            {
-                if selection.producer == *address {
-                    slot_producers.push(slot);
-                } else if let Some(index) = selection.endorsements.iter().position(|e| e == address)
+                .ok_or(PosError::CycleUnavailable(cycle))?;
+            if let Some(restrict_to_addrs) = restrict_to_addresses {
+                if restrict_to_addrs.contains(&slot_selection.producer)
+                    || slot_selection
+                        .endorsements
+                        .iter()
+                        .any(|a| restrict_to_addrs.contains(a))
                 {
-                    slot_endorsers.push(IndexedSlot { slot, index });
+                    res.insert(slot, slot_selection.clone());
                 }
+            } else {
+                res.insert(slot, slot_selection.clone());
             }
             slot = match slot.get_next_slot(self.thread_count) {
-                Ok(next_slot) => next_slot,
-                _ => break,
-            };
+                Ok(s) => s,
+                Err(_) => break,
+            }
         }
-        Ok((slot_producers, slot_endorsers))
+        Ok(res)
     }
 
     /// Returns a boxed clone of self.

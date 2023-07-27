@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::io::ErrorKind;
@@ -22,7 +22,7 @@ pub type NewFilledBlocksStreamType = Pin<
 
 /// Creates a new stream of new produced and received filled blocks
 pub(crate) async fn new_filled_blocks(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: Request<Streaming<grpc_api::NewFilledBlocksRequest>>,
 ) -> Result<NewFilledBlocksStreamType, GrpcError> {
     // Create a channel to handle communication with the client
@@ -33,8 +33,6 @@ pub(crate) async fn new_filled_blocks(
     let mut subscriber = grpc.consensus_channels.filled_block_sender.subscribe();
 
     tokio::spawn(async move {
-        // Initialize the request_id string
-        let mut request_id = String::new();
         loop {
             select! {
                 // Receive a new filled block from the subscriber
@@ -43,7 +41,6 @@ pub(crate) async fn new_filled_blocks(
                         Ok(massa_filled_block) => {
                             // Send the new filled block through the channel
                             if let Err(e) = tx.send(Ok(grpc_api::NewFilledBlocksResponse {
-                                    id: request_id.clone(),
                                     filled_block: Some(massa_filled_block.into())
                             })).await {
                                 error!("failed to send new block : {}", e);
@@ -57,13 +54,7 @@ pub(crate) async fn new_filled_blocks(
             res = in_stream.next() => {
                 match res {
                     Some(res) => {
-                        match res {
-                            // Get the request_id from the received data
-                            Ok(data) => {
-                                request_id = data.id
-                            },
-                            // Handle any errors that may occur during receiving the data
-                            Err(err) => {
+                        if let Err(err) = res {
                                 // Check if the error matches any IO errors
                                 if let Some(io_err) = match_for_io_error(&err) {
                                     if io_err.kind() == ErrorKind::BrokenPipe {
@@ -77,7 +68,6 @@ pub(crate) async fn new_filled_blocks(
                                     error!("failed to send back new_filled_blocks error response: {}", e);
                                     break;
                                 }
-                            }
                         }
                     },
                     None => {

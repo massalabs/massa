@@ -1,13 +1,12 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
 use massa_models::error::ModelsError;
 use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::secure_share::SecureShareDeserializer;
-use massa_proto_rs::google::rpc::Status;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
 use std::io::ErrorKind;
@@ -30,11 +29,11 @@ pub type SendBlocksStreamType = Pin<
 /// verifies, saves and propagates the block received in each message, and sends back a stream of
 /// block id messages
 pub(crate) async fn send_blocks(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: Request<tonic::Streaming<grpc_api::SendBlocksRequest>>,
 ) -> Result<SendBlocksStreamType, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
-    let protocol_command_sender = grpc.protocol_command_sender.clone();
+    let protocol_command_sender = grpc.protocol_controller.clone();
     let storage = grpc.storage.clone_without_refs();
     let config = grpc.grpc_config.clone();
 
@@ -49,24 +48,22 @@ pub(crate) async fn send_blocks(
             match result {
                 Ok(req_content) => {
                     let Some(proto_block) = req_content.block else {
-                        report_error(
-                            req_content.id.clone(),
-                            tx.clone(),
-                            tonic::Code::InvalidArgument,
-                            "the request payload is empty".to_owned(),
-                        ).await;
-                        continue;
-                    };
+                            report_error(
+                                tx.clone(),
+                                tonic::Code::InvalidArgument,
+                                "the request payload is empty".to_owned(),
+                            ).await;
+                            continue;
+                        };
 
                     let Ok(blk_serialized) = secure_share_to_vec(proto_block) else {
-                        report_error(
-                            req_content.id.clone(),
-                            tx.clone(),
-                            tonic::Code::InvalidArgument,
-                            "failed to convert block secure share".to_owned(),
-                        ).await;
-                        continue;
-                    };
+                            report_error(
+                                tx.clone(),
+                                tonic::Code::InvalidArgument,
+                                "failed to convert block secure share".to_owned(),
+                            ).await;
+                            continue;
+                        };
 
                     // Create a block deserializer arguments
                     let args = BlockDeserializerArgs {
@@ -85,7 +82,6 @@ pub(crate) async fn send_blocks(
                             let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
                             if !rest.is_empty() {
                                 report_error(
-                                    req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
                                     "the request payload is too large".to_owned(),
@@ -108,7 +104,6 @@ pub(crate) async fn send_blocks(
                                 })
                             {
                                 report_error(
-                                    req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::InvalidArgument,
                                     format!("wrong signature: {}", e),
@@ -136,7 +131,6 @@ pub(crate) async fn send_blocks(
                             {
                                 // If propagation failed, send an error message back to the client
                                 report_error(
-                                    req_content.id.clone(),
                                     tx.clone(),
                                     tonic::Code::Internal,
                                     format!("failed to propagate block: {}", e),
@@ -145,16 +139,11 @@ pub(crate) async fn send_blocks(
                                 continue;
                             };
 
-                            // Build the response message
-                            let result = grpc_api::BlockResult {
-                                block_id: res_block.id.to_string(),
-                            };
                             // Send the response message back to the client
                             if let Err(e) = tx
                                 .send(Ok(grpc_api::SendBlocksResponse {
-                                    id: req_content.id.clone(),
-                                    message: Some(grpc_api::send_blocks_response::Message::Result(
-                                        result,
+                                    result: Some(grpc_api::send_blocks_response::Result::BlockId(
+                                        res_block.id.to_string(),
                                     )),
                                 }))
                                 .await
@@ -165,7 +154,6 @@ pub(crate) async fn send_blocks(
                         // If the verification failed, send an error message back to the client
                         Err(e) => {
                             report_error(
-                                req_content.id.clone(),
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
                                 format!("failed to deserialize block: {}", e),
@@ -201,7 +189,6 @@ pub(crate) async fn send_blocks(
 
 /// This function reports an error to the sender by sending a gRPC response message to the client
 async fn report_error(
-    id: String,
     sender: Sender<Result<grpc_api::SendBlocksResponse, tonic::Status>>,
     code: tonic::Code,
     error: String,
@@ -210,12 +197,12 @@ async fn report_error(
     // Attempt to send the error response message to the sender
     if let Err(e) = sender
         .send(Ok(grpc_api::SendBlocksResponse {
-            id,
-            message: Some(grpc_api::send_blocks_response::Message::Error(Status {
-                code: code.into(),
-                message: error,
-                details: Vec::new(),
-            })),
+            result: Some(grpc_api::send_blocks_response::Result::Error(
+                massa_proto_rs::massa::model::v1::Error {
+                    code: code.into(),
+                    message: error,
+                },
+            )),
         }))
         .await
     {

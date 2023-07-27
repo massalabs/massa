@@ -12,6 +12,7 @@
 //! Same as the previous test with a low limit of size to check if
 //! configurations are taken into account.
 
+use std::collections::BTreeMap;
 use std::time::Duration;
 
 use crate::tests::tools::create_some_operations;
@@ -19,11 +20,13 @@ use crate::tests::tools::OpGenerator;
 use massa_execution_exports::MockExecutionController;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
+use massa_models::config::ENDORSEMENT_COUNT;
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::slot::Slot;
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::MockSelectorController;
+use massa_pos_exports::Selection;
 use massa_signature::KeyPair;
 
 use super::tools::PoolTestBoilerPlate;
@@ -63,27 +66,40 @@ fn test_simple_get_operations() {
     });
 
     // Provide the selector boilderplate
-    let mut selector_controller = {
+    let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
             let mut story = MockSelectorController::new();
-            story.expect_get_address_selections().returning(|_, _, _| {
-                let mut all_slots = Vec::new();
-                for i in 0..15 {
-                    for j in 0..32 {
-                        all_slots.push(Slot::new(i, j));
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .into_iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
+                        }
                     }
-                }
-                Ok((all_slots.clone(), vec![]))
-            });
+                    Ok(all_slots)
+                });
             Box::new(story)
         });
         res
     };
-    selector_controller
-        .expect_clone_box()
-        .returning(|| Box::new(MockSelectorController::new()));
 
     // Setup the pool controller
     let config = PoolConfig::default();
@@ -188,15 +204,31 @@ fn test_get_operations_overflow() {
         res.expect_clone_box().times(2).returning(|| {
             //TODO: Add sequence
             let mut story = MockSelectorController::new();
-            story.expect_get_address_selections().returning(|_, _, _| {
-                let mut all_slots = Vec::new();
-                for i in 0..15 {
-                    for j in 0..32 {
-                        all_slots.push(Slot::new(i, j));
+            story
+                .expect_get_available_selections_in_range()
+                .returning(|slot_range, opt_addrs| {
+                    let mut all_slots = BTreeMap::new();
+                    let addr = *opt_addrs
+                        .expect("No addresses filter given")
+                        .into_iter()
+                        .next()
+                        .expect("No addresses given");
+                    for i in 0..15 {
+                        for j in 0..32 {
+                            let s = Slot::new(i, j);
+                            if slot_range.contains(&s) {
+                                all_slots.insert(
+                                    s,
+                                    Selection {
+                                        producer: addr,
+                                        endorsements: vec![addr; ENDORSEMENT_COUNT as usize],
+                                    },
+                                );
+                            }
+                        }
                     }
-                }
-                Ok((all_slots.clone(), vec![]))
-            });
+                    Ok(all_slots)
+                });
             Box::new(story)
         });
         res

@@ -58,7 +58,6 @@ opt-level = 3 # Speed-up the CI
 # * sandbox: for testing purpose, genesis timestamps is set as now + 9 seconds.
 # The saved snapshot can then be used to restart the network from the snapshot.
 [workspace.dependencies]
-
 # Internal packages
 massa_api = { path = "./massa-api" }
 massa_api_exports = { path = "./massa-api-exports" }
@@ -99,8 +98,8 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "df9f5b24955bd76030add0945338226309531261" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "main" }
+massa-proto-rs = {git = "https://github.com/massalabs/massa-proto-rs", "rev" = "32179e2"}
+massa-sc-runtime = {git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "main"}
 peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
@@ -135,9 +134,9 @@ http = "0.2.8"
 humantime = "2.1.0"
 hyper = "0.14.25"
 itertools = "0.10"
-jsonrpsee = "0.18.2"
-jsonrpsee-http-client = "0.18.2"
-jsonrpsee-ws-client = "0.18.2"
+jsonrpsee = "0.19.0"
+jsonrpsee-http-client = "0.19.0"
+jsonrpsee-ws-client = "0.19.0"
 lazy_static = "1.4.0"
 libsecp256k1 = "0.7.1"
 lsmtree = "=0.1.1"
