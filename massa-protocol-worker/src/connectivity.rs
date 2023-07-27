@@ -266,12 +266,13 @@ pub(crate) fn start_connectivity_thread(
                                     if peer.1 == PeerConnectionType::OUT {
                                         if let Some(ref peer_category) = &peer.2 {
                                             if let Some(slots) = connection_slots.get_mut(peer_category.as_str()) {
-                                                *slots -= 1;
+                                                *slots = slots.saturating_sub(1);
                                             } else {
                                                 tracing::log::warn!("Category of connected peer {peer_category} not known in configuration"); 
                                             }
                                         } else {
-                                            *connection_slots.get_mut("default").unwrap() -= 1;
+                                            let slots = connection_slots.get_mut("default").unwrap();
+                                            *slots = slots.saturating_sub(1);
                                         }
                                     }
                                     continue;
@@ -298,10 +299,10 @@ pub(crate) fn start_connectivity_thread(
                                             if peers_connection_queue.contains(addr) {
                                                 if let Some(peer_category) = category_found {
                                                     if let Some(slots) = connection_slots.get_mut(peer_category.as_str()) {
-                                                        *slots -= 1;
+                                                        *slots = slots.saturating_sub(1);
                                                     }
                                                 } else if let Some(v) = connection_slots.get_mut("default") {
-                                                    *v -= 1;
+                                                    *v = v.saturating_sub(1);
                                                 }
                                                 continue;
                                             }
@@ -351,7 +352,7 @@ pub(crate) fn start_connectivity_thread(
                                         if name == *cat && *slots > 0 {
                                             // In case the connection succeeds, we take a place in a slot
                                             if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
-                                                *slots -= 1;
+                                                *slots = slots.saturating_sub(1);
                                                 addresses_connected.push(*addr);
                                             }
                                         }
@@ -363,7 +364,7 @@ pub(crate) fn start_connectivity_thread(
                                     // In case the connection succeeds, we take a place in a slot
                                     if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
                                         if let Some(v) = connection_slots.get_mut("default") {
-                                            *v -= 1;
+                                            *v = v.saturating_sub(1);
                                         }
                                         addresses_connected.push(*addr);
                                     }
