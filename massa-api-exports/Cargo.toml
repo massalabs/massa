@@ -4,30 +4,27 @@ version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-[dependencies]
-paginate = "1.1.11"
-displaydoc = "0.2"
-thiserror = "1.0"
-jsonrpsee = { version = "0.19.0", features = ["jsonrpsee-core", "jsonrpsee-types"] }
-serde = { version = "1.0", features = ["derive"] }
-strum = { version = "0.24", features = ["derive"] }
-
-# custom modules
-massa_signature = { path = "../massa-signature" }
-massa_time = { path = "../massa-time" }
-massa_models = { path = "../massa-models" }
-massa_final_state = { path = "../massa-final-state" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_hash = { path = "../massa-hash" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_execution_exports = { path = "../massa-execution-exports" }
-massa_wallet = { path = "../massa-wallet" }
-massa_versioning = { path = "../massa-versioning" }
-
-[dev-dependencies]
-serial_test = "1.0.0"
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 sandbox = []
 testing = []
+
+[dependencies]
+paginate = {workspace = true}
+displaydoc = {workspace = true}
+thiserror = {workspace = true}
+jsonrpsee = {workspace = true, "features" = ["jsonrpsee-core", "jsonrpsee-types"]}
+serde = {workspace = true, "features" = ["derive"]}
+strum = {workspace = true, "features" = ["derive"]}   # BOM UPGRADE     Revert to {"version": "0.24", "features": ["derive"]} if problem
+massa_signature = {workspace = true}
+massa_time = {workspace = true}
+massa_models = {workspace = true}
+massa_final_state = {workspace = true}
+massa_consensus_exports = {workspace = true}
+massa_hash = {workspace = true}
+massa_protocol_exports = {workspace = true}
+massa_execution_exports = {workspace = true}
+massa_wallet = {workspace = true}
+massa_versioning = {workspace = true}
+
+[dev-dependencies]
+serial_test = {workspace = true}

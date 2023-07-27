@@ -4,34 +4,30 @@ version = "0.24.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-[dependencies]
-displaydoc = "0.2"
-lazy_static = "1.4"
-num_enum = "0.5"
-rust_decimal = "1.26"
-serde = { version = "1.0", features = ["derive"] }
-serde_with = "2.1.0"
-thiserror = "1.0"
-num = { version = "0.4", features = ["serde"] }
-directories = "4.0"
-config = "0.13"
-bs58 = { version = "=0.4", features = ["check"] }
-bitvec = { version = "=1.0", features = ["serde"] }
-nom = "=7.1"
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "32179e2", features = ["tonic"] }
-
-# custom modules
-massa_hash = { path = "../massa-hash" }
-massa_serialization = { path = "../massa-serialization" }
-massa_signature = { path = "../massa-signature" }
-massa_time = { path = "../massa-time" }
-# TODO tag transition crate with a version number
-transition = { git = "https://github.com/massalabs/transition.git", rev = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
-
-[dev-dependencies]
-serial_test = "1.0"
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 sandbox = []
 testing = []
+
+[dependencies]
+displaydoc = {workspace = true}
+lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
+num_enum = {workspace = true}
+rust_decimal = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
+serde_with = {workspace = true}
+thiserror = {workspace = true}
+num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
+directories = {workspace = true}
+config = {workspace = true}
+bs58 = {workspace = true, "features" = ["check"]}
+bitvec = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "=1.0", "features": ["serde"]} if problem
+nom = {workspace = true}
+massa-proto-rs = {workspace = true, "features" = ["tonic"]}
+massa_hash = {workspace = true}
+massa_serialization = {workspace = true}
+massa_signature = {workspace = true}
+massa_time = {workspace = true}
+transition = {workspace = true}
+
+[dev-dependencies]
+serial_test = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
