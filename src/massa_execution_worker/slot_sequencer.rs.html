@@ -755,6 +755,16 @@
 <a href="#755" id="755">755</a>
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -1043,7 +1053,17 @@
         <span class="comment">// Loop over the slots to build the new sequence
         </span><span class="kw">while </span>slot &lt;= max_slot {
             <span class="comment">// The slot is now CSS-final if it is before or at the latest CSS-final slot in its own thread
-            </span><span class="kw">let </span>new_css_final = slot &lt;= <span class="self">self</span>.latest_css_final_slots[slot.thread <span class="kw">as </span>usize];
+            </span><span class="kw">let </span><span class="kw-2">mut </span>new_css_final = slot &lt;= <span class="self">self</span>.latest_css_final_slots[slot.thread <span class="kw">as </span>usize];
+
+            <span class="comment">// the slot S is also CSS-final if there is any CSS-final slot S&#39; in any thread so that t(S&#39;) &gt;= t(S) + t0
+            </span><span class="kw">if </span>!new_css_final {
+                new_css_final = <span class="self">self</span>.latest_css_final_slots.iter().any(|css_final_slot| {
+                    css_final_slot
+                        .slots_since(<span class="kw-2">&amp;</span>slot, <span class="self">self</span>.config.thread_count)
+                        .unwrap_or_default()
+                        &gt;= <span class="self">self</span>.config.thread_count <span class="kw">as </span>u64
+                });
+            }
 
             <span class="comment">// Try to get a block at the current slot by consuming it from the new CSS-final blocks.
             </span><span class="kw">let </span>new_css_final_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt; = new_css_final_blocks.remove(<span class="kw-2">&amp;</span>slot);
