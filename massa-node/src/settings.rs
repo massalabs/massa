@@ -267,6 +267,8 @@ pub struct ProtocolSettings {
     pub default_category_info: PeerCategoryInfo,
     /// Cooldown before testing again an old peer
     pub test_oldest_peer_cooldown: MassaTime,
+    /// Rate limitation to apply to the data stream (per second)
+    pub rate_limit: u64,
 }
 
 /// gRPC settings

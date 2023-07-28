@@ -279,6 +279,8 @@
     max_in_connections = 250
     # Cooldown before testing again old peer
     test_oldest_peer_cooldown = 720000
+    # Rate limitation on the data streams (per second)
+    rate_limit = 2097152    # 2 Mo / secs
     # Peer default category limits
     default_category_info = { target_out_connections = 10, max_in_connections_per_ip = 2, max_in_connections = 15, allow_local_peers = false }
     # Peer categories limits
