@@ -13,7 +13,7 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use prometheus::{register_int_gauge, Counter, Gauge, IntCounter, IntGauge};
+use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
@@ -118,9 +118,9 @@ pub struct MassaMetrics {
     protocol_banned_peers: IntGauge,
 
     /// executed final slot
-    executed_final_slot: Counter,
+    executed_final_slot: IntCounter,
     /// executed final slot with block (not miss)
-    executed_final_slot_with_block: Counter,
+    executed_final_slot_with_block: IntCounter,
 
     /// total bytes receive by peernet manager
     peernet_total_bytes_received: IntCounter,
@@ -207,8 +207,8 @@ impl MassaMetrics {
         let rolls = IntGauge::new("rolls", "number of rolls").unwrap();
 
         let executed_final_slot =
-            Counter::new("executed_final_slot", "number of executed final slot").unwrap();
-        let executed_final_slot_with_block = Counter::new(
+            IntCounter::new("executed_final_slot", "number of executed final slot").unwrap();
+        let executed_final_slot_with_block = IntCounter::new(
             "executed_final_slot_with_block",
             "number of executed final slot with block (not miss)",
         )
