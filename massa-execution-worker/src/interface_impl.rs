@@ -101,6 +101,7 @@ impl InterfaceImpl {
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
+            max_module_length: config.max_bytecode_size,
         })));
         let vesting_manager = Arc::new(
             crate::vesting_manager::VestingManager::new(
