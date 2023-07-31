@@ -121,6 +121,11 @@ impl MassaSurvey {
                                     massa_metrics.set_operations_pool(pool_controller.get_operation_count());
                                     massa_metrics.set_endorsements_pool(pool_controller.get_endorsement_count());
                                     massa_metrics.set_denunciations_pool(pool_controller.get_denunciation_count());
+
+                                    let count = std::thread::available_parallelism()
+                                    .unwrap_or(std::num::NonZeroUsize::MIN)
+                                    .get();
+                                    massa_metrics.set_available_processors(count);
                                 }
                             }
                         }

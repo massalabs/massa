@@ -7,7 +7,6 @@
 use std::{
     collections::HashMap,
     net::SocketAddr,
-    num::NonZeroUsize,
     sync::{Arc, RwLock},
     thread::JoinHandle,
     time::Duration,
@@ -72,6 +71,9 @@ impl MetricsStopper {
 pub struct MassaMetrics {
     /// enable metrics
     enabled: bool,
+
+    /// number of processors
+    process_available_processors: IntGauge,
 
     /// consensus period for each thread
     /// index 0 = thread 0 ...
@@ -196,13 +198,9 @@ impl MassaMetrics {
         }
 
         // set available processors
-        let available_processors =
-            IntCounter::new("process_available_processors", "number of processors")
+        let process_available_processors =
+            IntGauge::new("process_available_processors", "number of processors")
                 .expect("Failed to create available_processors counter");
-        let count = std::thread::available_parallelism()
-            .unwrap_or(NonZeroUsize::MIN)
-            .get();
-        available_processors.inc_by(count as u64);
 
         // stakers
         let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
@@ -441,7 +439,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(bootstrap_counter.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_success.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_failed.clone()));
-                let _ = prometheus::register(Box::new(available_processors));
+                let _ = prometheus::register(Box::new(process_available_processors.clone()));
                 let _ = prometheus::register(Box::new(operations_pool.clone()));
                 let _ = prometheus::register(Box::new(endorsements_pool.clone()));
                 let _ = prometheus::register(Box::new(denunciations_pool.clone()));
@@ -457,6 +455,7 @@ impl MassaMetrics {
         (
             MassaMetrics {
                 enabled,
+                process_available_processors,
                 consensus_vec,
                 stakers,
                 rolls,
@@ -681,6 +680,10 @@ impl MassaMetrics {
 
     pub fn set_messages_pool(&self, nb: usize) {
         self.messages_pool.set(nb as i64);
+    }
+
+    pub fn set_available_processors(&self, nb: usize) {
+        self.process_available_processors.set(nb as i64);
     }
 
     /// Update the bandwidth metrics for all peers
