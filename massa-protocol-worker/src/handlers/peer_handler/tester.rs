@@ -20,12 +20,11 @@ use peernet::{
     messages::MessagesHandler as PeerNetMessagesHandler,
     transports::TransportType,
 };
-use std::cmp::Reverse;
 use tracing::info;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
-    models::PeerInfo,
+    models::{ConnectionMetadata, PeerInfo},
     SharedPeerDB,
 };
 use crate::wrap_network::ActiveConnectionsTrait;
@@ -191,15 +190,6 @@ impl Tester {
                         //TODO: Check ip we are connected match one of the announced ips
                         {
                             let mut peer_db_write = peer_db.write();
-                            //TODO: Hacky change it when better management ip/listeners
-                            if !announcement.listeners.is_empty() {
-                                peer_db_write
-                                    .index_by_newest
-                                    .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
-                                peer_db_write
-                                    .index_by_newest
-                                    .insert((Reverse(announcement.timestamp), peer_id.clone()));
-                            }
                             peer_db_write
                                 .peers
                                 .entry(peer_id.clone())
@@ -239,22 +229,35 @@ impl Tester {
                 }
             };
 
-            // if handshake failed, we set the peer state to HandshakeFailed
-            if res.is_err() {
+            {
                 let mut peer_db_write = peer_db.write();
-                peer_db_write
-                    .peers
-                    .entry(peer_id)
-                    .and_modify(|info| {
-                        info.state = super::PeerState::HandshakeFailed;
-                    })
-                    .or_insert(PeerInfo {
-                        last_announce: None,
-                        state: super::PeerState::HandshakeFailed,
-                    });
-                massa_metrics.inc_protocol_tester_failed();
-            } else {
-                massa_metrics.inc_protocol_tester_success();
+
+                // if handshake failed, we set the peer state to HandshakeFailed
+                if res.is_err() {
+                    peer_db_write
+                        .peers
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            info.state = super::PeerState::HandshakeFailed;
+                        })
+                        .or_insert(PeerInfo {
+                            last_announce: None,
+                            state: super::PeerState::HandshakeFailed,
+                        });
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_failure();
+                    massa_metrics.inc_protocol_tester_failed();
+                } else {
+                    massa_metrics.inc_protocol_tester_success();
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_success();
+                }
             }
 
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {

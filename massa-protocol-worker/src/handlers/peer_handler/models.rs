@@ -4,8 +4,8 @@ use massa_time::MassaTime;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
 use rand::seq::SliceRandom;
-use std::cmp::Reverse;
-use std::collections::BTreeSet;
+use rand::{thread_rng, Rng};
+use std::cmp::Ordering;
 use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tracing::log::info;
@@ -16,15 +16,141 @@ const THREE_DAYS_MS: u64 = 3 * 24 * 60 * 60 * 1_000;
 
 pub type InitialPeers = HashMap<PeerId, HashMap<SocketAddr, TransportType>>;
 
+#[derive(Clone, Eq, PartialEq)]
+pub struct ConnectionMetadata {
+    pub last_success: Option<MassaTime>,
+    pub last_failure: Option<MassaTime>,
+    pub last_try_connect: Option<MassaTime>,
+    pub last_test_success: Option<MassaTime>,
+    pub last_test_failure: Option<MassaTime>,
+    random_priority: u64,
+}
+
+impl Default for ConnectionMetadata {
+    fn default() -> Self {
+        ConnectionMetadata {
+            last_test_success: Default::default(),
+            last_test_failure: Default::default(),
+            last_success: Default::default(),
+            last_failure: Default::default(),
+            last_try_connect: Default::default(),
+            random_priority: thread_rng().gen(),
+        }
+    }
+}
+
+impl Ord for ConnectionMetadata {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+// Priorisation of a peer compared to another one
+// Greater = Less Prio        Lesser = More prio
+impl PartialOrd for ConnectionMetadata {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // Time since last failure, more recent = less priority
+        let failure_check = match (self.last_failure, other.last_failure) {
+            (Some(sf), Some(of)) => Some(sf.cmp(&of)),
+            (Some(_), None) => Some(Ordering::Greater),
+            (None, Some(_)) => Some(Ordering::Less),
+            (None, None) => None,
+        };
+        if let Some(res) = failure_check {
+            return Some(res);
+        }
+
+        // Time since last success, more recent = more priority
+        let success_check = match (self.last_success, other.last_success) {
+            (Some(ss), Some(os)) => Some(ss.cmp(&os).reverse()),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (None, None) => None,
+        };
+        if let Some(res) = success_check {
+            return Some(res);
+        }
+
+        // Time since last failed peer test, more recent = less priority
+        let test_failure_check = match (self.last_test_failure, other.last_test_failure) {
+            (Some(st), Some(ot)) => Some(st.cmp(&ot)),
+            (Some(_), None) => Some(Ordering::Greater),
+            (None, Some(_)) => Some(Ordering::Less),
+            (None, None) => None,
+        };
+        if let Some(res) = test_failure_check {
+            return Some(res);
+        }
+
+        // Time since last succeeded peer test, more recent = more priority
+        let test_success_check = match (self.last_test_success, other.last_test_success) {
+            (Some(st), Some(ot)) => Some(st.cmp(&ot).reverse()),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (None, None) => None,
+        };
+        if let Some(res) = test_success_check {
+            Some(res)
+
+        // Else, pick randomly
+        } else {
+            Some(self.random_priority.cmp(&other.random_priority))
+        }
+    }
+}
+
+impl ConnectionMetadata {
+    // Only used in tests
+    #[allow(dead_code)]
+    pub fn edit(self, data_type: usize, data: Option<MassaTime>) -> ConnectionMetadata {
+        match data_type {
+            0 => ConnectionMetadata {
+                last_failure: data,
+                ..self
+            },
+            1 => ConnectionMetadata {
+                last_success: data,
+                ..self
+            },
+            2 => ConnectionMetadata {
+                last_test_failure: data,
+                ..self
+            },
+            3 => ConnectionMetadata {
+                last_test_success: data,
+                ..self
+            },
+            _ => unreachable!("connection metadata data_type not recognized: {data_type}"),
+        }
+    }
+    pub fn failure(&mut self) {
+        self.last_failure = Some(MassaTime::now().unwrap());
+    }
+
+    pub fn test_failure(&mut self) {
+        self.last_test_failure = Some(MassaTime::now().unwrap());
+    }
+
+    pub fn test_success(&mut self) {
+        self.last_test_success = Some(MassaTime::now().unwrap());
+    }
+
+    pub fn success(&mut self) {
+        self.last_success = Some(MassaTime::now().unwrap());
+    }
+
+    pub fn try_connect(&mut self) {
+        self.last_try_connect = Some(MassaTime::now().unwrap());
+    }
+}
+
 #[derive(Default)]
 pub struct PeerDB {
     pub peers: HashMap<PeerId, PeerInfo>,
-    /// peers tested successfully last is the oldest value (only routable peers) //TODO: need to be pruned
-    pub index_by_newest: BTreeSet<(Reverse<u64>, PeerId)>,
     /// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
     pub tested_addresses: HashMap<SocketAddr, MassaTime>,
     /// history of try connection to peers
-    pub try_connect_history: HashMap<SocketAddr, MassaTime>,
+    pub try_connect_history: HashMap<SocketAddr, ConnectionMetadata>,
 }
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
