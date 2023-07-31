@@ -115,6 +115,9 @@ impl MassaSurvey {
                                     massa_metrics.set_stakers(staker_vec.len());
                                     let rolls_count = staker_vec.iter().map(|(_, r)| *r).sum::<u64>();
                                     massa_metrics.set_rolls(rolls_count as usize);
+                                    let current_slot = get_latest_block_slot_at_timestamp(config.0, config.1, config.2, now).unwrap_or(None).unwrap_or(Slot::new(0, 0));
+                                    massa_metrics.set_current_time_thread(current_slot.thread);
+                                    massa_metrics.set_current_time_period(current_slot.period);
                                 }
 
                                 {

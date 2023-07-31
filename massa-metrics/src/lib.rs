@@ -84,6 +84,11 @@ pub struct MassaMetrics {
     /// number of rolls
     rolls: IntGauge,
 
+    // thread of actual slot
+    current_time_thread: IntGauge,
+    // period of actual slot
+    current_time_period: IntGauge,
+
     /// number of elements in the active_history of execution
     active_history: IntGauge,
 
@@ -205,6 +210,12 @@ impl MassaMetrics {
         // stakers
         let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
         let rolls = IntGauge::new("rolls", "number of rolls").unwrap();
+
+        let current_time_period =
+            IntGauge::new("current_time_period", "period of actual slot").unwrap();
+
+        let current_time_thread =
+            IntGauge::new("current_time_thread", "thread of actual slot").unwrap();
 
         let executed_final_slot =
             IntCounter::new("executed_final_slot", "number of executed final slot").unwrap();
@@ -450,6 +461,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(protocol_tester_failed.clone()));
                 let _ = prometheus::register(Box::new(sc_messages_final.clone()));
                 let _ = prometheus::register(Box::new(async_message_pool_size.clone()));
+                let _ = prometheus::register(Box::new(current_time_period.clone()));
+                let _ = prometheus::register(Box::new(current_time_thread.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -462,6 +475,8 @@ impl MassaMetrics {
                 consensus_vec,
                 stakers,
                 rolls,
+                current_time_thread,
+                current_time_period,
                 active_history,
                 operations_pool,
                 endorsements_pool,
@@ -687,6 +702,14 @@ impl MassaMetrics {
 
     pub fn set_available_processors(&self, nb: usize) {
         self.process_available_processors.set(nb as i64);
+    }
+
+    pub fn set_current_time_period(&self, period: u64) {
+        self.current_time_period.set(period as i64);
+    }
+
+    pub fn set_current_time_thread(&self, thread: u8) {
+        self.current_time_thread.set(thread as i64);
     }
 
     /// Update the bandwidth metrics for all peers
