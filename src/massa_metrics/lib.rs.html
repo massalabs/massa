@@ -740,11 +740,6 @@
 <a href="#740" id="740">740</a>
 <a href="#741" id="741">741</a>
 <a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -754,6 +749,7 @@
 </span><span class="kw">use </span>std::{
     collections::HashMap,
     net::SocketAddr,
+    num::NonZeroUsize,
     sync::{Arc, RwLock},
     thread::JoinHandle,
     time::Duration,
@@ -819,9 +815,6 @@
     <span class="doccomment">/// enable metrics
     </span>enabled: bool,
 
-    <span class="doccomment">/// number of processors
-    </span>process_available_processors: IntGauge,
-
     <span class="doccomment">/// consensus period for each thread
     /// index 0 = thread 0 ...
     </span>consensus_vec: Vec&lt;Gauge&gt;,
@@ -870,7 +863,7 @@
     </span>executed_final_slot_with_block: Counter,
 
     <span class="doccomment">/// total bytes receive by peernet manager
-    </span>peernet_total_bytes_received: IntCounter,
+    </span>peernet_total_bytes_receive: IntCounter,
     <span class="doccomment">/// total bytes sent by peernet manager
     </span>peernet_total_bytes_sent: IntCounter,
 
@@ -945,9 +938,13 @@
         }
 
         <span class="comment">// set available processors
-        </span><span class="kw">let </span>process_available_processors =
-            IntGauge::new(<span class="string">&quot;process_available_processors&quot;</span>, <span class="string">&quot;number of processors&quot;</span>)
+        </span><span class="kw">let </span>available_processors =
+            IntCounter::new(<span class="string">&quot;process_available_processors&quot;</span>, <span class="string">&quot;number of processors&quot;</span>)
                 .expect(<span class="string">&quot;Failed to create available_processors counter&quot;</span>);
+        <span class="kw">let </span>count = std::thread::available_parallelism()
+            .unwrap_or(NonZeroUsize::MIN)
+            .get();
+        available_processors.inc_by(count <span class="kw">as </span>u64);
 
         <span class="comment">// stakers
         </span><span class="kw">let </span>stakers = IntGauge::new(<span class="string">&quot;stakers&quot;</span>, <span class="string">&quot;number of stakers&quot;</span>).unwrap();
@@ -1131,8 +1128,8 @@
         )
         .unwrap();
 
-        <span class="kw">let </span>peernet_total_bytes_received = IntCounter::new(
-            <span class="string">&quot;peernet_total_bytes_received&quot;</span>,
+        <span class="kw">let </span>peernet_total_bytes_receive = IntCounter::new(
+            <span class="string">&quot;peernet_total_bytes_receive&quot;</span>,
             <span class="string">&quot;total byte received by peernet&quot;</span>,
         )
         .unwrap();
@@ -1173,7 +1170,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(block_graph_counter.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(block_graph_ms.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(peernet_total_bytes_received.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(operations_final_counter.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(stakers.clone()));
@@ -1186,7 +1183,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(bootstrap_counter.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(bootstrap_success.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(bootstrap_failed.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(process_available_processors.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(available_processors));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(operations_pool.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(endorsements_pool.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(denunciations_pool.clone()));
@@ -1202,7 +1199,6 @@
         (
             MassaMetrics {
                 enabled,
-                process_available_processors,
                 consensus_vec,
                 stakers,
                 rolls,
@@ -1221,7 +1217,7 @@
                 protocol_banned_peers: banned_peers,
                 executed_final_slot,
                 executed_final_slot_with_block,
-                peernet_total_bytes_received,
+                peernet_total_bytes_receive,
                 peernet_total_bytes_sent,
                 block_graph_counter,
                 block_graph_ms,
@@ -1263,7 +1259,7 @@
             <span class="self">self</span>.active_in_connections.clone().get(),
             <span class="self">self</span>.active_out_connections.clone().get(),
             <span class="self">self</span>.peernet_total_bytes_sent.clone().get(),
-            <span class="self">self</span>.peernet_total_bytes_received.clone().get(),
+            <span class="self">self</span>.peernet_total_bytes_receive.clone().get(),
         )
     }
 
@@ -1347,13 +1343,11 @@
         <span class="self">self</span>.block_graph_counter.inc();
     }
 
-    <span class="kw">pub fn </span>set_peernet_total_bytes_received(<span class="kw-2">&amp;</span><span class="self">self</span>, new_value: u64) {
-        <span class="kw">let </span>diff = new_value.saturating_sub(<span class="self">self</span>.peernet_total_bytes_received.get());
-        <span class="self">self</span>.peernet_total_bytes_received.inc_by(diff);
+    <span class="kw">pub fn </span>inc_peernet_total_bytes_receive(<span class="kw-2">&amp;</span><span class="self">self</span>, diff: u64) {
+        <span class="self">self</span>.peernet_total_bytes_receive.inc_by(diff);
     }
 
-    <span class="kw">pub fn </span>set_peernet_total_bytes_sent(<span class="kw-2">&amp;</span><span class="self">self</span>, new_value: u64) {
-        <span class="kw">let </span>diff = new_value.saturating_sub(<span class="self">self</span>.peernet_total_bytes_sent.get());
+    <span class="kw">pub fn </span>inc_peernet_total_bytes_sent(<span class="kw-2">&amp;</span><span class="self">self</span>, diff: u64) {
         <span class="self">self</span>.peernet_total_bytes_sent.inc_by(diff);
     }
 
@@ -1427,10 +1421,6 @@
 
     <span class="kw">pub fn </span>set_messages_pool(<span class="kw-2">&amp;</span><span class="self">self</span>, nb: usize) {
         <span class="self">self</span>.messages_pool.set(nb <span class="kw">as </span>i64);
-    }
-
-    <span class="kw">pub fn </span>set_available_processors(<span class="kw-2">&amp;</span><span class="self">self</span>, nb: usize) {
-        <span class="self">self</span>.process_available_processors.set(nb <span class="kw">as </span>i64);
     }
 
     <span class="doccomment">/// Update the bandwidth metrics for all peers

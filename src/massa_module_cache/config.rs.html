@@ -17,6 +17,8 @@
 <a href="#17" id="17">17</a>
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_sc_runtime::GasCosts;
 <span class="kw">use </span>std::path::PathBuf;
 
@@ -35,5 +37,7 @@
     </span><span class="kw">pub </span>hd_cache_size: usize,
     <span class="doccomment">/// Amount of entries removed when `hd_cache_size` is reached
     </span><span class="kw">pub </span>snip_amount: usize,
+    <span class="doccomment">/// Maximum length of a module
+    </span><span class="kw">pub </span>max_module_length: u64,
 }
 </code></pre></div></section></main></body></html>
