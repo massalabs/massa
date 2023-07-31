@@ -601,11 +601,13 @@ impl MassaMetrics {
         self.block_graph_counter.inc();
     }
 
-    pub fn inc_peernet_total_bytes_receive(&self, diff: u64) {
+    pub fn set_peernet_total_bytes_receive(&self, new_value: u64) {
+        let diff = new_value.saturating_sub(self.peernet_total_bytes_receive.get());
         self.peernet_total_bytes_receive.inc_by(diff);
     }
 
-    pub fn inc_peernet_total_bytes_sent(&self, diff: u64) {
+    pub fn set_peernet_total_bytes_sent(&self, new_value: u64) {
+        let diff = new_value.saturating_sub(self.peernet_total_bytes_sent.get());
         self.peernet_total_bytes_sent.inc_by(diff);
     }
 

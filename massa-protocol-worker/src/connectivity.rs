@@ -234,8 +234,8 @@ pub(crate) fn start_connectivity_thread(
                         }
                     },
                     recv(tick_metrics) -> _ => {
-                        massa_metrics.inc_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
-                        massa_metrics.inc_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
+                        massa_metrics.set_peernet_total_bytes_receive(network_controller.get_total_bytes_received());
+                        massa_metrics.set_peernet_total_bytes_sent(network_controller.get_total_bytes_sent());
                         let active_conn = network_controller.get_active_connections();
                         massa_metrics.set_active_connections(active_conn.get_nb_in_connections(), active_conn.get_nb_out_connections());
                         let peers_map = active_conn.get_peers_connections_bandwidth();
