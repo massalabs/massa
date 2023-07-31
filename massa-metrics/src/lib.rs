@@ -7,14 +7,13 @@
 use std::{
     collections::HashMap,
     net::SocketAddr,
-    num::NonZeroUsize,
     sync::{Arc, RwLock},
     thread::JoinHandle,
     time::Duration,
 };
 
 use lazy_static::lazy_static;
-use prometheus::{register_int_gauge, Counter, Gauge, IntCounter, IntGauge};
+use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
@@ -73,6 +72,9 @@ pub struct MassaMetrics {
     /// enable metrics
     enabled: bool,
 
+    /// number of processors
+    process_available_processors: IntGauge,
+
     /// consensus period for each thread
     /// index 0 = thread 0 ...
     consensus_vec: Vec<Gauge>,
@@ -93,7 +95,7 @@ pub struct MassaMetrics {
     denunciations_pool: IntGauge,
 
     // number of autonomous SCs messages in pool
-    messages_pool: IntGauge,
+    async_message_pool_size: IntGauge,
 
     // number of autonomous SC messages executed as final
     sc_messages_final: IntCounter,
@@ -116,12 +118,12 @@ pub struct MassaMetrics {
     protocol_banned_peers: IntGauge,
 
     /// executed final slot
-    executed_final_slot: Counter,
+    executed_final_slot: IntCounter,
     /// executed final slot with block (not miss)
-    executed_final_slot_with_block: Counter,
+    executed_final_slot_with_block: IntCounter,
 
     /// total bytes receive by peernet manager
-    peernet_total_bytes_receive: IntCounter,
+    peernet_total_bytes_received: IntCounter,
     /// total bytes sent by peernet manager
     peernet_total_bytes_sent: IntCounter,
 
@@ -196,21 +198,17 @@ impl MassaMetrics {
         }
 
         // set available processors
-        let available_processors =
-            IntCounter::new("process_available_processors", "number of processors")
+        let process_available_processors =
+            IntGauge::new("process_available_processors", "number of processors")
                 .expect("Failed to create available_processors counter");
-        let count = std::thread::available_parallelism()
-            .unwrap_or(NonZeroUsize::MIN)
-            .get();
-        available_processors.inc_by(count as u64);
 
         // stakers
         let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
         let rolls = IntGauge::new("rolls", "number of rolls").unwrap();
 
         let executed_final_slot =
-            Counter::new("executed_final_slot", "number of executed final slot").unwrap();
-        let executed_final_slot_with_block = Counter::new(
+            IntCounter::new("executed_final_slot", "number of executed final slot").unwrap();
+        let executed_final_slot_with_block = IntCounter::new(
             "executed_final_slot_with_block",
             "number of executed final slot with block (not miss)",
         )
@@ -244,8 +242,11 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let messages_pool =
-            IntGauge::new("messages_pool", "number of autonomous SCs messages in pool").unwrap();
+        let async_message_pool_size = IntGauge::new(
+            "async_message_pool_size",
+            "number of autonomous SCs messages in pool",
+        )
+        .unwrap();
 
         let sc_messages_final = IntCounter::new(
             "sc_messages_final",
@@ -386,8 +387,8 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let peernet_total_bytes_receive = IntCounter::new(
-            "peernet_total_bytes_receive",
+        let peernet_total_bytes_received = IntCounter::new(
+            "peernet_total_bytes_received",
             "total byte received by peernet",
         )
         .unwrap();
@@ -428,7 +429,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
                 let _ = prometheus::register(Box::new(block_graph_counter.clone()));
                 let _ = prometheus::register(Box::new(block_graph_ms.clone()));
-                let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
+                let _ = prometheus::register(Box::new(peernet_total_bytes_received.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
                 let _ = prometheus::register(Box::new(stakers.clone()));
@@ -441,14 +442,14 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(bootstrap_counter.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_success.clone()));
                 let _ = prometheus::register(Box::new(bootstrap_failed.clone()));
-                let _ = prometheus::register(Box::new(available_processors));
+                let _ = prometheus::register(Box::new(process_available_processors.clone()));
                 let _ = prometheus::register(Box::new(operations_pool.clone()));
                 let _ = prometheus::register(Box::new(endorsements_pool.clone()));
                 let _ = prometheus::register(Box::new(denunciations_pool.clone()));
                 let _ = prometheus::register(Box::new(protocol_tester_success.clone()));
                 let _ = prometheus::register(Box::new(protocol_tester_failed.clone()));
                 let _ = prometheus::register(Box::new(sc_messages_final.clone()));
-                let _ = prometheus::register(Box::new(messages_pool.clone()));
+                let _ = prometheus::register(Box::new(async_message_pool_size.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -457,6 +458,7 @@ impl MassaMetrics {
         (
             MassaMetrics {
                 enabled,
+                process_available_processors,
                 consensus_vec,
                 stakers,
                 rolls,
@@ -464,7 +466,7 @@ impl MassaMetrics {
                 operations_pool,
                 endorsements_pool,
                 denunciations_pool,
-                messages_pool,
+                async_message_pool_size,
                 sc_messages_final,
                 bootstrap_counter,
                 bootstrap_peers_success: bootstrap_success,
@@ -475,7 +477,7 @@ impl MassaMetrics {
                 protocol_banned_peers: banned_peers,
                 executed_final_slot,
                 executed_final_slot_with_block,
-                peernet_total_bytes_receive,
+                peernet_total_bytes_received,
                 peernet_total_bytes_sent,
                 block_graph_counter,
                 block_graph_ms,
@@ -517,7 +519,7 @@ impl MassaMetrics {
             self.active_in_connections.clone().get(),
             self.active_out_connections.clone().get(),
             self.peernet_total_bytes_sent.clone().get(),
-            self.peernet_total_bytes_receive.clone().get(),
+            self.peernet_total_bytes_received.clone().get(),
         )
     }
 
@@ -601,11 +603,13 @@ impl MassaMetrics {
         self.block_graph_counter.inc();
     }
 
-    pub fn inc_peernet_total_bytes_receive(&self, diff: u64) {
-        self.peernet_total_bytes_receive.inc_by(diff);
+    pub fn set_peernet_total_bytes_received(&self, new_value: u64) {
+        let diff = new_value.saturating_sub(self.peernet_total_bytes_received.get());
+        self.peernet_total_bytes_received.inc_by(diff);
     }
 
-    pub fn inc_peernet_total_bytes_sent(&self, diff: u64) {
+    pub fn set_peernet_total_bytes_sent(&self, new_value: u64) {
+        let diff = new_value.saturating_sub(self.peernet_total_bytes_sent.get());
         self.peernet_total_bytes_sent.inc_by(diff);
     }
 
@@ -677,8 +681,12 @@ impl MassaMetrics {
         self.sc_messages_final.inc_by(diff as u64);
     }
 
-    pub fn set_messages_pool(&self, nb: usize) {
-        self.messages_pool.set(nb as i64);
+    pub fn set_async_message_pool_size(&self, nb: usize) {
+        self.async_message_pool_size.set(nb as i64);
+    }
+
+    pub fn set_available_processors(&self, nb: usize) {
+        self.process_available_processors.set(nb as i64);
     }
 
     /// Update the bandwidth metrics for all peers
