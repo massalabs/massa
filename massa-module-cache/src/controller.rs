@@ -120,6 +120,11 @@ impl ModuleCache {
         bytecode: &[u8],
         execution_gas: u64,
     ) -> Result<RuntimeModule, CacheError> {
+        if bytecode.len() > self.cfg.max_module_length as usize {
+            return Err(CacheError::LoadError(
+                "Module bytecode exceeds maximum allowed length".to_string(),
+            ));
+        }
         let module_info = self.load_module_info(bytecode);
         let module = match module_info {
             ModuleInfo::Invalid => {

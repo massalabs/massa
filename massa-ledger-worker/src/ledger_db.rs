@@ -18,6 +18,7 @@ use massa_serialization::{
 };
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
+use tracing::log::warn;
 
 use massa_models::amount::Amount;
 use std::ops::Bound;
@@ -318,7 +319,17 @@ impl LedgerDB {
                     &mut serialized_key,
                 )
                 .expect(KEY_SER_ERROR);
-            db.put_or_update_entry_value(batch, serialized_key, &entry);
+            if entry.len() > self.max_datastore_value_length as usize {
+                warn!(
+                    "Datastore entry for address {} and key {:?} is too big ({} > {})",
+                    addr,
+                    serialized_key,
+                    entry.len(),
+                    self.max_datastore_value_length
+                );
+            } else {
+                db.put_or_update_entry_value(batch, serialized_key, &entry);
+            }
         }
     }
 
@@ -371,7 +382,11 @@ impl LedgerDB {
 
             match update {
                 SetOrDelete::Set(entry) => {
-                    db.put_or_update_entry_value(batch, serialized_key, &entry)
+                    if entry.len() > self.max_datastore_value_length as usize {
+                        warn!("Datastore entry too long");
+                    } else {
+                        db.put_or_update_entry_value(batch, serialized_key, &entry);
+                    }
                 }
                 SetOrDelete::Delete => db.delete_key(batch, serialized_key),
             }
