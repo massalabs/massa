@@ -1,4 +1,3 @@
-use std::cmp::Reverse;
 use std::net::IpAddr;
 use std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -31,7 +30,7 @@ use crate::handlers::peer_handler::models::PeerState;
 use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
 
-use self::models::PeerInfo;
+use self::models::{ConnectionMetadata, PeerInfo};
 use self::{
     models::{
         InitialPeers, PeerManagementChannel, PeerManagementCmd, PeerMessageTuple, SharedPeerDB,
@@ -295,6 +294,15 @@ impl MassaHandshake {
             message_handlers,
         }
     }
+
+    fn handshake_fail(&mut self, addr: &SocketAddr) {
+        let mut peer_db_write = self.peer_db.write();
+        peer_db_write
+            .try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .failure();
+    }
 }
 
 impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake {
@@ -305,10 +313,12 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         listeners: &HashMap<SocketAddr, TransportType>,
         messages_handler: MessagesHandler,
     ) -> PeerNetResult<PeerId> {
+        let addr = *endpoint.get_target_addr();
         let mut bytes = vec![];
         self.peer_id_serializer
             .serialize(&context.get_peer_id(), &mut bytes)
             .map_err(|err| {
+                self.handshake_fail(&addr);
                 PeerNetError::HandshakeError.error(
                     "Massa Handshake",
                     Some(format!("Failed to serialize  peer_id: {}", err)),
@@ -317,6 +327,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         self.version_serializer
             .serialize(&self.config.version, &mut bytes)
             .map_err(|err| {
+                self.handshake_fail(&addr);
                 PeerNetError::HandshakeError.error(
                     "Massa Handshake",
                     Some(format!("Failed to serialize version: {}", err)),
@@ -332,6 +343,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         self.announcement_serializer
             .serialize(&listeners_announcement, &mut bytes)
             .map_err(|err| {
+                self.handshake_fail(&addr);
                 PeerNetError::HandshakeError.error(
                     "Massa Handshake",
                     Some(format!("Failed to serialize announcement: {}", err)),
@@ -340,6 +352,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         endpoint.send::<PeerId>(&bytes)?;
         let received = endpoint.receive::<PeerId>()?;
         if received.len() < 32 {
+            self.handshake_fail(&addr);
             return Err(PeerNetError::HandshakeError.error(
                 "Massa Handshake",
                 Some(format!("Received too short message len:{}", received.len())),
@@ -349,6 +362,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             .peer_id_deserializer
             .deserialize::<DeserializeError>(&received)
             .map_err(|err| {
+                self.handshake_fail(&addr);
                 PeerNetError::HandshakeError.error(
                     "Massa Handshake",
                     Some(format!("Failed to deserialize peer id: {}", err)),
@@ -503,15 +517,11 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             match &res {
                 Ok((peer_id, Some(announcement))) => {
                     info!("Peer connected: {:?}", peer_id);
-                    //TODO: Hacky organize better when multiple ip/listeners
-                    if !announcement.listeners.is_empty() {
-                        peer_db_write
-                            .index_by_newest
-                            .retain(|(_, peer_id_stored)| peer_id_stored != peer_id);
-                        peer_db_write
-                            .index_by_newest
-                            .insert((Reverse(announcement.timestamp), peer_id.clone()));
-                    }
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .success();
                     peer_db_write
                         .peers
                         .entry(peer_id.clone())
@@ -529,12 +539,22 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                         info.state = PeerState::HandshakeFailed;
                     });
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .failure();
                     return Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
                         Some("Distant peer don't have slot for us.".to_string()),
                     ));
                 }
                 Err(_) => {
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .failure();
                     peer_db_write.peers.entry(peer_id).and_modify(|info| {
                         //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                         info.state = PeerState::HandshakeFailed;

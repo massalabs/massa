@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use std::thread::JoinHandle;
 
 use crossbeam_channel::{select, tick};
@@ -9,7 +10,6 @@ use massa_pool_exports::PoolController;
 use massa_time::MassaTime;
 use tracing::info;
 // use std::time::Duration;
-#[allow(unused_imports)]
 use tracing::warn;
 
 pub struct MassaSurvey {}
@@ -140,7 +140,10 @@ impl MassaSurvey {
 
             #[cfg(feature = "sandbox")]
             {
-                MassaSurveyStopper { handle: None }
+                MassaSurveyStopper {
+                    handle: None,
+                    tx_stopper: None,
+                }
             }
         } else {
             MassaSurveyStopper {
