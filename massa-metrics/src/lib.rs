@@ -121,7 +121,7 @@ pub struct MassaMetrics {
     executed_final_slot_with_block: Counter,
 
     /// total bytes receive by peernet manager
-    peernet_total_bytes_receive: IntCounter,
+    peernet_total_bytes_received: IntCounter,
     /// total bytes sent by peernet manager
     peernet_total_bytes_sent: IntCounter,
 
@@ -386,8 +386,8 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let peernet_total_bytes_receive = IntCounter::new(
-            "peernet_total_bytes_receive",
+        let peernet_total_bytes_received = IntCounter::new(
+            "peernet_total_bytes_received",
             "total byte received by peernet",
         )
         .unwrap();
@@ -428,7 +428,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
                 let _ = prometheus::register(Box::new(block_graph_counter.clone()));
                 let _ = prometheus::register(Box::new(block_graph_ms.clone()));
-                let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
+                let _ = prometheus::register(Box::new(peernet_total_bytes_received.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
                 let _ = prometheus::register(Box::new(stakers.clone()));
@@ -475,7 +475,7 @@ impl MassaMetrics {
                 protocol_banned_peers: banned_peers,
                 executed_final_slot,
                 executed_final_slot_with_block,
-                peernet_total_bytes_receive,
+                peernet_total_bytes_received,
                 peernet_total_bytes_sent,
                 block_graph_counter,
                 block_graph_ms,
@@ -517,7 +517,7 @@ impl MassaMetrics {
             self.active_in_connections.clone().get(),
             self.active_out_connections.clone().get(),
             self.peernet_total_bytes_sent.clone().get(),
-            self.peernet_total_bytes_receive.clone().get(),
+            self.peernet_total_bytes_received.clone().get(),
         )
     }
 
@@ -601,9 +601,9 @@ impl MassaMetrics {
         self.block_graph_counter.inc();
     }
 
-    pub fn set_peernet_total_bytes_receive(&self, new_value: u64) {
-        let diff = new_value.saturating_sub(self.peernet_total_bytes_receive.get());
-        self.peernet_total_bytes_receive.inc_by(diff);
+    pub fn set_peernet_total_bytes_received(&self, new_value: u64) {
+        let diff = new_value.saturating_sub(self.peernet_total_bytes_received.get());
+        self.peernet_total_bytes_received.inc_by(diff);
     }
 
     pub fn set_peernet_total_bytes_sent(&self, new_value: u64) {
