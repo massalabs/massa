@@ -236,6 +236,8 @@ pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
+/// Maximum event size in bytes
+pub const MAX_EVENT_SIZE: usize = 100 * 1024;
 
 //
 // Constants used in network
