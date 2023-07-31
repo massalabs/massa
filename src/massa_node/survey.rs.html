@@ -148,6 +148,11 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
@@ -271,6 +276,11 @@
                                     massa_metrics.set_operations_pool(pool_controller.get_operation_count());
                                     massa_metrics.set_endorsements_pool(pool_controller.get_endorsement_count());
                                     massa_metrics.set_denunciations_pool(pool_controller.get_denunciation_count());
+
+                                    <span class="kw">let </span>count = std::thread::available_parallelism()
+                                    .unwrap_or(std::num::NonZeroUsize::MIN)
+                                    .get();
+                                    massa_metrics.set_available_processors(count);
                                 }
                             }
                         }

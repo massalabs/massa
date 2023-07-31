@@ -2024,15 +2024,6 @@
 <a href="#2024" id="2024">2024</a>
 <a href="#2025" id="2025">2025</a>
 <a href="#2026" id="2026">2026</a>
-<a href="#2027" id="2027">2027</a>
-<a href="#2028" id="2028">2028</a>
-<a href="#2029" id="2029">2029</a>
-<a href="#2030" id="2030">2030</a>
-<a href="#2031" id="2031">2031</a>
-<a href="#2032" id="2032">2032</a>
-<a href="#2033" id="2033">2033</a>
-<a href="#2034" id="2034">2034</a>
-<a href="#2035" id="2035">2035</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2136,7 +2127,6 @@
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
-            max_module_length: config.max_bytecode_size,
         })));
         <span class="kw">let </span>vesting_manager = Arc::new(
             <span class="kw">crate</span>::vesting_manager::VestingManager::new(
@@ -3170,7 +3160,7 @@
     ///
     /// # Arguments
     /// * `target_address`: Destination address hash in format string
-    /// * `target_function`: Name of the message handling function
+    /// * `target_handler`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
     /// * `max_gas`: Maximum gas for the message execution
@@ -3180,7 +3170,7 @@
     </span><span class="kw">fn </span>send_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         target_address: <span class="kw-2">&amp;</span>str,
-        target_function: <span class="kw-2">&amp;</span>str,
+        target_handler: <span class="kw-2">&amp;</span>str,
         validity_start: (u64, u8),
         validity_end: (u64, u8),
         max_gas: u64,
@@ -3202,14 +3192,6 @@
             <span class="macro">bail!</span>(<span class="string">&quot;target address is not a smart contract address&quot;</span>)
         }
 
-        <span class="comment">// Length verifications
-        </span><span class="kw">if </span>target_function.len() &gt; <span class="self">self</span>.config.max_function_length <span class="kw">as </span>usize {
-            <span class="macro">bail!</span>(<span class="string">&quot;Function name is too large&quot;</span>);
-        }
-        <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_parameter_length <span class="kw">as </span>usize {
-            <span class="macro">bail!</span>(<span class="string">&quot;Parameter size is too large&quot;</span>);
-        }
-
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>emission_slot = execution_context.slot;
         <span class="kw">let </span>emission_index = execution_context.created_message_index;
@@ -3223,7 +3205,7 @@
             emission_index,
             sender,
             target_addr,
-            target_function.to_string(),
+            target_handler.to_string(),
             max_gas,
             fee,
             coins,
