@@ -748,6 +748,29 @@
 <a href="#748" id="748">748</a>
 <a href="#749" id="749">749</a>
 <a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -833,6 +856,11 @@
     </span>stakers: IntGauge,
     <span class="doccomment">/// number of rolls
     </span>rolls: IntGauge,
+
+    <span class="comment">// thread of actual slot
+    </span>current_time_thread: IntGauge,
+    <span class="comment">// period of actual slot
+    </span>current_time_period: IntGauge,
 
     <span class="doccomment">/// number of elements in the active_history of execution
     </span>active_history: IntGauge,
@@ -955,6 +983,12 @@
         <span class="comment">// stakers
         </span><span class="kw">let </span>stakers = IntGauge::new(<span class="string">&quot;stakers&quot;</span>, <span class="string">&quot;number of stakers&quot;</span>).unwrap();
         <span class="kw">let </span>rolls = IntGauge::new(<span class="string">&quot;rolls&quot;</span>, <span class="string">&quot;number of rolls&quot;</span>).unwrap();
+
+        <span class="kw">let </span>current_time_period =
+            IntGauge::new(<span class="string">&quot;current_time_period&quot;</span>, <span class="string">&quot;period of actual slot&quot;</span>).unwrap();
+
+        <span class="kw">let </span>current_time_thread =
+            IntGauge::new(<span class="string">&quot;current_time_thread&quot;</span>, <span class="string">&quot;thread of actual slot&quot;</span>).unwrap();
 
         <span class="kw">let </span>executed_final_slot =
             IntCounter::new(<span class="string">&quot;executed_final_slot&quot;</span>, <span class="string">&quot;number of executed final slot&quot;</span>).unwrap();
@@ -1200,6 +1234,8 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(protocol_tester_failed.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(sc_messages_final.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(async_message_pool_size.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_period.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_thread.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -1212,6 +1248,8 @@
                 consensus_vec,
                 stakers,
                 rolls,
+                current_time_thread,
+                current_time_period,
                 active_history,
                 operations_pool,
                 endorsements_pool,
@@ -1437,6 +1475,14 @@
 
     <span class="kw">pub fn </span>set_available_processors(<span class="kw-2">&amp;</span><span class="self">self</span>, nb: usize) {
         <span class="self">self</span>.process_available_processors.set(nb <span class="kw">as </span>i64);
+    }
+
+    <span class="kw">pub fn </span>set_current_time_period(<span class="kw-2">&amp;</span><span class="self">self</span>, period: u64) {
+        <span class="self">self</span>.current_time_period.set(period <span class="kw">as </span>i64);
+    }
+
+    <span class="kw">pub fn </span>set_current_time_thread(<span class="kw-2">&amp;</span><span class="self">self</span>, thread: u8) {
+        <span class="self">self</span>.current_time_thread.set(thread <span class="kw">as </span>i64);
     }
 
     <span class="doccomment">/// Update the bandwidth metrics for all peers
