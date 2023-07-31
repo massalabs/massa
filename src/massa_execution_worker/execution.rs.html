@@ -2133,8 +2133,14 @@
         <span class="self">self</span>.massa_metrics
             .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.<span class="number">0</span>.len());
 
-        <span class="self">self</span>.massa_metrics
-            .set_messages_pool(<span class="self">self</span>.final_state.read().async_pool.message_info_cache.len());
+        <span class="self">self</span>.massa_metrics.set_async_message_pool_size(
+            <span class="self">self</span>.final_state.read().async_pool.message_info_cache.len(),
+        );
+
+        <span class="self">self</span>.massa_metrics.inc_executed_final_slot();
+        <span class="kw">if </span>exec_out.block_info.is_some() {
+            <span class="self">self</span>.massa_metrics.inc_executed_final_slot_with_block();
+        }
 
         <span class="comment">// Broadcast a final slot execution output to active channel subscribers.
         </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
@@ -3241,15 +3247,9 @@
         <span class="comment">// execute slot
         </span><span class="macro">debug!</span>(<span class="string">&quot;execute_final_slot: execution started&quot;</span>);
         <span class="kw">let </span>exec_out = <span class="self">self</span>.execute_slot(slot, exec_target, selector);
-        <span class="kw">let </span>has_block = exec_out.block_info.is_some();
+
         <span class="comment">// apply execution output to final state
         </span><span class="self">self</span>.apply_final_execution_output(exec_out);
-
-        <span class="comment">// update metrics
-        </span><span class="self">self</span>.massa_metrics.inc_executed_final_slot();
-        <span class="kw">if </span>has_block {
-            <span class="self">self</span>.massa_metrics.inc_executed_final_slot_with_block();
-        }
 
         <span class="macro">debug!</span>(
             <span class="string">&quot;execute_final_slot: execution finished &amp; result applied &amp; versioning stats updated&quot;
