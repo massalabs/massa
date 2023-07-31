@@ -148,8 +148,9 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-</pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
-</span><span class="kw">use </span>std::thread::JoinHandle;
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam_channel::{select, tick};
 <span class="kw">use </span>massa_channel::{sender::MassaSender, MassaChannel};
@@ -160,6 +161,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>tracing::info;
 <span class="comment">// use std::time::Duration;
+</span><span class="attr">#[allow(unused_imports)]
 </span><span class="kw">use </span>tracing::warn;
 
 <span class="kw">pub struct </span>MassaSurvey {}
@@ -271,6 +273,11 @@
                                     massa_metrics.set_operations_pool(pool_controller.get_operation_count());
                                     massa_metrics.set_endorsements_pool(pool_controller.get_endorsement_count());
                                     massa_metrics.set_denunciations_pool(pool_controller.get_denunciation_count());
+
+                                    <span class="kw">let </span>count = std::thread::available_parallelism()
+                                    .unwrap_or(std::num::NonZeroUsize::MIN)
+                                    .get();
+                                    massa_metrics.set_available_processors(count);
                                 }
                             }
                         }
@@ -285,10 +292,7 @@
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;sandbox&quot;</span>)]
             </span>{
-                MassaSurveyStopper {
-                    handle: <span class="prelude-val">None</span>,
-                    tx_stopper: <span class="prelude-val">None</span>,
-                }
+                MassaSurveyStopper { handle: <span class="prelude-val">None </span>}
             }
         } <span class="kw">else </span>{
             MassaSurveyStopper {

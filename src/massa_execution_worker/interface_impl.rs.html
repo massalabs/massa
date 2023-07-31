@@ -2017,6 +2017,13 @@
 <a href="#2017" id="2017">2017</a>
 <a href="#2018" id="2018">2018</a>
 <a href="#2019" id="2019">2019</a>
+<a href="#2020" id="2020">2020</a>
+<a href="#2021" id="2021">2021</a>
+<a href="#2022" id="2022">2022</a>
+<a href="#2023" id="2023">2023</a>
+<a href="#2024" id="2024">2024</a>
+<a href="#2025" id="2025">2025</a>
+<a href="#2026" id="2026">2026</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -3074,6 +3081,10 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     </span><span class="kw">fn </span>generate_event(<span class="kw-2">&amp;</span><span class="self">self</span>, data: String) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_event_size {
+            <span class="macro">bail!</span>(<span class="string">&quot;Event data size is too large&quot;</span>);
+        };
+
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>event = context.event_create(data, <span class="bool-val">false</span>);
         context.event_emit(event);
@@ -3085,8 +3096,11 @@
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     </span><span class="kw">fn </span>generate_event_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>data_str = String::from_utf8(data.clone()).unwrap_or(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, data));
+        <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_event_size {
+            <span class="macro">bail!</span>(<span class="string">&quot;Event data size is too large&quot;</span>);
+        };
 
+        <span class="kw">let </span>data_str = String::from_utf8(data.clone()).unwrap_or(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, data));
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>event = context.event_create(data_str, <span class="bool-val">false</span>);
         context.event_emit(event);

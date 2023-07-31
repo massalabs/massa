@@ -321,6 +321,8 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -559,6 +561,8 @@
 </span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = u32::MAX <span class="kw">as </span>u64;
 <span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot
 </span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
+<span class="doccomment">/// Maximum event size in bytes
+</span><span class="kw">pub const </span>MAX_EVENT_SIZE: usize = <span class="number">100 </span>* <span class="number">1024</span>;
 
 <span class="comment">//
 // Constants used in network
