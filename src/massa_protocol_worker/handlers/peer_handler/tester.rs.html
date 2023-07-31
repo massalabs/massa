@@ -484,6 +484,9 @@
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     io::Read,
@@ -506,12 +509,11 @@
     messages::MessagesHandler <span class="kw">as </span>PeerNetMessagesHandler,
     transports::TransportType,
 };
-<span class="kw">use </span>std::cmp::Reverse;
 <span class="kw">use </span>tracing::info;
 
 <span class="kw">use super</span>::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
-    models::PeerInfo,
+    models::{ConnectionMetadata, PeerInfo},
     SharedPeerDB,
 };
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
@@ -677,15 +679,6 @@
                         <span class="comment">//TODO: Check ip we are connected match one of the announced ips
                         </span>{
                             <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-                            <span class="comment">//TODO: Hacky change it when better management ip/listeners
-                            </span><span class="kw">if </span>!announcement.listeners.is_empty() {
-                                peer_db_write
-                                    .index_by_newest
-                                    .retain(|(<span class="kw">_</span>, peer_id_stored)| peer_id_stored != <span class="kw-2">&amp;</span>peer_id);
-                                peer_db_write
-                                    .index_by_newest
-                                    .insert((Reverse(announcement.timestamp), peer_id.clone()));
-                            }
                             peer_db_write
                                 .peers
                                 .entry(peer_id.clone())
@@ -725,22 +718,35 @@
                 }
             };
 
-            <span class="comment">// if handshake failed, we set the peer state to HandshakeFailed
-            </span><span class="kw">if </span>res.is_err() {
+            {
                 <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-                peer_db_write
-                    .peers
-                    .entry(peer_id)
-                    .and_modify(|info| {
-                        info.state = <span class="kw">super</span>::PeerState::HandshakeFailed;
-                    })
-                    .or_insert(PeerInfo {
-                        last_announce: <span class="prelude-val">None</span>,
-                        state: <span class="kw">super</span>::PeerState::HandshakeFailed,
-                    });
-                massa_metrics.inc_protocol_tester_failed();
-            } <span class="kw">else </span>{
-                massa_metrics.inc_protocol_tester_success();
+
+                <span class="comment">// if handshake failed, we set the peer state to HandshakeFailed
+                </span><span class="kw">if </span>res.is_err() {
+                    peer_db_write
+                        .peers
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            info.state = <span class="kw">super</span>::PeerState::HandshakeFailed;
+                        })
+                        .or_insert(PeerInfo {
+                            last_announce: <span class="prelude-val">None</span>,
+                            state: <span class="kw">super</span>::PeerState::HandshakeFailed,
+                        });
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_failure();
+                    massa_metrics.inc_protocol_tester_failed();
+                } <span class="kw">else </span>{
+                    massa_metrics.inc_protocol_tester_success();
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_success();
+                }
             }
 
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = socket.shutdown(std::net::Shutdown::Both) {
