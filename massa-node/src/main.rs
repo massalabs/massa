@@ -1052,6 +1052,7 @@ fn configure_grpc(
         generate_self_signed_certificates: settings.generate_self_signed_certificates,
         use_same_certificate_authority_for_client: settings
             .use_same_certificate_authority_for_client,
+        subject_alt_names: settings.subject_alt_names.clone(),
         bind: settings.bind,
         accept_compressed: settings.accept_compressed.clone(),
         send_compressed: settings.send_compressed.clone(),
@@ -1092,6 +1093,7 @@ fn configure_grpc(
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),
+        certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         client_certificate_authority_root_path: settings
             .client_certificate_authority_root_path
             .clone(),

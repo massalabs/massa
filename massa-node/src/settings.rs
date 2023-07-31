@@ -291,6 +291,8 @@ pub struct GrpcSettings {
     pub generate_self_signed_certificates: bool,
     /// whether to use the same certificate_authority for client and server certificates(requires `generate_self_signed_certificates` to be true)
     pub use_same_certificate_authority_for_client: bool,
+    /// Subject Alternative Names is an extension in X.509 certificates that allows a certificate to specify additional subject identifiers. It is used to support alternative names for a subject, other than its primary Common Name (CN), which is typically used to represent the primary domain name.
+    pub subject_alt_names: Vec<String>,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,
     /// which compression encodings does the server accept for requests
@@ -337,6 +339,8 @@ pub struct GrpcSettings {
     pub server_certificate_path: PathBuf,
     /// server private key path
     pub server_private_key_path: PathBuf,
+    /// certificate authority root path
+    pub certificate_authority_root_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
 }
