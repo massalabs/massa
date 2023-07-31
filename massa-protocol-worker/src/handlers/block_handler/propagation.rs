@@ -22,7 +22,6 @@ use crate::{
 };
 use crossbeam::channel::RecvTimeoutError;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
-use massa_logging::massa_trace;
 use massa_models::block_header::SecuredHeader;
 use massa_models::block_id::BlockId;
 use massa_protocol_exports::PeerId;
@@ -31,7 +30,7 @@ use massa_storage::Storage;
 use schnellru::{ByLength, LruMap};
 use std::thread::JoinHandle;
 use std::time::Instant;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 struct BlockPropagationData {
@@ -72,10 +71,7 @@ impl PropagationThread {
                     match command {
                         // Message: the block was integrated and should be propagated
                         BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } => {
-                            massa_trace!(
-                                "protocol.protocol_worker.process_command.integrated_block.begin",
-                                { "block_id": block_id }
-                            );
+                            debug!("received IntegratedBlock({})", block_id);
 
                             // get the block header
                             let header = match storage
@@ -113,6 +109,7 @@ impl PropagationThread {
                                 .expect("could not get time of next propagation tick");
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) => {
+                            debug!("received AttackBlockDetected({})", block_id);
                             let peers_to_ban: Vec<PeerId> = self
                                 .cache
                                 .read()
@@ -182,6 +179,7 @@ impl PropagationThread {
                 }
 
                 // try to propagate
+                debug!("announcing header {} to peer {}", block_id, peer_id);
                 match self.active_connections.send_to_peer(
                     peer_id,
                     &self.block_serializer,
@@ -194,8 +192,8 @@ impl PropagationThread {
                     }
                     Err(err) => {
                         warn!(
-                            "Error while sending block header to peer {} err: {:?}",
-                            peer_id, err
+                            "Error while announcing block header {} to peer {} err: {:?}",
+                            block_id, peer_id, err
                         );
                         continue 'peer_loop; // try next peer
                     }

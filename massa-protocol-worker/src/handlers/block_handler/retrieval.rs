@@ -239,6 +239,11 @@ impl RetrievalThread {
         block_id: BlockId,
         info_requested: AskForBlockInfo,
     ) {
+        debug!(
+            "peer {} asked for block info on block {}: {:?}",
+            &from_peer_id, block_id, &info_requested
+        );
+
         // updates on the remote peer's knowledge on blocks, operations and endorsements
         // only applied if the response is successfully sent to the peer
         let mut block_knowledge_updates = PreHashSet::default();
@@ -318,7 +323,10 @@ impl RetrievalThread {
             }
         };
 
-        debug!("Send reply for block info to {}", from_peer_id);
+        debug!(
+            "sending reply for block {} info to {}",
+            block_id, from_peer_id
+        );
 
         // send response to peer
         if let Err(err) = self.active_connections.send_to_peer(
@@ -332,8 +340,8 @@ impl RetrievalThread {
             true,
         ) {
             warn!(
-                "Error while sending reply for blocks to {}: {:?}",
-                from_peer_id, err
+                "Error while sending reply for block {} to {}: {:?}",
+                block_id, from_peer_id, err
             );
             return;
         }
@@ -404,6 +412,8 @@ impl RetrievalThread {
 
     /// On block header received from a node.
     fn on_block_header_received(&mut self, from_peer_id: PeerId, header: SecuredHeader) {
+        debug!("received header {} from {}", header.id, from_peer_id);
+
         let block_id = header.id;
 
         // Check header and update knowledge info
@@ -699,6 +709,10 @@ impl RetrievalThread {
         block_id: BlockId,
         operation_ids: Vec<OperationId>,
     ) {
+        debug!(
+            "received operation list for block {} from {}",
+            block_id, &from_peer_id
+        );
         // Note that the length of the operation list was checked at deserialization to not overflow the max per block.
 
         // All operation ids sent into a set to deduplicate and search quickly for presence
@@ -776,6 +790,11 @@ impl RetrievalThread {
         block_id: BlockId,
         operations: Vec<SecureShareOperation>,
     ) {
+        debug!(
+            "received full operations for block {} from {}",
+            block_id, &from_peer_id
+        );
+
         // Ensure that we were looking for that data.
         let wishlist_info = if let Some(wishlist_info) = self.block_wishlist.get_mut(&block_id) && wishlist_info.header.is_some() && wishlist_info.operation_ids.is_some() {
             wishlist_info
@@ -835,10 +854,6 @@ impl RetrievalThread {
                     .map(|op_id| op_id.prefix())
                     .collect::<Vec<_>>(),
             );
-        }
-        if operations.is_empty() {
-            // we have most likely eliminated all the received operations in the filtering above
-            return;
         }
 
         // Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
@@ -1047,7 +1062,10 @@ impl RetrievalThread {
 
             // try to ask peers from best to worst
             for (_, _, _, _, peer_id) in peer_scores {
-                debug!("Send ask for block {} to {}", block_id, peer_id);
+                debug!(
+                    "Sending ask for block {} data to {}: {:?}",
+                    block_id, peer_id, &request
+                );
                 if let Err(err) = self.active_connections.send_to_peer(
                     &peer_id,
                     &self.block_message_serializer,
@@ -1161,6 +1179,8 @@ impl RetrievalThread {
 
     /// Called when we have fully gathered a block
     fn fully_gathered_block(&mut self, block_id: &BlockId) {
+        debug!("Fully gathered block {}", block_id);
+
         // Gather all the elements needed to create the block. We must have it all by now.
         let wishlist_info = self
             .block_wishlist
