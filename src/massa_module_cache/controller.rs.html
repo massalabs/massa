@@ -154,6 +154,11 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>massa_sc_runtime::{Compiler, RuntimeModule};
@@ -276,6 +281,11 @@
         bytecode: <span class="kw-2">&amp;</span>[u8],
         execution_gas: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, CacheError&gt; {
+        <span class="kw">if </span>bytecode.len() &gt; <span class="self">self</span>.cfg.max_module_length <span class="kw">as </span>usize {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(CacheError::LoadError(
+                <span class="string">&quot;Module bytecode exceeds maximum allowed length&quot;</span>.to_string(),
+            ));
+        }
         <span class="kw">let </span>module_info = <span class="self">self</span>.load_module_info(bytecode);
         <span class="kw">let </span>module = <span class="kw">match </span>module_info {
             ModuleInfo::Invalid =&gt; {
