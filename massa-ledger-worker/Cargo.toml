@@ -14,7 +14,6 @@ massa_ledger_exports = {workspace = true}
 massa_models = {workspace = true}
 massa_serialization = {workspace = true}
 massa_db_exports = {workspace = true}
-tracing = {workspace = true}
 massa_db_worker = {workspace = true, "optional" = true}
 parking_lot = {workspace = true, "features" = ["deadlock_detection"], "optional" = true}
 

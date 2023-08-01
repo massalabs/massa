@@ -2995,7 +2995,6 @@ dependencies = [
  "parking_lot",
  "serde_json",
  "tempfile",
- "tracing",
 ]
 
 [[package]]
