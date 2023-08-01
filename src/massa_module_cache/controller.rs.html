@@ -154,11 +154,19 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>massa_sc_runtime::{Compiler, RuntimeModule};
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
-<span class="kw">use </span>tracing::{debug, warn};
+<span class="kw">use </span>tracing::{debug, log::info, warn};
 
 <span class="kw">use crate</span>::{
     config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
@@ -250,6 +258,14 @@
 
     <span class="doccomment">/// Load a cached module for execution
     </span><span class="kw">fn </span>load_module_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; ModuleInfo {
+        <span class="kw">if </span>bytecode.len() &gt; <span class="self">self</span>.cfg.max_module_length <span class="kw">as </span>usize {
+            <span class="macro">info!</span>(
+                <span class="string">&quot;load_module: bytecode length {} exceeds max module length {}&quot;</span>,
+                bytecode.len(),
+                <span class="self">self</span>.cfg.max_module_length
+            );
+            <span class="kw">return </span>ModuleInfo::Invalid;
+        }
         <span class="kw">let </span>hash = Hash::compute_from(bytecode);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
             <span class="macro">debug!</span>(<span class="string">&quot;load_module: {} present in lru&quot;</span>, hash);
