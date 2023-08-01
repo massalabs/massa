@@ -115,15 +115,6 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::KeyPair;
@@ -147,15 +138,8 @@
     </span><span class="kw">pub </span>enable_reflection: bool,
     <span class="doccomment">/// whether to enable TLS
     </span><span class="kw">pub </span>enable_tls: bool,
-
     <span class="doccomment">/// whether to enable mTLS (requires `enable_tls` to be true)
     </span><span class="kw">pub </span>enable_mtls: bool,
-    <span class="doccomment">/// whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
-    </span><span class="kw">pub </span>generate_self_signed_certificates: bool,
-    <span class="doccomment">/// whether to use the same certificate_authority for client and server certificates(requires `generate_self_signed_certificates` to be true)
-    </span><span class="kw">pub </span>use_same_certificate_authority_for_client: bool,
-    <span class="doccomment">/// Subject Alternative Names is an extension in X.509 certificates that allows a certificate to specify additional subject identifiers. It is used to support alternative names for a subject, other than its primary Common Name (CN), which is typically used to represent the primary domain name.
-    </span><span class="kw">pub </span>subject_alt_names: Vec&lt;String&gt;,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
     <span class="doccomment">/// which compression encodings does the server accept for requests
@@ -236,8 +220,6 @@
     </span><span class="kw">pub </span>server_certificate_path: PathBuf,
     <span class="doccomment">/// server private key path
     </span><span class="kw">pub </span>server_private_key_path: PathBuf,
-    <span class="doccomment">/// certificate authority root path
-    </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// client certificate authority root path
     </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
 }

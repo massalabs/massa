@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["gen_cert_for_ca","gen_cert_for_server","massa_service_status","serve"],"struct":["MassaPrivateGrpc","MassaPublicGrpc","StopHandle"]};
+window.SIDEBAR_ITEMS = {"fn":["massa_service_status","serve"],"struct":["MassaPrivateGrpc","MassaPublicGrpc","StopHandle"]};
