@@ -319,11 +319,11 @@ impl LedgerDB {
         let mut number_of_keys = self
             .get_datastore_keys(addr, &[])
             .map(|keys| keys.len())
-            .unwrap_or_default();
+            .unwrap_or_else(|| 0);
         for (key, entry) in ledger_entry.datastore {
             if number_of_keys >= self.max_datastore_entry_count as usize {
                 warn!(
-                    "Too many datastore entries for address {} ({} > {})",
+                    "Too much datastore entries for address {} ({} > {})",
                     addr, number_of_keys, self.max_datastore_entry_count
                 );
                 continue;
