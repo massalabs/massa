@@ -384,14 +384,14 @@
             )
         )
     } <span class="kw">else </span>{
-        MassaTime::from_millis(<span class="number">1690894800000</span>) <span class="comment">// Tuesday, August 1, 2023 01:00:00 PM UTC
+        MassaTime::from_millis(<span class="number">1688490000000</span>) <span class="comment">// Tuesday, July 4, 2023 05:00:00 PM UTC
     </span>};
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>END_TIMESTAMP: <span class="prelude-ty">Option</span>&lt;MassaTime&gt; = <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
         <span class="prelude-val">None
     </span>} <span class="kw">else </span>{
-        <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">1693486800000</span>))  <span class="comment">// Thursday, August 31, 2023 01:00:00 PM UTC
+        <span class="prelude-val">Some</span>(MassaTime::from_millis(<span class="number">1690808400000</span>))  <span class="comment">// Monday, July 31, 2023 03:00:00 PM UTC
     </span>};
     <span class="doccomment">/// `KeyPair` to sign genesis blocks.
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>GENESIS_KEY: KeyPair = KeyPair::from_str(<span class="string">&quot;S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8&quot;</span>)
@@ -562,7 +562,7 @@
 <span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot
 </span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
 <span class="doccomment">/// Maximum event size in bytes
-</span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE: usize = <span class="number">50_000</span>;
+</span><span class="kw">pub const </span>MAX_EVENT_SIZE: usize = <span class="number">100 </span>* <span class="number">1024</span>;
 
 <span class="comment">//
 // Constants used in network
