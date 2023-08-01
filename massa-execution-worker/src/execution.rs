@@ -151,6 +151,7 @@ impl ExecutionState {
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
+            max_module_length: config.max_bytecode_size,
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
