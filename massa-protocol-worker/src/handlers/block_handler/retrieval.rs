@@ -207,10 +207,10 @@ impl RetrievalThread {
                     {
                         let block_read = self.cache.read();
                         let count: usize = block_read
-                        .blocks_known_by_peer
-                        .values()
-                        .map(|v| v.len())
-                        .sum();
+                            .blocks_known_by_peer
+                            .values()
+                            .map(|v| v.len())
+                            .sum();
 
                         self.massa_metrics.set_block_cache_metrics(
                             block_read.checked_headers.len(),
