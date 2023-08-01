@@ -541,6 +541,7 @@ impl SpeculativeLedger {
         }
 
         // check if caller doesn't have already too many data entries
+        // TODO: Optimize
         if let Some(keys) = self.get_keys(addr, &[]) {
             if keys.len() >= self.max_datastore_entry_count as usize {
                 return Err(ExecutionError::RuntimeError(format!(
