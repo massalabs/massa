@@ -206,19 +206,25 @@ impl RetrievalThread {
                     // update metrics
                     {
                         let block_read = self.cache.read();
+                        let count: usize = block_read
+                            .blocks_known_by_peer
+                            .values()
+                            .map(|v| v.len())
+                            .sum();
 
                         self.massa_metrics.set_block_cache_metrics(
                             block_read.checked_headers.len(),
-                            block_read.blocks_known_by_peer.len(),
+                            count,
                         );
                     }
 
                     {
                         let ope_read = self.operation_cache.read();
+                        let count: usize = ope_read.ops_known_by_peer.values().map(|v| v.len()).sum();
                         self.massa_metrics.set_operations_cache_metrics(
                             ope_read.checked_operations.len(),
                             ope_read.checked_operations_prefix.len(),
-                            ope_read.ops_known_by_peer.len(),
+                            count,
                         );
                     }
                 }
