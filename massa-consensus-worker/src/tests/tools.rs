@@ -178,7 +178,6 @@ pub fn answer_ask_producer_pos(
     let res = selector_receiver
         .recv_timeout(Duration::from_millis(timeout_ms))
         .unwrap();
-    println!("res: {:?}", res);
     match res {
         MockSelectorControllerMessage::GetProducer {
             slot: _,

@@ -1,9 +1,8 @@
 use massa_time::MassaTime;
 use std::collections::BTreeMap;
-use std::iter;
 use thiserror::Error;
 
-use crate::versioning::{ComponentState, ComponentStateTypeId, MipComponent, MipStore};
+use crate::versioning::{ComponentStateTypeId, MipComponent, MipStore};
 
 /// Factory error
 #[allow(missing_docs)]
@@ -54,92 +53,28 @@ pub trait VersioningFactory {
     /// Access to the MipStore
     fn get_versioning_store(&self) -> MipStore;
 
-    /*
-    /// Get latest component version (aka last active for the factory component)
-    fn get_latest_component_version(&self) -> u32 {
-        let component = Self::get_component();
-        let vi_store_ = self.get_versioning_store();
-        let vi_store = vi_store_.0.read();
-
-        vi_store
-            .store
-            .iter()
-            .rev()
-            .find_map(|(vi, vsh)| {
-                if matches!(vsh.state, ComponentState::Active(_)) {
-                    vi.components.get(&component).copied()
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(0)
-    }
-    */
-
     /// Get latest version at given timestamp (e.g. slot)
     fn get_latest_component_version_at(&self, ts: MassaTime) -> Result<u32, FactoryError> {
         let component = Self::get_component();
-        let vi_store_ = self.get_versioning_store();
-        let vi_store = vi_store_.0.read();
-
-        // Iter backward, filter component + state active,
-        let version = vi_store
-            .store
-            .iter()
-            .rev()
-            .filter(|(vi, vsh)| {
-                vi.components.get(&component).is_some()
-                    && matches!(vsh.state, ComponentState::Active(_))
-            })
-            .find_map(|(vi, vsh)| {
-                let res = vsh.state_at(ts, vi.start, vi.timeout);
-                match res {
-                    Ok(ComponentStateTypeId::Active) => vi.components.get(&component).copied(),
-                    _ => None,
-                }
-            })
-            .unwrap_or(0);
-
-        Ok(version)
+        let mi_store_ = self.get_versioning_store();
+        Ok(mi_store_.get_latest_component_version_at(&component, ts))
     }
 
     /// Get all versions in 'Active state' for the associated MipComponent
     fn get_all_active_component_versions(&self) -> Vec<u32> {
         let component = Self::get_component();
-        let vi_store_ = self.get_versioning_store();
-        let vi_store = vi_store_.0.read();
-
-        let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
-            if matches!(vsh.state, ComponentState::Active(_)) {
-                vi.components.get(&component).copied()
-            } else {
-                None
-            }
-        });
-        let versions: Vec<u32> = iter::once(0).chain(versions_iter).collect();
-        versions
+        let mip_store = self.get_versioning_store();
+        mip_store.get_all_active_component_versions(&component)
     }
 
     /// Get all versions (at any state) for the associated MipComponent
     fn get_all_component_versions(&self) -> BTreeMap<u32, ComponentStateTypeId> {
         let component = Self::get_component();
-        let vi_store_ = self.get_versioning_store();
-        let vi_store = vi_store_.0.read();
-
-        let versions_iter = vi_store.store.iter().filter_map(|(vi, vsh)| {
-            vi.components
-                .get(&component)
-                .copied()
-                .map(|component_version| {
-                    (component_version, ComponentStateTypeId::from(&vsh.state))
-                })
-        });
-        iter::once((0, ComponentStateTypeId::Active))
-            .chain(versions_iter)
-            .collect()
+        let mip_store = self.get_versioning_store();
+        mip_store.get_all_component_versions(&component)
     }
 
-    /// Get the version the current component with the given startegy
+    /// Get the version the current component with the given strategy
     fn get_component_version_with_strategy(
         &self,
         strategy: FactoryStrategy,
@@ -153,7 +88,6 @@ pub trait VersioningFactory {
                 _ => Err(FactoryError::UnknownVersion(v)),
             },
             FactoryStrategy::At(ts) => self.get_latest_component_version_at(ts),
-            // None | Some(FactoryStrategy::Latest) => Ok(self.get_latest_component_version()),
         }
     }
 
@@ -173,7 +107,7 @@ mod test {
     use std::collections::BTreeMap;
 
     use crate::test_helpers::versioning_helpers::advance_state_until;
-    use crate::versioning::{MipInfo, MipState, MipStatsConfig};
+    use crate::versioning::{ComponentState, MipInfo, MipState, MipStatsConfig};
 
     use massa_time::MassaTime;
 

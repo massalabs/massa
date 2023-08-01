@@ -1,19 +1,14 @@
 [package]
 name = "massa_serialization"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
 
 [dependencies]
-displaydoc = "0.2"
-thiserror = "1.0"
-nom = "=7.1"
-unsigned-varint = { version = "0.7.1", features = [
-    "nom",
-], git = "https://github.com/cyphar/unsigned-varint.git", branch = "nom6-errors" }
-num = "0.4"
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
-[features]
+displaydoc = {workspace = true}
+thiserror = {workspace = true}
+nom = {workspace = true}
+unsigned-varint = {workspace = true, "features" = ["nom"]}
+num = {workspace = true}

@@ -1,11 +1,9 @@
 [package]
 name = "massa_logging"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-serde_json = "1.0"
-tracing = "0.1"
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+tracing = {workspace = true}

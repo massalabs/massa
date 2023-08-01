@@ -14,14 +14,11 @@ use std::{
 
 use lazy_static::lazy_static;
 use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
-use survey::MassaSurvey;
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
 // #[cfg(not(feature = "testing"))]
 mod server;
-
-mod survey;
 
 lazy_static! {
     // use lazy_static for these metrics because they are used in storage which implement default
@@ -75,12 +72,63 @@ pub struct MassaMetrics {
     /// enable metrics
     enabled: bool,
 
+    /// number of processors
+    process_available_processors: IntGauge,
+
     /// consensus period for each thread
     /// index 0 = thread 0 ...
     consensus_vec: Vec<Gauge>,
 
+    /// number of stakers
+    stakers: IntGauge,
+    /// number of rolls
+    rolls: IntGauge,
+
+    // thread of actual slot
+    current_time_thread: IntGauge,
+    // period of actual slot
+    current_time_period: IntGauge,
+
+    /// number of elements in the active_history of execution
+    active_history: IntGauge,
+
+    /// number of operations in the operation pool
+    operations_pool: IntGauge,
+    /// number of endorsements in the endorsement pool
+    endorsements_pool: IntGauge,
+    /// number of elements in the denunciation pool
+    denunciations_pool: IntGauge,
+
+    // number of autonomous SCs messages in pool
+    async_message_pool_size: IntGauge,
+
+    // number of autonomous SC messages executed as final
+    sc_messages_final: IntCounter,
+
+    /// number of times our node (re-)bootstrapped
+    bootstrap_counter: IntCounter,
+    /// number of times we successfully bootstrapped someone
+    bootstrap_peers_success: IntCounter,
+    /// number of times we failed/refused to bootstrap someone
+    bootstrap_peers_failed: IntCounter,
+
+    /// number of times we successfully tested someone
+    protocol_tester_success: IntCounter,
+    /// number of times we failed to test someone
+    protocol_tester_failed: IntCounter,
+
+    /// know peers in protocol
+    protocol_known_peers: IntGauge,
+    /// banned peers in protocol
+    protocol_banned_peers: IntGauge,
+
+    /// executed final slot
+    executed_final_slot: IntCounter,
+    /// executed final slot with block (not miss)
+    executed_final_slot_with_block: IntCounter,
+
     /// total bytes receive by peernet manager
-    peernet_total_bytes_receive: IntCounter,
+    peernet_total_bytes_received: IntCounter,
     /// total bytes sent by peernet manager
     peernet_total_bytes_sent: IntCounter,
 
@@ -139,8 +187,6 @@ impl MassaMetrics {
         nb_thread: u8,
         tick_delay: Duration,
     ) -> (Self, MetricsStopper) {
-        // TODO unwrap
-
         let mut consensus_vec = vec![];
         for i in 0..nb_thread {
             let gauge = Gauge::new(
@@ -155,6 +201,99 @@ impl MassaMetrics {
 
             consensus_vec.push(gauge);
         }
+
+        // set available processors
+        let process_available_processors =
+            IntGauge::new("process_available_processors", "number of processors")
+                .expect("Failed to create available_processors counter");
+
+        // stakers
+        let stakers = IntGauge::new("stakers", "number of stakers").unwrap();
+        let rolls = IntGauge::new("rolls", "number of rolls").unwrap();
+
+        let current_time_period =
+            IntGauge::new("current_time_period", "period of actual slot").unwrap();
+
+        let current_time_thread =
+            IntGauge::new("current_time_thread", "thread of actual slot").unwrap();
+
+        let executed_final_slot =
+            IntCounter::new("executed_final_slot", "number of executed final slot").unwrap();
+        let executed_final_slot_with_block = IntCounter::new(
+            "executed_final_slot_with_block",
+            "number of executed final slot with block (not miss)",
+        )
+        .unwrap();
+
+        let protocol_tester_success = IntCounter::new(
+            "protocol_tester_success",
+            "number of times we successfully tested someone",
+        )
+        .unwrap();
+        let protocol_tester_failed = IntCounter::new(
+            "protocol_tester_failed",
+            "number of times we failed to test someone",
+        )
+        .unwrap();
+
+        // pool
+        let operations_pool = IntGauge::new(
+            "operations_pool",
+            "number of operations in the operation pool",
+        )
+        .unwrap();
+        let endorsements_pool = IntGauge::new(
+            "endorsements_pool",
+            "number of endorsements in the endorsement pool",
+        )
+        .unwrap();
+        let denunciations_pool = IntGauge::new(
+            "denunciations_pool",
+            "number of elements in the denunciation pool",
+        )
+        .unwrap();
+
+        let async_message_pool_size = IntGauge::new(
+            "async_message_pool_size",
+            "number of autonomous SCs messages in pool",
+        )
+        .unwrap();
+
+        let sc_messages_final = IntCounter::new(
+            "sc_messages_final",
+            "number of autonomous SC messages executed as final",
+        )
+        .unwrap();
+
+        let bootstrap_counter = IntCounter::new(
+            "bootstrap_counter",
+            "number of times our node (re-)bootstrapped",
+        )
+        .unwrap();
+        let bootstrap_success = IntCounter::new(
+            "bootstrap_peers_success",
+            "number of times we successfully bootstrapped someone",
+        )
+        .unwrap();
+        let bootstrap_failed = IntCounter::new(
+            "bootstrap_peers_failed",
+            "number of times we failed/refused to bootstrap someone",
+        )
+        .unwrap();
+
+        let active_history = IntGauge::new(
+            "active_history",
+            "number of elements in the active_history of execution",
+        )
+        .unwrap();
+
+        let know_peers =
+            IntGauge::new("protocol_known_peers", "number of known peers in protocol").unwrap();
+        let banned_peers = IntGauge::new(
+            "protocol_banned_peers",
+            "number of banned peers in protocol",
+        )
+        .unwrap();
 
         // active cursor
         let active_cursor_thread =
@@ -259,8 +398,8 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let peernet_total_bytes_receive = IntCounter::new(
-            "peernet_total_bytes_receive",
+        let peernet_total_bytes_received = IntCounter::new(
+            "peernet_total_bytes_received",
             "total byte received by peernet",
         )
         .unwrap();
@@ -276,8 +415,6 @@ impl MassaMetrics {
         if enabled {
             #[cfg(not(feature = "testing"))]
             {
-                // server::bind_metrics(addr);
-
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
                 let _ = prometheus::register(Box::new(final_cursor_period.clone()));
                 let _ = prometheus::register(Box::new(active_cursor_thread.clone()));
@@ -303,27 +440,59 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
                 let _ = prometheus::register(Box::new(block_graph_counter.clone()));
                 let _ = prometheus::register(Box::new(block_graph_ms.clone()));
-                let _ = prometheus::register(Box::new(peernet_total_bytes_receive.clone()));
+                let _ = prometheus::register(Box::new(peernet_total_bytes_received.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
+                let _ = prometheus::register(Box::new(stakers.clone()));
+                let _ = prometheus::register(Box::new(rolls.clone()));
+                let _ = prometheus::register(Box::new(know_peers.clone()));
+                let _ = prometheus::register(Box::new(banned_peers.clone()));
+                let _ = prometheus::register(Box::new(executed_final_slot.clone()));
+                let _ = prometheus::register(Box::new(executed_final_slot_with_block.clone()));
+                let _ = prometheus::register(Box::new(active_history.clone()));
+                let _ = prometheus::register(Box::new(bootstrap_counter.clone()));
+                let _ = prometheus::register(Box::new(bootstrap_success.clone()));
+                let _ = prometheus::register(Box::new(bootstrap_failed.clone()));
+                let _ = prometheus::register(Box::new(process_available_processors.clone()));
+                let _ = prometheus::register(Box::new(operations_pool.clone()));
+                let _ = prometheus::register(Box::new(endorsements_pool.clone()));
+                let _ = prometheus::register(Box::new(denunciations_pool.clone()));
+                let _ = prometheus::register(Box::new(protocol_tester_success.clone()));
+                let _ = prometheus::register(Box::new(protocol_tester_failed.clone()));
+                let _ = prometheus::register(Box::new(sc_messages_final.clone()));
+                let _ = prometheus::register(Box::new(async_message_pool_size.clone()));
+                let _ = prometheus::register(Box::new(current_time_period.clone()));
+                let _ = prometheus::register(Box::new(current_time_thread.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
-
-            MassaSurvey::run(
-                tick_delay,
-                active_in_connections.clone(),
-                active_out_connections.clone(),
-                peernet_total_bytes_sent.clone(),
-                peernet_total_bytes_receive.clone(),
-            );
         }
 
         (
             MassaMetrics {
                 enabled,
+                process_available_processors,
                 consensus_vec,
-                peernet_total_bytes_receive,
+                stakers,
+                rolls,
+                current_time_thread,
+                current_time_period,
+                active_history,
+                operations_pool,
+                endorsements_pool,
+                denunciations_pool,
+                async_message_pool_size,
+                sc_messages_final,
+                bootstrap_counter,
+                bootstrap_peers_success: bootstrap_success,
+                bootstrap_peers_failed: bootstrap_failed,
+                protocol_tester_success,
+                protocol_tester_failed,
+                protocol_known_peers: know_peers,
+                protocol_banned_peers: banned_peers,
+                executed_final_slot,
+                executed_final_slot_with_block,
+                peernet_total_bytes_received,
                 peernet_total_bytes_sent,
                 block_graph_counter,
                 block_graph_ms,
@@ -353,6 +522,19 @@ impl MassaMetrics {
                 tick_delay,
             },
             stopper,
+        )
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn get_metrics_for_survey_thread(&self) -> (i64, i64, u64, u64) {
+        (
+            self.active_in_connections.clone().get(),
+            self.active_out_connections.clone().get(),
+            self.peernet_total_bytes_sent.clone().get(),
+            self.peernet_total_bytes_received.clone().get(),
         )
     }
 
@@ -436,16 +618,98 @@ impl MassaMetrics {
         self.block_graph_counter.inc();
     }
 
-    pub fn inc_peernet_total_bytes_receive(&self, diff: u64) {
-        self.peernet_total_bytes_receive.inc_by(diff);
+    pub fn set_peernet_total_bytes_received(&self, new_value: u64) {
+        let diff = new_value.saturating_sub(self.peernet_total_bytes_received.get());
+        self.peernet_total_bytes_received.inc_by(diff);
     }
 
-    pub fn inc_peernet_total_bytes_sent(&self, diff: u64) {
+    pub fn set_peernet_total_bytes_sent(&self, new_value: u64) {
+        let diff = new_value.saturating_sub(self.peernet_total_bytes_sent.get());
         self.peernet_total_bytes_sent.inc_by(diff);
     }
 
     pub fn inc_operations_final_counter(&self, diff: u64) {
         self.operations_final_counter.inc_by(diff);
+    }
+
+    pub fn set_known_peers(&self, nb: usize) {
+        self.protocol_known_peers.set(nb as i64);
+    }
+
+    pub fn set_banned_peers(&self, nb: usize) {
+        self.protocol_banned_peers.set(nb as i64);
+    }
+
+    pub fn inc_executed_final_slot(&self) {
+        self.executed_final_slot.inc();
+    }
+
+    pub fn inc_executed_final_slot_with_block(&self) {
+        self.executed_final_slot_with_block.inc();
+    }
+
+    pub fn set_active_history(&self, nb: usize) {
+        self.active_history.set(nb as i64);
+    }
+
+    pub fn inc_bootstrap_counter(&self) {
+        self.bootstrap_counter.inc();
+    }
+
+    pub fn inc_bootstrap_peers_success(&self) {
+        self.bootstrap_peers_success.inc();
+    }
+
+    pub fn inc_bootstrap_peers_failed(&self) {
+        self.bootstrap_peers_failed.inc();
+    }
+
+    pub fn set_operations_pool(&self, nb: usize) {
+        self.operations_pool.set(nb as i64);
+    }
+
+    pub fn set_endorsements_pool(&self, nb: usize) {
+        self.endorsements_pool.set(nb as i64);
+    }
+
+    pub fn set_denunciations_pool(&self, nb: usize) {
+        self.denunciations_pool.set(nb as i64);
+    }
+
+    pub fn inc_protocol_tester_success(&self) {
+        self.protocol_tester_success.inc();
+    }
+
+    pub fn inc_protocol_tester_failed(&self) {
+        self.protocol_tester_failed.inc();
+    }
+
+    pub fn set_stakers(&self, nb: usize) {
+        self.stakers.set(nb as i64);
+    }
+
+    pub fn set_rolls(&self, nb: usize) {
+        self.rolls.set(nb as i64);
+    }
+
+    pub fn inc_sc_messages_final_by(&self, diff: usize) {
+        self.sc_messages_final.inc_by(diff as u64);
+    }
+
+    pub fn set_async_message_pool_size(&self, nb: usize) {
+        self.async_message_pool_size.set(nb as i64);
+    }
+
+    pub fn set_available_processors(&self, nb: usize) {
+        self.process_available_processors.set(nb as i64);
+    }
+
+    pub fn set_current_time_period(&self, period: u64) {
+        self.current_time_period.set(period as i64);
+    }
+
+    pub fn set_current_time_thread(&self, thread: u8) {
+        self.current_time_thread.set(thread as i64);
     }
 
     /// Update the bandwidth metrics for all peers
@@ -507,69 +771,3 @@ impl MassaMetrics {
         }
     }
 }
-// mod test {
-//     use massa_channel::MassaChannel;
-
-//     use crate::start_metrics_server;
-
-//     #[tokio::test]
-//     async fn test_channel_metrics() {
-//         let addr = ([192, 168, 1, 183], 9898).into();
-
-//         start_metrics_server(addr);
-//         std::thread::sleep(std::time::Duration::from_millis(500));
-//         let (sender, receiver) = MassaChannel::new("operations".to_string(), None);
-
-//         let (sender2, receiver2) = MassaChannel::new("second_channel".to_string(), None);
-
-//         sender2.send("hello_world".to_string()).unwrap();
-//         let data = receiver2.recv().unwrap();
-//         assert_eq!(data, "hello_world".to_string());
-
-//         for i in 0..100 {
-//             sender.send(i).unwrap();
-//         }
-
-//         for _i in 0..20 {
-//             receiver.recv().unwrap();
-//         }
-
-//         assert_eq!(receiver.len(), 80);
-//         std::thread::sleep(std::time::std::time::Duration::from_secs(5));
-//         drop(sender2);
-//         drop(receiver2);
-//         std::thread::sleep(std::time::Duration::from_secs(100));
-//     }
-
-//     #[tokio::test]
-//     async fn test_channel() {
-//         let addr = ([192, 168, 1, 183], 9898).into();
-
-//         start_metrics_server(addr);
-//         std::thread::sleep(std::time::Duration::from_millis(500));
-
-//         let (sender, receiver) = MassaChannel::new("test2".to_string(), None);
-
-//         let cloned = receiver.clone();
-
-//         sender.send("msg".to_string()).unwrap();
-
-//         std::thread::spawn(move || {
-//             dbg!("spawned");
-
-//             loop {
-//                 dbg!("loop");
-//                 dbg!(receiver.recv().unwrap());
-//                 std::thread::sleep(std::time::Duration::from_secs(1));
-//             }
-//         });
-//         std::thread::sleep(std::time::Duration::from_secs(2));
-//         std::thread::spawn(move || {
-//             std::thread::sleep(std::time::std::time::Duration::from_secs(5));
-
-//             drop(sender);
-//         });
-
-//         std::thread::sleep(std::time::Duration::from_secs(20));
-//     }
-// }

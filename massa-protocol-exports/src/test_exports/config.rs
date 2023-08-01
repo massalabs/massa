@@ -5,6 +5,8 @@ use massa_models::config::{ENDORSEMENT_COUNT, MAX_MESSAGE_SIZE};
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
 
+const ONE_DAY_MS: u64 = 24 * 60 * 60 * 1000;
+
 impl Default for ProtocolConfig {
     fn default() -> Self {
         ProtocolConfig {
@@ -13,7 +15,9 @@ impl Default for ProtocolConfig {
                 .path()
                 .to_path_buf(),
             ask_block_timeout: MassaTime::from_millis(500),
-            max_known_blocks_saved_size: 300,
+            max_blocks_kept_for_propagation: 300,
+            max_block_propagation_time: MassaTime::from_millis(40000),
+            block_propagation_tick: MassaTime::from_millis(1000),
             max_known_blocks_size: 100,
             max_node_known_blocks_size: 100,
             max_node_wanted_blocks_size: 100,
@@ -61,7 +65,6 @@ impl Default for ProtocolConfig {
             max_size_channel_commands_peers: 300,
             max_message_size: MAX_MESSAGE_SIZE as usize,
             endorsement_count: ENDORSEMENT_COUNT,
-            max_size_block_infos: 200,
             max_size_value_datastore: 1_000_000,
             max_size_function_name: u16::MAX,
             max_size_call_sc_parameter: 10_000_000,
@@ -73,10 +76,12 @@ impl Default for ProtocolConfig {
             max_size_listeners_per_peer: 100,
             max_size_peers_announcement: 100,
             message_timeout: MassaTime::from_millis(10000),
+            tester_timeout: MassaTime::from_millis(500),
             last_start_period: 0,
             read_write_limit_bytes_per_second: 1024 * 1000,
             timeout_connection: MassaTime::from_millis(1000),
             try_connection_timer: MassaTime::from_millis(5000),
+            unban_everyone_timer: MassaTime::from_millis(ONE_DAY_MS),
             routable_ip: None,
             max_in_connections: 10,
             debug: true,
@@ -88,6 +93,8 @@ impl Default for ProtocolConfig {
                 max_in_connections_per_ip: 0,
             },
             version: "TEST.23.2".parse().unwrap(),
+            try_connection_timer_same_peer: MassaTime::from_millis(1000),
+            test_oldest_peer_cooldown: MassaTime::from_millis(720000),
         }
     }
 }

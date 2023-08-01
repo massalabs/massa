@@ -118,12 +118,13 @@ impl ExecutionState {
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_state
-            .read()
-            .db
-            .read()
-            .get_change_id()
-            .expect("Critical error: Final state has no slot attached");
+        let last_final_slot;
+        let execution_trail_hash;
+        {
+            let final_state_read = final_state.read();
+            last_final_slot = final_state_read.get_slot();
+            execution_trail_hash = final_state_read.get_execution_trail_hash();
+        }
 
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
@@ -150,6 +151,7 @@ impl ExecutionState {
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
+            max_module_length: config.max_bytecode_size,
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
@@ -160,6 +162,7 @@ impl ExecutionState {
             module_cache.clone(),
             vesting_manager.clone(),
             mip_store.clone(),
+            execution_trail_hash,
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -254,10 +257,23 @@ impl ExecutionState {
             .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
         self.massa_metrics
             .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
-
         self.massa_metrics.inc_operations_final_counter(
             exec_out_2.state_changes.executed_ops_changes.len() as u64,
         );
+        self.massa_metrics
+            .set_active_history(self.active_history.read().0.len());
+
+        self.massa_metrics
+            .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.0.len());
+
+        self.massa_metrics.set_async_message_pool_size(
+            self.final_state.read().async_pool.message_info_cache.len(),
+        );
+
+        self.massa_metrics.inc_executed_final_slot();
+        if exec_out.block_info.is_some() {
+            self.massa_metrics.inc_executed_final_slot_with_block();
+        }
 
         // Broadcast a final slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
@@ -294,6 +310,10 @@ impl ExecutionState {
 
         // add the execution output at the end of the output history
         self.active_history.write().0.push_back(exec_out);
+
+        // update the prometheus metrics
+        self.massa_metrics
+            .set_active_history(self.active_history.read().0.len())
     }
 
     /// Helper function.

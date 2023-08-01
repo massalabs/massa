@@ -18,7 +18,7 @@ use massa_executed_ops::{
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
+use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetOrKeep, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
@@ -142,7 +142,7 @@ fn get_random_pos_cycles_info(
 
 /// generates random PoS deferred credits
 fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
-    let mut deferred_credits = DeferredCredits::new_with_hash();
+    let mut deferred_credits = DeferredCredits::new();
 
     for i in 0u64..r_limit {
         let mut credits = PreHashMap::default();
@@ -163,7 +163,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 /// generates a random PoS final state
 fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
     let (roll_counts, production_stats, _rng_seed) = get_random_pos_cycles_info(r_limit);
-    let mut deferred_credits = DeferredCredits::new_with_hash();
+    let mut deferred_credits = DeferredCredits::new();
     deferred_credits.extend(get_random_deferred_credits(r_limit));
 
     // Do not add seed_bits to changes, as we create the initial cycle just after
@@ -287,6 +287,15 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
     de_changes
 }
 
+/// generates a random execution trail hash change
+pub fn get_random_execution_trail_hash_change(always_set: bool) -> SetOrKeep<massa_hash::Hash> {
+    if always_set || rand::thread_rng().gen() {
+        SetOrKeep::Set(Hash::compute_from(&get_some_random_bytes()))
+    } else {
+        SetOrKeep::Keep
+    }
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
@@ -344,7 +353,7 @@ pub fn get_random_final_state_bootstrap(
     ))
     .unwrap();
 
-    create_final_state(
+    let mut final_state = create_final_state(
         config,
         Box::new(final_ledger),
         async_pool,
@@ -353,11 +362,14 @@ pub fn get_random_final_state_bootstrap(
         executed_denunciations,
         mip_store,
         db,
-    )
+    );
+
+    final_state.init_execution_trail_hash();
+    final_state
 }
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId(Hash::compute_from(s.as_bytes()))
+    BlockId::generate_from_hash(Hash::compute_from(s.as_bytes()))
 }
 
 pub fn get_random_address() -> Address {

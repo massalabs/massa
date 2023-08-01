@@ -1,27 +1,24 @@
 [package]
 name = "massa_ledger_worker"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-[dependencies]
-serde_json = "1.0"
-tempfile = { version = "3.3", optional = true } # use with testing feature
-
-# custom modules
-massa_ledger_exports = { path = "../massa-ledger-exports" }
-massa_models = { path = "../massa-models" }
-massa_serialization = { path = "../massa-serialization" }
-massa_db_exports = { path = "../massa-db-exports" }
-massa_db_worker = { path = "../massa-db-worker", optional = true}
-parking_lot = { version = "0.12", features = ["deadlock_detection"], optional = true }
-
-[dev-dependencies]
-massa_signature = { path = "../massa-signature" }
-massa_hash = { path = "../massa-hash" }
-massa_db_worker = { path = "../massa-db-worker" }
-tempfile = "3.3"
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = ["tempfile", "massa_models/testing", "massa_ledger_exports/testing", "massa_db_worker", "parking_lot"]
+
+[dependencies]
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
+massa_ledger_exports = {workspace = true}
+massa_models = {workspace = true}
+massa_serialization = {workspace = true}
+massa_db_exports = {workspace = true}
+massa_db_worker = {workspace = true, "optional" = true}
+parking_lot = {workspace = true, "features" = ["deadlock_detection"], "optional" = true}
+
+[dev-dependencies]
+massa_signature = {workspace = true}
+massa_hash = {workspace = true}
+massa_db_worker = {workspace = true}
+tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem

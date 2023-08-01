@@ -100,7 +100,10 @@ pub fn start_protocol_controller_with_mock_network(
 
     let (controller, channels) = create_protocol_controller(config.clone());
 
-    let network_controller = Box::new(MockNetworkController::new(message_handlers.clone()));
+    let network_controller = Box::new(MockNetworkController::new(
+        message_handlers.clone(),
+        peer_db.clone(),
+    ));
 
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,

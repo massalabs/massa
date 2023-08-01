@@ -2,7 +2,7 @@ use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{Compiler, RuntimeModule};
 use schnellru::{ByLength, LruMap};
-use tracing::{debug, warn};
+use tracing::{debug, log::info, warn};
 
 use crate::{
     config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
@@ -94,6 +94,14 @@ impl ModuleCache {
 
     /// Load a cached module for execution
     fn load_module_info(&mut self, bytecode: &[u8]) -> ModuleInfo {
+        if bytecode.len() > self.cfg.max_module_length as usize {
+            info!(
+                "load_module: bytecode length {} exceeds max module length {}",
+                bytecode.len(),
+                self.cfg.max_module_length
+            );
+            return ModuleInfo::Invalid;
+        }
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             debug!("load_module: {} present in lru", hash);

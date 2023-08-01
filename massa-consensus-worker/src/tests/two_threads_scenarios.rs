@@ -927,7 +927,7 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
             // Period 3, thread 0.
             let block_3_0 = register_block_and_process_with_tc(
                 Slot::new(3, 0),
-                vec![block_2_0.id, genesis[1]],
+                vec![block_2_0.id, block_1_1.id],
                 &tc,
             );
 
@@ -978,13 +978,8 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
                 vec![block_3_0.id, block_3_1.id],
                 &tc,
             );
-            let block_4_1 = register_block_and_process_with_tc(
-                Slot::new(4, 1),
-                vec![block_4_0.id, block_3_1.id],
-                &tc,
-            );
 
-            // block_2_0 has been finalized.
+            // block_1_1 has not been finalized yet, lagging a bit.
             assert_eq!(
                 tc.consensus_controller.get_block_statuses(&[
                     block_1_0.id,
@@ -995,6 +990,29 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
                 [
                     BlockGraphStatus::Final,
                     BlockGraphStatus::ActiveInBlockclique,
+                    BlockGraphStatus::ActiveInBlockclique,
+                    BlockGraphStatus::ActiveInBlockclique,
+                ],
+                "incorrect block statuses"
+            );
+
+            let block_4_1 = register_block_and_process_with_tc(
+                Slot::new(4, 1),
+                vec![block_4_0.id, block_3_1.id],
+                &tc,
+            );
+
+            // block_1_1 and block_2_0 have been finalized.
+            assert_eq!(
+                tc.consensus_controller.get_block_statuses(&[
+                    block_1_0.id,
+                    block_1_1.id,
+                    block_2_0.id,
+                    block_2_1.id
+                ]),
+                [
+                    BlockGraphStatus::Final,
+                    BlockGraphStatus::Final,
                     BlockGraphStatus::Final,
                     BlockGraphStatus::ActiveInBlockclique,
                 ],
@@ -1006,23 +1024,6 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
                 Slot::new(5, 0),
                 vec![block_4_0.id, block_4_1.id],
                 &tc,
-            );
-
-            // block_1_1 has been finalized.
-            assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
-                    block_1_0.id,
-                    block_1_1.id,
-                    block_2_0.id,
-                    block_2_1.id
-                ]),
-                [
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::Final,
-                    BlockGraphStatus::ActiveInBlockclique,
-                ],
-                "incorrect block statuses"
             );
 
             (
@@ -1038,9 +1039,9 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
 
 // Multiple blocks use a block at period 0 as a parent.
 // Other blocks use latest blocks as parents.
-// block_2_1 and block_4_0 are grandpa incompatibilities.
+// Block_2_1 and block_3_0 have a parallel incompatibility, because thread 0 is lagging too much.
 #[test]
-fn test_tts_multiple_blocks_depend_on_p0_grandpa_incomp() {
+fn test_tts_multiple_blocks_depend_on_p0_parallel_incomp() {
     let staking_key: KeyPair = KeyPair::generate(0).unwrap();
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(200),
@@ -1099,20 +1100,6 @@ fn test_tts_multiple_blocks_depend_on_p0_grandpa_incomp() {
                 &tc,
             );
 
-            // Period 3, thread 0.
-            let block_3_0 = register_block_and_process_with_tc(
-                Slot::new(3, 0),
-                vec![block_2_0.id, genesis[1]],
-                &tc,
-            );
-
-            // Period 3, thread 0.
-            let _block_3_1 = register_block_and_process_with_tc(
-                Slot::new(3, 1),
-                vec![block_3_0.id, block_2_1.id],
-                &tc,
-            );
-
             // Should have one max clique now.
             let mut status = tc
                 .consensus_controller
@@ -1124,10 +1111,10 @@ fn test_tts_multiple_blocks_depend_on_p0_grandpa_incomp() {
                 "incorrect number of max cliques"
             );
 
-            // Period 4, thread 0.
-            let block_4_0 = register_block_and_process_with_tc(
-                Slot::new(4, 0),
-                vec![block_3_0.id, genesis[1]],
+            // Period 3, thread 0.
+            let block_3_0 = register_block_and_process_with_tc(
+                Slot::new(3, 0),
+                vec![block_2_0.id, genesis[1]],
                 &tc,
             );
 
@@ -1142,18 +1129,18 @@ fn test_tts_multiple_blocks_depend_on_p0_grandpa_incomp() {
                 "incorrect number of max cliques"
             );
 
-            // block_2_1 and block_4_0 should be in different max cliques.
+            // block_2_1 and block_3_0 should be in different max cliques.
             if status.max_cliques[0].block_ids.contains(&block_2_1.id) {
                 assert_eq!(
-                    status.max_cliques[1].block_ids.contains(&block_4_0.id),
+                    status.max_cliques[1].block_ids.contains(&block_3_0.id),
                     true,
-                    "block_2_1 and block_4_0 should not be in the same max clique"
+                    "block_2_1 and block_3_0 should not be in the same max clique"
                 );
             } else {
                 assert_eq!(
-                    status.max_cliques[0].block_ids.contains(&block_4_0.id),
+                    status.max_cliques[0].block_ids.contains(&block_3_0.id),
                     true,
-                    "block_2_1 and block_4_0 should not be in the same max clique"
+                    "block_2_1 and block_3_0 should not be in the same max clique"
                 );
             }
 

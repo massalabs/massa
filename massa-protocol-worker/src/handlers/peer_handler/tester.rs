@@ -1,28 +1,30 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::Read,
     net::{IpAddr, SocketAddr},
+    sync::Arc,
     thread::JoinHandle,
     time::Duration,
 };
 
 use crate::messages::MessagesHandler;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
-use massa_models::version::{Version, VersionDeserializer};
+use massa_metrics::MassaMetrics;
+use massa_models::version::VersionDeserializer;
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
+use parking_lot::RwLock;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
     transports::TransportType,
 };
-use std::cmp::Reverse;
 use tracing::info;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
-    models::PeerInfo,
+    models::{ConnectionMetadata, PeerInfo},
     SharedPeerDB,
 };
 use crate::wrap_network::ActiveConnectionsTrait;
@@ -39,6 +41,7 @@ impl Tester {
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
+        massa_metrics: MassaMetrics,
     ) -> (
         (
             MassaSender<(PeerId, HashMap<SocketAddr, TransportType>)>,
@@ -54,6 +57,9 @@ impl Tester {
             Some(config.max_size_channel_commands_peer_testers),
         );
 
+        // Peers currently tested by one of the thread
+        let peers_in_test = Arc::new(RwLock::new(HashSet::new()));
+
         for _ in 0..config.thread_tester_count {
             testers.push(Tester::new(
                 peer_db.clone(),
@@ -63,12 +69,15 @@ impl Tester {
                 messages_handler.clone(),
                 target_out_connections.clone(),
                 default_target_out_connections,
+                peers_in_test.clone(),
+                massa_metrics.clone(),
             ));
         }
 
         ((test_sender, test_receiver), testers)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn tcp_handshake(
         messages_handler: MessagesHandler,
         peer_db: SharedPeerDB,
@@ -76,13 +85,20 @@ impl Tester {
         version_deserializer: VersionDeserializer,
         peer_id_deserializer: PeerIdDeserializer,
         addr: SocketAddr,
-        our_version: Version,
+        config: &ProtocolConfig,
+        massa_metrics: MassaMetrics,
     ) -> PeerNetResult<PeerId> {
+        let our_version = config.version;
         let result = {
             let mut socket =
-                std::net::TcpStream::connect_timeout(&addr, Duration::from_millis(500))
+                std::net::TcpStream::connect_timeout(&addr, config.tester_timeout.into())
                     .map_err(|e| PeerNetError::PeerConnectionError.new("connect", e, None))?;
-
+            socket
+                .set_read_timeout(Some(config.tester_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new("read timeout", err, None))?;
+            socket
+                .set_write_timeout(Some(config.tester_timeout.into()))
+                .map_err(|err| PeerNetError::PeerConnectionError.new("write timeout", err, None))?;
             // data.receive() from Endpoint
             let mut len_bytes = vec![0u8; 4];
             socket
@@ -174,26 +190,21 @@ impl Tester {
                         //TODO: Check ip we are connected match one of the announced ips
                         {
                             let mut peer_db_write = peer_db.write();
-                            //TODO: Hacky change it when better management ip/listeners
-                            if !announcement.listeners.is_empty() {
-                                peer_db_write
-                                    .index_by_newest
-                                    .retain(|(_, peer_id_stored)| peer_id_stored != &peer_id);
-                                peer_db_write
-                                    .index_by_newest
-                                    .insert((Reverse(announcement.timestamp), peer_id.clone()));
-                            }
                             peer_db_write
                                 .peers
                                 .entry(peer_id.clone())
                                 .and_modify(|info| {
-                                    if info.last_announce.timestamp < announcement.timestamp {
-                                        info.last_announce = announcement.clone();
+                                    if let Some(last_announce) = &info.last_announce {
+                                        if last_announce.timestamp < announcement.timestamp {
+                                            info.last_announce = Some(announcement.clone());
+                                        }
+                                    } else {
+                                        info.last_announce = Some(announcement.clone());
                                     }
                                     info.state = super::PeerState::Trusted;
                                 })
                                 .or_insert(PeerInfo {
-                                    last_announce: announcement,
+                                    last_announce: Some(announcement),
                                     state: super::PeerState::Trusted,
                                 });
                         }
@@ -218,13 +229,37 @@ impl Tester {
                 }
             };
 
-            // if handshake failed, we set the peer state to HandshakeFailed
-            if res.is_err() {
+            {
                 let mut peer_db_write = peer_db.write();
-                peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                    info.state = super::PeerState::HandshakeFailed;
-                });
+
+                // if handshake failed, we set the peer state to HandshakeFailed
+                if res.is_err() {
+                    peer_db_write
+                        .peers
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            info.state = super::PeerState::HandshakeFailed;
+                        })
+                        .or_insert(PeerInfo {
+                            last_announce: None,
+                            state: super::PeerState::HandshakeFailed,
+                        });
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_failure();
+                    massa_metrics.inc_protocol_tester_failed();
+                } else {
+                    massa_metrics.inc_protocol_tester_success();
+                    peer_db_write
+                        .try_connect_history
+                        .entry(addr)
+                        .or_insert(ConnectionMetadata::default())
+                        .test_success();
+                }
             }
+
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
                 tracing::log::error!("Failed to shutdown socket: {}", e);
             }
@@ -235,6 +270,7 @@ impl Tester {
     }
 
     /// Create a new tester (spawn a thread)
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         peer_db: SharedPeerDB,
         active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -243,6 +279,8 @@ impl Tester {
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
+        peers_in_test: Arc<RwLock<HashSet<SocketAddr>>>,
+        massa_metrics: MassaMetrics,
     ) -> Self {
         tracing::log::debug!("running new tester");
 
@@ -261,7 +299,7 @@ impl Tester {
 
             //let mut network_manager = PeerNetManager::new(config);
             let protocol_config = protocol_config.clone();
-            loop {
+            'main_loop: loop {
                 crossbeam::select! {
                     recv(receiver) -> res => {
                         receiver.update_metrics();
@@ -303,6 +341,14 @@ impl Tester {
                                     let db = db.clone();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
+                                        if peers_in_test.read().contains(addr) {
+                                            continue;
+                                        }
+                                        {
+                                            let mut peers_in_test = peers_in_test.write();
+                                            peers_in_test.insert(*addr);
+                                        }
+
                                         //Find category of that address
                                         let ip_canonical = addr.ip().to_canonical();
                                         let cooldown = 'cooldown: {
@@ -327,6 +373,7 @@ impl Tester {
                                             if let Some(last_tested_time) = db_write.tested_addresses.get(addr) {
                                                 let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
                                                 if last_tested_time.elapsed() < cooldown {
+                                                    peers_in_test.write().remove(addr);
                                                     continue;
                                                 }
                                             }
@@ -336,15 +383,16 @@ impl Tester {
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         if !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                                             //Don't test our local addresses
-                                            for (local_addr, _transport) in protocol_config.listeners.iter() {
-                                                if addr == local_addr {
-                                                    continue;
-                                                }
+                                            if protocol_config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
+                                                peers_in_test.write().remove(addr);
+                                                continue 'main_loop;
                                             }
+
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
                                                 if ip.to_canonical() == ip_canonical {
-                                                    continue;
+                                                    peers_in_test.write().remove(addr);
+                                                    continue 'main_loop;
                                                 }
                                             }
                                             info!("testing peer {} listener addr: {}", &listener.0, &addr);
@@ -357,8 +405,11 @@ impl Tester {
                                                 VersionDeserializer::new(),
                                                 PeerIdDeserializer::new(),
                                                 *addr,
-                                                protocol_config.version,
+                                                &protocol_config,
+                                                massa_metrics.clone(),
                                             );
+
+                                            peers_in_test.write().remove(addr);
 
                                             // let _res =  network_manager.try_connect(
                                             //     *addr,
@@ -377,10 +428,11 @@ impl Tester {
                     default(Duration::from_secs(2)) => {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
-                        let Some(listener) = db.read().get_oldest_peer(Duration::from_secs(60 * 60 * 2)) else {
+                        let Some(listener) = db.read().get_oldest_peer(protocol_config.test_oldest_peer_cooldown.into()) else {
                             continue;
                         };
 
+                        peers_in_test.write().insert(listener);
                         {
                             let mut db = db.write();
                             db.tested_addresses.insert(listener, MassaTime::now().unwrap());
@@ -395,12 +447,14 @@ impl Tester {
                         //Don't test our local addresses
                         for (local_addr, _transport) in protocol_config.listeners.iter() {
                             if listener == *local_addr {
+                                peers_in_test.write().remove(&listener);
                                 continue;
                             }
                         }
                         //Don't test our proper ip
                         if let Some(ip) = protocol_config.routable_ip {
                             if ip.to_canonical() == ip_canonical {
+                                peers_in_test.write().remove(&listener);
                                 continue;
                             }
                         }
@@ -413,13 +467,15 @@ impl Tester {
                             VersionDeserializer::new(),
                             PeerIdDeserializer::new(),
                             listener,
-                            protocol_config.version,
+                            &protocol_config,
+                            massa_metrics.clone(),
                         );
                         // let res =  network_manager.try_connect(
                         //     listener,
                         //     protocol_config.timeout_connection.to_duration(),
                         //     &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         // );
+                        peers_in_test.write().remove(&listener);
                         tracing::log::debug!("{:?}", res);
                     }
                 }

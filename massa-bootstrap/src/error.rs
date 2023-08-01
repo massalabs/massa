@@ -25,6 +25,8 @@ pub enum BootstrapError {
     GeneralError(String),
     /// deserialization error: {0}
     DeserializeError(String),
+    /// serialization error: {0}
+    SerializationError(String),
     /// models error: {0}
     ModelsError(#[from] massa_models::error::ModelsError),
     /// serialize error: {0}

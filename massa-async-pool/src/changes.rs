@@ -95,7 +95,7 @@ impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
     /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolChangesSerializer};
     /// use massa_ledger_exports::SetUpdateOrDelete;
     ///
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -190,7 +190,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
     /// use massa_ledger_exports::SetUpdateOrDelete;
     ///
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),

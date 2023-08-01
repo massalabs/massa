@@ -1,63 +1,55 @@
 [package]
 name = "massa_bootstrap"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-displaydoc = "0.2"
-num_enum = "0.5"
-nom = "=7.1"
-rand = "0.8"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-humantime = "2.1.0"
-thiserror = "1.0"
-parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-tracing = "0.1"
-substruct = { git = "https://github.com/sydhds/substruct" }
-socket2 = "0.4.7"
-crossbeam = "0.8.2"
-mio =  { version = "0.8", features = ["net", "os-poll"] }
-
-# custom modules
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_final_state = { path = "../massa-final-state" }
-massa_hash = { path = "../massa-hash" }
-massa_logging = { path = "../massa-logging" }
-massa_models = { path = "../massa-models" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_serialization = { path = "../massa-serialization" }
-massa_signature = { path = "../massa-signature" }
-massa_pos_exports = { path = "../massa-pos-exports" }
-massa_time = { path = "../massa-time" }
-massa_db_exports = { path = "../massa-db-exports" }
-massa_versioning = { path = "../massa-versioning" }
-
-[dev-dependencies]
-mockall = "0.11.4"
-bitvec = { version = "1.0", features = ["serde"] }
-lazy_static = "1.4"
-tempfile = "3.3"
-serial_test = "2.0.0"
-num = "0.4"
-massa_final_state = { path = "../massa-final-state", features = ["testing"] }
-massa_async_pool = { path = "../massa-async-pool", features = ["testing"] }
-massa_ledger_exports = { path = "../massa-ledger-exports" }
-massa_ledger_worker = { path = "../massa-ledger-worker", features = [
-    "testing",
-] }
-massa_executed_ops = { path = "../massa-executed-ops" }
-massa_pos_worker = { path = "../massa-pos-worker", features = ["testing"] }
-massa_pos_exports = { path = "../massa-pos-exports", features = ["testing"] }
-massa_consensus_exports = { path = "../massa-consensus-exports", features = [
-    "testing",
-] }
-massa_db_worker = { path = "../massa-db-worker" }
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = ["massa_final_state/testing", "massa_ledger_worker/testing", "massa_consensus_exports/testing", "massa_async_pool/testing"]
 sandbox = ["massa_async_pool/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
+
+[dependencies]
+displaydoc = {workspace = true}
+num_enum = {workspace = true}
+nom = {workspace = true}
+rand = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+humantime = {workspace = true}
+thiserror = {workspace = true}
+parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+tracing = {workspace = true}
+substruct = {workspace = true}
+socket2 = {workspace = true}
+crossbeam = {workspace = true}   # BOM UPGRADE     Revert to "0.8.2" if problem
+mio = {workspace = true, "features" = ["net", "os-poll"]}
+massa_consensus_exports = {workspace = true}
+massa_final_state = {workspace = true}
+massa_hash = {workspace = true}
+massa_logging = {workspace = true}
+massa_models = {workspace = true}
+massa_protocol_exports = {workspace = true}
+massa_serialization = {workspace = true}
+massa_signature = {workspace = true}
+massa_pos_exports = {workspace = true}
+massa_time = {workspace = true}
+massa_db_exports = {workspace = true}
+massa_versioning = {workspace = true}
+massa_metrics = {workspace = true}
+
+[dev-dependencies]
+mockall = {workspace = true}
+bitvec = {workspace = true, "features" = ["serde"]}
+lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
+tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+serial_test = {workspace = true}   # BOM UPGRADE     Revert to "2.0.0" if problem
+num = {workspace = true}
+massa_final_state = {workspace = true, "features" = ["testing"]}
+massa_async_pool = {workspace = true, "features" = ["testing"]}
+massa_ledger_exports = {workspace = true}
+massa_ledger_worker = {workspace = true, "features" = ["testing"]}
+massa_executed_ops = {workspace = true}
+massa_pos_worker = {workspace = true, "features" = ["testing"]}
+massa_pos_exports = {workspace = true, "features" = ["testing"]}
+massa_consensus_exports = {workspace = true, "features" = ["testing"]}
+massa_db_worker = {workspace = true}

@@ -179,7 +179,7 @@ impl PoSFinalState {
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
         let deferred_credits_deserializer =
-            DeferredCreditsDeserializer::new(config.thread_count, config.max_credit_length, true);
+            DeferredCreditsDeserializer::new(config.thread_count, config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             config.cycle_history_length as u64,
             config.max_rolls_length,
@@ -243,7 +243,7 @@ impl PoSFinalState {
         rng_seed.extend(vec![false; self.config.thread_count as usize]);
 
         self.put_new_cycle_info(
-            &CycleInfo::new_with_hash(
+            &CycleInfo::new(
                 0,
                 false,
                 self.initial_rolls.clone(),
@@ -289,7 +289,7 @@ impl PoSFinalState {
             last_slot.is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count);
 
         self.put_new_cycle_info(
-            &CycleInfo::new_with_hash(
+            &CycleInfo::new(
                 cycle,
                 complete,
                 last_cycle_info.roll_counts.clone(),
@@ -408,7 +408,7 @@ impl PoSFinalState {
 
                 let roll_counts = self.get_all_roll_counts(info.0);
                 self.put_new_cycle_info(
-                    &CycleInfo::new_with_hash(
+                    &CycleInfo::new(
                         cycle,
                         false,
                         roll_counts,
@@ -658,7 +658,7 @@ impl PoSFinalState {
     {
         let db = self.db.read();
 
-        let mut deferred_credits = DeferredCredits::new_without_hash();
+        let mut deferred_credits = DeferredCredits::new();
 
         let mut start_key_buffer = Vec::new();
         start_key_buffer.extend_from_slice(DEFERRED_CREDITS_PREFIX.as_bytes());
@@ -1021,7 +1021,7 @@ impl PoSFinalState {
             .unwrap_or(PreHashMap::default());
 
         let mut cycle_info =
-            CycleInfo::new_with_hash(cycle, complete, roll_counts, rng_seed, production_stats);
+            CycleInfo::new(cycle, complete, roll_counts, rng_seed, production_stats);
         cycle_info.final_state_hash_snapshot = final_state_hash_snapshot;
         Some(cycle_info)
     }
@@ -1504,7 +1504,7 @@ impl PoSFinalState {
     pub fn get_deferred_credits(&self) -> DeferredCredits {
         let db = self.db.read();
 
-        let mut deferred_credits = DeferredCredits::new_with_hash();
+        let mut deferred_credits = DeferredCredits::new();
 
         for (serialized_key, serialized_value) in
             db.prefix_iterator_cf(STATE_CF, DEFERRED_CREDITS_PREFIX.as_bytes())
@@ -1521,7 +1521,7 @@ impl PoSFinalState {
                 .deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
-                .deserialize::<DeserializeError>(&rest)
+                .deserialize::<DeserializeError>(rest)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             let (_, amount) = self
@@ -1585,11 +1585,8 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
-            pos_config.thread_count,
-            pos_config.max_credit_length,
-            true,
-        );
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             pos_config.cycle_history_length as u64,
             pos_config.max_rolls_length,
@@ -1613,7 +1610,7 @@ mod tests {
         // Populate the disk with some cycle infos
         let mut cycle_infos = Vec::new();
         for cycle in 509..516 {
-            cycle_infos.push(CycleInfo::new_with_hash(
+            cycle_infos.push(CycleInfo::new(
                 cycle,
                 Default::default(),
                 Default::default(),
@@ -1700,11 +1697,8 @@ mod tests {
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
-        let deferred_credits_deserializer = DeferredCreditsDeserializer::new(
-            pos_config.thread_count,
-            pos_config.max_credit_length,
-            true,
-        );
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
             pos_config.cycle_history_length as u64,
             pos_config.max_rolls_length,
@@ -1748,7 +1742,7 @@ mod tests {
             seed_bits: bitvec![u8, Lsb0; 0, 1],
             roll_changes: roll_changes.clone(),
             production_stats: production_stats.clone(),
-            deferred_credits: DeferredCredits::new_with_hash(),
+            deferred_credits: DeferredCredits::new(),
         };
 
         let mut batch = DBBatch::new();
@@ -1773,7 +1767,7 @@ mod tests {
             seed_bits: bitvec![u8, Lsb0; 1, 0],
             roll_changes: roll_changes.clone(),
             production_stats: production_stats.clone(),
-            deferred_credits: DeferredCredits::new_with_hash(),
+            deferred_credits: DeferredCredits::new(),
         };
 
         let mut batch = DBBatch::new();
@@ -1799,7 +1793,7 @@ mod tests {
             seed_bits: bitvec![u8, Lsb0; 0, 1],
             roll_changes,
             production_stats,
-            deferred_credits: DeferredCredits::new_with_hash(),
+            deferred_credits: DeferredCredits::new(),
         };
 
         let mut batch = DBBatch::new();
@@ -1812,7 +1806,7 @@ mod tests {
         let cycles = pos_state.get_cycle_history_cycles();
         assert_eq!(cycles.len(), 1, "wrong number of cycles");
         assert_eq!(cycles[0].0, 0, "cycle should be the 1st one");
-        assert_eq!(cycles[0].1, false, "cycle should not be complete yet");
+        assert!(!cycles[0].1, "cycle should not be complete yet");
 
         let cycle_info_a = pos_state.get_cycle_info(0).unwrap();
 
@@ -1825,7 +1819,7 @@ mod tests {
             },
         );
 
-        let cycle_info_b = CycleInfo::new_with_hash(
+        let cycle_info_b = CycleInfo::new(
             0,
             false,
             BTreeMap::default(),
@@ -1833,17 +1827,6 @@ mod tests {
             prod_stats,
         );
 
-        assert_eq!(
-            cycle_info_a.roll_counts_hash, cycle_info_b.roll_counts_hash,
-            "roll_counts_hash mismatch"
-        );
-        assert_eq!(
-            cycle_info_a.production_stats_hash, cycle_info_b.production_stats_hash,
-            "production_stats_hash mismatch"
-        );
-        assert_eq!(
-            cycle_info_a.cycle_global_hash, cycle_info_b.cycle_global_hash,
-            "global_hash mismatch"
-        );
+        assert_eq!(cycle_info_a, cycle_info_b, "cycle_info mismatch");
     }
 }

@@ -33,9 +33,12 @@ struct Args {
     /// Port to listen on (Massa private API).
     #[structopt(long)]
     private_port: Option<u16>,
-    /// Port to listen on (Massa GRPC API).
+    /// Port to listen on (Massa GRPC Public API).
     #[structopt(long)]
-    grpc_port: Option<u16>,
+    grpc_public_port: Option<u16>,
+    /// Port to listen on (Massa GRPC Private API).
+    #[structopt(long)]
+    grpc_private_port: Option<u16>,
     /// Address to listen on
     #[structopt(long)]
     ip: Option<IpAddr>,
@@ -129,9 +132,13 @@ async fn run(args: Args) -> Result<()> {
         Some(private_port) => private_port,
         None => settings.default_node.private_port,
     };
-    let grpc_port = match args.grpc_port {
+    let grpc_port = match args.grpc_public_port {
         Some(grpc_port) => grpc_port,
-        None => settings.default_node.grpc_port,
+        None => settings.default_node.grpc_public_port,
+    };
+    let grpc_priv_port = match args.grpc_private_port {
+        Some(grpc_port) => grpc_port,
+        None => settings.default_node.grpc_private_port,
     };
 
     // Setup panic handlers,
@@ -145,8 +152,15 @@ async fn run(args: Args) -> Result<()> {
     }));
 
     // Note: grpc handler requires a mut handler
-    let mut client =
-        Client::new(address, public_port, private_port, grpc_port, &http_config).await?;
+    let mut client = Client::new(
+        address,
+        public_port,
+        private_port,
+        grpc_port,
+        grpc_priv_port,
+        &http_config,
+    )
+    .await?;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&mut client, &args.wallet, args.password).await?;

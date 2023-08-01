@@ -50,9 +50,9 @@ pub struct RawMassaDB<
     /// A serializer for the ChangeID type
     pub change_id_serializer: ChangeIDSerializer,
     /// A deserializer for the ChangeID type
-    change_id_deserializer: ChangeIDDeserializer,
+    pub change_id_deserializer: ChangeIDDeserializer,
     /// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
-    current_batch: Arc<Mutex<WriteBatch>>,
+    pub current_batch: Arc<Mutex<WriteBatch>>,
 }
 
 impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> std::fmt::Debug

@@ -2,12 +2,12 @@
 
 use massa_channel::receiver::MassaReceiver;
 use massa_factory_exports::{FactoryChannels, FactoryConfig};
-use massa_hash::Hash;
 use massa_models::{
     block::{Block, BlockSerializer},
     block_header::{BlockHeader, BlockHeaderSerializer, SecuredHeader},
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
+    operation::{compute_operations_hash, OperationIdSerializer},
     prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
@@ -27,6 +27,7 @@ pub(crate) struct BlockFactoryWorker {
     channels: FactoryChannels,
     factory_receiver: MassaReceiver<()>,
     mip_store: MipStore,
+    op_id_serializer: OperationIdSerializer,
 }
 
 impl BlockFactoryWorker {
@@ -48,6 +49,7 @@ impl BlockFactoryWorker {
                     channels,
                     factory_receiver,
                     mip_store,
+                    op_id_serializer: OperationIdSerializer::new(),
                 };
                 this.run();
             })
@@ -220,12 +222,6 @@ impl BlockFactoryWorker {
         }
 
         block_storage.extend(op_storage);
-        let global_operations_hash = Hash::compute_from(
-            &op_ids
-                .iter()
-                .flat_map(|op_id| *op_id.to_bytes())
-                .collect::<Vec<u8>>(),
-        );
 
         // create header
         let current_version = self.mip_store.get_network_version_current();
@@ -236,7 +232,7 @@ impl BlockFactoryWorker {
                 announced_version,
                 slot,
                 parents: parents.into_iter().map(|(id, _period)| id).collect(),
-                operation_merkle_root: global_operations_hash,
+                operation_merkle_root: compute_operations_hash(&op_ids, &self.op_id_serializer),
                 endorsements,
                 denunciations: self.channels.pool.get_block_denunciations(&slot),
             },

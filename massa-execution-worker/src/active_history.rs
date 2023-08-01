@@ -199,17 +199,15 @@ impl ActiveHistory {
 
     /// Gets all the deferred credits that will be credited until a given slot (included)
     pub fn get_all_deferred_credits_until(&self, slot: &Slot) -> DeferredCredits {
-        self.0
-            .iter()
-            .fold(DeferredCredits::new_without_hash(), |mut acc, e| {
-                acc.extend(
-                    e.state_changes
-                        .pos_changes
-                        .deferred_credits
-                        .get_slot_range(..=slot, false),
-                );
-                acc
-            })
+        self.0.iter().fold(DeferredCredits::new(), |mut acc, e| {
+            acc.extend(
+                e.state_changes
+                    .pos_changes
+                    .deferred_credits
+                    .get_slot_range(..=slot),
+            );
+            acc
+        })
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
@@ -229,6 +227,17 @@ impl ActiveHistory {
             }
         }
         None
+    }
+
+    /// Gets the execution trail hash
+    pub fn get_execution_trail_hash(&self) -> HistorySearchResult<massa_hash::Hash> {
+        for history_element in self.0.iter().rev() {
+            if let SetOrKeep::Set(hash) = history_element.state_changes.execution_trail_hash_change
+            {
+                return HistorySearchResult::Present(hash);
+            }
+        }
+        HistorySearchResult::NoInfo
     }
 
     /// Gets the index of a slot in history

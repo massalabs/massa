@@ -2,7 +2,6 @@
 
 use core::usize;
 
-use massa_hash::HashDeserializer;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,
@@ -17,7 +16,7 @@ use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
 
-use crate::block_id::BlockId;
+use crate::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use crate::prehash::PreHashSet;
 use std::ops::Bound::{Excluded, Included};
 
@@ -48,6 +47,7 @@ impl Default for Clique {
 pub struct CliqueSerializer {
     block_ids_length_serializer: U32VarIntSerializer,
     fitness_serializer: U64VarIntSerializer,
+    block_id_serializer: BlockIdSerializer,
 }
 
 impl CliqueSerializer {
@@ -56,6 +56,7 @@ impl CliqueSerializer {
         Self {
             block_ids_length_serializer: U32VarIntSerializer::new(),
             fitness_serializer: U64VarIntSerializer::new(),
+            block_id_serializer: BlockIdSerializer::new(),
         }
     }
 }
@@ -69,7 +70,7 @@ impl Serializer<Clique> for CliqueSerializer {
     /// # use std::str::FromStr;
     /// # use massa_serialization::Serializer;
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
-    /// #     BlockId(Hash::compute_from(s.as_bytes()))
+    /// #     BlockId::generate_from_hash(Hash::compute_from(s.as_bytes()))
     /// # }
     /// let clique = Clique {
     ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")].into_iter().collect(),
@@ -84,7 +85,7 @@ impl Serializer<Clique> for CliqueSerializer {
         self.block_ids_length_serializer
             .serialize(&(value.block_ids.len() as u32), buffer)?;
         for block_id in &value.block_ids {
-            buffer.extend(block_id.0.to_bytes())
+            self.block_id_serializer.serialize(block_id, buffer)?;
         }
         self.fitness_serializer.serialize(&value.fitness, buffer)?;
         buffer.push(u8::from(value.is_blockclique));
@@ -95,7 +96,7 @@ impl Serializer<Clique> for CliqueSerializer {
 /// Basic deserializer for `Clique`
 pub struct CliqueDeserializer {
     block_ids_length_deserializer: U32VarIntDeserializer,
-    block_id_deserializer: HashDeserializer,
+    block_id_deserializer: BlockIdDeserializer,
     fitness_deserializer: U64VarIntDeserializer,
 }
 
@@ -107,7 +108,7 @@ impl CliqueDeserializer {
                 Included(0),
                 Excluded(max_bootstrap_blocks),
             ),
-            block_id_deserializer: HashDeserializer::new(),
+            block_id_deserializer: BlockIdDeserializer::new(),
             fitness_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
         }
     }
@@ -122,7 +123,7 @@ impl Deserializer<Clique> for CliqueDeserializer {
     /// # use std::str::FromStr;
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
-    /// #     BlockId(Hash::compute_from(s.as_bytes()))
+    /// #     BlockId::generate_from_hash(Hash::compute_from(s.as_bytes()))
     /// # }
     /// let clique = Clique {
     ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")].into_iter().collect(),
@@ -150,9 +151,7 @@ impl Deserializer<Clique> for CliqueDeserializer {
                         self.block_ids_length_deserializer.deserialize(input)
                     }),
                     context("Failed block_id deserialization", |input| {
-                        self.block_id_deserializer
-                            .deserialize(input)
-                            .map(|(rest, hash)| (rest, BlockId(hash)))
+                        self.block_id_deserializer.deserialize(input)
                     }),
                 ),
                 context("Failed fitness deserialization", |input| {
