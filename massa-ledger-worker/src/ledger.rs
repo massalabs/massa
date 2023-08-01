@@ -37,7 +37,6 @@ impl FinalLedger {
             config.thread_count,
             config.max_key_length,
             config.max_datastore_value_length,
-            config.max_datastore_entry_count,
         );
 
         // generate the final ledger

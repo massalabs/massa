@@ -20,7 +20,6 @@ pub fn create_final_ledger(
         config.thread_count,
         config.max_key_length,
         config.max_datastore_value_length,
-        config.max_datastore_entry_count,
     );
     ledger_db.load_initial_ledger(initial_ledger);
     FinalLedger {

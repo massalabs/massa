@@ -68,7 +68,6 @@ impl Default for ExecutionConfig {
             max_event_size: 50_000,
             max_function_length: 1000,
             max_parameter_length: 1000,
-            max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         }
     }
 }

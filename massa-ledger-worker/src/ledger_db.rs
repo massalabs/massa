@@ -62,7 +62,6 @@ pub struct LedgerDB {
     bytecode_deserializer: BytecodeDeserializer,
     max_datastore_value_length: u64,
     max_datastore_key_length: u8,
-    max_datastore_entry_count: u64,
 }
 
 impl Debug for LedgerDB {
@@ -82,7 +81,6 @@ impl LedgerDB {
         thread_count: u8,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
-        max_datastore_entry_count: u64,
     ) -> Self {
         LedgerDB {
             db,
@@ -102,7 +100,6 @@ impl LedgerDB {
                 Bound::Included(u64::MAX),
             ),
             max_datastore_value_length,
-            max_datastore_entry_count,
             max_datastore_key_length,
         }
     }
@@ -316,18 +313,7 @@ impl LedgerDB {
         db.put_or_update_entry_value(batch, serialized_key, &bytes_bytecode);
 
         // datastore
-        let mut number_of_keys = self
-            .get_datastore_keys(addr, &[])
-            .map(|keys| keys.len())
-            .unwrap_or_else(|| 0);
         for (key, entry) in ledger_entry.datastore {
-            if number_of_keys >= self.max_datastore_entry_count as usize {
-                warn!(
-                    "Too much datastore entries for address {} ({} > {})",
-                    addr, number_of_keys, self.max_datastore_entry_count
-                );
-                continue;
-            }
             if entry.len() > self.max_datastore_value_length as usize {
                 warn!(
                     "Datastore entry for address {} and key {:?} is too big ({} > {})",
@@ -356,7 +342,6 @@ impl LedgerDB {
                 )
                 .expect(KEY_SER_ERROR);
             db.put_or_update_entry_value(batch, serialized_key, &entry);
-            number_of_keys += 1;
         }
     }
 
@@ -614,7 +599,7 @@ mod tests {
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
 
-        let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000, 100000);
+        let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();
 
         ledger_db.put_entry(&addr, entry, &mut batch);

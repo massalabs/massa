@@ -55,9 +55,6 @@ pub(crate) struct SpeculativeLedger {
     /// Max bytecode size
     max_bytecode_size: u64,
 
-    /// Max datastore entry count
-    max_datastore_entry_count: u64,
-
     /// storage cost constants
     storage_costs_constants: StorageCostsConstants,
 }
@@ -74,7 +71,6 @@ impl SpeculativeLedger {
         max_datastore_key_length: u8,
         max_bytecode_size: u64,
         max_datastore_value_size: u64,
-        max_datastore_entry_count: u64,
         storage_costs_constants: StorageCostsConstants,
     ) -> Self {
         SpeculativeLedger {
@@ -83,7 +79,6 @@ impl SpeculativeLedger {
             active_history,
             max_datastore_key_length,
             max_datastore_value_size,
-            max_datastore_entry_count,
             max_bytecode_size,
             storage_costs_constants,
         }
@@ -538,17 +533,6 @@ impl SpeculativeLedger {
                 "could not set data for address {}: address does not exist",
                 addr
             )));
-        }
-
-        // check if caller doesn't have already too many data entries
-        if let Some(keys) = self.get_keys(addr, &[]) {
-            if keys.len() >= self.max_datastore_entry_count as usize {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "could not set data for address {}: address has already {} keys",
-                    addr,
-                    keys.len()
-                )));
-            }
         }
 
         // check key correctness

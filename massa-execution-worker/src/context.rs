@@ -198,7 +198,6 @@ impl ExecutionContext {
                 config.max_datastore_key_length,
                 config.max_bytecode_size,
                 config.max_datastore_value_size,
-                config.max_datastore_entry_count,
                 config.storage_costs_constants,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
