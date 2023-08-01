@@ -859,21 +859,6 @@ impl ExecutionState {
             _ => panic!("unexpected operation type"),
         };
 
-        // Verify limits
-        if target_func.len() > self.config.max_function_length as usize {
-            return Err(ExecutionError::RuntimeError(format!(
-                "function name too long: {}",
-                target_func
-            )));
-        }
-
-        if param.len() > self.config.max_parameter_length as usize {
-            return Err(ExecutionError::RuntimeError(format!(
-                "param too long: {:?}",
-                param
-            )));
-        }
-
         // prepare the current slot context for executing the operation
         let bytecode;
         {

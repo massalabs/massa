@@ -61,6 +61,7 @@ pub struct LedgerDB {
     amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
     max_datastore_value_length: u64,
+    max_datastore_key_length: u8,
 }
 
 impl Debug for LedgerDB {
@@ -99,6 +100,7 @@ impl LedgerDB {
                 Bound::Included(u64::MAX),
             ),
             max_datastore_value_length,
+            max_datastore_key_length,
         }
     }
 
@@ -311,25 +313,35 @@ impl LedgerDB {
         db.put_or_update_entry_value(batch, serialized_key, &bytes_bytecode);
 
         // datastore
-        for (hash, entry) in ledger_entry.datastore {
-            let mut serialized_key = Vec::new();
-            self.key_serializer_db
-                .serialize(
-                    &Key::new(addr, KeyType::DATASTORE(hash)),
-                    &mut serialized_key,
-                )
-                .expect(KEY_SER_ERROR);
+        for (key, entry) in ledger_entry.datastore {
             if entry.len() > self.max_datastore_value_length as usize {
                 warn!(
                     "Datastore entry for address {} and key {:?} is too big ({} > {})",
                     addr,
-                    serialized_key,
+                    key,
                     entry.len(),
                     self.max_datastore_value_length
                 );
-            } else {
-                db.put_or_update_entry_value(batch, serialized_key, &entry);
+                continue;
             }
+            if key.len() > self.max_datastore_key_length as usize {
+                warn!(
+                    "Datastore key for address {} and key {:?} is too big ({} > {})",
+                    addr,
+                    key,
+                    key.len(),
+                    self.max_datastore_key_length
+                );
+                continue;
+            }
+            let mut serialized_key = Vec::new();
+            self.key_serializer_db
+                .serialize(
+                    &Key::new(addr, KeyType::DATASTORE(key)),
+                    &mut serialized_key,
+                )
+                .expect(KEY_SER_ERROR);
+            db.put_or_update_entry_value(batch, serialized_key, &entry);
         }
     }
 
@@ -371,11 +383,21 @@ impl LedgerDB {
         }
 
         // datastore
-        for (hash, update) in entry_update.datastore {
+        for (key, update) in entry_update.datastore {
+            if key.len() > self.max_datastore_key_length as usize {
+                warn!(
+                    "Datastore key for address {} and key {:?} is too big ({} > {})",
+                    addr,
+                    key,
+                    key.len(),
+                    self.max_datastore_key_length
+                );
+                continue;
+            }
             let mut serialized_key = Vec::new();
             self.key_serializer_db
                 .serialize(
-                    &Key::new(addr, KeyType::DATASTORE(hash)),
+                    &Key::new(addr, KeyType::DATASTORE(key)),
                     &mut serialized_key,
                 )
                 .expect(KEY_SER_ERROR);
@@ -383,7 +405,13 @@ impl LedgerDB {
             match update {
                 SetOrDelete::Set(entry) => {
                     if entry.len() > self.max_datastore_value_length as usize {
-                        warn!("Datastore entry too long");
+                        warn!(
+                            "Datastore entry for address {} is too big ({} > {})",
+                            addr,
+                            entry.len(),
+                            self.max_datastore_value_length
+                        );
+                        continue;
                     } else {
                         db.put_or_update_entry_value(batch, serialized_key, &entry);
                     }
