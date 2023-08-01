@@ -1288,6 +1288,12 @@
 <a href="#1288" id="1288">1288</a>
 <a href="#1289" id="1289">1289</a>
 <a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1496,19 +1502,25 @@
                     <span class="comment">// update metrics
                     </span>{
                         <span class="kw">let </span>block_read = <span class="self">self</span>.cache.read();
+                        <span class="kw">let </span>count: usize = block_read
+                            .blocks_known_by_peer
+                            .values()
+                            .map(|v| v.len())
+                            .sum();
 
                         <span class="self">self</span>.massa_metrics.set_block_cache_metrics(
                             block_read.checked_headers.len(),
-                            block_read.blocks_known_by_peer.len(),
+                            count,
                         );
                     }
 
                     {
                         <span class="kw">let </span>ope_read = <span class="self">self</span>.operation_cache.read();
+                        <span class="kw">let </span>count: usize = ope_read.ops_known_by_peer.values().map(|v| v.len()).sum();
                         <span class="self">self</span>.massa_metrics.set_operations_cache_metrics(
                             ope_read.checked_operations.len(),
                             ope_read.checked_operations_prefix.len(),
-                            ope_read.ops_known_by_peer.len(),
+                            count,
                         );
                     }
                 }
