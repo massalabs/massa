@@ -18,7 +18,6 @@ use massa_serialization::{
 };
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
-use tracing::log::warn;
 
 use massa_models::amount::Amount;
 use std::ops::Bound;
@@ -315,24 +314,22 @@ impl LedgerDB {
         // datastore
         for (key, entry) in ledger_entry.datastore {
             if entry.len() > self.max_datastore_value_length as usize {
-                warn!(
+                panic!(
                     "Datastore entry for address {} and key {:?} is too big ({} > {})",
                     addr,
                     key,
                     entry.len(),
                     self.max_datastore_value_length
                 );
-                continue;
             }
             if key.len() > self.max_datastore_key_length as usize {
-                warn!(
+                panic!(
                     "Datastore key for address {} and key {:?} is too big ({} > {})",
                     addr,
                     key,
                     key.len(),
                     self.max_datastore_key_length
                 );
-                continue;
             }
             let mut serialized_key = Vec::new();
             self.key_serializer_db
@@ -385,14 +382,13 @@ impl LedgerDB {
         // datastore
         for (key, update) in entry_update.datastore {
             if key.len() > self.max_datastore_key_length as usize {
-                warn!(
+                panic!(
                     "Datastore key for address {} and key {:?} is too big ({} > {})",
                     addr,
                     key,
                     key.len(),
                     self.max_datastore_key_length
                 );
-                continue;
             }
             let mut serialized_key = Vec::new();
             self.key_serializer_db
@@ -405,13 +401,12 @@ impl LedgerDB {
             match update {
                 SetOrDelete::Set(entry) => {
                     if entry.len() > self.max_datastore_value_length as usize {
-                        warn!(
+                        panic!(
                             "Datastore entry for address {} is too big ({} > {})",
                             addr,
                             entry.len(),
                             self.max_datastore_value_length
                         );
-                        continue;
                     } else {
                         db.put_or_update_entry_value(batch, serialized_key, &entry);
                     }
