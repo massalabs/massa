@@ -195,6 +195,7 @@ async fn launch(
         disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
@@ -483,6 +484,7 @@ async fn launch(
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_bytecode_size: MAX_BYTECODE_LENGTH,
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
+        max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
         initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),

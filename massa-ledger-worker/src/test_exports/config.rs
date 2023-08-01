@@ -9,7 +9,9 @@ use parking_lot::RwLock;
 use tempfile::TempDir;
 
 use crate::{ledger_db::LedgerDB, FinalLedger};
-use massa_models::config::{MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, THREAD_COUNT};
+use massa_models::config::{
+    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, THREAD_COUNT,
+};
 
 /// Default value of `FinalLedger` used for tests
 impl Default for FinalLedger {
@@ -27,6 +29,7 @@ impl Default for FinalLedger {
             THREAD_COUNT,
             MAX_DATASTORE_KEY_LENGTH,
             MAX_DATASTORE_VALUE_LENGTH,
+            MAX_DATASTORE_ENTRY_COUNT,
         );
         FinalLedger {
             config: Default::default(),

@@ -60,6 +60,8 @@ pub struct ExecutionConfig {
     pub max_datastore_key_length: u8,
     /// Max bytecode size
     pub max_bytecode_size: u64,
+    /// Max datastore entry count
+    pub max_datastore_entry_count: u64,
     /// Max datastore value size
     pub max_datastore_value_size: u64,
     /// Storage cost constants

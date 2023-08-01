@@ -30,8 +30,9 @@ use massa_final_state::{
 use massa_ledger_exports::LedgerConfig;
 use massa_metrics::MassaMetrics;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, T0,
 };
 use massa_models::{
     address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
@@ -109,6 +110,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
@@ -239,6 +241,7 @@ fn test_bootstrap_server() {
             disk_ledger_path: temp_dir_server.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
@@ -617,6 +620,7 @@ fn test_bootstrap_accept_err() {
             disk_ledger_path: temp_dir_server.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,

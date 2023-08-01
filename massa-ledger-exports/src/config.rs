@@ -17,4 +17,6 @@ pub struct LedgerConfig {
     pub max_key_length: u8,
     /// max datastore value length
     pub max_datastore_value_length: u64,
+    /// max datastore entry count
+    pub max_datastore_entry_count: u64,
 }

@@ -16,8 +16,9 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, T0,
 };
 use massa_models::config::{
     MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
@@ -55,6 +56,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
             disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+            max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         },
         async_pool_config: AsyncPoolConfig {
             thread_count,
