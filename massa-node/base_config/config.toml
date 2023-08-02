@@ -219,7 +219,7 @@
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000
     # timeout after which a peer tester will consider the peer unreachable
-    tester_timeout = 1000
+    tester_timeout = 10000
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
     # Max known blocks we keep during their propagation
@@ -276,7 +276,7 @@
     # number of thread tester
     thread_tester_count = 25
     # Nb max in connections that we accept
-    max_in_connections = 100
+    max_in_connections = 250
     # Cooldown before testing again old peer
     test_oldest_peer_cooldown = 720000
     # Peer default category limits
