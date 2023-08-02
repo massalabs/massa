@@ -603,10 +603,12 @@ pub fn stream_bootstrap_information(
                 .get_change_id()
                 .expect(CHANGE_ID_DESER_ERROR);
 
-            if let Some(slot) = last_slot && slot > db_slot {
-                return Err(BootstrapError::GeneralError(
-                    "Bootstrap cursor set to future slot".to_string(),
-                ));
+            if let Some(slot) = last_slot {
+                if slot > db_slot {
+                    return Err(BootstrapError::GeneralError(
+                        "Bootstrap cursor set to future slot".to_string(),
+                    ));
+                }
             }
 
             // Update cursors for next turn

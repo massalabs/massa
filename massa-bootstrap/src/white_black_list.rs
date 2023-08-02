@@ -145,13 +145,21 @@ impl SharedWhiteBlackList<'_> {
         let ip = normalize_ip(remote_addr.ip());
         // whether the peer IP address is blacklisted
         let read = self.inner.read();
-        if let Some(ip_list) = &read.black_list && ip_list.contains(&ip) {
-            massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
-            Err(BootstrapError::BlackListed(ip.to_string()))
-            // whether the peer IP address is not present in the whitelist
-        } else if let Some(ip_list) = &read.white_list && !ip_list.contains(&ip) {
-            massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
-            Err(BootstrapError::WhiteListed(ip.to_string()))
+        if let Some(ip_list) = &read.black_list {
+            if ip_list.contains(&ip) {
+                massa_trace!("bootstrap.lib.run.select.accept.refuse_blacklisted", {"remote_addr": remote_addr});
+                Err(BootstrapError::BlackListed(ip.to_string()))
+            } else {
+                Ok(())
+            }
+        // whether the peer IP address is not present in the whitelist
+        } else if let Some(ip_list) = &read.white_list {
+            if !ip_list.contains(&ip) {
+                massa_trace!("bootstrap.lib.run.select.accept.refuse_not_whitelisted", {"remote_addr": remote_addr});
+                Err(BootstrapError::WhiteListed(ip.to_string()))
+            } else {
+                Ok(())
+            }
         } else {
             Ok(())
         }

@@ -226,8 +226,10 @@ impl ConsensusState {
         let mut latest: Vec<Option<(BlockId, u64)>> = vec![None; self.config.thread_count as usize];
         for id in self.blocks_state.active_blocks().iter() {
             let (block, _storage) = self.try_get_full_active_block(id)?;
-            if let Some((_, p)) = latest[block.slot.thread as usize] && block.slot.period < p {
-                continue;
+            if let Some((_, p)) = latest[block.slot.thread as usize] {
+                if block.slot.period < p {
+                    continue;
+                }
             }
             if block.is_final && block.slot <= slot {
                 latest[block.slot.thread as usize] = Some((*id, block.slot.period));
@@ -259,11 +261,15 @@ impl ConsensusState {
             vec![None; self.config.thread_count as usize];
         for id in block_ids {
             let (block, _storage) = self.try_get_full_active_block(id)?;
-            if let Some(slot) = end_slot && block.slot > slot {
-                continue;
+            if let Some(slot) = end_slot {
+                if block.slot > slot {
+                    continue;
+                }
             }
-            if let Some((_, p)) = earliest[block.slot.thread as usize] && block.slot.period > p {
-                continue;
+            if let Some((_, p)) = earliest[block.slot.thread as usize] {
+                if block.slot.period > p {
+                    continue;
+                }
             }
             earliest[block.slot.thread as usize] = Some((*id, block.slot.period));
         }
@@ -292,8 +298,10 @@ impl ConsensusState {
     ) {
         for id in self.blocks_state.active_blocks().iter() {
             if let Some((block, _storage)) = self.get_full_active_block(id) {
-                if let Some(slot) = end_slot && block.slot > slot {
-                    continue;
+                if let Some(slot) = end_slot {
+                    if block.slot > slot {
+                        continue;
+                    }
                 }
                 if block.slot.period >= lower_bound[block.slot.thread as usize].1 {
                     kept_blocks.insert(*id);

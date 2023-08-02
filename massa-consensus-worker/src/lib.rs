@@ -25,10 +25,6 @@
 //! If a queued block reaches the slot time at which it should be processed, the worker wakes up to check it and trigger, if necessary, the consensus algorithm.
 //! It then prunes the block graph and the caches.
 
-#![feature(deadline_api)]
-#![feature(let_chains)]
-#![feature(async_closure)]
-
 mod commands;
 mod controller;
 mod manager;

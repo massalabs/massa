@@ -7,11 +7,9 @@
 //! On server side, the server will query consensus for the graph and the ledger,
 //! execution for execution related data and network for the peer list.
 //!
-#![feature(async_closure)]
+
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(ip)]
-#![feature(let_chains)]
 
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalState;
