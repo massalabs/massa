@@ -5,11 +5,6 @@ use massa_models::node::NodeId;
 use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
-use rcgen::{
-    BasicConstraints, CertificateParams, CertificateSigningRequest, DistinguishedName, DnType,
-    IsCa, KeyUsagePurpose, RcgenError,
-};
-use std::collections::HashSet;
 use std::convert::Infallible;
 use std::sync::{Arc, Condvar, Mutex};
 
@@ -27,6 +22,7 @@ use massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
+use massa_sdk::cert_manager::{gen_cert_for_ca, gen_signed_cert};
 use massa_storage::Storage;
 
 use massa_wallet::Wallet;
@@ -215,7 +211,7 @@ where
                 .expect("error, failed to write server certificat");
 
             let (cert_pem, private_key_pem) =
-                gen_cert_for_server(&ca_cert, config.subject_alt_names.clone())
+                gen_signed_cert(&ca_cert, config.subject_alt_names.clone())
                     .expect("error, failed to generate cert");
             std::fs::write(config.server_certificate_path.clone(), cert_pem)
                 .expect("error, failed to write server certificat");
@@ -233,6 +229,7 @@ where
         let tls = ServerTlsConfig::new().identity(server_identity);
 
         if config.enable_mtls {
+            //TODO add client certificate generation ? yes if not exists
             let client_ca_cert =
                 std::fs::read_to_string(config.client_certificate_authority_root_path.clone())
                     .expect("error, failed to read client certificate authority root");
@@ -319,53 +316,4 @@ where
     Ok(StopHandle {
         stop_cmd_sender: shutdown_send,
     })
-}
-
-// Generate certificate for certificate authority
-fn gen_cert_for_ca() -> Result<rcgen::Certificate, RcgenError> {
-    let mut dn = DistinguishedName::new();
-    dn.push(DnType::CommonName, "Auto-Generated Massalabs CA");
-
-    let mut params = CertificateParams::default();
-
-    params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
-    params.alg = &rcgen::PKCS_ECDSA_P256_SHA256;
-    params.distinguished_name = dn;
-    params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
-
-    let ca_cert = rcgen::Certificate::from_params(params)?;
-
-    Ok(ca_cert)
-}
-
-// Generate certificate for server signed by our certificate authority
-fn gen_cert_for_server(
-    ca: &rcgen::Certificate,
-    subject_alt_names: Vec<String>,
-) -> Result<(String, String), RcgenError> {
-    let mut dn = DistinguishedName::new();
-    dn.push(DnType::CommonName, "Auto-Generated Massa gRPC Server");
-
-    // Add "localhost" to the subject alternative names
-    let all_subject_alt_names_set: HashSet<String> = subject_alt_names
-        .into_iter()
-        .chain(vec!["localhost".to_string()])
-        .collect();
-    let all_subject_alt_names = all_subject_alt_names_set.into_iter().collect::<Vec<_>>();
-    let mut params = rcgen::CertificateParams::new(all_subject_alt_names);
-    params.is_ca = IsCa::NoCa;
-    params.alg = &rcgen::PKCS_ECDSA_P256_SHA256;
-    params.distinguished_name = dn;
-    //TODO invetiagte why this is not working
-    // params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
-    let now = time::OffsetDateTime::now_utc();
-    params.not_before = now;
-    params.not_after = now + time::Duration::days(365);
-
-    let unsigned = rcgen::Certificate::from_params(params)?;
-    let request_pem = unsigned.serialize_request_pem()?;
-    let csr = CertificateSigningRequest::from_pem(&request_pem)?;
-    let signed_pem = csr.serialize_pem_with_signer(ca)?;
-
-    Ok((signed_pem, unsigned.serialize_private_key_pem()))
 }

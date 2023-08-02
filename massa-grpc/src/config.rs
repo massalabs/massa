@@ -21,7 +21,6 @@ pub struct GrpcConfig {
     pub enable_reflection: bool,
     /// whether to enable TLS
     pub enable_tls: bool,
-
     /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
     /// whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
