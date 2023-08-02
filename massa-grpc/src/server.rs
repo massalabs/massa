@@ -197,7 +197,7 @@ where
     if config.enable_tls {
         if config.generate_self_signed_certificates {
             if Path::new(&config.certificate_authority_root_path).exists() {
-                warn!("Certificate authority root already exists, skipping self signed certificates generation");
+                warn!("Certificate authority root already exists, remove the file if you want to generate new certificates. Skipping self signed certificates generation.");
             } else {
                 info!("Generating self signed certificates");
                 generate_self_signed_certificates(config);
