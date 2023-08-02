@@ -147,20 +147,24 @@ impl ExecutedDenunciations {
 
     /// Prune all denunciations that have expired, assuming the given slot is final
     fn prune_to_batch(&mut self, slot: Slot, batch: &mut DBBatch) {
-        let drained: Vec<(Slot, HashSet<DenunciationIndex>)> = self
+        let mut drained = Vec::new();
+        self
             .sorted_denunciations
-            .extract_if(|de_idx_slot, _| {
-                Denunciation::is_expired(
+            .retain(|de_idx_slot, de_indexes| {
+                let is_kept = !Denunciation::is_expired(
                     &de_idx_slot.period,
                     &slot.period,
                     &self.config.denunciation_expire_periods,
-                )
-            })
-            .collect();
+                );
+                if !is_kept {
+                    drained.push(de_indexes.clone());
+                }
+                is_kept
+            });
 
-        for (_slot, de_indexes) in drained {
-            for de_idx in de_indexes {
-                self.delete_entry(&de_idx, batch)
+        for de_indexes in drained {
+            for de_idx in de_indexes.iter() {
+                self.delete_entry(de_idx, batch)
             }
         }
     }
