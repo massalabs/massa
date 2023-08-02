@@ -276,7 +276,7 @@
     # number of thread tester
     thread_tester_count = 25
     # Nb max in connections that we accept
-    max_in_connections = 100
+    max_in_connections = 250
     # Cooldown before testing again old peer
     test_oldest_peer_cooldown = 720000
     # Peer default category limits
