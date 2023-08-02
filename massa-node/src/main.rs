@@ -1050,8 +1050,6 @@ fn configure_grpc(
         enable_tls: settings.enable_tls,
         enable_mtls: settings.enable_mtls,
         generate_self_signed_certificates: settings.generate_self_signed_certificates,
-        use_same_certificate_authority_for_client: settings
-            .use_same_certificate_authority_for_client,
         subject_alt_names: settings.subject_alt_names.clone(),
         bind: settings.bind,
         accept_compressed: settings.accept_compressed.clone(),
@@ -1091,12 +1089,14 @@ fn configure_grpc(
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_block_ids_per_request: settings.max_block_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
+        certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),
-        certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         client_certificate_authority_root_path: settings
             .client_certificate_authority_root_path
             .clone(),
+        client_certificate_path: settings.client_certificate_path.clone(),
+        client_private_key_path: settings.client_private_key_path.clone(),
     }
 }
 
