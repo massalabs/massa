@@ -101,6 +101,7 @@ impl InterfaceImpl {
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
+            max_module_length: config.max_bytecode_size,
         })));
         let vesting_manager = Arc::new(
             crate::vesting_manager::VestingManager::new(
@@ -1134,7 +1135,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * `target_address`: Destination address hash in format string
-    /// * `target_handler`: Name of the message handling function
+    /// * `target_function`: Name of the message handling function
     /// * `validity_start`: Tuple containing the period and thread of the validity start slot
     /// * `validity_end`: Tuple containing the period and thread of the validity end slot
     /// * `max_gas`: Maximum gas for the message execution
@@ -1144,7 +1145,7 @@ impl Interface for InterfaceImpl {
     fn send_message(
         &self,
         target_address: &str,
-        target_handler: &str,
+        target_function: &str,
         validity_start: (u64, u8),
         validity_end: (u64, u8),
         max_gas: u64,
@@ -1166,6 +1167,14 @@ impl Interface for InterfaceImpl {
             bail!("target address is not a smart contract address")
         }
 
+        // Length verifications
+        if target_function.len() > self.config.max_function_length as usize {
+            bail!("Function name is too large");
+        }
+        if data.len() > self.config.max_parameter_length as usize {
+            bail!("Parameter size is too large");
+        }
+
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
         let emission_index = execution_context.created_message_index;
@@ -1179,7 +1188,7 @@ impl Interface for InterfaceImpl {
             emission_index,
             sender,
             target_addr,
-            target_handler.to_string(),
+            target_function.to_string(),
             max_gas,
             fee,
             coins,

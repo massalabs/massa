@@ -16,4 +16,6 @@ pub struct ModuleCacheConfig {
     pub hd_cache_size: usize,
     /// Amount of entries removed when `hd_cache_size` is reached
     pub snip_amount: usize,
+    /// Maximum length of a module
+    pub max_module_length: u64,
 }
