@@ -63,3 +63,14 @@ to try it for the first time.
 If you would like some help to get started, reach out to us on our community [Discord](https://discord.com/invite/massa)
 server. If you're comfortable enough to get started on you're own, check out our
 [good first issue](https://github.com/massalabs/massa/labels/good%20first%20issue) label.
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
