@@ -219,7 +219,7 @@
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000
     # timeout after which a peer tester will consider the peer unreachable
-    tester_timeout = 500
+    tester_timeout = 1000
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
     # Max known blocks we keep during their propagation
