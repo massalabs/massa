@@ -357,16 +357,6 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -656,10 +646,6 @@
     </span><span class="kw">pub </span>enable_tls: bool,
     <span class="doccomment">/// whether to enable mTLS (requires `enable_tls` to be true)
     </span><span class="kw">pub </span>enable_mtls: bool,
-    <span class="doccomment">/// whether to generate a self-signed certificate if none is provided
-    </span><span class="kw">pub </span>generate_self_signed_certificates: bool,
-    <span class="doccomment">/// Subject Alternative Names is an extension in X.509 certificates that allows a certificate to specify additional subject identifiers. It is used to support alternative names for a subject, other than its primary Common Name (CN), which is typically used to represent the primary domain name.
-    </span><span class="kw">pub </span>subject_alt_names: Vec&lt;String&gt;,
     <span class="doccomment">/// bind for the Massa gRPC API
     </span><span class="kw">pub </span>bind: SocketAddr,
     <span class="doccomment">/// which compression encodings does the server accept for requests
@@ -702,18 +688,12 @@
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
-    <span class="doccomment">/// certificate authority root path
-    </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path
     </span><span class="kw">pub </span>server_certificate_path: PathBuf,
     <span class="doccomment">/// server private key path
     </span><span class="kw">pub </span>server_private_key_path: PathBuf,
     <span class="doccomment">/// client certificate authority root path
     </span><span class="kw">pub </span>client_certificate_authority_root_path: PathBuf,
-    <span class="doccomment">/// client certificate path
-    </span><span class="kw">pub </span>client_certificate_path: PathBuf,
-    <span class="doccomment">/// client private key path
-    </span><span class="kw">pub </span>client_private_key_path: PathBuf,
 }
 
 <span class="doccomment">/// gRPC API settings.
