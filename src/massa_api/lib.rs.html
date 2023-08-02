@@ -384,13 +384,11 @@
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
-
-</span><span class="attr">#![warn(missing_docs)]
+</span><span class="attr">#![feature(async_closure)]
+#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-
 </span><span class="kw">use </span>api_trait::MassaApiServer;
 <span class="kw">use </span>hyper::Method;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};

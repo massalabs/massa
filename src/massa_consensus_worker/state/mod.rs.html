@@ -519,14 +519,6 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -755,10 +747,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>latest: Vec&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, u64)&gt;&gt; = <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
         <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().iter() {
             <span class="kw">let </span>(block, _storage) = <span class="self">self</span>.try_get_full_active_block(id)<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = latest[block.slot.thread <span class="kw">as </span>usize] {
-                <span class="kw">if </span>block.slot.period &lt; p {
-                    <span class="kw">continue</span>;
-                }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = latest[block.slot.thread <span class="kw">as </span>usize] &amp;&amp; block.slot.period &lt; p {
+                <span class="kw">continue</span>;
             }
             <span class="kw">if </span>block.is_final &amp;&amp; block.slot &lt;= slot {
                 latest[block.slot.thread <span class="kw">as </span>usize] = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, block.slot.period));
@@ -790,15 +780,11 @@
             <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
         <span class="kw">for </span>id <span class="kw">in </span>block_ids {
             <span class="kw">let </span>(block, _storage) = <span class="self">self</span>.try_get_full_active_block(id)<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot {
-                <span class="kw">if </span>block.slot &gt; slot {
-                    <span class="kw">continue</span>;
-                }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot &amp;&amp; block.slot &gt; slot {
+                <span class="kw">continue</span>;
             }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = earliest[block.slot.thread <span class="kw">as </span>usize] {
-                <span class="kw">if </span>block.slot.period &gt; p {
-                    <span class="kw">continue</span>;
-                }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = earliest[block.slot.thread <span class="kw">as </span>usize] &amp;&amp; block.slot.period &gt; p {
+                <span class="kw">continue</span>;
             }
             earliest[block.slot.thread <span class="kw">as </span>usize] = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, block.slot.period));
         }
@@ -827,10 +813,8 @@
     ) {
         <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>((block, _storage)) = <span class="self">self</span>.get_full_active_block(id) {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot {
-                    <span class="kw">if </span>block.slot &gt; slot {
-                        <span class="kw">continue</span>;
-                    }
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot &amp;&amp; block.slot &gt; slot {
+                    <span class="kw">continue</span>;
                 }
                 <span class="kw">if </span>block.slot.period &gt;= lower_bound[block.slot.thread <span class="kw">as </span>usize].<span class="number">1 </span>{
                     kept_blocks.insert(<span class="kw-2">*</span>id);

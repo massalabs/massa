@@ -341,8 +341,6 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
@@ -492,22 +490,20 @@
 
     <span class="doccomment">/// Prune all denunciations that have expired, assuming the given slot is final
     </span><span class="kw">fn </span>prune_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="kw">let </span><span class="kw-2">mut </span>drained = Vec::new();
-        <span class="self">self</span>.sorted_denunciations.retain(|de_idx_slot, de_indexes| {
-            <span class="kw">let </span>is_kept = !Denunciation::is_expired(
-                <span class="kw-2">&amp;</span>de_idx_slot.period,
-                <span class="kw-2">&amp;</span>slot.period,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
-            );
-            <span class="kw">if </span>!is_kept {
-                drained.push(de_indexes.clone());
-            }
-            is_kept
-        });
+        <span class="kw">let </span>drained: Vec&lt;(Slot, HashSet&lt;DenunciationIndex&gt;)&gt; = <span class="self">self
+            </span>.sorted_denunciations
+            .extract_if(|de_idx_slot, <span class="kw">_</span>| {
+                Denunciation::is_expired(
+                    <span class="kw-2">&amp;</span>de_idx_slot.period,
+                    <span class="kw-2">&amp;</span>slot.period,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
+                )
+            })
+            .collect();
 
-        <span class="kw">for </span>de_indexes <span class="kw">in </span>drained {
-            <span class="kw">for </span>de_idx <span class="kw">in </span>de_indexes.iter() {
-                <span class="self">self</span>.delete_entry(de_idx, batch)
+        <span class="kw">for </span>(_slot, de_indexes) <span class="kw">in </span>drained {
+            <span class="kw">for </span>de_idx <span class="kw">in </span>de_indexes {
+                <span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>de_idx, batch)
             }
         }
     }
