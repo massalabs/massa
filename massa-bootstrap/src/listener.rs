@@ -89,23 +89,21 @@ impl BootstrapTcpListener {
         // Process each event.
         for event in self.events.iter() {
             match event.token() {
-                NEW_CONNECTION => {
-                    loop {
-                        match self.server.accept() {
-                            Ok((stream, remote_addr)) => {
-                                stream.set_nonblocking(false)?;
-                                results.push((stream, remote_addr));
-                            }
-                            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                                break;
-                            }
-                            Err(e) => {
-                                warn!("Error accepting connection in bootstrap: {:?}", e);
-                                continue;
-                            }
+                NEW_CONNECTION => loop {
+                    match self.server.accept() {
+                        Ok((stream, remote_addr)) => {
+                            stream.set_nonblocking(false)?;
+                            results.push((stream, remote_addr));
+                        }
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            break;
+                        }
+                        Err(e) => {
+                            warn!("Error accepting connection in bootstrap: {:?}", e);
+                            continue;
                         }
                     }
-                }
+                },
                 STOP_LISTENER => {
                     return Ok(PollEvent::Stop);
                 }
