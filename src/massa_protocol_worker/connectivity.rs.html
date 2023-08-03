@@ -673,7 +673,7 @@
                     recv(tick_try_connect) -&gt; <span class="kw">_ </span>=&gt; {
                         <span class="kw">let </span>active_conn = network_controller.get_active_connections();
                         <span class="kw">let </span>peers_connected = active_conn.get_peers_connected();
-                        <span class="kw">let </span>peers_connection_queue = active_conn.get_peer_ids_connection_queue();
+                        <span class="kw">let </span>peers_connection_queue = active_conn.get_peer_ids_out_connection_queue();
 
                         <span class="kw">let </span><span class="kw-2">mut </span>connection_slots = HashMap::new();
                         connection_slots.insert(<span class="string">&quot;default&quot;</span>, config.default_category_info.target_out_connections);
@@ -777,7 +777,7 @@
                                     <span class="kw">for </span>(name, slots) <span class="kw">in </span>connection_slots.iter_mut() {
                                         <span class="kw">if </span>name == <span class="kw-2">*</span>cat &amp;&amp; <span class="kw-2">*</span>slots &gt; <span class="number">0 </span>{
                                             <span class="comment">// In case the connection succeeds, we take a place in a slot
-                                            </span><span class="kw">if </span>try_connect_peer(<span class="kw-2">*</span>addr, <span class="kw-2">&amp;mut </span>network_controller, <span class="kw-2">&amp;</span>peer_db, <span class="kw-2">&amp;</span>config).is_err() {
+                                            </span><span class="kw">if </span>try_connect_peer(<span class="kw-2">*</span>addr, <span class="kw-2">&amp;mut </span>network_controller, <span class="kw-2">&amp;</span>peer_db, <span class="kw-2">&amp;</span>config).is_ok() {
                                                 <span class="kw-2">*</span>slots = slots.saturating_sub(<span class="number">1</span>);
                                                 addresses_connected.push(<span class="kw-2">*</span>addr);
                                             }
