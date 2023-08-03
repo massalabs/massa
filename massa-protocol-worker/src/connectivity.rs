@@ -351,7 +351,7 @@ pub(crate) fn start_connectivity_thread(
                                     for (name, slots) in connection_slots.iter_mut() {
                                         if name == *cat && *slots > 0 {
                                             // In case the connection succeeds, we take a place in a slot
-                                            if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
+                                            if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_ok() {
                                                 *slots = slots.saturating_sub(1);
                                                 addresses_connected.push(*addr);
                                             }
