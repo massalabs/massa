@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["gen_cert_for_ca","gen_signed_cert"]};

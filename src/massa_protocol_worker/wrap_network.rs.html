@@ -223,7 +223,7 @@
     <span class="kw">fn </span>get_peers_connected(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; HashMap&lt;PeerId, (SocketAddr, PeerConnectionType, <span class="prelude-ty">Option</span>&lt;String&gt;)&gt;;
-    <span class="kw">fn </span>get_peer_ids_connection_queue(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashSet&lt;SocketAddr&gt;;
+    <span class="kw">fn </span>get_peer_ids_out_connection_queue(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashSet&lt;SocketAddr&gt;;
     <span class="kw">fn </span>get_nb_out_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>get_nb_in_connections(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
     <span class="kw">fn </span>shutdown_connection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId);
@@ -303,8 +303,8 @@
         map
     }
 
-    <span class="kw">fn </span>get_peer_ids_connection_queue(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashSet&lt;SocketAddr&gt; {
-        <span class="self">self</span>.read().connection_queue.clone()
+    <span class="kw">fn </span>get_peer_ids_out_connection_queue(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashSet&lt;SocketAddr&gt; {
+        <span class="self">self</span>.read().out_connection_queue.clone()
     }
 }
 

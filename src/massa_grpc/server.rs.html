@@ -288,60 +288,6 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_bootstrap::white_black_list::SharedWhiteBlackList;
@@ -350,7 +296,6 @@
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::convert::Infallible;
-<span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 
 <span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -367,11 +312,9 @@
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolController};
-<span class="kw">use </span>massa_sdk::cert_manager::{gen_cert_for_ca, gen_signed_cert};
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="kw">use </span>massa_wallet::Wallet;
-
 <span class="kw">use </span>tokio::sync::oneshot;
 <span class="kw">use </span>tonic::body::BoxBody;
 <span class="kw">use </span>tonic::codegen::CompressionEncoding;
@@ -539,26 +482,16 @@
         .max_frame_size(config.max_frame_size);
 
     <span class="kw">if </span>config.enable_tls {
-        <span class="kw">if </span>config.generate_self_signed_certificates {
-            <span class="kw">if </span>Path::new(<span class="kw-2">&amp;</span>config.certificate_authority_root_path).exists() {
-                <span class="macro">warn!</span>(<span class="string">&quot;Certificate authority root already exists, remove the file if you want to generate new certificates. Skipping self signed certificates generation.&quot;</span>);
-            } <span class="kw">else </span>{
-                <span class="macro">info!</span>(<span class="string">&quot;Generating self signed certificates&quot;</span>);
-                generate_self_signed_certificates(config);
-            }
-        }
-
         <span class="kw">let </span>cert = std::fs::read_to_string(config.server_certificate_path.clone())
             .expect(<span class="string">&quot;error, failed to read server certificat&quot;</span>);
         <span class="kw">let </span>key = std::fs::read_to_string(config.server_private_key_path.clone())
             .expect(<span class="string">&quot;error, failed to read server private key&quot;</span>);
-
         <span class="kw">let </span>server_identity = Identity::from_pem(cert, key);
+
         <span class="kw">let </span>tls = ServerTlsConfig::new().identity(server_identity);
 
         <span class="kw">if </span>config.enable_mtls {
-            <span class="comment">//TODO add client certificate generation ? yes if not exists
-            </span><span class="kw">let </span>client_ca_cert =
+            <span class="kw">let </span>client_ca_cert =
                 std::fs::read_to_string(config.client_certificate_authority_root_path.clone())
                     .expect(<span class="string">&quot;error, failed to read client certificate authority root&quot;</span>);
             <span class="kw">let </span>client_ca_cert = Certificate::from_pem(client_ca_cert);
@@ -644,46 +577,5 @@
     <span class="prelude-val">Ok</span>(StopHandle {
         stop_cmd_sender: shutdown_send,
     })
-}
-
-<span class="comment">// Generate self signed certificates
-</span><span class="kw">fn </span>generate_self_signed_certificates(config: <span class="kw-2">&amp;</span>GrpcConfig) {
-    <span class="kw">let </span>ca_cert = gen_cert_for_ca().expect(<span class="string">&quot;error, failed to generate CA cert&quot;</span>);
-    <span class="kw">let </span>ca_cert_pem = ca_cert
-        .serialize_pem()
-        .expect(<span class="string">&quot;error: failed to convert certificate authority to UTF-8&quot;</span>);
-
-    <span class="kw">if </span>config.enable_mtls {
-        std::fs::write(
-            config.client_certificate_authority_root_path.clone(),
-            ca_cert_pem.clone(),
-        )
-        .expect(<span class="string">&quot;error, failed to write client certificate authority root&quot;</span>);
-
-        <span class="kw">let </span>(client_cert_pem, client_private_key_pem) =
-            gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
-                .expect(<span class="string">&quot;error, failed to generate cert&quot;</span>);
-        std::fs::write(config.client_certificate_path.clone(), client_cert_pem)
-            .expect(<span class="string">&quot;error, failed to write client certificat&quot;</span>);
-        std::fs::write(
-            config.client_private_key_path.clone(),
-            client_private_key_pem,
-        )
-        .expect(<span class="string">&quot;error, failed to write client private key&quot;</span>);
-    }
-
-    std::fs::write(config.certificate_authority_root_path.clone(), ca_cert_pem)
-        .expect(<span class="string">&quot;error, failed to write certificat authority root&quot;</span>);
-
-    <span class="kw">let </span>(cert_pem, server_private_key_pem) =
-        gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
-            .expect(<span class="string">&quot;error, failed to generate server certificat&quot;</span>);
-    std::fs::write(config.server_certificate_path.clone(), cert_pem)
-        .expect(<span class="string">&quot;error, failed to write server certificat&quot;</span>);
-    std::fs::write(
-        config.server_private_key_path.clone(),
-        server_private_key_pem,
-    )
-    .expect(<span class="string">&quot;error, failed to write server private key&quot;</span>);
 }
 </code></pre></div></section></main></body></html>
