@@ -247,7 +247,7 @@ pub(crate) fn start_connectivity_thread(
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();
-                        let peers_connection_queue = active_conn.get_peer_ids_connection_queue();
+                        let peers_connection_queue = active_conn.get_peer_ids_out_connection_queue();
 
                         let mut connection_slots = HashMap::new();
                         connection_slots.insert("default", config.default_category_info.target_out_connections);
