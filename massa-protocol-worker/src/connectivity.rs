@@ -247,7 +247,7 @@ pub(crate) fn start_connectivity_thread(
                     recv(tick_try_connect) -> _ => {
                         let active_conn = network_controller.get_active_connections();
                         let peers_connected = active_conn.get_peers_connected();
-                        let peers_connection_queue = active_conn.get_peer_ids_connection_queue();
+                        let peers_connection_queue = active_conn.get_peer_ids_out_connection_queue();
 
                         let mut connection_slots = HashMap::new();
                         connection_slots.insert("default", config.default_category_info.target_out_connections);
@@ -351,7 +351,7 @@ pub(crate) fn start_connectivity_thread(
                                     for (name, slots) in connection_slots.iter_mut() {
                                         if name == *cat && *slots > 0 {
                                             // In case the connection succeeds, we take a place in a slot
-                                            if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_err() {
+                                            if try_connect_peer(*addr, &mut network_controller, &peer_db, &config).is_ok() {
                                                 *slots = slots.saturating_sub(1);
                                                 addresses_connected.push(*addr);
                                             }
