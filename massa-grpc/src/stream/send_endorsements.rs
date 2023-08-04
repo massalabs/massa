@@ -125,7 +125,7 @@ pub(crate) async fn send_endorsements(
                                     };
 
                                     // Build the response message
-                                    let result = grpc_model::EndorsementsIds {
+                                    let result = grpc_model::EndorsementIds {
                                         endorsements_ids: verified_eds.keys().cloned().collect(),
                                     };
                                     // Send the response message back to the client

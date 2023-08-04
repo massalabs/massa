@@ -13,7 +13,7 @@ use crate::private::{
 use crate::public::{
     execute_read_only_call, get_blocks, get_datastore_entries, get_next_block_best_parents,
     get_operations, get_sc_execution_events, get_selector_draws, get_stakers, get_status,
-    get_transactions_throughput, query_state,
+    get_transactions_throughput, query_state, search_blocks, search_operations,
 };
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{
@@ -53,6 +53,15 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         request: tonic::Request<grpc_api::GetDatastoreEntriesRequest>,
     ) -> Result<tonic::Response<grpc_api::GetDatastoreEntriesResponse>, tonic::Status> {
         Ok(tonic::Response::new(get_datastore_entries(self, request)?))
+    }
+
+    /// handler for get endorsements
+    async fn get_endorsements(
+        &self,
+        _request: tonic::Request<grpc_api::GetEndorsementsRequest>,
+    ) -> Result<tonic::Response<grpc_api::GetEndorsementsResponse>, tonic::Status> {
+        // Ok(tonic::Response::new(get_endorsements(self, request)?))
+        Err(tonic::Status::unimplemented("not implemented"))
     }
 
     /// handler for get largest stakers
@@ -123,6 +132,31 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         request: tonic::Request<grpc_api::QueryStateRequest>,
     ) -> Result<tonic::Response<grpc_api::QueryStateResponse>, tonic::Status> {
         Ok(tonic::Response::new(query_state(self, request)?))
+    }
+
+    /// handler for search blocks
+    async fn search_blocks(
+        &self,
+        request: tonic::Request<grpc_api::SearchBlocksRequest>,
+    ) -> Result<tonic::Response<grpc_api::SearchBlocksResponse>, tonic::Status> {
+        Ok(tonic::Response::new(search_blocks(self, request)?))
+    }
+
+    /// handler for search endorsemets
+    async fn search_endorsements(
+        &self,
+        _request: tonic::Request<grpc_api::SearchEndorsementsRequest>,
+    ) -> Result<tonic::Response<grpc_api::SearchEndorsementsResponse>, tonic::Status> {
+        // Ok(tonic::Response::new(search_endorsements(self, request)?))
+        Err(tonic::Status::unimplemented("not implemented"))
+    }
+
+    /// handler for search operations
+    async fn search_operations(
+        &self,
+        request: tonic::Request<grpc_api::SearchOperationsRequest>,
+    ) -> Result<tonic::Response<grpc_api::SearchOperationsResponse>, tonic::Status> {
+        Ok(tonic::Response::new(search_operations(self, request)?))
     }
 
     // ███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗

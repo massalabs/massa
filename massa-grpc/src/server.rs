@@ -18,7 +18,7 @@ use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET;
+use massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET_PUBLIC;
 use massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
@@ -233,9 +233,10 @@ where
         }
     }
 
+    //TODO handle private/public
     let reflection_service_opt = if config.enable_reflection {
         let reflection_service = tonic_reflection::server::Builder::configure()
-            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET_PUBLIC)
             .build()?;
 
         Some(reflection_service)
