@@ -762,15 +762,6 @@
 <a href="#762" id="762">762</a>
 <a href="#763" id="763">763</a>
 <a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -786,7 +777,7 @@
 };
 
 <span class="kw">use </span>lazy_static::lazy_static;
-<span class="kw">use </span>prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
+<span class="kw">use </span>prometheus::{register_int_gauge, Gauge, Histogram, IntCounter, IntGauge};
 <span class="kw">use </span>tokio::sync::oneshot::Sender;
 <span class="kw">use </span>tracing::warn;
 
@@ -905,10 +896,8 @@
     <span class="doccomment">/// total bytes sent by peernet manager
     </span>peernet_total_bytes_sent: IntCounter,
 
-    <span class="doccomment">/// total block in graph
-    </span>block_graph_counter: IntCounter,
-    <span class="doccomment">/// total time to add block to graph
-    </span>block_graph_ms: IntCounter,
+    <span class="doccomment">/// block slot delay
+    </span>block_slot_delay: Histogram,
 
     <span class="doccomment">/// active in connections peer
     </span>active_in_connections: IntGauge,
@@ -1163,14 +1152,6 @@
         )
         .unwrap();
 
-        <span class="kw">let </span>block_graph_counter =
-            IntCounter::new(<span class="string">&quot;block_slot_graph_counter&quot;</span>, <span class="string">&quot;total block in graph&quot;</span>).unwrap();
-        <span class="kw">let </span>block_graph_ms = IntCounter::new(
-            <span class="string">&quot;block_slot_graph_ms&quot;</span>,
-            <span class="string">&quot;sum of delta in ms between block inclusion in graph and block slot&quot;</span>,
-        )
-        .unwrap();
-
         <span class="kw">let </span>peernet_total_bytes_received = IntCounter::new(
             <span class="string">&quot;peernet_total_bytes_received&quot;</span>,
             <span class="string">&quot;total byte received by peernet&quot;</span>,
@@ -1182,6 +1163,13 @@
 
         <span class="kw">let </span>operations_final_counter =
             IntCounter::new(<span class="string">&quot;operations_final_counter&quot;</span>, <span class="string">&quot;total final operations&quot;</span>).unwrap();
+
+        <span class="kw">let </span>block_slot_delay = Histogram::with_opts(
+            prometheus::HistogramOpts::new(<span class="string">&quot;block_slot_delay&quot;</span>, <span class="string">&quot;block slot delay&quot;</span>).buckets(<span class="macro">vec!</span>[
+                <span class="number">0.100</span>, <span class="number">0.250</span>, <span class="number">0.500</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, <span class="number">7.0</span>, <span class="number">8.0</span>,
+            ]),
+        )
+        .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>stopper = MetricsStopper::default();
 
@@ -1211,8 +1199,6 @@
                 <span class="kw">let _ </span>=
                     prometheus::register(Box::new(endorsement_cache_checked_endorsements.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(block_graph_counter.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(block_graph_ms.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(peernet_total_bytes_received.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(operations_final_counter.clone()));
@@ -1236,6 +1222,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(async_message_pool_size.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_period.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_thread.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(block_slot_delay.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -1267,8 +1254,7 @@
                 executed_final_slot_with_block,
                 peernet_total_bytes_received,
                 peernet_total_bytes_sent,
-                block_graph_counter,
-                block_graph_ms,
+                block_slot_delay,
                 active_in_connections,
                 active_out_connections,
                 operations_final_counter,
@@ -1383,14 +1369,6 @@
             .set(known_by_peer <span class="kw">as </span>i64);
     }
 
-    <span class="kw">pub fn </span>inc_block_graph_ms(<span class="kw-2">&amp;</span><span class="self">self</span>, diff: u64) {
-        <span class="self">self</span>.block_graph_ms.inc_by(diff);
-    }
-
-    <span class="kw">pub fn </span>inc_block_graph_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.block_graph_counter.inc();
-    }
-
     <span class="kw">pub fn </span>set_peernet_total_bytes_received(<span class="kw-2">&amp;</span><span class="self">self</span>, new_value: u64) {
         <span class="kw">let </span>diff = new_value.saturating_sub(<span class="self">self</span>.peernet_total_bytes_received.get());
         <span class="self">self</span>.peernet_total_bytes_received.inc_by(diff);
@@ -1483,6 +1461,10 @@
 
     <span class="kw">pub fn </span>set_current_time_thread(<span class="kw-2">&amp;</span><span class="self">self</span>, thread: u8) {
         <span class="self">self</span>.current_time_thread.set(thread <span class="kw">as </span>i64);
+    }
+
+    <span class="kw">pub fn </span>set_block_slot_delay(<span class="kw-2">&amp;</span><span class="self">self</span>, delay: f64) {
+        <span class="self">self</span>.block_slot_delay.observe(delay);
     }
 
     <span class="doccomment">/// Update the bandwidth metrics for all peers

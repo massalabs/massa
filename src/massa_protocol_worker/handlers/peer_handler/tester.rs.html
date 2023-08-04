@@ -487,6 +487,12 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     io::Read,
@@ -578,7 +584,8 @@
         massa_metrics: MassaMetrics,
     ) -&gt; PeerNetResult&lt;PeerId&gt; {
         <span class="kw">let </span>our_version = config.version;
-        <span class="kw">let </span>result = {
+
+        <span class="kw">let </span>exec_handshake = || {
             <span class="kw">let </span><span class="kw-2">mut </span>socket =
                 std::net::TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, config.tester_timeout.into())
                     .map_err(|e| PeerNetError::PeerConnectionError.new(<span class="string">&quot;connect&quot;</span>, e, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
@@ -738,9 +745,7 @@
                         .entry(addr)
                         .or_insert(ConnectionMetadata::default())
                         .test_failure();
-                    massa_metrics.inc_protocol_tester_failed();
                 } <span class="kw">else </span>{
-                    massa_metrics.inc_protocol_tester_success();
                     peer_db_write
                         .try_connect_history
                         .entry(addr)
@@ -754,6 +759,14 @@
             }
             res
         };
+
+        <span class="kw">let </span>result = exec_handshake();
+
+        <span class="kw">if </span>result.is_ok() {
+            massa_metrics.inc_protocol_tester_success();
+        } <span class="kw">else </span>{
+            massa_metrics.inc_protocol_tester_failed();
+        }
 
         result
     }
@@ -885,7 +898,6 @@
                                                 }
                                             }
                                             <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
-
 
                                             <span class="kw">let </span>res = Tester::tcp_handshake(
                                                 messages_handler.clone(),
