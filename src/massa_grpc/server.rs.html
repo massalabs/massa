@@ -288,6 +288,7 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_bootstrap::white_black_list::SharedWhiteBlackList;
@@ -307,7 +308,7 @@
 <span class="kw">use </span>massa_execution_exports::{ExecutionChannels, ExecutionController};
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET_PUBLIC;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
@@ -511,9 +512,10 @@
         }
     }
 
-    <span class="kw">let </span>reflection_service_opt = <span class="kw">if </span>config.enable_reflection {
+    <span class="comment">//TODO handle private/public
+    </span><span class="kw">let </span>reflection_service_opt = <span class="kw">if </span>config.enable_reflection {
         <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
-            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET_PUBLIC)
             .build()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Some</span>(reflection_service)
