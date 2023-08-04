@@ -574,10 +574,9 @@ impl ConsensusState {
                 self.config.genesis_timestamp,
                 add_block_slot,
             )?;
-            let now = MassaTime::now()?;
-            let diff = now.saturating_sub(add_slot_timestamp);
-            self.massa_metrics.inc_block_graph_counter();
-            self.massa_metrics.inc_block_graph_ms(diff.to_millis());
+            let diff = MassaTime::now()?.saturating_sub(add_slot_timestamp);
+            self.massa_metrics
+                .set_block_slot_delay(diff.to_duration().as_secs_f64());
         }
 
         Ok(())
