@@ -132,7 +132,7 @@ pub(crate) async fn send_endorsements(
                                     if let Err(e) = tx
                                         .send(Ok(grpc_api::SendEndorsementsResponse {
                                             result: Some(
-                                                grpc_api::send_endorsements_response::Result::EndorsementsIds(
+                                                grpc_api::send_endorsements_response::Result::EndorsementIds(
                                                     result,
                                                 ),
                                             ),

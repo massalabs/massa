@@ -11,9 +11,10 @@ use crate::private::{
     unban_nodes_by_ids, unban_nodes_by_ips,
 };
 use crate::public::{
-    execute_read_only_call, get_blocks, get_datastore_entries, get_next_block_best_parents,
-    get_operations, get_sc_execution_events, get_selector_draws, get_stakers, get_status,
-    get_transactions_throughput, query_state, search_blocks, search_operations,
+    execute_read_only_call, get_blocks, get_datastore_entries, get_endorsements,
+    get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
+    get_stakers, get_status, get_transactions_throughput, query_state, search_blocks,
+    search_operations,
 };
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{
@@ -58,10 +59,9 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     /// handler for get endorsements
     async fn get_endorsements(
         &self,
-        _request: tonic::Request<grpc_api::GetEndorsementsRequest>,
+        request: tonic::Request<grpc_api::GetEndorsementsRequest>,
     ) -> Result<tonic::Response<grpc_api::GetEndorsementsResponse>, tonic::Status> {
-        // Ok(tonic::Response::new(get_endorsements(self, request)?))
-        Err(tonic::Status::unimplemented("not implemented"))
+        Ok(tonic::Response::new(get_endorsements(self, request)?))
     }
 
     /// handler for get largest stakers

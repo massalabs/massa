@@ -3,6 +3,7 @@
 use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
 
+use itertools::{izip, Itertools};
 use massa_execution_exports::mapping_grpc::{
     to_event_filter, to_execution_query_response, to_querystate_filter,
 };
@@ -10,12 +11,13 @@ use massa_execution_exports::{
     ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::address::Address;
-use massa_models::block::Block;
+use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
 use massa_models::datastore::DatastoreDeserializer;
+use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -158,8 +160,7 @@ pub(crate) fn get_blocks(
         })
         .collect::<Result<_, _>>()?;
 
-    let storage = grpc.storage.clone_without_refs();
-    let read_blocks = storage.read_blocks();
+    let read_blocks = grpc.storage.read_blocks();
     let blocks = block_ids
         .into_iter()
         .filter_map(|id| {
@@ -235,6 +236,113 @@ pub(crate) fn get_datastore_entries(
 
     Ok(grpc_api::GetDatastoreEntriesResponse {
         datastore_entries: entries,
+    })
+}
+
+/// Get endorsements
+pub(crate) fn get_endorsements(
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetEndorsementsRequest>,
+) -> Result<grpc_api::GetEndorsementsResponse, GrpcError> {
+    let endorsement_ids = request.into_inner().endorsement_ids;
+
+    if endorsement_ids.is_empty() {
+        return Err(GrpcError::InvalidArgument(
+            "no endorsement id provided".to_string(),
+        ));
+    }
+
+    //TODO to be replaced with a config value
+    if endorsement_ids.len() as u32 > grpc.grpc_config.max_endorsements_per_message {
+        return Err(GrpcError::InvalidArgument(format!(
+            "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
+            grpc.grpc_config.max_endorsements_per_message
+        )));
+    }
+
+    let endorsement_ids: Vec<EndorsementId> = endorsement_ids
+        .into_iter()
+        .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
+        .map(|id| {
+            EndorsementId::from_str(id.as_str())
+                .map_err(|_| GrpcError::InvalidArgument(format!("invalid endorsement id: {}", id)))
+        })
+        .collect::<Result<_, _>>()?;
+
+    let storage_info: Vec<(SecureShareEndorsement, PreHashSet<BlockId>)> = {
+        let read_blocks = grpc.storage.read_blocks();
+        let read_endos = grpc.storage.read_endorsements();
+        endorsement_ids
+            .iter()
+            .filter_map(|id| {
+                read_endos.get(id).cloned().map(|ed| {
+                    (
+                        ed,
+                        read_blocks
+                            .get_blocks_by_endorsement(id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
+                })
+            })
+            .collect()
+    };
+
+    // keep only the ops found in storage
+    let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
+
+    // ask pool whether it carries the operations
+    let in_pool = grpc.pool_controller.contains_endorsements(&eds);
+
+    let consensus_controller = grpc.consensus_controller.clone();
+
+    // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
+    let is_final: Vec<bool> = {
+        let involved_blocks: Vec<BlockId> = storage_info
+            .iter()
+            .flat_map(|(_ed, bs)| bs.iter())
+            .unique()
+            .cloned()
+            .collect();
+
+        let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+
+        let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
+            .into_iter()
+            .zip(involved_block_statuses.into_iter())
+            .collect();
+        storage_info
+            .iter()
+            .map(|(_ed, bs)| {
+                bs.iter()
+                    .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
+            })
+            .collect()
+    };
+
+    // gather all values into a vector of EndorsementInfo instances
+    let mut res: Vec<grpc_model::EndorsementWrapper> = Vec::with_capacity(eds.len());
+    let zipped_iterator = izip!(
+        eds.into_iter(),
+        storage_info.into_iter(),
+        in_pool.into_iter(),
+        is_final.into_iter()
+    );
+    for (id, (endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
+        res.push(grpc_model::EndorsementWrapper {
+            id: id.to_string(), //TODO to be removed
+            in_pool,
+            is_final,
+            in_blocks: in_blocks
+                .into_iter()
+                .map(|block_id| block_id.to_string())
+                .collect(),
+            endorsement: Some(endorsement.into()),
+        });
+    }
+
+    Ok(grpc_api::GetEndorsementsResponse {
+        wrapped_endorsements: res,
     })
 }
 
@@ -349,7 +457,6 @@ pub(crate) fn get_operations(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetOperationsRequest>,
 ) -> Result<grpc_api::GetOperationsResponse, GrpcError> {
-    let storage = grpc.storage.clone_without_refs();
     let operation_ids = request.into_inner().operation_ids;
 
     if operation_ids.is_empty() {
@@ -371,8 +478,8 @@ pub(crate) fn get_operations(
         })
         .collect::<Result<_, _>>()?;
 
-    let read_blocks = storage.read_blocks();
-    let read_ops = storage.read_operations();
+    let read_blocks = grpc.storage.read_blocks();
+    let read_ops = grpc.storage.read_operations();
 
     // Get the operations and the list of blocks that contain them from storage
     let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
@@ -667,8 +774,7 @@ pub(crate) fn search_blocks(
         return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
     }
 
-    let storage = grpc.storage.clone_without_refs();
-    let read_blocks = storage.read_blocks();
+    let read_blocks = grpc.storage.read_blocks();
 
     let blocks = if !block_ids.is_empty() {
         if block_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
@@ -790,7 +896,6 @@ pub(crate) fn search_operations(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::SearchOperationsRequest>,
 ) -> Result<grpc_api::SearchOperationsResponse, GrpcError> {
-    let storage = grpc.storage.clone_without_refs();
     let inner_req: grpc_api::SearchOperationsRequest = request.into_inner();
 
     let mut operation_ids = Vec::new();
@@ -828,8 +933,8 @@ pub(crate) fn search_operations(
         return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
     }
 
-    let read_blocks = storage.read_blocks();
-    let read_ops = storage.read_operations();
+    let read_blocks = grpc.storage.read_blocks();
+    let read_ops = grpc.storage.read_operations();
 
     // Get the operations and the list of blocks that contain them from storage
     let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
