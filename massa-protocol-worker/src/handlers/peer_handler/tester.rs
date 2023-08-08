@@ -89,7 +89,8 @@ impl Tester {
         massa_metrics: MassaMetrics,
     ) -> PeerNetResult<PeerId> {
         let our_version = config.version;
-        let result = {
+
+        let exec_handshake = || {
             let mut socket =
                 std::net::TcpStream::connect_timeout(&addr, config.tester_timeout.into())
                     .map_err(|e| PeerNetError::PeerConnectionError.new("connect", e, None))?;
@@ -249,9 +250,7 @@ impl Tester {
                         .entry(addr)
                         .or_insert(ConnectionMetadata::default())
                         .test_failure();
-                    massa_metrics.inc_protocol_tester_failed();
                 } else {
-                    massa_metrics.inc_protocol_tester_success();
                     peer_db_write
                         .try_connect_history
                         .entry(addr)
@@ -265,6 +264,14 @@ impl Tester {
             }
             res
         };
+
+        let result = exec_handshake();
+
+        if result.is_ok() {
+            massa_metrics.inc_protocol_tester_success();
+        } else {
+            massa_metrics.inc_protocol_tester_failed();
+        }
 
         result
     }
@@ -396,7 +403,6 @@ impl Tester {
                                                 }
                                             }
                                             info!("testing peer {} listener addr: {}", &listener.0, &addr);
-
 
                                             let res = Tester::tcp_handshake(
                                                 messages_handler.clone(),

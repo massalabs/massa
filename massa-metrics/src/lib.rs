@@ -13,7 +13,7 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use prometheus::{register_int_gauge, Gauge, IntCounter, IntGauge};
+use prometheus::{register_int_gauge, Gauge, Histogram, IntCounter, IntGauge};
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
@@ -132,10 +132,8 @@ pub struct MassaMetrics {
     /// total bytes sent by peernet manager
     peernet_total_bytes_sent: IntCounter,
 
-    /// total block in graph
-    block_graph_counter: IntCounter,
-    /// total time to add block to graph
-    block_graph_ms: IntCounter,
+    /// block slot delay
+    block_slot_delay: Histogram,
 
     /// active in connections peer
     active_in_connections: IntGauge,
@@ -390,14 +388,6 @@ impl MassaMetrics {
         )
         .unwrap();
 
-        let block_graph_counter =
-            IntCounter::new("block_slot_graph_counter", "total block in graph").unwrap();
-        let block_graph_ms = IntCounter::new(
-            "block_slot_graph_ms",
-            "sum of delta in ms between block inclusion in graph and block slot",
-        )
-        .unwrap();
-
         let peernet_total_bytes_received = IntCounter::new(
             "peernet_total_bytes_received",
             "total byte received by peernet",
@@ -409,6 +399,13 @@ impl MassaMetrics {
 
         let operations_final_counter =
             IntCounter::new("operations_final_counter", "total final operations").unwrap();
+
+        let block_slot_delay = Histogram::with_opts(
+            prometheus::HistogramOpts::new("block_slot_delay", "block slot delay").buckets(vec![
+                0.100, 0.250, 0.500, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+            ]),
+        )
+        .unwrap();
 
         let mut stopper = MetricsStopper::default();
 
@@ -438,8 +435,6 @@ impl MassaMetrics {
                 let _ =
                     prometheus::register(Box::new(endorsement_cache_checked_endorsements.clone()));
                 let _ = prometheus::register(Box::new(endorsement_cache_known_by_peer.clone()));
-                let _ = prometheus::register(Box::new(block_graph_counter.clone()));
-                let _ = prometheus::register(Box::new(block_graph_ms.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_received.clone()));
                 let _ = prometheus::register(Box::new(peernet_total_bytes_sent.clone()));
                 let _ = prometheus::register(Box::new(operations_final_counter.clone()));
@@ -463,6 +458,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(async_message_pool_size.clone()));
                 let _ = prometheus::register(Box::new(current_time_period.clone()));
                 let _ = prometheus::register(Box::new(current_time_thread.clone()));
+                let _ = prometheus::register(Box::new(block_slot_delay.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -494,8 +490,7 @@ impl MassaMetrics {
                 executed_final_slot_with_block,
                 peernet_total_bytes_received,
                 peernet_total_bytes_sent,
-                block_graph_counter,
-                block_graph_ms,
+                block_slot_delay,
                 active_in_connections,
                 active_out_connections,
                 operations_final_counter,
@@ -610,14 +605,6 @@ impl MassaMetrics {
             .set(known_by_peer as i64);
     }
 
-    pub fn inc_block_graph_ms(&self, diff: u64) {
-        self.block_graph_ms.inc_by(diff);
-    }
-
-    pub fn inc_block_graph_counter(&self) {
-        self.block_graph_counter.inc();
-    }
-
     pub fn set_peernet_total_bytes_received(&self, new_value: u64) {
         let diff = new_value.saturating_sub(self.peernet_total_bytes_received.get());
         self.peernet_total_bytes_received.inc_by(diff);
@@ -710,6 +697,10 @@ impl MassaMetrics {
 
     pub fn set_current_time_thread(&self, thread: u8) {
         self.current_time_thread.set(thread as i64);
+    }
+
+    pub fn set_block_slot_delay(&self, delay: f64) {
+        self.block_slot_delay.observe(delay);
     }
 
     /// Update the bandwidth metrics for all peers
