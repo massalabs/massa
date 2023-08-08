@@ -12,7 +12,7 @@ impl From<AsyncMessage> for grpc_model::AsyncMessage {
             sender: value.sender.to_string(),
             destination: value.destination.to_string(),
             handler: value.handler.to_string(),
-            max_gas: value.max_gas,
+            used_gas: value.max_gas,
             fee: Some(value.fee.into()),
             coins: Some(value.coins.into()),
             validity_start: Some(value.validity_start.into()),

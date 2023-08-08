@@ -122,7 +122,7 @@ pub(crate) fn execute_read_only_call(
 
     let result = grpc_model::ReadOnlyExecutionOutput {
         out: Some(output.out.into()),
-        max_gas: output.gas_cost,
+        used_gas: output.gas_cost,
         call_result: output.call_result,
     };
 
@@ -185,7 +185,6 @@ pub(crate) fn get_blocks(
         .iter()
         .zip(blocks_status)
         .map(|(block, block_graph_status)| grpc_model::BlockWrapper {
-            block_id: block.header.id.to_string(),
             block: Some(block.clone().into()),
             status: block_graph_status.into(),
         })
@@ -323,14 +322,12 @@ pub(crate) fn get_endorsements(
     // gather all values into a vector of EndorsementInfo instances
     let mut res: Vec<grpc_model::EndorsementWrapper> = Vec::with_capacity(eds.len());
     let zipped_iterator = izip!(
-        eds.into_iter(),
         storage_info.into_iter(),
         in_pool.into_iter(),
         is_final.into_iter()
     );
-    for (id, (endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
+    for ((endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
         res.push(grpc_model::EndorsementWrapper {
-            id: id.to_string(), //TODO to be removed
             in_pool,
             is_final,
             in_blocks: in_blocks
@@ -501,7 +498,6 @@ pub(crate) fn get_operations(
         .map(|secure_share| {
             let (secure_share, block_ids) = secure_share;
             grpc_model::OperationWrapper {
-                id: secure_share.id.to_string(),
                 thread: secure_share
                     .content_creator_address
                     .get_thread(grpc.grpc_config.thread_count) as u32,
