@@ -282,9 +282,6 @@
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_serialization::{
@@ -297,7 +294,6 @@
         MessagesHandler <span class="kw">as </span>PeerNetMessagesHandler, MessagesSerializer <span class="kw">as </span>PeerNetMessagesSerializer,
     },
 };
-<span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::{
     block_handler::{BlockMessage, BlockMessageSerializer},
@@ -521,19 +517,17 @@
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
                     <span class="string">&quot;MessagesHandler&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize message type id: {}&quot;</span>, err)),
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize id: {}&quot;</span>, err)),
                 )
             })<span class="question-mark">?</span>;
         <span class="kw">let </span>id = MessageTypeId::try_from(raw_id).map_err(|<span class="kw">_</span>| {
             PeerNetError::HandlerError.error(
                 <span class="string">&quot;MessagesHandler&quot;</span>,
-                <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Invalid message type id&quot;</span>)),
+                <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Failed to deserialize id&quot;</span>)),
             )
         })<span class="question-mark">?</span>;
         <span class="kw">match </span>id {
-            <span class="comment">// Blocks are high-priority: we block if the channel is full.
-            // This means that the sender will be blocked until the message is sent.
-            </span>MessageTypeId::Block =&gt; <span class="self">self
+            MessageTypeId::Block =&gt; <span class="self">self
                 </span>.sender_blocks
                 .send((peer_id.clone(), data.to_vec()))
                 .map_err(|err| {
@@ -542,33 +536,33 @@
                         <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
                     )
                 }),
-            <span class="comment">// Endorsements are low priority: we just drop the message if the channel is full
-            </span>MessageTypeId::Endorsement =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-                    </span>.sender_endorsements
-                    .try_send((peer_id.clone(), data.to_vec()))
-                {
-                    <span class="macro">debug!</span>(<span class="string">&quot;Failed to send endorsement message to channel: {}&quot;</span>, err)
-                }
-                <span class="prelude-val">Ok</span>(())
-            }
-            <span class="comment">// Operations are low priority: we just drop the message if the channel is full
-            </span>MessageTypeId::Operation =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-                    </span>.sender_operations
-                    .try_send((peer_id.clone(), data.to_vec()))
-                {
-                    <span class="macro">debug!</span>(<span class="string">&quot;Failed to send operation message to channel: {}&quot;</span>, err)
-                }
-                <span class="prelude-val">Ok</span>(())
-            }
-            <span class="comment">// Peer management messages are low priority: we just drop the message if the channel is full
-            </span>MessageTypeId::PeerManagement =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.sender_peers.try_send((peer_id.clone(), data.to_vec())) {
-                    <span class="macro">debug!</span>(<span class="string">&quot;Failed to send peer message to channel: {}&quot;</span>, err)
-                }
-                <span class="prelude-val">Ok</span>(())
-            }
+            MessageTypeId::Endorsement =&gt; <span class="self">self
+                </span>.sender_endorsements
+                .try_send((peer_id.clone(), data.to_vec()))
+                .map_err(|err| {
+                    PeerNetError::HandlerError.error(
+                        <span class="string">&quot;MessagesHandler&quot;</span>,
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
+                    )
+                }),
+            MessageTypeId::Operation =&gt; <span class="self">self
+                </span>.sender_operations
+                .try_send((peer_id.clone(), data.to_vec()))
+                .map_err(|err| {
+                    PeerNetError::HandlerError.error(
+                        <span class="string">&quot;MessagesHandler&quot;</span>,
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
+                    )
+                }),
+            MessageTypeId::PeerManagement =&gt; <span class="self">self
+                </span>.sender_peers
+                .try_send((peer_id.clone(), data.to_vec()))
+                .map_err(|err| {
+                    PeerNetError::HandlerError.error(
+                        <span class="string">&quot;MessagesHandler&quot;</span>,
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to send block message to channel: {}&quot;</span>, err)),
+                    )
+                }),
         }
     }
 }

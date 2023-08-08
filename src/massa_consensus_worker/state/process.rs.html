@@ -801,6 +801,7 @@
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -1377,9 +1378,10 @@
                 <span class="self">self</span>.config.genesis_timestamp,
                 add_block_slot,
             )<span class="question-mark">?</span>;
-            <span class="kw">let </span>diff = MassaTime::now()<span class="question-mark">?</span>.saturating_sub(add_slot_timestamp);
-            <span class="self">self</span>.massa_metrics
-                .set_block_slot_delay(diff.to_duration().as_secs_f64());
+            <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
+            <span class="kw">let </span>diff = now.saturating_sub(add_slot_timestamp);
+            <span class="self">self</span>.massa_metrics.inc_block_graph_counter();
+            <span class="self">self</span>.massa_metrics.inc_block_graph_ms(diff.to_millis());
         }
 
         <span class="prelude-val">Ok</span>(())
