@@ -452,6 +452,7 @@ impl Tester {
                         // we try to connect to all peer listener (For now we have only one listener)
                         let ip_canonical = listener.ip().to_canonical();
                         if active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
+                            peers_in_test.write().remove(&listener);
                             continue;
                         }
                         //Don't test our local addresses
