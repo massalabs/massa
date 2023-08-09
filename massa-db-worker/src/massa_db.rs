@@ -380,15 +380,29 @@ where
             })?;
         }
 
-        self.change_history
+        match self
+            .change_history
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-            .and_modify(|map| map.extend(changes.clone().into_iter()))
-            .or_insert(changes);
+        {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(changes);
+            }
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(changes);
+            }
+        }
 
-        self.change_history_versioning
+        match self
+            .change_history_versioning
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-            .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
-            .or_insert(versioning_changes);
+        {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(versioning_changes);
+            }
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(versioning_changes);
+            }
+        }
 
         if reset_history {
             self.change_history.clear();
@@ -397,6 +411,11 @@ where
         while self.change_history.len() > self.config.max_history_length {
             self.change_history.pop_first();
         }
+
+        while self.change_history_versioning.len() > self.config.max_history_length {
+            self.change_history_versioning.pop_first();
+        }
+
         Ok(())
     }
 
