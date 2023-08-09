@@ -1,6 +1,6 @@
 [package]
 name = "massa_signature"
-version = "0.25.2"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
