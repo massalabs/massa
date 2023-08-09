@@ -781,25 +781,6 @@
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
 <a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1182,29 +1163,15 @@
             })<span class="question-mark">?</span>;
         }
 
-        <span class="kw">match </span><span class="self">self
-            </span>.change_history
+        <span class="self">self</span>.change_history
             .entry(<span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-        {
-            std::collections::btree_map::Entry::Vacant(entry) =&gt; {
-                entry.insert(changes);
-            }
-            std::collections::btree_map::Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
-                entry.get_mut().extend(changes);
-            }
-        }
+            .and_modify(|map| map.extend(changes.clone().into_iter()))
+            .or_insert(changes);
 
-        <span class="kw">match </span><span class="self">self
-            </span>.change_history_versioning
+        <span class="self">self</span>.change_history_versioning
             .entry(<span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-        {
-            std::collections::btree_map::Entry::Vacant(entry) =&gt; {
-                entry.insert(versioning_changes);
-            }
-            std::collections::btree_map::Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
-                entry.get_mut().extend(versioning_changes);
-            }
-        }
+            .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
+            .or_insert(versioning_changes);
 
         <span class="kw">if </span>reset_history {
             <span class="self">self</span>.change_history.clear();
@@ -1213,11 +1180,6 @@
         <span class="kw">while </span><span class="self">self</span>.change_history.len() &gt; <span class="self">self</span>.config.max_history_length {
             <span class="self">self</span>.change_history.pop_first();
         }
-
-        <span class="kw">while </span><span class="self">self</span>.change_history_versioning.len() &gt; <span class="self">self</span>.config.max_history_length {
-            <span class="self">self</span>.change_history_versioning.pop_first();
-        }
-
         <span class="prelude-val">Ok</span>(())
     }
 
