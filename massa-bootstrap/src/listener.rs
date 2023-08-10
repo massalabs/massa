@@ -121,7 +121,7 @@ impl BootstrapTcpListener {
                 remote_addr
             );
         }
-        
+
         Ok(PollEvent::NewConnections(results))
     }
 }
