@@ -1415,16 +1415,6 @@
 <a href="#1415" id="1415">1415</a>
 <a href="#1416" id="1416">1416</a>
 <a href="#1417" id="1417">1417</a>
-<a href="#1418" id="1418">1418</a>
-<a href="#1419" id="1419">1419</a>
-<a href="#1420" id="1420">1420</a>
-<a href="#1421" id="1421">1421</a>
-<a href="#1422" id="1422">1422</a>
-<a href="#1423" id="1423">1423</a>
-<a href="#1424" id="1424">1424</a>
-<a href="#1425" id="1425">1425</a>
-<a href="#1426" id="1426">1426</a>
-<a href="#1427" id="1427">1427</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1463,7 +1453,7 @@
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 <span class="kw">use </span>massa_factory_worker::start_factory;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig};
-<span class="kw">use </span>massa_grpc::config::{GrpcConfig, ServiceName};
+<span class="kw">use </span>massa_grpc::config::GrpcConfig;
 <span class="kw">use </span>massa_grpc::server::{MassaPrivateGrpc, MassaPublicGrpc};
 <span class="kw">use </span>massa_ledger_exports::LedgerConfig;
 <span class="kw">use </span>massa_ledger_worker::FinalLedger;
@@ -2277,12 +2267,8 @@
 
     <span class="comment">// Whether to spawn gRPC PUBLIC API
     </span><span class="kw">let </span>grpc_public_handle = <span class="kw">if </span>SETTINGS.grpc.public.enabled {
-        <span class="kw">let </span>grpc_public_config = configure_grpc(
-            ServiceName::Public,
-            <span class="kw-2">&amp;</span>SETTINGS.grpc.public,
-            keypair.clone(),
-            <span class="kw-2">&amp;</span>final_state,
-        );
+        <span class="kw">let </span>grpc_public_config =
+            configure_grpc(<span class="kw-2">&amp;</span>SETTINGS.grpc.public, keypair.clone(), <span class="kw-2">&amp;</span>final_state);
 
         <span class="kw">let </span>grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
@@ -2317,12 +2303,8 @@
 
     <span class="comment">// Whether to spawn gRPC PRIVATE API
     </span><span class="kw">let </span>grpc_private_handle = <span class="kw">if </span>SETTINGS.grpc.private.enabled {
-        <span class="kw">let </span>grpc_private_config = configure_grpc(
-            ServiceName::Private,
-            <span class="kw-2">&amp;</span>SETTINGS.grpc.private,
-            keypair.clone(),
-            <span class="kw-2">&amp;</span>final_state,
-        );
+        <span class="kw">let </span>grpc_private_config =
+            configure_grpc(<span class="kw-2">&amp;</span>SETTINGS.grpc.private, keypair.clone(), <span class="kw-2">&amp;</span>final_state);
 
         <span class="kw">let </span>bs_white_black_list = bootstrap_manager
             .as_ref()
@@ -2472,13 +2454,11 @@
 
 <span class="comment">// Get the configuration of the gRPC server
 </span><span class="kw">fn </span>configure_grpc(
-    name: ServiceName,
     settings: <span class="kw-2">&amp;</span>GrpcSettings,
     keypair: KeyPair,
     final_state: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;FinalState&gt;&gt;,
 ) -&gt; GrpcConfig {
     GrpcConfig {
-        name,
         enabled: settings.enabled,
         accept_http1: settings.accept_http1,
         enable_cors: settings.enable_cors,
