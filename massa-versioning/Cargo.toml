@@ -1,31 +1,29 @@
 [package]
 name = "massa_versioning"
-version = "0.24.0"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-[dependencies]
-# This is from: https://github.com/rust-bakery/machine/pull/22
-machine = { git = "https://github.com/antifuchs/machine", branch = "fix-workspace-build" }
-parking_lot = "0.12"
-thiserror = "1.0"
-num_enum = "0.5"
-nom = "=7.1"
-tracing = "0.1"
-
-# custom module
-massa_time = { path = "../massa-time" }
-massa_models = { path = "../massa-models" }
-massa_serialization = { path = "../massa-serialization" }
-massa_hash = { path = "../massa-hash" }
-massa_signature = { path = "../massa-signature" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", rev = "18ec02f", features = ["tonic"] }
-massa_db_exports = { path = "../massa-db-exports" }
-
-[dev-dependencies]
-more-asserts = "0.3"
-tempfile = "3.5"
-massa_db_worker = { path = "../massa-db-worker" }
-
 [features]
 testing = []
+
+[dependencies]
+machine = {workspace = true}
+parking_lot = {workspace = true}
+thiserror = {workspace = true}
+num = {workspace = true}
+num_enum = {workspace = true}
+nom = {workspace = true}
+tracing = {workspace = true}
+massa_time = {workspace = true}
+massa_models = {workspace = true}
+massa_serialization = {workspace = true}
+massa_hash = {workspace = true}
+massa_signature = {workspace = true}
+massa-proto-rs = {workspace = true, "features" = ["tonic"]}
+massa_db_exports = {workspace = true}
+
+[dev-dependencies]
+more-asserts = {workspace = true}
+tempfile = {workspace = true}
+massa_db_worker = {workspace = true}

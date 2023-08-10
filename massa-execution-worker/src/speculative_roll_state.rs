@@ -282,7 +282,7 @@ impl SpeculativeRollState {
             }
         }
         if !target_credits.is_empty() {
-            let mut credits = DeferredCredits::new_with_hash();
+            let mut credits = DeferredCredits::new();
             credits.credits.insert(target_slot, target_credits);
             self.added_changes.deferred_credits.extend(credits);
         }
@@ -403,7 +403,7 @@ impl SpeculativeRollState {
                 };
                 if let Some(prod_stats) = final_state
                     .pos_state
-                    .get_production_stats_for_address(c.0, *address)
+                    .get_production_stats_for_address(c.0, address)
                 {
                     cur_item.ok_count = prod_stats.block_success_count;
                     cur_item.nok_count = prod_stats.block_failure_count;
@@ -570,11 +570,7 @@ impl SpeculativeRollState {
         );
 
         // added deferred credits
-        credits.extend(
-            self.added_changes
-                .deferred_credits
-                .get_slot_range(..=slot, false),
-        );
+        credits.extend(self.added_changes.deferred_credits.get_slot_range(..=slot));
 
         // filter out zeros
         credits.remove_zeros();

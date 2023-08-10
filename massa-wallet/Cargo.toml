@@ -1,23 +1,21 @@
 [package]
 name = "massa_wallet"
-version = "0.24.0"
+version = "0.26.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-displaydoc = "0.2"
-serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.9"
-serde_qs = "0.11"
-thiserror = "1.0"
-tempfile = { version = "3.3", optional = true } # use with testing feature
-
-# custom modules
-massa_cipher = { path = "../massa-cipher" }
-massa_hash = { path = "../massa-hash" }
-massa_models = { path = "../massa-models" }
-massa_signature = { path = "../massa-signature" }
-
 [features]
 testing = ["tempfile", "massa_models/testing"]
+
+[dependencies]
+displaydoc = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+serde_qs = {workspace = true}
+thiserror = {workspace = true}
+tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
+massa_cipher = {workspace = true}
+massa_hash = {workspace = true}
+massa_models = {workspace = true}
+massa_signature = {workspace = true}

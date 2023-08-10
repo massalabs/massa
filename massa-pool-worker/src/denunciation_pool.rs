@@ -206,7 +206,8 @@ impl DenunciationPool {
                 if !self
                     .channels
                     .execution_controller
-                    .is_denunciation_executed(de_idx)
+                    .get_denunciation_execution_status(de_idx)
+                    .0
                     && de_slot <= target_slot
                     && !Denunciation::is_expired(
                         &de_slot.period,
@@ -316,7 +317,7 @@ mod tests {
         let de_status_iter = (1..bound_1).map(|i| {
             let block_header_1 = BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(i, 0),
                 parents: vec![],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -346,7 +347,7 @@ mod tests {
             let endorsement_1 = Endorsement {
                 slot: Slot::new(u64::from(i), 0),
                 index: i % ENDORSEMENT_COUNT,
-                endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+                endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
             };
 
             let s_endorsement1 =

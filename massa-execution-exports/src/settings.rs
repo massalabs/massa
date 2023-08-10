@@ -52,6 +52,10 @@ pub struct ExecutionConfig {
     pub stats_time_window_duration: MassaTime,
     /// Max miss ratio for auto roll sell
     pub max_miss_ratio: Ratio<u64>,
+    /// Max function length in call sc
+    pub max_function_length: u16,
+    /// Max parameter length in call sc
+    pub max_parameter_length: u32,
     /// Max size of a datastore key
     pub max_datastore_key_length: u8,
     /// Max bytecode size
@@ -84,4 +88,6 @@ pub struct ExecutionConfig {
     pub broadcast_enabled: bool,
     /// slot execution outputs channel capacity
     pub broadcast_slot_execution_output_channel_capacity: usize,
+    /// max size of event data, in bytes
+    pub max_event_size: usize,
 }

@@ -4,6 +4,8 @@
 
 use std::path::PathBuf;
 
+use num::rational::Ratio;
+
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_db_exports::ShareableMassaDBController;
@@ -41,7 +43,7 @@ impl FinalState {
                 [],
                 MipStatsConfig {
                     block_count_considered: 10,
-                    counters_max: 10,
+                    warn_announced_version_ratio: Ratio::new(30, 100),
                 },
             ))
             .unwrap(),

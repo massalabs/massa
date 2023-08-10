@@ -286,7 +286,17 @@ impl SlotSequencer {
         // Loop over the slots to build the new sequence
         while slot <= max_slot {
             // The slot is now CSS-final if it is before or at the latest CSS-final slot in its own thread
-            let new_css_final = slot <= self.latest_css_final_slots[slot.thread as usize];
+            let mut new_css_final = slot <= self.latest_css_final_slots[slot.thread as usize];
+
+            // the slot S is also CSS-final if there is any CSS-final slot S' in any thread so that t(S') >= t(S) + t0
+            if !new_css_final {
+                new_css_final = self.latest_css_final_slots.iter().any(|css_final_slot| {
+                    css_final_slot
+                        .slots_since(&slot, self.config.thread_count)
+                        .unwrap_or_default()
+                        >= self.config.thread_count as u64
+                });
+            }
 
             // Try to get a block at the current slot by consuming it from the new CSS-final blocks.
             let new_css_final_block: Option<BlockId> = new_css_final_blocks.remove(&slot);

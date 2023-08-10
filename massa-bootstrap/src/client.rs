@@ -2,6 +2,7 @@ use humantime::format_duration;
 use massa_db_exports::DBBatch;
 use massa_final_state::{FinalState, FinalStateError};
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
 use massa_signature::PublicKey;
 use massa_time::MassaTime;
@@ -402,6 +403,7 @@ pub fn get_state(
     end_timestamp: Option<MassaTime>,
     restart_from_snapshot_at_period: Option<u64>,
     interupted: Arc<(Mutex<bool>, Condvar)>,
+    massa_metrics: MassaMetrics,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
 
@@ -429,6 +431,7 @@ pub fn get_state(
                             err
                         ))
                     })?;
+                final_state_guard.init_execution_trail_hash();
             }
 
             // create the initial cycle of PoS cycle_history
@@ -493,6 +496,7 @@ pub fn get_state(
             );
             match conn {
                 Ok(mut client) => {
+                    massa_metrics.inc_bootstrap_counter();
                     let bs = bootstrap_from_server(
                         bootstrap_config,
                         &mut client,
@@ -588,7 +592,12 @@ fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<Mip
     if !added.is_empty() {
         for (mip_info, mip_state) in added.iter() {
             let now = MassaTime::now().expect("Cannot get current time");
-            match mip_state.state_at(now, mip_info.start, mip_info.timeout) {
+            match mip_state.state_at(
+                now,
+                mip_info.start,
+                mip_info.timeout,
+                mip_info.activation_delay,
+            ) {
                 Ok(st_id) => {
                     if st_id == ComponentStateTypeId::LockedIn {
                         // A new MipInfo @ state locked_in - we need to urge the user to update

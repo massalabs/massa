@@ -1,18 +1,17 @@
 [package]
 name = "massa_storage"
-version = "0.24.0"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
-
-[dependencies]
-parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-massa_models = { path = "../massa-models" }
-massa_metrics = { path = "../massa-metrics" }
-
-[dev-dependencies]
-massa_factory_exports = { path = "../massa-factory-exports", features=["testing"] }
-massa_signature = { path = "../massa-signature" }
 
 [features]
 testing = ["massa_factory_exports/testing", "massa_metrics/testing"]
 
+[dependencies]
+parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+massa_models = {workspace = true}
+massa_metrics = {workspace = true}
+
+[dev-dependencies]
+massa_factory_exports = {workspace = true, "features" = ["testing"]}
+massa_signature = {workspace = true}

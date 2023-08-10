@@ -27,7 +27,7 @@ pub fn gen_endorsements_for_denunciation(
     let endorsement_1 = Endorsement {
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     };
 
     let v_endorsement1 =
@@ -36,7 +36,7 @@ pub fn gen_endorsements_for_denunciation(
     let endorsement_2 = Endorsement {
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
     };
 
     let v_endorsement2 =
@@ -45,18 +45,18 @@ pub fn gen_endorsements_for_denunciation(
     let endorsement_3 = Endorsement {
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from("blk3".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk3".as_bytes())),
     };
     let v_endorsement_3 =
         Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), &keypair).unwrap();
 
-    return (
+    (
         slot,
         keypair,
         v_endorsement1,
         v_endorsement2,
         v_endorsement_3,
-    );
+    )
 }
 
 /// Helper to generate block headers ready for denunciation
@@ -68,19 +68,19 @@ pub fn gen_block_headers_for_denunciation(
     let slot = with_slot.unwrap_or(Slot::new(2, 1));
 
     let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i])))
+        .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
         .collect();
     let parents_2: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i + 1])))
+        .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i + 1])))
         .collect();
     let parents_3: Vec<BlockId> = (0..THREAD_COUNT)
-        .map(|i| BlockId(Hash::compute_from(&[i + 2])))
+        .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i + 2])))
         .collect();
 
     let endorsement_1 = Endorsement {
         slot: Slot::new(1, 1),
         index: 1,
-        endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     };
     let s_endorsement_1 =
         Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), &keypair)
@@ -88,7 +88,7 @@ pub fn gen_block_headers_for_denunciation(
 
     let block_header_1 = BlockHeader {
         current_version: 0,
-        announced_version: 0,
+        announced_version: None,
         slot,
         parents: parents_1,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -106,7 +106,7 @@ pub fn gen_block_headers_for_denunciation(
 
     let block_header_2 = BlockHeader {
         current_version: 0,
-        announced_version: 0,
+        announced_version: None,
         slot,
         parents: parents_2,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -124,11 +124,11 @@ pub fn gen_block_headers_for_denunciation(
 
     let block_header_3 = BlockHeader {
         current_version: 0,
-        announced_version: 0,
+        announced_version: None,
         slot,
         parents: parents_3,
         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
-        endorsements: vec![s_endorsement_1.clone()],
+        endorsements: vec![s_endorsement_1],
         denunciations: vec![],
     };
 
@@ -140,11 +140,11 @@ pub fn gen_block_headers_for_denunciation(
     )
     .expect("error while producing block header");
 
-    return (
+    (
         slot,
         keypair,
-        s_block_header_1.clone(),
+        s_block_header_1,
         s_block_header_2,
         s_block_header_3,
-    );
+    )
 }

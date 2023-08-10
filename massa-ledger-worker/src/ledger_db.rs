@@ -9,6 +9,7 @@ use massa_db_exports::{
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
+use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
@@ -59,6 +60,7 @@ pub struct LedgerDB {
     amount_deserializer: AmountDeserializer,
     bytecode_deserializer: BytecodeDeserializer,
     max_datastore_value_length: u64,
+    max_datastore_key_length: u8,
 }
 
 impl Debug for LedgerDB {
@@ -97,6 +99,7 @@ impl LedgerDB {
                 Bound::Included(u64::MAX),
             ),
             max_datastore_value_length,
+            max_datastore_key_length,
         }
     }
 
@@ -168,36 +171,43 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    pub fn get_datastore_keys(&self, addr: &Address) -> Option<BTreeSet<Vec<u8>>> {
+    pub fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
         let db = self.db.read();
 
-        let key_prefix = datastore_prefix_from_address(addr);
+        // check if address exists, return None if it does not
+        {
+            let key = LedgerSubEntry::Balance.derive_key(addr);
+            let mut serialized_key = Vec::new();
+            self.key_serializer_db
+                .serialize(&key, &mut serialized_key)
+                .expect(KEY_SER_ERROR);
+            db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)?;
+        }
 
-        let mut iter = db
-            .iterator_cf(
+        // collect keys starting with prefix
+        let start_prefix = datastore_prefix_from_address(addr, prefix);
+        let end_prefix = end_prefix(&start_prefix);
+        Some(
+            db.iterator_cf(
                 STATE_CF,
-                MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+                MassaIteratorMode::From(&start_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, _)| key <= &end_prefix(&key_prefix).unwrap())
-            .map(|(key, _)| {
+            .take_while(|(key, _)| match &end_prefix {
+                Some(end) => key < end,
+                None => true,
+            })
+            .filter_map(|(key, _)| {
                 let (_rest, key) = self
                     .key_deserializer_db
                     .deserialize::<DeserializeError>(&key)
-                    .unwrap();
+                    .expect("could not deserialize datastore key from state db");
                 match key.key_type {
-                    KeyType::DATASTORE(datastore_vec) => datastore_vec,
-                    _ => {
-                        vec![]
-                    }
+                    KeyType::DATASTORE(datastore_vec) => Some(datastore_vec),
+                    _ => None,
                 }
             })
-            .peekable();
-
-        // Return None if empty
-        // TODO: function should return None if complete entry does not exist
-        // and Some([]) if it does but datastore is empty
-        iter.peek()?;
-        Some(iter.collect())
+            .collect(),
+        )
     }
 
     pub fn reset(&self) {
@@ -302,11 +312,29 @@ impl LedgerDB {
         db.put_or_update_entry_value(batch, serialized_key, &bytes_bytecode);
 
         // datastore
-        for (hash, entry) in ledger_entry.datastore {
+        for (key, entry) in ledger_entry.datastore {
+            if entry.len() > self.max_datastore_value_length as usize {
+                panic!(
+                    "Datastore entry for address {} and key {:?} is too big ({} > {})",
+                    addr,
+                    key,
+                    entry.len(),
+                    self.max_datastore_value_length
+                );
+            }
+            if key.len() > self.max_datastore_key_length as usize {
+                panic!(
+                    "Datastore key for address {} and key {:?} is too big ({} > {})",
+                    addr,
+                    key,
+                    key.len(),
+                    self.max_datastore_key_length
+                );
+            }
             let mut serialized_key = Vec::new();
             self.key_serializer_db
                 .serialize(
-                    &Key::new(addr, KeyType::DATASTORE(hash)),
+                    &Key::new(addr, KeyType::DATASTORE(key)),
                     &mut serialized_key,
                 )
                 .expect(KEY_SER_ERROR);
@@ -352,18 +380,36 @@ impl LedgerDB {
         }
 
         // datastore
-        for (hash, update) in entry_update.datastore {
+        for (key, update) in entry_update.datastore {
+            if key.len() > self.max_datastore_key_length as usize {
+                panic!(
+                    "Datastore key for address {} and key {:?} is too big ({} > {})",
+                    addr,
+                    key,
+                    key.len(),
+                    self.max_datastore_key_length
+                );
+            }
             let mut serialized_key = Vec::new();
             self.key_serializer_db
                 .serialize(
-                    &Key::new(addr, KeyType::DATASTORE(hash)),
+                    &Key::new(addr, KeyType::DATASTORE(key)),
                     &mut serialized_key,
                 )
                 .expect(KEY_SER_ERROR);
 
             match update {
                 SetOrDelete::Set(entry) => {
-                    db.put_or_update_entry_value(batch, serialized_key, &entry)
+                    if entry.len() > self.max_datastore_value_length as usize {
+                        panic!(
+                            "Datastore entry for address {} is too big ({} > {})",
+                            addr,
+                            entry.len(),
+                            self.max_datastore_value_length
+                        );
+                    } else {
+                        db.put_or_update_entry_value(batch, serialized_key, &entry);
+                    }
                 }
                 SetOrDelete::Delete => db.delete_key(batch, serialized_key),
             }
@@ -399,7 +445,7 @@ impl LedgerDB {
         db.delete_key(batch, serialized_key);
 
         // datastore
-        let key_prefix = datastore_prefix_from_address(addr);
+        let key_prefix = datastore_prefix_from_address(addr, &[]);
 
         for (serialized_key, _) in db
             .iterator_cf(
@@ -463,7 +509,7 @@ impl LedgerDB {
     ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
         let db = self.db.read();
 
-        let key_prefix = datastore_prefix_from_address(addr);
+        let key_prefix = datastore_prefix_from_address(addr, &[]);
 
         db.iterator_cf(
             STATE_CF,
@@ -489,15 +535,10 @@ impl LedgerDB {
 /// Since key length is not limited, for some case we return `None` because there is
 /// no bounded limit (every keys in the series `[]`, `[255]`, `[255, 255]` ...).
 fn end_prefix(prefix: &[u8]) -> Option<Vec<u8>> {
-    let mut end_range = prefix.to_vec();
-    while let Some(0xff) = end_range.last() {
-        end_range.pop();
-    }
-    if let Some(byte) = end_range.last_mut() {
-        *byte += 1;
-        Some(end_range)
-    } else {
-        None
+    match get_prefix_bounds(prefix).1 {
+        std::ops::Bound::Excluded(end) => Some(end),
+        std::ops::Bound::Unbounded => None,
+        _ => panic!("unexpected key bound"),
     }
 }
 

@@ -70,6 +70,11 @@ impl std::fmt::Debug for Hash {
 }
 
 impl Hash {
+    /// Creates a hash full of zeros bytes.
+    pub fn zero() -> Self {
+        Hash(blake3::Hash::from([0; HASH_SIZE_BYTES]))
+    }
+
     /// Compute a hash from data.
     ///
     /// # Example
@@ -79,6 +84,22 @@ impl Hash {
     /// ```
     pub fn compute_from(data: &[u8]) -> Self {
         Hash(blake3::hash(data))
+    }
+
+    /// Compute a hash from tuple of byte arrays.
+    ///
+    /// # Example
+    ///  ```
+    /// # use massa_hash::Hash;
+    /// let hash = Hash::compute_from_tuple(&[&"hello".as_bytes(), &"world".as_bytes()]);
+    /// ```
+    pub fn compute_from_tuple(data: &[&[u8]]) -> Self {
+        let mut hasher = blake3::Hasher::new();
+        for d in data {
+            hasher.update(&(d.len() as u64).to_be_bytes());
+            hasher.update(d);
+        }
+        Hash(hasher.finalize())
     }
 
     /// Serialize a Hash using `bs58` encoding with checksum.
@@ -160,6 +181,17 @@ impl Hash {
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Hash {
         Hash(blake3::Hash::from(*data))
+    }
+}
+
+impl TryFrom<&[u8]> for Hash {
+    type Error = MassaHashError;
+
+    /// Try parsing from byte slice.
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Ok(Hash::from_bytes(value.try_into().map_err(|err| {
+            MassaHashError::ParsingError(format!("{}", err))
+        })?))
     }
 }
 

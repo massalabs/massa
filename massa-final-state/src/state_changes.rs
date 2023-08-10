@@ -10,7 +10,11 @@ use massa_executed_ops::{
     ExecutedDenunciationsChangesSerializer, ExecutedOpsChanges, ExecutedOpsChangesDeserializer,
     ExecutedOpsChangesSerializer,
 };
-use massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+use massa_hash::{HashDeserializer, HashSerializer};
+use massa_ledger_exports::{
+    LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, SetOrKeep,
+    SetOrKeepDeserializer, SetOrKeepSerializer,
+};
 use massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::{
@@ -33,6 +37,8 @@ pub struct StateChanges {
     pub executed_ops_changes: ExecutedOpsChanges,
     /// executed denunciations changes
     pub executed_denunciations_changes: ExecutedDenunciationsChanges,
+    /// execution trail hash change
+    pub execution_trail_hash_change: SetOrKeep<massa_hash::Hash>,
 }
 
 /// Basic `StateChanges` serializer.
@@ -42,6 +48,7 @@ pub struct StateChangesSerializer {
     pos_changes_serializer: PoSChangesSerializer,
     ops_changes_serializer: ExecutedOpsChangesSerializer,
     de_changes_serializer: ExecutedDenunciationsChangesSerializer,
+    execution_trail_hash_change_serializer: SetOrKeepSerializer<massa_hash::Hash, HashSerializer>,
 }
 
 impl Default for StateChangesSerializer {
@@ -59,6 +66,7 @@ impl StateChangesSerializer {
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
             de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),
+            execution_trail_hash_change_serializer: SetOrKeepSerializer::new(HashSerializer::new()),
         }
     }
 }
@@ -75,7 +83,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
     /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -123,6 +131,8 @@ impl Serializer<StateChanges> for StateChangesSerializer {
             .serialize(&value.executed_ops_changes, buffer)?;
         self.de_changes_serializer
             .serialize(&value.executed_denunciations_changes, buffer)?;
+        self.execution_trail_hash_change_serializer
+            .serialize(&value.execution_trail_hash_change, buffer)?;
         Ok(())
     }
 }
@@ -134,6 +144,8 @@ pub struct StateChangesDeserializer {
     pos_changes_deserializer: PoSChangesDeserializer,
     ops_changes_deserializer: ExecutedOpsChangesDeserializer,
     de_changes_deserializer: ExecutedDenunciationsChangesDeserializer,
+    execution_trail_hash_change_deserializer:
+        SetOrKeepDeserializer<massa_hash::Hash, HashDeserializer>,
 }
 
 impl StateChangesDeserializer {
@@ -182,6 +194,9 @@ impl StateChangesDeserializer {
                 endorsement_count,
                 max_de_changes_length,
             ),
+            execution_trail_hash_change_deserializer: SetOrKeepDeserializer::new(
+                HashDeserializer::new(),
+            ),
         }
     }
 }
@@ -198,7 +213,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
     ///
     /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new_with_hash(
+    /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
     ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -261,21 +276,30 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 context("Failed de_changes deserialization", |input| {
                     self.de_changes_deserializer.deserialize(input)
                 }),
+                context(
+                    "Failed execution_trail_hash_change deserialization",
+                    |input| {
+                        self.execution_trail_hash_change_deserializer
+                            .deserialize(input)
+                    },
+                ),
             )),
         )
         .map(
             |(
                 ledger_changes,
                 async_pool_changes,
-                roll_state_changes,
-                executed_ops,
-                executed_denunciations,
+                pos_changes,
+                executed_ops_changes,
+                executed_denunciations_changes,
+                execution_trail_hash_change,
             )| StateChanges {
                 ledger_changes,
                 async_pool_changes,
-                pos_changes: roll_state_changes,
-                executed_ops_changes: executed_ops,
-                executed_denunciations_changes: executed_denunciations,
+                pos_changes,
+                executed_ops_changes,
+                executed_denunciations_changes,
+                execution_trail_hash_change,
             },
         )
         .parse(buffer)
@@ -291,5 +315,7 @@ impl StateChanges {
         self.pos_changes.extend(changes.pos_changes);
         self.executed_ops_changes
             .extend(changes.executed_ops_changes);
+        self.execution_trail_hash_change
+            .apply(changes.execution_trail_hash_change);
     }
 }

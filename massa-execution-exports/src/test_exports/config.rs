@@ -65,6 +65,9 @@ impl Default for ExecutionConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             broadcast_enabled: true,
             broadcast_slot_execution_output_channel_capacity: 5000,
+            max_event_size: 50_000,
+            max_function_length: 1000,
+            max_parameter_length: 1000,
         }
     }
 }

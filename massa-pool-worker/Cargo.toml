@@ -1,29 +1,27 @@
 [package]
 name = "massa_pool_worker"
-version = "0.24.0"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-[dependencies]
-tracing = "0.1"
-# custom modules
-parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-massa_models = { path = "../massa-models" }
-massa_storage = { path = "../massa-storage" }
-massa_pool_exports = { path = "../massa-pool-exports" }
-massa_time = { path = "../massa-time" }
-massa_wallet = { path = "../massa-wallet" }
-
-[dev-dependencies]
-tokio = { version = "1.23", features = ["sync"] }
-mockall = "0.11.4"
-massa_signature = { path = "../massa-signature" }
-massa_hash = { path = "../massa-hash" }
-massa_pos_exports = { path = "../massa-pos-exports",  features = [ "testing" ] }
-massa_pool_exports = { path = "../massa-pool-exports", features = [ "testing" ] }
-massa_execution_exports = { path = "../massa-execution-exports", features = [ "testing" ] }
-crossbeam-channel = { version = "0.5" }
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = ["massa_pool_exports/testing", "massa_execution_exports/testing", "massa_pos_exports/testing", "massa_wallet/testing"]
+
+[dependencies]
+tracing = {workspace = true}
+parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+massa_models = {workspace = true}
+massa_storage = {workspace = true}
+massa_pool_exports = {workspace = true}
+massa_time = {workspace = true}
+massa_wallet = {workspace = true}
+
+[dev-dependencies]
+tokio = {workspace = true, "features" = ["sync"]}
+mockall = {workspace = true}
+massa_signature = {workspace = true}
+massa_hash = {workspace = true}
+massa_pos_exports = {workspace = true, "features" = ["testing"]}
+massa_pool_exports = {workspace = true, "features" = ["testing"]}
+massa_execution_exports = {workspace = true, "features" = ["testing"]}
+crossbeam-channel = {workspace = true}

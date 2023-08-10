@@ -151,13 +151,13 @@ impl SpeculativeAsyncPool {
 
         let mut eliminated_infos: Vec<_> = self
             .message_infos
-            .drain_filter(|_k, v| *slot >= v.validity_end)
+            .extract_if(|_k, v| *slot >= v.validity_end)
             .collect();
 
         let eliminated_new_messages: Vec<_> = self
             .pool_changes
             .0
-            .drain_filter(|_k, v| match v {
+            .extract_if(|_k, v| match v {
                 SetUpdateOrDelete::Set(v) => *slot >= v.validity_end,
                 SetUpdateOrDelete::Update(_v) => false,
                 SetUpdateOrDelete::Delete => false,
@@ -221,28 +221,26 @@ impl SpeculativeAsyncPool {
         let pool_changes_clone = self.pool_changes.clone();
 
         // First, look in speculative pool
-        wanted_ids.drain_filter(
-            |&mut message_id| match pool_changes_clone.0.get(message_id) {
-                Some(SetUpdateOrDelete::Set(msg)) => {
-                    if delete_existing {
-                        self.pool_changes.push_delete(*message_id);
-                    }
-                    msgs.push((*message_id, msg.clone()));
-                    true
+        wanted_ids.retain(|&message_id| match pool_changes_clone.0.get(message_id) {
+            Some(SetUpdateOrDelete::Set(msg)) => {
+                if delete_existing {
+                    self.pool_changes.push_delete(*message_id);
                 }
-                Some(SetUpdateOrDelete::Update(msg_update)) => {
-                    current_changes.entry(message_id).and_modify(|e| {
-                        e.apply(msg_update.clone());
-                    });
-                    false
-                }
-                Some(SetUpdateOrDelete::Delete) => false,
-                None => false,
-            },
-        );
+                msgs.push((*message_id, msg.clone()));
+                false
+            }
+            Some(SetUpdateOrDelete::Update(msg_update)) => {
+                current_changes.entry(message_id).and_modify(|e| {
+                    e.apply(msg_update.clone());
+                });
+                true
+            }
+            Some(SetUpdateOrDelete::Delete) => true,
+            None => true,
+        });
 
         // Then, search the active history
-        wanted_ids.drain_filter(|&mut message_id| {
+        wanted_ids.retain(|&message_id| {
             match self.active_history.read().fetch_message(
                 message_id,
                 current_changes.get(message_id).cloned().unwrap_or_default(),
@@ -253,17 +251,17 @@ impl SpeculativeAsyncPool {
                         self.pool_changes.push_delete(*message_id);
                     }
                     msgs.push((*message_id, msg));
-                    return true;
+                    return false;
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) => {
                     current_changes.entry(message_id).and_modify(|e| {
                         e.apply(msg_update.clone());
                     });
-                    return false;
+                    return true;
                 }
                 _ => {}
             }
-            false
+            true
         });
 
         // Then, fetch all the remaining messages from the final state

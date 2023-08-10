@@ -24,6 +24,7 @@ use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::str::FromStr;
 use std::{
@@ -117,7 +118,7 @@ pub fn get_sample_state(
         [],
         MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         },
     ))
     .unwrap();
@@ -143,6 +144,7 @@ pub fn get_sample_state(
         )
         .unwrap()
     };
+    final_state.init_execution_trail_hash();
     let mut batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
     final_state.pos_state.create_initial_cycle(&mut batch);
     final_state
@@ -173,7 +175,7 @@ pub fn create_block(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: vec![],
             operation_merkle_root,

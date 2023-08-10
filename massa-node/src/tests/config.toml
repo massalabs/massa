@@ -25,6 +25,7 @@
 
 [protocol]
     message_timeout = 5000
+    tester_timeout = 500
     ask_block_timeout = 10000
     max_known_blocks_size = 1024
     max_node_known_blocks_size = 1024
@@ -50,15 +51,14 @@
     message_timeout = 5000
     ask_peer_list_interval = 30000
     keypair_file = "../massa-node/config/node_privkey.key"
-    max_ask_blocks_per_message = 128
     max_operations_per_message = 1024
     max_endorsements_per_message = 1024
     max_send_wait = 500
     ban_timeout = 3600000
     [network.peer_types_config]
-    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5}
-    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
-    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2}
+    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5, allow_local_peers = true }
+    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1, allow_local_peers = true }
+    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2, allow_local_peers = true }
 
 
 [bootstrap]

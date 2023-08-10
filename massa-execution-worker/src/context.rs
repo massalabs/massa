@@ -7,6 +7,7 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
 
+use crate::active_history::HistorySearchResult;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
@@ -16,12 +17,14 @@ use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRo
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
-    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+    EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
+    ExecutionStackElement,
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
-use massa_ledger_exports::LedgerChanges;
+use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -35,6 +38,7 @@ use massa_models::{
 };
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
+use massa_serialization::Serializer;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::MipStore;
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
@@ -133,7 +137,7 @@ pub struct ExecutionContext {
     /// counter of newly created messages so far during this execution
     pub created_message_index: u64,
 
-    /// block ID, if one is present at the execution slot
+    /// block Id, if one is present at the execution slot
     pub opt_block_id: Option<BlockId>,
 
     /// address call stack, most recent is at the back
@@ -154,13 +158,16 @@ pub struct ExecutionContext {
     /// operation id that originally caused this execution (if any)
     pub origin_operation_id: Option<OperationId>,
 
-    // cache of compiled runtime modules
+    /// Execution trail hash
+    pub execution_trail_hash: Hash,
+
+    /// cache of compiled runtime modules
     pub module_cache: Arc<RwLock<ModuleCache>>,
 
-    // Vesting Manager
+    /// Vesting Manager
     pub vesting_manager: Arc<VestingManager>,
 
-    // Address factory
+    /// Address factory
     pub address_factory: AddressFactory,
 }
 
@@ -182,6 +189,7 @@ impl ExecutionContext {
         module_cache: Arc<RwLock<ModuleCache>>,
         vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
+        execution_trail_hash: massa_hash::Hash,
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -218,13 +226,14 @@ impl ExecutionContext {
             stack: Default::default(),
             read_only: Default::default(),
             events: Default::default(),
-            unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
+            unsafe_rng: init_prng(&execution_trail_hash),
             creator_address: Default::default(),
             origin_operation_id: Default::default(),
             module_cache,
             config,
             vesting_manager,
             address_factory: AddressFactory { mip_store },
+            execution_trail_hash,
         }
     }
 
@@ -305,20 +314,14 @@ impl ExecutionContext {
         vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
     ) -> Self {
-        // Deterministically seed the unsafe RNG to allow the bytecode to use it.
-        // Note that consecutive read-only calls for the same slot will get the same random seed.
-
-        // Add the current slot to the seed to ensure different draws at every slot
-        let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
-        // Add a marker to the seed indicating that we are in read-only mode
-        // to prevent random draw collisions with active executions
-        seed.push(0u8); // 0u8 = read-only
-        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
-        // We use Xoshiro256PlusPlus because it is very fast,
-        // has a period long enough to ensure no repetitions will ever happen,
-        // of decent quality (given the unsafe constraints)
-        // but not cryptographically secure (and that's ok because the internal state is exposed anyways)
-        let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
+        // Get the execution hash trail
+        let prev_execution_trail_hash = active_history.read().get_execution_trail_hash();
+        let prev_execution_trail_hash = match prev_execution_trail_hash {
+            HistorySearchResult::Present(h) => h,
+            _ => final_state.read().get_execution_trail_hash(),
+        };
+        let execution_trail_hash =
+            generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
         // return readonly context
         ExecutionContext {
@@ -326,7 +329,6 @@ impl ExecutionContext {
             slot,
             stack: call_stack,
             read_only: true,
-            unsafe_rng,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -334,6 +336,7 @@ impl ExecutionContext {
                 module_cache,
                 vesting_manager,
                 mip_store,
+                execution_trail_hash,
             )
         }
     }
@@ -379,26 +382,23 @@ impl ExecutionContext {
         vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
     ) -> Self {
-        // Deterministically seed the unsafe RNG to allow the bytecode to use it.
-
-        // Add the current slot to the seed to ensure different draws at every slot
-        let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
-        // Add a marker to the seed indicating that we are in active mode
-        // to prevent random draw collisions with read-only executions
-        seed.push(1u8); // 1u8 = active
-
-        // For more deterministic entropy, seed with the block ID if any
-        if let Some(block_id) = &opt_block_id {
-            seed.extend(block_id.to_bytes()); // append block ID
-        }
-        let seed = massa_hash::Hash::compute_from(&seed).into_bytes();
-        let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
+        // Get the execution hash trail
+        let prev_execution_trail_hash = active_history.read().get_execution_trail_hash();
+        let prev_execution_trail_hash = match prev_execution_trail_hash {
+            HistorySearchResult::Present(h) => h,
+            _ => final_state.read().get_execution_trail_hash(),
+        };
+        let execution_trail_hash = generate_execution_trail_hash(
+            &prev_execution_trail_hash,
+            &slot,
+            opt_block_id.as_ref(),
+            false,
+        );
 
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
-            unsafe_rng,
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -406,6 +406,7 @@ impl ExecutionContext {
                 module_cache,
                 vesting_manager,
                 mip_store,
+                execution_trail_hash,
             )
         }
     }
@@ -540,8 +541,8 @@ impl ExecutionContext {
     }
 
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    pub fn get_keys(&self, address: &Address) -> Option<BTreeSet<Vec<u8>>> {
-        self.speculative_ledger.get_keys(address)
+    pub fn get_keys(&self, address: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
+        self.speculative_ledger.get_keys(address, prefix)
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
@@ -888,7 +889,7 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self) -> ExecutionOutput {
+    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -935,10 +936,13 @@ impl ExecutionContext {
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
             executed_denunciations_changes: self.speculative_executed_denunciations.take(),
+            execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
         };
+
+        std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
             slot,
-            block_id: std::mem::take(&mut self.opt_block_id),
+            block_info,
             state_changes,
             events: std::mem::take(&mut self.events),
         }
@@ -1070,4 +1074,48 @@ impl ExecutionContext {
         self.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
     }
+}
+
+/// Generate the execution trail hash
+fn generate_execution_trail_hash(
+    previous_execution_trail_hash: &massa_hash::Hash,
+    slot: &Slot,
+    opt_block_id: Option<&BlockId>,
+    read_only: bool,
+) -> massa_hash::Hash {
+    match opt_block_id {
+        None => massa_hash::Hash::compute_from_tuple(&[
+            previous_execution_trail_hash.to_bytes(),
+            &slot.to_bytes_key(),
+            &[if read_only { 1u8 } else { 0u8 }, 0u8],
+        ]),
+        Some(block_id) => {
+            let mut bytes = Vec::new();
+            let block_id_serializer = BlockIdSerializer::new();
+            block_id_serializer.serialize(block_id, &mut bytes).unwrap();
+            massa_hash::Hash::compute_from_tuple(&[
+                previous_execution_trail_hash.to_bytes(),
+                &slot.to_bytes_key(),
+                &[if read_only { 1u8 } else { 0u8 }, 1u8],
+                &bytes,
+            ])
+        }
+    }
+}
+
+/// Initializes and seeds the PRNG with the given execution trail hash.
+fn init_prng(execution_trail_hash: &massa_hash::Hash) -> Xoshiro256PlusPlus {
+    // Deterministically seed the unsafe RNG to allow the bytecode to use it.
+    // Note that consecutive read-only calls for the same slot will get the same random seed.
+    let seed = massa_hash::Hash::compute_from_tuple(&[
+        "PRNG_SEED".as_bytes(),
+        execution_trail_hash.to_bytes(),
+    ])
+    .into_bytes();
+
+    // We use Xoshiro256PlusPlus because it is very fast,
+    // has a period long enough to ensure no repetitions will ever happen,
+    // of decent quality (given the unsafe constraints)
+    // but not cryptographically secure (and that's ok because the internal state is exposed anyways)
+    Xoshiro256PlusPlus::from_seed(seed)
 }

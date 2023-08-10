@@ -136,8 +136,9 @@ pub struct Settings {
     pub ledger: LedgerSettings,
     pub selector: SelectionSettings,
     pub factory: FactorySettings,
-    pub grpc: GrpcSettings,
+    pub grpc: GrpcApiSettings,
     pub metrics: MetricsSettings,
+    pub versioning: VersioningSettings,
 }
 
 /// Consensus configuration
@@ -188,9 +189,15 @@ pub struct MetricsSettings {
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
-    /// max known blocks of current nodes we keep in memory (by node)
+    /// Max known blocks we keep during their propagation
+    pub max_blocks_kept_for_propagation: usize,
+    /// Time during which a block is expected to propagate
+    pub max_block_propagation_time: MassaTime,
+    /// Block propagation tick interval, useful for propagating blocks quickly to newly connected peers.
+    pub block_propagation_tick: MassaTime,
+    /// max known blocks our node keeps in its knowledge cache
     pub max_known_blocks_size: usize,
-    /// max known blocks of foreign nodes we keep in memory (by node)
+    /// max cache size for which blocks a foreign node knows about
     pub max_node_known_blocks_size: usize,
     /// max wanted blocks per node kept in memory
     pub max_node_wanted_blocks_size: usize,
@@ -242,14 +249,24 @@ pub struct ProtocolSettings {
     pub read_write_limit_bytes_per_second: u64,
     /// try connection timer
     pub try_connection_timer: MassaTime,
+    /// try connection timer for the same peer
+    pub try_connection_timer_same_peer: MassaTime,
+    /// periodically unban every peer
+    pub unban_everyone_timer: MassaTime,
     /// Timeout connection
     pub timeout_connection: MassaTime,
+    /// Message timeout
+    pub message_timeout: MassaTime,
+    /// Timeout for the tester operations
+    pub tester_timeout: MassaTime,
     /// Nb in connections
     pub max_in_connections: usize,
     /// Peers limits per category
     pub peers_categories: HashMap<String, PeerCategoryInfo>,
     /// Limits for default category
     pub default_category_info: PeerCategoryInfo,
+    /// Cooldown before testing again an old peer
+    pub test_oldest_peer_cooldown: MassaTime,
 }
 
 /// gRPC settings
@@ -266,7 +283,9 @@ pub struct GrpcSettings {
     pub enable_health: bool,
     /// whether to enable gRPC reflection
     pub enable_reflection: bool,
-    /// whether to enable mTLS
+    /// whether to enable TLS
+    pub enable_tls: bool,
+    /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,
@@ -290,6 +309,8 @@ pub struct GrpcSettings {
     pub initial_connection_window_size: Option<u32>,
     /// sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections. Default is no limit (`None`)
     pub max_concurrent_streams: Option<u32>,
+    /// max number of arguments per gRPC request
+    pub max_arguments: u64,
     /// set whether TCP keepalive messages are enabled on accepted connections
     pub tcp_keepalive: Option<MassaTime>,
     /// set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -314,6 +335,21 @@ pub struct GrpcSettings {
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+}
+
+/// gRPC API settings.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcApiSettings {
+    /// Public server gRPC configuration.
+    pub public: GrpcSettings,
+    /// Private server gRPC configuration.
+    pub private: GrpcSettings,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct VersioningSettings {
+    // Warn user to update its node if we reach this percentage for announced network versions
+    pub(crate) mip_stats_warn_announced_version: u32,
 }
 
 #[cfg(test)]

@@ -52,7 +52,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2023-06-01
+          toolchain: nightly-2023-07-01
           target: ${{ matrix.target }}
           override: true
       - uses: Swatinem/rust-cache@v2

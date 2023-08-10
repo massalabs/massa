@@ -1,26 +1,21 @@
 [package]
 name = "massa_signature"
-version = "0.24.0"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-bs58 = { version = "=0.4", features = ["check"] }
-displaydoc = "0.2"
-ed25519-dalek = { version = "=1.0", features = ["batch"] }
-serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
-nom = "=7.1"
+bs58 = {workspace = true, "features" = ["check"]}
+displaydoc = {workspace = true}
+ed25519-dalek = {workspace = true, "features" = ["batch"]}
+serde = {workspace = true, "features" = ["derive"]}
+thiserror = {workspace = true}
+nom = {workspace = true}
 rand = "0.7"
-# TODO tag transition crate with a version number
-transition = { git = "https://github.com/massalabs/transition.git", rev = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
-
-# custom modules
-massa_hash = { path = "../massa-hash" }
-massa_serialization = { path = "../massa-serialization" }
+transition = {workspace = true}
+massa_hash = {workspace = true}
+massa_serialization = {workspace = true}
 
 [dev-dependencies]
-serial_test = "1.0.0"
-serde_json = "1.0"
+serial_test = {workspace = true}
+serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem

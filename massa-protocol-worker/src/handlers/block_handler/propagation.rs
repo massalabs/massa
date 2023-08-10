@@ -1,123 +1,128 @@
-use std::{collections::VecDeque, thread::JoinHandle};
+//! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
-use massa_logging::massa_trace;
-use massa_models::{block_id::BlockId, prehash::PreHashSet};
-use massa_protocol_exports::PeerId;
-use massa_protocol_exports::{ProtocolConfig, ProtocolError};
-use massa_storage::Storage;
-use tracing::{debug, info, warn};
-
-use crate::{
-    handlers::{block_handler::BlockMessage, peer_handler::models::PeerManagementCmd},
-    messages::MessagesSerializer,
-    wrap_network::ActiveConnectionsTrait,
-};
+//! This file deals with the announcement of block headers to other nodes
+//! in order to propagate the blocks from our node to other nodes.
+//! It also manages peer banning for invalid blocks detected by consensus.
+//!
+//! The block propagation system works in the following way:
+//! * a node announces the headers of blocks to its neighbor nodes
+//! * the neighbor nodes that need that block then ask our Retrieval process for it
+//!
+//! Here we need to announce block headers to other nodes that haven't sene them,
+//! and keep the blocks alive long enough for our peers to be able to retrieve them from us.
 
 use super::{
     cache::SharedBlockCache, commands_propagation::BlockHandlerPropagationCommand,
     BlockMessageSerializer,
 };
+use crate::{
+    handlers::{block_handler::BlockMessage, peer_handler::models::PeerManagementCmd},
+    messages::MessagesSerializer,
+    wrap_network::ActiveConnectionsTrait,
+};
+use crossbeam::channel::RecvTimeoutError;
+use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
+use massa_models::block_header::SecuredHeader;
+use massa_models::block_id::BlockId;
+use massa_protocol_exports::PeerId;
+use massa_protocol_exports::{ProtocolConfig, ProtocolError};
+use massa_storage::Storage;
+use schnellru::{ByLength, LruMap};
+use std::thread::JoinHandle;
+use std::time::Instant;
+use tracing::{debug, info, warn};
+
+#[derive(Debug)]
+struct BlockPropagationData {
+    /// Time when propagation was initiated
+    pub time_added: Instant,
+    /// Storage holding the block and its dependencies during its propagation time
+    pub _storage: Storage,
+    /// Clone of the block header to avoid locking storage during propagation
+    pub header: SecuredHeader,
+}
 
 pub struct PropagationThread {
+    /// Receiver for commands
     receiver: MassaReceiver<BlockHandlerPropagationCommand>,
+    /// Protocol config
     config: ProtocolConfig,
+    /// Shared access to the block cache
     cache: SharedBlockCache,
-    storage: Storage,
-    saved_blocks: VecDeque<BlockId>,
+    /// Blocks stored for propagation
+    stored_for_propagation: LruMap<BlockId, BlockPropagationData>,
+    /// Shared access to the list of peers connected to us
     active_connections: Box<dyn ActiveConnectionsTrait>,
+    /// Channel to send commands to the peer management system (for banning peers)
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
+    /// Serializer for block-related messages
     block_serializer: MessagesSerializer,
 }
 
 impl PropagationThread {
     fn run(&mut self) {
+        let tick_interval = self.config.block_propagation_tick.to_duration();
+        let mut deadline = Instant::now()
+            .checked_add(tick_interval)
+            .expect("could not get time of next propagation tick");
         loop {
-            match self.receiver.recv() {
+            match self.receiver.recv_deadline(deadline) {
                 Ok(command) => {
                     match command {
+                        // Message: the block was integrated and should be propagated
                         BlockHandlerPropagationCommand::IntegratedBlock { block_id, storage } => {
-                            massa_trace!(
-                                "protocol.protocol_worker.process_command.integrated_block.begin",
-                                { "block_id": block_id }
-                            );
-                            let header = {
-                                let block = {
-                                    let blocks = storage.read_blocks();
-                                    blocks.get(&block_id).cloned()
-                                };
-                                if let Some(block) = block {
-                                    self.storage.store_block(block.clone());
-                                    self.saved_blocks.push_back(block.id);
-                                    if self.saved_blocks.len()
-                                        > self.config.max_known_blocks_saved_size
-                                    {
-                                        let block_id = self.saved_blocks.pop_front().unwrap();
-                                        let mut ids_to_delete = PreHashSet::default();
-                                        ids_to_delete.insert(block_id);
-                                        self.storage.drop_block_refs(&ids_to_delete);
-                                    }
-                                    block.content.header.clone()
-                                } else {
-                                    warn!("Block {} not found in storage", &block_id);
+                            debug!("received IntegratedBlock({})", block_id);
+
+                            // get the block header
+                            let header = match storage
+                                .read_blocks()
+                                .get(&block_id)
+                                .map(|block| block.content.header.clone())
+                            {
+                                Some(h) => h,
+                                None => {
+                                    warn!(
+                                        "claimed block {} absent from storage on propagation",
+                                        block_id
+                                    );
                                     continue;
                                 }
                             };
-                            let peers_connected = self.active_connections.get_peer_ids_connected();
-                            self.cache.write().update_cache(
-                                peers_connected,
-                                self.config
-                                    .max_node_known_blocks_size
-                                    .try_into()
-                                    .expect("max_node_known_blocks_size is too big"),
+
+                            // Add the block and its dependencies to the propagation LRU
+                            // to ensure they are stored for the time of the propagation.
+                            self.stored_for_propagation.insert(
+                                block_id,
+                                BlockPropagationData {
+                                    time_added: Instant::now(),
+                                    _storage: storage,
+                                    header,
+                                },
                             );
-                            {
-                                let cache_read = self.cache.read();
-                                for (peer_id, (blocks_known, _)) in
-                                    cache_read.blocks_known_by_peer.iter()
-                                {
-                                    // peer that isn't asking for that block
-                                    let cond = blocks_known.peek(&block_id);
-                                    // if we don't know if that peer knows that hash or if we know it doesn't
-                                    if !cond.map_or_else(|| false, |v| v.0) {
-                                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "peer_id": peer_id, "block_id": block_id});
-                                        debug!(
-                                            "Send block header for slot {} to peer {}",
-                                            peer_id, header.content.slot
-                                        );
-                                        if let Err(err) = self.active_connections.send_to_peer(
-                                            peer_id,
-                                            &self.block_serializer,
-                                            BlockMessage::BlockHeader(header.clone()).into(),
-                                            true,
-                                        ) {
-                                            warn!("Error while sending block header to peer {} err: {:?}", peer_id, err);
-                                        }
-                                    } else {
-                                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.do_not_send", { "peer_id": peer_id, "block_id": block_id });
-                                    }
-                                }
-                            }
+
+                            // propagate everything that needs to be propagated
+                            self.perform_propagations();
+
+                            // renew tick because propagation propagations were updated
+                            deadline = Instant::now()
+                                .checked_add(tick_interval)
+                                .expect("could not get time of next propagation tick");
                         }
                         BlockHandlerPropagationCommand::AttackBlockDetected(block_id) => {
-                            let to_ban: Vec<PeerId> = self
+                            debug!("received AttackBlockDetected({})", block_id);
+                            let peers_to_ban: Vec<PeerId> = self
                                 .cache
                                 .read()
                                 .blocks_known_by_peer
                                 .iter()
-                                .filter_map(|(id, (block_known, _))| {
-                                    match block_known.peek(&block_id) {
-                                        Some((true, _)) => Some(id.clone()),
+                                .filter_map(|(peer_id, knowledge)| {
+                                    match knowledge.peek(&block_id) {
+                                        Some((true, _)) => Some(peer_id.clone()),
                                         _ => None,
                                     }
                                 })
                                 .collect();
-                            for id in to_ban.iter() {
-                                massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "block_id": block_id });
-                                if let Err(err) = self.ban_node(id) {
-                                    warn!("Error while banning peer {} err: {:?}", id, err);
-                                }
-                            }
+                            self.ban_peers(&peers_to_ban);
                         }
                         BlockHandlerPropagationCommand::Stop => {
                             info!("Stop block propagation thread");
@@ -125,7 +130,15 @@ impl PropagationThread {
                         }
                     }
                 }
-                Err(_) => {
+                Err(RecvTimeoutError::Timeout) => {
+                    // Propagation tick. This is useful to quickly propagate headers to newly connected nodes.
+                    self.perform_propagations();
+                    // renew deadline of next tick
+                    deadline = Instant::now()
+                        .checked_add(tick_interval)
+                        .expect("could not get time of next propagation tick");
+                }
+                Err(RecvTimeoutError::Disconnected) => {
                     info!("Stop block propagation thread");
                     return;
                 }
@@ -133,12 +146,71 @@ impl PropagationThread {
         }
     }
 
-    /// send a ban peer command to the peer handler
-    fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
-        massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
-        self.peer_cmd_sender
-            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+    /// Propagate blocks to peers that need them
+    fn perform_propagations(&mut self) {
+        let now = Instant::now();
+
+        // stop propagating blocks that have been propagating for too long
+        while let Some(time_added) = self
+            .stored_for_propagation
+            .peek_oldest()
+            .map(|(_, BlockPropagationData { time_added, .. })| *time_added)
+        {
+            if now.saturating_duration_since(time_added)
+                > self.config.max_block_propagation_time.to_duration()
+            {
+                self.stored_for_propagation.pop_oldest();
+            } else {
+                break;
+            }
+        }
+
+        // update caches based on currently connected peers
+        let peers_connected = self.active_connections.get_peer_ids_connected();
+        let mut cache_lock = self.cache.write();
+        cache_lock.update_cache(&peers_connected);
+        'peer_loop: for (peer_id, known_by_peer) in cache_lock.blocks_known_by_peer.iter_mut() {
+            for (block_id, BlockPropagationData { header, .. }) in
+                self.stored_for_propagation.iter()
+            {
+                // if the peer already knows about the block, do not propagate it
+                if let Some((true, _)) = known_by_peer.peek(block_id) {
+                    continue;
+                }
+
+                // try to propagate
+                debug!("announcing header {} to peer {}", block_id, peer_id);
+                match self.active_connections.send_to_peer(
+                    peer_id,
+                    &self.block_serializer,
+                    BlockMessage::Header(header.clone()).into(),
+                    true,
+                ) {
+                    Ok(()) => {
+                        // mark the block as known by the peer
+                        known_by_peer.insert(*block_id, (true, now));
+                    }
+                    Err(err) => {
+                        warn!(
+                            "Error while announcing block header {} to peer {} err: {:?}",
+                            block_id, peer_id, err
+                        );
+                        continue 'peer_loop; // try next peer
+                    }
+                }
+            }
+        }
+    }
+
+    /// try to ban a list of peers
+    fn ban_peers(&mut self, peer_ids: &[PeerId]) {
+        if let Err(err) = self
+            .peer_cmd_sender
+            .try_send(PeerManagementCmd::Ban(peer_ids.to_vec()))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
+        {
+            warn!("could not send Ban command to peer manager: {}", err);
+        }
     }
 }
 
@@ -148,7 +220,6 @@ pub fn start_propagation_thread(
     peer_cmd_sender: MassaSender<PeerManagementCmd>,
     config: ProtocolConfig,
     cache: SharedBlockCache,
-    storage: Storage,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
         .name("protocol-block-handler-propagation".to_string())
@@ -156,14 +227,18 @@ pub fn start_propagation_thread(
             let block_serializer = MessagesSerializer::new()
                 .with_block_message_serializer(BlockMessageSerializer::new());
             let mut propagation_thread = PropagationThread {
+                stored_for_propagation: LruMap::new(ByLength::new(
+                    config
+                        .max_blocks_kept_for_propagation
+                        .try_into()
+                        .expect("max_blocks_kept_for_propagation does not fit in u32"),
+                )),
                 receiver,
                 config,
                 cache,
                 peer_cmd_sender,
                 active_connections,
                 block_serializer,
-                storage,
-                saved_blocks: VecDeque::default(),
             };
             propagation_thread.run();
         })

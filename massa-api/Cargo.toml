@@ -1,36 +1,33 @@
 [package]
 name = "massa_api"
-version = "0.24.0"
+version = "0.26.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-jsonrpsee = { version = "0.18.2", features = ["server", "macros"] }
-futures = "0.3.18"
-async-trait = "0.1.58"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.87"
-tower-http = { version = "0.4.0", features = ["cors"] }
-tower = { version = "0.4.13", features = ["full"] }
-hyper = "0.14.25"
-tokio = { version = "1.23", features = ["full"] }
-tokio-stream = { version = "0.1", features = ["sync"] }
-tracing = "0.1"
-itertools = "0.10"
-parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-# custom modules
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_api_exports = { path = "../massa-api-exports" }
-massa_models = { path = "../massa-models" }
-massa_pool_exports = { path = "../massa-pool-exports" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_execution_exports = { path = "../massa-execution-exports" }
-massa_pos_exports = { path = "../massa-pos-exports" }
-massa_storage = { path = "../massa-storage" }
-massa_serialization = { path = "../massa-serialization" }
-massa_signature = { path = "../massa-signature" }
-massa_time = { path = "../massa-time" }
-massa_versioning = { path = "../massa-versioning" }
-massa_hash = { path = "../massa-hash" }
-massa_wallet = { path = "../massa-wallet" }
+jsonrpsee = {workspace = true, "features" = ["server", "macros"]}
+futures = {workspace = true}
+async-trait = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
+serde_json = {workspace = true}
+tower-http = {workspace = true, "features" = ["cors"]}
+tower = {workspace = true, "features" = ["full"]}
+hyper = {workspace = true}
+tokio = {workspace = true, "features" = ["full"]}
+tokio-stream = {workspace = true, "features" = ["sync"]}
+tracing = {workspace = true}
+itertools = {workspace = true}
+parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+massa_consensus_exports = {workspace = true}
+massa_api_exports = {workspace = true}
+massa_models = {workspace = true}
+massa_pool_exports = {workspace = true}
+massa_protocol_exports = {workspace = true}
+massa_execution_exports = {workspace = true}
+massa_pos_exports = {workspace = true}
+massa_storage = {workspace = true}
+massa_serialization = {workspace = true}
+massa_signature = {workspace = true}
+massa_time = {workspace = true}
+massa_versioning = {workspace = true}
+massa_hash = {workspace = true}
+massa_wallet = {workspace = true}

@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::error::{match_for_io_error, GrpcError};
-use crate::server::MassaGrpc;
+use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_execution_exports::SlotExecutionOutput;
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -25,7 +25,7 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
 
 /// Creates a new stream of new produced and received slot execution outputs
 pub(crate) async fn new_slot_execution_outputs(
-    grpc: &MassaGrpc,
+    grpc: &MassaPublicGrpc,
     request: Request<Streaming<grpc_api::NewSlotExecutionOutputsRequest>>,
 ) -> Result<NewSlotExecutionOutputsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
@@ -41,8 +41,8 @@ pub(crate) async fn new_slot_execution_outputs(
     tokio::spawn(async move {
         // Initialize the request_id string
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut request_id = request.id;
-            let mut filter = request.query.and_then(|q| q.filter);
+            let mut filters: Vec<grpc_api::NewSlotExecutionOutputsFilter> = request.filters;
+
             loop {
                 select! {
                     // Receive a new slot execution output from the subscriber
@@ -50,12 +50,11 @@ pub(crate) async fn new_slot_execution_outputs(
                         match event {
                             Ok(massa_slot_execution_output) => {
                                 // Check if the slot execution output should be sent
-                                if !should_send(&filter, &massa_slot_execution_output) {
+                                if !should_send(filters.clone(), &massa_slot_execution_output) {
                                   continue;
                                 }
                                 // Send the new slot execution output through the channel
                                 if let Err(e) = tx.send(Ok(grpc_api::NewSlotExecutionOutputsResponse {
-                                        id: request_id.clone(),
                                         output: Some(massa_slot_execution_output.into())
                                 })).await {
                                     error!("failed to send new slot execution output : {}", e);
@@ -74,9 +73,7 @@ pub(crate) async fn new_slot_execution_outputs(
                                     // Get the request_id from the received data
                                     Ok(data) => {
                                         // Update current filter && request id
-                                        filter = data.query
-                                            .and_then(|q| q.filter);
-                                        request_id = data.id
+                                        filters = data.filters;
                                     },
                                     // Handle any errors that may occur during receiving the data
                                     Err(err) => {
@@ -118,20 +115,24 @@ pub(crate) async fn new_slot_execution_outputs(
 
 /// Return if the execution outputs should be send to client
 fn should_send(
-    filter_opt: &Option<grpc_api::NewSlotExecutionOutputsFilter>,
+    filters: Vec<grpc_api::NewSlotExecutionOutputsFilter>,
     exec_out_status: &SlotExecutionOutput,
 ) -> bool {
-    match filter_opt {
-        Some(filter) => match exec_out_status {
-            SlotExecutionOutput::ExecutedSlot(_) => {
-                let id = grpc_model::ExecutionOutputStatus::Candidate as i32;
-                filter.status.contains(&id)
-            }
-            SlotExecutionOutput::FinalizedSlot(_) => {
-                let id = grpc_model::ExecutionOutputStatus::Final as i32;
-                filter.status.contains(&id)
-            }
-        },
-        None => true, // if user has no filter = All execution outputs status are sent
+    if filters.is_empty() {
+        return true;
+    }
+    match exec_out_status {
+        SlotExecutionOutput::ExecutedSlot(_) => {
+            let id = grpc_model::ExecutionOutputStatus::Candidate as i32;
+            filters.iter().any(|f| {
+                matches!(f.filter.as_ref(), Some(grpc_api::new_slot_execution_outputs_filter::Filter::Status(status)) if *status == id)
+            })
+        }
+        SlotExecutionOutput::FinalizedSlot(_) => {
+            let id = grpc_model::ExecutionOutputStatus::Final as i32;
+            filters.iter().any(|f| {
+                matches!(f.filter.as_ref(), Some(grpc_api::new_slot_execution_outputs_filter::Filter::Status(status)) if *status == id)
+            })
+        }
     }
 }

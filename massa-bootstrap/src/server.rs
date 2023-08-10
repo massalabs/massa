@@ -24,7 +24,6 @@
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
 //!    This thread creates a new tokio runtime, and runs it with `block_on`
-mod white_black_list;
 
 use crossbeam::channel::tick;
 use humantime::format_duration;
@@ -32,6 +31,7 @@ use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, Consensus
 use massa_db_exports::CHANGE_ID_DESER_ERROR;
 use massa_final_state::FinalState;
 use massa_logging::massa_trace;
+use massa_metrics::MassaMetrics;
 use massa_models::{
     block_id::BlockId, prehash::PreHashSet, slot::Slot, streaming_step::StreamingStep,
     version::Version,
@@ -50,7 +50,6 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing::{debug, error, info, warn};
-use white_black_list::*;
 
 #[cfg(not(test))]
 use crate::listener::BootstrapTcpListener;
@@ -61,6 +60,7 @@ use crate::{
     error::BootstrapError,
     listener::{BootstrapListenerStopHandle, PollEvent},
     messages::{BootstrapClientMessage, BootstrapServerMessage},
+    white_black_list::SharedWhiteBlackList,
     BootstrapConfig,
 };
 /// Specifies a common interface that can be used by standard, or mockers
@@ -79,6 +79,8 @@ pub struct BootstrapManager {
     main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
     listener_stopper: BootstrapListenerStopHandle,
     update_stopper_tx: crossbeam::channel::Sender<()>,
+    /// shared white/black list
+    pub white_black_list: SharedWhiteBlackList<'static>,
 }
 
 impl BootstrapManager {
@@ -89,12 +91,14 @@ impl BootstrapManager {
         main_handle: thread::JoinHandle<Result<(), BootstrapError>>,
         update_stopper_tx: crossbeam::channel::Sender<()>,
         listener_stopper: BootstrapListenerStopHandle,
+        white_black_list: SharedWhiteBlackList<'static>,
     ) -> Self {
         Self {
             update_handle,
             main_handle,
             update_stopper_tx,
             listener_stopper,
+            white_black_list,
         }
     }
 
@@ -136,6 +140,7 @@ pub fn start_bootstrap_server(
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
+    massa_metrics: MassaMetrics,
 ) -> Result<BootstrapManager, BootstrapError> {
     massa_trace!("bootstrap.lib.start_bootstrap_server", {});
 
@@ -168,6 +173,7 @@ pub fn start_bootstrap_server(
         })
         .expect("in `start_bootstrap_server`, OS failed to spawn list-updater thread");
 
+    let w_b_list = white_black_list.clone();
     let main_handle = thread::Builder::new()
         .name("bs-main-loop".to_string())
         .spawn(move || {
@@ -176,11 +182,12 @@ pub fn start_bootstrap_server(
                 protocol_controller,
                 final_state,
                 ev_poller,
-                white_black_list,
+                white_black_list: w_b_list,
                 keypair,
                 version,
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
+                massa_metrics,
             }
             .event_loop(max_bootstraps)
         })
@@ -192,6 +199,7 @@ pub fn start_bootstrap_server(
         main_handle,
         update_stopper_tx,
         listener_stopper,
+        white_black_list,
     ))
 }
 
@@ -205,6 +213,7 @@ struct BootstrapServer<'a> {
     bootstrap_config: BootstrapConfig,
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
+    massa_metrics: MassaMetrics,
 }
 
 impl BootstrapServer<'_> {
@@ -265,6 +274,7 @@ impl BootstrapServer<'_> {
                         remote_addr,
                         move || {},
                     );
+                    self.massa_metrics.inc_bootstrap_peers_failed();
                     continue;
                 };
 
@@ -310,6 +320,7 @@ impl BootstrapServer<'_> {
                             })
                         };
                         server_binding.close_and_send_error(msg, remote_addr, tracer);
+                        self.massa_metrics.inc_bootstrap_peers_failed();
                         continue;
                     };
 
@@ -324,6 +335,7 @@ impl BootstrapServer<'_> {
                     let config = self.bootstrap_config.clone();
 
                     let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                    let massa_metrics = self.massa_metrics.clone();
 
                     let _ = thread::Builder::new()
                         .name(format!("bootstrap thread, peer: {}", remote_addr))
@@ -337,6 +349,7 @@ impl BootstrapServer<'_> {
                                 version,
                                 consensus_command_sender,
                                 protocol_controller,
+                                massa_metrics,
                             )
                         });
 
@@ -349,6 +362,7 @@ impl BootstrapServer<'_> {
                         remote_addr,
                         move || debug!("did not bootstrap {}: no available slots", remote_addr),
                     );
+                    self.massa_metrics.inc_bootstrap_peers_failed();
                 }
             }
         }
@@ -400,6 +414,7 @@ fn run_bootstrap_session(
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
+    massa_metrics: MassaMetrics,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
     let deadline = Instant::now() + config.bootstrap_timeout.to_duration();
@@ -429,19 +444,25 @@ fn run_bootstrap_session(
                 "Bootstrap process timedout ({})",
                 format_duration(config.bootstrap_timeout.to_duration())
             ));
+            massa_metrics.inc_bootstrap_peers_failed();
         }
-        Err(BootstrapError::ReceivedError(error)) => debug!(
-            "bootstrap serving error received from peer {}: {}",
-            remote_addr, error
-        ),
+        Err(BootstrapError::ReceivedError(error)) => {
+            debug!(
+                "bootstrap serving error received from peer {}: {}",
+                remote_addr, error
+            );
+            massa_metrics.inc_bootstrap_peers_failed();
+        }
         Err(err) => {
             debug!("bootstrap serving error for peer {}: {}", remote_addr, err);
             // We allow unused result because we don't care if an error is thrown when
             // sending the error message to the server we will close the socket anyway.
             let _ = server.send_error_timeout(err.to_string());
+            massa_metrics.inc_bootstrap_peers_failed();
         }
         Ok(_) => {
             info!("bootstrapped peer {}", remote_addr);
+            massa_metrics.inc_bootstrap_peers_success();
         }
     }
 }

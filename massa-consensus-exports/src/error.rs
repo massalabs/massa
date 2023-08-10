@@ -15,6 +15,8 @@ pub enum ConsensusError {
     ExecutionError(#[from] ExecutionError),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
+    /// Serialization error: {0}
+    SerializationError(String),
     /// Could not create genesis block {0}
     GenesisCreationError(String),
     /// missing block {0}
@@ -41,6 +43,8 @@ pub enum ConsensusError {
     TransactionError(String),
     /// Protocol error {0}
     ProtocolError(#[from] ProtocolError),
+    /// Invalid transition {0}
+    InvalidTransition(String),
 }
 
 /// Internal error

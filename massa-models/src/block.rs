@@ -152,14 +152,14 @@ impl Serializer<Block> for BlockSerializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents = (0..THREAD_COUNT)
-    ///     .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///     .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
     ///     .collect();
     ///
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         current_version: 0,
-    ///         announced_version: 0,
+    ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents,
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -168,7 +168,7 @@ impl Serializer<Block> for BlockSerializer {
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
@@ -178,7 +178,7 @@ impl Serializer<Block> for BlockSerializer {
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
@@ -255,14 +255,14 @@ impl Deserializer<Block> for BlockDeserializer {
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let parents: Vec<BlockId> = (0..THREAD_COUNT)
-    ///     .map(|i| BlockId(Hash::compute_from(&[i])))
+    ///     .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
     ///     .collect();
     ///
     /// // create block header
     /// let orig_header = BlockHeader::new_verifiable(
     ///     BlockHeader {
     ///         current_version: 0,
-    ///         announced_version: 0,
+    ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents: parents.clone(),
     ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -438,7 +438,7 @@ mod test {
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
         let parents = (0..THREAD_COUNT)
             .map(|_i| {
-                BlockId(
+                BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 )
@@ -449,7 +449,7 @@ mod test {
             Endorsement {
                 slot: Slot::new(1, 0),
                 index: 0,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 ),
@@ -462,7 +462,7 @@ mod test {
             Endorsement {
                 slot: Slot::new(1, 0),
                 index: ENDORSEMENT_COUNT - 1,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 ),
@@ -476,7 +476,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -560,7 +560,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -641,14 +641,14 @@ mod test {
         let endorsement = Endorsement {
             slot: Slot::new(0, 1),
             index: 1,
-            endorsed_block: BlockId(Hash::compute_from(&[1])),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[1])),
         };
 
         // create block header
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -703,14 +703,14 @@ mod test {
     fn test_invalid_genesis_block_serialization_with_parents() {
         let keypair = KeyPair::generate(0).unwrap();
         let parents = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
             .collect();
 
         // create block header
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(0, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -762,7 +762,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents: vec![],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -810,14 +810,14 @@ mod test {
         let keypair = KeyPair::generate(0).unwrap();
         // Non genesis block must have THREAD_COUNT parents
         let parents = (0..=THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
             .collect();
 
         // create block header
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -865,10 +865,11 @@ mod test {
     fn test_block_serialization_max_endo_count() {
         let keypair =
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
-        let endorsed = BlockId(
+        let endorsed = BlockId::generate_from_hash(
             Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf").unwrap(),
         );
-        let fillers = (1..THREAD_COUNT).map(|i| BlockId(Hash::compute_from(&[i])));
+        let fillers =
+            (1..THREAD_COUNT).map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])));
         let parents = std::iter::once(endorsed).chain(fillers).collect();
 
         let endorsements = (0..ENDORSEMENT_COUNT)
@@ -877,7 +878,7 @@ mod test {
                     Endorsement {
                         slot: Slot::new(1, 0),
                         index: i,
-                        endorsed_block: BlockId(
+                        endorsed_block: BlockId::generate_from_hash(
                             Hash::from_bs58_check(
                                 "bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf",
                             )
@@ -894,7 +895,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -944,14 +945,14 @@ mod test {
         let keypair = KeyPair::generate(0).unwrap();
         // Non genesis block must have THREAD_COUNT parents
         let parents = (1..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
             .collect();
 
         // create block header
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -999,7 +1000,7 @@ mod test {
         let keypair = KeyPair::generate(0).unwrap();
         // Non genesis block must have THREAD_COUNT parents
         let parents = (0..THREAD_COUNT)
-            .map(|i| BlockId(Hash::compute_from(&[i])))
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
             .collect();
 
         let endorsements = (0..=ENDORSEMENT_COUNT)
@@ -1008,7 +1009,7 @@ mod test {
                     Endorsement {
                         slot: Slot::new(0, 1),
                         index: i,
-                        endorsed_block: BlockId(Hash::compute_from(&[i as u8])),
+                        endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[i as u8])),
                     },
                     EndorsementSerializer::new(),
                     &keypair,
@@ -1020,7 +1021,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 1),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -1069,7 +1070,7 @@ mod test {
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
         let parents = (0..THREAD_COUNT)
             .map(|_i| {
-                BlockId(
+                BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 )
@@ -1080,7 +1081,7 @@ mod test {
             Endorsement {
                 slot: Slot::new(1, 0),
                 index: ENDORSEMENT_COUNT,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 ),
@@ -1094,7 +1095,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -1108,13 +1109,13 @@ mod test {
 
         // create block
         let orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1142,7 +1143,7 @@ mod test {
             KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
         let parents = (0..THREAD_COUNT)
             .map(|_i| {
-                BlockId(
+                BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 )
@@ -1153,7 +1154,7 @@ mod test {
             Endorsement {
                 slot: Slot::new(1, 0),
                 index: 0,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 ),
@@ -1166,7 +1167,7 @@ mod test {
             Endorsement {
                 slot: Slot::new(1, 0),
                 index: 0,
-                endorsed_block: BlockId(
+                endorsed_block: BlockId::generate_from_hash(
                     Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
                         .unwrap(),
                 ),
@@ -1180,7 +1181,7 @@ mod test {
         let orig_header = BlockHeader::new_verifiable(
             BlockHeader {
                 current_version: 0,
-                announced_version: 0,
+                announced_version: None,
                 slot: Slot::new(1, 0),
                 parents,
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
@@ -1194,13 +1195,13 @@ mod test {
 
         // create block
         let orig_block = Block {
-            header: orig_header.clone(),
+            header: orig_header,
             operations: Default::default(),
         };
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)

@@ -1,11 +1,9 @@
 [package]
 name = "massa_channel"
-version = "0.24.0"
+version = "0.26.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-prometheus = { version = "0.13.3"}
-crossbeam = "0.8.0"
-tracing = "0.1"
+prometheus = {workspace = true}
+crossbeam = {workspace = true}   # BOM UPGRADE     Revert to "0.8.0" if problem
+tracing = {workspace = true}

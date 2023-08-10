@@ -2,7 +2,9 @@
 
 use massa_hash::Hash;
 use massa_models::endorsement::EndorsementSerializer;
-use massa_models::operation::OperationSerializer;
+use massa_models::operation::{
+    compute_operations_hash, OperationIdSerializer, OperationSerializer,
+};
 use massa_models::secure_share::SecureShareContent;
 use massa_models::{
     address::Address,
@@ -23,11 +25,11 @@ pub fn create_block(keypair: &KeyPair) -> SecureShareBlock {
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot: Slot::new(1, 0),
             parents: vec![
-                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
@@ -59,19 +61,19 @@ pub fn create_block_with_operations(
     slot: Slot,
     operations: Vec<SecureShareOperation>,
 ) -> SecureShareBlock {
-    let operation_merkle_root = Hash::compute_from(
-        &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.id.to_bytes().to_vec()].concat()
-        })[..],
+    let operation_merkle_root = compute_operations_hash(
+        &operations.iter().map(|op| op.id).collect::<Vec<_>>(),
+        &OperationIdSerializer::new(),
     );
+
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: vec![
-                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root,
             endorsements: Vec::new(),
@@ -107,11 +109,11 @@ pub fn create_block_with_endorsements(
     let header = BlockHeader::new_verifiable(
         BlockHeader {
             current_version: 0,
-            announced_version: 0,
+            announced_version: None,
             slot,
             parents: vec![
-                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
-                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
@@ -141,7 +143,7 @@ pub fn create_endorsement() -> SecureShareEndorsement {
     let content = Endorsement {
         slot: Slot::new(10, 1),
         index: 0,
-        endorsed_block: BlockId(Hash::compute_from(&[])),
+        endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[])),
     };
     Endorsement::new_verifiable(content, EndorsementSerializer::new(), &keypair).unwrap()
 }

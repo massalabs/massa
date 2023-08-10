@@ -34,8 +34,6 @@ pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
 pub const MAX_MESSAGE_SIZE: u32 = 1048576000;
-/// Max number of hash in the message `AskForBlocks`
-pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 128;
 /// Max number of operations per message
 pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
 /// Length of the handshake random signature
@@ -61,14 +59,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1685970900000) // Monday, June 5, 2023 01:15:00 PM UTC
+        MassaTime::from_millis(1690894800000) // Tuesday, August 1, 2023 01:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(MassaTime::from_millis(1688140800000))  // Friday, June 30, 2023 04:00:00 PM UTC
+        Some(MassaTime::from_millis(1693486800000))  // Thursday, August 31, 2023 01:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -78,14 +76,13 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.24.0"
+            "SAND.26.0"
         } else {
-            "TEST.24.0"
+            "TEST.26.0"
         }
         .parse()
         .unwrap()
     };
-
 }
 
 /// Helper function to parse args for lazy_static evaluations
@@ -239,6 +236,8 @@ pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
+/// Maximum event size in bytes
+pub const MAX_EVENT_DATA_SIZE: usize = 50_000;
 
 //
 // Constants used in network
@@ -298,11 +297,11 @@ pub const MAX_LISTENERS_PER_PEER: u64 = 100;
 // Constants used in versioning
 //
 /// Threshold to accept a new versioning
-pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Amount = Amount::const_init(75, 0);
+pub const VERSIONING_THRESHOLD_TRANSITION_ACCEPTED: Ratio<u64> = Ratio::new_raw(75, 100);
 /// Block count to process in MipStoreStats (for state change threshold)
 pub const MIP_STORE_STATS_BLOCK_CONSIDERED: usize = 1000;
-/// Max number of stats counters
-pub const MIP_STORE_STATS_COUNTERS_MAX: usize = 10;
+/// Minimum value allowed for activation delay (in MIP info)
+pub const VERSIONING_ACTIVATION_DELAY_MIN: MassaTime = T0.saturating_mul(PERIODS_PER_CYCLE);
 
 //
 // Constants for denunciation factory

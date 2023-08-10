@@ -11,8 +11,10 @@ use std::fmt;
 use std::ops::Bound;
 use std::str::FromStr;
 
-/// decimal factor for the internal representation
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+/// Decimals scale for the amount
+pub const AMOUNT_DECIMAL_SCALE: u32 = 9;
+/// Decimals factor for the amount
+pub const AMOUNT_DECIMAL_FACTOR: u64 = 10u64.pow(AMOUNT_DECIMAL_SCALE);
 
 /// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
@@ -89,6 +91,21 @@ impl Amount {
         let res = raw_mantissa / scale_factor;
         assert!(res <= (u64::MAX as u128));
         Self(res as u64)
+    }
+
+    /// Returns the value in the (mantissa, scale) format where
+    /// amount = mantissa * 10^(-scale)
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use massa_models::amount::AMOUNT_DECIMAL_SCALE;
+    /// # use std::str::FromStr;
+    /// let amount = Amount::from_str("0.123456789").unwrap();
+    /// let (mantissa, scale) = amount.to_mantissa_scale();
+    /// assert_eq!(mantissa, 123456789);
+    /// assert_eq!(scale, AMOUNT_DECIMAL_SCALE);
+    /// ```
+    pub fn to_mantissa_scale(&self) -> (u64, u32) {
+        (self.0, AMOUNT_DECIMAL_SCALE)
     }
 
     /// Creates an amount in the format mantissa*10^(-scale).
@@ -199,6 +216,44 @@ impl Amount {
     /// ```
     pub fn checked_div_u64(self, factor: u64) -> Option<Self> {
         self.0.checked_div(factor).map(Amount)
+    }
+
+    /// safely divide self by an amount, returning None if the divisor is zero
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("7").unwrap();
+    /// let res : u64 = amount_1.checked_div(amount_2).unwrap();
+    /// assert_eq!(res, 6);
+    /// ```
+    pub fn checked_div(self, divisor: Self) -> Option<u64> {
+        self.0.checked_div(divisor.0)
+    }
+
+    /// compute self % divisor, return None if divisor is zero
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("10").unwrap();
+    /// let res : Amount = amount_1.checked_rem(&amount_2).unwrap();
+    /// assert_eq!(res, Amount::from_str("2").unwrap());
+    /// ```
+    pub fn checked_rem(&self, divisor: &Amount) -> Option<Amount> {
+        Some(Amount(self.0.checked_rem(divisor.0)?))
+    }
+
+    /// compute self % divisor, return None if divisor is zero
+    /// ```
+    /// # use massa_models::amount::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let res : Amount = amount_1.checked_rem_u64(40000000000).unwrap();
+    /// assert_eq!(res, Amount::from_str("2").unwrap());
+    /// ```
+    pub fn checked_rem_u64(&self, divisor: u64) -> Option<Amount> {
+        Some(Amount(self.0.checked_rem(divisor)?))
     }
 }
 

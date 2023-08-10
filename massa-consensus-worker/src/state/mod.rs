@@ -24,6 +24,9 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::debug;
 
+use self::blocks_state::BlocksState;
+
+pub mod blocks_state;
 mod clique_computation;
 mod graph;
 mod process;
@@ -48,28 +51,16 @@ pub struct ConsensusState {
     pub gi_head: PreHashMap<BlockId, PreHashSet<BlockId>>,
     /// All the cliques
     pub max_cliques: Vec<Clique>,
-    /// ids of active blocks
-    pub active_index: PreHashSet<BlockId>,
     /// ids of active blocks without ops
     pub active_index_without_ops: PreHashSet<BlockId>,
     /// Save of latest periods
     pub save_final_periods: Vec<u64>,
     /// One (block id, period) per thread
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
+    /// All the blocks we know about and their status
+    pub blocks_state: BlocksState,
     /// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
     pub best_parents: Vec<(BlockId, u64)>,
-    /// Every block we know about
-    pub block_statuses: PreHashMap<BlockId, BlockStatus>,
-    /// Ids of incoming blocks/headers
-    pub incoming_index: PreHashSet<BlockId>,
-    /// Used to limit the number of waiting and discarded blocks
-    pub sequence_counter: u64,
-    /// ids of waiting for slot blocks/headers
-    pub waiting_for_slot_index: PreHashSet<BlockId>,
-    /// ids of waiting for dependencies blocks/headers
-    pub waiting_for_dependencies_index: PreHashSet<BlockId>,
-    /// ids of discarded blocks
-    pub discarded_index: PreHashSet<BlockId>,
     /// Blocks that need to be propagated
     pub to_propagate: PreHashMap<BlockId, Storage>,
     /// List of block ids we think are attack attempts
@@ -104,7 +95,7 @@ pub struct ConsensusState {
 impl ConsensusState {
     /// Get a full active block
     pub fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
-        match self.block_statuses.get(block_id) {
+        match self.blocks_state.get(block_id) {
             Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),
             _ => None,
         }
@@ -157,7 +148,7 @@ impl ConsensusState {
         // block not found in the blockclique: search in the final blocks
         blocks_at_slot
             .into_iter()
-            .find(|b_id| match self.block_statuses.get(b_id) {
+            .find(|b_id| match self.blocks_state.get(b_id) {
                 Some(BlockStatus::Active { a_block, .. }) => a_block.is_final,
                 _ => false,
             })
@@ -172,7 +163,7 @@ impl ConsensusState {
 
         self.get_blockclique()
             .iter()
-            .for_each(|id| match self.block_statuses.get(id) {
+            .for_each(|id| match self.blocks_state.get(id) {
                 Some(BlockStatus::Active {
                     a_block,
                     storage: _,
@@ -198,7 +189,7 @@ impl ConsensusState {
     }
 
     pub fn get_block_status(&self, block_id: &BlockId) -> BlockGraphStatus {
-        match self.block_statuses.get(block_id) {
+        match self.blocks_state.get(block_id) {
             None => BlockGraphStatus::NotFound,
             Some(BlockStatus::Active { a_block, .. }) => {
                 if a_block.is_final {
@@ -233,7 +224,7 @@ impl ConsensusState {
         slot: Slot,
     ) -> Result<Vec<(BlockId, u64)>, ConsensusError> {
         let mut latest: Vec<Option<(BlockId, u64)>> = vec![None; self.config.thread_count as usize];
-        for id in self.active_index.iter() {
+        for id in self.blocks_state.active_blocks().iter() {
             let (block, _storage) = self.try_get_full_active_block(id)?;
             if let Some((_, p)) = latest[block.slot.thread as usize] && block.slot.period < p {
                 continue;
@@ -299,7 +290,7 @@ impl ConsensusState {
         lower_bound: &[(BlockId, u64)],
         end_slot: Option<Slot>,
     ) {
-        for id in self.active_index.iter() {
+        for id in self.blocks_state.active_blocks().iter() {
             if let Some((block, _storage)) = self.get_full_active_block(id) {
                 if let Some(slot) = end_slot && block.slot > slot {
                     continue;
@@ -385,8 +376,8 @@ impl ConsensusState {
     ) -> Result<BlockGraphExport, ConsensusError> {
         let mut export = BlockGraphExport {
             genesis_blocks: self.genesis_hashes.clone(),
-            active_blocks: PreHashMap::with_capacity(self.block_statuses.len()),
-            discarded_blocks: PreHashMap::with_capacity(self.block_statuses.len()),
+            active_blocks: PreHashMap::with_capacity(self.blocks_state.len()),
+            discarded_blocks: PreHashMap::with_capacity(self.blocks_state.len()),
             best_parents: self.best_parents.clone(),
             latest_final_blocks_periods: self.latest_final_blocks_periods.clone(),
             gi_head: self.gi_head.clone(),
@@ -407,7 +398,7 @@ impl ConsensusState {
             true
         };
 
-        for (hash, block) in self.block_statuses.iter() {
+        for (hash, block) in self.blocks_state.iter() {
             match block {
                 BlockStatus::Discarded {
                     slot,
@@ -459,10 +450,11 @@ impl ConsensusState {
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
     pub fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, Storage)> {
-        self.active_index
+        self.blocks_state
+            .active_blocks()
             .iter()
             .map(|b_id| {
-                let block_infos = match self.block_statuses.get(b_id) {
+                let block_infos = match self.blocks_state.get(b_id) {
                     Some(BlockStatus::Active { a_block, storage }) => {
                         (a_block.slot, storage.clone())
                     }
@@ -478,14 +470,14 @@ impl ConsensusState {
         &self,
     ) -> Result<PreHashMap<BlockId, Option<SecuredHeader>>, ConsensusError> {
         let mut wishlist = PreHashMap::<BlockId, Option<SecuredHeader>>::default();
-        for block_id in self.waiting_for_dependencies_index.iter() {
+        for block_id in self.blocks_state.waiting_for_dependencies_blocks().iter() {
             if let Some(BlockStatus::WaitingForDependencies {
                 unsatisfied_dependencies,
                 ..
-            }) = self.block_statuses.get(block_id)
+            }) = self.blocks_state.get(block_id)
             {
                 for unsatisfied_h in unsatisfied_dependencies.iter() {
-                    match self.block_statuses.get(unsatisfied_h) {
+                    match self.blocks_state.get(unsatisfied_h) {
                         Some(BlockStatus::WaitingForDependencies {
                             header_or_block: HeaderOrBlock::Header(header),
                             ..
@@ -508,25 +500,22 @@ impl ConsensusState {
     ///
     /// # Argument
     /// * hash : hash of the given block
-    pub fn get_active_block_and_descendants(
-        &self,
-        block_id: &BlockId,
-    ) -> Result<PreHashSet<BlockId>, ConsensusError> {
+    pub fn get_active_block_and_descendants(&self, block_id: &BlockId) -> PreHashSet<BlockId> {
         let mut to_visit = vec![*block_id];
         let mut result = PreHashSet::<BlockId>::default();
         while let Some(visit_h) = to_visit.pop() {
             if !result.insert(visit_h) {
                 continue; // already visited
             }
-            match self.block_statuses.get(&visit_h) {
+            match self.blocks_state.get(&visit_h) {
                 Some(BlockStatus::Active { a_block, .. }) => {
                     a_block.as_ref()
                     .children.iter()
                     .for_each(|thread_children| to_visit.extend(thread_children.keys()))
                 },
-                _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h))),
+                _ => panic!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h),
             }
         }
-        Ok(result)
+        result
     }
 }

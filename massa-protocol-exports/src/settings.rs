@@ -13,6 +13,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct PeerCategoryInfo {
+    pub allow_local_peers: bool,
     pub target_out_connections: usize,
     pub max_in_connections: usize,
     pub max_in_connections_per_ip: usize,
@@ -29,8 +30,12 @@ pub struct ProtocolConfig {
     pub initial_peers: PathBuf,
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node
     pub ask_block_timeout: MassaTime,
-    /// Max known blocks we keep in block_handler
-    pub max_known_blocks_saved_size: usize,
+    /// Max known blocks we keep during their propagation
+    pub max_blocks_kept_for_propagation: usize,
+    /// Time during which a block is expected to propagate
+    pub max_block_propagation_time: MassaTime,
+    /// Block propagation tick interval, useful for propagating blocks quickly to newly connected peers.
+    pub block_propagation_tick: MassaTime,
     /// max known blocks of current nodes we keep in memory
     pub max_known_blocks_size: usize,
     /// max known blocks of foreign nodes we keep in memory (by node)
@@ -117,8 +122,6 @@ pub struct ProtocolConfig {
     pub endorsement_count: u32,
     /// running threads count
     pub thread_count: u8,
-    /// Max of block infos you can send
-    pub max_size_block_infos: u64,
     /// Maximum size of an value user datastore
     pub max_size_value_datastore: u64,
     /// Maximum size of a function name
@@ -143,10 +146,18 @@ pub struct ProtocolConfig {
     pub last_start_period: u64,
     /// try connection timer
     pub try_connection_timer: MassaTime,
+    /// try connection timer same peer
+    pub try_connection_timer_same_peer: MassaTime,
+    /// periodically unban every peer
+    pub unban_everyone_timer: MassaTime,
     /// Max in connections
     pub max_in_connections: usize,
     /// Timeout connection
     pub timeout_connection: MassaTime,
+    /// Timeout message
+    pub message_timeout: MassaTime,
+    /// Timeout for the tester operations
+    pub tester_timeout: MassaTime,
     /// Number of bytes per second that can be read/write in a connection (should be a 10 multiplier)
     pub read_write_limit_bytes_per_second: u128,
     /// Optional routable ip
@@ -159,4 +170,6 @@ pub struct ProtocolConfig {
     pub default_category_info: PeerCategoryInfo,
     /// Version
     pub version: Version,
+    /// Cooldown before testing again an old peer
+    pub test_oldest_peer_cooldown: MassaTime,
 }

@@ -1,71 +1,62 @@
 [package]
 name = "massa-node"
-version = "0.24.0"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-crossbeam-channel = "0.5.6"
-anyhow = "1.0"
-lazy_static = "1.4"
-parking_lot = { version = "0.12", features = ["deadlock_detection"] }
-serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.23", features = ["full"] }
-tracing = { version = "0.1", features = [
-    "max_level_debug",
-    "release_max_level_debug",
-] }
-peernet = { git = "https://github.com/massalabs/PeerNet", rev = "4929687ed69946482cc3bffddf2162fbe02f734f" }
-tracing-subscriber = "0.3"
-paw = "1.0"
-rand = { version = "0.8.5", optional = true }
-structopt = { version = "0.3", features = ["paw"] }
-dialoguer = "0.10"
-ctrlc = "3.2.5"
-# custom modules
-massa_api_exports = { path = "../massa-api-exports" }
-massa_api = { path = "../massa-api" }
-massa_async_pool = { path = "../massa-async-pool" }
-massa_bootstrap = { path = "../massa-bootstrap" }
-massa_channel = { path = "../massa-channel" }
-massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_consensus_worker = { path = "../massa-consensus-worker" }
-massa_executed_ops = { path = "../massa-executed-ops" }
-massa_execution_exports = { path = "../massa-execution-exports" }
-massa_execution_worker = { path = "../massa-execution-worker" }
-massa_logging = { path = "../massa-logging" }
-massa_final_state = { path = "../massa-final-state" }
-massa_ledger_exports = { path = "../massa-ledger-exports" }
-massa_ledger_worker = { path = "../massa-ledger-worker" }
-massa_metrics = { path = "../massa-metrics" }
-massa_models = { path = "../massa-models" }
-massa_pool_exports = { path = "../massa-pool-exports" }
-massa_pool_worker = { path = "../massa-pool-worker" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
-massa_protocol_worker = { path = "../massa-protocol-worker" }
-massa_pos_worker = { path = "../massa-pos-worker" }
-massa_pos_exports = { path = "../massa-pos-exports" }
-massa_storage = { path = "../massa-storage" }
-massa_time = { path = "../massa-time" }
-massa_wallet = { path = "../massa-wallet" }
-massa_factory_exports = { path = "../massa-factory-exports" }
-massa_factory_worker = { path = "../massa-factory-worker" }
-massa_grpc = { path = "../massa-grpc" }
-massa_versioning = { path = "../massa-versioning" }
-massa_signature = { path = "../massa-signature", optional = true }
-massa_db_exports = { path = "../massa-db-exports" }
-massa_db_worker = { path = "../massa-db-worker" }
-#massa_signature = { path = "../massa-signature", optional = true }
-
-# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 beta = []
-# 10s after initiating the first launch, will re-launch as if the node was signalled with `NeedsResync`
 resync_check = []
 deadlock_detection = []
-op_spammer = ["rand", "massa_signature"]
+op_spammer = ["rand"]
 bootstrap_server = ["massa_consensus_worker/bootstrap_server", "massa_final_state/bootstrap_server"]
-sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox", "massa_metrics/sandbox"]
+sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_factory_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox", "massa_metrics/sandbox"]
 testing = ["massa_metrics/testing"]
+
+[dependencies]
+crossbeam-channel = {workspace = true}   # BOM UPGRADE     Revert to "0.5.6" if problem
+anyhow = {workspace = true}
+lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
+parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+serde = {workspace = true, "features" = ["derive"]}
+tokio = {workspace = true, "features" = ["full"]}
+num = {workspace = true}
+tracing = {workspace = true, "features" = ["max_level_debug", "release_max_level_debug"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["max_level_debug", "release_max_level_debug"]} if problem
+tracing-subscriber = {workspace = true}
+paw = {workspace = true}
+rand = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.8.5", "optional": true} if problem
+structopt = {workspace = true, "features" = ["paw"]}
+dialoguer = {workspace = true}
+ctrlc = {workspace = true}
+massa_api_exports = {workspace = true}
+massa_api = {workspace = true}
+massa_async_pool = {workspace = true}
+massa_bootstrap = {workspace = true}
+massa_channel = {workspace = true}
+massa_consensus_exports = {workspace = true}
+massa_consensus_worker = {workspace = true}
+massa_executed_ops = {workspace = true}
+massa_execution_exports = {workspace = true}
+massa_execution_worker = {workspace = true}
+massa_logging = {workspace = true}
+massa_final_state = {workspace = true}
+massa_ledger_exports = {workspace = true}
+massa_ledger_worker = {workspace = true}
+massa_metrics = {workspace = true}
+massa_models = {workspace = true}
+massa_pool_exports = {workspace = true}
+massa_pool_worker = {workspace = true}
+massa_protocol_exports = {workspace = true}
+massa_protocol_worker = {workspace = true}
+massa_pos_worker = {workspace = true}
+massa_pos_exports = {workspace = true}
+massa_storage = {workspace = true}
+massa_time = {workspace = true}
+massa_wallet = {workspace = true}
+massa_factory_exports = {workspace = true}
+massa_factory_worker = {workspace = true}
+massa_grpc = {workspace = true}
+massa_versioning = {workspace = true}
+massa_signature = {workspace = true}
+massa_db_exports = {workspace = true}
+massa_db_worker = {workspace = true}

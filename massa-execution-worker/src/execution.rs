@@ -14,20 +14,22 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
-use massa_db_exports::DBBatch;
 use massa_execution_exports::{
-    EventStore, ExecutionChannels, ExecutionConfig, ExecutionError, ExecutionOutput,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    EventStore, ExecutedBlockInfo, ExecutionChannels, ExecutionConfig, ExecutionError,
+    ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -116,12 +118,13 @@ impl ExecutionState {
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_state
-            .read()
-            .db
-            .read()
-            .get_change_id()
-            .expect("Critical error: Final state has no slot attached");
+        let last_final_slot;
+        let execution_trail_hash;
+        {
+            let final_state_read = final_state.read();
+            last_final_slot = final_state_read.get_slot();
+            execution_trail_hash = final_state_read.get_execution_trail_hash();
+        }
 
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
@@ -148,6 +151,7 @@ impl ExecutionState {
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
+            max_module_length: config.max_bytecode_size,
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
@@ -158,6 +162,7 @@ impl ExecutionState {
             module_cache.clone(),
             vesting_manager.clone(),
             mip_store.clone(),
+            execution_trail_hash,
         )));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
@@ -190,6 +195,11 @@ impl ExecutionState {
         }
     }
 
+    /// Get the fingerprint of the final state
+    pub fn get_final_state_fingerprint(&self) -> massa_hash::Hash {
+        self.final_state.read().get_fingerprint()
+    }
+
     /// Get execution statistics
     pub fn get_stats(&self) -> ExecutionStats {
         self.stats_counter
@@ -207,7 +217,7 @@ impl ExecutionState {
         }
 
         // count stats
-        if exec_out.block_id.is_some() {
+        if exec_out.block_info.is_some() {
             self.stats_counter.register_final_blocks(1);
             self.stats_counter.register_final_executed_operations(
                 exec_out.state_changes.executed_ops_changes.len(),
@@ -217,6 +227,12 @@ impl ExecutionState {
             );
         }
 
+        // Update versioning stats
+        // This will update the MIP store and must be called before final state write
+        // as it will also write the MIP store on disk
+        self.update_versioning_stats(&exec_out.block_info, &exec_out.slot);
+
+        let exec_out_2 = exec_out.clone();
         // apply state changes to the final ledger
         self.final_state
             .write()
@@ -241,6 +257,39 @@ impl ExecutionState {
             .set_active_cursor(self.active_cursor.period, self.active_cursor.thread);
         self.massa_metrics
             .set_final_cursor(self.final_cursor.period, self.final_cursor.thread);
+        self.massa_metrics.inc_operations_final_counter(
+            exec_out_2.state_changes.executed_ops_changes.len() as u64,
+        );
+        self.massa_metrics
+            .set_active_history(self.active_history.read().0.len());
+
+        self.massa_metrics
+            .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.0.len());
+
+        self.massa_metrics.set_async_message_pool_size(
+            self.final_state.read().async_pool.message_info_cache.len(),
+        );
+
+        self.massa_metrics.inc_executed_final_slot();
+        if exec_out.block_info.is_some() {
+            self.massa_metrics.inc_executed_final_slot_with_block();
+        }
+
+        // Broadcast a final slot execution output to active channel subscribers.
+        if self.config.broadcast_enabled {
+            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out_2);
+            if let Err(err) = self
+                .channels
+                .slot_execution_output_sender
+                .send(slot_exec_out)
+            {
+                trace!(
+                    "error, failed to broadcast final execution output for slot {} due to: {}",
+                    exec_out.slot,
+                    err
+                );
+            }
+        }
     }
 
     /// Applies an execution output to the active (non-final) state
@@ -261,6 +310,10 @@ impl ExecutionState {
 
         // add the execution output at the end of the output history
         self.active_history.write().0.push_back(exec_out);
+
+        // update the prometheus metrics
+        self.massa_metrics
+            .set_active_history(self.active_history.read().0.len())
     }
 
     /// Helper function.
@@ -1044,6 +1097,8 @@ impl ExecutionState {
             }
         }
 
+        let mut block_info: Option<ExecutedBlockInfo> = None;
+
         // Check if there is a block at this slot
         if let Some((block_id, block_store)) = exec_target {
             // Retrieve the block from storage
@@ -1052,6 +1107,12 @@ impl ExecutionState {
                 .get(block_id)
                 .expect("Missing block in storage.")
                 .clone();
+
+            block_info = Some(ExecutedBlockInfo {
+                block_id: *block_id,
+                current_version: stored_block.content.header.content.current_version,
+                announced_version: stored_block.content.header.content.announced_version,
+            });
 
             // gather all operations
             let operations = {
@@ -1204,7 +1265,7 @@ impl ExecutionState {
         }
 
         // Finish slot
-        let exec_out = context_guard!(self).settle_slot();
+        let exec_out = context_guard!(self).settle_slot(block_info);
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
@@ -1290,36 +1351,18 @@ impl ExecutionState {
         // check if the final slot execution result is already cached at the front of the speculative execution history
         let first_exec_output = self.active_history.write().0.pop_front();
         if let Some(exec_out) = first_exec_output {
-            if &exec_out.slot == slot && exec_out.block_id == target_id {
+            if &exec_out.slot == slot
+                && exec_out.block_info.as_ref().map(|i| i.block_id) == target_id
+            {
                 // speculative execution front result matches what we want to compute
-
                 // apply the cached output and return
-                self.apply_final_execution_output(exec_out.clone());
-
-                // update versioning stats
-                self.update_versioning_stats(exec_target, slot);
-
-                // Broadcast a final slot execution output to active channel subscribers.
-                if self.config.broadcast_enabled {
-                    let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
-                    if let Err(err) = self
-                        .channels
-                        .slot_execution_output_sender
-                        .send(slot_exec_out)
-                    {
-                        trace!(
-                    "error, failed to broadcast final execution output(cached) for slot {} due to: {}",
-                    exec_out.slot,
-                    err
-                );
-                    }
-                }
+                self.apply_final_execution_output(exec_out);
                 return;
             } else {
                 // speculative cache mismatch
                 warn!(
                     "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
-                    slot, target_id, exec_out.slot, exec_out.block_id
+                    slot, target_id, exec_out.slot, exec_out.block_info.map(|i| i.block_id)
                 );
             }
         } else {
@@ -1339,32 +1382,11 @@ impl ExecutionState {
         let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to final state
-        self.apply_final_execution_output(exec_out.clone());
+        self.apply_final_execution_output(exec_out);
 
-        self.update_versioning_stats(exec_target, slot);
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
         );
-
-        // update prometheus metrics
-        self.massa_metrics
-            .inc_operations_final_counter(exec_out.state_changes.executed_ops_changes.len() as u64);
-
-        // Broadcast a final slot execution output to active channel subscribers.
-        if self.config.broadcast_enabled {
-            let slot_exec_out = SlotExecutionOutput::FinalizedSlot(exec_out.clone());
-            if let Err(err) = self
-                .channels
-                .slot_execution_output_sender
-                .send(slot_exec_out)
-            {
-                trace!(
-                    "error, failed to broadcast final execution output for slot {} due to: {}",
-                    exec_out.slot,
-                    err
-                );
-            }
-        }
     }
 
     /// Runs a read-only execution request.
@@ -1484,7 +1506,7 @@ impl ExecutionState {
         };
 
         // return the execution output
-        let execution_output = context_guard!(self).settle_slot();
+        let execution_output = context_guard!(self).settle_slot(None);
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
             gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
@@ -1507,6 +1529,21 @@ impl ExecutionState {
                 HistorySearchResult::Absent => None,
             },
         )
+    }
+
+    /// Gets a balance both at the latest final and candidate executed slots
+    pub fn get_final_and_active_bytecode(
+        &self,
+        address: &Address,
+    ) -> (Option<Bytecode>, Option<Bytecode>) {
+        let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
+        let search_result = self.active_history.read().fetch_bytecode(address);
+        let speculative_v = match search_result {
+            HistorySearchResult::Present(active_bytecode) => Some(active_bytecode),
+            HistorySearchResult::NoInfo => final_bytecode.clone(),
+            HistorySearchResult::Absent => None,
+        };
+        (final_bytecode, speculative_v)
     }
 
     /// Gets roll counts both at the latest final and active executed slots
@@ -1542,21 +1579,27 @@ impl ExecutionState {
     }
 
     /// Get every final and active datastore key of the given address
+    #[allow(clippy::type_complexity)]
     pub fn get_final_and_candidate_datastore_keys(
         &self,
         addr: &Address,
-    ) -> (BTreeSet<Vec<u8>>, BTreeSet<Vec<u8>>) {
+        prefix: &[u8],
+    ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
         let final_keys = self
             .final_state
             .read()
             .ledger
-            .get_datastore_keys(addr)
-            .unwrap_or_default();
+            .get_datastore_keys(addr, prefix);
+
         let mut candidate_keys = final_keys.clone();
 
-        // here, traverse the history from oldest to newest, applying additions and deletions
+        // compute prefix range
+        let prefix_range = get_prefix_bounds(prefix);
+        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
+
+        // traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
             match output.state_changes.ledger_changes.get(addr) {
                 // address absent from the changes
@@ -1564,22 +1607,31 @@ impl ExecutionState {
 
                 // address ledger entry being reset to an absolute new list of keys
                 Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = new_ledger_entry.datastore.keys().cloned().collect();
+                    candidate_keys = Some(
+                        new_ledger_entry
+                            .datastore
+                            .range::<Vec<u8>, _>(range_ref)
+                            .map(|(k, _v)| k.clone())
+                            .collect(),
+                    );
                 }
 
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    for (ds_key, ds_update) in &entry_updates.datastore {
+                    let c_k = candidate_keys.get_or_insert_default();
+                    for (ds_key, ds_update) in
+                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
+                    {
                         match ds_update {
-                            SetOrDelete::Set(_) => candidate_keys.insert(ds_key.clone()),
-                            SetOrDelete::Delete => candidate_keys.remove(ds_key),
+                            SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
+                            SetOrDelete::Delete => c_k.remove(ds_key),
                         };
                     }
                 }
 
                 // address ledger entry being deleted
                 Some(SetUpdateOrDelete::Delete) => {
-                    candidate_keys.clear();
+                    candidate_keys = None;
                 }
             }
         }
@@ -1587,20 +1639,19 @@ impl ExecutionState {
         (final_keys, candidate_keys)
     }
 
+    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
+        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
+    }
+
     /// Returns for a given cycle the stakers taken into account
     /// by the selector. That correspond to the `roll_counts` in `cycle - 3`.
     ///
     /// By default it returns an empty map.
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
-        let final_state = self.final_state.read();
-
-        match cycle.checked_sub(3) {
-            Some(lookback_cycle) => {
-                // get rolls
-                final_state.pos_state.get_all_roll_counts(lookback_cycle)
-            }
-            None => final_state.pos_state.initial_rolls.clone(),
-        }
+        self.final_state
+            .read()
+            .pos_state
+            .get_all_active_rolls(cycle)
     }
 
     /// Gets execution events optionally filtered by:
@@ -1640,32 +1691,136 @@ impl ExecutionState {
     }
 
     /// Check if a denunciation has been executed given a `DenunciationIndex`
-    pub fn is_denunciation_executed(&self, denunciation_index: &DenunciationIndex) -> bool {
-        // check active history
-        let history = self.active_history.read();
-
-        if matches!(
-            history.fetch_executed_denunciation(denunciation_index),
-            HistorySearchResult::Present(())
-        ) {
-            return true;
+    /// Returns a tuple of booleans:
+    /// * first boolean is true if the denunciation has been executed speculatively
+    /// * second boolean is true if the denunciation has been executed in the final state
+    pub fn get_denunciation_execution_status(
+        &self,
+        denunciation_index: &DenunciationIndex,
+    ) -> (bool, bool) {
+        // check final state
+        let executed_final = self
+            .final_state
+            .read()
+            .executed_denunciations
+            .contains(denunciation_index);
+        if executed_final {
+            return (true, true);
         }
 
-        // check final state
-        let final_state = self.final_state.read();
-        final_state
-            .executed_denunciations
-            .contains(denunciation_index)
+        // check active history
+        let executed_candidate = {
+            matches!(
+                self.active_history
+                    .read()
+                    .fetch_executed_denunciation(denunciation_index),
+                HistorySearchResult::Present(())
+            )
+        };
+
+        (executed_candidate, false)
     }
 
-    /// Gets the production stats for an address at all cycles
-    pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
-        context_guard!(self).get_address_cycle_infos(address, self.config.periods_per_cycle)
+    /// Get cycle infos
+    pub fn get_cycle_infos(
+        &self,
+        cycle: u64,
+        restrict_to_addresses: Option<&PreHashSet<Address>>,
+    ) -> Option<ExecutionQueryCycleInfos> {
+        let final_state_lock = self.final_state.read();
+
+        // check if cycle is complete
+        let is_final = match final_state_lock.pos_state.is_cycle_complete(cycle) {
+            Some(v) => v,
+            None => return None,
+        };
+
+        // active rolls
+        let staker_infos: BTreeMap<Address, ExecutionQueryStakerInfo>;
+        if let Some(addrs) = restrict_to_addresses {
+            staker_infos = addrs
+                .iter()
+                .map(|addr| {
+                    let staker_info = ExecutionQueryStakerInfo {
+                        active_rolls: final_state_lock
+                            .pos_state
+                            .get_address_active_rolls(addr, cycle)
+                            .unwrap_or(0),
+                        production_stats: final_state_lock
+                            .pos_state
+                            .get_production_stats_for_address(cycle, addr)
+                            .unwrap_or_default(),
+                    };
+                    (*addr, staker_info)
+                })
+                .collect()
+        } else {
+            let active_rolls = final_state_lock.pos_state.get_all_roll_counts(cycle);
+            let production_stats = final_state_lock
+                .pos_state
+                .get_all_production_stats(cycle)
+                .unwrap_or_default();
+            let all_addrs: BTreeSet<Address> = active_rolls
+                .keys()
+                .chain(production_stats.keys())
+                .copied()
+                .collect();
+            staker_infos = all_addrs
+                .into_iter()
+                .map(|addr| {
+                    let staker_info = ExecutionQueryStakerInfo {
+                        active_rolls: active_rolls.get(&addr).copied().unwrap_or(0),
+                        production_stats: production_stats.get(&addr).copied().unwrap_or_default(),
+                    };
+                    (addr, staker_info)
+                })
+                .collect()
+        }
+
+        // build result
+        Some(ExecutionQueryCycleInfos {
+            cycle,
+            is_final,
+            staker_infos,
+        })
     }
 
     /// Get future deferred credits of an address
     pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
         context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    }
+
+    /// Get future deferred credits of an address
+    /// Returns tuple: (speculative, final)
+    pub fn get_address_deferred_credits(
+        &self,
+        address: &Address,
+    ) -> (BTreeMap<Slot, Amount>, BTreeMap<Slot, Amount>) {
+        // get values from final state
+        let res_final = self
+            .final_state
+            .read()
+            .pos_state
+            .get_address_deferred_credits(address);
+
+        // get values from active history, backwards
+        let mut res_speculative: BTreeMap<Slot, Amount> = BTreeMap::default();
+        for hist_item in self.active_history.read().0.iter().rev() {
+            for (slot, addr_amount) in &hist_item.state_changes.pos_changes.deferred_credits.credits
+            {
+                if let Some(amount) = addr_amount.get(address) {
+                    let _ = res_speculative.try_insert(*slot, *amount);
+                };
+            }
+        }
+        // fill missing speculative entries with final entries
+        for (s, v) in res_final.iter() {
+            let _ = res_speculative.try_insert(*s, *v);
+        }
+        // remove zero entries from speculative
+        res_speculative.retain(|_s, a| !a.is_zero());
+
+        (res_speculative, res_final)
     }
 
     /// Get the execution status of a batch of operations.
@@ -1695,68 +1850,20 @@ impl ExecutionState {
     }
 
     /// Update MipStore with block header stats
-    pub fn update_versioning_stats(
-        &mut self,
-        exec_target: Option<&(BlockId, Storage)>,
-        slot: &Slot,
-    ) {
-        // update versioning statistics
-        if let Some((block_id, storage)) = exec_target {
-            if let Some(block) = storage.read_blocks().get(block_id) {
-                let slot_ts_ = get_block_slot_timestamp(
-                    self.config.thread_count,
-                    self.config.t0,
-                    self.config.genesis_timestamp,
-                    *slot,
-                );
+    pub fn update_versioning_stats(&mut self, block_info: &Option<ExecutedBlockInfo>, slot: &Slot) {
+        let slot_ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            *slot,
+        )
+        .expect("Cannot get timestamp from slot");
 
-                let current_version = block.content.header.content.current_version;
-                let announced_version = block.content.header.content.announced_version;
-                if let Ok(slot_ts) = slot_ts_ {
-                    self.mip_store.update_network_version_stats(
-                        slot_ts,
-                        Some((current_version, announced_version)),
-                    );
-
-                    // Now write mip store changes to disk (if any)
-                    let mut db_batch = DBBatch::new();
-                    let mut db_versioning_batch = DBBatch::new();
-                    // Unwrap/Expect because if something fails we can only panic here
-                    let slot_prev_ts = get_block_slot_timestamp(
-                        self.config.thread_count,
-                        self.config.t0,
-                        self.config.genesis_timestamp,
-                        slot.get_prev_slot(self.config.thread_count).unwrap(),
-                    )
-                    .unwrap();
-
-                    self.mip_store
-                        .update_batches(
-                            &mut db_batch,
-                            &mut db_versioning_batch,
-                            Some((&slot_prev_ts, &slot_ts)),
-                        )
-                        .unwrap_or_else(|e| {
-                            panic!(
-                                "Unable to get MIP store changes between {} and {}: {}",
-                                slot_prev_ts, slot_ts, e
-                            )
-                        });
-
-                    self.final_state.write().db.write().write_batch(
-                        db_batch,
-                        db_versioning_batch,
-                        None,
-                    );
-                } else {
-                    warn!("Unable to get slot timestamp for slot: {} in order to update mip_store stats", slot);
-                }
-            } else {
-                warn!(
-                    "Could not find block id: {} in storage in order to update mip_store stats",
-                    block_id
-                );
-            }
-        }
+        self.mip_store.update_network_version_stats(
+            slot_ts,
+            block_info
+                .as_ref()
+                .map(|i| (i.current_version, i.announced_version)),
+        );
     }
 }

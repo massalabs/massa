@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-// Features used for draining cache in selector thread
+#![feature(let_chains)]
 
 mod controller;
 mod draw;
@@ -35,6 +35,21 @@ pub(crate) enum Command {
 pub(crate) struct DrawCache(pub VecDeque<CycleDraws>);
 
 impl DrawCache {
+    /// Get the range of available cycles in the cache.
+    /// Returns None if the cache is empty
+    pub fn get_available_cycles_range(&self) -> Option<std::ops::RangeInclusive<u64>> {
+        match self.0.front() {
+            None => None,
+            Some(cd) => {
+                let upper_bound = cd
+                    .cycle
+                    .checked_add(self.0.len().try_into().expect("overflow on cycles length"))
+                    .expect("overflow on cycle delta");
+                Some(cd.cycle..=upper_bound)
+            }
+        }
+    }
+
     /// get the index of a cycle in the cache
     pub fn get_cycle_index(&self, cycle: u64) -> Option<usize> {
         let first_cycle = match self.0.front() {

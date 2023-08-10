@@ -15,6 +15,8 @@ pub enum ProtocolError {
     WrongSignature,
     /// Protocol error: {0}
     GeneralProtocolError(String),
+    /// Invalid block: {0}
+    InvalidBlock(String),
     /// An error occurred during channel communication: {0}
     ChannelError(String),
     /// Error during network connection: `{0:?}`
@@ -37,18 +39,27 @@ pub enum ProtocolError {
     ModelsError(#[from] ModelsError),
     /// Send error: {0}
     SendError(String),
+    /// Peer disconnected : {0}
+    PeerDisconnected(String),
     /// Container inconsistency error: {0}
     ContainerInconsistencyError(String),
     /// Invalid operation error: {0}
     InvalidOperationError(String),
     /// Listener error: {0}
     ListenerError(String),
-    /// Incompatible newtork version: local current is {local} received is {received}
+    /// Incompatible network version: local current is {local} received is {received}
     IncompatibleNetworkVersion {
         /// local current version
         local: u32,
-        /// received version from incoming header
+        /// received current network version from incoming header
         received: u32,
+    },
+    /// Invalid announced network version
+    OutdatedAnnouncedNetworkVersion {
+        /// local current version
+        local: u32,
+        /// received announced network version
+        announced_received: u32,
     },
     /// Versioned factory error: {0}
     FactoryError(#[from] FactoryError),

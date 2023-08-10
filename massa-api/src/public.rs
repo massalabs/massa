@@ -43,7 +43,7 @@ use massa_models::{
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
-    slot::Slot,
+    slot::{IndexedSlot, Slot},
     timeslots,
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
@@ -839,13 +839,34 @@ impl MassaRpcServer for API<Public> {
                     .saturating_add(self.0.api_settings.draw_lookahead_period_count),
                 cur_slot.thread,
             );
+            let selections = self
+                .0
+                .selector_controller
+                .get_available_selections_in_range(
+                    cur_slot..=slot_end,
+                    Some(&addresses.iter().copied().collect()),
+                )
+                .unwrap_or_default();
+
             addresses
                 .iter()
                 .map(|addr| {
-                    self.0
-                        .selector_controller
-                        .get_address_selections(addr, cur_slot, slot_end)
-                        .unwrap_or_default()
+                    let mut producer_slots = Vec::new();
+                    let mut endorser_slots = Vec::new();
+                    for (selection_slot, selection) in &selections {
+                        if selection.producer == *addr {
+                            producer_slots.push(*selection_slot);
+                        }
+                        for (index, endorser) in selection.endorsements.iter().enumerate() {
+                            if endorser == addr {
+                                endorser_slots.push(IndexedSlot {
+                                    slot: *selection_slot,
+                                    index,
+                                });
+                            }
+                        }
+                    }
+                    (producer_slots, endorser_slots)
                 })
                 .collect::<Vec<_>>()
         };

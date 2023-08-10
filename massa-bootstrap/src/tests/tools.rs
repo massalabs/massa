@@ -18,7 +18,7 @@ use massa_executed_ops::{
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetUpdateOrDelete};
+use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetOrKeep, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
@@ -33,7 +33,7 @@ use massa_models::config::{
     MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    MIP_STORE_STATS_COUNTERS_MAX, PERIODS_PER_CYCLE, THREAD_COUNT,
+    PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
@@ -58,6 +58,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use num::rational::Ratio;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
@@ -141,7 +142,7 @@ fn get_random_pos_cycles_info(
 
 /// generates random PoS deferred credits
 fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
-    let mut deferred_credits = DeferredCredits::new_with_hash();
+    let mut deferred_credits = DeferredCredits::new();
 
     for i in 0u64..r_limit {
         let mut credits = PreHashMap::default();
@@ -162,7 +163,7 @@ fn get_random_deferred_credits(r_limit: u64) -> DeferredCredits {
 /// generates a random PoS final state
 fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
     let (roll_counts, production_stats, _rng_seed) = get_random_pos_cycles_info(r_limit);
-    let mut deferred_credits = DeferredCredits::new_with_hash();
+    let mut deferred_credits = DeferredCredits::new();
     deferred_credits.extend(get_random_deferred_credits(r_limit));
 
     // Do not add seed_bits to changes, as we create the initial cycle just after
@@ -286,6 +287,15 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
     de_changes
 }
 
+/// generates a random execution trail hash change
+pub fn get_random_execution_trail_hash_change(always_set: bool) -> SetOrKeep<massa_hash::Hash> {
+    if always_set || rand::thread_rng().gen() {
+        SetOrKeep::Set(Hash::compute_from(&get_some_random_bytes()))
+    } else {
+        SetOrKeep::Keep
+    }
+}
+
 /// generates a random bootstrap state for the final state
 pub fn get_random_final_state_bootstrap(
     pos: PoSFinalState,
@@ -338,12 +348,12 @@ pub fn get_random_final_state_bootstrap(
         [],
         MipStatsConfig {
             block_count_considered: 10,
-            counters_max: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
         },
     ))
     .unwrap();
 
-    create_final_state(
+    let mut final_state = create_final_state(
         config,
         Box::new(final_ledger),
         async_pool,
@@ -352,11 +362,14 @@ pub fn get_random_final_state_bootstrap(
         executed_denunciations,
         mip_store,
         db,
-    )
+    );
+
+    final_state.init_execution_trail_hash();
+    final_state
 }
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId(Hash::compute_from(s.as_bytes()))
+    BlockId::generate_from_hash(Hash::compute_from(s.as_bytes()))
 }
 
 pub fn get_random_address() -> Address {
@@ -424,7 +437,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
         max_consensus_block_ids: MAX_CONSENSUS_BLOCKS_IDS,
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
-        mip_store_stats_counters_max: MIP_STORE_STATS_COUNTERS_MAX,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     }
@@ -455,7 +467,7 @@ pub fn get_boot_state() -> BootstrapableGraph {
             header: BlockHeader::new_verifiable(
                 BlockHeader {
                     current_version: 0,
-                    announced_version: 0,
+                    announced_version: None,
                     // associated slot
                     // all header endorsements are supposed to point towards this one
                     slot: Slot::new(1, 0),
