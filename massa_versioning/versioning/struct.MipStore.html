@@ -26,19 +26,19 @@ return 0 is there is nothing to announce</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.get_mip_status" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#657-669">source</a><h4 class="code-header">pub fn <a href="#method.get_mip_status" class="fn">get_mip_status</a>(&amp;self) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/collections/btree/map/struct.BTreeMap.html" title="struct alloc::collections::btree::map::BTreeMap">BTreeMap</a>&lt;<a class="struct" href="struct.MipInfo.html" title="struct massa_versioning::versioning::MipInfo">MipInfo</a>, <a class="enum" href="enum.ComponentStateTypeId.html" title="enum massa_versioning::versioning::ComponentStateTypeId">ComponentStateTypeId</a>&gt;</h4></section></summary><div class="docblock"><p>Retrieve a list of MIP info with their corresponding state (as id) - used for grpc API</p>
 </div></details><section id="method.is_consistent_with_shutdown_period" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#672-688">source</a><h4 class="code-header">pub fn <a href="#method.is_consistent_with_shutdown_period" class="fn">is_consistent_with_shutdown_period</a>(
     &amp;self,
-    shutdown_start: Slot,
-    shutdown_end: Slot,
+    shutdown_start: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
+    shutdown_end: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     thread_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,
     t0: MassaTime,
     genesis_timestamp: MassaTime
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="enum.IsConsistentWithShutdownPeriodError.html" title="enum massa_versioning::versioning::IsConsistentWithShutdownPeriodError">IsConsistentWithShutdownPeriodError</a>&gt;</h4></section><section id="method.update_for_network_shutdown" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#691-707">source</a><h4 class="code-header">pub fn <a href="#method.update_for_network_shutdown" class="fn">update_for_network_shutdown</a>(
     &amp;mut self,
-    shutdown_start: Slot,
-    shutdown_end: Slot,
+    shutdown_start: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
+    shutdown_end: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     thread_count: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,
     t0: MassaTime,
     genesis_timestamp: MassaTime
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, ModelsError&gt;</h4></section><section id="method.update_batches" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#711-719">source</a><h4 class="code-header">pub fn <a href="#method.update_batches" class="fn">update_batches</a>(
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="enum" href="../../massa_models/error/enum.ModelsError.html" title="enum massa_models::error::ModelsError">ModelsError</a>&gt;</h4></section><section id="method.update_batches" class="method"><a class="srclink rightside" href="../../src/massa_versioning/versioning.rs.html#711-719">source</a><h4 class="code-header">pub fn <a href="#method.update_batches" class="fn">update_batches</a>(
     &amp;self,
     db_batch: &amp;mut DBBatch,
     db_versioning_batch: &amp;mut DBBatch,
