@@ -54,6 +54,10 @@
         enable_tls = false
         # whether to enable mTLS (requires `enable_tls` to be true)
         enable_mtls = false
+        # whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
+        generate_self_signed_certificates = true
+        # list of subject alternative names for the server certificate(requires `generate_self_signed_certificates` to be true)
+        subject_alt_names = []
         # bind for the Massa gRPC API
         bind = "0.0.0.0:33037"
         # which compression encodings does the server accept for requests
@@ -84,12 +88,18 @@
         max_block_ids_per_request = 50
         # max number of operation ids that can be included in a single request
         max_operation_ids_per_request = 250
+        # certificate authority root path
+        certificate_authority_root_path = "config/tls_public_ca.pem"
         # server certificate path
-        server_certificate_path = "config/tls/public/server.pem"
+        server_certificate_path = "config/tls_public_server.pem"
         # server private key path
-        server_private_key_path = "config/tls/public/server.key"
+        server_private_key_path = "config/tls_public_server.key"
         # client certificate authority root path
-        client_certificate_authority_root_path = "config/tls/public/client_ca.pem"
+        client_certificate_authority_root_path = "config/tls_public_client_ca.pem"
+        # client certificate path
+        client_certificate_path = "../massa-client/config/tls_public_client.pem"
+        # client private key path
+        client_private_key_path = "../massa-client/config/tls_public_client.key"
     [grpc.private]
         # whether to enable gRPC
         enabled = true
@@ -104,7 +114,11 @@
         # whether to enable TLS
         enable_tls = false
         # whether to enable mTLS (requires `enable_tls` to be true)
-        enable_mtls = false
+        enable_mtls = true
+        # whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
+        generate_self_signed_certificates = true
+        # list of subject alternative names for the server certificate(requires `generate_self_signed_certificates` to be true)
+        subject_alt_names = []
         # bind for the Massa gRPC API
         bind = "127.0.0.1:33038"
         # which compression encodings does the server accept for requests
@@ -135,12 +149,18 @@
         max_block_ids_per_request = 50
         # max number of operation ids that can be included in a single request
         max_operation_ids_per_request = 250
+        # certificate authority root path
+        certificate_authority_root_path = "config/tls_private_ca.pem"
         # server certificate path
-        server_certificate_path = "config/tls/private/server.pem"
+        server_certificate_path = "config/tls_private_server.pem"
         # server private key path
-        server_private_key_path = "config/tls/private/server.key"
+        server_private_key_path = "config/tls_private_server.key"
         # client certificate authority root path
-        client_certificate_authority_root_path = "config/tls/private/client_ca.pem"
+        client_certificate_authority_root_path = "config/tls_private_client_ca.pem"
+        # client certificate path
+        client_certificate_path = "../massa-client/config/tls_private_client.pem"
+        # client private key path
+        client_private_key_path = "../massa-client/config/tls_private_client.key"
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000

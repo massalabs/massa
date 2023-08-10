@@ -39,6 +39,7 @@ massa_serialization = {workspace = true}
 massa_versioning = {workspace = true}
 massa_signature = {workspace = true}
 massa_bootstrap = {workspace = true}
+massa_sdk = {workspace = true}
 
 [dev-dependencies]
 num = {workspace = true}
