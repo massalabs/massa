@@ -213,7 +213,6 @@ where
         let tls = ServerTlsConfig::new().identity(server_identity);
 
         if config.enable_mtls {
-            //TODO add client certificate generation ? yes if not exists
             let client_ca_cert =
                 std::fs::read_to_string(config.client_certificate_authority_root_path.clone())
                     .expect("error, failed to read client certificate authority root");

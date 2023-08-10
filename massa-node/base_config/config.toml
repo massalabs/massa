@@ -55,7 +55,7 @@
         # whether to enable mTLS (requires `enable_tls` to be true)
         enable_mtls = false
         # whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
-        generate_self_signed_certificates = false
+        generate_self_signed_certificates = true
         # list of subject alternative names for the server certificate(requires `generate_self_signed_certificates` to be true)
         subject_alt_names = []
         # bind for the Massa gRPC API
@@ -112,7 +112,7 @@
         # whether to enable gRPC reflection(introspection)
         enable_reflection = true
         # whether to enable TLS
-        enable_tls = true
+        enable_tls = false
         # whether to enable mTLS (requires `enable_tls` to be true)
         enable_mtls = true
         # whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
