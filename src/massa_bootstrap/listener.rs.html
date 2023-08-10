@@ -121,17 +121,6 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::net::{SocketAddr, TcpListener, TcpStream};
 
@@ -243,17 +232,6 @@
                 }
                 <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
             }
-        }
-
-        <span class="comment">// We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
-        // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
-        // However, we cannot add potential connections on the mio_server to the connections vec,
-        // as this yields mio::net::TcpStream instead of std::net::TcpStream
-        </span><span class="kw">while let </span><span class="prelude-val">Ok</span>((<span class="kw">_</span>, remote_addr)) = <span class="self">self</span>._mio_server.accept() {
-            <span class="macro">warn!</span>(
-                <span class="string">&quot;Mio server still had bootstrap connection data to read. Remote address: {}&quot;</span>,
-                remote_addr
-            );
         }
 
         <span class="prelude-val">Ok</span>(PollEvent::NewConnections(results))

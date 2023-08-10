@@ -125,6 +125,21 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::KeyPair;
@@ -136,6 +151,8 @@
 /// the gRPC configuration
 </span><span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>GrpcConfig {
+    <span class="doccomment">/// whether to enable gRPC
+    </span><span class="kw">pub </span>name: ServiceName,
     <span class="doccomment">/// whether to enable gRPC
     </span><span class="kw">pub </span>enabled: bool,
     <span class="doccomment">/// whether to accept HTTP/1.1 requests
@@ -226,8 +243,12 @@
     </span><span class="kw">pub </span>last_start_period: u64,
     <span class="doccomment">/// max denunciations in block header
     </span><span class="kw">pub </span>max_denunciations_per_block_header: u32,
+    <span class="doccomment">/// max number of addresses that can be included in a single request
+    </span><span class="kw">pub </span>max_addresses_per_request: u32,
     <span class="doccomment">/// max number of block ids that can be included in a single request
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
+    <span class="doccomment">/// max number of endorsement ids that can be included in a single request
+    </span><span class="kw">pub </span>max_endorsement_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
     <span class="doccomment">/// certificate authority root path
@@ -251,5 +272,14 @@
     </span><span class="kw">pub </span>public: GrpcConfig,
     <span class="doccomment">/// Private server gRPC configuration.
     </span><span class="kw">pub </span>private: GrpcConfig,
+}
+
+<span class="doccomment">/// gRPC service name
+</span><span class="attr">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub enum </span>ServiceName {
+    <span class="doccomment">/// Public service name
+    </span>Public,
+    <span class="doccomment">/// Private service name
+    </span>Private,
 }
 </code></pre></div></section></main></body></html>
