@@ -251,8 +251,7 @@ pub(crate) fn get_endorsements(
         ));
     }
 
-    //TODO to be replaced with a config value
-    if endorsement_ids.len() as u32 > grpc.grpc_config.max_endorsements_per_message {
+    if endorsement_ids.len() as u32 > grpc.grpc_config.max_endorsement_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
             grpc.grpc_config.max_endorsements_per_message
@@ -287,10 +286,10 @@ pub(crate) fn get_endorsements(
             .collect()
     };
 
-    // keep only the ops found in storage
+    // keep only the endorsements found in storage
     let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
 
-    // ask pool whether it carries the operations
+    // ask pool whether it carries the endorsements
     let in_pool = grpc.pool_controller.contains_endorsements(&eds);
 
     let consensus_controller = grpc.consensus_controller.clone();
@@ -782,7 +781,7 @@ pub(crate) fn search_blocks(
 
         block_ids
             .into_iter()
-            .filter_map(|id| {
+            .filter_map(|id: BlockId| {
                 let content = if let Some(wrapped_block) = read_blocks.get(&id) {
                     wrapped_block.content.clone()
                 } else {
@@ -828,6 +827,7 @@ pub(crate) fn search_blocks(
                         {
                             // check slot filter
                             if let Some(slot_min) = &slot_min {
+                                //TODO make it inclusive
                                 if block.header.content.slot < slot_min.clone().into() {
                                     return None;
                                 }
@@ -887,6 +887,237 @@ pub(crate) fn search_blocks(
     })
 }
 
+/// Search endorsements
+pub(crate) fn search_endorsements(
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::SearchEndorsementsRequest>,
+) -> Result<grpc_api::SearchEndorsementsResponse, GrpcError> {
+    let inner_req = request.into_inner();
+
+    let mut endorsement_ids: Vec<EndorsementId> = Vec::new();
+    let mut addresses: Vec<Address> = Vec::new();
+    let mut block_ids: Vec<BlockId> = Vec::new();
+
+    // Get params filter from the request.
+    for query in inner_req.filters.into_iter() {
+        if let Some(filter) = query.filter {
+            match filter {
+                grpc_api::search_endorsements_filter::Filter::EndorsementIds(ids) => {
+                    if ids.endorsement_ids.len() as u32
+                        > grpc.grpc_config.max_endorsement_ids_per_request
+                    {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
+                            grpc.grpc_config.max_endorsement_ids_per_request
+                        )));
+                    }
+                    for id in ids.endorsement_ids {
+                        endorsement_ids.push(EndorsementId::from_str(&id).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid endorsement id: {}", id))
+                        })?);
+                    }
+                }
+                grpc_api::search_endorsements_filter::Filter::Addresses(addrs) => {
+                    if addrs.addresses.len() as u32 > grpc.grpc_config.max_addresses_per_request {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many addresses received. Only a maximum of {} addresses are accepted per request",
+                            grpc.grpc_config.max_addresses_per_request
+                        )));
+                    }
+                    for address in addrs.addresses {
+                        addresses.push(Address::from_str(&address).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid address: {}", address))
+                        })?);
+                    }
+                }
+                grpc_api::search_endorsements_filter::Filter::BlockIds(ids) => {
+                    if ids.block_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many block ids received. Only a maximum of {} block ids are accepted per request",
+                            grpc.grpc_config.max_block_ids_per_request
+                        )));
+                    }
+                    for block_id in ids.block_ids {
+                        block_ids.push(BlockId::from_str(&block_id).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid block id: {}", block_id))
+                        })?);
+                    }
+                }
+            }
+        }
+    }
+
+    // if no filter provided return an error
+    if endorsement_ids.is_empty() && addresses.is_empty() && block_ids.is_empty() {
+        return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
+    }
+
+    let read_blocks = grpc.storage.read_blocks();
+    let read_endorsements = grpc.storage.read_endorsements();
+
+    let storage_info: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = if !endorsement_ids
+        .is_empty()
+    {
+        endorsement_ids
+            .into_iter()
+            .filter_map(|id| {
+                let (wrapped_endorsement, block_ids) = match read_endorsements.get(&id) {
+                    Some(wrapped_endorsement) => {
+                        let block_ids = read_blocks
+                            .get_blocks_by_endorsement(&id)
+                            .cloned()
+                            .unwrap_or_default();
+
+                        (wrapped_endorsement, block_ids)
+                    }
+                    None => return None,
+                };
+
+                // check addresses filter
+                if !addresses.is_empty()
+                    && !addresses
+                        .iter()
+                        .any(|addr| wrapped_endorsement.content_creator_address.eq(addr))
+                {
+                    return None;
+                }
+
+                // check block ids filter
+                if !block_ids.is_empty() && !block_ids.iter().any(|block_id| block_id.eq(block_id))
+                {
+                    return None;
+                }
+
+                Some((wrapped_endorsement, block_ids))
+            })
+            .collect()
+    } else if !addresses.is_empty() {
+        let mut result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = Vec::new();
+        for address in addresses.into_iter() {
+            if let Some(hash_set) = read_endorsements.get_endorsements_created_by(&address) {
+                let addr_result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = hash_set
+                    .iter()
+                    .filter_map(|id| {
+                        let (wrapped_endorsement, block_ids) = match read_endorsements.get(id) {
+                            Some(wrapped_endorsement) => {
+                                let block_ids = read_blocks
+                                    .get_blocks_by_endorsement(id)
+                                    .cloned()
+                                    .unwrap_or_default();
+
+                                (wrapped_endorsement, block_ids)
+                            }
+                            None => return None,
+                        };
+
+                        // check block ids filter
+                        if !block_ids.is_empty()
+                            && !block_ids.iter().any(|block_id| block_id.eq(block_id))
+                        {
+                            return None;
+                        }
+
+                        Some((wrapped_endorsement, block_ids))
+                    })
+                    .collect();
+
+                result.extend_from_slice(&addr_result);
+            } else {
+                return Err(GrpcError::InvalidArgument(format!(
+                    "no endorsement found for address: {}",
+                    address
+                )));
+            }
+        }
+
+        result
+    } else {
+        //TODO To be checked
+        let mut result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = Vec::new();
+        for block_id in block_ids {
+            if let Some(wrapped_block) = read_blocks.get(&block_id) {
+                let block_result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> =
+                    wrapped_block
+                        .content
+                        .header
+                        .content
+                        .endorsements
+                        .iter()
+                        .map(|wrapped_endorsement| {
+                            let mut block_ids_set: PreHashSet<BlockId> = PreHashSet::default();
+                            block_ids_set.insert(block_id);
+                            (wrapped_endorsement, block_ids_set)
+                        })
+                        .collect();
+
+                result.extend_from_slice(&block_result);
+            } else {
+                return Err(GrpcError::InvalidArgument(format!(
+                    "no endorsement found for block id: {}",
+                    block_id
+                )));
+            }
+        }
+
+        result
+    };
+
+    // keep only the endorsements found in storage
+    let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
+
+    // ask pool whether it carries the endorsements
+    let in_pool = grpc.pool_controller.contains_endorsements(&eds);
+
+    let consensus_controller = grpc.consensus_controller.clone();
+
+    // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
+    let is_final: Vec<bool> = {
+        let involved_blocks: Vec<BlockId> = storage_info
+            .iter()
+            .flat_map(|(_ed, bs)| bs.iter())
+            .unique()
+            .cloned()
+            .collect();
+
+        let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+
+        let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
+            .into_iter()
+            .zip(involved_block_statuses.into_iter())
+            .collect();
+        storage_info
+            .iter()
+            .map(|(_ed, bs)| {
+                bs.iter()
+                    .any(|b| block_statuses.get(b) == Some(&BlockGraphStatus::Final))
+            })
+            .collect()
+    };
+
+    // gather all values into a vector of EndorsementInfo instances
+    let mut res: Vec<grpc_model::EndorsementInfo> = Vec::with_capacity(eds.len());
+    let zipped_iterator = izip!(
+        storage_info.into_iter(),
+        in_pool.into_iter(),
+        is_final.into_iter()
+    );
+    for ((endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
+        res.push(grpc_model::EndorsementInfo {
+            in_pool,
+            is_final,
+            in_blocks: in_blocks
+                .into_iter()
+                .map(|block_id| block_id.to_string())
+                .collect(),
+            endorsement_id: endorsement.id.to_string(),
+        });
+    }
+
+    Ok(grpc_api::SearchEndorsementsResponse {
+        endorsement_infos: res,
+    })
+}
+
 /// Search operations
 pub(crate) fn search_operations(
     grpc: &MassaPublicGrpc,
@@ -926,7 +1157,7 @@ pub(crate) fn search_operations(
     }
 
     if operation_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
-        return Err(GrpcError::InvalidArgument(format!("too many operations received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
+        return Err(GrpcError::InvalidArgument(format!("too many operation ids received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
     }
 
     let read_blocks = grpc.storage.read_blocks();
