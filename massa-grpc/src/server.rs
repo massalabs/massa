@@ -9,7 +9,7 @@ use std::convert::Infallible;
 use std::path::Path;
 use std::sync::{Arc, Condvar, Mutex};
 
-use crate::config::GrpcConfig;
+use crate::config::{GrpcConfig, ServiceName};
 use crate::error::GrpcError;
 use futures_util::FutureExt;
 use hyper::service::Service;
@@ -18,10 +18,10 @@ use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET_PUBLIC;
 use massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
+use massa_proto_rs::massa::api::v1::{FILE_DESCRIPTOR_SET_PRIVATE, FILE_DESCRIPTOR_SET_PUBLIC};
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_sdk::cert_manager::{gen_cert_for_ca, gen_signed_cert};
 use massa_storage::Storage;
@@ -235,8 +235,12 @@ where
 
     //TODO handle private/public
     let reflection_service_opt = if config.enable_reflection {
+        let file_descriptor_set = match config.name {
+            ServiceName::Public => FILE_DESCRIPTOR_SET_PUBLIC,
+            ServiceName::Private => FILE_DESCRIPTOR_SET_PRIVATE,
+        };
         let reflection_service = tonic_reflection::server::Builder::configure()
-            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET_PUBLIC)
+            .register_encoded_file_descriptor_set(file_descriptor_set)
             .build()?;
 
         Some(reflection_service)

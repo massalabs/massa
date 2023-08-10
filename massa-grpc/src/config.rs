@@ -10,6 +10,8 @@ use std::{net::SocketAddr, path::PathBuf, time::Duration};
 #[derive(Debug, Deserialize, Clone)]
 pub struct GrpcConfig {
     /// whether to enable gRPC
+    pub name: ServiceName,
+    /// whether to enable gRPC
     pub enabled: bool,
     /// whether to accept HTTP/1.1 requests
     pub accept_http1: bool,
@@ -124,4 +126,13 @@ pub struct GrpcApiConfig {
     pub public: GrpcConfig,
     /// Private server gRPC configuration.
     pub private: GrpcConfig,
+}
+
+/// gRPC service name
+#[derive(Debug, Deserialize, Clone)]
+pub enum ServiceName {
+    /// Public service name
+    Public,
+    /// Private service name
+    Private,
 }

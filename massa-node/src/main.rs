@@ -36,7 +36,7 @@ use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_grpc::config::GrpcConfig;
+use massa_grpc::config::{GrpcConfig, ServiceName};
 use massa_grpc::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
@@ -850,8 +850,12 @@ async fn launch(
 
     // Whether to spawn gRPC PUBLIC API
     let grpc_public_handle = if SETTINGS.grpc.public.enabled {
-        let grpc_public_config =
-            configure_grpc(&SETTINGS.grpc.public, keypair.clone(), &final_state);
+        let grpc_public_config = configure_grpc(
+            ServiceName::Public,
+            &SETTINGS.grpc.public,
+            keypair.clone(),
+            &final_state,
+        );
 
         let grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
@@ -886,8 +890,12 @@ async fn launch(
 
     // Whether to spawn gRPC PRIVATE API
     let grpc_private_handle = if SETTINGS.grpc.private.enabled {
-        let grpc_private_config =
-            configure_grpc(&SETTINGS.grpc.private, keypair.clone(), &final_state);
+        let grpc_private_config = configure_grpc(
+            ServiceName::Private,
+            &SETTINGS.grpc.private,
+            keypair.clone(),
+            &final_state,
+        );
 
         let bs_white_black_list = bootstrap_manager
             .as_ref()
@@ -1037,11 +1045,13 @@ async fn launch(
 
 // Get the configuration of the gRPC server
 fn configure_grpc(
+    name: ServiceName,
     settings: &GrpcSettings,
     keypair: KeyPair,
     final_state: &Arc<RwLock<FinalState>>,
 ) -> GrpcConfig {
     GrpcConfig {
+        name,
         enabled: settings.enabled,
         accept_http1: settings.accept_http1,
         enable_cors: settings.enable_cors,

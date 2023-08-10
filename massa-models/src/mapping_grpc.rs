@@ -235,9 +235,9 @@ impl From<OperationType> for grpc_model::OperationType {
                 coins,
             } => {
                 let call_sc = grpc_model::CallSc {
-                    target_addr: target_addr.to_string(),
-                    target_func,
-                    param,
+                    target_address: target_addr.to_string(),
+                    target_function: target_func,
+                    parameter: param,
                     max_gas,
                     coins: Some(coins.into()),
                 };

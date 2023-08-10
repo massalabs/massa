@@ -1,6 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::config::GrpcConfig;
+use crate::config::{GrpcConfig, ServiceName};
 use crate::server::MassaPublicGrpc;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
@@ -59,6 +59,7 @@ async fn test_start_grpc_server() {
     let slot_execution_output_sender = tokio::sync::broadcast::channel(5000).0;
     let keypair = KeyPair::generate(0).unwrap();
     let grpc_config = GrpcConfig {
+        name: ServiceName::Public,
         enabled: true,
         accept_http1: true,
         enable_cors: true,

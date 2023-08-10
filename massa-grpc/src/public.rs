@@ -82,7 +82,7 @@ pub(crate) fn execute_read_only_call(
                 ReadOnlyExecutionTarget::BytecodeExecution(value.bytecode)
             }
             read_only_execution_call::Target::FunctionCall(value) => {
-                let target_address = Address::from_str(&value.target_addr)?;
+                let target_address = Address::from_str(&value.target_address)?;
                 call_stack.push(ExecutionStackElement {
                     address: caller_address,
                     coins: Default::default(),
@@ -97,8 +97,8 @@ pub(crate) fn execute_read_only_call(
                 });
 
                 ReadOnlyExecutionTarget::FunctionCall {
-                    target_addr: Address::from_str(&value.target_addr)?,
-                    target_func: value.target_func,
+                    target_addr: Address::from_str(&value.target_address)?,
+                    target_func: value.target_function,
                     parameter: value.parameter,
                 }
             }
