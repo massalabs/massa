@@ -1197,10 +1197,6 @@
 <a href="#1197" id="1197">1197</a>
 <a href="#1198" id="1198">1198</a>
 <a href="#1199" id="1199">1199</a>
-<a href="#1200" id="1200">1200</a>
-<a href="#1201" id="1201">1201</a>
-<a href="#1202" id="1202">1202</a>
-<a href="#1203" id="1203">1203</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1933,30 +1929,37 @@
     <span class="kw">let </span>inner_req = request.into_inner();
 
     <span class="kw">let </span><span class="kw-2">mut </span>block_ids: Vec&lt;BlockId&gt; = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>addresses: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>addresses: Vec&lt;Address&gt; = Vec::new();
     <span class="kw">let </span>(<span class="kw-2">mut </span>slot_min, <span class="kw-2">mut </span>slot_max) = (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
 
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>inner_req.filters.into_iter() {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = query.filter {
             <span class="kw">match </span>filter {
-                grpc_api::search_blocks_filter::Filter::Addresses(addrs) =&gt; {
-                    <span class="kw">for </span>addr <span class="kw">in </span>addrs.addresses {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>vec) = addresses {
-                            vec.push(addr);
-                        } <span class="kw">else </span>{
-                            addresses = <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[addr]);
-                        }
+                grpc_api::search_blocks_filter::Filter::BlockIds(ids) =&gt; {
+                    <span class="kw">if </span>ids.block_ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_block_ids_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">&quot;too many block ids received. Only a maximum of {} block ids are accepted per request&quot;</span>,
+                            grpc.grpc_config.max_block_ids_per_request
+                        )));
+                    }
+                    <span class="kw">for </span>block_id <span class="kw">in </span>ids.block_ids {
+                        block_ids.push(BlockId::from_str(<span class="kw-2">&amp;</span>block_id).map_err(|<span class="kw">_</span>| {
+                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid block id: {}&quot;</span>, block_id))
+                        })<span class="question-mark">?</span>);
                     }
                 }
-                grpc_api::search_blocks_filter::Filter::BlockIds(ids) =&gt; {
-                    <span class="kw">for </span>id <span class="kw">in </span>ids.block_ids {
-                        <span class="kw">if </span>block_ids.len() &lt; grpc.grpc_config.max_block_ids_per_request <span class="kw">as </span>usize + <span class="number">1
-                        </span>{
-                            block_ids.push(BlockId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
-                                GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid block id: {}&quot;</span>, id))
-                            })<span class="question-mark">?</span>);
-                        }
+                grpc_api::search_blocks_filter::Filter::Addresses(addrs) =&gt; {
+                    <span class="kw">if </span>addrs.addresses.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_addresses_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">&quot;too many addresses received. Only a maximum of {} addresses are accepted per request&quot;</span>,
+                            grpc.grpc_config.max_addresses_per_request
+                        )));
+                    }
+                    <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
+                        addresses.push(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
+                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, address))
+                        })<span class="question-mark">?</span>);
                     }
                 }
                 grpc_api::search_blocks_filter::Filter::SlotRange(slot_range) =&gt; {
@@ -1968,20 +1971,13 @@
     }
 
     <span class="comment">// if no filter provided return an error
-    </span><span class="kw">if </span>block_ids.is_empty() &amp;&amp; addresses.is_none() &amp;&amp; slot_min.is_none() &amp;&amp; slot_max.is_none() {
+    </span><span class="kw">if </span>block_ids.is_empty() &amp;&amp; addresses.is_empty() &amp;&amp; slot_min.is_none() &amp;&amp; slot_max.is_none() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">&quot;no filter provided&quot;</span>.to_string()));
     }
 
     <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
 
     <span class="kw">let </span>blocks = <span class="kw">if </span>!block_ids.is_empty() {
-        <span class="kw">if </span>block_ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_block_ids_per_request {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                <span class="string">&quot;too many block ids received. Only a maximum of {} block ids are accepted per request&quot;</span>,
-                grpc.grpc_config.max_block_ids_per_request
-            )));
-        }
-
         block_ids
             .into_iter()
             .filter_map(|id: BlockId| {
@@ -1992,14 +1988,14 @@
                 };
 
                 <span class="comment">// check addresses filter
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(filter_addresses) = <span class="kw-2">&amp;</span>addresses {
-                    <span class="kw">if </span>!filter_addresses
+                </span><span class="kw">if </span>!addresses.is_empty()
+                    &amp;&amp; !addresses
                         .iter()
-                        .any(|addr| content.header.content_creator_address.to_string().eq(addr))
-                    {
-                        <span class="kw">return </span><span class="prelude-val">None</span>;
-                    }
+                        .any(|addr| content.header.content_creator_address.eq(addr))
+                {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
                 }
+
                 <span class="comment">// check slot filter
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(slot_min) = <span class="kw-2">&amp;</span>slot_min {
                     <span class="kw">if </span>content.header.content.slot &lt; slot_min.clone().into() {
@@ -2015,11 +2011,9 @@
                 <span class="prelude-val">Some</span>(content)
             })
             .collect::&lt;Vec&lt;Block&gt;&gt;()
-    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(addresses) = addresses {
+    } <span class="kw">else if </span>!addresses.is_empty() {
         <span class="kw">let </span><span class="kw-2">mut </span>blocks = Vec::new();
-        <span class="kw">for </span>addr <span class="kw">in </span>addresses.into_iter() {
-            <span class="kw">let </span>address = Address::from_str(<span class="kw-2">&amp;</span>addr)
-                .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, addr)))<span class="question-mark">?</span>;
+        <span class="kw">for </span>address <span class="kw">in </span>addresses.into_iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(hash_set) = read_blocks.get_blocks_created_by(<span class="kw-2">&amp;</span>address) {
                 <span class="kw">let </span>result = hash_set
                     .iter()
@@ -2030,8 +2024,7 @@
                         {
                             <span class="comment">// check slot filter
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(slot_min) = <span class="kw-2">&amp;</span>slot_min {
-                                <span class="comment">//TODO make it inclusive
-                                </span><span class="kw">if </span>block.header.content.slot &lt; slot_min.clone().into() {
+                                <span class="kw">if </span>block.header.content.slot &lt; slot_min.clone().into() {
                                     <span class="kw">return </span><span class="prelude-val">None</span>;
                                 }
                             }
@@ -2235,8 +2228,7 @@
 
         result
     } <span class="kw">else </span>{
-        <span class="comment">//TODO To be checked
-        </span><span class="kw">let </span><span class="kw-2">mut </span>result: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>result: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = Vec::new();
         <span class="kw">for </span>block_id <span class="kw">in </span>block_ids {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = read_blocks.get(<span class="kw-2">&amp;</span>block_id) {
                 <span class="kw">let </span>block_result: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; =
@@ -2336,14 +2328,18 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = query.filter {
             <span class="kw">match </span>filter {
                 grpc_api::search_operations_filter::Filter::OperationIds(ids) =&gt; {
+                    <span class="kw">if </span>ids.operation_ids.len() <span class="kw">as </span>u32
+                        &gt; grpc.grpc_config.max_operation_ids_per_request
+                    {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">&quot;too many operation ids received. Only a maximum of {} operation ids are accepted per request&quot;</span>,
+                            grpc.grpc_config.max_block_ids_per_request
+                        )));
+                    }
                     <span class="kw">for </span>id <span class="kw">in </span>ids.operation_ids {
-                        <span class="kw">if </span>operation_ids.len()
-                            &lt; grpc.grpc_config.max_operation_ids_per_request <span class="kw">as </span>usize + <span class="number">1
-                        </span>{
-                            operation_ids.push(OperationId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
-                                GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid operation id: {}&quot;</span>, id))
-                            })<span class="question-mark">?</span>);
-                        }
+                        operation_ids.push(OperationId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
+                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid operation id: {}&quot;</span>, id))
+                        })<span class="question-mark">?</span>);
                     }
                 }
                 grpc_api::search_operations_filter::Filter::OperationTypes(ope_types) =&gt; {
@@ -2357,10 +2353,6 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
             <span class="string">&quot;no operations ids specified&quot;</span>.to_string(),
         ));
-    }
-
-    <span class="kw">if </span>operation_ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_operation_ids_per_request {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;too many operation ids received. Only a maximum of {} operations are accepted per request&quot;</span>, grpc.grpc_config.max_operation_ids_per_request)));
     }
 
     <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
