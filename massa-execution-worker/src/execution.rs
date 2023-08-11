@@ -457,11 +457,13 @@ impl ExecutionState {
 
             // check execution results
             match execution_result {
-                Ok(_) => context.insert_executed_op(
-                    operation_id,
-                    true,
-                    Slot::new(operation.content.expire_period, op_thread),
-                ),
+                Ok(_) => {
+                    context.insert_executed_op(
+                        operation_id,
+                        true,
+                        Slot::new(operation.content.expire_period, op_thread),
+                    );
+                }
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
                     let err = ExecutionError::RuntimeError(format!(

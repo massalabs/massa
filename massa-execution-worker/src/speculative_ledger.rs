@@ -163,69 +163,40 @@ impl SpeculativeLedger {
                     ExecutionError::RuntimeError(format!("failed to transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
                     .get_balance(&from_addr).unwrap_or_default()))
                 })?;
+
+            // update the balance of the sender address
             changes.set_balance(from_addr, new_balance);
         }
 
         // simulate crediting coins to destination address (if any)
         // note that to_addr can be the same as from_addr
         if let Some(to_addr) = to_addr {
-            let old_balance = changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr));
-            match (old_balance, from_addr) {
-                // if `to_addr` exists we increase the balance
-                (Some(old_balance), _from_addr) => {
-                    let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
-                        ExecutionError::RuntimeError(format!(
-                            "overflow in crediting address {} balance {} due to adding {}",
-                            to_addr, old_balance, amount
-                        ))
-                    })?;
-                    changes.set_balance(to_addr, new_balance);
-                }
-                // if `to_addr` doesn't exist but `from_addr` is defined. `from_addr` will create the address using the coins sent.
-                (None, Some(_from_addr)) => {
-                    //TODO: Remove when stabilized
-                    debug!("Creating address {} from coins in transactions", to_addr);
-                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
-                        changes.create_address(&to_addr);
-                        changes.set_balance(
-                            to_addr,
-                            amount
-                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
-                                .ok_or_else(|| {
-                                    ExecutionError::RuntimeError(
-                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
-                                    )
-                                })?,
-                        );
-                    } else {
-                        return Err(ExecutionError::RuntimeError(format!(
-                            "insufficient amount {} to create crediting address {}",
-                            amount, to_addr
-                        )));
-                    }
-                }
-                // if `from_addr` is none and `to_addr` doesn't exist(in the ledger) try to create it from coins sent
-                (None, None) => {
-                    //TODO: Remove when stabilized
-                    debug!("Creating address {} from coins generated", to_addr);
-                    // We have enough to create the address and transfer the rest.
-                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
-                        changes.create_address(&to_addr);
-                        changes.set_balance(
-                            to_addr,
-                            amount
-                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
-                                .ok_or_else(|| {
-                                    ExecutionError::RuntimeError(
-                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
-                                    )
-                                })?,
-                        );
-                    } else {
-                        return Ok(());
-                    }
-                }
-            };
+            if let Some(old_balance) =
+                changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr))
+            {
+                // if `to_addr` exists we increase its balance
+                let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
+                    ExecutionError::RuntimeError(format!(
+                        "overflow in crediting address {} balance {} due to adding {}",
+                        to_addr, old_balance, amount
+                    ))
+                })?;
+                changes.set_balance(to_addr, new_balance);
+            } else if let Some(remaining_coins) =
+                amount.checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
+            {
+                // if `to_addr` doesn't exist and we have enough coins to credit it,
+                // we will try to create the address using part of the transferred coins
+                debug!("Creating address {} from coins", to_addr);
+                changes.create_address(&to_addr);
+                changes.set_balance(to_addr, remaining_coins);
+            } else {
+                // `to_addr` does not exist and we don't have the money to create it
+                return Err(ExecutionError::RuntimeError(format!(
+                    "insufficient amount {} to create credited address {}",
+                    amount, to_addr
+                )));
+            }
         }
 
         // apply the simulated changes to the speculative ledger
@@ -258,11 +229,13 @@ impl SpeculativeLedger {
     /// * `creator_address`: address that asked for this creation. Will pay the storage costs.
     /// * `addr`: address to create
     /// * `bytecode`: bytecode to set in the new ledger entry
+    /// * `creator_allowance`: optional amount of coins that the sender can still spend (updated when spending)
     pub fn create_new_sc_address(
         &mut self,
         creator_address: Address,
         addr: Address,
         bytecode: Bytecode,
+        creator_allowance: Option<&mut Amount>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(&creator_address) {
@@ -310,7 +283,12 @@ impl SpeculativeLedger {
                 ExecutionError::RuntimeError("overflow in ledger cost for bytecode".to_string())
             })?;
 
-        self.transfer_coins(Some(creator_address), None, address_storage_cost)?;
+        self.transfer_coins(
+            Some(creator_address),
+            None,
+            address_storage_cost,
+            creator_allowance,
+        )?;
         self.added_changes.create_address(&addr);
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
@@ -323,11 +301,13 @@ impl SpeculativeLedger {
     /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: target address
     /// * `bytecode`: bytecode to set for that address
+    /// * `creator_allowance`: optional amount of coins that the sender can still spend (updated when spending)
     pub fn set_bytecode(
         &mut self,
         caller_addr: &Address,
         addr: &Address,
         bytecode: Bytecode,
+        creator_allowance: Option<&mut Amount>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(addr) {
@@ -357,8 +337,18 @@ impl SpeculativeLedger {
                 })?;
 
             match diff_size_storage.signum() {
-                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_bytecode)?,
-                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_bytecode)?,
+                1 => self.transfer_coins(
+                    Some(*caller_addr),
+                    None,
+                    storage_cost_bytecode,
+                    creator_allowance,
+                )?,
+                -1 => self.transfer_coins(
+                    None,
+                    Some(*caller_addr),
+                    storage_cost_bytecode,
+                    creator_allowance,
+                )?,
                 _ => {}
             };
         } else {
@@ -371,7 +361,12 @@ impl SpeculativeLedger {
                         "overflow when calculating storage cost of bytecode".to_string(),
                     )
                 })?;
-            self.transfer_coins(Some(*caller_addr), None, bytecode_storage_cost)?;
+            self.transfer_coins(
+                Some(*caller_addr),
+                None,
+                bytecode_storage_cost,
+                creator_allowance,
+            )?;
         }
         // set the bytecode of that address
         self.added_changes.set_bytecode(*addr, bytecode);

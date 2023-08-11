@@ -73,6 +73,9 @@ pub struct ExecutionContextSnapshot {
     /// counter of newly created events so far during this execution
     pub created_event_index: u64,
 
+    /// counter of async messages emitted so far in this execution
+    pub created_message_index: u64, 
+
     /// address call stack, most recent is at the back
     pub stack: Vec<ExecutionStackElement>,
 
@@ -248,6 +251,7 @@ impl ExecutionContext {
             executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
+            created_message_index: self.created_message_index,
             stack: self.stack.clone(),
             events: self.events.clone(),
             unsafe_rng: self.unsafe_rng.clone(),
@@ -275,6 +279,7 @@ impl ExecutionContext {
             .reset_to_snapshot(snapshot.executed_denunciations);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
+        self.created_message_index = snapshot.created_message_index;
         self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;
 
@@ -700,34 +705,11 @@ impl ExecutionContext {
                     }
                 }
             }
-            // control vesting min_balance for sender address
-            self.vesting_manager
-                .check_vesting_transfer_coins(self, from_addr, amount)?;
         }
-
-        // check remaining sender allowance
-        let sender_allowance = {
-            if let (Some(op_creator_allowance), Some(op_creator_addr)) = (&mut self.creator_coin_spending_allowance, self.creator_address) && from_addr == Some(op_creator_addr) {
-                if amount > *op_creator_allowance {
-                    return Err(ExecutionError::RuntimeError(format!("failed transfer of {} coins from spending address {} due to limited allowance", amount, op_creator_addr)));
-                }
-                Some(op_creator_allowance)
-            } else {
-                None
-            }
-        };
 
         // do the transfer
-        let result = self
-            .speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount);
-
-        // update allowance
-        if let Some(allowance) = sender_allowance && result.is_ok() {
-            *allowance = allowance.saturating_sub(amount);
-        }
-
-        result
+        self.speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount)
     }
 
     /// Add a new asynchronous message to speculative pool
