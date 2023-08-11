@@ -34,8 +34,30 @@ impl BootstrapTcpListener {
     ) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
         info!("Starting bootstrap listener on {}", &addr);
 
-        let mut server = mio::net::TcpListener::bind(*addr)?;
+        let domain = if addr.is_ipv4() {
+            socket2::Domain::IPV4
+        } else {
+            socket2::Domain::IPV6
+        };
 
+        let socket = socket2::Socket::new(domain, socket2::Type::STREAM, None)?;
+
+        if addr.is_ipv6() {
+            socket.set_only_v6(false)?;
+        }
+        // This is needed for the mio-polling system, which depends on the socket being non-blocking.
+        // If we don't set non-blocking, then we can .accept() on the server below, which is needed to ensure the polling triggers every time.
+        socket.set_nonblocking(true)?;
+        socket.bind(&(*addr).into())?;
+
+        // Number of connections to queue, set to the hardcoded value used by tokio
+        socket.listen(1024)?;
+
+        info!("Starting bootstrap listener on {}", &addr);
+        let std_server: std::net::TcpListener = socket.into();
+
+        let mut server = TcpListener::from_std(std_server.try_clone().expect("Unable to clone server socket"));
+        
         let poll = Poll::new()?;
 
         // wake up the poll when we want to stop the listener
