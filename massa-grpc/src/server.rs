@@ -233,7 +233,6 @@ where
         }
     }
 
-    //TODO handle private/public
     let reflection_service_opt = if config.enable_reflection {
         let file_descriptor_set = match config.name {
             ServiceName::Public => FILE_DESCRIPTOR_SET_PUBLIC,
