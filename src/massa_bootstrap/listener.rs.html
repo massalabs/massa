@@ -120,16 +120,14 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::io::ErrorKind;
-<span class="kw">use </span>std::net::{SocketAddr, TcpListener, TcpStream};
-
-<span class="kw">use </span>mio::net::TcpListener <span class="kw">as </span>MioTcpListener;
-
+</pre></div><pre class="rust"><code><span class="kw">use </span>mio::net::TcpListener;
 <span class="kw">use </span>mio::{Events, Interest, Poll, Token, Waker};
+<span class="kw">use </span>std::io::ErrorKind;
+<span class="kw">use </span>std::net::{SocketAddr, TcpStream};
 <span class="kw">use </span>tracing::{info, warn};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::BootstrapError;
+<span class="kw">use </span><span class="kw">crate</span>::tools::mio_stream_to_std;
 
 <span class="kw">const </span>NEW_CONNECTION: Token = Token(<span class="number">0</span>);
 <span class="kw">const </span>STOP_LISTENER: Token = Token(<span class="number">10</span>);
@@ -139,9 +137,6 @@
     poll: Poll,
     events: Events,
     server: TcpListener,
-    <span class="comment">// HACK : create variable to move ownership of mio_server to the thread
-    // if mio_server is not moved, poll does not receive any event from listener
-    </span>_mio_server: MioTcpListener,
 }
 
 <span class="kw">pub struct </span>BootstrapListenerStopHandle(Waker);
@@ -159,6 +154,8 @@
     </span><span class="kw">pub fn </span>create(
         addr: <span class="kw-2">&amp;</span>SocketAddr,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(BootstrapListenerStopHandle, <span class="self">Self</span>), BootstrapError&gt; {
+        <span class="macro">info!</span>(<span class="string">&quot;Starting bootstrap listener on {}&quot;</span>, <span class="kw-2">&amp;</span>addr);
+
         <span class="kw">let </span>domain = <span class="kw">if </span>addr.is_ipv4() {
             socket2::Domain::IPV4
         } <span class="kw">else </span>{
@@ -171,7 +168,7 @@
             socket.set_only_v6(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
         }
         <span class="comment">// This is needed for the mio-polling system, which depends on the socket being non-blocking.
-        // If we don&#39;t set non-blocking, then we can .accept() on the mio_server bellow, which is needed to ensure the polling triggers every time.
+        // If we don&#39;t set non-blocking, then we can .accept() on the server below, which is needed to ensure the polling triggers every time.
         </span>socket.set_nonblocking(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
         socket.bind(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr).into())<span class="question-mark">?</span>;
 
@@ -179,18 +176,17 @@
         </span>socket.listen(<span class="number">1024</span>)<span class="question-mark">?</span>;
 
         <span class="macro">info!</span>(<span class="string">&quot;Starting bootstrap listener on {}&quot;</span>, <span class="kw-2">&amp;</span>addr);
-        <span class="kw">let </span>server: TcpListener = socket.into();
+        <span class="kw">let </span>std_server: std::net::TcpListener = socket.into();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>mio_server =
-            MioTcpListener::from_std(server.try_clone().expect(<span class="string">&quot;Unable to clone server socket&quot;</span>));
-
+        <span class="kw">let </span><span class="kw-2">mut </span>server = TcpListener::from_std(std_server.try_clone().expect(<span class="string">&quot;Unable to clone server socket&quot;</span>));
+        
         <span class="kw">let </span>poll = Poll::new()<span class="question-mark">?</span>;
 
         <span class="comment">// wake up the poll when we want to stop the listener
         </span><span class="kw">let </span>waker = BootstrapListenerStopHandle(Waker::new(poll.registry(), STOP_LISTENER)<span class="question-mark">?</span>);
 
         poll.registry()
-            .register(<span class="kw-2">&amp;mut </span>mio_server, NEW_CONNECTION, Interest::READABLE)<span class="question-mark">?</span>;
+            .register(<span class="kw-2">&amp;mut </span>server, NEW_CONNECTION, Interest::READABLE)<span class="question-mark">?</span>;
 
         <span class="comment">// TODO use config for capacity ?
         </span><span class="kw">let </span>events = Events::with_capacity(<span class="number">128</span>);
@@ -200,10 +196,10 @@
                 poll,
                 server,
                 events,
-                _mio_server: mio_server,
             },
         ))
     }
+
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt; {
         <span class="self">self</span>.poll.poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">None</span>).unwrap();
 
@@ -214,7 +210,9 @@
             <span class="kw">match </span>event.token() {
                 NEW_CONNECTION =&gt; <span class="kw">loop </span>{
                     <span class="kw">match </span><span class="self">self</span>.server.accept() {
-                        <span class="prelude-val">Ok</span>((stream, remote_addr)) =&gt; {
+                        <span class="prelude-val">Ok</span>((<span class="kw-2">mut </span>stream, remote_addr)) =&gt; {
+                            <span class="kw">let _ </span>= <span class="self">self</span>.poll.registry().deregister(<span class="kw-2">&amp;mut </span>stream);
+                            <span class="kw">let </span>stream: std::net::TcpStream = mio_stream_to_std(stream);
                             stream.set_nonblocking(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
                             results.push((stream, remote_addr));
                         }
