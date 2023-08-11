@@ -730,30 +730,37 @@ pub(crate) fn search_blocks(
     let inner_req = request.into_inner();
 
     let mut block_ids: Vec<BlockId> = Vec::new();
-    let mut addresses: Option<Vec<String>> = None;
+    let mut addresses: Vec<Address> = Vec::new();
     let (mut slot_min, mut slot_max) = (None, None);
 
     // Get params filter from the request.
     for query in inner_req.filters.into_iter() {
         if let Some(filter) = query.filter {
             match filter {
-                grpc_api::search_blocks_filter::Filter::Addresses(addrs) => {
-                    for addr in addrs.addresses {
-                        if let Some(ref mut vec) = addresses {
-                            vec.push(addr);
-                        } else {
-                            addresses = Some(vec![addr]);
-                        }
+                grpc_api::search_blocks_filter::Filter::BlockIds(ids) => {
+                    if ids.block_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many block ids received. Only a maximum of {} block ids are accepted per request",
+                            grpc.grpc_config.max_block_ids_per_request
+                        )));
+                    }
+                    for block_id in ids.block_ids {
+                        block_ids.push(BlockId::from_str(&block_id).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid block id: {}", block_id))
+                        })?);
                     }
                 }
-                grpc_api::search_blocks_filter::Filter::BlockIds(ids) => {
-                    for id in ids.block_ids {
-                        if block_ids.len() < grpc.grpc_config.max_block_ids_per_request as usize + 1
-                        {
-                            block_ids.push(BlockId::from_str(&id).map_err(|_| {
-                                GrpcError::InvalidArgument(format!("invalid block id: {}", id))
-                            })?);
-                        }
+                grpc_api::search_blocks_filter::Filter::Addresses(addrs) => {
+                    if addrs.addresses.len() as u32 > grpc.grpc_config.max_addresses_per_request {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many addresses received. Only a maximum of {} addresses are accepted per request",
+                            grpc.grpc_config.max_addresses_per_request
+                        )));
+                    }
+                    for address in addrs.addresses {
+                        addresses.push(Address::from_str(&address).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid address: {}", address))
+                        })?);
                     }
                 }
                 grpc_api::search_blocks_filter::Filter::SlotRange(slot_range) => {
@@ -765,20 +772,13 @@ pub(crate) fn search_blocks(
     }
 
     // if no filter provided return an error
-    if block_ids.is_empty() && addresses.is_none() && slot_min.is_none() && slot_max.is_none() {
+    if block_ids.is_empty() && addresses.is_empty() && slot_min.is_none() && slot_max.is_none() {
         return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
     }
 
     let read_blocks = grpc.storage.read_blocks();
 
     let blocks = if !block_ids.is_empty() {
-        if block_ids.len() as u32 > grpc.grpc_config.max_block_ids_per_request {
-            return Err(GrpcError::InvalidArgument(format!(
-                "too many block ids received. Only a maximum of {} block ids are accepted per request",
-                grpc.grpc_config.max_block_ids_per_request
-            )));
-        }
-
         block_ids
             .into_iter()
             .filter_map(|id: BlockId| {
@@ -789,14 +789,14 @@ pub(crate) fn search_blocks(
                 };
 
                 // check addresses filter
-                if let Some(filter_addresses) = &addresses {
-                    if !filter_addresses
+                if !addresses.is_empty()
+                    && !addresses
                         .iter()
-                        .any(|addr| content.header.content_creator_address.to_string().eq(addr))
-                    {
-                        return None;
-                    }
+                        .any(|addr| content.header.content_creator_address.eq(addr))
+                {
+                    return None;
                 }
+
                 // check slot filter
                 if let Some(slot_min) = &slot_min {
                     if content.header.content.slot < slot_min.clone().into() {
@@ -812,11 +812,9 @@ pub(crate) fn search_blocks(
                 Some(content)
             })
             .collect::<Vec<Block>>()
-    } else if let Some(addresses) = addresses {
+    } else if !addresses.is_empty() {
         let mut blocks = Vec::new();
-        for addr in addresses.into_iter() {
-            let address = Address::from_str(&addr)
-                .map_err(|_| GrpcError::InvalidArgument(format!("invalid address: {}", addr)))?;
+        for address in addresses.into_iter() {
             if let Some(hash_set) = read_blocks.get_blocks_created_by(&address) {
                 let result = hash_set
                     .iter()
@@ -827,7 +825,6 @@ pub(crate) fn search_blocks(
                         {
                             // check slot filter
                             if let Some(slot_min) = &slot_min {
-                                //TODO make it inclusive
                                 if block.header.content.slot < slot_min.clone().into() {
                                     return None;
                                 }
@@ -1032,7 +1029,6 @@ pub(crate) fn search_endorsements(
 
         result
     } else {
-        //TODO To be checked
         let mut result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = Vec::new();
         for block_id in block_ids {
             if let Some(wrapped_block) = read_blocks.get(&block_id) {
@@ -1133,14 +1129,18 @@ pub(crate) fn search_operations(
         if let Some(filter) = query.filter {
             match filter {
                 grpc_api::search_operations_filter::Filter::OperationIds(ids) => {
+                    if ids.operation_ids.len() as u32
+                        > grpc.grpc_config.max_operation_ids_per_request
+                    {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many operation ids received. Only a maximum of {} operation ids are accepted per request",
+                            grpc.grpc_config.max_block_ids_per_request
+                        )));
+                    }
                     for id in ids.operation_ids {
-                        if operation_ids.len()
-                            < grpc.grpc_config.max_operation_ids_per_request as usize + 1
-                        {
-                            operation_ids.push(OperationId::from_str(&id).map_err(|_| {
-                                GrpcError::InvalidArgument(format!("invalid operation id: {}", id))
-                            })?);
-                        }
+                        operation_ids.push(OperationId::from_str(&id).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid operation id: {}", id))
+                        })?);
                     }
                 }
                 grpc_api::search_operations_filter::Filter::OperationTypes(ope_types) => {
@@ -1154,10 +1154,6 @@ pub(crate) fn search_operations(
         return Err(GrpcError::InvalidArgument(
             "no operations ids specified".to_string(),
         ));
-    }
-
-    if operation_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
-        return Err(GrpcError::InvalidArgument(format!("too many operation ids received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
     }
 
     let read_blocks = grpc.storage.read_blocks();
