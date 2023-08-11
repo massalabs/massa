@@ -56,8 +56,12 @@ impl BootstrapTcpListener {
         info!("Starting bootstrap listener on {}", &addr);
         let std_server: std::net::TcpListener = socket.into();
 
-        let mut server = TcpListener::from_std(std_server.try_clone().expect("Unable to clone server socket"));
-        
+        let mut server = TcpListener::from_std(
+            std_server
+                .try_clone()
+                .expect("Unable to clone server socket"),
+        );
+
         let poll = Poll::new()?;
 
         // wake up the poll when we want to stop the listener
