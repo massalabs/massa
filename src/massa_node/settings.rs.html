@@ -367,6 +367,10 @@
 <a href="#367" id="367">367</a>
 <a href="#368" id="368">368</a>
 <a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -700,6 +704,10 @@
     </span><span class="kw">pub </span>draw_lookahead_period_count: u64,
     <span class="doccomment">/// max number of block ids that can be included in a single request
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
+    <span class="doccomment">/// max number of addresses that can be included in a single request
+    </span><span class="kw">pub </span>max_addresses_per_request: u32,
+    <span class="doccomment">/// max number of endorsement ids that can be included in a single request
+    </span><span class="kw">pub </span>max_endorsement_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
     <span class="doccomment">/// certificate authority root path
