@@ -67,7 +67,7 @@ impl BootstrapTcpListener {
                 NEW_CONNECTION => loop {
                     match self.server.accept() {
                         Ok((mut stream, remote_addr)) => {
-                            self.poll.registry().deregister(&mut stream)?;
+                            let _ = self.poll.registry().deregister(&mut stream);
                             let stream: std::net::TcpStream = mio_stream_to_std(stream);
                             stream.set_nonblocking(false)?;
                             results.push((stream, remote_addr));
