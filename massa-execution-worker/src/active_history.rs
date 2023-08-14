@@ -348,5 +348,3 @@ impl ActiveHistory {
             .collect()
     }
 }
-
-

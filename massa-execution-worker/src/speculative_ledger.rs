@@ -12,6 +12,7 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::prehash::PreHashSet;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
@@ -57,6 +58,9 @@ pub(crate) struct SpeculativeLedger {
 
     /// storage cost constants
     storage_costs_constants: StorageCostsConstants,
+
+    /// tracking the list of spending addresses
+    spending_tracker: Option<PreHashSet<Address>>,
 }
 
 impl SpeculativeLedger {
@@ -81,7 +85,19 @@ impl SpeculativeLedger {
             max_datastore_value_size,
             max_bytecode_size,
             storage_costs_constants,
+            spending_tracker: None,
         }
+    }
+
+    /// Initialize an empty spending tracker and start it.
+    pub fn start_spending_tracker(&mut self) {
+        self.spending_tracker = Some(PreHashSet::default());
+    }
+
+    /// Take the output of the spending tracker, if any.
+    /// Disables the spending tracker.
+    pub fn take_spending_tracker(&mut self) -> Option<PreHashSet<Address>> {
+        self.spending_tracker.take()
     }
 
     /// Returns the changes caused to the `SpeculativeLedger` since its creation,
@@ -166,6 +182,11 @@ impl SpeculativeLedger {
 
             // update the balance of the sender address
             changes.set_balance(from_addr, new_balance);
+
+            // update the spending tracker
+            if let Some(spending_tracker) = &mut self.spending_tracker {
+                spending_tracker.insert(from_addr);
+            }
         }
 
         // simulate crediting coins to destination address (if any)
@@ -229,13 +250,11 @@ impl SpeculativeLedger {
     /// * `creator_address`: address that asked for this creation. Will pay the storage costs.
     /// * `addr`: address to create
     /// * `bytecode`: bytecode to set in the new ledger entry
-    /// * `creator_allowance`: optional amount of coins that the sender can still spend (updated when spending)
     pub fn create_new_sc_address(
         &mut self,
         creator_address: Address,
         addr: Address,
         bytecode: Bytecode,
-        creator_allowance: Option<&mut Amount>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(&creator_address) {
@@ -283,12 +302,7 @@ impl SpeculativeLedger {
                 ExecutionError::RuntimeError("overflow in ledger cost for bytecode".to_string())
             })?;
 
-        self.transfer_coins(
-            Some(creator_address),
-            None,
-            address_storage_cost,
-            creator_allowance,
-        )?;
+        self.transfer_coins(Some(creator_address), None, address_storage_cost)?;
         self.added_changes.create_address(&addr);
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
@@ -301,13 +315,11 @@ impl SpeculativeLedger {
     /// * `caller_addr`: address of the caller. Will pay the storage costs.
     /// * `addr`: target address
     /// * `bytecode`: bytecode to set for that address
-    /// * `creator_allowance`: optional amount of coins that the sender can still spend (updated when spending)
     pub fn set_bytecode(
         &mut self,
         caller_addr: &Address,
         addr: &Address,
         bytecode: Bytecode,
-        creator_allowance: Option<&mut Amount>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(addr) {
@@ -337,18 +349,8 @@ impl SpeculativeLedger {
                 })?;
 
             match diff_size_storage.signum() {
-                1 => self.transfer_coins(
-                    Some(*caller_addr),
-                    None,
-                    storage_cost_bytecode,
-                    creator_allowance,
-                )?,
-                -1 => self.transfer_coins(
-                    None,
-                    Some(*caller_addr),
-                    storage_cost_bytecode,
-                    creator_allowance,
-                )?,
+                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_bytecode)?,
+                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_bytecode)?,
                 _ => {}
             };
         } else {
@@ -361,12 +363,7 @@ impl SpeculativeLedger {
                         "overflow when calculating storage cost of bytecode".to_string(),
                     )
                 })?;
-            self.transfer_coins(
-                Some(*caller_addr),
-                None,
-                bytecode_storage_cost,
-                creator_allowance,
-            )?;
+            self.transfer_coins(Some(*caller_addr), None, bytecode_storage_cost)?;
         }
         // set the bytecode of that address
         self.added_changes.set_bytecode(*addr, bytecode);

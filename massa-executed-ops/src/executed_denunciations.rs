@@ -203,7 +203,12 @@ impl ExecutedDenunciations {
             return false;
         }
 
-        let Ok((rest, _idx)) = self.denunciation_index_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..]) else {
+        let Ok((rest, _idx)) = self
+            .denunciation_index_deserializer
+            .deserialize::<DeserializeError>(
+                &serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..],
+            )
+        else {
             return false;
         };
         if !rest.is_empty() {

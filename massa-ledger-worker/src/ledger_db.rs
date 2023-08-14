@@ -220,7 +220,10 @@ impl LedgerDB {
             return false;
         }
 
-        let Ok((rest, key)) = self.key_deserializer_db.deserialize::<DeserializeError>(serialized_key) else {
+        let Ok((rest, key)) = self
+            .key_deserializer_db
+            .deserialize::<DeserializeError>(serialized_key)
+        else {
             return false;
         };
         if !rest.is_empty() {
@@ -229,7 +232,10 @@ impl LedgerDB {
 
         match key.key_type {
             KeyType::VERSION => {
-                let Ok((rest, _version)) = self.version_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _version)) = self
+                    .version_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -237,7 +243,10 @@ impl LedgerDB {
                 }
             }
             KeyType::BALANCE => {
-                let Ok((rest, _amount)) = self.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _amount)) = self
+                    .amount_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -245,7 +254,10 @@ impl LedgerDB {
                 }
             }
             KeyType::BYTECODE => {
-                let Ok((rest, _bytecode)) = self.bytecode_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _bytecode)) = self
+                    .bytecode_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {

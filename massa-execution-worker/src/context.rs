@@ -27,6 +27,7 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::DenunciationIndex;
+use massa_models::prehash::PreHashSet;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
@@ -74,7 +75,7 @@ pub struct ExecutionContextSnapshot {
     pub created_event_index: u64,
 
     /// counter of async messages emitted so far in this execution
-    pub created_message_index: u64, 
+    pub created_message_index: u64,
 
     /// address call stack, most recent is at the back
     pub stack: Vec<ExecutionStackElement>,
@@ -125,8 +126,8 @@ pub struct ExecutionContext {
     /// max gas for this execution
     pub max_gas: u64,
 
-    /// coin spending allowance for the operation creator
-    pub creator_coin_spending_allowance: Option<Amount>,
+    /// minimal balance allowed for the creator of the operation after its execution
+    pub creator_min_balance: Option<Amount>,
 
     /// slot at which the execution happens
     pub slot: Slot,
@@ -220,7 +221,7 @@ impl ExecutionContext {
                 active_history,
             ),
             max_gas: Default::default(),
-            creator_coin_spending_allowance: Default::default(),
+            creator_min_balance: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -238,6 +239,17 @@ impl ExecutionContext {
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
         }
+    }
+
+    /// Enables and resets the tracker that lists all addresses that spend coins.
+    pub(crate) fn start_spending_tracker(&mut self) {
+        self.speculative_ledger.start_spending_tracker()
+    }
+
+    /// Takes the result of the spending tracker listing all addresses that have spent coins since it was enabled.
+    /// Disables and resets the spending tracker.
+    pub(crate) fn take_spending_tracker(&mut self) -> Option<PreHashSet<Address>> {
+        self.speculative_ledger.take_spending_tracker()
     }
 
     /// Returns a snapshot containing the clone of the current execution state.

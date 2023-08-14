@@ -323,7 +323,6 @@ impl ExecutionState {
     /// # Arguments
     /// * `operation`: operation to be schedule
     /// * `sender_addr`: sender address for the operation (for fee transfer)
-
     fn prepare_operation_for_execution(
         &self,
         operation: &SecureShareOperation,
@@ -341,13 +340,30 @@ impl ExecutionState {
             ));
         }
 
-        // Set the creator coin spending allowance.
-        // Note that this needs to be initialized before any spending from the creator.
-        context.creator_coin_spending_allowance =
-            Some(operation.get_max_spending(self.config.roll_price));
+        // Compute the minimal amount of coins the sender is allowed to have after the execution of this op.
+        // If there are less than `max_spending` enough coins on the sender's balance, the op is not executed.
+        // This is because it is the block producer's responsibility to ensure that `max_spending` is respected.
+        let op_max_spending = operation.get_max_spending(self.config.roll_price);
+        let creator_balance = context
+            .get_balance(&sender_addr)
+            .unwrap_or_else(|| Amount::zero());
+        context.creator_min_balance = match creator_balance.checked_sub(op_max_spending) {
+            Some(v) => Some(v),
+            None => {
+                let error = format!(
+                    "Operation {} cannot be executed: sender {} needs at least {} coins but has {}.",
+                    operation_id, sender_addr, op_max_spending, creator_balance
+                );
+                let event = context.event_create(error.clone(), true);
+                context.event_emit(event);
+                return Err(ExecutionError::IncludeOperationError(error));
+            }
+        };
+
+        // enable spending tracker to list all addresses that spend coins
+        context.start_spending_tracker();
 
         // debit the fee from the operation sender
-        // fail execution if there are not enough coins
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
@@ -357,7 +373,8 @@ impl ExecutionState {
             return Err(ExecutionError::IncludeOperationError(error));
         }
 
-        // from here, fees transferred. Op will be executed just after in the context of a snapshot.
+        // from here, fees have been transferred.
+        // Op will be executed just after in the context of a snapshot.
 
         // save a snapshot of the context to revert any further changes on error
         let context_snapshot = context.get_snapshot();
@@ -433,7 +450,7 @@ impl ExecutionState {
         *block_credits = new_block_credits;
 
         // Call the execution process specific to the operation type.
-        let execution_result = match &operation.content.op {
+        let mut execution_result = match &operation.content.op {
             OperationType::ExecuteSC { .. } => {
                 self.execute_executesc_op(&operation.content.op, sender_addr)
             }
@@ -455,6 +472,38 @@ impl ExecutionState {
             // lock execution context
             let mut context = context_guard!(self);
 
+            // take and disable spending tracker
+            let spending_addresses = context.take_spending_tracker().unwrap_or_default();
+
+            if execution_result.is_ok() {
+                // check that the `max_coins` spending limit was respected by the sender
+                if let Some(creator_min_balance) = &context.creator_min_balance {
+                    let creator_balance = context
+                        .get_balance(&sender_addr)
+                        .unwrap_or_else(|| Amount::zero());
+                    if &creator_balance < creator_min_balance {
+                        execution_result = Err(ExecutionError::RuntimeError(format!(
+                            "at the end of the execution of the operation, the sender {} was expected to have at least {} coins according to the operation's max spending, but has only {}.",
+                            sender_addr, creator_min_balance, creator_balance
+                        )));
+                    }
+                }
+
+                // check that the vesting limits were respected by all spending addresses
+                for spending_addr in spending_addresses {
+                    if let Err(err) = self
+                        .vesting_manager
+                        .check_vesting_coins(&context, &spending_addr)
+                    {
+                        execution_result = Err(ExecutionError::RuntimeError(format!(
+                            "address {} did not respect its coin vesting limits: {}",
+                            spending_addr, err
+                        )));
+                        break;
+                    }
+                }
+            }
+
             // check execution results
             match execution_result {
                 Ok(_) => {
@@ -473,7 +522,7 @@ impl ExecutionState {
                     debug!("{}", &err);
                     context.reset_to_snapshot(context_snapshot, err);
 
-                    // Insert op AFTER the context has been restore (else it would be overwritten)
+                    // Insert op AFTER the context has been restored (otherwise it would be overwritten)
                     context.insert_executed_op(
                         operation_id,
                         false,
@@ -962,7 +1011,7 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = None;
-            context.creator_coin_spending_allowance = None;
+            context.creator_min_balance = None;
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,

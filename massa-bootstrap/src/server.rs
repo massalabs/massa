@@ -148,7 +148,9 @@ pub fn start_bootstrap_server(
     let (update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::<()>(1);
 
     let Ok(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() else {
-        return Err(BootstrapError::GeneralError("Fail to convert u32 to usize".to_string()));
+        return Err(BootstrapError::GeneralError(
+            "Fail to convert u32 to usize".to_string(),
+        ));
     };
 
     let white_black_list = SharedWhiteBlackList::new(
@@ -664,7 +666,9 @@ pub fn stream_bootstrap_information(
         }
 
         let Some(write_timeout) = step_timeout_duration(bs_deadline, &write_timeout) else {
-            return Err(BootstrapError::Interupted("insufficient time left to provide next bootstrap part".to_string()));
+            return Err(BootstrapError::Interupted(
+                "insufficient time left to provide next bootstrap part".to_string(),
+            ));
         };
         // At this point we know that consensus, final state or both are not finished
         server.send_msg(
@@ -707,8 +711,12 @@ fn manage_bootstrap(
     massa_trace!("bootstrap.lib.manage_bootstrap", {});
     let read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    let Some(hs_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
-        return Err(BootstrapError::Interupted("insufficient time left to begin handshake".to_string()));
+    let Some(hs_timeout) =
+        step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
+    else {
+        return Err(BootstrapError::Interupted(
+            "insufficient time left to begin handshake".to_string(),
+        ));
     };
 
     server.handshake_timeout(version, Some(hs_timeout))?;
@@ -732,7 +740,9 @@ fn manage_bootstrap(
     let send_time_timeout =
         step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration());
     let Some(next_step_timeout) = send_time_timeout else {
-        return Err(BootstrapError::Interupted("insufficient time left to send server time".to_string()));
+        return Err(BootstrapError::Interupted(
+            "insufficient time left to send server time".to_string(),
+        ));
     };
     server.send_msg(
         next_step_timeout,
@@ -743,16 +753,25 @@ fn manage_bootstrap(
     )?;
 
     loop {
-        let Some(read_timeout) = step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration()) else {
-            return Err(BootstrapError::Interupted("insufficient time left to process next message".to_string()));
+        let Some(read_timeout) =
+            step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
+        else {
+            return Err(BootstrapError::Interupted(
+                "insufficient time left to process next message".to_string(),
+            ));
         };
         match server.next_timeout(Some(read_timeout)) {
             Err(BootstrapError::TimedOut(_)) => break Ok(()),
             Err(e) => break Err(e),
             Ok(msg) => match msg {
                 BootstrapClientMessage::AskBootstrapPeers => {
-                    let Some(write_timeout) = step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration()) else {
-                        return Err(BootstrapError::Interupted("insufficient time left to respond te request for peers".to_string()));
+                    let Some(write_timeout) = step_timeout_duration(
+                        &deadline,
+                        &bootstrap_config.write_timeout.to_duration(),
+                    ) else {
+                        return Err(BootstrapError::Interupted(
+                            "insufficient time left to respond te request for peers".to_string(),
+                        ));
                     };
 
                     server.send_msg(

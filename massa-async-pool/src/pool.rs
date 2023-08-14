@@ -356,7 +356,10 @@ impl AsyncPool {
             return false;
         }
 
-        let Ok((rest, _id)) = self.message_id_deserializer.deserialize::<DeserializeError>(&serialized_key[ASYNC_POOL_PREFIX.len()..]) else {
+        let Ok((rest, _id)) = self
+            .message_id_deserializer
+            .deserialize::<DeserializeError>(&serialized_key[ASYNC_POOL_PREFIX.len()..])
+        else {
             return false;
         };
         if rest.len() != 1 {
@@ -365,7 +368,11 @@ impl AsyncPool {
 
         match rest[0] {
             EMISSION_SLOT_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.slot_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .slot_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -373,7 +380,11 @@ impl AsyncPool {
                 }
             }
             EMISSION_INDEX_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.emission_index_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .emission_index_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -381,7 +392,14 @@ impl AsyncPool {
                 }
             }
             SENDER_IDENT => {
-                let Ok((rest, _value)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)): std::result::Result<
+                    (&[u8], Address),
+                    nom::Err<massa_serialization::DeserializeError<'_>>,
+                > = self
+                    .message_deserializer_db
+                    .address_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -389,7 +407,14 @@ impl AsyncPool {
                 }
             }
             DESTINATION_IDENT => {
-                let Ok((rest, _value)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self.message_deserializer_db.address_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)): std::result::Result<
+                    (&[u8], Address),
+                    nom::Err<massa_serialization::DeserializeError<'_>>,
+                > = self
+                    .message_deserializer_db
+                    .address_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -410,7 +435,11 @@ impl AsyncPool {
                 };
             }
             MAX_GAS_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.max_gas_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .max_gas_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -418,7 +447,11 @@ impl AsyncPool {
                 }
             }
             FEE_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .amount_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -426,7 +459,11 @@ impl AsyncPool {
                 }
             }
             COINS_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .amount_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -434,7 +471,11 @@ impl AsyncPool {
                 }
             }
             VALIDITY_START_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.slot_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .slot_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -442,7 +483,11 @@ impl AsyncPool {
                 }
             }
             VALIDITY_END_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.slot_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .slot_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -450,7 +495,11 @@ impl AsyncPool {
                 }
             }
             DATA_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.data_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .data_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -458,7 +507,11 @@ impl AsyncPool {
                 }
             }
             TRIGGER_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.trigger_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .trigger_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -466,7 +519,11 @@ impl AsyncPool {
                 }
             }
             CAN_BE_EXECUTED_IDENT => {
-                let Ok((rest, _value)) = self.message_deserializer_db.bool_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+                let Ok((rest, _value)) = self
+                    .message_deserializer_db
+                    .bool_deserializer
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {

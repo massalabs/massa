@@ -75,20 +75,12 @@ impl VestingManager {
 
     /// Check vesting minimal balance for given address
     ///
-    /// Call on transfer_coins OP
-    ///
     /// * `addr` sender address
-    /// * `amount` amount of coins to transfer
-    pub fn check_vesting_transfer_coins(
+    pub fn check_vesting_coins(
         &self,
         context: &ExecutionContext,
         addr: &Address,
-        amount: Amount,
     ) -> Result<(), ExecutionError> {
-        if amount == Amount::zero() {
-            return Ok(());
-        }
-
         // For the case of user sending coins to itself :
         // That implies spending the coins first, then receiving them.
         // So the spending part can fail in the case of vesting
@@ -96,19 +88,15 @@ impl VestingManager {
             .get_addr_vesting_at_slot(addr, context.slot)
             .min_balance
         {
-            let new_balance = context
-                    .get_balance(addr)
-                    .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", addr)))?
-                    .checked_sub(amount)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(format!("failed check transfer {} from spending address {} due to insufficient balance {}", amount, addr, context
-                            .get_balance(addr).unwrap_or_default()))
-                    })?;
+            let balance = context.get_balance(addr).unwrap_or_default();
 
             let vec = context.get_address_cycle_infos(addr, self.periods_per_cycle);
             let Some(exec_info) = vec.last() else {
-                    return Err(ExecutionError::VestingError(format!("can not get address info cycle for {}", addr)));
-                };
+                return Err(ExecutionError::VestingError(format!(
+                    "can not get address info cycle for {}",
+                    addr
+                )));
+            };
 
             let rolls_value = exec_info
                 .active_rolls
@@ -129,14 +117,14 @@ impl VestingManager {
             };
 
             // min_balance = (rolls * roll_price) + balance + deferred_credits
-            let min_balance = new_balance
+            let total_coin_balance = balance
                 .saturating_add(rolls_value)
                 .saturating_add(deferred_credits);
 
-            if min_balance < vesting_min_balance {
+            if total_coin_balance < vesting_min_balance {
                 return Err(ExecutionError::VestingError(format!(
-                    "vesting_min_balance={} with value min_balance={} ",
-                    vesting_min_balance, min_balance
+                    "total coin value {} fell under the minimal vesting value {}",
+                    total_coin_balance, vesting_min_balance
                 )));
             }
         }

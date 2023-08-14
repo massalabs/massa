@@ -425,7 +425,9 @@ where
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         let Ok(Some(change_id_bytes)) = db.get_pinned_cf(handle, CHANGE_ID_KEY) else {
-            return Err(ModelsError::BufferError(String::from("Could not recover change_id in database")));
+            return Err(ModelsError::BufferError(String::from(
+                "Could not recover change_id in database",
+            )));
         };
 
         let (_rest, change_id) = self

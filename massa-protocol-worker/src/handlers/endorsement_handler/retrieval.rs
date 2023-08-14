@@ -212,13 +212,11 @@ pub(crate) fn note_endorsements_from_peer(
             .get_selection(endorsement.content.slot)?
             .endorsements;
         let Some(address) = selection.get(endorsement.content.index as usize) else {
-                    return Err(ProtocolError::GeneralProtocolError(
-                        format!(
-                            "No selection on slot {} for index {}",
-                            endorsement.content.slot, endorsement.content.index
-                        )
-                    ))
-                };
+            return Err(ProtocolError::GeneralProtocolError(format!(
+                "No selection on slot {} for index {}",
+                endorsement.content.slot, endorsement.content.index
+            )));
+        };
         if address != &endorsement.content_creator_address {
             return Err(ProtocolError::GeneralProtocolError(format!(
                 "Invalid endorsement producer selection: expected address {}, got {}",

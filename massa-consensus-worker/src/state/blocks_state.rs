@@ -196,7 +196,9 @@ impl BlocksState {
             Some(block) => {
                 let old_state_id = BlockStatusId::from(&block);
                 self.update_indexes(block_id, Some(&old_state_id), None);
-                let Some(mut new_state) = callback(Some(block), &mut self.block_statuses) else { return; };
+                let Some(mut new_state) = callback(Some(block), &mut self.block_statuses) else {
+                    return;
+                };
                 let new_state_id = BlockStatusId::from(&new_state);
                 match (&old_state_id, &new_state_id) {
                     // From incoming status

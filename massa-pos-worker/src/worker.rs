@@ -113,7 +113,8 @@ impl SelectorThread {
                 cycle,
                 lookback_rolls,
                 lookback_seed,
-            }) = self.input_mpsc.recv() else {
+            }) = self.input_mpsc.recv()
+            else {
                 break;
             };
 

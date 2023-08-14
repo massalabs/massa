@@ -1339,7 +1339,8 @@ impl PoSFinalState {
             .cycle_info_deserializer
             .cycle_info_deserializer
             .u64_deser
-            .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..]) else {
+            .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+        else {
             return false;
         };
 
@@ -1367,7 +1368,8 @@ impl PoSFinalState {
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .bitvec_deser
-                    .deserialize::<DeserializeError>(serialized_value) else {
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -1382,7 +1384,8 @@ impl PoSFinalState {
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .opt_hash_deser
-                    .deserialize::<DeserializeError>(serialized_value) else {
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -1390,12 +1393,16 @@ impl PoSFinalState {
                 }
             }
             ROLL_COUNT_IDENT => {
-                let Ok((rest, _addr)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self
+                let Ok((rest, _addr)): std::result::Result<
+                    (&[u8], Address),
+                    nom::Err<massa_serialization::DeserializeError<'_>>,
+                > = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::<DeserializeError>(&rest[1..]) else {
+                    .deserialize::<DeserializeError>(&rest[1..])
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -1406,7 +1413,8 @@ impl PoSFinalState {
                     .cycle_info_deserializer
                     .rolls_deser
                     .u64_deserializer
-                    .deserialize::<DeserializeError>(serialized_value) else {
+                    .deserialize::<DeserializeError>(serialized_value)
+                else {
                     return false;
                 };
                 if !rest.is_empty() {
@@ -1414,14 +1422,18 @@ impl PoSFinalState {
                 }
             }
             PROD_STATS_IDENT => {
-                let Ok((rest, _addr)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self
+                let Ok((rest, _addr)): std::result::Result<
+                    (&[u8], Address),
+                    nom::Err<massa_serialization::DeserializeError<'_>>,
+                > = self
                     .cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::<DeserializeError>(&rest[1..]) else {
-                        return false;
-                    };
+                    .deserialize::<DeserializeError>(&rest[1..])
+                else {
+                    return false;
+                };
                 if rest.len() != 1 {
                     return false;
                 }
@@ -1433,20 +1445,22 @@ impl PoSFinalState {
                             .cycle_info_deserializer
                             .production_stats_deser
                             .u64_deserializer
-                            .deserialize::<DeserializeError>(serialized_value) else {
-                                return false;
-                            };
+                            .deserialize::<DeserializeError>(serialized_value)
+                        else {
+                            return false;
+                        };
                         if !rest.is_empty() {
                             return false;
                         }
                     }
                     PROD_STATS_SUCCESS_IDENT => {
                         let Ok((rest, _success)) = self
-                        .cycle_info_deserializer
-                        .cycle_info_deserializer
-                        .production_stats_deser
-                        .u64_deserializer
-                        .deserialize::<DeserializeError>(serialized_value) else {
+                            .cycle_info_deserializer
+                            .cycle_info_deserializer
+                            .production_stats_deser
+                            .u64_deserializer
+                            .deserialize::<DeserializeError>(serialized_value)
+                        else {
                             return false;
                         };
                         if !rest.is_empty() {
@@ -1476,17 +1490,34 @@ impl PoSFinalState {
             return false;
         }
 
-        let Ok((rest, _slot)) = self.deferred_credits_deserializer.slot_deserializer.deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..]) else {
+        let Ok((rest, _slot)) =
+            self.deferred_credits_deserializer
+                .slot_deserializer
+                .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+        else {
             return false;
         };
-        let Ok((rest, _addr)): std::result::Result<(&[u8], Address), nom::Err<massa_serialization::DeserializeError<'_>>> = self.deferred_credits_deserializer.credit_deserializer.address_deserializer.deserialize::<DeserializeError>(rest) else {
+        let Ok((rest, _addr)): std::result::Result<
+            (&[u8], Address),
+            nom::Err<massa_serialization::DeserializeError<'_>>,
+        > = self
+            .deferred_credits_deserializer
+            .credit_deserializer
+            .address_deserializer
+            .deserialize::<DeserializeError>(rest)
+        else {
             return false;
         };
         if !rest.is_empty() {
             return false;
         }
 
-        let Ok((rest, _mount)) = self.deferred_credits_deserializer.credit_deserializer.amount_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+        let Ok((rest, _mount)) = self
+            .deferred_credits_deserializer
+            .credit_deserializer
+            .amount_deserializer
+            .deserialize::<DeserializeError>(serialized_value)
+        else {
             return false;
         };
         if !rest.is_empty() {
