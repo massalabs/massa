@@ -54,6 +54,9 @@
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! massa-cipher encryption module.
@@ -66,14 +69,19 @@
 <span class="kw">use </span>pbkdf2::{password_hash::PasswordHasher, Pbkdf2};
 <span class="kw">use </span>rand::{distributions::Alphanumeric, thread_rng, Rng, RngCore};
 
-<span class="kw">use </span><span class="kw">crate</span>::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE, VERSION};
+<span class="kw">use </span><span class="kw">crate</span>::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
 <span class="kw">use </span><span class="kw">crate</span>::error::CipherError;
-<span class="kw">use </span>massa_serialization::{Serializer, U32VarIntSerializer};
+
+<span class="kw">pub struct </span>CipherData {
+    <span class="kw">pub </span>salt: String,
+    <span class="kw">pub </span>nonce: [u8; NONCE_SIZE],
+    <span class="kw">pub </span>encrypted_bytes: Vec&lt;u8&gt;,
+}
 
 <span class="doccomment">/// Encryption function using AES-GCM cipher.
 ///
 /// Read `lib.rs` module documentation for more information.
-</span><span class="kw">pub fn </span>encrypt(password: <span class="kw-2">&amp;</span>str, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, CipherError&gt; {
+</span><span class="kw">pub fn </span>encrypt(password: <span class="kw-2">&amp;</span>str, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;CipherData, CipherError&gt; {
     <span class="comment">// generate the PBKDF2 salt
     </span><span class="kw">let </span>raw_salt: String = thread_rng()
         .sample_iter(<span class="kw-2">&amp;</span>Alphanumeric)
@@ -101,13 +109,11 @@
         .map_err(|e| CipherError::EncryptionError(e.to_string()))<span class="question-mark">?</span>;
 
     <span class="comment">// build the encryption result
-    </span><span class="kw">let </span><span class="kw-2">mut </span>content = Vec::new();
-    U32VarIntSerializer::new()
-        .serialize(<span class="kw-2">&amp;</span>VERSION, <span class="kw-2">&amp;mut </span>content)
-        .map_err(|err| CipherError::EncryptionError(err.to_string()))<span class="question-mark">?</span>;
-    content.extend(salt.as_bytes());
-    content.extend(nonce_bytes);
-    content.extend(encrypted_bytes);
-    <span class="prelude-val">Ok</span>(content)
+    </span><span class="kw">let </span>result = CipherData {
+        salt: salt.as_str().to_string(),
+        nonce: nonce_bytes,
+        encrypted_bytes,
+    };
+    <span class="prelude-val">Ok</span>(result)
 }
 </code></pre></div></section></main></body></html>
