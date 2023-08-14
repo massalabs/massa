@@ -11,7 +11,6 @@ testing = ["tempfile", "massa_models/testing"]
 [dependencies]
 displaydoc = {workspace = true}
 serde = {workspace = true, "features" = ["derive"]}
-serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
 serde_qs = {workspace = true}
 thiserror = {workspace = true}
 tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
