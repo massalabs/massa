@@ -800,41 +800,6 @@
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -843,7 +808,6 @@
 };
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
-    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -1458,42 +1422,8 @@
     <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
     </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
+
         <span class="kw">let </span>subpath = <span class="macro">format!</span>(<span class="string">&quot;backup_{}_{}&quot;</span>, slot.period, slot.thread);
-
-        <span class="kw">let </span>previous_backups_paths = std::fs::read_dir(db.path())
-            .expect(<span class="string">&quot;Cannot walk db path&quot;</span>)
-            .map(|res| res.map(|e| e.path()))
-            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, std::io::Error&gt;&gt;()
-            .expect(<span class="string">&quot;Cannot walk db path&quot;</span>);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>previous_backups = BTreeMap::new();
-
-        <span class="kw">for </span>backup_path <span class="kw">in </span>previous_backups_paths.iter() {
-            <span class="kw">let </span><span class="prelude-val">Some</span>(path_str) = backup_path.file_name().and_then(|f| f.to_str()) <span class="kw">else </span>{
-                <span class="kw">continue</span>;
-            };
-            <span class="kw">let </span>vec = path_str.split(<span class="string">&#39;_&#39;</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;();
-            <span class="kw">if </span>vec.len() == <span class="number">3 </span>&amp;&amp; vec[<span class="number">0</span>] == <span class="string">&quot;backup&quot; </span>{
-                <span class="kw">let </span><span class="prelude-val">Ok</span>(period) = vec[<span class="number">1</span>].parse::&lt;u64&gt;() <span class="kw">else </span>{
-                    <span class="kw">continue</span>;
-                };
-                <span class="kw">let </span><span class="prelude-val">Ok</span>(thread) = vec[<span class="number">2</span>].parse::&lt;u8&gt;() <span class="kw">else </span>{
-                    <span class="kw">continue</span>;
-                };
-                <span class="kw">let </span>backup_slot = Slot::new(period, thread);
-                previous_backups.insert(backup_slot, backup_path);
-            }
-        }
-
-        <span class="comment">// Remove the oldest backup if we have too many
-        </span><span class="kw">while </span>MAX_BACKUPS_TO_KEEP.is_some()
-            &amp;&amp; previous_backups.len() &gt;= MAX_BACKUPS_TO_KEEP.unwrap()
-        {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, oldest_backup_path)) = previous_backups.first_key_value() {
-                std::fs::remove_dir_all(oldest_backup_path).expect(<span class="string">&quot;Cannot remove oldest backup&quot;</span>);
-            }
-            previous_backups.pop_first();
-        }
 
         Checkpoint::new(db)
             .expect(<span class="string">&quot;Cannot init checkpoint&quot;</span>)
