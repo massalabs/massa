@@ -14,7 +14,7 @@ use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
 use crate::error::CipherError;
 
 pub struct CipherData {
-    pub salt: [u8; SALT_SIZE],
+    pub salt: String,
     pub nonce: [u8; NONCE_SIZE],
     pub encrypted_bytes: Vec<u8>,
 }
@@ -51,7 +51,7 @@ pub fn encrypt(password: &str, data: &[u8]) -> Result<CipherData, CipherError> {
 
     // build the encryption result
     let result = CipherData {
-        salt: salt.as_bytes().try_into().expect("invalid salt length"),
+        salt: salt.as_str().to_string(),
         nonce: nonce_bytes,
         encrypted_bytes,
     };

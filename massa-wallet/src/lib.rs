@@ -39,7 +39,7 @@ struct WalletFileFormat {
     version: u64,
     nickname: String,
     address: String,
-    salt: [u8; 16],
+    salt: String,
     nonce: [u8; 12],
     ciphered_data: Vec<u8>,
     public_key: Vec<u8>,

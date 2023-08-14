@@ -25,6 +25,7 @@ massa_signature = {workspace = true}
 massa_time = {workspace = true}
 massa_sdk = {workspace = true}
 massa_wallet = {workspace = true}
+serde_yaml = {workspace = true}
 
 [dev-dependencies]
 toml_edit = {workspace = true}
