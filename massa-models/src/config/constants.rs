@@ -132,7 +132,7 @@ pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
 /// Number of periods between two backups
-pub const PERIODS_BETWEEN_BACKUPS: u64 = 12800; // 100 cycles
+pub const PERIODS_BETWEEN_BACKUPS: u64 = 100 * PERIODS_PER_CYCLE;
 /// Maximum number of backups to keep. If reached, will delete the oldest ones.
 pub const MAX_BACKUPS_TO_KEEP: Option<usize> = Some(10);
 /// Number of cycles saved in `PoSFinalState`
