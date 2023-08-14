@@ -6,6 +6,7 @@ use massa_db_exports::{
 };
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
+    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -620,8 +621,42 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot) {
         let db = &self.db;
-
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
+
+        let previous_backups_paths = std::fs::read_dir(db.path())
+            .expect("Cannot walk db path")
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>()
+            .expect("Cannot walk db path");
+
+        let mut previous_backups = BTreeMap::new();
+
+        for backup_path in previous_backups_paths.iter() {
+            let Some(path_str) = backup_path.file_name().and_then(|f| f.to_str()) else {
+                continue;
+            };
+            let vec = path_str.split('_').collect::<Vec<&str>>();
+            if vec.len() == 3 && vec[0] == "backup" {
+                let Ok(period) = vec[1].parse::<u64>() else {
+                    continue;
+                };
+                let Ok(thread) = vec[2].parse::<u8>() else {
+                    continue;
+                };
+                let backup_slot = Slot::new(period, thread);
+                previous_backups.insert(backup_slot, backup_path);
+            }
+        }
+
+        // Remove the oldest backup if we have too many
+        while MAX_BACKUPS_TO_KEEP.is_some()
+            && previous_backups.len() >= MAX_BACKUPS_TO_KEEP.unwrap()
+        {
+            if let Some((_, oldest_backup_path)) = previous_backups.first_key_value() {
+                std::fs::remove_dir_all(oldest_backup_path).expect("Cannot remove oldest backup");
+            }
+            previous_backups.pop_first();
+        }
 
         Checkpoint::new(db)
             .expect("Cannot init checkpoint")

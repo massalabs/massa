@@ -131,8 +131,10 @@ pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// cycle duration in periods
-pub const PERIODS_BETWEEN_BACKUPS: u64 = 128;
+/// Number of periods between two backups
+pub const PERIODS_BETWEEN_BACKUPS: u64 = 12800; // 100 cycles
+/// Maximum number of backups to keep. If reached, will delete the oldest ones.
+pub const MAX_BACKUPS_TO_KEEP: Option<usize> = Some(10);
 /// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap
