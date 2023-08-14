@@ -2,7 +2,7 @@
     base_storage: &amp;Storage,
     operations_cache: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../cache/struct.OperationCache.html" title="struct massa_protocol_worker::handlers::operation_handler::cache::OperationCache">OperationCache</a>&gt;&gt;,
     config: &amp;ProtocolConfig,
-    operations: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;SecureShareOperation&gt;,
+    operations: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="type" href="../../../../massa_models/operation/type.SecureShareOperation.html" title="type massa_models::operation::SecureShareOperation">SecureShareOperation</a>&gt;,
     source_peer_id: &amp;PeerId,
     ops_propagation_sender: &amp;mut MassaSender&lt;<a class="enum" href="../commands_propagation/enum.OperationHandlerPropagationCommand.html" title="enum massa_protocol_worker::handlers::operation_handler::commands_propagation::OperationHandlerPropagationCommand">OperationHandlerPropagationCommand</a>&gt;,
     pool_controller: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn PoolController&gt;
