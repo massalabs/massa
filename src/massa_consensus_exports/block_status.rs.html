@@ -186,10 +186,6 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     address::Address,
@@ -255,29 +251,25 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="doccomment">/// A structure defining whether we keep a full block with operations in storage
+/// or just the raw signed block without operations
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>StorageOrBlock {
-    Storage(Storage),
-    Block(SecureShareBlock),
+    <span class="doccomment">/// Keep a full storage with operations
+    </span>Storage(Storage),
+    <span class="doccomment">/// Keep only the block header and list of ops (but not the ops)
+    </span>Block(SecureShareBlock),
 }
 
 <span class="kw">impl </span>StorageOrBlock {
     <span class="doccomment">/// Return a clone of the underlying block
-    </span><span class="kw">pub fn </span>clone_block(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SecureShareBlock {
+    </span><span class="kw">pub fn </span>clone_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; SecureShareBlock {
         <span class="kw">match </span><span class="self">self </span>{
-            StorageOrBlock::Storage(storage) =&gt; {
-                <span class="kw">let </span>block_id = storage
-                    .get_block_refs()
-                    .iter()
-                    .next()
-                    .expect(<span class="string">&quot;expected at least one block in storage&quot;</span>)
-                    .clone();
-                storage
-                    .read_blocks()
-                    .get(<span class="kw-2">&amp;</span>block_id)
-                    .expect(<span class="string">&quot;block absent from its own storage&quot;</span>)
-                    .clone()
-            }
+            StorageOrBlock::Storage(storage) =&gt; storage
+                .read_blocks()
+                .get(block_id)
+                .expect(<span class="string">&quot;block absent from its own storage&quot;</span>)
+                .clone(),
             StorageOrBlock::Block(block) =&gt; block.clone(),
         }
     }

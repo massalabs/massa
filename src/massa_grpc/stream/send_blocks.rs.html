@@ -246,8 +246,8 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;SendBlocksStreamType, GrpcError&gt; {
     <span class="kw">let </span>consensus_controller = grpc.consensus_controller.clone();
     <span class="kw">let </span>protocol_command_sender = grpc.protocol_controller.clone();
-    <span class="kw">let </span>config = grpc.grpc_config.clone();
     <span class="kw">let </span>storage = grpc.storage.clone_without_refs();
+    <span class="kw">let </span>config = grpc.grpc_config.clone();
 
     <span class="comment">// Create a channel to handle communication with the client
     </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);

@@ -657,9 +657,9 @@
                 coins,
             } =&gt; {
                 <span class="kw">let </span>call_sc = grpc_model::CallSc {
-                    target_address: target_addr.to_string(),
-                    target_function: target_func,
-                    parameter: param,
+                    target_addr: target_addr.to_string(),
+                    target_func,
+                    param,
                     max_gas,
                     coins: <span class="prelude-val">Some</span>(coins.into()),
                 };

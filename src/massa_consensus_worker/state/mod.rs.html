@@ -521,6 +521,7 @@
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -924,7 +925,7 @@
             <span class="bool-val">true
         </span>};
 
-        <span class="kw">for </span>(hash, block) <span class="kw">in </span><span class="self">self</span>.blocks_state.iter() {
+        <span class="kw">for </span>(block_id, block) <span class="kw">in </span><span class="self">self</span>.blocks_state.iter() {
             <span class="kw">match </span>block {
                 BlockStatus::Discarded {
                     slot,
@@ -934,9 +935,10 @@
                     ..
                 } =&gt; {
                     <span class="kw">if </span>filter(slot) {
-                        export
-                            .discarded_blocks
-                            .insert(<span class="kw-2">*</span>hash, (reason.clone(), (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>creator, parents.clone())));
+                        export.discarded_blocks.insert(
+                            <span class="kw-2">*</span>block_id,
+                            (reason.clone(), (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>creator, parents.clone())),
+                        );
                     }
                 }
                 BlockStatus::Active {
@@ -945,9 +947,9 @@
                 } =&gt; {
                     <span class="kw">if </span>filter(<span class="kw-2">&amp;</span>a_block.slot) {
                         export.active_blocks.insert(
-                            <span class="kw-2">*</span>hash,
+                            <span class="kw-2">*</span>block_id,
                             ExportCompiledBlock {
-                                header: storage_or_block.clone_block().content.header,
+                                header: storage_or_block.clone_block(block_id).content.header,
                                 children: a_block
                                     .children
                                     .iter()
