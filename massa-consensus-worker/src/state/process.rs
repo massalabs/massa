@@ -608,7 +608,9 @@ impl ConsensusState {
                         storage_or_block: StorageOrBlock::Storage(storage),
                         ..
                     }) => storage,
-                    _ => panic!("final block not found in active blocks"),
+                    _ => panic!(
+                        "final block not found in active blocks and/or its operations are missing"
+                    ),
                 };
                 Some((*b_id, storage.clone()))
             })
@@ -634,7 +636,7 @@ impl ConsensusState {
                             a_block,
                             storage_or_block: StorageOrBlock::Storage(storage),
                         }) => (a_block.slot, storage),
-                        _ => panic!("blockclique block not found in active blocks"),
+                        _ => panic!("blockclique block not found in active blocks and/or its operations are missing"),
                     };
                     new_blocks_storage.insert(*b_id, storage.clone());
                     (*b_id, slot)

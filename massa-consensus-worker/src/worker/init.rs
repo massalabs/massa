@@ -264,9 +264,9 @@ impl ConsensusWorker {
             let notify_finals: HashMap<Slot, BlockId> = write_shared_state
                 .get_all_final_blocks()
                 .into_iter()
-                .map(|(b_id, block_infos)| {
-                    block_storage.insert(b_id, block_infos.1);
-                    (block_infos.0, b_id)
+                .map(|(b_id, (b_slot, b_storage))| {
+                    block_storage.insert(b_id, b_storage);
+                    (b_slot, b_id)
                 })
                 .collect();
             let notify_blockclique: HashMap<Slot, BlockId> = write_shared_state

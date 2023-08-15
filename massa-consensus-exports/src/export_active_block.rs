@@ -61,7 +61,7 @@ impl ExportActiveBlock {
             fitness: self.block.get_fitness(),
         };
 
-        Ok((active_block, StorageOrBlock::Block(self.block)))
+        Ok((active_block, StorageOrBlock::Block(Box::new(self.block))))
     }
 }
 

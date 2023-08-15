@@ -70,7 +70,7 @@ pub enum StorageOrBlock {
     /// Keep a full storage with operations
     Storage(Storage),
     /// Keep only the block header and list of ops (but not the ops)
-    Block(SecureShareBlock),
+    Block(Box<SecureShareBlock>),
 }
 
 impl StorageOrBlock {
@@ -82,7 +82,7 @@ impl StorageOrBlock {
                 .get(block_id)
                 .expect("block absent from its own storage")
                 .clone(),
-            StorageOrBlock::Block(block) => block.clone(),
+            StorageOrBlock::Block(block) => *block.clone(),
         }
     }
 
@@ -104,7 +104,7 @@ impl StorageOrBlock {
         } else {
             return;
         };
-        *self = StorageOrBlock::Block(block);
+        *self = StorageOrBlock::Block(Box::new(block));
     }
 }
 
