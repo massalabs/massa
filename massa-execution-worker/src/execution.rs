@@ -12,7 +12,6 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
-use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionChannels, ExecutionConfig, ExecutionError,
@@ -84,8 +83,6 @@ pub(crate) struct ExecutionState {
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
     module_cache: Arc<RwLock<ModuleCache>>,
-    // Vesting manager
-    vesting_manager: Arc<VestingManager>,
     // MipStore (Versioning)
     mip_store: MipStore,
     // wallet used to verify double staking on local addresses
@@ -129,20 +126,6 @@ impl ExecutionState {
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
 
-        // Initialize the vesting
-        let vesting_manager = match VestingManager::new(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            config.periods_per_cycle,
-            config.roll_price,
-            config.initial_vesting_path.clone(),
-        ) {
-            Ok(manager) => Arc::new(manager),
-            // panic if VestingManager can't load initial vesting file
-            Err(e) => panic!("{}", e),
-        };
-
         // Initialize the SC module cache
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
@@ -160,7 +143,6 @@ impl ExecutionState {
             final_state.clone(),
             active_history.clone(),
             module_cache.clone(),
-            vesting_manager.clone(),
             mip_store.clone(),
             execution_trail_hash,
         )));
@@ -186,7 +168,6 @@ impl ExecutionState {
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             module_cache,
             config,
-            vesting_manager,
             mip_store,
             selector,
             channels,
@@ -350,24 +331,6 @@ impl ExecutionState {
                 .saturating_sub(operation.get_max_spending(self.config.roll_price)),
         );
 
-        // enable spending tracker to list all addresses that spend coins
-        context.start_spending_tracker();
-
-        // check that the sender account can pay the fee given its vesting schedule
-        if let Err(err) = context.vesting_manager.check_coin_vesting(
-            &context,
-            &sender_addr,
-            creator_initial_balance.saturating_sub(operation.content.fee),
-        ) {
-            let error = format!(
-                "cannot pay the operation fee {} given sender's coin vesting limits: {}",
-                operation.content.fee, err
-            );
-            let event = context.event_create(error.clone(), true);
-            context.event_emit(event);
-            return Err(ExecutionError::IncludeOperationError(error));
-        }
-
         // debit the fee from the operation sender
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
@@ -463,7 +426,7 @@ impl ExecutionState {
                 self.execute_callsc_op(&operation.content.op, sender_addr)
             }
             OperationType::RollBuy { .. } => {
-                self.execute_roll_buy_op(&operation.content.op, sender_addr, block_slot)
+                self.execute_roll_buy_op(&operation.content.op, sender_addr)
             }
             OperationType::RollSell { .. } => {
                 self.execute_roll_sell_op(&operation.content.op, sender_addr)
@@ -477,9 +440,6 @@ impl ExecutionState {
             // lock execution context
             let mut context = context_guard!(self);
 
-            // take and disable spending tracker
-            let spending_addresses = context.take_spending_tracker().unwrap_or_default();
-
             if execution_result.is_ok() {
                 // check that the `max_coins` spending limit was respected by the sender
                 if let Some(creator_min_balance) = &context.creator_min_balance {
@@ -491,24 +451,6 @@ impl ExecutionState {
                             "at the end of the execution of the operation, the sender {} was expected to have at least {} coins according to the operation's max spending, but has only {}.",
                             sender_addr, creator_min_balance, creator_balance
                         )));
-                    }
-                }
-
-                // check that the vesting limits were respected by all spending addresses
-                for spending_addr in spending_addresses {
-                    let spending_addr_balance = context
-                        .get_balance(&spending_addr)
-                        .unwrap_or_else(Amount::zero);
-                    if let Err(err) = self.vesting_manager.check_coin_vesting(
-                        &context,
-                        &spending_addr,
-                        spending_addr_balance,
-                    ) {
-                        execution_result = Err(ExecutionError::RuntimeError(format!(
-                            "address {} did not respect its coin vesting limits: {}",
-                            spending_addr, err
-                        )));
-                        break;
                     }
                 }
             }
@@ -731,26 +673,16 @@ impl ExecutionState {
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
     /// * `buyer_addr`: address of the buyer
-    /// * `current_slot` : current slot
     pub fn execute_roll_buy_op(
         &self,
         operation: &OperationType,
         buyer_addr: Address,
-        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
         let roll_count = match operation {
             OperationType::RollBuy { roll_count } => roll_count,
             _ => panic!("unexpected operation type"),
         };
-
-        // control vesting max_rolls for buyer address
-        self.vesting_manager.check_vesting_rolls_buy(
-            self.get_final_and_candidate_rolls(&buyer_addr),
-            &buyer_addr,
-            current_slot,
-            *roll_count,
-        )?;
 
         // acquire write access to the context
         let mut context = context_guard!(self);
@@ -1138,7 +1070,6 @@ impl ExecutionState {
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
-            self.vesting_manager.clone(),
             self.mip_store.clone(),
         );
 
@@ -1494,7 +1425,6 @@ impl ExecutionState {
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
-            self.vesting_manager.clone(),
             self.mip_store.clone(),
         );
 

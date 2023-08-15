@@ -6,7 +6,6 @@ use crate::{ExecutionConfig, StorageCostsConstants};
 use massa_models::config::*;
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 impl Default for ExecutionConfig {
@@ -55,7 +54,6 @@ impl Default for ExecutionConfig {
                 .into(),
             )
             .unwrap(),
-            initial_vesting_path: PathBuf::default(),
             last_start_period: 0,
             hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
             lru_cache_size: 1000,

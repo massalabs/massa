@@ -12,7 +12,6 @@ use massa_final_state::FinalState;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
-use massa_models::prehash::PreHashSet;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
@@ -58,9 +57,6 @@ pub(crate) struct SpeculativeLedger {
 
     /// storage cost constants
     storage_costs_constants: StorageCostsConstants,
-
-    /// tracking the list of spending addresses
-    spending_tracker: Option<PreHashSet<Address>>,
 }
 
 impl SpeculativeLedger {
@@ -85,19 +81,7 @@ impl SpeculativeLedger {
             max_datastore_value_size,
             max_bytecode_size,
             storage_costs_constants,
-            spending_tracker: None,
         }
-    }
-
-    /// Initialize an empty spending tracker and start it.
-    pub fn start_spending_tracker(&mut self) {
-        self.spending_tracker = Some(PreHashSet::default());
-    }
-
-    /// Take the output of the spending tracker, if any.
-    /// Disables the spending tracker.
-    pub fn take_spending_tracker(&mut self) -> Option<PreHashSet<Address>> {
-        self.spending_tracker.take()
     }
 
     /// Returns the changes caused to the `SpeculativeLedger` since its creation,
@@ -182,11 +166,6 @@ impl SpeculativeLedger {
 
             // update the balance of the sender address
             changes.set_balance(from_addr, new_balance);
-
-            // update the spending tracker
-            if let Some(spending_tracker) = &mut self.spending_tracker {
-                spending_tracker.insert(from_addr);
-            }
         }
 
         // simulate crediting coins to destination address (if any)

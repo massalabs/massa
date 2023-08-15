@@ -54,12 +54,6 @@ pub enum ExecutionError {
     /// Include denunciation error: {0}
     IncludeDenunciationError(String),
 
-    /// Error when initialize vesting addresses: {0}
-    InitVestingError(String),
-
-    /// Vesting constraint not respected: {0}
-    VestingError(String),
-
     /// VM Error in {context} context: {error}
     VMError {
         /// execution context in which the error happened

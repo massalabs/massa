@@ -157,8 +157,6 @@
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
     wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
-    # path to the initial vesting file
-    initial_vesting_path = "base_config/initial_vesting.json"
     # path to the hard drive cache storage
     hd_cache_path = "storage/cache/rocks_db"
     # maximum number of entries we want to keep in the LRU cache

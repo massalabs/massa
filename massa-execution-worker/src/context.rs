@@ -12,7 +12,6 @@ use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
@@ -27,7 +26,6 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::denunciation::DenunciationIndex;
-use massa_models::prehash::PreHashSet;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
     address::Address,
@@ -168,9 +166,6 @@ pub struct ExecutionContext {
     /// cache of compiled runtime modules
     pub module_cache: Arc<RwLock<ModuleCache>>,
 
-    /// Vesting Manager
-    pub vesting_manager: Arc<VestingManager>,
-
     /// Address factory
     pub address_factory: AddressFactory,
 }
@@ -191,7 +186,6 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
         execution_trail_hash: massa_hash::Hash,
     ) -> Self {
@@ -235,21 +229,9 @@ impl ExecutionContext {
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            vesting_manager,
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
         }
-    }
-
-    /// Enables and resets the tracker that lists all addresses that spend coins.
-    pub(crate) fn start_spending_tracker(&mut self) {
-        self.speculative_ledger.start_spending_tracker()
-    }
-
-    /// Takes the result of the spending tracker listing all addresses that have spent coins since it was enabled.
-    /// Disables and resets the spending tracker.
-    pub(crate) fn take_spending_tracker(&mut self) -> Option<PreHashSet<Address>> {
-        self.speculative_ledger.take_spending_tracker()
     }
 
     /// Returns a snapshot containing the clone of the current execution state.
@@ -328,7 +310,6 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
     ) -> Self {
         // Get the execution hash trail
@@ -351,7 +332,6 @@ impl ExecutionContext {
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -396,7 +376,6 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
     ) -> Self {
         // Get the execution hash trail
@@ -421,7 +400,6 @@ impl ExecutionContext {
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -577,16 +555,6 @@ impl ExecutionContext {
         self.speculative_ledger.get_balance(address)
     }
 
-    /// Get deferred credits of an address starting from a given slot
-    pub fn get_address_deferred_credits(
-        &self,
-        address: &Address,
-        min_slot: Slot,
-    ) -> BTreeMap<Slot, Amount> {
-        self.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
-    }
-
     /// Sets a datastore entry for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     /// The datastore entry is created if it is absent for that address.
@@ -688,7 +656,6 @@ impl ExecutionContext {
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
-    /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
     pub fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
