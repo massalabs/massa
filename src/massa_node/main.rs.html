@@ -1410,6 +1410,11 @@
 <a href="#1410" id="1410">1410</a>
 <a href="#1411" id="1411">1411</a>
 <a href="#1412" id="1412">1412</a>
+<a href="#1413" id="1413">1413</a>
+<a href="#1414" id="1414">1414</a>
+<a href="#1415" id="1415">1415</a>
+<a href="#1416" id="1416">1416</a>
+<a href="#1417" id="1417">1417</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -2461,6 +2466,8 @@
         enable_reflection: settings.enable_reflection,
         enable_tls: settings.enable_tls,
         enable_mtls: settings.enable_mtls,
+        generate_self_signed_certificates: settings.generate_self_signed_certificates,
+        subject_alt_names: settings.subject_alt_names.clone(),
         bind: settings.bind,
         accept_compressed: settings.accept_compressed.clone(),
         send_compressed: settings.send_compressed.clone(),
@@ -2499,11 +2506,14 @@
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_block_ids_per_request: settings.max_block_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
+        certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),
         client_certificate_authority_root_path: settings
             .client_certificate_authority_root_path
             .clone(),
+        client_certificate_path: settings.client_certificate_path.clone(),
+        client_private_key_path: settings.client_private_key_path.clone(),
     }
 }
 

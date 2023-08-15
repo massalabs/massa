@@ -199,6 +199,21 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::amount::Amount;
@@ -274,16 +289,22 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Gets the minimal coin balance this address is allowed to have given the vesting scheme.
-    /// Takes into account rolls, deferred credits etc...
+    <span class="doccomment">/// Check vesting minimal balance for given address
+    ///
+    /// Call on transfer_coins OP
+    ///
     /// * `addr` sender address
-    /// * `balance` sender balance
-    </span><span class="kw">pub fn </span>check_coin_vesting(
+    /// * `amount` amount of coins to transfer
+    </span><span class="kw">pub fn </span>check_vesting_transfer_coins(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span>ExecutionContext,
         addr: <span class="kw-2">&amp;</span>Address,
-        balance: Amount,
+        amount: Amount,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="kw">if </span>amount == Amount::zero() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+
         <span class="comment">// For the case of user sending coins to itself :
         // That implies spending the coins first, then receiving them.
         // So the spending part can fail in the case of vesting
@@ -291,38 +312,47 @@
             </span>.get_addr_vesting_at_slot(addr, context.slot)
             .min_balance
         {
-            <span class="kw">let </span>slot_cycle = context.slot.get_cycle(<span class="self">self</span>.periods_per_cycle);
+            <span class="kw">let </span>new_balance = context
+                    .get_balance(addr)
+                    .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, addr)))<span class="question-mark">?
+                    </span>.checked_sub(amount)
+                    .ok_or_else(|| {
+                        ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed check transfer {} from spending address {} due to insufficient balance {}&quot;</span>, amount, addr, context
+                            .get_balance(addr).unwrap_or_default()))
+                    })<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>rolls_value = context
-                .get_address_cycle_infos(addr, <span class="self">self</span>.periods_per_cycle)
-                .into_iter()
-                .find_map(|nfo| {
-                    <span class="kw">if </span>nfo.cycle == slot_cycle {
-                        <span class="prelude-val">Some</span>(
-                            <span class="self">self</span>.roll_price
-                                .saturating_mul_u64(nfo.active_rolls.unwrap_or_default()),
-                        )
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
-                    </span>}
-                })
-                .unwrap_or_else(Amount::zero);
+            <span class="kw">let </span>vec = context.get_address_cycle_infos(addr, <span class="self">self</span>.periods_per_cycle);
+            <span class="kw">let </span><span class="prelude-val">Some</span>(exec_info) = vec.last() <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(<span class="string">&quot;can not get address info cycle for {}&quot;</span>, addr)));
+                };
 
-            <span class="kw">let </span>deferred_credits_value = context
-                .get_address_deferred_credits(addr, context.slot)
-                .into_values()
-                .reduce(|acc, amount| acc.saturating_add(amount))
-                .unwrap_or_else(Amount::zero);
+            <span class="kw">let </span>rolls_value = exec_info
+                .active_rolls
+                .map(|rolls| <span class="self">self</span>.roll_price.saturating_mul_u64(rolls))
+                .unwrap_or(Amount::zero());
+
+            <span class="kw">let </span>deferred_map = context.get_address_deferred_credits(addr, context.slot);
+
+            <span class="kw">let </span>deferred_credits = <span class="kw">if </span>deferred_map.is_empty() {
+                Amount::zero()
+            } <span class="kw">else </span>{
+                deferred_map
+                    .into_values()
+                    .reduce(|acc, amount| acc.saturating_add(amount))
+                    .ok_or(ExecutionError::RuntimeError(
+                        <span class="string">&quot;Overflow in deferred credits&quot;</span>.to_string(),
+                    ))<span class="question-mark">?
+            </span>};
 
             <span class="comment">// min_balance = (rolls * roll_price) + balance + deferred_credits
-            </span><span class="kw">let </span>total_coin_value = balance
+            </span><span class="kw">let </span>min_balance = new_balance
                 .saturating_add(rolls_value)
-                .saturating_add(deferred_credits_value);
+                .saturating_add(deferred_credits);
 
-            <span class="kw">if </span>total_coin_value &lt; vesting_min_balance {
+            <span class="kw">if </span>min_balance &lt; vesting_min_balance {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(
-                    <span class="string">&quot;total coin value {} fell under the minimal vesting value {}&quot;</span>,
-                    total_coin_value, vesting_min_balance
+                    <span class="string">&quot;vesting_min_balance={} with value min_balance={} &quot;</span>,
+                    vesting_min_balance, min_balance
                 )));
             }
         }

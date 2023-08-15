@@ -700,6 +700,7 @@
 <a href="#700" id="700">700</a>
 <a href="#701" id="701">701</a>
 <a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -750,6 +751,7 @@
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>thiserror::Error;
 
+<span class="kw">pub mod </span>cert_manager;
 <span class="kw">mod </span>config;
 <span class="kw">pub use </span>config::ClientConfig;
 <span class="kw">pub use </span>config::HttpConfig;
