@@ -2266,7 +2266,7 @@
         </span><span class="kw">let </span>op_max_spending = operation.get_max_spending(<span class="self">self</span>.config.roll_price);
         <span class="kw">let </span>creator_balance = context
             .get_balance(<span class="kw-2">&amp;</span>sender_addr)
-            .unwrap_or_else(|| Amount::zero());
+            .unwrap_or_else(Amount::zero);
         context.creator_min_balance = <span class="kw">match </span>creator_balance.checked_sub(op_max_spending) {
             <span class="prelude-val">Some</span>(v) =&gt; <span class="prelude-val">Some</span>(v),
             <span class="prelude-val">None </span>=&gt; {
@@ -2400,7 +2400,7 @@
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(creator_min_balance) = <span class="kw-2">&amp;</span>context.creator_min_balance {
                     <span class="kw">let </span>creator_balance = context
                         .get_balance(<span class="kw-2">&amp;</span>sender_addr)
-                        .unwrap_or_else(|| Amount::zero());
+                        .unwrap_or_else(Amount::zero);
                     <span class="kw">if </span><span class="kw-2">&amp;</span>creator_balance &lt; creator_min_balance {
                         execution_result = <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                             <span class="string">&quot;at the end of the execution of the operation, the sender {} was expected to have at least {} coins according to the operation&#39;s max spending, but has only {}.&quot;</span>,
