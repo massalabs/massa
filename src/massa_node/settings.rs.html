@@ -356,6 +356,7 @@
 <a href="#356" id="356">356</a>
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -404,6 +405,7 @@
     <span class="kw">pub </span>initial_ledger_path: PathBuf,
     <span class="kw">pub </span>disk_ledger_path: PathBuf,
     <span class="kw">pub </span>final_history_length: usize,
+    <span class="kw">pub </span>initial_deferred_credits_path: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
 }
 
 <span class="doccomment">/// Bootstrap configuration.
