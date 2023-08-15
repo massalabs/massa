@@ -1830,6 +1830,37 @@
 <a href="#1830" id="1830">1830</a>
 <a href="#1831" id="1831">1831</a>
 <a href="#1832" id="1832">1832</a>
+<a href="#1833" id="1833">1833</a>
+<a href="#1834" id="1834">1834</a>
+<a href="#1835" id="1835">1835</a>
+<a href="#1836" id="1836">1836</a>
+<a href="#1837" id="1837">1837</a>
+<a href="#1838" id="1838">1838</a>
+<a href="#1839" id="1839">1839</a>
+<a href="#1840" id="1840">1840</a>
+<a href="#1841" id="1841">1841</a>
+<a href="#1842" id="1842">1842</a>
+<a href="#1843" id="1843">1843</a>
+<a href="#1844" id="1844">1844</a>
+<a href="#1845" id="1845">1845</a>
+<a href="#1846" id="1846">1846</a>
+<a href="#1847" id="1847">1847</a>
+<a href="#1848" id="1848">1848</a>
+<a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
+<a href="#1852" id="1852">1852</a>
+<a href="#1853" id="1853">1853</a>
+<a href="#1854" id="1854">1854</a>
+<a href="#1855" id="1855">1855</a>
+<a href="#1856" id="1856">1856</a>
+<a href="#1857" id="1857">1857</a>
+<a href="#1858" id="1858">1858</a>
+<a href="#1859" id="1859">1859</a>
+<a href="#1860" id="1860">1860</a>
+<a href="#1861" id="1861">1861</a>
+<a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3171,7 +3202,8 @@
             </span>.cycle_info_deserializer
             .cycle_info_deserializer
             .u64_deser
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..]) <span class="kw">else </span>{
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+        <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
 
@@ -3199,7 +3231,8 @@
                     </span>.cycle_info_deserializer
                     .cycle_info_deserializer
                     .bitvec_deser
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -3214,7 +3247,8 @@
                     </span>.cycle_info_deserializer
                     .cycle_info_deserializer
                     .opt_hash_deser
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -3222,12 +3256,16 @@
                 }
             }
             ROLL_COUNT_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _addr)): std::result::Result&lt;(<span class="kw-2">&amp;</span>[u8], Address), nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;&gt; = <span class="self">self
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _addr)): std::result::Result&lt;
+                    (<span class="kw-2">&amp;</span>[u8], Address),
+                    nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
+                &gt; = <span class="self">self
                     </span>.cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..]) <span class="kw">else </span>{
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])
+                <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -3238,7 +3276,8 @@
                     .cycle_info_deserializer
                     .rolls_deser
                     .u64_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -3246,14 +3285,18 @@
                 }
             }
             PROD_STATS_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _addr)): std::result::Result&lt;(<span class="kw-2">&amp;</span>[u8], Address), nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;&gt; = <span class="self">self
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _addr)): std::result::Result&lt;
+                    (<span class="kw-2">&amp;</span>[u8], Address),
+                    nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
+                &gt; = <span class="self">self
                     </span>.cycle_info_deserializer
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..]) <span class="kw">else </span>{
-                        <span class="kw">return </span><span class="bool-val">false</span>;
-                    };
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])
+                <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="bool-val">false</span>;
+                };
                 <span class="kw">if </span>rest.len() != <span class="number">1 </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
@@ -3265,20 +3308,22 @@
                             .cycle_info_deserializer
                             .production_stats_deser
                             .u64_deserializer
-                            .deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
-                                <span class="kw">return </span><span class="bool-val">false</span>;
-                            };
+                            .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                        <span class="kw">else </span>{
+                            <span class="kw">return </span><span class="bool-val">false</span>;
+                        };
                         <span class="kw">if </span>!rest.is_empty() {
                             <span class="kw">return </span><span class="bool-val">false</span>;
                         }
                     }
                     PROD_STATS_SUCCESS_IDENT =&gt; {
                         <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _success)) = <span class="self">self
-                        </span>.cycle_info_deserializer
-                        .cycle_info_deserializer
-                        .production_stats_deser
-                        .u64_deserializer
-                        .deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+                            </span>.cycle_info_deserializer
+                            .cycle_info_deserializer
+                            .production_stats_deser
+                            .u64_deserializer
+                            .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                        <span class="kw">else </span>{
                             <span class="kw">return </span><span class="bool-val">false</span>;
                         };
                         <span class="kw">if </span>!rest.is_empty() {
@@ -3308,17 +3353,34 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _slot)) = <span class="self">self</span>.deferred_credits_deserializer.slot_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..]) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _slot)) =
+            <span class="self">self</span>.deferred_credits_deserializer
+                .slot_deserializer
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+        <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _addr)): std::result::Result&lt;(<span class="kw-2">&amp;</span>[u8], Address), nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;&gt; = <span class="self">self</span>.deferred_credits_deserializer.credit_deserializer.address_deserializer.deserialize::&lt;DeserializeError&gt;(rest) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _addr)): std::result::Result&lt;
+            (<span class="kw-2">&amp;</span>[u8], Address),
+            nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
+        &gt; = <span class="self">self
+            </span>.deferred_credits_deserializer
+            .credit_deserializer
+            .address_deserializer
+            .deserialize::&lt;DeserializeError&gt;(rest)
+        <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>!rest.is_empty() {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _mount)) = <span class="self">self</span>.deferred_credits_deserializer.credit_deserializer.amount_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _mount)) = <span class="self">self
+            </span>.deferred_credits_deserializer
+            .credit_deserializer
+            .amount_deserializer
+            .deserialize::&lt;DeserializeError&gt;(serialized_value)
+        <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>!rest.is_empty() {

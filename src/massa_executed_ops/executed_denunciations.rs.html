@@ -341,6 +341,11 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
@@ -546,7 +551,12 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _idx)) = <span class="self">self</span>.denunciation_index_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..]) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _idx)) = <span class="self">self
+            </span>.denunciation_index_deserializer
+            .deserialize::&lt;DeserializeError&gt;(
+                <span class="kw-2">&amp;</span>serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..],
+            )
+        <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>!rest.is_empty() {

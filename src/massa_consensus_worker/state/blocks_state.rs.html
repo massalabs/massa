@@ -330,6 +330,8 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 
 <span class="kw">use </span>massa_consensus_exports::block_status::{BlockStatus, BlockStatusId};
@@ -528,7 +530,9 @@
             <span class="prelude-val">Some</span>(block) =&gt; {
                 <span class="kw">let </span>old_state_id = BlockStatusId::from(<span class="kw-2">&amp;</span>block);
                 <span class="self">self</span>.update_indexes(block_id, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>old_state_id), <span class="prelude-val">None</span>);
-                <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>new_state) = callback(<span class="prelude-val">Some</span>(block), <span class="kw-2">&amp;mut </span><span class="self">self</span>.block_statuses) <span class="kw">else </span>{ <span class="kw">return</span>; };
+                <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>new_state) = callback(<span class="prelude-val">Some</span>(block), <span class="kw-2">&amp;mut </span><span class="self">self</span>.block_statuses) <span class="kw">else </span>{
+                    <span class="kw">return</span>;
+                };
                 <span class="kw">let </span>new_state_id = BlockStatusId::from(<span class="kw-2">&amp;</span>new_state);
                 <span class="kw">match </span>(<span class="kw-2">&amp;</span>old_state_id, <span class="kw-2">&amp;</span>new_state_id) {
                     <span class="comment">// From incoming status
