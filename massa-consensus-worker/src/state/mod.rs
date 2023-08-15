@@ -401,7 +401,7 @@ impl ConsensusState {
             true
         };
 
-        for (hash, block) in self.blocks_state.iter() {
+        for (block_id, block) in self.blocks_state.iter() {
             match block {
                 BlockStatus::Discarded {
                     slot,
@@ -411,9 +411,10 @@ impl ConsensusState {
                     ..
                 } => {
                     if filter(slot) {
-                        export
-                            .discarded_blocks
-                            .insert(*hash, (reason.clone(), (*slot, *creator, parents.clone())));
+                        export.discarded_blocks.insert(
+                            *block_id,
+                            (reason.clone(), (*slot, *creator, parents.clone())),
+                        );
                     }
                 }
                 BlockStatus::Active {
@@ -422,9 +423,9 @@ impl ConsensusState {
                 } => {
                     if filter(&a_block.slot) {
                         export.active_blocks.insert(
-                            *hash,
+                            *block_id,
                             ExportCompiledBlock {
-                                header: storage_or_block.clone_block().content.header,
+                                header: storage_or_block.clone_block(block_id).content.header,
                                 children: a_block
                                     .children
                                     .iter()

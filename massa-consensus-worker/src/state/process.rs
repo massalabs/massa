@@ -255,17 +255,7 @@ impl ConsensusState {
                                 }
                             };
                             match new_state {
-                                Some(BlockCheckOutcome::BlockInfos(mut infos)) => {
-                                    // Ensure block parents are claimed by the block's storage.
-                                    // Note that operations and endorsements should already be there (claimed in Protocol).
-                                    infos.storage.claim_block_refs(
-                                        &infos
-                                            .parents_hash_period
-                                            .iter()
-                                            .map(|(p_id, _)| *p_id)
-                                            .collect(),
-                                    );
-
+                                Some(BlockCheckOutcome::BlockInfos(infos)) => {
                                     block_infos = Some((
                                         infos.parents_hash_period.clone(),
                                         infos.slot,

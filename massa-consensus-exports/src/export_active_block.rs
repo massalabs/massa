@@ -40,7 +40,7 @@ impl ExportActiveBlock {
         ExportActiveBlock {
             parents: a_block.parents.clone(),
             is_final: a_block.is_final,
-            block: storage_or_block.clone_block(),
+            block: storage_or_block.clone_block(&a_block.block_id),
         }
     }
 

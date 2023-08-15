@@ -63,29 +63,25 @@ impl From<&BlockStatus> for BlockStatusId {
     }
 }
 
+/// A structure defining whether we keep a full block with operations in storage
+/// or just the raw signed block without operations
 #[derive(Debug, Clone)]
 pub enum StorageOrBlock {
+    /// Keep a full storage with operations
     Storage(Storage),
+    /// Keep only the block header and list of ops (but not the ops)
     Block(SecureShareBlock),
 }
 
 impl StorageOrBlock {
     /// Return a clone of the underlying block
-    pub fn clone_block(&self) -> SecureShareBlock {
+    pub fn clone_block(&self, block_id: &BlockId) -> SecureShareBlock {
         match self {
-            StorageOrBlock::Storage(storage) => {
-                let block_id = storage
-                    .get_block_refs()
-                    .iter()
-                    .next()
-                    .expect("expected at least one block in storage")
-                    .clone();
-                storage
-                    .read_blocks()
-                    .get(&block_id)
-                    .expect("block absent from its own storage")
-                    .clone()
-            }
+            StorageOrBlock::Storage(storage) => storage
+                .read_blocks()
+                .get(block_id)
+                .expect("block absent from its own storage")
+                .clone(),
             StorageOrBlock::Block(block) => block.clone(),
         }
     }
