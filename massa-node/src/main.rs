@@ -209,6 +209,7 @@ async fn launch(
         max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
         max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+        initial_deferred_credits_path: SETTINGS.ledger.initial_deferred_credits_path.clone(),
     };
     let executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,

@@ -203,6 +203,46 @@ impl PoSFinalState {
         Ok(pos_state)
     }
 
+    /// Try load initial deferred credits from file
+    pub fn load_initial_deferred_credits(&mut self) -> Result<(), PosError> {
+        let Some(initial_deferred_credits_path) = &self.config.initial_deferred_credits_path else { return Ok(()) };
+
+        use serde::Deserialize;
+        #[derive(Deserialize)]
+        struct AddressInitialDefferredCredits {
+            slot: Slot,
+            amount: Amount,
+        }
+
+        let initial_deferred_credits =
+            serde_json::from_str::<PreHashMap<Address, Vec<AddressInitialDefferredCredits>>>(
+                &std::fs::read_to_string(initial_deferred_credits_path).map_err(|err| {
+                    PosError::DeferredCreditsFileLoadingError(format!(
+                        "error while deserializing initial deferred credits file {}: {}",
+                        initial_deferred_credits_path.display(),
+                        err
+                    ))
+                })?,
+            )
+            .map_err(|err| {
+                PosError::DeferredCreditsFileLoadingError(format!(
+                    "error loading initial deferred credits file {}: {}",
+                    initial_deferred_credits_path.display(),
+                    err
+                ))
+            })?;
+
+        let mut db_batch = DBBatch::new();
+        for (address, deferred_credits) in initial_deferred_credits {
+            for AddressInitialDefferredCredits { slot, amount } in deferred_credits {
+                self.put_deferred_credits_entry(&slot, &address, &amount, &mut db_batch);
+            }
+        }
+        self.db.write().write_batch(db_batch, DBBatch::new(), None);
+
+        Ok(())
+    }
+
     /// After bootstrap or load from disk, recompute the caches
     pub fn recompute_pos_state_caches(&mut self) {
         self.cycle_history_cache = self.get_cycle_history_cycles().into();
@@ -1599,6 +1639,7 @@ mod tests {
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         };
 
         // initialize the database and pos_state
@@ -1711,6 +1752,7 @@ mod tests {
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         };
 
         // initialize the database and pos_state

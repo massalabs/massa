@@ -46,6 +46,7 @@ pub struct LedgerSettings {
     pub initial_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
+    pub initial_deferred_credits_path: Option<PathBuf>,
 }
 
 /// Bootstrap configuration.
