@@ -312,9 +312,6 @@
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -381,7 +378,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>sum_hash = num::BigInt::default();
             <span class="kw">for </span>block_h <span class="kw">in </span>clique.block_ids.iter() {
                 <span class="kw">let </span>fitness = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_h) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; a_block.fitness,
+                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block.fitness,
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses computing fitness while adding {} - missing {}&quot;</span>, add_block_id, block_h))),
                 };
                 clique.fitness = clique
@@ -425,7 +422,7 @@
         <span class="self">self</span>.blocks_state.transition_map(block_id, |block_status, block_statuses| {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
             a_block: active_block,
-            storage: _storage,
+            ..
         }) = block_status
         {
             <span class="kw">if </span>active_block.is_final {
@@ -533,10 +530,7 @@
             </span><span class="kw">let </span>loc_candidates = final_candidates.clone();
             <span class="kw">for </span>candidate_h <span class="kw">in </span>loc_candidates.into_iter() {
                 <span class="kw">let </span>descendants = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>candidate_h) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active {
-                        a_block,
-                        storage: <span class="kw">_</span>,
-                    }) =&gt; <span class="kw-2">&amp;</span>a_block.descendants,
+                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; <span class="kw-2">&amp;</span>a_block.descendants,
                     <span class="kw">_ </span>=&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::MissingBlock(<span class="macro">format!</span>(
                             <span class="string">&quot;missing block when computing total fitness of descendants: {}&quot;</span>,

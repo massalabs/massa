@@ -801,13 +801,16 @@
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
 };
 
 <span class="kw">use </span>massa_consensus_exports::{
-    block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
+    block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
 };
 <span class="kw">use </span>massa_logging::massa_trace;
@@ -1092,7 +1095,7 @@
                                             slot: infos.slot,
                                             fitness: infos.fitness,
                                         }),
-                                        storage: infos.storage,
+                                        storage_or_block: StorageOrBlock::Storage(infos.storage),
                                     })
                                 }
                                 <span class="prelude-val">Some</span>(BlockCheckOutcome::BlockStatus(status)) =&gt; <span class="prelude-val">Some</span>(status),
@@ -1182,7 +1185,11 @@
         };
 
         <span class="comment">// if the block was added, update linked dependencies and mark satisfied ones for recheck
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { storage, .. }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id) {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
+            storage_or_block: StorageOrBlock::Storage(storage),
+            ..
+        }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id)
+        {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.is_active&quot;</span>, {
                 <span class="string">&quot;block_id&quot;</span>: block_id
             });
@@ -1325,7 +1332,7 @@
             // if its period is higher than the current best_parent in that thread
             </span><span class="kw">for </span>block_h <span class="kw">in </span>blockclique.block_ids.iter() {
                 <span class="kw">let </span>b_slot = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_h) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; a_block.slot,
+                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block.slot,
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses updating best parents while adding {} - missing {}&quot;</span>, add_block_id, block_h))),
                 };
                 <span class="kw">if </span>b_slot.period &gt; <span class="self">self</span>.best_parents[b_slot.thread <span class="kw">as </span>usize].<span class="number">1 </span>{
@@ -1414,8 +1421,8 @@
                 }
                 <span class="kw">let </span>storage = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active {
-                        a_block: <span class="kw">_</span>,
-                        storage,
+                        storage_or_block: StorageOrBlock::Storage(storage),
+                        ..
                     }) =&gt; storage,
                     <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;final block not found in active blocks&quot;</span>),
                 };
@@ -1439,7 +1446,10 @@
                     // the blockclique has changed =&gt; get the block&#39;s slot by querying Storage.
                     </span>blockclique_changed = <span class="bool-val">true</span>;
                     <span class="kw">let </span>(slot, storage) = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
-                        <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =&gt; (a_block.slot, storage),
+                        <span class="prelude-val">Some</span>(BlockStatus::Active {
+                            a_block,
+                            storage_or_block: StorageOrBlock::Storage(storage),
+                        }) =&gt; (a_block.slot, storage),
                         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;blockclique block not found in active blocks&quot;</span>),
                     };
                     new_blocks_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
@@ -1520,11 +1530,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>final_block_slots = HashMap::with_capacity(finalized_blocks.len());
             <span class="kw">let </span><span class="kw-2">mut </span>final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
             <span class="kw">for </span>b_id <span class="kw">in </span>finalized_blocks {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
-                    a_block,
-                    storage: <span class="kw">_</span>,
-                }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>b_id)
-                {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>b_id) {
                     <span class="comment">// add to final blocks to notify execution
                     </span>final_block_slots.insert(a_block.slot, b_id);
 
