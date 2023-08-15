@@ -24,6 +24,7 @@ tokio-stream = {workspace = true}   # BOM UPGRADE     Revert to "0.1.12" if prob
 tracing = {workspace = true}
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 h2 = {workspace = true}
+itertools = {workspace = true}
 
 massa_consensus_exports = {workspace = true}
 massa_hash = {workspace = true}

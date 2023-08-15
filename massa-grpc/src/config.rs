@@ -10,6 +10,8 @@ use std::{net::SocketAddr, path::PathBuf, time::Duration};
 #[derive(Debug, Deserialize, Clone)]
 pub struct GrpcConfig {
     /// whether to enable gRPC
+    pub name: ServiceName,
+    /// whether to enable gRPC
     pub enabled: bool,
     /// whether to accept HTTP/1.1 requests
     pub accept_http1: bool,
@@ -99,8 +101,12 @@ pub struct GrpcConfig {
     pub last_start_period: u64,
     /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
+    /// max number of addresses that can be included in a single request
+    pub max_addresses_per_request: u32,
     /// max number of block ids that can be included in a single request
     pub max_block_ids_per_request: u32,
+    /// max number of endorsement ids that can be included in a single request
+    pub max_endorsement_ids_per_request: u32,
     /// max number of operation ids that can be included in a single request
     pub max_operation_ids_per_request: u32,
     /// certificate authority root path
@@ -124,4 +130,13 @@ pub struct GrpcApiConfig {
     pub public: GrpcConfig,
     /// Private server gRPC configuration.
     pub private: GrpcConfig,
+}
+
+/// gRPC service name
+#[derive(Debug, Deserialize, Clone)]
+pub enum ServiceName {
+    /// Public service name
+    Public,
+    /// Private service name
+    Private,
 }

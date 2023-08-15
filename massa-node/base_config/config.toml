@@ -84,8 +84,12 @@
         tcp_nodelay = true
         # max number of future periods considered during requests
         draw_lookahead_period_count = 10
-        # The maximum number of block IDs that can be included in a single request
+        # max number of addresses that can be included in a single request
+        max_addresses_per_request = 50
+        # max number of block ids that can be included in a single request
         max_block_ids_per_request = 50
+        # max number of endorsement ids that can be included in a single request
+        max_endorsement_ids_per_request = 100
         # max number of operation ids that can be included in a single request
         max_operation_ids_per_request = 250
         # certificate authority root path
@@ -145,8 +149,12 @@
         tcp_nodelay = true
         # max number of future periods considered during requests
         draw_lookahead_period_count = 10
-        # The maximum number of block IDs that can be included in a single request
+        # max number of addresses that can be included in a single request
+        max_addresses_per_request = 50
+        # max number of block ids that can be included in a single request
         max_block_ids_per_request = 50
+        # max number of endorsement ids that can be included in a single request
+        max_endorsement_ids_per_request = 100
         # max number of operation ids that can be included in a single request
         max_operation_ids_per_request = 250
         # certificate authority root path
