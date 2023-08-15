@@ -73,13 +73,15 @@ impl VestingManager {
         Ok(())
     }
 
-    /// Check vesting minimal balance for given address
-    ///
+    /// Gets the minimal coin balance this address is allowed to have given the vesting scheme.
+    /// Takes into account rolls, deferred credits etc...
     /// * `addr` sender address
-    pub fn check_vesting_coins(
+    /// * `balance` sender balance
+    pub fn check_coin_vesting(
         &self,
         context: &ExecutionContext,
         addr: &Address,
+        balance: Amount,
     ) -> Result<(), ExecutionError> {
         // For the case of user sending coins to itself :
         // That implies spending the coins first, then receiving them.
@@ -88,43 +90,38 @@ impl VestingManager {
             .get_addr_vesting_at_slot(addr, context.slot)
             .min_balance
         {
-            let balance = context.get_balance(addr).unwrap_or_default();
+            let slot_cycle = context.slot.get_cycle(self.periods_per_cycle);
 
-            let vec = context.get_address_cycle_infos(addr, self.periods_per_cycle);
-            let Some(exec_info) = vec.last() else {
-                return Err(ExecutionError::VestingError(format!(
-                    "can not get address info cycle for {}",
-                    addr
-                )));
-            };
+            let rolls_value = context
+                .get_address_cycle_infos(addr, self.periods_per_cycle)
+                .into_iter()
+                .find_map(|nfo| {
+                    if nfo.cycle == slot_cycle {
+                        Some(
+                            self.roll_price
+                                .saturating_mul_u64(nfo.active_rolls.unwrap_or_default()),
+                        )
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(Amount::zero);
 
-            let rolls_value = exec_info
-                .active_rolls
-                .map(|rolls| self.roll_price.saturating_mul_u64(rolls))
-                .unwrap_or(Amount::zero());
-
-            let deferred_map = context.get_address_deferred_credits(addr, context.slot);
-
-            let deferred_credits = if deferred_map.is_empty() {
-                Amount::zero()
-            } else {
-                deferred_map
-                    .into_values()
-                    .reduce(|acc, amount| acc.saturating_add(amount))
-                    .ok_or(ExecutionError::RuntimeError(
-                        "Overflow in deferred credits".to_string(),
-                    ))?
-            };
+            let deferred_credits_value = context
+                .get_address_deferred_credits(addr, context.slot)
+                .into_values()
+                .reduce(|acc, amount| acc.saturating_add(amount))
+                .unwrap_or_else(Amount::zero);
 
             // min_balance = (rolls * roll_price) + balance + deferred_credits
-            let total_coin_balance = balance
+            let total_coin_value = balance
                 .saturating_add(rolls_value)
-                .saturating_add(deferred_credits);
+                .saturating_add(deferred_credits_value);
 
-            if total_coin_balance < vesting_min_balance {
+            if total_coin_value < vesting_min_balance {
                 return Err(ExecutionError::VestingError(format!(
                     "total coin value {} fell under the minimal vesting value {}",
-                    total_coin_balance, vesting_min_balance
+                    total_coin_value, vesting_min_balance
                 )));
             }
         }

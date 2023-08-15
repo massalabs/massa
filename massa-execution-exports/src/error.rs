@@ -57,7 +57,7 @@ pub enum ExecutionError {
     /// Error when initialize vesting addresses: {0}
     InitVestingError(String),
 
-    /// We reach the vesting constraint: {0}
+    /// Vesting constraint not respected: {0}
     VestingError(String),
 
     /// VM Error in {context} context: {error}

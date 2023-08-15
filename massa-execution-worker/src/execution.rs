@@ -340,28 +340,33 @@ impl ExecutionState {
             ));
         }
 
-        // Compute the minimal amount of coins the sender is allowed to have after the execution of this op.
-        // If there are less than `max_spending` enough coins on the sender's balance, the op is not executed.
-        // This is because it is the block producer's responsibility to ensure that `max_spending` is respected.
-        let op_max_spending = operation.get_max_spending(self.config.roll_price);
-        let creator_balance = context
+        // Compute the minimal amount of coins the sender is allowed to have after the execution of this op based on `op.max_spending`.
+        // Note that the max spending might exceed the sender's balance.
+        let creator_initial_balance = context
             .get_balance(&sender_addr)
             .unwrap_or_else(Amount::zero);
-        context.creator_min_balance = match creator_balance.checked_sub(op_max_spending) {
-            Some(v) => Some(v),
-            None => {
-                let error = format!(
-                    "Operation {} cannot be executed: sender {} needs at least {} coins but has {}.",
-                    operation_id, sender_addr, op_max_spending, creator_balance
-                );
-                let event = context.event_create(error.clone(), true);
-                context.event_emit(event);
-                return Err(ExecutionError::IncludeOperationError(error));
-            }
-        };
+        context.creator_min_balance = Some(
+            creator_initial_balance
+                .saturating_sub(operation.get_max_spending(self.config.roll_price)),
+        );
 
         // enable spending tracker to list all addresses that spend coins
         context.start_spending_tracker();
+
+        // check that the sender account can pay the fee given its vesting schedule
+        if let Err(err) = context.vesting_manager.check_coin_vesting(
+            &context,
+            &sender_addr,
+            creator_initial_balance.saturating_sub(operation.content.fee),
+        ) {
+            let error = format!(
+                "cannot pay the operation fee {} given sender's coin vesting limits: {}",
+                operation.content.fee, err
+            );
+            let event = context.event_create(error.clone(), true);
+            context.event_emit(event);
+            return Err(ExecutionError::IncludeOperationError(error));
+        }
 
         // debit the fee from the operation sender
         if let Err(err) =
@@ -491,10 +496,14 @@ impl ExecutionState {
 
                 // check that the vesting limits were respected by all spending addresses
                 for spending_addr in spending_addresses {
-                    if let Err(err) = self
-                        .vesting_manager
-                        .check_vesting_coins(&context, &spending_addr)
-                    {
+                    let spending_addr_balance = context
+                        .get_balance(&spending_addr)
+                        .unwrap_or_else(Amount::zero);
+                    if let Err(err) = self.vesting_manager.check_coin_vesting(
+                        &context,
+                        &spending_addr,
+                        spending_addr_balance,
+                    ) {
                         execution_result = Err(ExecutionError::RuntimeError(format!(
                             "address {} did not respect its coin vesting limits: {}",
                             spending_addr, err
