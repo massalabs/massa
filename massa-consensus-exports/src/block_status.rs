@@ -88,17 +88,11 @@ impl StorageOrBlock {
 
     /// Convert any StorageOrBlock variant into a StorageOrBlock::Block variant.
     /// This effectively drops the operations of the block.
-    pub fn strip_to_block(&mut self) {
+    pub fn strip_to_block(&mut self, block_id: &BlockId) {
         let block = if let StorageOrBlock::Storage(storage) = self {
-            let block_id = storage
-                .get_block_refs()
-                .iter()
-                .next()
-                .expect("expected at least one block in storage")
-                .clone();
             storage
                 .read_blocks()
-                .get(&block_id)
+                .get(block_id)
                 .expect("block absent from its own storage")
                 .clone()
         } else {

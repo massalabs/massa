@@ -41,8 +41,8 @@ impl ConsensusState {
                         < latest_final_period.saturating_sub(self.config.force_keep_final_periods)
                         && !self.active_index_without_ops.contains(a_block)
                     {
+                        storage_or_block.strip_to_block(a_block);
                         self.active_index_without_ops.insert(*a_block);
-                        storage_or_block.strip_to_block();
                         // reset the list of descendants
                         active_block.descendants = Default::default();
                     }
