@@ -346,7 +346,7 @@ impl ExecutionState {
         let op_max_spending = operation.get_max_spending(self.config.roll_price);
         let creator_balance = context
             .get_balance(&sender_addr)
-            .unwrap_or_else(|| Amount::zero());
+            .unwrap_or_else(Amount::zero);
         context.creator_min_balance = match creator_balance.checked_sub(op_max_spending) {
             Some(v) => Some(v),
             None => {
@@ -480,7 +480,7 @@ impl ExecutionState {
                 if let Some(creator_min_balance) = &context.creator_min_balance {
                     let creator_balance = context
                         .get_balance(&sender_addr)
-                        .unwrap_or_else(|| Amount::zero());
+                        .unwrap_or_else(Amount::zero);
                     if &creator_balance < creator_min_balance {
                         execution_result = Err(ExecutionError::RuntimeError(format!(
                             "at the end of the execution of the operation, the sender {} was expected to have at least {} coins according to the operation's max spending, but has only {}.",
