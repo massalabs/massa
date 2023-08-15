@@ -319,7 +319,7 @@
             fitness: <span class="self">self</span>.block.get_fitness(),
         };
 
-        <span class="prelude-val">Ok</span>((active_block, StorageOrBlock::Block(<span class="self">self</span>.block)))
+        <span class="prelude-val">Ok</span>((active_block, StorageOrBlock::Block(Box::new(<span class="self">self</span>.block))))
     }
 }
 

@@ -416,8 +416,8 @@
                         &lt; latest_final_period.saturating_sub(<span class="self">self</span>.config.force_keep_final_periods)
                         &amp;&amp; !<span class="self">self</span>.active_index_without_ops.contains(a_block)
                     {
+                        storage_or_block.strip_to_block(a_block);
                         <span class="self">self</span>.active_index_without_ops.insert(<span class="kw-2">*</span>a_block);
-                        storage_or_block.strip_to_block();
                         <span class="comment">// reset the list of descendants
                         </span>active_block.descendants = Default::default();
                     }

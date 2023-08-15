@@ -582,9 +582,9 @@
             <span class="kw">let </span>notify_finals: HashMap&lt;Slot, BlockId&gt; = write_shared_state
                 .get_all_final_blocks()
                 .into_iter()
-                .map(|(b_id, block_infos)| {
-                    block_storage.insert(b_id, block_infos.<span class="number">1</span>);
-                    (block_infos.<span class="number">0</span>, b_id)
+                .map(|(b_id, (b_slot, b_storage))| {
+                    block_storage.insert(b_id, b_storage);
+                    (b_slot, b_id)
                 })
                 .collect();
             <span class="kw">let </span>notify_blockclique: HashMap&lt;Slot, BlockId&gt; = write_shared_state

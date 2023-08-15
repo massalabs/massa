@@ -794,6 +794,8 @@
 <a href="#794" id="794">794</a>
 <a href="#795" id="795">795</a>
 <a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -1404,7 +1406,9 @@
                         storage_or_block: StorageOrBlock::Storage(storage),
                         ..
                     }) =&gt; storage,
-                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;final block not found in active blocks&quot;</span>),
+                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(
+                        <span class="string">&quot;final block not found in active blocks and/or its operations are missing&quot;
+                    </span>),
                 };
                 <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, storage.clone()))
             })
@@ -1430,7 +1434,7 @@
                             a_block,
                             storage_or_block: StorageOrBlock::Storage(storage),
                         }) =&gt; (a_block.slot, storage),
-                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;blockclique block not found in active blocks&quot;</span>),
+                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;blockclique block not found in active blocks and/or its operations are missing&quot;</span>),
                     };
                     new_blocks_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
                     (<span class="kw-2">*</span>b_id, slot)
