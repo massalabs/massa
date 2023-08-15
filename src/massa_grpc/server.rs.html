@@ -341,6 +341,10 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_bootstrap::white_black_list::SharedWhiteBlackList;
@@ -352,7 +356,7 @@
 <span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 
-<span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
+<span class="kw">use </span><span class="kw">crate</span>::config::{GrpcConfig, ServiceName};
 <span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span>futures_util::FutureExt;
 <span class="kw">use </span>hyper::service::Service;
@@ -361,10 +365,10 @@
 <span class="kw">use </span>massa_execution_exports::{ExecutionChannels, ExecutionController};
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
-<span class="kw">use </span>massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
+<span class="kw">use </span>massa_proto_rs::massa::api::v1::{FILE_DESCRIPTOR_SET_PRIVATE, FILE_DESCRIPTOR_SET_PUBLIC};
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolController};
 <span class="kw">use </span>massa_sdk::cert_manager::{gen_cert_for_ca, gen_signed_cert};
 <span class="kw">use </span>massa_storage::Storage;
@@ -577,8 +581,12 @@
     }
 
     <span class="kw">let </span>reflection_service_opt = <span class="kw">if </span>config.enable_reflection {
+        <span class="kw">let </span>file_descriptor_set = <span class="kw">match </span>config.name {
+            ServiceName::Public =&gt; FILE_DESCRIPTOR_SET_PUBLIC,
+            ServiceName::Private =&gt; FILE_DESCRIPTOR_SET_PRIVATE,
+        };
         <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
-            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+            .register_encoded_file_descriptor_set(file_descriptor_set)
             .build()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Some</span>(reflection_service)

@@ -493,17 +493,6 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     io::Read,
@@ -940,21 +929,11 @@
                     default(Duration::from_secs(<span class="number">2</span>)) =&gt; {
                         <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
 
-                        </span><span class="kw">let </span>listener = {
-                            <span class="kw">let </span><span class="kw-2">mut </span>peers_in_test = peers_in_test.write();
-
-                            <span class="kw">let </span>res = db.read().get_oldest_peer(
-                                protocol_config.test_oldest_peer_cooldown.into(),
-                                <span class="kw-2">&amp;</span>peers_in_test,
-                            );
-                            <span class="kw">if let </span><span class="prelude-val">Some</span>(listener) = res {
-                                peers_in_test.insert(listener);
-                                listener
-                            } <span class="kw">else </span>{
-                                <span class="kw">continue</span>;
-                            }
+                        </span><span class="kw">let </span><span class="prelude-val">Some</span>(listener) = db.read().get_oldest_peer(protocol_config.test_oldest_peer_cooldown.into()) <span class="kw">else </span>{
+                            <span class="kw">continue</span>;
                         };
 
+                        peers_in_test.write().insert(listener);
                         {
                             <span class="kw">let </span><span class="kw-2">mut </span>db = db.write();
                             db.tested_addresses.insert(listener, MassaTime::now().unwrap());
@@ -964,7 +943,6 @@
                         <span class="comment">// we try to connect to all peer listener (For now we have only one listener)
                         </span><span class="kw">let </span>ip_canonical = listener.ip().to_canonical();
                         <span class="kw">if </span>active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| addr.ip().to_canonical() == ip_canonical) {
-                            peers_in_test.write().remove(<span class="kw-2">&amp;</span>listener);
                             <span class="kw">continue</span>;
                         }
                         <span class="comment">//Don&#39;t test our local addresses
