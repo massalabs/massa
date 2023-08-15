@@ -15,10 +15,10 @@ use crate::stats::ExecutionStatsCounter;
 use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionChannels, ExecutionConfig, ExecutionError,
-    ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
-    SlotExecutionOutput,
+    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
+    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
+    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 use massa_final_state::FinalState;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -42,7 +42,6 @@ use massa_module_cache::config::ModuleCacheConfig;
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, VMError};
-use massa_storage::Storage;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
@@ -1059,7 +1058,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, parents) if there is a block a that slot, otherwise None
+    /// * `exec_target`: metadata of the block to execute, if not miss
     /// * `selector`: Reference to the selector
     ///
     /// # Returns
@@ -1067,7 +1066,7 @@ impl ExecutionState {
     pub fn execute_slot(
         &self,
         slot: &Slot,
-        exec_target: Option<&(BlockId, Storage)>,
+        exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
     ) -> ExecutionOutput {
         // Create a new execution context for the whole active slot
@@ -1100,7 +1099,12 @@ impl ExecutionState {
         let mut block_info: Option<ExecutedBlockInfo> = None;
 
         // Check if there is a block at this slot
-        if let Some((block_id, block_store)) = exec_target {
+        if let Some((block_id, block_metadata)) = exec_target {
+            let block_store = block_metadata
+                .storage
+                .as_ref()
+                .expect("Cannot execute a block for which the storage is missing");
+
             // Retrieve the block from storage
             let stored_block = block_store
                 .read_blocks()
@@ -1132,29 +1136,17 @@ impl ExecutionState {
             debug!("executing {} operations at slot {}", operations.len(), slot);
 
             // gather all available endorsement creators and target blocks
-            let (endorsement_creators, endorsement_targets): &(Vec<Address>, Vec<BlockId>) =
-                &stored_block
-                    .content
-                    .header
-                    .content
-                    .endorsements
-                    .iter()
-                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
-                    .unzip();
-
-            // deduce endorsement target block creators
-            let endorsement_target_creators = {
-                let blocks = block_store.read_blocks();
-                endorsement_targets
-                    .iter()
-                    .map(|b_id| {
-                        blocks
-                            .get(b_id)
-                            .expect("endorsed block absent from storage")
-                            .content_creator_address
-                    })
-                    .collect::<Vec<_>>()
-            };
+            let endorsement_creators: Vec<Address> = stored_block
+                .content
+                .header
+                .content
+                .endorsements
+                .iter()
+                .map(|endo| endo.content_creator_address)
+                .collect();
+            let endorsement_target_creator = block_metadata
+                .same_thread_parent_creator
+                .expect("same thread parent creator missing");
 
             // Set remaining block gas
             let mut remaining_block_gas = self.config.max_gas_per_block;
@@ -1206,14 +1198,11 @@ impl ExecutionState {
             let block_credit_part = block_credits
                 .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
                 .expect("critical: block_credits checked_div factor is 0");
-            for (endorsement_creator, endorsement_target_creator) in endorsement_creators
-                .iter()
-                .zip(endorsement_target_creators.into_iter())
-            {
+            for endorsement_creator in endorsement_creators {
                 // credit creator of the endorsement with coins
                 match context.transfer_coins(
                     None,
-                    Some(*endorsement_creator),
+                    Some(endorsement_creator),
                     block_credit_part,
                     false,
                 ) {
@@ -1291,7 +1280,7 @@ impl ExecutionState {
     pub fn execute_candidate_slot(
         &mut self,
         slot: &Slot,
-        exec_target: Option<&(BlockId, Storage)>,
+        exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);
@@ -1331,7 +1320,7 @@ impl ExecutionState {
     pub fn execute_final_slot(
         &mut self,
         slot: &Slot,
-        exec_target: Option<&(BlockId, Storage)>,
+        exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
     ) {
         let target_id = exec_target.as_ref().map(|(b_id, _)| *b_id);

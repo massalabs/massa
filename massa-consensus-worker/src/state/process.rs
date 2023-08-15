@@ -7,6 +7,7 @@ use massa_consensus_exports::{
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
 };
+use massa_execution_exports::ExecutionBlockMetadata;
 use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
@@ -278,6 +279,7 @@ impl ConsensusState {
                                             is_final: false,
                                             slot: infos.slot,
                                             fitness: infos.fitness,
+                                            same_thread_parent_creator: None, // added below in add_block_to_graph
                                         }),
                                         storage_or_block: StorageOrBlock::Storage(infos.storage),
                                     })
@@ -596,23 +598,27 @@ impl ConsensusState {
     fn notify_execution(&mut self, finalized_blocks: HashMap<Slot, BlockId>) {
         // List new block storage instances that Execution doesn't know about.
         // That's blocks that have not been sent to execution before, ie. in the previous blockclique).
-        let mut new_blocks_storage: PreHashMap<BlockId, Storage> = finalized_blocks
+        let mut new_blocks_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = finalized_blocks
             .iter()
             .filter_map(|(_slot, b_id)| {
                 if self.prev_blockclique.contains_key(b_id) {
                     // was previously sent as a blockclique element
                     return None;
                 }
-                let storage = match self.blocks_state.get(b_id) {
+                let metadata = match self.blocks_state.get(b_id) {
                     Some(BlockStatus::Active {
+                        a_block,
                         storage_or_block: StorageOrBlock::Storage(storage),
                         ..
-                    }) => storage,
+                    }) => ExecutionBlockMetadata {
+                        same_thread_parent_creator: a_block.same_thread_parent_creator.clone(),
+                        storage: Some(storage.clone()),
+                    },
                     _ => panic!(
                         "final block not found in active blocks and/or its operations are missing"
                     ),
                 };
-                Some((*b_id, storage.clone()))
+                Some((*b_id, metadata))
             })
             .collect();
 
@@ -631,15 +637,15 @@ impl ConsensusState {
                     // The block was not present in the previous blockclique:
                     // the blockclique has changed => get the block's slot by querying Storage.
                     blockclique_changed = true;
-                    let (slot, storage) = match self.blocks_state.get(b_id) {
+                    let (a_block, storage) = match self.blocks_state.get(b_id) {
                         Some(BlockStatus::Active {
                             a_block,
                             storage_or_block: StorageOrBlock::Storage(storage),
-                        }) => (a_block.slot, storage),
+                        }) => (a_block, storage),
                         _ => panic!("blockclique block not found in active blocks and/or its operations are missing"),
                     };
-                    new_blocks_storage.insert(*b_id, storage.clone());
-                    (*b_id, slot)
+                    new_blocks_metadata.insert(*b_id, ExecutionBlockMetadata { same_thread_parent_creator: a_block.same_thread_parent_creator, storage: Some(storage.clone()) });
+                    (*b_id, a_block.slot)
                 }
             })
             .collect();
@@ -668,7 +674,7 @@ impl ConsensusState {
                 } else {
                     None
                 },
-                new_blocks_storage,
+                new_blocks_metadata,
             );
     }
 

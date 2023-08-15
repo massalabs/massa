@@ -33,7 +33,27 @@ impl ConsensusState {
             }
         }
 
-        // add as descendant to ancestors. Note: descendants are never removed.
+        // add same-thread creator parent
+        let same_thread_parent_creator =
+            parents_hash
+                .get(add_block_slot.thread as usize)
+                .and_then(|parent_id| {
+                    if let Some(BlockStatus::Active { a_block, .. }) =
+                        self.blocks_state.get(parent_id)
+                    {
+                        Some(a_block.creator_address)
+                    } else {
+                        None
+                    }
+                });
+        if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get_mut(&add_block_id)
+        {
+            a_block.same_thread_parent_creator = same_thread_parent_creator;
+        } else {
+            panic!("block status should be active");
+        };
+
+        // add as descendant to ancestors if not final
         let mut ancestors: VecDeque<BlockId> = parents_hash.iter().copied().collect();
         let mut visited = PreHashSet::<BlockId>::default();
         while let Some(ancestor_h) = ancestors.pop_back() {
@@ -43,6 +63,9 @@ impl ConsensusState {
             if let Some(BlockStatus::Active { a_block: ab, .. }) =
                 self.blocks_state.get_mut(&ancestor_h)
             {
+                if ab.is_final {
+                    continue;
+                }
                 ab.descendants.insert(add_block_id);
                 for (ancestor_parent_h, _) in ab.parents.iter() {
                     ancestors.push_front(*ancestor_parent_h);

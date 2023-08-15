@@ -10,8 +10,8 @@ mod tests {
     use massa_async_pool::AsyncMessage;
     use massa_db_exports::DBBatch;
     use massa_execution_exports::{
-        ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError,
-        ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+        ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
+        ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
     };
     use massa_hash::Hash;
     use massa_metrics::MassaMetrics;
@@ -215,6 +215,12 @@ mod tests {
         manager.stop();
     }
 
+    /// generate a random address
+    fn get_random_address() -> Address {
+        let kp = KeyPair::generate(0).unwrap();
+        Address::from_public_key(&kp.get_public_key())
+    }
+
     /// Feeds the execution worker with genesis blocks to start it
     fn init_execution_worker(
         config: &ExecutionConfig,
@@ -222,20 +228,27 @@ mod tests {
         execution_controller: Box<dyn ExecutionController>,
     ) {
         let genesis_keypair = KeyPair::generate(0).unwrap();
+        let genesis_addr = Address::from_public_key(&genesis_keypair.get_public_key());
         let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
-        let mut block_storage: PreHashMap<BlockId, Storage> = PreHashMap::default();
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = PreHashMap::default();
         for thread in 0..config.thread_count {
             let slot = Slot::new(0, thread);
             let final_block = create_block(genesis_keypair.clone(), vec![], vec![], slot).unwrap();
             finalized_blocks.insert(slot, final_block.id);
             let mut final_block_storage = storage.clone_without_refs();
             final_block_storage.store_block(final_block.clone());
-            block_storage.insert(final_block.id, final_block_storage);
+            block_metadata.insert(
+                final_block.id,
+                ExecutionBlockMetadata {
+                    same_thread_parent_creator: Some(genesis_addr),
+                    storage: Some(final_block_storage),
+                },
+            );
         }
         execution_controller.update_blockclique_status(
             finalized_blocks,
             Some(Default::default()),
-            block_storage,
+            block_metadata,
         );
     }
 
@@ -319,12 +332,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage.clone()),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks.clone(),
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
 
         std::thread::sleep(Duration::from_millis(100));
@@ -388,12 +407,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage.clone()),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(100));
         // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
@@ -487,12 +512,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                storage: Some(storage.clone()),
+                same_thread_parent_creator: Some(get_random_address()),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks.clone(),
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
 
         std::thread::sleep(Duration::from_millis(100));
@@ -534,12 +565,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(100));
         // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
@@ -648,12 +685,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         // sleep for 150ms to reach the message execution period
         std::thread::sleep(Duration::from_millis(150));
@@ -767,12 +810,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         // sleep for 150ms to reach the message execution period
         std::thread::sleep(Duration::from_millis(150));
@@ -879,12 +928,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         // sleep for 100ms to wait for execution
         std::thread::sleep(Duration::from_millis(100));
@@ -1006,12 +1061,18 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         // sleep for 100ms to wait for execution
         std::thread::sleep(Duration::from_millis(100));
@@ -1129,13 +1190,19 @@ mod tests {
         // set our block as a final block so the message is sent
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage.clone()),
+            },
+        );
         blockclique_blocks.insert(block.content.header.content.slot, block.id);
         controller.update_blockclique_status(
             finalized_blocks.clone(),
             Some(blockclique_blocks.clone()),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         // sleep for 10ms to reach the message execution period
         std::thread::sleep(Duration::from_millis(10));
@@ -1165,10 +1232,20 @@ mod tests {
 
         // set our block as a final block so the message is sent
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage.clone()),
+            },
+        );
         blockclique_blocks.insert(block.content.header.content.slot, block.id);
-        controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks.clone(),
+            None,
+            block_metadata.clone(),
+        );
         // sleep for 10ms to reach the message execution period
         std::thread::sleep(Duration::from_millis(10));
 
@@ -1196,10 +1273,20 @@ mod tests {
 
         // set our block as a final block so the message is sent
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         blockclique_blocks.insert(block.content.header.content.slot, block.id);
-        controller.update_blockclique_status(finalized_blocks.clone(), None, block_storage.clone());
+        controller.update_blockclique_status(
+            finalized_blocks.clone(),
+            None,
+            block_metadata.clone(),
+        );
         // sleep for 1000ms to reach the message execution period
         std::thread::sleep(Duration::from_millis(1000));
 
@@ -1295,12 +1382,18 @@ mod tests {
         // set our block as a final block so the transaction is processed
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(10));
         // check recipient balance
@@ -1400,12 +1493,18 @@ mod tests {
         // set our block as a final block so the transaction is processed
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(100));
 
@@ -1518,12 +1617,18 @@ mod tests {
         // set our block as a final block so the purchase is processed
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(100));
 
@@ -1621,12 +1726,18 @@ mod tests {
         // set our block as a final block so the purchase is processed
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(100));
         // check roll count of the buyer address and its balance
@@ -1768,12 +1879,18 @@ mod tests {
         // set the block as final so the sell and credits are processed
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(1000));
 
@@ -1966,12 +2083,18 @@ mod tests {
         // set the block as final so the sell and credits are processed
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(1000));
 
@@ -2148,12 +2271,18 @@ mod tests {
         // set the block as final so the sell and credits are processed
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(1000));
 
@@ -2277,12 +2406,18 @@ mod tests {
         // set our block as a final block
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(100));
 
@@ -2374,12 +2509,18 @@ mod tests {
         // set our block as a final block
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Some(Default::default()),
-            block_storage,
+            block_metadata,
         );
         std::thread::sleep(Duration::from_millis(100));
 
@@ -2469,12 +2610,18 @@ mod tests {
         // set our block as a final block
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(10));
 
@@ -2562,7 +2709,15 @@ mod tests {
         // set our block as a final block
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+        let block_store = vec![(
+            block.id,
+            ExecutionBlockMetadata {
+                storage: Some(storage.clone()),
+                same_thread_parent_creator: Some(get_random_address()),
+            },
+        )]
+        .into_iter()
+        .collect();
         controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
         std::thread::sleep(
             exec_cfg
@@ -2689,7 +2844,7 @@ mod tests {
         // initialize the execution system with genesis blocks
         init_execution_worker(&exec_cfg, &storage, controller.clone());
 
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
         let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
 
         // create blockclique block at slot (1,1)
@@ -2711,13 +2866,19 @@ mod tests {
             let mut blockclique_block_storage = storage.clone_without_refs();
             blockclique_block_storage.store_block(blockclique_block.clone());
             blockclique_block_storage.store_operations(vec![operation]);
-            block_storage.insert(blockclique_block.id, blockclique_block_storage);
+            block_metadata.insert(
+                blockclique_block.id,
+                ExecutionBlockMetadata {
+                    storage: Some(blockclique_block_storage),
+                    same_thread_parent_creator: Some(get_random_address()),
+                },
+            );
         }
         // notify execution about blockclique change
         controller.update_blockclique_status(
             Default::default(),
             Some(blockclique_blocks.clone()),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(1000));
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
@@ -2743,13 +2904,19 @@ mod tests {
             let mut blockclique_block_storage = storage.clone_without_refs();
             blockclique_block_storage.store_block(blockclique_block.clone());
             blockclique_block_storage.store_operations(vec![operation]);
-            block_storage.insert(blockclique_block.id, blockclique_block_storage);
+            block_metadata.insert(
+                blockclique_block.id,
+                ExecutionBlockMetadata {
+                    storage: Some(blockclique_block_storage),
+                    same_thread_parent_creator: Some(get_random_address()),
+                },
+            );
         }
         // notify execution about blockclique change
         controller.update_blockclique_status(
             Default::default(),
             Some(blockclique_blocks.clone()),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(1000));
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
@@ -2842,7 +3009,15 @@ mod tests {
         // set our block as a final block
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+        let block_store = vec![(
+            block.id,
+            ExecutionBlockMetadata {
+                storage: Some(storage.clone()),
+                same_thread_parent_creator: Some(get_random_address()),
+            },
+        )]
+        .into_iter()
+        .collect();
 
         // update blockclique
         controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
@@ -2981,12 +3156,18 @@ mod tests {
         // set our block as a final block
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
-        block_storage.insert(block.id, storage.clone());
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(get_random_address()),
+                storage: Some(storage),
+            },
+        );
         controller.update_blockclique_status(
             finalized_blocks,
             Default::default(),
-            block_storage.clone(),
+            block_metadata.clone(),
         );
         std::thread::sleep(Duration::from_millis(10));
 
@@ -3089,7 +3270,15 @@ mod tests {
         // set our block as a final block
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
-        let block_store = vec![(block.id, storage.clone())].into_iter().collect();
+        let block_store = vec![(
+            block.id,
+            ExecutionBlockMetadata {
+                storage: Some(storage.clone()),
+                same_thread_parent_creator: Some(get_random_address()),
+            },
+        )]
+        .into_iter()
+        .collect();
         controller.update_blockclique_status(finalized_blocks, Default::default(), block_store);
         std::thread::sleep(
             exec_cfg

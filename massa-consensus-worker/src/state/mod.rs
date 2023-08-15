@@ -9,6 +9,7 @@ use massa_consensus_exports::{
     error::ConsensusError,
     ConsensusChannels, ConsensusConfig,
 };
+use massa_execution_exports::ExecutionBlockMetadata;
 use massa_metrics::MassaMetrics;
 use massa_models::{
     active_block::ActiveBlock,
@@ -449,19 +450,27 @@ impl ConsensusState {
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    pub fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, Storage)> {
+    pub fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, ExecutionBlockMetadata)> {
         self.blocks_state
             .active_blocks()
             .iter()
             .filter_map(|b_id| {
                 if let Some(BlockStatus::Active {
                     a_block,
-                    storage_or_block: StorageOrBlock::Storage(storage),
-                }) = self.blocks_state.get(b_id)
+                    storage_or_block,
+                }) = self.blocks_state.get(b_id) && a_block.is_final
                 {
-                    if a_block.is_final {
-                        return Some((*b_id, (a_block.slot, storage.clone())));
+                    if !a_block.is_final {
+                        return None;
                     }
+                    let storage = match storage_or_block {
+                        StorageOrBlock::Storage(storage) => Some(storage.clone()),
+                        _ => None,
+                    };
+                    return Some((*b_id, (a_block.slot, ExecutionBlockMetadata {
+                        same_thread_parent_creator: a_block.same_thread_parent_creator.clone(),
+                        storage,
+                    })));
                 }
                 None
             })

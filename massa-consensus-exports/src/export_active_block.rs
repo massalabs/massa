@@ -59,6 +59,7 @@ impl ExportActiveBlock {
             is_final: self.is_final,
             slot: self.block.content.header.content.slot,
             fitness: self.block.get_fitness(),
+            same_thread_parent_creator: None, // will be computed once the full graph is available
         };
 
         Ok((active_block, StorageOrBlock::Block(Box::new(self.block))))

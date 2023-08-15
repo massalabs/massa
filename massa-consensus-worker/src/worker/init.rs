@@ -5,6 +5,7 @@ use massa_consensus_exports::{
     error::ConsensusError,
     ConsensusConfig,
 };
+use massa_execution_exports::ExecutionBlockMetadata;
 use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
@@ -119,6 +120,7 @@ impl ConsensusWorker {
                         block_id: block.id,
                         slot: block.content.header.content.slot,
                         fitness: block.get_fitness(),
+                        same_thread_parent_creator: None,
                     }),
                     storage_or_block: StorageOrBlock::Storage(storage),
                 },
@@ -260,12 +262,13 @@ impl ConsensusWorker {
         // because the two modules run concurrently and out of sync.
         {
             let mut write_shared_state = res_consensus.shared_state.write();
-            let mut block_storage: PreHashMap<BlockId, Storage> = Default::default();
+            let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> =
+                Default::default();
             let notify_finals: HashMap<Slot, BlockId> = write_shared_state
                 .get_all_final_blocks()
                 .into_iter()
-                .map(|(b_id, (b_slot, b_storage))| {
-                    block_storage.insert(b_id, b_storage);
+                .map(|(b_id, (b_slot, b_metadata))| {
+                    block_metadata.insert(b_id, b_metadata);
                     (b_slot, b_id)
                 })
                 .collect();
@@ -273,14 +276,21 @@ impl ConsensusWorker {
                 .get_blockclique()
                 .iter()
                 .map(|b_id| {
-                    let (a_block, StorageOrBlock::Storage(storage)) = write_shared_state
+                    let (a_block, storage_or_block) = write_shared_state
                         .get_full_active_block(b_id)
-                        .expect("active block missing from block_db") else {
-                        panic!("active block inconsistent in block_db");
+                        .expect("active block missing from block_db");
+                    let storage = match storage_or_block {
+                        StorageOrBlock::Storage(storage) => Some(storage.clone()),
+                        _ => None,
                     };
-                    let slot = a_block.slot;
-                    block_storage.insert(*b_id, storage.clone());
-                    (slot, *b_id)
+                    block_metadata.insert(
+                        *b_id,
+                        ExecutionBlockMetadata {
+                            same_thread_parent_creator: a_block.same_thread_parent_creator.clone(),
+                            storage,
+                        },
+                    );
+                    (a_block.slot, *b_id)
                 })
                 .collect();
             write_shared_state.prev_blockclique =
@@ -288,7 +298,7 @@ impl ConsensusWorker {
             write_shared_state
                 .channels
                 .execution_controller
-                .update_blockclique_status(notify_finals, Some(notify_blockclique), block_storage);
+                .update_blockclique_status(notify_finals, Some(notify_blockclique), block_metadata);
         }
 
         Ok(res_consensus)
@@ -311,6 +321,7 @@ impl ConsensusWorker {
             .collect();
 
         for (b_id, (b_slot, b_parents)) in active_blocks_map.into_iter() {
+            // update aprenthood relationships
             write_shared_state.insert_parents_descendants(b_id, b_slot, b_parents);
         }
         Ok(())

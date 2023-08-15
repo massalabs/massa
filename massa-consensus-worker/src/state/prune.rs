@@ -61,22 +61,6 @@ impl ConsensusState {
             .copied()
             .collect();
         for discard_active_h in to_remove {
-            let block_slot;
-            let block_creator;
-            let block_parents;
-            {
-                let read_blocks = self.storage.read_blocks();
-                let block = read_blocks.get(&discard_active_h).ok_or_else(|| {
-                    ConsensusError::MissingBlock(format!(
-                        "missing block when removing unused final active blocks: {}",
-                        discard_active_h
-                    ))
-                })?;
-                block_slot = block.content.header.content.slot;
-                block_creator = block.content_creator_address;
-                block_parents = block.content.header.content.parents.clone();
-            };
-
             let sequence_number = self.blocks_state.sequence_counter();
             self.blocks_state.transition_map(&discard_active_h, |block_status, block_statuses| {
                 if let Some(
@@ -98,6 +82,9 @@ impl ConsensusState {
                     }
 
                     massa_trace!("consensus.block_graph.prune_active", {"hash": discard_active_h, "reason": DiscardReason::Final});
+                    let block_slot = discarded_active.slot;
+                    let block_creator = discarded_active.creator_address;
+                    let block_parents = discarded_active.parents.iter().map(|(p, _)| *p).collect();
                     discarded_finals.insert(discard_active_h, *discarded_active);
 
                     // mark as final

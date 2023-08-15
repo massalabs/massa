@@ -2,7 +2,9 @@
 
 //! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-use crate::types::{ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest};
+use crate::types::{
+    ExecutionBlockMetadata, ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest,
+};
 use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
@@ -15,7 +17,6 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashMap;
 use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
-use massa_storage::Storage;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
@@ -27,12 +28,12 @@ pub trait ExecutionController: Send + Sync {
     /// # Arguments
     /// * `finalized_blocks`: newly finalized blocks indexed by slot.
     /// * `blockclique`: new blockclique (if changed). Indexed by slot.
-    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
+    /// * `block_metadata`: storage instances and metadata for new blocks. Each storage owns refs to the block and its ops/endorsements.
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, BlockId>,
         new_blockclique: Option<HashMap<Slot, BlockId>>,
-        block_storage: PreHashMap<BlockId, Storage>,
+        block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     );
 
     /// Atomically query the execution state with multiple requests

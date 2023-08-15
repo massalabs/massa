@@ -24,7 +24,7 @@ massa_signature = {workspace = true}
 massa_time = {workspace = true}
 massa_hash = {workspace = true}
 massa_logging = {workspace = true}
-massa_execution_exports = {workspace = true, "optional" = true}
+massa_execution_exports = {workspace = true}
 massa_protocol_exports = {workspace = true, "optional" = true}
 massa_pos_worker = {workspace = true, "optional" = true}
 massa_pos_exports = {workspace = true, "optional" = true}

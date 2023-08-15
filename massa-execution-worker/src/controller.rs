@@ -7,10 +7,10 @@ use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
 use massa_channel::MassaChannel;
 use massa_execution_exports::{
-    ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
-    ExecutionQueryError, ExecutionQueryExecutionStatus, ExecutionQueryRequest,
-    ExecutionQueryRequestItem, ExecutionQueryResponse, ExecutionQueryResponseItem,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionConfig, ExecutionController,
+    ExecutionError, ExecutionManager, ExecutionQueryError, ExecutionQueryExecutionStatus,
+    ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
+    ExecutionQueryResponseItem, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
@@ -19,7 +19,6 @@ use massa_models::prehash::PreHashMap;
 use massa_models::stats::ExecutionStats;
 use massa_models::{address::Address, amount::Amount, operation::OperationId};
 use massa_models::{block_id::BlockId, slot::Slot};
-use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Display;
@@ -35,7 +34,7 @@ pub(crate) struct ExecutionInputData {
     /// new blockclique (if there is a new one)
     pub new_blockclique: Option<HashMap<Slot, BlockId>>,
     /// storage instances for previously unprocessed blocks
-    pub block_storage: PreHashMap<BlockId, Storage>,
+    pub block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ReadOnlyExecutionOutput>,
 }
@@ -44,7 +43,7 @@ impl Display for ExecutionInputData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}",
+            "stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}, storage={:?}",
             self.stop,
             self.finalized_blocks
                 .iter()
@@ -54,7 +53,8 @@ impl Display for ExecutionInputData {
                 .iter()
                 .map(|(slot, id)| (*slot, *id))
                 .collect::<BTreeMap<Slot, BlockId>>()),
-            self.readonly_requests
+            self.readonly_requests,
+            self.block_metadata.keys().collect::<Vec<&BlockId>>(),
         )
     }
 }
@@ -66,7 +66,7 @@ impl ExecutionInputData {
             stop: Default::default(),
             finalized_blocks: Default::default(),
             new_blockclique: Default::default(),
-            block_storage: Default::default(),
+            block_metadata: Default::default(),
             readonly_requests: RequestQueue::new(config.max_final_events),
         }
     }
@@ -79,7 +79,7 @@ impl ExecutionInputData {
             stop: std::mem::take(&mut self.stop),
             finalized_blocks: std::mem::take(&mut self.finalized_blocks),
             new_blockclique: std::mem::take(&mut self.new_blockclique),
-            block_storage: std::mem::take(&mut self.block_storage),
+            block_metadata: std::mem::take(&mut self.block_metadata),
             readonly_requests: std::mem::replace(
                 &mut self.readonly_requests,
                 RequestQueue::new(max_final_events),
@@ -104,18 +104,18 @@ impl ExecutionController for ExecutionControllerImpl {
     /// # Arguments
     /// * `finalized_blocks`: newly finalized blocks indexed by slot.
     /// * `blockclique`: new blockclique (if changed). Indexed by slot.
-    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
+    /// * `block_metadata`: storage instances and metadata for new blocks. Each storage owns refs to the block and its ops/endorsements.
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, BlockId>,
         new_blockclique: Option<HashMap<Slot, BlockId>>,
-        block_storage: PreHashMap<BlockId, Storage>,
+        block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     ) {
         // lock input data
         let mut input_data = self.input_data.1.lock();
 
         // extend block info
-        input_data.block_storage.extend(block_storage);
+        input_data.block_metadata.extend(block_metadata);
 
         // extend finalized blocks
         input_data.finalized_blocks.extend(finalized_blocks);

@@ -4,8 +4,8 @@
 
 use crate::types::{ExecutionQueryRequest, ExecutionQueryResponse};
 use crate::{
-    ExecutionAddressInfo, ExecutionController, ExecutionError, ReadOnlyExecutionOutput,
-    ReadOnlyExecutionRequest,
+    ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionController, ExecutionError,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_ledger_exports::LedgerEntry;
 use massa_models::denunciation::DenunciationIndex;
@@ -20,7 +20,6 @@ use massa_models::{
     slot::Slot,
     stats::ExecutionStats,
 };
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::Mutex;
 use std::{
@@ -46,7 +45,7 @@ pub enum MockExecutionControllerMessage {
         /// blockclique change
         new_blockclique: Option<HashMap<Slot, BlockId>>,
         /// block storage
-        block_storage: PreHashMap<BlockId, Storage>,
+        block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     },
     /// filter for smart contract output event request
     GetFilteredScOutputEvent {
@@ -138,14 +137,14 @@ impl ExecutionController for MockExecutionController {
         &self,
         finalized_blocks: HashMap<Slot, BlockId>,
         new_blockclique: Option<HashMap<Slot, BlockId>>,
-        block_storage: PreHashMap<BlockId, Storage>,
+        block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     ) {
         self.0
             .lock()
             .send(MockExecutionControllerMessage::UpdateBlockcliqueStatus {
                 finalized_blocks,
                 new_blockclique,
-                block_storage,
+                block_metadata,
             })
             .unwrap();
     }
