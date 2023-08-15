@@ -796,6 +796,12 @@
 <a href="#796" id="796">796</a>
 <a href="#797" id="797">797</a>
 <a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{BTreeSet, HashMap, VecDeque},
     mem,
@@ -805,6 +811,7 @@
     block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
 };
+<span class="kw">use </span>massa_execution_exports::ExecutionBlockMetadata;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -1076,7 +1083,8 @@
                                             is_final: <span class="bool-val">false</span>,
                                             slot: infos.slot,
                                             fitness: infos.fitness,
-                                        }),
+                                            same_thread_parent_creator: <span class="prelude-val">None</span>, <span class="comment">// added below in add_block_to_graph
+                                        </span>}),
                                         storage_or_block: StorageOrBlock::Storage(infos.storage),
                                     })
                                 }
@@ -1394,23 +1402,27 @@
     </span><span class="kw">fn </span>notify_execution(<span class="kw-2">&amp;mut </span><span class="self">self</span>, finalized_blocks: HashMap&lt;Slot, BlockId&gt;) {
         <span class="comment">// List new block storage instances that Execution doesn&#39;t know about.
         // That&#39;s blocks that have not been sent to execution before, ie. in the previous blockclique).
-        </span><span class="kw">let </span><span class="kw-2">mut </span>new_blocks_storage: PreHashMap&lt;BlockId, Storage&gt; = finalized_blocks
+        </span><span class="kw">let </span><span class="kw-2">mut </span>new_blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt; = finalized_blocks
             .iter()
             .filter_map(|(_slot, b_id)| {
                 <span class="kw">if </span><span class="self">self</span>.prev_blockclique.contains_key(b_id) {
                     <span class="comment">// was previously sent as a blockclique element
                     </span><span class="kw">return </span><span class="prelude-val">None</span>;
                 }
-                <span class="kw">let </span>storage = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
+                <span class="kw">let </span>metadata = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active {
+                        a_block,
                         storage_or_block: StorageOrBlock::Storage(storage),
                         ..
-                    }) =&gt; storage,
+                    }) =&gt; ExecutionBlockMetadata {
+                        same_thread_parent_creator: a_block.same_thread_parent_creator,
+                        storage: <span class="prelude-val">Some</span>(storage.clone()),
+                    },
                     <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(
                         <span class="string">&quot;final block not found in active blocks and/or its operations are missing&quot;
                     </span>),
                 };
-                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, storage.clone()))
+                <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, metadata))
             })
             .collect();
 
@@ -1429,15 +1441,15 @@
                     <span class="comment">// The block was not present in the previous blockclique:
                     // the blockclique has changed =&gt; get the block&#39;s slot by querying Storage.
                     </span>blockclique_changed = <span class="bool-val">true</span>;
-                    <span class="kw">let </span>(slot, storage) = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
+                    <span class="kw">let </span>(a_block, storage) = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
                         <span class="prelude-val">Some</span>(BlockStatus::Active {
                             a_block,
                             storage_or_block: StorageOrBlock::Storage(storage),
-                        }) =&gt; (a_block.slot, storage),
+                        }) =&gt; (a_block, storage),
                         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;blockclique block not found in active blocks and/or its operations are missing&quot;</span>),
                     };
-                    new_blocks_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
-                    (<span class="kw-2">*</span>b_id, slot)
+                    new_blocks_metadata.insert(<span class="kw-2">*</span>b_id, ExecutionBlockMetadata { same_thread_parent_creator: a_block.same_thread_parent_creator, storage: <span class="prelude-val">Some</span>(storage.clone()) });
+                    (<span class="kw-2">*</span>b_id, a_block.slot)
                 }
             })
             .collect();
@@ -1466,7 +1478,7 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>},
-                new_blocks_storage,
+                new_blocks_metadata,
             );
     }
 

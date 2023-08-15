@@ -256,6 +256,7 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{block_status::StorageOrBlock, error::ConsensusError};
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -317,7 +318,8 @@
             </span>is_final: <span class="self">self</span>.is_final,
             slot: <span class="self">self</span>.block.content.header.content.slot,
             fitness: <span class="self">self</span>.block.get_fitness(),
-        };
+            same_thread_parent_creator: <span class="prelude-val">None</span>, <span class="comment">// will be computed once the full graph is available
+        </span>};
 
         <span class="prelude-val">Ok</span>((active_block, StorageOrBlock::Block(Box::new(<span class="self">self</span>.block))))
     }
