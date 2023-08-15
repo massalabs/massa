@@ -468,7 +468,7 @@ impl ConsensusState {
                         _ => None,
                     };
                     return Some((*b_id, (a_block.slot, ExecutionBlockMetadata {
-                        same_thread_parent_creator: a_block.same_thread_parent_creator.clone(),
+                        same_thread_parent_creator: a_block.same_thread_parent_creator,
                         storage,
                     })));
                 }

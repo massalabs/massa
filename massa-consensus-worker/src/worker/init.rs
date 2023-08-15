@@ -286,7 +286,7 @@ impl ConsensusWorker {
                     block_metadata.insert(
                         *b_id,
                         ExecutionBlockMetadata {
-                            same_thread_parent_creator: a_block.same_thread_parent_creator.clone(),
+                            same_thread_parent_creator: a_block.same_thread_parent_creator,
                             storage,
                         },
                     );
