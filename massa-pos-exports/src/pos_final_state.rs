@@ -1610,10 +1610,143 @@ impl PoSFinalState {
 
 #[cfg(test)]
 mod tests {
-
+    use super::*;
     use std::collections::HashMap;
 
-    use super::*;
+    // This test checks that the initial deferred credits are loaded correctly
+    #[test]
+    fn test_initial_deferred_credits_loading() {
+        use crate::test_exports::MockSelectorController;
+        use crate::PoSFinalState;
+        use massa_db_exports::{MassaDBConfig, MassaDBController};
+        use massa_db_worker::MassaDB;
+        use massa_models::config::constants::{
+            MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+            POS_SAVED_CYCLES,
+        };
+        use parking_lot::RwLock;
+        use std::str::FromStr;
+        use std::sync::Arc;
+
+        let initial_deferred_credits_file = tempfile::NamedTempFile::new()
+            .expect("could not create temporary initial deferred credits file");
+
+        // write down some deferred credits
+        let deferred_credits_file_contents = "{
+            \"AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa\": [
+                {
+                    \"slot\": {\"period\": 3, \"thread\": 0},
+                    \"amount\": \"5.01\"
+                },
+                {
+                    \"slot\": {\"period\": 4, \"thread\": 1},
+                    \"amount\": \"6.0\"
+                }
+            ],
+            \"AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53\": [
+                {
+                    \"slot\": {\"period\": 3, \"thread\": 0},
+                    \"amount\": \"2.01\"
+                }
+            ]
+        }";
+        std::fs::write(
+            initial_deferred_credits_file.path(),
+            deferred_credits_file_contents.as_bytes(),
+        )
+        .expect("failed writing initial deferred credits file");
+
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: Some(initial_deferred_credits_file.path().to_path_buf()),
+        };
+
+        // initialize the database and pos_state
+        let tempdir = tempfile::TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_new_elements: 100,
+            thread_count: 2,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let (selector_controller, _) = MockSelectorController::new_with_receiver();
+        let init_seed = Hash::compute_from(b"");
+        let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
+
+        let deferred_credits_deserializer =
+            DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
+        let cycle_info_deserializer = CycleHistoryDeserializer::new(
+            pos_config.cycle_history_length as u64,
+            pos_config.max_rolls_length,
+            pos_config.max_production_stats_length,
+        );
+
+        let mut pos_state = PoSFinalState {
+            config: pos_config,
+            db: db.clone(),
+            cycle_history_cache: Default::default(),
+            rng_seed_cache: None,
+            selector: selector_controller,
+            initial_rolls: Default::default(),
+            initial_seeds,
+            deferred_credits_serializer: DeferredCreditsSerializer::new(),
+            deferred_credits_deserializer,
+            cycle_info_serializer: CycleHistorySerializer::new(),
+            cycle_info_deserializer,
+        };
+
+        // load initial deferred credits
+        pos_state
+            .load_initial_deferred_credits()
+            .expect("error while loading initial deferred credits");
+
+        let deferred_credits = pos_state.get_deferred_credits().credits;
+
+        let expected_credits = vec![
+            (
+                Slot::new(3, 0),
+                vec![
+                    (
+                        Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa")
+                            .unwrap(),
+                        Amount::from_str("5.01").unwrap(),
+                    ),
+                    (
+                        Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53")
+                            .unwrap(),
+                        Amount::from_str("2.01").unwrap(),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            (
+                Slot::new(4, 1),
+                vec![(
+                    Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa")
+                        .unwrap(),
+                    Amount::from_str("6.0").unwrap(),
+                )]
+                .into_iter()
+                .collect(),
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        assert_eq!(
+            deferred_credits, expected_credits,
+            "deferred credits not loaded correctly"
+        );
+    }
 
     // This test checks that the recompute_pos_cache function recovers every cycle and does return correctly.
     // The test example is chosen so that the keys for the cycles are not in the same order than the cycles.
