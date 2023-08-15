@@ -199,9 +199,6 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::amount::Amount;
@@ -277,13 +274,15 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Check vesting minimal balance for given address
-    ///
+    <span class="doccomment">/// Gets the minimal coin balance this address is allowed to have given the vesting scheme.
+    /// Takes into account rolls, deferred credits etc...
     /// * `addr` sender address
-    </span><span class="kw">pub fn </span>check_vesting_coins(
+    /// * `balance` sender balance
+    </span><span class="kw">pub fn </span>check_coin_vesting(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span>ExecutionContext,
         addr: <span class="kw-2">&amp;</span>Address,
+        balance: Amount,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// For the case of user sending coins to itself :
         // That implies spending the coins first, then receiving them.
@@ -292,43 +291,38 @@
             </span>.get_addr_vesting_at_slot(addr, context.slot)
             .min_balance
         {
-            <span class="kw">let </span>balance = context.get_balance(addr).unwrap_or_default();
+            <span class="kw">let </span>slot_cycle = context.slot.get_cycle(<span class="self">self</span>.periods_per_cycle);
 
-            <span class="kw">let </span>vec = context.get_address_cycle_infos(addr, <span class="self">self</span>.periods_per_cycle);
-            <span class="kw">let </span><span class="prelude-val">Some</span>(exec_info) = vec.last() <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(
-                    <span class="string">&quot;can not get address info cycle for {}&quot;</span>,
-                    addr
-                )));
-            };
+            <span class="kw">let </span>rolls_value = context
+                .get_address_cycle_infos(addr, <span class="self">self</span>.periods_per_cycle)
+                .into_iter()
+                .find_map(|nfo| {
+                    <span class="kw">if </span>nfo.cycle == slot_cycle {
+                        <span class="prelude-val">Some</span>(
+                            <span class="self">self</span>.roll_price
+                                .saturating_mul_u64(nfo.active_rolls.unwrap_or_default()),
+                        )
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
+                })
+                .unwrap_or_else(Amount::zero);
 
-            <span class="kw">let </span>rolls_value = exec_info
-                .active_rolls
-                .map(|rolls| <span class="self">self</span>.roll_price.saturating_mul_u64(rolls))
-                .unwrap_or(Amount::zero());
-
-            <span class="kw">let </span>deferred_map = context.get_address_deferred_credits(addr, context.slot);
-
-            <span class="kw">let </span>deferred_credits = <span class="kw">if </span>deferred_map.is_empty() {
-                Amount::zero()
-            } <span class="kw">else </span>{
-                deferred_map
-                    .into_values()
-                    .reduce(|acc, amount| acc.saturating_add(amount))
-                    .ok_or(ExecutionError::RuntimeError(
-                        <span class="string">&quot;Overflow in deferred credits&quot;</span>.to_string(),
-                    ))<span class="question-mark">?
-            </span>};
+            <span class="kw">let </span>deferred_credits_value = context
+                .get_address_deferred_credits(addr, context.slot)
+                .into_values()
+                .reduce(|acc, amount| acc.saturating_add(amount))
+                .unwrap_or_else(Amount::zero);
 
             <span class="comment">// min_balance = (rolls * roll_price) + balance + deferred_credits
-            </span><span class="kw">let </span>total_coin_balance = balance
+            </span><span class="kw">let </span>total_coin_value = balance
                 .saturating_add(rolls_value)
-                .saturating_add(deferred_credits);
+                .saturating_add(deferred_credits_value);
 
-            <span class="kw">if </span>total_coin_balance &lt; vesting_min_balance {
+            <span class="kw">if </span>total_coin_value &lt; vesting_min_balance {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::VestingError(<span class="macro">format!</span>(
                     <span class="string">&quot;total coin value {} fell under the minimal vesting value {}&quot;</span>,
-                    total_coin_balance, vesting_min_balance
+                    total_coin_value, vesting_min_balance
                 )));
             }
         }

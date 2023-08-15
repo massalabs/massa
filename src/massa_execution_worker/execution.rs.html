@@ -1918,6 +1918,15 @@
 <a href="#1918" id="1918">1918</a>
 <a href="#1919" id="1919">1919</a>
 <a href="#1920" id="1920">1920</a>
+<a href="#1921" id="1921">1921</a>
+<a href="#1922" id="1922">1922</a>
+<a href="#1923" id="1923">1923</a>
+<a href="#1924" id="1924">1924</a>
+<a href="#1925" id="1925">1925</a>
+<a href="#1926" id="1926">1926</a>
+<a href="#1927" id="1927">1927</a>
+<a href="#1928" id="1928">1928</a>
+<a href="#1929" id="1929">1929</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2260,28 +2269,33 @@
             ));
         }
 
-        <span class="comment">// Compute the minimal amount of coins the sender is allowed to have after the execution of this op.
-        // If there are less than `max_spending` enough coins on the sender&#39;s balance, the op is not executed.
-        // This is because it is the block producer&#39;s responsibility to ensure that `max_spending` is respected.
-        </span><span class="kw">let </span>op_max_spending = operation.get_max_spending(<span class="self">self</span>.config.roll_price);
-        <span class="kw">let </span>creator_balance = context
+        <span class="comment">// Compute the minimal amount of coins the sender is allowed to have after the execution of this op based on `op.max_spending`.
+        // Note that the max spending might exceed the sender&#39;s balance.
+        </span><span class="kw">let </span>creator_initial_balance = context
             .get_balance(<span class="kw-2">&amp;</span>sender_addr)
             .unwrap_or_else(Amount::zero);
-        context.creator_min_balance = <span class="kw">match </span>creator_balance.checked_sub(op_max_spending) {
-            <span class="prelude-val">Some</span>(v) =&gt; <span class="prelude-val">Some</span>(v),
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="kw">let </span>error = <span class="macro">format!</span>(
-                    <span class="string">&quot;Operation {} cannot be executed: sender {} needs at least {} coins but has {}.&quot;</span>,
-                    operation_id, sender_addr, op_max_spending, creator_balance
-                );
-                <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
-                context.event_emit(event);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));
-            }
-        };
+        context.creator_min_balance = <span class="prelude-val">Some</span>(
+            creator_initial_balance
+                .saturating_sub(operation.get_max_spending(<span class="self">self</span>.config.roll_price)),
+        );
 
         <span class="comment">// enable spending tracker to list all addresses that spend coins
         </span>context.start_spending_tracker();
+
+        <span class="comment">// check that the sender account can pay the fee given its vesting schedule
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.vesting_manager.check_coin_vesting(
+            <span class="kw-2">&amp;</span>context,
+            <span class="kw-2">&amp;</span>sender_addr,
+            creator_initial_balance.saturating_sub(operation.content.fee),
+        ) {
+            <span class="kw">let </span>error = <span class="macro">format!</span>(
+                <span class="string">&quot;cannot pay the operation fee {} given sender&#39;s coin vesting limits: {}&quot;</span>,
+                operation.content.fee, err
+            );
+            <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
+            context.event_emit(event);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));
+        }
 
         <span class="comment">// debit the fee from the operation sender
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
@@ -2411,10 +2425,14 @@
 
                 <span class="comment">// check that the vesting limits were respected by all spending addresses
                 </span><span class="kw">for </span>spending_addr <span class="kw">in </span>spending_addresses {
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-                        </span>.vesting_manager
-                        .check_vesting_coins(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;</span>spending_addr)
-                    {
+                    <span class="kw">let </span>spending_addr_balance = context
+                        .get_balance(<span class="kw-2">&amp;</span>spending_addr)
+                        .unwrap_or_else(Amount::zero);
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.vesting_manager.check_coin_vesting(
+                        <span class="kw-2">&amp;</span>context,
+                        <span class="kw-2">&amp;</span>spending_addr,
+                        spending_addr_balance,
+                    ) {
                         execution_result = <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                             <span class="string">&quot;address {} did not respect its coin vesting limits: {}&quot;</span>,
                             spending_addr, err
