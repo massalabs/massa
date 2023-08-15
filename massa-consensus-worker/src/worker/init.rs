@@ -1,6 +1,8 @@
 use massa_channel::receiver::MassaReceiver;
 use massa_consensus_exports::{
-    block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
+    block_status::{BlockStatus, StorageOrBlock},
+    bootstrapable_graph::BootstrapableGraph,
+    error::ConsensusError,
     ConsensusConfig,
 };
 use massa_hash::Hash;
@@ -118,7 +120,7 @@ impl ConsensusWorker {
                         slot: block.content.header.content.slot,
                         fitness: block.get_fitness(),
                     }),
-                    storage,
+                    storage_or_block: StorageOrBlock::Storage(storage),
                 },
             );
         }
@@ -199,9 +201,9 @@ impl ConsensusWorker {
         // with already produced blocks received from the bootstrap.
         if let Some(BootstrapableGraph { final_blocks }) = init_graph {
             // load final blocks
-            let final_blocks: Vec<(ActiveBlock, Storage)> = final_blocks
+            let final_blocks: Vec<(ActiveBlock, StorageOrBlock)> = final_blocks
                 .into_iter()
-                .map(|export_b| export_b.to_active_block(&storage, config.thread_count))
+                .map(|export_b| export_b.to_active_block(config.thread_count))
                 .collect::<Result<_, ConsensusError>>()?;
 
             // compute latest_final_blocks_periods
@@ -220,13 +222,13 @@ impl ConsensusWorker {
                 write_shared_state.genesis_hashes = genesis_block_ids;
                 write_shared_state.best_parents = latest_final_blocks_periods.clone();
                 write_shared_state.latest_final_blocks_periods = latest_final_blocks_periods;
-                for (b, s) in final_blocks {
+                for (b, storage_or_block) in final_blocks {
                     write_shared_state.blocks_state.transition_map(
                         &(b.block_id.clone()),
                         |_, _| {
                             Some(BlockStatus::Active {
                                 a_block: Box::new(b),
-                                storage: s,
+                                storage_or_block,
                             })
                         },
                     );
@@ -271,9 +273,11 @@ impl ConsensusWorker {
                 .get_blockclique()
                 .iter()
                 .map(|b_id| {
-                    let (a_block, storage) = write_shared_state
+                    let (a_block, StorageOrBlock::Storage(storage)) = write_shared_state
                         .get_full_active_block(b_id)
-                        .expect("active block missing from block_db");
+                        .expect("active block missing from block_db") else {
+                        panic!("active block inconsistent in block_db");
+                    };
                     let slot = a_block.slot;
                     block_storage.insert(*b_id, storage.clone());
                     (slot, *b_id)
@@ -293,27 +297,6 @@ impl ConsensusWorker {
     /// Internal function used at initialization of the `ConsensusWorker` to link blocks with their parents
     fn claim_parent_refs(&mut self) -> Result<(), ConsensusError> {
         let mut write_shared_state = self.shared_state.write();
-        for (_b_id, block_status) in write_shared_state.blocks_state.iter_mut() {
-            if let BlockStatus::Active {
-                a_block,
-                storage: block_storage,
-            } = block_status
-            {
-                // claim parent refs
-                let n_claimed_parents = block_storage
-                    .claim_block_refs(&a_block.parents.iter().map(|(p_id, _)| *p_id).collect())
-                    .len();
-
-                if !a_block.is_final {
-                    // note: parents of final blocks will be missing, that's ok, but it shouldn't be the case for non-finals
-                    if n_claimed_parents != self.config.thread_count as usize {
-                        return Err(ConsensusError::MissingBlock(
-                            "block storage could not claim refs to all parent blocks".into(),
-                        ));
-                    }
-                }
-            }
-        }
 
         // list active block parents
         let active_blocks_map: PreHashMap<BlockId, (Slot, Vec<BlockId>)> = write_shared_state

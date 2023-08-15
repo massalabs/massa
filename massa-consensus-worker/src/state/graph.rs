@@ -64,7 +64,7 @@ impl ConsensusState {
             let mut sum_hash = num::BigInt::default();
             for block_h in clique.block_ids.iter() {
                 let fitness = match self.blocks_state.get(block_h) {
-                    Some(BlockStatus::Active { a_block, storage: _ }) => a_block.fitness,
+                    Some(BlockStatus::Active { a_block, .. }) => a_block.fitness,
                     _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h))),
                 };
                 clique.fitness = clique
@@ -108,7 +108,7 @@ impl ConsensusState {
         self.blocks_state.transition_map(block_id, |block_status, block_statuses| {
         if let Some(BlockStatus::Active {
             a_block: active_block,
-            storage: _storage,
+            ..
         }) = block_status
         {
             if active_block.is_final {
@@ -216,10 +216,7 @@ impl ConsensusState {
             let loc_candidates = final_candidates.clone();
             for candidate_h in loc_candidates.into_iter() {
                 let descendants = match self.blocks_state.get(&candidate_h) {
-                    Some(BlockStatus::Active {
-                        a_block,
-                        storage: _,
-                    }) => &a_block.descendants,
+                    Some(BlockStatus::Active { a_block, .. }) => &a_block.descendants,
                     _ => {
                         return Err(ConsensusError::MissingBlock(format!(
                             "missing block when computing total fitness of descendants: {}",

@@ -169,11 +169,6 @@ impl BlocksState {
         self.block_statuses.iter()
     }
 
-    /// Get a mutable iterator over all the blocks stored in the `BlocksState`
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&BlockId, &mut BlockStatus)> + '_ {
-        self.block_statuses.iter_mut()
-    }
-
     /// Get the number of blocks stored in the `BlocksState`
     pub fn len(&self) -> usize {
         self.block_statuses.len()

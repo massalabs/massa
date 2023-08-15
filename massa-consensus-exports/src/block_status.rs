@@ -1,6 +1,11 @@
 use massa_models::{
-    active_block::ActiveBlock, address::Address, block::Block, block_header::SecuredHeader,
-    block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    active_block::ActiveBlock,
+    address::Address,
+    block::{Block, SecureShareBlock},
+    block_header::SecuredHeader,
+    block_id::BlockId,
+    prehash::PreHashSet,
+    slot::Slot,
 };
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
@@ -58,6 +63,55 @@ impl From<&BlockStatus> for BlockStatusId {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum StorageOrBlock {
+    Storage(Storage),
+    Block(SecureShareBlock),
+}
+
+impl StorageOrBlock {
+    /// Return a clone of the underlying block
+    pub fn clone_block(&self) -> SecureShareBlock {
+        match self {
+            StorageOrBlock::Storage(storage) => {
+                let block_id = storage
+                    .get_block_refs()
+                    .iter()
+                    .next()
+                    .expect("expected at least one block in storage")
+                    .clone();
+                storage
+                    .read_blocks()
+                    .get(&block_id)
+                    .expect("block absent from its own storage")
+                    .clone()
+            }
+            StorageOrBlock::Block(block) => block.clone(),
+        }
+    }
+
+    /// Convert any StorageOrBlock variant into a StorageOrBlock::Block variant.
+    /// This effectively drops the operations of the block.
+    pub fn strip_to_block(&mut self) {
+        let block = if let StorageOrBlock::Storage(storage) = self {
+            let block_id = storage
+                .get_block_refs()
+                .iter()
+                .next()
+                .expect("expected at least one block in storage")
+                .clone();
+            storage
+                .read_blocks()
+                .get(&block_id)
+                .expect("block absent from its own storage")
+                .clone()
+        } else {
+            return;
+        };
+        *self = StorageOrBlock::Block(block);
+    }
+}
+
 /// Enum used in `BlockGraph`'s state machine
 #[derive(Debug, Clone)]
 pub enum BlockStatus {
@@ -79,7 +133,7 @@ pub enum BlockStatus {
     /// The block was checked and included in the blockgraph
     Active {
         a_block: Box<ActiveBlock>,
-        storage: Storage,
+        storage_or_block: StorageOrBlock,
     },
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {

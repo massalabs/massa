@@ -4,7 +4,7 @@ use std::{
 };
 
 use massa_consensus_exports::{
-    block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
+    block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
@@ -289,7 +289,7 @@ impl ConsensusState {
                                             slot: infos.slot,
                                             fitness: infos.fitness,
                                         }),
-                                        storage: infos.storage,
+                                        storage_or_block: StorageOrBlock::Storage(infos.storage),
                                     })
                                 }
                                 Some(BlockCheckOutcome::BlockStatus(status)) => Some(status),
@@ -379,7 +379,11 @@ impl ConsensusState {
         };
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active { storage, .. }) = self.blocks_state.get(&block_id) {
+        if let Some(BlockStatus::Active {
+            storage_or_block: StorageOrBlock::Storage(storage),
+            ..
+        }) = self.blocks_state.get(&block_id)
+        {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
@@ -522,7 +526,7 @@ impl ConsensusState {
             // if its period is higher than the current best_parent in that thread
             for block_h in blockclique.block_ids.iter() {
                 let b_slot = match self.blocks_state.get(block_h) {
-                    Some(BlockStatus::Active { a_block, storage: _ }) => a_block.slot,
+                    Some(BlockStatus::Active { a_block, .. }) => a_block.slot,
                     _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h))),
                 };
                 if b_slot.period > self.best_parents[b_slot.thread as usize].1 {
@@ -611,8 +615,8 @@ impl ConsensusState {
                 }
                 let storage = match self.blocks_state.get(b_id) {
                     Some(BlockStatus::Active {
-                        a_block: _,
-                        storage,
+                        storage_or_block: StorageOrBlock::Storage(storage),
+                        ..
                     }) => storage,
                     _ => panic!("final block not found in active blocks"),
                 };
@@ -636,7 +640,10 @@ impl ConsensusState {
                     // the blockclique has changed => get the block's slot by querying Storage.
                     blockclique_changed = true;
                     let (slot, storage) = match self.blocks_state.get(b_id) {
-                        Some(BlockStatus::Active { a_block, storage }) => (a_block.slot, storage),
+                        Some(BlockStatus::Active {
+                            a_block,
+                            storage_or_block: StorageOrBlock::Storage(storage),
+                        }) => (a_block.slot, storage),
                         _ => panic!("blockclique block not found in active blocks"),
                     };
                     new_blocks_storage.insert(*b_id, storage.clone());
@@ -717,11 +724,7 @@ impl ConsensusState {
             let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
             let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
             for b_id in finalized_blocks {
-                if let Some(BlockStatus::Active {
-                    a_block,
-                    storage: _,
-                }) = self.blocks_state.get(&b_id)
-                {
+                if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get(&b_id) {
                     // add to final blocks to notify execution
                     final_block_slots.insert(a_block.slot, b_id);
 

@@ -26,7 +26,7 @@ impl ConsensusState {
         for a_block in self.blocks_state.active_blocks().clone().iter() {
             if let Some(BlockStatus::Active {
                 a_block: active_block,
-                storage,
+                storage_or_block,
             }) = self.blocks_state.get_mut(a_block)
             {
                 let (_b_id, latest_final_period) =
@@ -42,7 +42,9 @@ impl ConsensusState {
                         && !self.active_index_without_ops.contains(a_block)
                     {
                         self.active_index_without_ops.insert(*a_block);
-                        storage.drop_operation_refs(&storage.get_op_refs().clone());
+                        storage_or_block.strip_to_block();
+                        // reset the list of descendants
+                        active_block.descendants = Default::default();
                     }
                 } else {
                     self.active_index_without_ops.remove(a_block);

@@ -5,7 +5,7 @@ use std::{
 
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport,
-    block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock},
+    block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
     ConsensusChannels, ConsensusConfig,
 };
@@ -94,9 +94,15 @@ pub struct ConsensusState {
 
 impl ConsensusState {
     /// Get a full active block
-    pub fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
+    pub fn get_full_active_block(
+        &self,
+        block_id: &BlockId,
+    ) -> Option<(&ActiveBlock, &StorageOrBlock)> {
         match self.blocks_state.get(block_id) {
-            Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),
+            Some(BlockStatus::Active {
+                a_block,
+                storage_or_block,
+            }) => Some((a_block.as_ref(), storage_or_block)),
             _ => None,
         }
     }
@@ -107,7 +113,7 @@ impl ConsensusState {
     fn try_get_full_active_block(
         &self,
         block_id: &BlockId,
-    ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {
+    ) -> Result<(&ActiveBlock, &StorageOrBlock), ConsensusError> {
         self.get_full_active_block(block_id).ok_or_else(|| {
             ConsensusError::ContainerInconsistency(format!("block {} is missing", block_id))
         })
@@ -164,10 +170,7 @@ impl ConsensusState {
         self.get_blockclique()
             .iter()
             .for_each(|id| match self.blocks_state.get(id) {
-                Some(BlockStatus::Active {
-                    a_block,
-                    storage: _,
-                }) => {
+                Some(BlockStatus::Active { a_block, .. }) => {
                     if a_block.is_final {
                         panic!(
                             "unexpected final block on getting latest blockclique block at slot"
@@ -413,19 +416,15 @@ impl ConsensusState {
                             .insert(*hash, (reason.clone(), (*slot, *creator, parents.clone())));
                     }
                 }
-                BlockStatus::Active { a_block, storage } => {
+                BlockStatus::Active {
+                    a_block,
+                    storage_or_block,
+                } => {
                     if filter(&a_block.slot) {
-                        let stored_block =
-                            storage.read_blocks().get(hash).cloned().ok_or_else(|| {
-                                ConsensusError::MissingBlock(format!(
-                                    "missing block in BlockGraphExport::extract_from: {}",
-                                    hash
-                                ))
-                            })?;
                         export.active_blocks.insert(
                             *hash,
                             ExportCompiledBlock {
-                                header: stored_block.content.header,
+                                header: storage_or_block.clone_block().content.header,
                                 children: a_block
                                     .children
                                     .iter()
@@ -453,14 +452,17 @@ impl ConsensusState {
         self.blocks_state
             .active_blocks()
             .iter()
-            .map(|b_id| {
-                let block_infos = match self.blocks_state.get(b_id) {
-                    Some(BlockStatus::Active { a_block, storage }) => {
-                        (a_block.slot, storage.clone())
+            .filter_map(|b_id| {
+                if let Some(BlockStatus::Active {
+                    a_block,
+                    storage_or_block: StorageOrBlock::Storage(storage),
+                }) = self.blocks_state.get(b_id)
+                {
+                    if a_block.is_final {
+                        return Some((*b_id, (a_block.slot, storage.clone())));
                     }
-                    _ => panic!("active block missing"),
-                };
-                (*b_id, block_infos)
+                }
+                None
             })
             .collect()
     }
