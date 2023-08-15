@@ -210,6 +210,8 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -260,22 +262,24 @@
             <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(req_content) =&gt; {
                     <span class="kw">let </span><span class="prelude-val">Some</span>(proto_block) = req_content.block <span class="kw">else </span>{
-                            report_error(
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                <span class="string">&quot;the request payload is empty&quot;</span>.to_owned(),
-                            ).<span class="kw">await</span>;
-                            <span class="kw">continue</span>;
-                        };
+                        report_error(
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            <span class="string">&quot;the request payload is empty&quot;</span>.to_owned(),
+                        )
+                        .<span class="kw">await</span>;
+                        <span class="kw">continue</span>;
+                    };
 
                     <span class="kw">let </span><span class="prelude-val">Ok</span>(blk_serialized) = secure_share_to_vec(proto_block) <span class="kw">else </span>{
-                            report_error(
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                <span class="string">&quot;failed to convert block secure share&quot;</span>.to_owned(),
-                            ).<span class="kw">await</span>;
-                            <span class="kw">continue</span>;
-                        };
+                        report_error(
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            <span class="string">&quot;failed to convert block secure share&quot;</span>.to_owned(),
+                        )
+                        .<span class="kw">await</span>;
+                        <span class="kw">continue</span>;
+                    };
 
                     <span class="comment">// Create a block deserializer arguments
                     </span><span class="kw">let </span>args = BlockDeserializerArgs {

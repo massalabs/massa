@@ -667,6 +667,18 @@
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
 <a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -889,7 +901,10 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, key)) = <span class="self">self</span>.key_deserializer_db.deserialize::&lt;DeserializeError&gt;(serialized_key) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, key)) = <span class="self">self
+            </span>.key_deserializer_db
+            .deserialize::&lt;DeserializeError&gt;(serialized_key)
+        <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>!rest.is_empty() {
@@ -898,7 +913,10 @@
 
         <span class="kw">match </span>key.key_type {
             KeyType::VERSION =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _version)) = <span class="self">self</span>.version_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _version)) = <span class="self">self
+                    </span>.version_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -906,7 +924,10 @@
                 }
             }
             KeyType::BALANCE =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _amount)) = <span class="self">self</span>.amount_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _amount)) = <span class="self">self
+                    </span>.amount_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -914,7 +935,10 @@
                 }
             }
             KeyType::BYTECODE =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _bytecode)) = <span class="self">self</span>.bytecode_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _bytecode)) = <span class="self">self
+                    </span>.bytecode_deserializer
+                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
+                <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {

@@ -1113,12 +1113,6 @@
 <a href="#1113" id="1113">1113</a>
 <a href="#1114" id="1114">1114</a>
 <a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1148,6 +1142,7 @@
 <span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
+<span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_models::{
     address::Address,
@@ -1193,6 +1188,9 @@
 
     <span class="doccomment">/// counter of newly created events so far during this execution
     </span><span class="kw">pub </span>created_event_index: u64,
+
+    <span class="doccomment">/// counter of async messages emitted so far in this execution
+    </span><span class="kw">pub </span>created_message_index: u64,
 
     <span class="doccomment">/// address call stack, most recent is at the back
     </span><span class="kw">pub </span>stack: Vec&lt;ExecutionStackElement&gt;,
@@ -1243,8 +1241,8 @@
     <span class="doccomment">/// max gas for this execution
     </span><span class="kw">pub </span>max_gas: u64,
 
-    <span class="doccomment">/// coin spending allowance for the operation creator
-    </span><span class="kw">pub </span>creator_coin_spending_allowance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
+    <span class="doccomment">/// minimal balance allowed for the creator of the operation after its execution
+    </span><span class="kw">pub </span>creator_min_balance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
 
     <span class="doccomment">/// slot at which the execution happens
     </span><span class="kw">pub </span>slot: Slot,
@@ -1338,7 +1336,7 @@
                 active_history,
             ),
             max_gas: Default::default(),
-            creator_coin_spending_allowance: Default::default(),
+            creator_min_balance: Default::default(),
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -1358,6 +1356,17 @@
         }
     }
 
+    <span class="doccomment">/// Enables and resets the tracker that lists all addresses that spend coins.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>start_spending_tracker(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.speculative_ledger.start_spending_tracker()
+    }
+
+    <span class="doccomment">/// Takes the result of the spending tracker listing all addresses that have spent coins since it was enabled.
+    /// Disables and resets the spending tracker.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_spending_tracker(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;PreHashSet&lt;Address&gt;&gt; {
+        <span class="self">self</span>.speculative_ledger.take_spending_tracker()
+    }
+
     <span class="doccomment">/// Returns a snapshot containing the clone of the current execution state.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionContextSnapshot {
@@ -1369,6 +1378,7 @@
             executed_denunciations: <span class="self">self</span>.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: <span class="self">self</span>.created_addr_index,
             created_event_index: <span class="self">self</span>.created_event_index,
+            created_message_index: <span class="self">self</span>.created_message_index,
             stack: <span class="self">self</span>.stack.clone(),
             events: <span class="self">self</span>.events.clone(),
             unsafe_rng: <span class="self">self</span>.unsafe_rng.clone(),
@@ -1396,6 +1406,7 @@
             .reset_to_snapshot(snapshot.executed_denunciations);
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
         <span class="self">self</span>.created_event_index = snapshot.created_event_index;
+        <span class="self">self</span>.created_message_index = snapshot.created_message_index;
         <span class="self">self</span>.stack = snapshot.stack;
         <span class="self">self</span>.unsafe_rng = snapshot.unsafe_rng;
 
@@ -1821,34 +1832,11 @@
                     }
                 }
             }
-            <span class="comment">// control vesting min_balance for sender address
-            </span><span class="self">self</span>.vesting_manager
-                .check_vesting_transfer_coins(<span class="self">self</span>, from_addr, amount)<span class="question-mark">?</span>;
         }
-
-        <span class="comment">// check remaining sender allowance
-        </span><span class="kw">let </span>sender_allowance = {
-            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(op_creator_allowance), <span class="prelude-val">Some</span>(op_creator_addr)) = (<span class="kw-2">&amp;mut </span><span class="self">self</span>.creator_coin_spending_allowance, <span class="self">self</span>.creator_address) &amp;&amp; from_addr == <span class="prelude-val">Some</span>(op_creator_addr) {
-                <span class="kw">if </span>amount &gt; <span class="kw-2">*</span>op_creator_allowance {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed transfer of {} coins from spending address {} due to limited allowance&quot;</span>, amount, op_creator_addr)));
-                }
-                <span class="prelude-val">Some</span>(op_creator_allowance)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        };
 
         <span class="comment">// do the transfer
-        </span><span class="kw">let </span>result = <span class="self">self
-            </span>.speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount);
-
-        <span class="comment">// update allowance
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(allowance) = sender_allowance &amp;&amp; result.is_ok() {
-            <span class="kw-2">*</span>allowance = allowance.saturating_sub(amount);
-        }
-
-        result
+        </span><span class="self">self</span>.speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount)
     }
 
     <span class="doccomment">/// Add a new asynchronous message to speculative pool

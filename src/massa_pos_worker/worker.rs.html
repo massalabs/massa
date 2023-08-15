@@ -162,6 +162,7 @@
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::controller::SelectorControllerImpl;
@@ -277,7 +278,8 @@
                 cycle,
                 lookback_rolls,
                 lookback_seed,
-            }) = <span class="self">self</span>.input_mpsc.recv() <span class="kw">else </span>{
+            }) = <span class="self">self</span>.input_mpsc.recv()
+            <span class="kw">else </span>{
                 <span class="kw">break</span>;
             };
 

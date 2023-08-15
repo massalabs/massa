@@ -1867,6 +1867,57 @@
 <a href="#1867" id="1867">1867</a>
 <a href="#1868" id="1868">1868</a>
 <a href="#1869" id="1869">1869</a>
+<a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
+<a href="#1895" id="1895">1895</a>
+<a href="#1896" id="1896">1896</a>
+<a href="#1897" id="1897">1897</a>
+<a href="#1898" id="1898">1898</a>
+<a href="#1899" id="1899">1899</a>
+<a href="#1900" id="1900">1900</a>
+<a href="#1901" id="1901">1901</a>
+<a href="#1902" id="1902">1902</a>
+<a href="#1903" id="1903">1903</a>
+<a href="#1904" id="1904">1904</a>
+<a href="#1905" id="1905">1905</a>
+<a href="#1906" id="1906">1906</a>
+<a href="#1907" id="1907">1907</a>
+<a href="#1908" id="1908">1908</a>
+<a href="#1909" id="1909">1909</a>
+<a href="#1910" id="1910">1910</a>
+<a href="#1911" id="1911">1911</a>
+<a href="#1912" id="1912">1912</a>
+<a href="#1913" id="1913">1913</a>
+<a href="#1914" id="1914">1914</a>
+<a href="#1915" id="1915">1915</a>
+<a href="#1916" id="1916">1916</a>
+<a href="#1917" id="1917">1917</a>
+<a href="#1918" id="1918">1918</a>
+<a href="#1919" id="1919">1919</a>
+<a href="#1920" id="1920">1920</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2192,7 +2243,6 @@
     /// # Arguments
     /// * `operation`: operation to be schedule
     /// * `sender_addr`: sender address for the operation (for fee transfer)
-
     </span><span class="kw">fn </span>prepare_operation_for_execution(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>SecureShareOperation,
@@ -2210,13 +2260,30 @@
             ));
         }
 
-        <span class="comment">// Set the creator coin spending allowance.
-        // Note that this needs to be initialized before any spending from the creator.
-        </span>context.creator_coin_spending_allowance =
-            <span class="prelude-val">Some</span>(operation.get_max_spending(<span class="self">self</span>.config.roll_price));
+        <span class="comment">// Compute the minimal amount of coins the sender is allowed to have after the execution of this op.
+        // If there are less than `max_spending` enough coins on the sender&#39;s balance, the op is not executed.
+        // This is because it is the block producer&#39;s responsibility to ensure that `max_spending` is respected.
+        </span><span class="kw">let </span>op_max_spending = operation.get_max_spending(<span class="self">self</span>.config.roll_price);
+        <span class="kw">let </span>creator_balance = context
+            .get_balance(<span class="kw-2">&amp;</span>sender_addr)
+            .unwrap_or_else(|| Amount::zero());
+        context.creator_min_balance = <span class="kw">match </span>creator_balance.checked_sub(op_max_spending) {
+            <span class="prelude-val">Some</span>(v) =&gt; <span class="prelude-val">Some</span>(v),
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">let </span>error = <span class="macro">format!</span>(
+                    <span class="string">&quot;Operation {} cannot be executed: sender {} needs at least {} coins but has {}.&quot;</span>,
+                    operation_id, sender_addr, op_max_spending, creator_balance
+                );
+                <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
+                context.event_emit(event);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));
+            }
+        };
+
+        <span class="comment">// enable spending tracker to list all addresses that spend coins
+        </span>context.start_spending_tracker();
 
         <span class="comment">// debit the fee from the operation sender
-        // fail execution if there are not enough coins
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
             context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
         {
@@ -2226,7 +2293,8 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));
         }
 
-        <span class="comment">// from here, fees transferred. Op will be executed just after in the context of a snapshot.
+        <span class="comment">// from here, fees have been transferred.
+        // Op will be executed just after in the context of a snapshot.
 
         // save a snapshot of the context to revert any further changes on error
         </span><span class="kw">let </span>context_snapshot = context.get_snapshot();
@@ -2302,7 +2370,7 @@
         </span><span class="kw-2">*</span>block_credits = new_block_credits;
 
         <span class="comment">// Call the execution process specific to the operation type.
-        </span><span class="kw">let </span>execution_result = <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
+        </span><span class="kw">let </span><span class="kw-2">mut </span>execution_result = <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
             OperationType::ExecuteSC { .. } =&gt; {
                 <span class="self">self</span>.execute_executesc_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
             }
@@ -2324,13 +2392,47 @@
             <span class="comment">// lock execution context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
+            <span class="comment">// take and disable spending tracker
+            </span><span class="kw">let </span>spending_addresses = context.take_spending_tracker().unwrap_or_default();
+
+            <span class="kw">if </span>execution_result.is_ok() {
+                <span class="comment">// check that the `max_coins` spending limit was respected by the sender
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(creator_min_balance) = <span class="kw-2">&amp;</span>context.creator_min_balance {
+                    <span class="kw">let </span>creator_balance = context
+                        .get_balance(<span class="kw-2">&amp;</span>sender_addr)
+                        .unwrap_or_else(|| Amount::zero());
+                    <span class="kw">if </span><span class="kw-2">&amp;</span>creator_balance &lt; creator_min_balance {
+                        execution_result = <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                            <span class="string">&quot;at the end of the execution of the operation, the sender {} was expected to have at least {} coins according to the operation&#39;s max spending, but has only {}.&quot;</span>,
+                            sender_addr, creator_min_balance, creator_balance
+                        )));
+                    }
+                }
+
+                <span class="comment">// check that the vesting limits were respected by all spending addresses
+                </span><span class="kw">for </span>spending_addr <span class="kw">in </span>spending_addresses {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
+                        </span>.vesting_manager
+                        .check_vesting_coins(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;</span>spending_addr)
+                    {
+                        execution_result = <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                            <span class="string">&quot;address {} did not respect its coin vesting limits: {}&quot;</span>,
+                            spending_addr, err
+                        )));
+                        <span class="kw">break</span>;
+                    }
+                }
+            }
+
             <span class="comment">// check execution results
             </span><span class="kw">match </span>execution_result {
-                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; context.insert_executed_op(
-                    operation_id,
-                    <span class="bool-val">true</span>,
-                    Slot::new(operation.content.expire_period, op_thread),
-                ),
+                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                    context.insert_executed_op(
+                        operation_id,
+                        <span class="bool-val">true</span>,
+                        Slot::new(operation.content.expire_period, op_thread),
+                    );
+                }
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="comment">// an error occurred: emit error event and reset context to snapshot
                     </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
@@ -2340,7 +2442,7 @@
                     <span class="macro">debug!</span>(<span class="string">&quot;{}&quot;</span>, <span class="kw-2">&amp;</span>err);
                     context.reset_to_snapshot(context_snapshot, err);
 
-                    <span class="comment">// Insert op AFTER the context has been restore (else it would be overwritten)
+                    <span class="comment">// Insert op AFTER the context has been restored (otherwise it would be overwritten)
                     </span>context.insert_executed_op(
                         operation_id,
                         <span class="bool-val">false</span>,
@@ -2829,7 +2931,7 @@
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = <span class="prelude-val">None</span>;
-            context.creator_coin_spending_allowance = <span class="prelude-val">None</span>;
+            context.creator_min_balance = <span class="prelude-val">None</span>;
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
