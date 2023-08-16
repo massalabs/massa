@@ -53,20 +53,18 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use mockall::Sequence;
 use parking_lot::RwLock;
+use serial_test::serial;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::vec;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
-lazy_static::lazy_static! {
-    pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
-        let keypair = KeyPair::generate(0).unwrap();
-        (get_bootstrap_config(NodeId::new(keypair.get_public_key())), keypair)
-    };
-}
-
-fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -> BootstrapManager {
+fn mock_bootstrap_manager(
+    addr: SocketAddr,
+    bootstrap_config: BootstrapConfig,
+    keypair: KeyPair,
+) -> BootstrapManager {
     // TODO from config
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let thread_count = 2;
@@ -81,7 +79,6 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
     };
 
     // start bootstrap manager
-    let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let mut mocked1 = Box::new(MockProtocolController::new());
     let mocked2 = Box::new(MockProtocolController::new());
     mocked1.expect_clone_box().return_once(move || mocked2);
@@ -100,7 +97,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         thread_count,
     };
     let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController)>
     ));
     let final_state_local_config = FinalStateConfig {
         ledger_config: LedgerConfig {
@@ -192,22 +189,29 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 }
 
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_whitelist() {
+    let keypair = KeyPair::generate(0).unwrap();
+    let config = get_bootstrap_config(NodeId::new(keypair.get_public_key()));
+
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
-    let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let _bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
+    let _bs_manager = mock_bootstrap_manager(addr.clone(), config.clone(), keypair.clone());
 
     let conn = TcpStream::connect(addr);
     conn.unwrap();
 }
 
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
-    let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+
+    let keypair = KeyPair::generate(0).unwrap();
+    let mut bootstrap_config = get_bootstrap_config(NodeId::new(keypair.get_public_key()));
+    bootstrap_config.thread_count = thread_count;
+    bootstrap_config.periods_per_cycle = periods_per_cycle;
+
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
@@ -381,10 +385,11 @@ fn test_bootstrap_server() {
     // Setup network command mock-story: hard-code the result of getting bootstrap peers
     let mut mocked1 = MockProtocolController::new();
     let mut mocked2 = Box::new(MockProtocolController::new());
+    let kp = keypair.clone();
     mocked2
         .expect_get_bootstrap_peers()
         .times(1)
-        .returning(|| Ok(get_peers(&keypair.clone())));
+        .returning(move || Ok(get_peers(&kp)));
 
     mocked1.expect_clone_box().return_once(move || mocked2);
 
@@ -434,6 +439,8 @@ fn test_bootstrap_server() {
     let metrics_cloned = metrics.clone();
 
     // Start the bootstrap server thread
+    let bs_config = bootstrap_config.clone();
+    let kp = keypair.clone();
     let bootstrap_manager_thread = std::thread::Builder::new()
         .name("bootstrap_thread".to_string())
         .spawn(move || {
@@ -445,8 +452,8 @@ fn test_bootstrap_server() {
                 stream_mock1,
                 Box::new(mocked1),
                 final_state_server_clone1,
-                bootstrap_config.clone(),
-                keypair.clone(),
+                bs_config,
+                kp,
                 Version::from_str("TEST.1.10").unwrap(),
                 metrics_cloned,
             )
@@ -520,7 +527,7 @@ fn test_bootstrap_server() {
 
     // launch the get_state process
     let bootstrap_res = get_state(
-        bootstrap_config,
+        &bootstrap_config,
         final_state_client_clone,
         mock_remote_connector,
         Version::from_str("TEST.1.10").unwrap(),
@@ -591,11 +598,14 @@ fn test_bootstrap_server() {
 
 // Regression test for Issue #3932
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_accept_err() {
     let thread_count = 2;
     let periods_per_cycle = 2;
-    let (bootstrap_config, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let keypair = KeyPair::generate(0).unwrap();
+    let mut bootstrap_config = get_bootstrap_config(NodeId::new(keypair.get_public_key()));
+    bootstrap_config.thread_count = thread_count;
+    bootstrap_config.periods_per_cycle = periods_per_cycle;
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let genesis_address = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 

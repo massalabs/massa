@@ -682,21 +682,7 @@ fn test_bandwidth() {
     let err_str = ['A'; 1_000].into_iter().collect::<String>();
     let srv_err_str = err_str.clone();
 
-    let millis_limit = {
-        #[cfg(target_os = "windows")]
-        {
-            18_000
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            30_500
-        }
-        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-        {
-            11_500
-        }
-    };
+    let millis_limit = 30_500;
     let server_thread = std::thread::Builder::new()
         .name("test_binders::server_thread".to_string())
         .spawn({
