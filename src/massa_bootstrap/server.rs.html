@@ -1034,7 +1034,7 @@
         </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
         <span class="comment">// TODO: Work out how to integration-test this
-        </span><span class="kw">let </span>limit = <span class="self">self</span>.bootstrap_config.max_bytes_read_write;
+        </span><span class="kw">let </span>limit = <span class="self">self</span>.bootstrap_config.rate_limit;
         <span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
 

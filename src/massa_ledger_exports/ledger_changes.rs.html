@@ -1009,23 +1009,6 @@
 <a href="#1009" id="1009">1009</a>
 <a href="#1010" id="1010">1010</a>
 <a href="#1011" id="1011">1011</a>
-<a href="#1012" id="1012">1012</a>
-<a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
-<a href="#1018" id="1018">1018</a>
-<a href="#1019" id="1019">1019</a>
-<a href="#1020" id="1020">1020</a>
-<a href="#1021" id="1021">1021</a>
-<a href="#1022" id="1022">1022</a>
-<a href="#1023" id="1023">1023</a>
-<a href="#1024" id="1024">1024</a>
-<a href="#1025" id="1025">1025</a>
-<a href="#1026" id="1026">1026</a>
-<a href="#1027" id="1027">1027</a>
-<a href="#1028" id="1028">1028</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file provides structures representing changes to ledger entries
@@ -1048,7 +1031,7 @@
 <span class="kw">use </span>nom::multi::length_count;
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::{IResult, Parser};
-<span class="kw">use </span>serde::{ser::SerializeSeq, Deserialize, Serialize};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::collections::{hash_map, BTreeMap};
 <span class="kw">use </span>std::ops::Bound::Included;
 
@@ -1060,24 +1043,7 @@
     <span class="doccomment">/// change the executable bytecode
     </span><span class="kw">pub </span>bytecode: SetOrKeep&lt;Bytecode&gt;,
     <span class="doccomment">/// change datastore entries
-    </span><span class="attr">#[serde(serialize_with = <span class="string">&quot;as_array&quot;</span>)]
     </span><span class="kw">pub </span>datastore: BTreeMap&lt;Vec&lt;u8&gt;, SetOrDelete&lt;Vec&lt;u8&gt;&gt;&gt;,
-}
-
-<span class="comment">// Serializer for `datastore` field of `LedgerEntryUpdate`
-</span><span class="kw">fn </span>as_array&lt;S&gt;(
-    datastore: <span class="kw-2">&amp;</span>BTreeMap&lt;Vec&lt;u8&gt;, SetOrDelete&lt;Vec&lt;u8&gt;&gt;&gt;,
-    serializer: S,
-) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
-<span class="kw">where
-    </span>S: serde::Serializer,
-{
-    <span class="kw">let </span><span class="kw-2">mut </span>seq = serializer.serialize_seq(<span class="prelude-val">Some</span>(datastore.len()))<span class="question-mark">?</span>;
-    <span class="kw">for </span>(key, value) <span class="kw">in </span>datastore {
-        seq.serialize_element(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>value))<span class="question-mark">?</span>;
-    }
-
-    seq.end()
 }
 
 <span class="doccomment">/// Serializer for `datastore` field of `LedgerEntryUpdate`
