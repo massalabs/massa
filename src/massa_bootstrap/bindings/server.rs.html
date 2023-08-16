@@ -345,6 +345,12 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::bindings::BindingReadExact;
@@ -371,8 +377,8 @@
     thread,
     time::Duration,
 };
-<span class="comment">// use stream_limiter::{Limiter, LimiterOptions};
-</span><span class="kw">use </span>tracing::error;
+<span class="kw">use </span>stream_limiter::{Limiter, LimiterOptions};
+<span class="kw">use </span>tracing::error;
 
 <span class="kw">use </span><span class="kw">super</span>::BindingWriteExact;
 
@@ -390,8 +396,8 @@
     max_datastore_key_length: u8,
     randomness_size_bytes: usize,
     local_keypair: KeyPair,
-    duplex: TcpStream, <span class="comment">//Limiter&lt;TcpStream&gt;,
-    </span>prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
+    duplex: Limiter&lt;TcpStream&gt;,
+    prev_message: <span class="prelude-ty">Option</span>&lt;Hash&gt;,
     version_serializer: VersionSerializer,
     version_deserializer: VersionDeserializer,
     write_error_timeout: MassaTime,
@@ -409,7 +415,7 @@
         duplex: TcpStream,
         local_keypair: KeyPair,
         cfg: BootstrapSrvBindCfg,
-        _rw_limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+        rw_limit: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>BootstrapSrvBindCfg {
             max_bytes_read_write: _limit,
@@ -420,11 +426,11 @@
             write_error_timeout,
         } = cfg;
 
-        <span class="comment">// let limit_opts = rw_limit.map(|limit| -&gt; LimiterOptions {
-        //     LimiterOptions::new(limit, Duration::from_millis(1000), limit)
-        // });
-        // let duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
-        </span>BootstrapServerBinder {
+        <span class="kw">let </span>limit_opts = rw_limit.map(|limit| -&gt; LimiterOptions {
+            LimiterOptions::new(limit, Duration::from_millis(<span class="number">1000</span>), limit)
+        });
+        <span class="kw">let </span>duplex = Limiter::new(duplex, limit_opts.clone(), limit_opts);
+        BootstrapServerBinder {
             max_consensus_block_ids: consensus_bootstrap_part_size,
             local_keypair,
             duplex,
@@ -673,7 +679,10 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingReadExact <span class="kw">for </span>BootstrapServerBinder {
     <span class="kw">fn </span>set_read_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.set_read_timeout(duration)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>opts) = <span class="self">self</span>.duplex.read_opt {
+            opts.timeout = duration;
+        }
+        <span class="self">self</span>.duplex.stream.set_read_timeout(duration)
     }
 }
 
@@ -689,7 +698,10 @@
 
 <span class="kw">impl </span><span class="kw">crate</span>::bindings::BindingWriteExact <span class="kw">for </span>BootstrapServerBinder {
     <span class="kw">fn </span>set_write_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-        <span class="self">self</span>.duplex.set_write_timeout(duration)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>opts) = <span class="self">self</span>.duplex.write_opt {
+            opts.timeout = duration;
+        }
+        <span class="self">self</span>.duplex.stream.set_write_timeout(duration)
     }
 }
 </code></pre></div></section></main></body></html>

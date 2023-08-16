@@ -293,7 +293,6 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -306,14 +305,15 @@
 <span class="kw">use </span><span class="kw">crate</span>::request_queue::RequestQueue;
 <span class="kw">use </span><span class="kw">crate</span>::slot_sequencer::SlotSequencer;
 <span class="kw">use </span>massa_execution_exports::{
-    ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
-    ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
@@ -425,7 +425,7 @@
             <span class="comment">// check if there is some input data
             </span><span class="kw">if </span>input_data.new_blockclique.is_some()
                 || !input_data.finalized_blocks.is_empty()
-                || !input_data.block_metadata.is_empty()
+                || !input_data.block_storage.is_empty()
                 || !input_data.readonly_requests.is_empty()
             {
                 <span class="kw">return </span>(input_data, <span class="bool-val">false</span>);
@@ -484,14 +484,12 @@
             </span><span class="self">self</span>.slot_sequencer.update(
                 input_data.finalized_blocks,
                 input_data.new_blockclique,
-                input_data.block_metadata,
+                input_data.block_storage,
             );
 
             <span class="comment">// ask the slot sequencer for a task to be executed in priority (final is higher priority than candidate)
             </span><span class="kw">let </span>run_result = <span class="self">self</span>.slot_sequencer.run_task_with(
-                |is_final: bool,
-                 slot: <span class="kw-2">&amp;</span>Slot,
-                 content: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;| {
+                |is_final: bool, slot: <span class="kw-2">&amp;</span>Slot, content: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;| {
                     <span class="kw">if </span>is_final {
                         <span class="self">self</span>.execution_state.write().execute_final_slot(
                             slot,

@@ -357,6 +357,8 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -626,6 +628,8 @@
     </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
     <span class="doccomment">/// Cooldown before testing again an old peer
     </span><span class="kw">pub </span>test_oldest_peer_cooldown: MassaTime,
+    <span class="doccomment">/// Rate limitation to apply to the data stream (per second)
+    </span><span class="kw">pub </span>rate_limit: u64,
 }
 
 <span class="doccomment">/// gRPC settings
