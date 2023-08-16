@@ -1756,7 +1756,7 @@
     <span class="kw">let </span>mip_store = final_state.read().mip_store.clone();
 
     <span class="kw">let </span>bootstrap_config: BootstrapConfig = BootstrapConfig {
-        rate_limit: SETTINGS.rate_limit,
+        rate_limit: SETTINGS.protocol.rate_limit,
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
         bootstrap_protocol: SETTINGS.bootstrap.bootstrap_protocol,
         bootstrap_whitelist_path: SETTINGS.bootstrap.bootstrap_whitelist_path.clone(),
