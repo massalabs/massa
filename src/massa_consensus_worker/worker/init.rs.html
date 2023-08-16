@@ -327,17 +327,14 @@
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_consensus_exports::{
-    block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
+    block_status::{BlockStatus, StorageOrBlock},
+    bootstrapable_graph::BootstrapableGraph,
+    error::ConsensusError,
     ConsensusConfig,
 };
+<span class="kw">use </span>massa_execution_exports::ExecutionBlockMetadata;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -452,8 +449,9 @@
                         block_id: block.id,
                         slot: block.content.header.content.slot,
                         fitness: block.get_fitness(),
+                        same_thread_parent_creator: <span class="prelude-val">None</span>,
                     }),
-                    storage,
+                    storage_or_block: StorageOrBlock::Storage(storage),
                 },
             );
         }
@@ -534,9 +532,9 @@
         // with already produced blocks received from the bootstrap.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BootstrapableGraph { final_blocks }) = init_graph {
             <span class="comment">// load final blocks
-            </span><span class="kw">let </span>final_blocks: Vec&lt;(ActiveBlock, Storage)&gt; = final_blocks
+            </span><span class="kw">let </span>final_blocks: Vec&lt;(ActiveBlock, StorageOrBlock)&gt; = final_blocks
                 .into_iter()
-                .map(|export_b| export_b.to_active_block(<span class="kw-2">&amp;</span>storage, config.thread_count))
+                .map(|export_b| export_b.to_active_block(config.thread_count))
                 .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, ConsensusError&gt;&gt;()<span class="question-mark">?</span>;
 
             <span class="comment">// compute latest_final_blocks_periods
@@ -555,13 +553,13 @@
                 write_shared_state.genesis_hashes = genesis_block_ids;
                 write_shared_state.best_parents = latest_final_blocks_periods.clone();
                 write_shared_state.latest_final_blocks_periods = latest_final_blocks_periods;
-                <span class="kw">for </span>(b, s) <span class="kw">in </span>final_blocks {
+                <span class="kw">for </span>(b, storage_or_block) <span class="kw">in </span>final_blocks {
                     write_shared_state.blocks_state.transition_map(
                         <span class="kw-2">&amp;</span>(b.block_id.clone()),
                         |<span class="kw">_</span>, <span class="kw">_</span>| {
                             <span class="prelude-val">Some</span>(BlockStatus::Active {
                                 a_block: Box::new(b),
-                                storage: s,
+                                storage_or_block,
                             })
                         },
                     );
@@ -593,25 +591,35 @@
         // because the two modules run concurrently and out of sync.
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
-            <span class="kw">let </span><span class="kw-2">mut </span>block_storage: PreHashMap&lt;BlockId, Storage&gt; = Default::default();
+            <span class="kw">let </span><span class="kw-2">mut </span>block_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt; =
+                Default::default();
             <span class="kw">let </span>notify_finals: HashMap&lt;Slot, BlockId&gt; = write_shared_state
                 .get_all_final_blocks()
                 .into_iter()
-                .map(|(b_id, block_infos)| {
-                    block_storage.insert(b_id, block_infos.<span class="number">1</span>);
-                    (block_infos.<span class="number">0</span>, b_id)
+                .map(|(b_id, (b_slot, b_metadata))| {
+                    block_metadata.insert(b_id, b_metadata);
+                    (b_slot, b_id)
                 })
                 .collect();
             <span class="kw">let </span>notify_blockclique: HashMap&lt;Slot, BlockId&gt; = write_shared_state
                 .get_blockclique()
                 .iter()
                 .map(|b_id| {
-                    <span class="kw">let </span>(a_block, storage) = write_shared_state
+                    <span class="kw">let </span>(a_block, storage_or_block) = write_shared_state
                         .get_full_active_block(b_id)
                         .expect(<span class="string">&quot;active block missing from block_db&quot;</span>);
-                    <span class="kw">let </span>slot = a_block.slot;
-                    block_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
-                    (slot, <span class="kw-2">*</span>b_id)
+                    <span class="kw">let </span>storage = <span class="kw">match </span>storage_or_block {
+                        StorageOrBlock::Storage(storage) =&gt; <span class="prelude-val">Some</span>(storage.clone()),
+                        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                    };
+                    block_metadata.insert(
+                        <span class="kw-2">*</span>b_id,
+                        ExecutionBlockMetadata {
+                            same_thread_parent_creator: a_block.same_thread_parent_creator,
+                            storage,
+                        },
+                    );
+                    (a_block.slot, <span class="kw-2">*</span>b_id)
                 })
                 .collect();
             write_shared_state.prev_blockclique =
@@ -619,7 +627,7 @@
             write_shared_state
                 .channels
                 .execution_controller
-                .update_blockclique_status(notify_finals, <span class="prelude-val">Some</span>(notify_blockclique), block_storage);
+                .update_blockclique_status(notify_finals, <span class="prelude-val">Some</span>(notify_blockclique), block_metadata);
         }
 
         <span class="prelude-val">Ok</span>(res_consensus)
@@ -628,27 +636,6 @@
     <span class="doccomment">/// Internal function used at initialization of the `ConsensusWorker` to link blocks with their parents
     </span><span class="kw">fn </span>claim_parent_refs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = <span class="self">self</span>.shared_state.write();
-        <span class="kw">for </span>(_b_id, block_status) <span class="kw">in </span>write_shared_state.blocks_state.iter_mut() {
-            <span class="kw">if let </span>BlockStatus::Active {
-                a_block,
-                storage: block_storage,
-            } = block_status
-            {
-                <span class="comment">// claim parent refs
-                </span><span class="kw">let </span>n_claimed_parents = block_storage
-                    .claim_block_refs(<span class="kw-2">&amp;</span>a_block.parents.iter().map(|(p_id, <span class="kw">_</span>)| <span class="kw-2">*</span>p_id).collect())
-                    .len();
-
-                <span class="kw">if </span>!a_block.is_final {
-                    <span class="comment">// note: parents of final blocks will be missing, that&#39;s ok, but it shouldn&#39;t be the case for non-finals
-                    </span><span class="kw">if </span>n_claimed_parents != <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::MissingBlock(
-                            <span class="string">&quot;block storage could not claim refs to all parent blocks&quot;</span>.into(),
-                        ));
-                    }
-                }
-            }
-        }
 
         <span class="comment">// list active block parents
         </span><span class="kw">let </span>active_blocks_map: PreHashMap&lt;BlockId, (Slot, Vec&lt;BlockId&gt;)&gt; = write_shared_state
@@ -663,7 +650,8 @@
             .collect();
 
         <span class="kw">for </span>(b_id, (b_slot, b_parents)) <span class="kw">in </span>active_blocks_map.into_iter() {
-            write_shared_state.insert_parents_descendants(b_id, b_slot, b_parents);
+            <span class="comment">// update aprenthood relationships
+            </span>write_shared_state.insert_parents_descendants(b_id, b_slot, b_parents);
         }
         <span class="prelude-val">Ok</span>(())
     }

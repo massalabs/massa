@@ -136,9 +136,58 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
-    active_block::ActiveBlock, address::Address, block::Block, block_header::SecuredHeader,
-    block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    active_block::ActiveBlock,
+    address::Address,
+    block::{Block, SecureShareBlock},
+    block_header::SecuredHeader,
+    block_id::BlockId,
+    prehash::PreHashSet,
+    slot::Slot,
 };
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -196,6 +245,45 @@
     }
 }
 
+<span class="doccomment">/// A structure defining whether we keep a full block with operations in storage
+/// or just the raw signed block without operations
+</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub enum </span>StorageOrBlock {
+    <span class="doccomment">/// Keep a full storage with operations
+    </span>Storage(Storage),
+    <span class="doccomment">/// Keep only the block header and list of ops (but not the ops)
+    </span>Block(Box&lt;SecureShareBlock&gt;),
+}
+
+<span class="kw">impl </span>StorageOrBlock {
+    <span class="doccomment">/// Return a clone of the underlying block
+    </span><span class="kw">pub fn </span>clone_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; SecureShareBlock {
+        <span class="kw">match </span><span class="self">self </span>{
+            StorageOrBlock::Storage(storage) =&gt; storage
+                .read_blocks()
+                .get(block_id)
+                .expect(<span class="string">&quot;block absent from its own storage&quot;</span>)
+                .clone(),
+            StorageOrBlock::Block(block) =&gt; <span class="kw-2">*</span>block.clone(),
+        }
+    }
+
+    <span class="doccomment">/// Convert any StorageOrBlock variant into a StorageOrBlock::Block variant.
+    /// This effectively drops the operations of the block.
+    </span><span class="kw">pub fn </span>strip_to_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) {
+        <span class="kw">let </span>block = <span class="kw">if let </span>StorageOrBlock::Storage(storage) = <span class="self">self </span>{
+            storage
+                .read_blocks()
+                .get(block_id)
+                .expect(<span class="string">&quot;block absent from its own storage&quot;</span>)
+                .clone()
+        } <span class="kw">else </span>{
+            <span class="kw">return</span>;
+        };
+        <span class="kw-2">*</span><span class="self">self </span>= StorageOrBlock::Block(Box::new(block));
+    }
+}
+
 <span class="doccomment">/// Enum used in `BlockGraph`&#39;s state machine
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>BlockStatus {
@@ -217,7 +305,7 @@
     <span class="doccomment">/// The block was checked and included in the blockgraph
     </span>Active {
         a_block: Box&lt;ActiveBlock&gt;,
-        storage: Storage,
+        storage_or_block: StorageOrBlock,
     },
     <span class="doccomment">/// The block was discarded and is kept to avoid reprocessing it
     </span>Discarded {
