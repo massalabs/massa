@@ -68,8 +68,6 @@ pub struct ExecutionConfig {
     pub max_read_only_gas: u64,
     /// Gas costs
     pub gas_costs: GasCosts,
-    /// Path to the initial vesting file
-    pub initial_vesting_path: PathBuf,
     /// last start period, used to attach to the correct execution slot if the network has restarted
     pub last_start_period: u64,
     /// Path to the hard drive cache storage

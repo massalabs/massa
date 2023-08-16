@@ -123,6 +123,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         },
         executed_ops_config: ExecutedOpsConfig { thread_count },
         final_history_length: 100,
@@ -253,6 +254,7 @@ fn test_bootstrap_server() {
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         },
         executed_ops_config: ExecutedOpsConfig { thread_count },
         executed_denunciations_config: ExecutedDenunciationsConfig {
@@ -631,6 +633,7 @@ fn test_bootstrap_accept_err() {
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         },
         executed_ops_config: ExecutedOpsConfig { thread_count },
         executed_denunciations_config: ExecutedDenunciationsConfig {

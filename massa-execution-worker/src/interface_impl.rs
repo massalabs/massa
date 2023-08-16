@@ -91,7 +91,6 @@ impl InterfaceImpl {
         use massa_versioning::versioning::{MipStatsConfig, MipStore};
         use parking_lot::RwLock;
 
-        let vesting_file = super::tests::get_initials_vesting(false);
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state(0).unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
@@ -103,17 +102,6 @@ impl InterfaceImpl {
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
         })));
-        let vesting_manager = Arc::new(
-            crate::vesting_manager::VestingManager::new(
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-                config.periods_per_cycle,
-                config.roll_price,
-                vesting_file.path().to_path_buf(),
-            )
-            .unwrap(),
-        );
 
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
@@ -128,7 +116,6 @@ impl InterfaceImpl {
             final_state,
             Default::default(),
             module_cache,
-            vesting_manager,
             mip_store,
             massa_hash::Hash::zero(),
         );

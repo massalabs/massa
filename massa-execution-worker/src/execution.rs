@@ -12,7 +12,6 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
-use crate::vesting_manager::VestingManager;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
@@ -83,8 +82,6 @@ pub(crate) struct ExecutionState {
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
     module_cache: Arc<RwLock<ModuleCache>>,
-    // Vesting manager
-    vesting_manager: Arc<VestingManager>,
     // MipStore (Versioning)
     mip_store: MipStore,
     // wallet used to verify double staking on local addresses
@@ -128,20 +125,6 @@ impl ExecutionState {
         // Create default active history
         let active_history: Arc<RwLock<ActiveHistory>> = Default::default();
 
-        // Initialize the vesting
-        let vesting_manager = match VestingManager::new(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            config.periods_per_cycle,
-            config.roll_price,
-            config.initial_vesting_path.clone(),
-        ) {
-            Ok(manager) => Arc::new(manager),
-            // panic if VestingManager can't load initial vesting file
-            Err(e) => panic!("{}", e),
-        };
-
         // Initialize the SC module cache
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
@@ -159,7 +142,6 @@ impl ExecutionState {
             final_state.clone(),
             active_history.clone(),
             module_cache.clone(),
-            vesting_manager.clone(),
             mip_store.clone(),
             execution_trail_hash,
         )));
@@ -185,7 +167,6 @@ impl ExecutionState {
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             module_cache,
             config,
-            vesting_manager,
             mip_store,
             selector,
             channels,
@@ -322,7 +303,6 @@ impl ExecutionState {
     /// # Arguments
     /// * `operation`: operation to be schedule
     /// * `sender_addr`: sender address for the operation (for fee transfer)
-
     fn prepare_operation_for_execution(
         &self,
         operation: &SecureShareOperation,
@@ -340,13 +320,17 @@ impl ExecutionState {
             ));
         }
 
-        // Set the creator coin spending allowance.
-        // Note that this needs to be initialized before any spending from the creator.
-        context.creator_coin_spending_allowance =
-            Some(operation.get_max_spending(self.config.roll_price));
+        // Compute the minimal amount of coins the sender is allowed to have after the execution of this op based on `op.max_spending`.
+        // Note that the max spending might exceed the sender's balance.
+        let creator_initial_balance = context
+            .get_balance(&sender_addr)
+            .unwrap_or_else(Amount::zero);
+        context.creator_min_balance = Some(
+            creator_initial_balance
+                .saturating_sub(operation.get_max_spending(self.config.roll_price)),
+        );
 
         // debit the fee from the operation sender
-        // fail execution if there are not enough coins
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
@@ -356,7 +340,8 @@ impl ExecutionState {
             return Err(ExecutionError::IncludeOperationError(error));
         }
 
-        // from here, fees transferred. Op will be executed just after in the context of a snapshot.
+        // from here, fees have been transferred.
+        // Op will be executed just after in the context of a snapshot.
 
         // save a snapshot of the context to revert any further changes on error
         let context_snapshot = context.get_snapshot();
@@ -432,7 +417,7 @@ impl ExecutionState {
         *block_credits = new_block_credits;
 
         // Call the execution process specific to the operation type.
-        let execution_result = match &operation.content.op {
+        let mut execution_result = match &operation.content.op {
             OperationType::ExecuteSC { .. } => {
                 self.execute_executesc_op(&operation.content.op, sender_addr)
             }
@@ -440,7 +425,7 @@ impl ExecutionState {
                 self.execute_callsc_op(&operation.content.op, sender_addr)
             }
             OperationType::RollBuy { .. } => {
-                self.execute_roll_buy_op(&operation.content.op, sender_addr, block_slot)
+                self.execute_roll_buy_op(&operation.content.op, sender_addr)
             }
             OperationType::RollSell { .. } => {
                 self.execute_roll_sell_op(&operation.content.op, sender_addr)
@@ -454,13 +439,30 @@ impl ExecutionState {
             // lock execution context
             let mut context = context_guard!(self);
 
+            if execution_result.is_ok() {
+                // check that the `max_coins` spending limit was respected by the sender
+                if let Some(creator_min_balance) = &context.creator_min_balance {
+                    let creator_balance = context
+                        .get_balance(&sender_addr)
+                        .unwrap_or_else(Amount::zero);
+                    if &creator_balance < creator_min_balance {
+                        execution_result = Err(ExecutionError::RuntimeError(format!(
+                            "at the end of the execution of the operation, the sender {} was expected to have at least {} coins according to the operation's max spending, but has only {}.",
+                            sender_addr, creator_min_balance, creator_balance
+                        )));
+                    }
+                }
+            }
+
             // check execution results
             match execution_result {
-                Ok(_) => context.insert_executed_op(
-                    operation_id,
-                    true,
-                    Slot::new(operation.content.expire_period, op_thread),
-                ),
+                Ok(_) => {
+                    context.insert_executed_op(
+                        operation_id,
+                        true,
+                        Slot::new(operation.content.expire_period, op_thread),
+                    );
+                }
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
                     let err = ExecutionError::RuntimeError(format!(
@@ -470,7 +472,7 @@ impl ExecutionState {
                     debug!("{}", &err);
                     context.reset_to_snapshot(context_snapshot, err);
 
-                    // Insert op AFTER the context has been restore (else it would be overwritten)
+                    // Insert op AFTER the context has been restored (otherwise it would be overwritten)
                     context.insert_executed_op(
                         operation_id,
                         false,
@@ -670,26 +672,16 @@ impl ExecutionState {
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
     /// * `buyer_addr`: address of the buyer
-    /// * `current_slot` : current slot
     pub fn execute_roll_buy_op(
         &self,
         operation: &OperationType,
         buyer_addr: Address,
-        current_slot: Slot,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
         let roll_count = match operation {
             OperationType::RollBuy { roll_count } => roll_count,
             _ => panic!("unexpected operation type"),
         };
-
-        // control vesting max_rolls for buyer address
-        self.vesting_manager.check_vesting_rolls_buy(
-            self.get_final_and_candidate_rolls(&buyer_addr),
-            &buyer_addr,
-            current_slot,
-            *roll_count,
-        )?;
 
         // acquire write access to the context
         let mut context = context_guard!(self);
@@ -959,7 +951,7 @@ impl ExecutionState {
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = None;
-            context.creator_coin_spending_allowance = None;
+            context.creator_min_balance = None;
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
@@ -1077,7 +1069,6 @@ impl ExecutionState {
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
-            self.vesting_manager.clone(),
             self.mip_store.clone(),
         );
 
@@ -1423,7 +1414,6 @@ impl ExecutionState {
             self.final_state.clone(),
             self.active_history.clone(),
             self.module_cache.clone(),
-            self.vesting_manager.clone(),
             self.mip_store.clone(),
         );
 

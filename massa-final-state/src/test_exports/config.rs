@@ -76,6 +76,7 @@ impl Default for FinalStateConfig {
                 max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
                 max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
                 max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+                initial_deferred_credits_path: None,
             },
             final_history_length: 10,
             thread_count: 2,

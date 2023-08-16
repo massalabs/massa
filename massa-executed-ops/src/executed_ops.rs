@@ -240,14 +240,20 @@ impl ExecutedOps {
             return false;
         }
 
-        let Ok((rest, _id)): Result<(&[u8], OperationId), nom::Err<DeserializeError>> = self.operation_id_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..]) else {
+        let Ok((rest, _id)): Result<(&[u8], OperationId), nom::Err<DeserializeError>> = self
+            .operation_id_deserializer
+            .deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..])
+        else {
             return false;
         };
         if !rest.is_empty() {
             return false;
         }
 
-        let Ok((rest, _bool)) = self.bool_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+        let Ok((rest, _bool)) = self
+            .bool_deserializer
+            .deserialize::<DeserializeError>(serialized_value)
+        else {
             return false;
         };
         let Ok((rest, _slot)) = self.slot_deserializer.deserialize::<DeserializeError>(rest) else {

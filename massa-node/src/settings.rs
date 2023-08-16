@@ -28,7 +28,6 @@ pub struct ExecutionSettings {
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
     pub wasm_gas_costs_file: PathBuf,
-    pub initial_vesting_path: PathBuf,
     pub hd_cache_path: PathBuf,
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,
@@ -47,6 +46,7 @@ pub struct LedgerSettings {
     pub initial_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
+    pub initial_deferred_credits_path: Option<PathBuf>,
 }
 
 /// Bootstrap configuration.
