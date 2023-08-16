@@ -1080,45 +1080,6 @@
 <a href="#1080" id="1080">1080</a>
 <a href="#1081" id="1081">1081</a>
 <a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1133,7 +1094,6 @@
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
-<span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
@@ -1194,6 +1154,9 @@
     <span class="doccomment">/// counter of newly created events so far during this execution
     </span><span class="kw">pub </span>created_event_index: u64,
 
+    <span class="doccomment">/// counter of async messages emitted so far in this execution
+    </span><span class="kw">pub </span>created_message_index: u64,
+
     <span class="doccomment">/// address call stack, most recent is at the back
     </span><span class="kw">pub </span>stack: Vec&lt;ExecutionStackElement&gt;,
 
@@ -1243,8 +1206,8 @@
     <span class="doccomment">/// max gas for this execution
     </span><span class="kw">pub </span>max_gas: u64,
 
-    <span class="doccomment">/// coin spending allowance for the operation creator
-    </span><span class="kw">pub </span>creator_coin_spending_allowance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
+    <span class="doccomment">/// minimal balance allowed for the creator of the operation after its execution
+    </span><span class="kw">pub </span>creator_min_balance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
 
     <span class="doccomment">/// slot at which the execution happens
     </span><span class="kw">pub </span>slot: Slot,
@@ -1285,9 +1248,6 @@
     <span class="doccomment">/// cache of compiled runtime modules
     </span><span class="kw">pub </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
 
-    <span class="doccomment">/// Vesting Manager
-    </span><span class="kw">pub </span>vesting_manager: Arc&lt;VestingManager&gt;,
-
     <span class="doccomment">/// Address factory
     </span><span class="kw">pub </span>address_factory: AddressFactory,
 }
@@ -1308,7 +1268,6 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
         execution_trail_hash: massa_hash::Hash,
     ) -&gt; <span class="self">Self </span>{
@@ -1338,7 +1297,7 @@
                 active_history,
             ),
             max_gas: Default::default(),
-            creator_coin_spending_allowance: Default::default(),
+            creator_min_balance: Default::default(),
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -1352,7 +1311,6 @@
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            vesting_manager,
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
         }
@@ -1369,6 +1327,7 @@
             executed_denunciations: <span class="self">self</span>.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: <span class="self">self</span>.created_addr_index,
             created_event_index: <span class="self">self</span>.created_event_index,
+            created_message_index: <span class="self">self</span>.created_message_index,
             stack: <span class="self">self</span>.stack.clone(),
             events: <span class="self">self</span>.events.clone(),
             unsafe_rng: <span class="self">self</span>.unsafe_rng.clone(),
@@ -1396,6 +1355,7 @@
             .reset_to_snapshot(snapshot.executed_denunciations);
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
         <span class="self">self</span>.created_event_index = snapshot.created_event_index;
+        <span class="self">self</span>.created_message_index = snapshot.created_message_index;
         <span class="self">self</span>.stack = snapshot.stack;
         <span class="self">self</span>.unsafe_rng = snapshot.unsafe_rng;
 
@@ -1432,7 +1392,6 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Get the execution hash trail
@@ -1455,7 +1414,6 @@
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -1500,7 +1458,6 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Get the execution hash trail
@@ -1525,7 +1482,6 @@
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -1681,16 +1637,6 @@
         <span class="self">self</span>.speculative_ledger.get_balance(address)
     }
 
-    <span class="doccomment">/// Get deferred credits of an address starting from a given slot
-    </span><span class="kw">pub fn </span>get_address_deferred_credits(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        address: <span class="kw-2">&amp;</span>Address,
-        min_slot: Slot,
-    ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
-        <span class="self">self</span>.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
-    }
-
     <span class="doccomment">/// Sets a datastore entry for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     /// The datastore entry is created if it is absent for that address.
@@ -1792,7 +1738,6 @@
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
-    /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
     </span><span class="kw">pub fn </span>transfer_coins(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         from_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
@@ -1821,34 +1766,11 @@
                     }
                 }
             }
-            <span class="comment">// control vesting min_balance for sender address
-            </span><span class="self">self</span>.vesting_manager
-                .check_vesting_transfer_coins(<span class="self">self</span>, from_addr, amount)<span class="question-mark">?</span>;
         }
-
-        <span class="comment">// check remaining sender allowance
-        </span><span class="kw">let </span>sender_allowance = {
-            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(op_creator_allowance), <span class="prelude-val">Some</span>(op_creator_addr)) = (<span class="kw-2">&amp;mut </span><span class="self">self</span>.creator_coin_spending_allowance, <span class="self">self</span>.creator_address) &amp;&amp; from_addr == <span class="prelude-val">Some</span>(op_creator_addr) {
-                <span class="kw">if </span>amount &gt; <span class="kw-2">*</span>op_creator_allowance {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed transfer of {} coins from spending address {} due to limited allowance&quot;</span>, amount, op_creator_addr)));
-                }
-                <span class="prelude-val">Some</span>(op_creator_allowance)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        };
 
         <span class="comment">// do the transfer
-        </span><span class="kw">let </span>result = <span class="self">self
-            </span>.speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount);
-
-        <span class="comment">// update allowance
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(allowance) = sender_allowance &amp;&amp; result.is_ok() {
-            <span class="kw-2">*</span>allowance = allowance.saturating_sub(amount);
-        }
-
-        result
+        </span><span class="self">self</span>.speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount)
     }
 
     <span class="doccomment">/// Add a new asynchronous message to speculative pool
