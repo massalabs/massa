@@ -32,8 +32,6 @@ impl BootstrapTcpListener {
     pub fn create(
         addr: &SocketAddr,
     ) -> Result<(BootstrapListenerStopHandle, Self), BootstrapError> {
-        info!("Starting bootstrap listener on {}", &addr);
-
         let domain = if addr.is_ipv4() {
             socket2::Domain::IPV4
         } else {
