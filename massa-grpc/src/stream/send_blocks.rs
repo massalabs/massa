@@ -48,22 +48,24 @@ pub(crate) async fn send_blocks(
             match result {
                 Ok(req_content) => {
                     let Some(proto_block) = req_content.block else {
-                            report_error(
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                "the request payload is empty".to_owned(),
-                            ).await;
-                            continue;
-                        };
+                        report_error(
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            "the request payload is empty".to_owned(),
+                        )
+                        .await;
+                        continue;
+                    };
 
                     let Ok(blk_serialized) = secure_share_to_vec(proto_block) else {
-                            report_error(
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                "failed to convert block secure share".to_owned(),
-                            ).await;
-                            continue;
-                        };
+                        report_error(
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            "failed to convert block secure share".to_owned(),
+                        )
+                        .await;
+                        continue;
+                    };
 
                     // Create a block deserializer arguments
                     let args = BlockDeserializerArgs {

@@ -157,8 +157,6 @@
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
     wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
-    # path to the initial vesting file
-    initial_vesting_path = "base_config/initial_vesting.json"
     # path to the hard drive cache storage
     hd_cache_path = "storage/cache/rocks_db"
     # maximum number of entries we want to keep in the LRU cache
@@ -179,6 +177,8 @@
     disk_ledger_path = "storage/ledger/rocks_db"
     # length of the changes history. Higher values allow bootstrapping nodes with slower connections
     final_history_length = 100
+    # path of the initial deferred credits file
+    initial_deferred_credits_path = "base_config/deferred_credits.json"
 
 [consensus]
     # max number of previously discarded blocks kept in RAM

@@ -209,6 +209,7 @@ async fn launch(
         max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
         max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+        initial_deferred_credits_path: SETTINGS.ledger.initial_deferred_credits_path.clone(),
     };
     let executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
@@ -485,7 +486,6 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-        initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
         gas_costs: GasCosts::new(
             SETTINGS.execution.abi_gas_costs_file.clone(),
             SETTINGS.execution.wasm_gas_costs_file.clone(),

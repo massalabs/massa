@@ -12,7 +12,6 @@ use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::vesting_manager::VestingManager;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
@@ -73,6 +72,9 @@ pub struct ExecutionContextSnapshot {
     /// counter of newly created events so far during this execution
     pub created_event_index: u64,
 
+    /// counter of async messages emitted so far in this execution
+    pub created_message_index: u64,
+
     /// address call stack, most recent is at the back
     pub stack: Vec<ExecutionStackElement>,
 
@@ -122,8 +124,8 @@ pub struct ExecutionContext {
     /// max gas for this execution
     pub max_gas: u64,
 
-    /// coin spending allowance for the operation creator
-    pub creator_coin_spending_allowance: Option<Amount>,
+    /// minimal balance allowed for the creator of the operation after its execution
+    pub creator_min_balance: Option<Amount>,
 
     /// slot at which the execution happens
     pub slot: Slot,
@@ -164,9 +166,6 @@ pub struct ExecutionContext {
     /// cache of compiled runtime modules
     pub module_cache: Arc<RwLock<ModuleCache>>,
 
-    /// Vesting Manager
-    pub vesting_manager: Arc<VestingManager>,
-
     /// Address factory
     pub address_factory: AddressFactory,
 }
@@ -187,7 +186,6 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
         execution_trail_hash: massa_hash::Hash,
     ) -> Self {
@@ -217,7 +215,7 @@ impl ExecutionContext {
                 active_history,
             ),
             max_gas: Default::default(),
-            creator_coin_spending_allowance: Default::default(),
+            creator_min_balance: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -231,7 +229,6 @@ impl ExecutionContext {
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            vesting_manager,
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
         }
@@ -248,6 +245,7 @@ impl ExecutionContext {
             executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
+            created_message_index: self.created_message_index,
             stack: self.stack.clone(),
             events: self.events.clone(),
             unsafe_rng: self.unsafe_rng.clone(),
@@ -275,6 +273,7 @@ impl ExecutionContext {
             .reset_to_snapshot(snapshot.executed_denunciations);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
+        self.created_message_index = snapshot.created_message_index;
         self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;
 
@@ -311,7 +310,6 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
     ) -> Self {
         // Get the execution hash trail
@@ -334,7 +332,6 @@ impl ExecutionContext {
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -379,7 +376,6 @@ impl ExecutionContext {
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
-        vesting_manager: Arc<VestingManager>,
         mip_store: MipStore,
     ) -> Self {
         // Get the execution hash trail
@@ -404,7 +400,6 @@ impl ExecutionContext {
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -560,16 +555,6 @@ impl ExecutionContext {
         self.speculative_ledger.get_balance(address)
     }
 
-    /// Get deferred credits of an address starting from a given slot
-    pub fn get_address_deferred_credits(
-        &self,
-        address: &Address,
-        min_slot: Slot,
-    ) -> BTreeMap<Slot, Amount> {
-        self.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
-    }
-
     /// Sets a datastore entry for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     /// The datastore entry is created if it is absent for that address.
@@ -671,7 +656,6 @@ impl ExecutionContext {
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
-    /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
     pub fn transfer_coins(
         &mut self,
         from_addr: Option<Address>,
@@ -700,34 +684,11 @@ impl ExecutionContext {
                     }
                 }
             }
-            // control vesting min_balance for sender address
-            self.vesting_manager
-                .check_vesting_transfer_coins(self, from_addr, amount)?;
         }
-
-        // check remaining sender allowance
-        let sender_allowance = {
-            if let (Some(op_creator_allowance), Some(op_creator_addr)) = (&mut self.creator_coin_spending_allowance, self.creator_address) && from_addr == Some(op_creator_addr) {
-                if amount > *op_creator_allowance {
-                    return Err(ExecutionError::RuntimeError(format!("failed transfer of {} coins from spending address {} due to limited allowance", amount, op_creator_addr)));
-                }
-                Some(op_creator_allowance)
-            } else {
-                None
-            }
-        };
 
         // do the transfer
-        let result = self
-            .speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount);
-
-        // update allowance
-        if let Some(allowance) = sender_allowance && result.is_ok() {
-            *allowance = allowance.saturating_sub(amount);
-        }
-
-        result
+        self.speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount)
     }
 
     /// Add a new asynchronous message to speculative pool
