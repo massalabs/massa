@@ -519,6 +519,18 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -526,10 +538,11 @@
 
 <span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport,
-    block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock},
+    block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
     ConsensusChannels, ConsensusConfig,
 };
+<span class="kw">use </span>massa_execution_exports::ExecutionBlockMetadata;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -615,9 +628,15 @@
 
 <span class="kw">impl </span>ConsensusState {
     <span class="doccomment">/// Get a full active block
-    </span><span class="kw">pub fn </span>get_full_active_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>ActiveBlock, <span class="kw-2">&amp;</span>Storage)&gt; {
+    </span><span class="kw">pub fn </span>get_full_active_block(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        block_id: <span class="kw-2">&amp;</span>BlockId,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>ActiveBlock, <span class="kw-2">&amp;</span>StorageOrBlock)&gt; {
         <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_id) {
-            <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =&gt; <span class="prelude-val">Some</span>((a_block.as_ref(), storage)),
+            <span class="prelude-val">Some</span>(BlockStatus::Active {
+                a_block,
+                storage_or_block,
+            }) =&gt; <span class="prelude-val">Some</span>((a_block.as_ref(), storage_or_block)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -628,7 +647,7 @@
     </span><span class="kw">fn </span>try_get_full_active_block(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         block_id: <span class="kw-2">&amp;</span>BlockId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>ActiveBlock, <span class="kw-2">&amp;</span>Storage), ConsensusError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>ActiveBlock, <span class="kw-2">&amp;</span>StorageOrBlock), ConsensusError&gt; {
         <span class="self">self</span>.get_full_active_block(block_id).ok_or_else(|| {
             ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;block {} is missing&quot;</span>, block_id))
         })
@@ -685,10 +704,7 @@
         <span class="self">self</span>.get_blockclique()
             .iter()
             .for_each(|id| <span class="kw">match </span><span class="self">self</span>.blocks_state.get(id) {
-                <span class="prelude-val">Some</span>(BlockStatus::Active {
-                    a_block,
-                    storage: <span class="kw">_</span>,
-                }) =&gt; {
+                <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; {
                     <span class="kw">if </span>a_block.is_final {
                         <span class="macro">panic!</span>(
                             <span class="string">&quot;unexpected final block on getting latest blockclique block at slot&quot;
@@ -919,7 +935,7 @@
             <span class="bool-val">true
         </span>};
 
-        <span class="kw">for </span>(hash, block) <span class="kw">in </span><span class="self">self</span>.blocks_state.iter() {
+        <span class="kw">for </span>(block_id, block) <span class="kw">in </span><span class="self">self</span>.blocks_state.iter() {
             <span class="kw">match </span>block {
                 BlockStatus::Discarded {
                     slot,
@@ -929,24 +945,21 @@
                     ..
                 } =&gt; {
                     <span class="kw">if </span>filter(slot) {
-                        export
-                            .discarded_blocks
-                            .insert(<span class="kw-2">*</span>hash, (reason.clone(), (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>creator, parents.clone())));
+                        export.discarded_blocks.insert(
+                            <span class="kw-2">*</span>block_id,
+                            (reason.clone(), (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>creator, parents.clone())),
+                        );
                     }
                 }
-                BlockStatus::Active { a_block, storage } =&gt; {
+                BlockStatus::Active {
+                    a_block,
+                    storage_or_block,
+                } =&gt; {
                     <span class="kw">if </span>filter(<span class="kw-2">&amp;</span>a_block.slot) {
-                        <span class="kw">let </span>stored_block =
-                            storage.read_blocks().get(hash).cloned().ok_or_else(|| {
-                                ConsensusError::MissingBlock(<span class="macro">format!</span>(
-                                    <span class="string">&quot;missing block in BlockGraphExport::extract_from: {}&quot;</span>,
-                                    hash
-                                ))
-                            })<span class="question-mark">?</span>;
                         export.active_blocks.insert(
-                            <span class="kw-2">*</span>hash,
+                            <span class="kw-2">*</span>block_id,
                             ExportCompiledBlock {
-                                header: stored_block.content.header,
+                                header: storage_or_block.clone_block(block_id).content.header,
                                 children: a_block
                                     .children
                                     .iter()
@@ -970,19 +983,30 @@
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    </span><span class="kw">pub fn </span>get_all_final_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;BlockId, (Slot, Storage)&gt; {
+    </span><span class="kw">pub fn </span>get_all_final_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;BlockId, (Slot, ExecutionBlockMetadata)&gt; {
         <span class="self">self</span>.blocks_state
             .active_blocks()
             .iter()
-            .map(|b_id| {
-                <span class="kw">let </span>block_infos = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =&gt; {
-                        (a_block.slot, storage.clone())
+            .filter_map(|b_id| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
+                    a_block,
+                    storage_or_block,
+                }) = <span class="self">self</span>.blocks_state.get(b_id) &amp;&amp; a_block.is_final
+                {
+                    <span class="kw">if </span>!a_block.is_final {
+                        <span class="kw">return </span><span class="prelude-val">None</span>;
                     }
-                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;active block missing&quot;</span>),
-                };
-                (<span class="kw-2">*</span>b_id, block_infos)
-            })
+                    <span class="kw">let </span>storage = <span class="kw">match </span>storage_or_block {
+                        StorageOrBlock::Storage(storage) =&gt; <span class="prelude-val">Some</span>(storage.clone()),
+                        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                    };
+                    <span class="kw">return </span><span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, (a_block.slot, ExecutionBlockMetadata {
+                        same_thread_parent_creator: a_block.same_thread_parent_creator,
+                        storage,
+                    })));
+                }
+                <span class="prelude-val">None
+            </span>})
             .collect()
     }
 

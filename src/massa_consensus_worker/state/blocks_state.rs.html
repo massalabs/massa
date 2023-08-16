@@ -325,11 +325,6 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 
 <span class="kw">use </span>massa_consensus_exports::block_status::{BlockStatus, BlockStatusId};
@@ -499,11 +494,6 @@
     <span class="doccomment">/// Get an iterator over all the blocks stored in the `BlocksState`
     </span><span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span>BlockId, <span class="kw-2">&amp;</span>BlockStatus)&gt; + <span class="lifetime">&#39;_ </span>{
         <span class="self">self</span>.block_statuses.iter()
-    }
-
-    <span class="doccomment">/// Get a mutable iterator over all the blocks stored in the `BlocksState`
-    </span><span class="kw">pub fn </span>iter_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span>BlockId, <span class="kw-2">&amp;mut </span>BlockStatus)&gt; + <span class="lifetime">&#39;_ </span>{
-        <span class="self">self</span>.block_statuses.iter_mut()
     }
 
     <span class="doccomment">/// Get the number of blocks stored in the `BlocksState`
