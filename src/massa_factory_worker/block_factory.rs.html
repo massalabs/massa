@@ -273,6 +273,21 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -283,6 +298,7 @@
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
     operation::{compute_operations_hash, OperationIdSerializer},
+    prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
@@ -449,7 +465,21 @@
         </span><span class="kw">let </span>parents: Vec&lt;(BlockId, u64)&gt; = <span class="self">self</span>.channels.consensus.get_best_parents(); <span class="comment">// Vec&lt;(parent_id, parent_period)&gt;
                                                                                        // generate the local storage object
 
-        // get the parent in the same thread, with its period
+        // claim block parents in local storage
+        </span>{
+            <span class="kw">let </span>claimed_parents = block_storage.claim_block_refs(
+                <span class="kw-2">&amp;</span>parents
+                    .iter()
+                    .map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id)
+                    .collect::&lt;PreHashSet&lt;BlockId&gt;&gt;(),
+            );
+            <span class="kw">if </span>claimed_parents.len() != parents.len() {
+                <span class="macro">warn!</span>(<span class="string">&quot;block factory could claim parents for slot {}&quot;</span>, slot);
+                <span class="kw">return</span>;
+            }
+        }
+
+        <span class="comment">// get the parent in the same thread, with its period
         // will not panic because the thread is validated before the call
         </span><span class="kw">let </span>(same_thread_parent_id, <span class="kw">_</span>) = parents[slot.thread <span class="kw">as </span>usize];
 

@@ -360,6 +360,17 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -388,7 +399,7 @@
         </span><span class="kw">for </span>a_block <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().clone().iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                 a_block: active_block,
-                storage_or_block,
+                storage,
             }) = <span class="self">self</span>.blocks_state.get_mut(a_block)
             {
                 <span class="kw">let </span>(_b_id, latest_final_period) =
@@ -403,10 +414,8 @@
                         &lt; latest_final_period.saturating_sub(<span class="self">self</span>.config.force_keep_final_periods)
                         &amp;&amp; !<span class="self">self</span>.active_index_without_ops.contains(a_block)
                     {
-                        storage_or_block.strip_to_block(a_block);
                         <span class="self">self</span>.active_index_without_ops.insert(<span class="kw-2">*</span>a_block);
-                        <span class="comment">// reset the list of descendants
-                        </span>active_block.descendants = Default::default();
+                        storage.drop_operation_refs(<span class="kw-2">&amp;</span>storage.get_op_refs().clone());
                     }
                 } <span class="kw">else </span>{
                     <span class="self">self</span>.active_index_without_ops.remove(a_block);
@@ -423,6 +432,22 @@
             .copied()
             .collect();
         <span class="kw">for </span>discard_active_h <span class="kw">in </span>to_remove {
+            <span class="kw">let </span>block_slot;
+            <span class="kw">let </span>block_creator;
+            <span class="kw">let </span>block_parents;
+            {
+                <span class="kw">let </span>read_blocks = <span class="self">self</span>.storage.read_blocks();
+                <span class="kw">let </span>block = read_blocks.get(<span class="kw-2">&amp;</span>discard_active_h).ok_or_else(|| {
+                    ConsensusError::MissingBlock(<span class="macro">format!</span>(
+                        <span class="string">&quot;missing block when removing unused final active blocks: {}&quot;</span>,
+                        discard_active_h
+                    ))
+                })<span class="question-mark">?</span>;
+                block_slot = block.content.header.content.slot;
+                block_creator = block.content_creator_address;
+                block_parents = block.content.header.content.parents.clone();
+            };
+
             <span class="kw">let </span>sequence_number = <span class="self">self</span>.blocks_state.sequence_counter();
             <span class="self">self</span>.blocks_state.transition_map(<span class="kw-2">&amp;</span>discard_active_h, |block_status, block_statuses| {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(
@@ -444,9 +469,6 @@
                     }
 
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.prune_active&quot;</span>, {<span class="string">&quot;hash&quot;</span>: discard_active_h, <span class="string">&quot;reason&quot;</span>: DiscardReason::Final});
-                    <span class="kw">let </span>block_slot = discarded_active.slot;
-                    <span class="kw">let </span>block_creator = discarded_active.creator_address;
-                    <span class="kw">let </span>block_parents = discarded_active.parents.iter().map(|(p, <span class="kw">_</span>)| <span class="kw-2">*</span>p).collect();
                     discarded_finals.insert(discard_active_h, <span class="kw-2">*</span>discarded_active);
 
                     <span class="comment">// mark as final

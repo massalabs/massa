@@ -127,14 +127,11 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-</span><span class="kw">use </span><span class="kw">crate</span>::types::{
-    ExecutionBlockMetadata, ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest,
-};
+</span><span class="kw">use </span><span class="kw">crate</span>::types::{ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest};
 <span class="kw">use </span><span class="kw">crate</span>::ExecutionError;
 <span class="kw">use crate</span>::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 <span class="kw">use </span>massa_models::address::Address;
@@ -147,6 +144,7 @@
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::collections::HashMap;
 
@@ -158,12 +156,12 @@
     /// # Arguments
     /// * `finalized_blocks`: newly finalized blocks indexed by slot.
     /// * `blockclique`: new blockclique (if changed). Indexed by slot.
-    /// * `block_metadata`: storage instances and metadata for new blocks. Each storage owns refs to the block and its ops/endorsements.
+    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
     </span><span class="kw">fn </span>update_blockclique_status(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
         new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
-        block_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
+        block_storage: PreHashMap&lt;BlockId, Storage&gt;,
     );
 
     <span class="doccomment">/// Atomically query the execution state with multiple requests

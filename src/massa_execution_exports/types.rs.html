@@ -313,16 +313,6 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -343,17 +333,7 @@
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
 };
 <span class="kw">use </span>massa_pos_exports::ProductionStats;
-<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
-
-<span class="doccomment">/// Metadata needed to execute the block
-</span><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>ExecutionBlockMetadata {
-    <span class="doccomment">/// Address of the creator of the parent in the same thread
-    </span><span class="kw">pub </span>same_thread_parent_creator: <span class="prelude-ty">Option</span>&lt;Address&gt;,
-    <span class="doccomment">/// Storage referncing the block and its contents
-    </span><span class="kw">pub </span>storage: <span class="prelude-ty">Option</span>&lt;Storage&gt;,
-}
 
 <span class="doccomment">/// Request to atomically execute a batch of execution state queries
 </span><span class="kw">pub struct </span>ExecutionQueryRequest {
