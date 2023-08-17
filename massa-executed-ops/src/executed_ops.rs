@@ -292,7 +292,7 @@ fn test_executed_ops_hash_computing() {
     let thread_count = 2;
     let config = ExecutedOpsConfig {
         thread_count,
-        keep_executed_history_extra_periods: 5,
+        keep_executed_history_extra_periods: 2,
     };
     let tempdir_a = TempDir::new().expect("cannot create temp directory");
     let tempdir_c = TempDir::new().expect("cannot create temp directory");
@@ -318,13 +318,13 @@ fn test_executed_ops_hash_computing() {
 
     // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone(), db_a.clone());
-    let mut c = ExecutedOps::new(config, db_c.clone());
+    let mut c = ExecutedOps::new(config.clone(), db_c.clone());
     let mut change_a = PreHashMap::default();
     let mut change_b = PreHashMap::default();
     let mut change_c = PreHashMap::default();
     for i in 0u8..20 {
         let expiration_slot = Slot {
-            period: i as u64,
+            period: (i as u64).saturating_sub(config.keep_executed_history_extra_periods),
             thread: 0,
         };
         if i < 12 {
