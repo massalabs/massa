@@ -315,6 +315,28 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="kw">use </span>massa_consensus_exports::{
@@ -350,7 +372,27 @@
             }
         }
 
-        <span class="comment">// add as descendant to ancestors. Note: descendants are never removed.
+        <span class="comment">// add same-thread creator parent
+        </span><span class="kw">let </span>same_thread_parent_creator =
+            parents_hash
+                .get(add_block_slot.thread <span class="kw">as </span>usize)
+                .and_then(|parent_id| {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =
+                        <span class="self">self</span>.blocks_state.get(parent_id)
+                    {
+                        <span class="prelude-val">Some</span>(a_block.creator_address)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
+                });
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) = <span class="self">self</span>.blocks_state.get_mut(<span class="kw-2">&amp;</span>add_block_id)
+        {
+            a_block.same_thread_parent_creator = same_thread_parent_creator;
+        } <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">&quot;block status should be active&quot;</span>);
+        };
+
+        <span class="comment">// add as descendant to ancestors if not final
         </span><span class="kw">let </span><span class="kw-2">mut </span>ancestors: VecDeque&lt;BlockId&gt; = parents_hash.iter().copied().collect();
         <span class="kw">let </span><span class="kw-2">mut </span>visited = PreHashSet::&lt;BlockId&gt;::default();
         <span class="kw">while let </span><span class="prelude-val">Some</span>(ancestor_h) = ancestors.pop_back() {
@@ -360,6 +402,11 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block: ab, .. }) =
                 <span class="self">self</span>.blocks_state.get_mut(<span class="kw-2">&amp;</span>ancestor_h)
             {
+                <span class="comment">// No need to add descendants if ancestor is final,
+                // because only non-final active blocks are scanned for descendents for finality detection.
+                </span><span class="kw">if </span>ab.is_final {
+                    <span class="kw">continue</span>;
+                }
                 ab.descendants.insert(add_block_id);
                 <span class="kw">for </span>(ancestor_parent_h, <span class="kw">_</span>) <span class="kw">in </span>ab.parents.iter() {
                     ancestors.push_front(<span class="kw-2">*</span>ancestor_parent_h);
@@ -381,7 +428,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>sum_hash = num::BigInt::default();
             <span class="kw">for </span>block_h <span class="kw">in </span>clique.block_ids.iter() {
                 <span class="kw">let </span>fitness = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_h) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage: <span class="kw">_ </span>}) =&gt; a_block.fitness,
+                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block.fitness,
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses computing fitness while adding {} - missing {}&quot;</span>, add_block_id, block_h))),
                 };
                 clique.fitness = clique
@@ -425,7 +472,7 @@
         <span class="self">self</span>.blocks_state.transition_map(block_id, |block_status, block_statuses| {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
             a_block: active_block,
-            storage: _storage,
+            ..
         }) = block_status
         {
             <span class="kw">if </span>active_block.is_final {
@@ -533,10 +580,7 @@
             </span><span class="kw">let </span>loc_candidates = final_candidates.clone();
             <span class="kw">for </span>candidate_h <span class="kw">in </span>loc_candidates.into_iter() {
                 <span class="kw">let </span>descendants = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>candidate_h) {
-                    <span class="prelude-val">Some</span>(BlockStatus::Active {
-                        a_block,
-                        storage: <span class="kw">_</span>,
-                    }) =&gt; <span class="kw-2">&amp;</span>a_block.descendants,
+                    <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; <span class="kw-2">&amp;</span>a_block.descendants,
                     <span class="kw">_ </span>=&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::MissingBlock(<span class="macro">format!</span>(
                             <span class="string">&quot;missing block when computing total fitness of descendants: {}&quot;</span>,

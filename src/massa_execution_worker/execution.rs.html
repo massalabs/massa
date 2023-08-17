@@ -1846,17 +1846,6 @@
 <a href="#1846" id="1846">1846</a>
 <a href="#1847" id="1847">1847</a>
 <a href="#1848" id="1848">1848</a>
-<a href="#1849" id="1849">1849</a>
-<a href="#1850" id="1850">1850</a>
-<a href="#1851" id="1851">1851</a>
-<a href="#1852" id="1852">1852</a>
-<a href="#1853" id="1853">1853</a>
-<a href="#1854" id="1854">1854</a>
-<a href="#1855" id="1855">1855</a>
-<a href="#1856" id="1856">1856</a>
-<a href="#1857" id="1857">1857</a>
-<a href="#1858" id="1858">1858</a>
-<a href="#1859" id="1859">1859</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1873,10 +1862,10 @@
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionChannels, ExecutionConfig, ExecutionError,
-    ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
-    SlotExecutionOutput,
+    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
+    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
+    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -1900,7 +1889,6 @@
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
-<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
@@ -2910,7 +2898,7 @@
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, parents) if there is a block a that slot, otherwise None
+    /// * `exec_target`: metadata of the block to execute, if not miss
     /// * `selector`: Reference to the selector
     ///
     /// # Returns
@@ -2918,7 +2906,7 @@
     </span><span class="kw">pub fn </span>execute_slot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
-        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
+        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; ExecutionOutput {
         <span class="comment">// Create a new execution context for the whole active slot
@@ -2950,7 +2938,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt; = <span class="prelude-val">None</span>;
 
         <span class="comment">// Check if there is a block at this slot
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = exec_target {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_metadata)) = exec_target {
+            <span class="kw">let </span>block_store = block_metadata
+                .storage
+                .as_ref()
+                .expect(<span class="string">&quot;Cannot execute a block for which the storage is missing&quot;</span>);
+
             <span class="comment">// Retrieve the block from storage
             </span><span class="kw">let </span>stored_block = block_store
                 .read_blocks()
@@ -2982,29 +2975,17 @@
             <span class="macro">debug!</span>(<span class="string">&quot;executing {} operations at slot {}&quot;</span>, operations.len(), slot);
 
             <span class="comment">// gather all available endorsement creators and target blocks
-            </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
-                <span class="kw-2">&amp;</span>stored_block
-                    .content
-                    .header
-                    .content
-                    .endorsements
-                    .iter()
-                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
-                    .unzip();
-
-            <span class="comment">// deduce endorsement target block creators
-            </span><span class="kw">let </span>endorsement_target_creators = {
-                <span class="kw">let </span>blocks = block_store.read_blocks();
-                endorsement_targets
-                    .iter()
-                    .map(|b_id| {
-                        blocks
-                            .get(b_id)
-                            .expect(<span class="string">&quot;endorsed block absent from storage&quot;</span>)
-                            .content_creator_address
-                    })
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            };
+            </span><span class="kw">let </span>endorsement_creators: Vec&lt;Address&gt; = stored_block
+                .content
+                .header
+                .content
+                .endorsements
+                .iter()
+                .map(|endo| endo.content_creator_address)
+                .collect();
+            <span class="kw">let </span>endorsement_target_creator = block_metadata
+                .same_thread_parent_creator
+                .expect(<span class="string">&quot;same thread parent creator missing&quot;</span>);
 
             <span class="comment">// Set remaining block gas
             </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_block_gas = <span class="self">self</span>.config.max_gas_per_block;
@@ -3056,14 +3037,11 @@
             <span class="kw">let </span>block_credit_part = block_credits
                 .checked_div_u64(<span class="number">3 </span>* (<span class="number">1 </span>+ (<span class="self">self</span>.config.endorsement_count)))
                 .expect(<span class="string">&quot;critical: block_credits checked_div factor is 0&quot;</span>);
-            <span class="kw">for </span>(endorsement_creator, endorsement_target_creator) <span class="kw">in </span>endorsement_creators
-                .iter()
-                .zip(endorsement_target_creators.into_iter())
-            {
+            <span class="kw">for </span>endorsement_creator <span class="kw">in </span>endorsement_creators {
                 <span class="comment">// credit creator of the endorsement with coins
                 </span><span class="kw">match </span>context.transfer_coins(
                     <span class="prelude-val">None</span>,
-                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>endorsement_creator),
+                    <span class="prelude-val">Some</span>(endorsement_creator),
                     block_credit_part,
                     <span class="bool-val">false</span>,
                 ) {
@@ -3141,7 +3119,7 @@
     </span><span class="kw">pub fn </span>execute_candidate_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
-        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
+        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) {
         <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
@@ -3181,7 +3159,7 @@
     </span><span class="kw">pub fn </span>execute_final_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
-        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
+        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) {
         <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);

@@ -346,12 +346,6 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
@@ -501,19 +495,13 @@
 
     <span class="doccomment">/// Prune all denunciations that have expired, assuming the given slot is final
     </span><span class="kw">fn </span>prune_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
-        <span class="comment">// Force-keep `keep_executed_history_extra_periods` for API polling safety
-        </span><span class="kw">let </span>effective_expiry_periods = <span class="self">self
-            </span>.config
-            .denunciation_expire_periods
-            .saturating_add(<span class="self">self</span>.config.keep_executed_history_extra_periods);
-
         <span class="kw">let </span>drained: Vec&lt;(Slot, HashSet&lt;DenunciationIndex&gt;)&gt; = <span class="self">self
             </span>.sorted_denunciations
             .extract_if(|de_idx_slot, <span class="kw">_</span>| {
                 Denunciation::is_expired(
                     <span class="kw-2">&amp;</span>de_idx_slot.period,
                     <span class="kw-2">&amp;</span>slot.period,
-                    <span class="kw-2">&amp;</span>effective_expiry_periods,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.config.denunciation_expire_periods,
                 )
             })
             .collect();
