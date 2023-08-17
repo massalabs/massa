@@ -74,7 +74,9 @@ pub enum StorageOrBlock {
 }
 
 impl StorageOrBlock {
-    /// Return a clone of the underlying block
+    /// Return a clone of the underlying block.
+    /// This is used when we want to get a copy of the block that is referenced by a block status
+    /// (and not a copy of the block status itself)
     pub fn clone_block(&self, block_id: &BlockId) -> SecureShareBlock {
         match self {
             StorageOrBlock::Storage(storage) => storage

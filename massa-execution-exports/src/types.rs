@@ -26,7 +26,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct ExecutionBlockMetadata {
     /// Address of the creator of the parent in the same thread
     pub same_thread_parent_creator: Option<Address>,
-    /// Storage referncing the block and its contents
+    /// Storage referencing the block and its contents
     pub storage: Option<Storage>,
 }
 

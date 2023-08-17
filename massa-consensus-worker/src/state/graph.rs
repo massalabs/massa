@@ -63,6 +63,8 @@ impl ConsensusState {
             if let Some(BlockStatus::Active { a_block: ab, .. }) =
                 self.blocks_state.get_mut(&ancestor_h)
             {
+                // No need to add descendants if ancestor is final,
+                // because only non-final active blocks are scanned for descendents for finality detection.
                 if ab.is_final {
                     continue;
                 }
