@@ -15,12 +15,18 @@
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ExecutedOpsConfig {
     <span class="doccomment">/// Number of threads
     </span><span class="kw">pub </span>thread_count: u8,
+    <span class="doccomment">/// Number of extra periods to keep executed denunciations
+    </span><span class="kw">pub </span>keep_executed_history_extra_periods: u64,
 }
 
 <span class="attr">#[derive(Debug, Clone)]
@@ -31,5 +37,7 @@
     </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// Number of endorsements
     </span><span class="kw">pub </span>endorsement_count: u32,
+    <span class="doccomment">/// Number of extra periods to keep executed denunciations
+    </span><span class="kw">pub </span>keep_executed_history_extra_periods: u64,
 }
 </code></pre></div></section></main></body></html>
