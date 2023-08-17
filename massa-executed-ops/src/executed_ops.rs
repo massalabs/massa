@@ -40,7 +40,7 @@ macro_rules! op_id_key {
 #[derive(Clone)]
 pub struct ExecutedOps {
     /// Executed operations configuration
-    _config: ExecutedOpsConfig,
+    config: ExecutedOpsConfig,
     /// RocksDB Instance
     pub db: ShareableMassaDBController,
     /// Executed operations btreemap with slot as index for better pruning complexity
@@ -63,7 +63,7 @@ impl ExecutedOps {
             (Included(0), Excluded(config.thread_count)),
         );
         Self {
-            _config: config,
+            config,
             db,
             sorted_ops: BTreeMap::new(),
             op_exec_status: HashMap::new(),
@@ -181,9 +181,18 @@ impl ExecutedOps {
             .is_some()
     }
 
-    /// Prune all operations that expire strictly before `slot`
+    /// Prune all expired operations
     fn prune_to_batch(&mut self, slot: Slot, batch: &mut DBBatch) {
-        let kept = self.sorted_ops.split_off(&slot);
+        // Force-keep `keep_executed_history_extra_periods` for API polling safety
+        let cutoff_slot = match slot
+            .period
+            .checked_sub(self.config.keep_executed_history_extra_periods)
+        {
+            Some(cutoff_slot) => Slot::new(cutoff_slot, slot.thread),
+            None => return,
+        };
+
+        let kept = self.sorted_ops.split_off(&cutoff_slot);
         let removed = std::mem::take(&mut self.sorted_ops);
         for (_, ids) in removed {
             for op_id in ids {
