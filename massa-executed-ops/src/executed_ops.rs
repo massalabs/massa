@@ -290,7 +290,10 @@ fn test_executed_ops_hash_computing() {
 
     // initialize the executed ops config
     let thread_count = 2;
-    let config = ExecutedOpsConfig { thread_count };
+    let config = ExecutedOpsConfig {
+        thread_count,
+        keep_executed_history_extra_periods: 5,
+    };
     let tempdir_a = TempDir::new().expect("cannot create temp directory");
     let tempdir_c = TempDir::new().expect("cannot create temp directory");
     let db_a_config = MassaDBConfig {

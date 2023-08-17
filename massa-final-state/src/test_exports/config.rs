@@ -15,7 +15,8 @@ use massa_executed_ops::{
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
 };
@@ -63,11 +64,13 @@ impl Default for FinalStateConfig {
             async_pool_config: AsyncPoolConfig::default(),
             executed_ops_config: ExecutedOpsConfig {
                 thread_count: THREAD_COUNT,
+                keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
             },
             executed_denunciations_config: ExecutedDenunciationsConfig {
                 denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
                 thread_count: THREAD_COUNT,
                 endorsement_count: ENDORSEMENT_COUNT,
+                keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
             },
             pos_config: PoSConfig {
                 periods_per_cycle: PERIODS_PER_CYCLE,
