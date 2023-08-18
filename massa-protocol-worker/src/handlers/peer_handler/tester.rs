@@ -425,16 +425,11 @@ impl Tester {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         let listener = {
-                            let res = {
-                                let db_read = db.read();
-                                let peers_in_test = db_read.peers_in_test.clone();
-                                db_read.get_oldest_peer(
-                                    protocol_config.test_oldest_peer_cooldown.into(),
-                                    &peers_in_test,
-                                )
-                            };
-                            if let Some(listener) = res {
-                                let mut db_write = db.write();
+                            let mut db_write = db.write();
+                            if let Some(listener) = db_write.get_oldest_peer(
+                                protocol_config.test_oldest_peer_cooldown.into(),
+                                &db_write.peers_in_test,
+                            ) {
                                 db_write.peers_in_test.insert(listener);
                                 db_write.tested_addresses.insert(listener, MassaTime::now().unwrap());
                                 listener
