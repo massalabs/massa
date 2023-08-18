@@ -16,11 +16,10 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
-};
-use massa_models::config::{
-    MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
 };
 use massa_models::{config::MAX_DATASTORE_VALUE_LENGTH, slot::Slot};
 use massa_pos_exports::{PoSConfig, SelectorConfig};
@@ -71,11 +70,15 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
             initial_deferred_credits_path: None,
         },
-        executed_ops_config: ExecutedOpsConfig { thread_count },
+        executed_ops_config: ExecutedOpsConfig {
+            thread_count,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        },
         executed_denunciations_config: ExecutedDenunciationsConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             thread_count,
             endorsement_count: ENDORSEMENT_COUNT,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
         },
         final_history_length: 100,
         initial_seed_string: "".into(),
