@@ -336,14 +336,14 @@
                                     };
 
                                     <span class="comment">// Build the response message
-                                    </span><span class="kw">let </span>result = grpc_model::EndorsementsIds {
-                                        endorsements_ids: verified_eds.keys().cloned().collect(),
+                                    </span><span class="kw">let </span>result = grpc_model::EndorsementIds {
+                                        endorsement_ids: verified_eds.keys().cloned().collect(),
                                     };
                                     <span class="comment">// Send the response message back to the client
                                     </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
                                         .send(<span class="prelude-val">Ok</span>(grpc_api::SendEndorsementsResponse {
                                             result: <span class="prelude-val">Some</span>(
-                                                grpc_api::send_endorsements_response::Result::EndorsementsIds(
+                                                grpc_api::send_endorsements_response::Result::EndorsementIds(
                                                     result,
                                                 ),
                                             ),

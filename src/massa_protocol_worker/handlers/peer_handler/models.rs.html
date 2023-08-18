@@ -288,6 +288,8 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -442,6 +444,8 @@
     </span><span class="kw">pub </span>tested_addresses: HashMap&lt;SocketAddr, MassaTime&gt;,
     <span class="doccomment">/// history of try connection to peers
     </span><span class="kw">pub </span>try_connect_history: HashMap&lt;SocketAddr, ConnectionMetadata&gt;,
+    <span class="doccomment">/// peers currently tested
+    </span><span class="kw">pub </span>peers_in_test: HashSet&lt;SocketAddr&gt;,
 }
 
 <span class="kw">pub type </span>SharedPeerDB = Arc&lt;RwLock&lt;PeerDB&gt;&gt;;
