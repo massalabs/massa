@@ -2036,6 +2036,7 @@
 <a href="#2036" id="2036">2036</a>
 <a href="#2037" id="2037">2037</a>
 <a href="#2038" id="2038">2038</a>
+<a href="#2039" id="2039">2039</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3028,54 +3029,55 @@
     <span class="doccomment">/// Used to recompute the cycle cache from the disk.
     ///
     </span><span class="kw">fn </span>get_cycle_history_cycles(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(u64, bool)&gt; {
-        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+        <span class="kw">let </span><span class="kw-2">mut </span>found_cycles: Vec&lt;u64&gt; = Vec::new();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>found_cycles: Vec&lt;(u64, bool)&gt; = Vec::new();
+        {
+            <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
-        <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_key, <span class="kw">_</span>)) = <span class="kw">match </span>found_cycles.last() {
-            <span class="prelude-val">Some</span>((prev_cycle, <span class="kw">_</span>)) =&gt; {
-                <span class="kw">let </span>cycle_prefix = <span class="self">self</span>.cycle_history_cycle_prefix(<span class="kw-2">*</span>prev_cycle);
+            <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_key, <span class="kw">_</span>)) = <span class="kw">match </span>found_cycles.last() {
+                <span class="prelude-val">Some</span>(prev_cycle) =&gt; {
+                    <span class="kw">let </span>cycle_prefix = <span class="self">self</span>.cycle_history_cycle_prefix(<span class="kw-2">*</span>prev_cycle);
 
-                db.iterator_cf(
-                    STATE_CF,
-                    MassaIteratorMode::From(
-                        <span class="kw-2">&amp;</span><span class="macro">upper_limit_prefix!</span>(cycle_prefix),
-                        MassaDirection::Forward,
-                    ),
-                )
-                .next()
+                    db.iterator_cf(
+                        STATE_CF,
+                        MassaIteratorMode::From(
+                            <span class="kw-2">&amp;</span><span class="macro">upper_limit_prefix!</span>(cycle_prefix),
+                            MassaDirection::Forward,
+                        ),
+                    )
+                    .next()
+                }
+                <span class="prelude-val">None </span>=&gt; db
+                    .iterator_cf(
+                        STATE_CF,
+                        MassaIteratorMode::From(
+                            CYCLE_HISTORY_PREFIX.as_bytes(),
+                            MassaDirection::Forward,
+                        ),
+                    )
+                    .next(),
+            } {
+                <span class="kw">if </span>!serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                    <span class="kw">break</span>;
+                }
+                <span class="kw">let </span>(<span class="kw">_</span>, cycle) = <span class="self">self
+                    </span>.cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .u64_deser
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+                    .expect(CYCLE_HISTORY_DESER_ERROR);
+
+                found_cycles.push(cycle);
             }
-            <span class="prelude-val">None </span>=&gt; db
-                .iterator_cf(
-                    STATE_CF,
-                    MassaIteratorMode::From(
-                        CYCLE_HISTORY_PREFIX.as_bytes(),
-                        MassaDirection::Forward,
-                    ),
-                )
-                .next(),
-        } {
-            <span class="kw">if </span>!serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
-                <span class="kw">break</span>;
-            }
-            <span class="kw">let </span>(<span class="kw">_</span>, cycle) = <span class="self">self
-                </span>.cycle_info_deserializer
-                .cycle_info_deserializer
-                .u64_deser
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-                .expect(CYCLE_HISTORY_DESER_ERROR);
-
-            found_cycles.push((
-                cycle,
-                <span class="self">self</span>.is_cycle_complete(cycle)
-                    .expect(<span class="string">&quot;could not get completeness info&quot;</span>),
-            ));
         }
 
         <span class="comment">// The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
-        </span>found_cycles.sort_by_key(|(cycle, <span class="kw">_</span>)| <span class="kw-2">*</span>cycle);
+        </span>found_cycles.sort_unstable();
 
         found_cycles
+            .into_iter()
+            .map(|cycle| (cycle, <span class="self">self</span>.is_cycle_complete(cycle).unwrap_or(<span class="bool-val">false</span>)))
+            .collect()
     }
 
     <span class="doccomment">/// Queries a given cycle info in the database
