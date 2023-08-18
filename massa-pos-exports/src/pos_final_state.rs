@@ -990,52 +990,55 @@ impl PoSFinalState {
     /// Used to recompute the cycle cache from the disk.
     ///
     fn get_cycle_history_cycles(&self) -> Vec<(u64, bool)> {
-        let db = self.db.read();
+        let mut found_cycles: Vec<u64> = Vec::new();
 
-        let mut found_cycles: Vec<(u64, bool)> = Vec::new();
+        {
+            let db = self.db.read();
 
-        while let Some((serialized_key, _)) = match found_cycles.last() {
-            Some((prev_cycle, _)) => {
-                let cycle_prefix = self.cycle_history_cycle_prefix(*prev_cycle);
+            while let Some((serialized_key)) = match found_cycles.last() {
+                Some(prev_cycle) => {
+                    let cycle_prefix = self.cycle_history_cycle_prefix(*prev_cycle);
 
-                db.iterator_cf(
-                    STATE_CF,
-                    MassaIteratorMode::From(
-                        &upper_limit_prefix!(cycle_prefix),
-                        MassaDirection::Forward,
-                    ),
-                )
-                .next()
+                    db.iterator_cf(
+                        STATE_CF,
+                        MassaIteratorMode::From(
+                            &upper_limit_prefix!(cycle_prefix),
+                            MassaDirection::Forward,
+                        ),
+                    )
+                    .next()
+                }
+                None => db
+                    .iterator_cf(
+                        STATE_CF,
+                        MassaIteratorMode::From(
+                            CYCLE_HISTORY_PREFIX.as_bytes(),
+                            MassaDirection::Forward,
+                        ),
+                    )
+                    .next(),
+            } {
+                if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                    break;
+                }
+                let (_, cycle) = self
+                    .cycle_info_deserializer
+                    .cycle_info_deserializer
+                    .u64_deser
+                    .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
+                    .expect(CYCLE_HISTORY_DESER_ERROR);
+
+                found_cycles.push(cycle);
             }
-            None => db
-                .iterator_cf(
-                    STATE_CF,
-                    MassaIteratorMode::From(
-                        CYCLE_HISTORY_PREFIX.as_bytes(),
-                        MassaDirection::Forward,
-                    ),
-                )
-                .next(),
-        } {
-            if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
-                break;
-            }
-            let (_, cycle) = self
-                .cycle_info_deserializer
-                .cycle_info_deserializer
-                .u64_deser
-                .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-                .expect(CYCLE_HISTORY_DESER_ERROR);
-
-            found_cycles.push((
-                cycle,
-                self.is_cycle_complete(cycle)
-                    .expect("could not get completeness info"),
-            ));
         }
 
         // The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
-        found_cycles.sort_by_key(|(cycle, _)| *cycle);
+        found_cycles.sort_unstable();
+
+        let mut found_cycles = found_cycles
+            .into_iter()
+            .map(|cycle| (cycle, self.is_cycle_complete(cycle).unwrap_or(false)))
+            .collect::<Vec<_>>();
 
         found_cycles
     }
