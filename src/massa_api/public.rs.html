@@ -1078,6 +1078,7 @@
 <a href="#1078" id="1078">1078</a>
 <a href="#1079" id="1079">1079</a>
 <a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1725,10 +1726,11 @@
     /// only active blocks are returned
     </span><span class="kw">async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt; {
         <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
+        <span class="kw">let </span>storage = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
         <span class="kw">let </span>blocks = ids
             .into_iter()
             .filter_map(|id| {
-                <span class="kw">let </span>content = <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks().get(<span class="kw-2">&amp;</span>id) {
+                <span class="kw">let </span>content = <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = storage.read_blocks().get(<span class="kw-2">&amp;</span>id) {
                     wrapped_block.content.clone()
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="prelude-val">None</span>;
@@ -1766,6 +1768,8 @@
 
     <span class="kw">async fn </span>get_blockclique_block_by_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; RpcResult&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;&gt; {
         <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
+        <span class="kw">let </span>storage = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
+
         <span class="kw">let </span>block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
 
         <span class="kw">let </span>block_id = <span class="kw">match </span>block_id_option {
@@ -1773,9 +1777,7 @@
             <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         };
 
-        <span class="kw">let </span>res = <span class="self">self
-            </span>.<span class="number">0
-            </span>.storage
+        <span class="kw">let </span>res = storage
             .read_blocks()
             .get(<span class="kw-2">&amp;</span>block_id)
             .map(|b| b.content.clone());
