@@ -995,7 +995,7 @@ impl PoSFinalState {
         {
             let db = self.db.read();
 
-            while let Some(serialized_key) = match found_cycles.last() {
+            while let Some((serialized_key, _)) = match found_cycles.last() {
                 Some(prev_cycle) => {
                     let cycle_prefix = self.cycle_history_cycle_prefix(*prev_cycle);
 
@@ -1035,12 +1035,10 @@ impl PoSFinalState {
         // The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
         found_cycles.sort_unstable();
 
-        let mut found_cycles = found_cycles
+        found_cycles
             .into_iter()
             .map(|cycle| (cycle, self.is_cycle_complete(cycle).unwrap_or(false)))
-            .collect::<Vec<_>>();
-
-        found_cycles
+            .collect()
     }
 
     /// Queries a given cycle info in the database
