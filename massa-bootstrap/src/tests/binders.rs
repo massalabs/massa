@@ -43,7 +43,7 @@ impl BootstrapClientBinder {
     }
     pub(crate) fn test_default_config() -> BootstrapClientConfig {
         BootstrapClientConfig {
-            max_bytes_read_write: std::u64::MAX,
+            rate_limit: std::u64::MAX,
             max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
             endorsement_count: ENDORSEMENT_COUNT,
             max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -87,7 +87,7 @@ fn test_binders() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: std::u64::MAX,
+            rate_limit: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -237,7 +237,7 @@ fn test_binders_double_send_server_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: std::u64::MAX,
+            rate_limit: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -366,7 +366,7 @@ fn test_binders_try_double_send_client_works() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: std::u64::MAX,
+            rate_limit: std::u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -503,7 +503,7 @@ fn test_partial_msg() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: u64::MAX,
+            rate_limit: u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -572,7 +572,7 @@ fn test_client_drip_feed() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: u64::MAX,
+            rate_limit: u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -663,7 +663,7 @@ fn test_bandwidth() {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            max_bytes_read_write: 100,
+            rate_limit: 100,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,

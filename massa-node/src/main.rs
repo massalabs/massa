@@ -363,7 +363,7 @@ async fn launch(
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
-        max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
+        rate_limit: SETTINGS.bootstrap.rate_limit,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,

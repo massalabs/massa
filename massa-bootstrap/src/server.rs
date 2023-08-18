@@ -242,7 +242,7 @@ impl BootstrapServer<'_> {
         let bootstrap_sessions_counter: Arc<()> = Arc::new(());
         let per_ip_min_interval = self.bootstrap_config.per_ip_min_interval.to_duration();
         // TODO: Work out how to integration-test this
-        let limit = self.bootstrap_config.max_bytes_read_write;
+        let limit = self.bootstrap_config.rate_limit;
         loop {
             // block until we have a connection to work with, or break out of main-loop
 

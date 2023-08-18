@@ -65,7 +65,7 @@ impl BootstrapServerBinder {
         rw_limit: Option<u64>,
     ) -> Self {
         let BootstrapSrvBindCfg {
-            max_bytes_read_write: _limit,
+            rate_limit: _limit,
             thread_count,
             max_datastore_key_length,
             randomness_size_bytes,
