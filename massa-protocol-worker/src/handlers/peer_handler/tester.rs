@@ -341,11 +341,9 @@ impl Tester {
                                     let db = db.clone();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
-                                        if db.read().peers_in_test.contains(addr) {
+                                        if !db.write().peers_in_test.insert(*addr) {
+                                            // if the peer is already in test, we skip it
                                             continue;
-                                        }
-                                        {
-                                            db.write().peers_in_test.insert(*addr);
                                         }
 
                                         //Find category of that address
