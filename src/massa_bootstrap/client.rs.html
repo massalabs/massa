@@ -1165,7 +1165,7 @@
         };
     <span class="kw">let </span><span class="kw-2">mut </span>global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
-    <span class="kw">let </span>limit = bootstrap_config.rate_limit;
+    <span class="kw">let </span>limit = bootstrap_config.max_bytes_read_write;
     <span class="kw">loop </span>{
         <span class="comment">// check for interuption
         </span><span class="kw">if </span><span class="kw-2">*</span>interupted.<span class="number">0</span>.lock().expect(<span class="string">&quot;double-lock on interupt-mutex&quot;</span>) {
