@@ -995,7 +995,7 @@ impl PoSFinalState {
         {
             let db = self.db.read();
 
-            while let Some((serialized_key)) = match found_cycles.last() {
+            while let Some(serialized_key) = match found_cycles.last() {
                 Some(prev_cycle) => {
                     let cycle_prefix = self.cycle_history_cycle_prefix(*prev_cycle);
 
