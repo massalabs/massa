@@ -25,16 +25,8 @@ use transition::Versioned;
 #[allow(missing_docs)]
 /// versioned KeyPair used for signature and decryption
 #[transition::versioned(versions("0", "1"))]
-pub struct KeyPair(ed25519_dalek::Keypair);
-
-impl Clone for KeyPair {
-    fn clone(&self) -> Self {
-        match self {
-            KeyPair::KeyPairV0(keypair) => KeyPair::KeyPairV0(keypair.clone()),
-            KeyPair::KeyPairV1(keypair) => KeyPair::KeyPairV1(keypair.clone()),
-        }
-    }
-}
+#[derive(Clone)]
+pub struct KeyPair(ed25519_dalek::SigningKey);
 
 impl std::fmt::Display for KeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -207,17 +199,6 @@ impl KeyPair {
 }
 
 #[transition::impl_version(versions("0", "1"))]
-impl Clone for KeyPair {
-    fn clone(&self) -> Self {
-        KeyPair(ed25519_dalek::Keypair {
-            // This will never error since self is a valid keypair
-            secret: ed25519_dalek::SecretKey::from_bytes(self.0.secret.as_bytes()).unwrap(),
-            public: self.0.public,
-        })
-    }
-}
-
-#[transition::impl_version(versions("0", "1"))]
 impl std::fmt::Display for KeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -258,7 +239,7 @@ impl KeyPair {
         version_serializer
             .serialize(&Self::VERSION, &mut bytes)
             .unwrap();
-        bytes.extend_from_slice(&self.0.secret.to_bytes());
+        bytes.extend_from_slice(&self.0.to_bytes());
         bytes
     }
 }
@@ -289,7 +270,7 @@ impl KeyPair {
     /// let public_key = keypair.get_public_key();
     /// ```
     pub fn get_public_key(&self) -> PublicKey {
-        PublicKey(self.0.public)
+        PublicKey(self.0.verifying_key())
     }
 
     /// Generate a new `KeyPair`
@@ -306,7 +287,7 @@ impl KeyPair {
     /// ```
     pub fn generate() -> Self {
         let mut rng = OsRng;
-        KeyPair(ed25519_dalek::Keypair::generate(&mut rng))
+        KeyPair(ed25519_dalek::SigningKey::generate(&mut rng))
     }
 
     /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`.
@@ -326,14 +307,10 @@ impl KeyPair {
                 "keypair byte array is of invalid size".to_string(),
             ));
         }
-        let secret = ed25519_dalek::SecretKey::from_bytes(&data[..Self::SECRET_KEY_BYTES_SIZE])
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
-            })?;
-        Ok(KeyPair(ed25519_dalek::Keypair {
-            public: ed25519_dalek::PublicKey::from(&secret),
-            secret,
-        }))
+
+        Ok(KeyPair(ed25519_dalek::SigningKey::from_bytes(
+            &data[..Self::SECRET_KEY_BYTES_SIZE].try_into().unwrap(),
+        )))
     }
 }
 
@@ -478,7 +455,7 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
 /// Generated from the `KeyPair` using `SignatureEngine`
 #[transition::versioned(versions("0", "1"))]
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct PublicKey(ed25519_dalek::PublicKey);
+pub struct PublicKey(ed25519_dalek::VerifyingKey);
 
 #[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for PublicKey {
@@ -750,9 +727,11 @@ impl PublicKey {
                 "public key byte array is of invalid size".to_string(),
             ));
         }
-        ed25519_dalek::PublicKey::from_bytes(&data[..Self::PUBLIC_KEY_SIZE_BYTES])
-            .map(Self)
-            .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
+        ed25519_dalek::VerifyingKey::from_bytes(
+            &data[..Self::PUBLIC_KEY_SIZE_BYTES].try_into().unwrap(),
+        )
+        .map(Self)
+        .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
 }
 
@@ -1099,11 +1078,9 @@ impl Signature {
                 "signature byte array is of invalid size".to_string(),
             ));
         }
-        ed25519_dalek::Signature::from_bytes(&data[..Self::SIGNATURE_SIZE_BYTES])
-            .map(Self)
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
-            })
+        Ok(Signature(ed25519_dalek::Signature::from_bytes(
+            &data[..Self::SIGNATURE_SIZE_BYTES].try_into().unwrap(),
+        )))
     }
 
     /// Deserialize a `Signature` using `bs58` encoding with checksum.
@@ -1352,7 +1329,10 @@ mod tests {
 
         match (keypair, deserialized) {
             (KeyPair::KeyPairV0(keypair), KeyPair::KeyPairV0(deserialized)) => {
-                assert_eq!(keypair.0.public, deserialized.0.public);
+                assert_eq!(
+                    keypair.0.to_keypair_bytes(),
+                    deserialized.0.to_keypair_bytes()
+                );
             }
             _ => {
                 panic!("Wrong version provided");
