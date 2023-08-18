@@ -1,4 +1,4 @@
-use crate::error::ConsensusError;
+use crate::{block_status::StorageOrBlock, error::ConsensusError};
 use massa_models::{
     active_block::ActiveBlock,
     block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
@@ -9,7 +9,6 @@ use massa_models::{
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-use massa_storage::Storage;
 use nom::branch::alt;
 use nom::{
     bytes::complete::tag,
@@ -36,37 +35,20 @@ pub struct ExportActiveBlock {
 
 impl ExportActiveBlock {
     /// conversion from active block to export active block
-    pub fn from_active_block(a_block: &ActiveBlock, storage: &Storage) -> Self {
-        // get block
-        let block = storage
-            .read_blocks()
-            .get(&a_block.block_id)
-            .expect("active block missing in storage")
-            .clone();
-
+    pub fn from_active_block(a_block: &ActiveBlock, storage_or_block: &StorageOrBlock) -> Self {
         // TODO: if we decide that endorsements are separate, also gather endorsements here
         ExportActiveBlock {
             parents: a_block.parents.clone(),
             is_final: a_block.is_final,
-            block,
+            block: storage_or_block.clone_block(&a_block.block_id),
         }
     }
 
     /// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
     pub fn to_active_block(
         self,
-        ref_storage: &Storage,
         thread_count: u8,
-    ) -> Result<(ActiveBlock, Storage), ConsensusError> {
-        // create resulting storage
-        let mut storage = ref_storage.clone_without_refs();
-
-        // add endorsements to storage and claim refs
-        // TODO change if we decide that endorsements are stored separately
-        storage.store_endorsements(self.block.content.header.content.endorsements.clone());
-
-        // Note: the block's parents are not claimed in the block's storage here but on graph inclusion
-
+    ) -> Result<(ActiveBlock, StorageOrBlock), ConsensusError> {
         // create ActiveBlock
         let active_block = ActiveBlock {
             creator_address: self.block.content_creator_address,
@@ -77,12 +59,10 @@ impl ExportActiveBlock {
             is_final: self.is_final,
             slot: self.block.content.header.content.slot,
             fitness: self.block.get_fitness(),
+            same_thread_parent_creator: None, // will be computed once the full graph is available
         };
 
-        // add block to storage and claim ref
-        storage.store_block(self.block);
-
-        Ok((active_block, storage))
+        Ok((active_block, StorageOrBlock::Block(Box::new(self.block))))
     }
 }
 

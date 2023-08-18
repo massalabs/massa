@@ -26,7 +26,7 @@ impl ConsensusState {
         for a_block in self.blocks_state.active_blocks().clone().iter() {
             if let Some(BlockStatus::Active {
                 a_block: active_block,
-                storage,
+                storage_or_block,
             }) = self.blocks_state.get_mut(a_block)
             {
                 let (_b_id, latest_final_period) =
@@ -41,8 +41,10 @@ impl ConsensusState {
                         < latest_final_period.saturating_sub(self.config.force_keep_final_periods)
                         && !self.active_index_without_ops.contains(a_block)
                     {
+                        storage_or_block.strip_to_block(a_block);
                         self.active_index_without_ops.insert(*a_block);
-                        storage.drop_operation_refs(&storage.get_op_refs().clone());
+                        // reset the list of descendants
+                        active_block.descendants = Default::default();
                     }
                 } else {
                     self.active_index_without_ops.remove(a_block);
@@ -59,22 +61,6 @@ impl ConsensusState {
             .copied()
             .collect();
         for discard_active_h in to_remove {
-            let block_slot;
-            let block_creator;
-            let block_parents;
-            {
-                let read_blocks = self.storage.read_blocks();
-                let block = read_blocks.get(&discard_active_h).ok_or_else(|| {
-                    ConsensusError::MissingBlock(format!(
-                        "missing block when removing unused final active blocks: {}",
-                        discard_active_h
-                    ))
-                })?;
-                block_slot = block.content.header.content.slot;
-                block_creator = block.content_creator_address;
-                block_parents = block.content.header.content.parents.clone();
-            };
-
             let sequence_number = self.blocks_state.sequence_counter();
             self.blocks_state.transition_map(&discard_active_h, |block_status, block_statuses| {
                 if let Some(
@@ -96,6 +82,9 @@ impl ConsensusState {
                     }
 
                     massa_trace!("consensus.block_graph.prune_active", {"hash": discard_active_h, "reason": DiscardReason::Final});
+                    let block_slot = discarded_active.slot;
+                    let block_creator = discarded_active.creator_address;
+                    let block_parents = discarded_active.parents.iter().map(|(p, _)| *p).collect();
                     discarded_finals.insert(discard_active_h, *discarded_active);
 
                     // mark as final

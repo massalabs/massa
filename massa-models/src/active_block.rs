@@ -27,4 +27,6 @@ pub struct ActiveBlock {
     pub slot: Slot,
     /// Fitness
     pub fitness: u64,
+    /// Same-thread parent creator
+    pub same_thread_parent_creator: Option<Address>,
 }
