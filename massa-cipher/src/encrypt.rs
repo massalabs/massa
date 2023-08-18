@@ -6,9 +6,9 @@
 
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
-use pbkdf2::password_hash::Salt;
+use pbkdf2::password_hash::{Salt, SaltString};
 use pbkdf2::{password_hash::PasswordHasher, Pbkdf2};
-use rand::{distributions::Alphanumeric, thread_rng, Rng, RngCore};
+use rand::{thread_rng, RngCore};
 
 use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
 use crate::error::CipherError;
@@ -24,16 +24,22 @@ pub struct CipherData {
 /// Read `lib.rs` module documentation for more information.
 pub fn encrypt(password: &str, data: &[u8]) -> Result<CipherData, CipherError> {
     // generate the PBKDF2 salt
-    let raw_salt: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(SALT_SIZE)
-        .map(char::from)
-        .collect();
-    let salt = Salt::new(&raw_salt).expect("salt creation failed");
+    // Re-implementation of the SaltString::generate function (allowing to control the SALT_SIZE here)
+    let mut rng = thread_rng();
+    let mut raw_salt = [0u8; SALT_SIZE];
+    rng.fill_bytes(&mut raw_salt);
+    let salt = SaltString::b64_encode(&raw_salt)
+        .map_err(|e| CipherError::EncryptionError(format!("Failed to encode salt: {e:?}")))?;
 
     // compute PBKDF2 password hash
     let password_hash = Pbkdf2
-        .hash_password_customized(password.as_bytes(), None, None, HASH_PARAMS, salt)
+        .hash_password_customized(
+            password.as_bytes(),
+            None,
+            None,
+            HASH_PARAMS,
+            Salt::from(&salt),
+        )
         .map_err(|e| CipherError::EncryptionError(e.to_string()))?
         .hash
         .expect("content is missing after a successful hash");

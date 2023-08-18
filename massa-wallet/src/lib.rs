@@ -173,7 +173,7 @@ impl Wallet {
             let ser_keys = serde_yaml::to_string(&file_formatted)?;
             let mut file_path = self.wallet_path.clone();
             file_path.push(format!("wallet_{}", addr));
-            file_path.set_extension(".yaml");
+            file_path.set_extension("yaml");
             std::fs::write(&file_path, ser_keys)?;
         }
         Ok(())
