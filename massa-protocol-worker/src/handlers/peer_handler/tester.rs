@@ -1,8 +1,7 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     io::Read,
     net::{IpAddr, SocketAddr},
-    sync::Arc,
     thread::JoinHandle,
     time::Duration,
 };
@@ -14,7 +13,6 @@ use massa_models::version::VersionDeserializer;
 use massa_protocol_exports::{PeerConnectionType, PeerId, PeerIdDeserializer, ProtocolConfig};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
-use parking_lot::RwLock;
 use peernet::{
     error::{PeerNetError, PeerNetResult},
     messages::MessagesHandler as PeerNetMessagesHandler,
@@ -57,9 +55,6 @@ impl Tester {
             Some(config.max_size_channel_commands_peer_testers),
         );
 
-        // Peers currently tested by one of the thread
-        let peers_in_test = Arc::new(RwLock::new(HashSet::new()));
-
         for _ in 0..config.thread_tester_count {
             testers.push(Tester::new(
                 peer_db.clone(),
@@ -69,7 +64,6 @@ impl Tester {
                 messages_handler.clone(),
                 target_out_connections.clone(),
                 default_target_out_connections,
-                peers_in_test.clone(),
                 massa_metrics.clone(),
             ));
         }
@@ -286,7 +280,6 @@ impl Tester {
         messages_handler: MessagesHandler,
         target_out_connections: HashMap<String, (Vec<IpAddr>, usize)>,
         default_target_out_connections: usize,
-        peers_in_test: Arc<RwLock<HashSet<SocketAddr>>>,
         massa_metrics: MassaMetrics,
     ) -> Self {
         tracing::log::debug!("running new tester");
@@ -348,12 +341,11 @@ impl Tester {
                                     let db = db.clone();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
-                                        if peers_in_test.read().contains(addr) {
+                                        if db.read().peers_in_test.contains(addr) {
                                             continue;
                                         }
                                         {
-                                            let mut peers_in_test = peers_in_test.write();
-                                            peers_in_test.insert(*addr);
+                                            db.write().peers_in_test.insert(*addr);
                                         }
 
                                         //Find category of that address
@@ -380,7 +372,7 @@ impl Tester {
                                             if let Some(last_tested_time) = db_write.tested_addresses.get(addr) {
                                                 let last_tested_time = last_tested_time.estimate_instant().expect("Time went backward");
                                                 if last_tested_time.elapsed() < cooldown {
-                                                    peers_in_test.write().remove(addr);
+                                                    db_write.peers_in_test.remove(addr);
                                                     continue;
                                                 }
                                             }
@@ -391,14 +383,14 @@ impl Tester {
                                         if !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
                                             //Don't test our local addresses
                                             if protocol_config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
-                                                peers_in_test.write().remove(addr);
+                                                db.write().peers_in_test.remove(addr);
                                                 continue 'main_loop;
                                             }
 
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
                                                 if ip.to_canonical() == ip_canonical {
-                                                    peers_in_test.write().remove(addr);
+                                                    db.write().peers_in_test.remove(addr);
                                                     continue 'main_loop;
                                                 }
                                             }
@@ -415,7 +407,7 @@ impl Tester {
                                                 massa_metrics.clone(),
                                             );
 
-                                            peers_in_test.write().remove(addr);
+                                            db.write().peers_in_test.remove(addr);
 
                                             // let _res =  network_manager.try_connect(
                                             //     *addr,
@@ -435,43 +427,41 @@ impl Tester {
                         // If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         let listener = {
-                            let mut peers_in_test = peers_in_test.write();
-
-                            let res = db.read().get_oldest_peer(
-                                protocol_config.test_oldest_peer_cooldown.into(),
-                                &peers_in_test,
-                            );
+                            let res = {
+                                let db_read = db.read();
+                                let peers_in_test = db_read.peers_in_test.clone();
+                                db_read.get_oldest_peer(
+                                    protocol_config.test_oldest_peer_cooldown.into(),
+                                    &peers_in_test,
+                                )
+                            };
                             if let Some(listener) = res {
-                                peers_in_test.insert(listener);
+                                let mut db_write = db.write();
+                                db_write.peers_in_test.insert(listener);
+                                db_write.tested_addresses.insert(listener, MassaTime::now().unwrap());
                                 listener
                             } else {
                                 continue;
                             }
                         };
 
-                        {
-                            let mut db = db.write();
-                            db.tested_addresses.insert(listener, MassaTime::now().unwrap());
-                        }
-
-
                         // we try to connect to all peer listener (For now we have only one listener)
                         let ip_canonical = listener.ip().to_canonical();
                         if active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
-                            peers_in_test.write().remove(&listener);
+                            db.write().peers_in_test.remove(&listener);
                             continue;
                         }
                         //Don't test our local addresses
                         for (local_addr, _transport) in protocol_config.listeners.iter() {
                             if listener == *local_addr {
-                                peers_in_test.write().remove(&listener);
+                                db.write().peers_in_test.remove(&listener);
                                 continue;
                             }
                         }
                         //Don't test our proper ip
                         if let Some(ip) = protocol_config.routable_ip {
                             if ip.to_canonical() == ip_canonical {
-                                peers_in_test.write().remove(&listener);
+                                db.write().peers_in_test.remove(&listener);
                                 continue;
                             }
                         }
@@ -492,7 +482,7 @@ impl Tester {
                         //     protocol_config.timeout_connection.to_duration(),
                         //     &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         // );
-                        peers_in_test.write().remove(&listener);
+                        db.write().peers_in_test.remove(&listener);
                         tracing::log::debug!("{:?}", res);
                     }
                 }
