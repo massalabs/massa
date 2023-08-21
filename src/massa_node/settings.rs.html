@@ -371,8 +371,6 @@
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -403,6 +401,7 @@
     <span class="kw">pub </span>max_read_only_gas: u64,
     <span class="kw">pub </span>abi_gas_costs_file: PathBuf,
     <span class="kw">pub </span>wasm_gas_costs_file: PathBuf,
+    <span class="kw">pub </span>initial_vesting_path: PathBuf,
     <span class="kw">pub </span>hd_cache_path: PathBuf,
     <span class="kw">pub </span>lru_cache_size: u32,
     <span class="kw">pub </span>hd_cache_size: usize,
@@ -421,7 +420,6 @@
     <span class="kw">pub </span>initial_ledger_path: PathBuf,
     <span class="kw">pub </span>disk_ledger_path: PathBuf,
     <span class="kw">pub </span>final_history_length: usize,
-    <span class="kw">pub </span>initial_deferred_credits_path: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
 }
 
 <span class="doccomment">/// Bootstrap configuration.
@@ -444,7 +442,7 @@
     <span class="kw">pub </span>max_simultaneous_bootstraps: u32,
     <span class="kw">pub </span>per_ip_min_interval: MassaTime,
     <span class="kw">pub </span>ip_list_max_size: usize,
-    <span class="kw">pub </span>rate_limit: u64,
+    <span class="kw">pub </span>max_bytes_read_write: u64,
     <span class="doccomment">/// Allocated time with which to manage the bootstrap process
     </span><span class="kw">pub </span>bootstrap_timeout: MassaTime,
 }
@@ -642,8 +640,6 @@
     </span><span class="kw">pub </span>default_category_info: PeerCategoryInfo,
     <span class="doccomment">/// Cooldown before testing again an old peer
     </span><span class="kw">pub </span>test_oldest_peer_cooldown: MassaTime,
-    <span class="doccomment">/// Rate limitation to apply to the data stream (per second)
-    </span><span class="kw">pub </span>rate_limit: u64,
 }
 
 <span class="doccomment">/// gRPC settings

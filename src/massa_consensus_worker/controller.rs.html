@@ -329,8 +329,6 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
@@ -489,10 +487,8 @@
         };
 
         <span class="kw">for </span>b_id <span class="kw">in </span><span class="kw-2">&amp;</span>current_ids {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
-                a_block,
-                storage_or_block,
-            }) = read_shared_state.blocks_state.get(b_id)
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active { a_block, storage }) =
+                read_shared_state.blocks_state.get(b_id)
             {
                 <span class="kw">if </span>final_blocks.len() <span class="kw">as </span>u64 &gt;= <span class="self">self</span>.bootstrap_part_size {
                     <span class="kw">break</span>;
@@ -506,7 +502,7 @@
                     <span class="kw">_ </span>=&gt; (),
                 }
                 <span class="kw">if </span>a_block.is_final {
-                    <span class="kw">let </span>export = ExportActiveBlock::from_active_block(a_block, storage_or_block);
+                    <span class="kw">let </span>export = ExportActiveBlock::from_active_block(a_block, storage);
                     final_blocks.push(export);
                     retrieved_ids.insert(<span class="kw-2">*</span>b_id);
                 }
