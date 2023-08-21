@@ -48,6 +48,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 use thiserror::Error;
 
+pub mod cert_manager;
 mod config;
 pub use config::ClientConfig;
 pub use config::HttpConfig;

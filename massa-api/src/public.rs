@@ -645,11 +645,10 @@ impl MassaRpcServer for API<Public> {
     /// only active blocks are returned
     async fn get_blocks(&self, ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
         let consensus_controller = self.0.consensus_controller.clone();
-        let storage = self.0.storage.clone_without_refs();
         let blocks = ids
             .into_iter()
             .filter_map(|id| {
-                let content = if let Some(wrapped_block) = storage.read_blocks().get(&id) {
+                let content = if let Some(wrapped_block) = self.0.storage.read_blocks().get(&id) {
                     wrapped_block.content.clone()
                 } else {
                     return None;
@@ -687,8 +686,6 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
         let consensus_controller = self.0.consensus_controller.clone();
-        let storage = self.0.storage.clone_without_refs();
-
         let block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
 
         let block_id = match block_id_option {
@@ -696,7 +693,9 @@ impl MassaRpcServer for API<Public> {
             None => return Ok(None),
         };
 
-        let res = storage
+        let res = self
+            .0
+            .storage
             .read_blocks()
             .get(&block_id)
             .map(|b| b.content.clone());

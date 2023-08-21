@@ -132,7 +132,7 @@ pub(crate) async fn send_operations(
                                     if let Err(e) = tx
                                         .send(Ok(grpc_api::SendOperationsResponse {
                                             result: Some(
-                                                grpc_api::send_operations_response::Result::OperationsIds(
+                                                grpc_api::send_operations_response::Result::OperationIds(
                                                     result,
                                                 ),
                                             ),
