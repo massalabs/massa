@@ -1412,6 +1412,7 @@
 <a href="#1412" id="1412">1412</a>
 <a href="#1413" id="1413">1413</a>
 <a href="#1414" id="1414">1414</a>
+<a href="#1415" id="1415">1415</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1780,7 +1781,7 @@
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
-        max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
+        rate_limit: SETTINGS.bootstrap.rate_limit,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -2077,6 +2078,7 @@
         version: <span class="kw-2">*</span>VERSION,
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
         test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
+        rate_limit: SETTINGS.protocol.rate_limit,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =
