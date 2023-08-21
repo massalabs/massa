@@ -401,6 +401,7 @@
     <span class="kw">pub </span>max_read_only_gas: u64,
     <span class="kw">pub </span>abi_gas_costs_file: PathBuf,
     <span class="kw">pub </span>wasm_gas_costs_file: PathBuf,
+    <span class="kw">pub </span>initial_vesting_path: PathBuf,
     <span class="kw">pub </span>hd_cache_path: PathBuf,
     <span class="kw">pub </span>lru_cache_size: u32,
     <span class="kw">pub </span>hd_cache_size: usize,
@@ -419,7 +420,6 @@
     <span class="kw">pub </span>initial_ledger_path: PathBuf,
     <span class="kw">pub </span>disk_ledger_path: PathBuf,
     <span class="kw">pub </span>final_history_length: usize,
-    <span class="kw">pub </span>initial_deferred_credits_path: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
 }
 
 <span class="doccomment">/// Bootstrap configuration.
