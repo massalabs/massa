@@ -299,6 +299,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "flipchan",
+      "name": "flipchan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12517945?v=4",
+      "profile": "https://github.com/flipchan",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

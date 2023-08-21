@@ -46,6 +46,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/leoloco"><img src="https://avatars.githubusercontent.com/u/12166652?v=4?s=100" width="100px;" alt="leoloco"/><br /><sub><b>leoloco</b></sub></a><br /><a href="https://github.com/massalabs/massa/issues?q=author%3Aleoloco" title="Bug reports">🐛</a> <a href="https://github.com/massalabs/massa/commits?author=leoloco" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/fsidhoum"><img src="https://avatars.githubusercontent.com/u/4265519?v=4?s=100" width="100px;" alt="fsidhoum"/><br /><sub><b>fsidhoum</b></sub></a><br /><a href="https://github.com/massalabs/massa/commits?author=fsidhoum" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/thibault-ketterer"><img src="https://avatars.githubusercontent.com/u/4283686?v=4?s=100" width="100px;" alt="thibault ketterer"/><br /><sub><b>thibault ketterer</b></sub></a><br /><a href="https://github.com/massalabs/massa/commits?author=thibault-ketterer" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/flipchan"><img src="https://avatars.githubusercontent.com/u/12517945?v=4?s=100" width="100px;" alt="flipchan"/><br /><sub><b>flipchan</b></sub></a><br /><a href="https://github.com/massalabs/massa/commits?author=flipchan" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
