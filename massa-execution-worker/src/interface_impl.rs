@@ -1479,9 +1479,9 @@ impl Interface for InterfaceImpl {
         let address = Address::from_str(address)?;
         match address {
             Address::User(UserAddress::UserAddressV0(_)) => Ok(0),
-            Address::User(UserAddress::UserAddressV1(_)) => Ok(1),
+            // Address::User(UserAddress::UserAddressV1(_)) => Ok(1),
             Address::SC(SCAddress::SCAddressV0(_)) => Ok(0),
-            Address::SC(SCAddress::SCAddressV1(_)) => Ok(1),
+            // Address::SC(SCAddress::SCAddressV1(_)) => Ok(1),
             #[allow(unreachable_patterns)]
             _ => bail!("Unknown address version"),
         }
@@ -1491,7 +1491,6 @@ impl Interface for InterfaceImpl {
         let pubkey = PublicKey::from_str(pubkey)?;
         match pubkey {
             PublicKey::PublicKeyV0(_) => Ok(0),
-            PublicKey::PublicKeyV1(_) => Ok(1),
             #[allow(unreachable_patterns)]
             _ => bail!("Unknown pubkey version"),
         }
@@ -1501,7 +1500,6 @@ impl Interface for InterfaceImpl {
         let signature = Signature::from_str(signature)?;
         match signature {
             Signature::SignatureV0(_) => Ok(0),
-            Signature::SignatureV1(_) => Ok(1),
             #[allow(unreachable_patterns)]
             _ => bail!("Unknown signature version"),
         }
