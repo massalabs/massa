@@ -257,27 +257,7 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ConsensusError;
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{block_status::StorageOrBlock, error::ConsensusError};
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
     block::{Block, BlockDeserializer, BlockDeserializerArgs, SecureShareBlock},
@@ -288,7 +268,6 @@
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
-<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>nom::branch::alt;
 <span class="kw">use </span>nom::{
     bytes::complete::tag,
@@ -315,38 +294,21 @@
 
 <span class="kw">impl </span>ExportActiveBlock {
     <span class="doccomment">/// conversion from active block to export active block
-    </span><span class="kw">pub fn </span>from_active_block(a_block: <span class="kw-2">&amp;</span>ActiveBlock, storage: <span class="kw-2">&amp;</span>Storage) -&gt; <span class="self">Self </span>{
-        <span class="comment">// get block
-        </span><span class="kw">let </span>block = storage
-            .read_blocks()
-            .get(<span class="kw-2">&amp;</span>a_block.block_id)
-            .expect(<span class="string">&quot;active block missing in storage&quot;</span>)
-            .clone();
-
+    </span><span class="kw">pub fn </span>from_active_block(a_block: <span class="kw-2">&amp;</span>ActiveBlock, storage_or_block: <span class="kw-2">&amp;</span>StorageOrBlock) -&gt; <span class="self">Self </span>{
         <span class="comment">// TODO: if we decide that endorsements are separate, also gather endorsements here
         </span>ExportActiveBlock {
             parents: a_block.parents.clone(),
             is_final: a_block.is_final,
-            block,
+            block: storage_or_block.clone_block(<span class="kw-2">&amp;</span>a_block.block_id),
         }
     }
 
     <span class="doccomment">/// consuming conversion from `ExportActiveBlock` to `ActiveBlock`
     </span><span class="kw">pub fn </span>to_active_block(
         <span class="self">self</span>,
-        ref_storage: <span class="kw-2">&amp;</span>Storage,
         thread_count: u8,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(ActiveBlock, Storage), ConsensusError&gt; {
-        <span class="comment">// create resulting storage
-        </span><span class="kw">let </span><span class="kw-2">mut </span>storage = ref_storage.clone_without_refs();
-
-        <span class="comment">// add endorsements to storage and claim refs
-        // TODO change if we decide that endorsements are stored separately
-        </span>storage.store_endorsements(<span class="self">self</span>.block.content.header.content.endorsements.clone());
-
-        <span class="comment">// Note: the block&#39;s parents are not claimed in the block&#39;s storage here but on graph inclusion
-
-        // create ActiveBlock
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(ActiveBlock, StorageOrBlock), ConsensusError&gt; {
+        <span class="comment">// create ActiveBlock
         </span><span class="kw">let </span>active_block = ActiveBlock {
             creator_address: <span class="self">self</span>.block.content_creator_address,
             block_id: <span class="self">self</span>.block.id,
@@ -356,12 +318,10 @@
             </span>is_final: <span class="self">self</span>.is_final,
             slot: <span class="self">self</span>.block.content.header.content.slot,
             fitness: <span class="self">self</span>.block.get_fitness(),
-        };
+            same_thread_parent_creator: <span class="prelude-val">None</span>, <span class="comment">// will be computed once the full graph is available
+        </span>};
 
-        <span class="comment">// add block to storage and claim ref
-        </span>storage.store_block(<span class="self">self</span>.block);
-
-        <span class="prelude-val">Ok</span>((active_block, storage))
+        <span class="prelude-val">Ok</span>((active_block, StorageOrBlock::Block(Box::new(<span class="self">self</span>.block))))
     }
 }
 
