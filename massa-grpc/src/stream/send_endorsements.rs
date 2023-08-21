@@ -125,14 +125,14 @@ pub(crate) async fn send_endorsements(
                                     };
 
                                     // Build the response message
-                                    let result = grpc_model::EndorsementsIds {
-                                        endorsements_ids: verified_eds.keys().cloned().collect(),
+                                    let result = grpc_model::EndorsementIds {
+                                        endorsement_ids: verified_eds.keys().cloned().collect(),
                                     };
                                     // Send the response message back to the client
                                     if let Err(e) = tx
                                         .send(Ok(grpc_api::SendEndorsementsResponse {
                                             result: Some(
-                                                grpc_api::send_endorsements_response::Result::EndorsementsIds(
+                                                grpc_api::send_endorsements_response::Result::EndorsementIds(
                                                     result,
                                                 ),
                                             ),
