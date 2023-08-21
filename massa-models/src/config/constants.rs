@@ -129,6 +129,8 @@ pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
+/// Number of periods of executed operation and denunciation history to keep
+pub const KEEP_EXECUTED_HISTORY_EXTRA_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
 /// Number of periods between two backups

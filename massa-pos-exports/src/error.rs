@@ -20,6 +20,8 @@ pub enum PosError {
     CycleUnfinished(u64),
     /// Error while loading initial rolls file: {0}
     RollsFileLoadingError(String),
+    /// Error while loading initial deferred credits file: {0}
+    DeferredCreditsFileLoadingError(String),
     /// Communication channel was down: {0}
     ChannelDown(String),
 }

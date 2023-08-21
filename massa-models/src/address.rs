@@ -7,7 +7,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-use massa_signature::{PublicKey, PublicKeyV0, PublicKeyV1};
+use massa_signature::{PublicKey, PublicKeyV0};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
@@ -26,13 +26,13 @@ pub enum Address {
 
 #[allow(missing_docs)]
 /// Derived from a public key.
-#[transition::versioned(versions("0", "1"))]
+#[transition::versioned(versions("0"))]
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SCAddress(pub Hash);
 
 #[allow(missing_docs)]
 /// Derived from a public key.
-#[transition::versioned(versions("0", "1"))]
+#[transition::versioned(versions("0"))]
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserAddress(pub Hash);
 
@@ -54,7 +54,6 @@ impl std::fmt::Display for UserAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             UserAddress::UserAddressV0(address) => address.fmt(f),
-            UserAddress::UserAddressV1(address) => address.fmt(f),
         }
     }
 }
@@ -63,12 +62,11 @@ impl std::fmt::Display for SCAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             SCAddress::SCAddressV0(address) => address.fmt(f),
-            SCAddress::SCAddressV1(address) => address.fmt(f),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl std::fmt::Display for UserAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let u64_serializer = U64VarIntSerializer::new();
@@ -86,7 +84,7 @@ impl std::fmt::Display for UserAddress {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl std::fmt::Display for SCAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let u64_serializer = U64VarIntSerializer::new();
@@ -125,7 +123,6 @@ impl ::serde::Serialize for UserAddress {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             UserAddress::UserAddressV0(address) => address.serialize(s),
-            UserAddress::UserAddressV1(address) => address.serialize(s),
         }
     }
 }
@@ -134,12 +131,11 @@ impl ::serde::Serialize for SCAddress {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             SCAddress::SCAddressV0(address) => address.serialize(s),
-            SCAddress::SCAddressV1(address) => address.serialize(s),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl ::serde::Serialize for UserAddress {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
@@ -150,7 +146,7 @@ impl ::serde::Serialize for UserAddress {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl ::serde::Serialize for SCAddress {
     fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         if s.is_human_readable() {
@@ -272,7 +268,6 @@ impl UserAddress {
     fn get_thread(&self, thread_count: u8) -> u8 {
         match self {
             UserAddress::UserAddressV0(addr) => addr.get_thread(thread_count),
-            UserAddress::UserAddressV1(addr) => addr.get_thread(thread_count),
         }
     }
 
@@ -281,9 +276,6 @@ impl UserAddress {
         match public_key {
             PublicKey::PublicKeyV0(pk) => {
                 UserAddressVariant!["0"](<UserAddress!["0"]>::from_public_key(pk))
-            }
-            PublicKey::PublicKeyV1(pk) => {
-                UserAddressVariant!["1"](<UserAddress!["1"]>::from_public_key(pk))
             }
         }
     }
@@ -309,9 +301,6 @@ impl UserAddress {
             <UserAddress!["0"]>::VERSION => Ok(UserAddressVariant!["0"](
                 <UserAddress!["0"]>::from_bytes(rest)?,
             )),
-            <UserAddress!["1"]>::VERSION => Ok(UserAddressVariant!["1"](
-                <UserAddress!["1"]>::from_bytes(rest)?,
-            )),
             unhandled_version => Err(ModelsError::AddressParseError(format!(
                 "version {} is not handled for UserAddress",
                 unhandled_version
@@ -323,12 +312,11 @@ impl UserAddress {
     pub fn to_prefixed_bytes(self) -> Vec<u8> {
         match self {
             UserAddress::UserAddressV0(addr) => addr.to_prefixed_bytes(),
-            UserAddress::UserAddressV1(addr) => addr.to_prefixed_bytes(),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl UserAddress {
     /// Fetches the version of the UserAddress
     pub fn get_version(&self) -> u64 {
@@ -371,7 +359,7 @@ impl UserAddress {
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("UserAddress", "PublicKey"))]
+#[transition::impl_version(versions("0"), structures("UserAddress", "PublicKey"))]
 impl UserAddress {
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Self {
@@ -380,9 +368,6 @@ impl UserAddress {
 }
 
 #[transition::impl_version(versions("0"))]
-impl UserAddress {}
-
-#[transition::impl_version(versions("1"))]
 impl UserAddress {}
 
 impl SCAddress {
@@ -407,9 +392,6 @@ impl SCAddress {
             <SCAddress!["0"]>::VERSION => {
                 Ok(SCAddressVariant!["0"](<SCAddress!["0"]>::from_bytes(rest)?))
             }
-            <SCAddress!["1"]>::VERSION => {
-                Ok(SCAddressVariant!["1"](<SCAddress!["1"]>::from_bytes(rest)?))
-            }
             unhandled_version => Err(ModelsError::AddressParseError(format!(
                 "version {} is not handled for SCAddress",
                 unhandled_version
@@ -421,12 +403,11 @@ impl SCAddress {
     pub fn to_prefixed_bytes(self) -> Vec<u8> {
         match self {
             SCAddress::SCAddressV0(addr) => addr.to_prefixed_bytes(),
-            SCAddress::SCAddressV1(addr) => addr.to_prefixed_bytes(),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl SCAddress {
     /// Fetches the version of the SC Address
     pub fn get_version(&self) -> u64 {
@@ -434,7 +415,7 @@ impl SCAddress {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl SCAddress {
     /// Serialize the address as bytes. Includes the type and version prefixes
     pub fn to_prefixed_bytes(self) -> Vec<u8> {
@@ -499,12 +480,11 @@ impl Serializer<UserAddress> for AddressSerializer {
         self.type_serializer.serialize(&USER_PREFIX, buffer)?;
         match value {
             UserAddress::UserAddressV0(addr) => self.serialize(addr, buffer),
-            UserAddress::UserAddressV1(addr) => self.serialize(addr, buffer),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("UserAddress"))]
+#[transition::impl_version(versions("0"), structures("UserAddress"))]
 impl Serializer<UserAddress> for AddressSerializer {
     fn serialize(&self, value: &UserAddress, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.version_serializer
@@ -519,12 +499,11 @@ impl Serializer<SCAddress> for AddressSerializer {
         self.type_serializer.serialize(&SC_PREFIX, buffer)?;
         match value {
             SCAddress::SCAddressV0(addr) => self.serialize(addr, buffer),
-            SCAddress::SCAddressV1(addr) => self.serialize(addr, buffer),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("SCAddress"))]
+#[transition::impl_version(versions("0"), structures("SCAddress"))]
 impl Serializer<SCAddress> for AddressSerializer {
     fn serialize(&self, value: &SCAddress, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.version_serializer
@@ -608,16 +587,12 @@ impl Deserializer<UserAddress> for AddressDeserializer {
                 let (rest, addr) = self.deserialize(rest)?;
                 Ok((rest, UserAddressVariant!["0"](addr)))
             }
-            <UserAddress!["1"]>::VERSION => {
-                let (rest, addr) = self.deserialize(rest)?;
-                Ok((rest, UserAddressVariant!["1"](addr)))
-            }
             _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("UserAddress"))]
+#[transition::impl_version(versions("0"), structures("UserAddress"))]
 impl Deserializer<UserAddress> for AddressDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -651,16 +626,12 @@ impl Deserializer<SCAddress> for AddressDeserializer {
                 let (rest, addr) = self.deserialize(rest)?;
                 Ok((rest, SCAddressVariant!["0"](addr)))
             }
-            <SCAddress!["1"]>::VERSION => {
-                let (rest, addr) = self.deserialize(&buffer[1..])?;
-                Ok((rest, SCAddressVariant!["1"](addr)))
-            }
             _ => Err(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
         }
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("SCAddress"))]
+#[transition::impl_version(versions("0"), structures("SCAddress"))]
 impl Deserializer<SCAddress> for AddressDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -700,14 +671,14 @@ mod test {
         let hash = massa_hash::Hash::compute_from("ADDR".as_bytes());
 
         let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
-        let user_addr_1 = Address::User(UserAddress::UserAddressV1(UserAddressV1(hash)));
+        // let user_addr_1 = Address::User(UserAddress::UserAddressV1(UserAddressV1(hash)));
         let sc_addr_0 = Address::SC(SCAddress::SCAddressV0(SCAddressV0(hash)));
-        let sc_addr_1 = Address::SC(SCAddress::SCAddressV1(SCAddressV1(hash)));
+        // let sc_addr_1 = Address::SC(SCAddress::SCAddressV1(SCAddressV1(hash)));
 
         println!("user_addr_0: {}", user_addr_0);
-        println!("user_addr_1: {}", user_addr_1);
+        // println!("user_addr_1: {}", user_addr_1);
         println!("sc_addr_0: {}", sc_addr_0);
-        println!("sc_addr_1: {}", sc_addr_1);
+        // println!("sc_addr_1: {}", sc_addr_1);
 
         // let v1 = "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF";
         let v2 = "AU4cJWyjpBetGwaRqFDXyrHiQuGB3QKrwjzGiGSzQPGeAARB9AY4";

@@ -28,7 +28,6 @@ pub struct ExecutionSettings {
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
     pub wasm_gas_costs_file: PathBuf,
-    pub initial_vesting_path: PathBuf,
     pub hd_cache_path: PathBuf,
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,
@@ -47,6 +46,7 @@ pub struct LedgerSettings {
     pub initial_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
+    pub initial_deferred_credits_path: Option<PathBuf>,
 }
 
 /// Bootstrap configuration.
@@ -289,6 +289,10 @@ pub struct GrpcSettings {
     pub enable_tls: bool,
     /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
+    /// whether to generate a self-signed certificate if none is provided
+    pub generate_self_signed_certificates: bool,
+    /// Subject Alternative Names is an extension in X.509 certificates that allows a certificate to specify additional subject identifiers. It is used to support alternative names for a subject, other than its primary Common Name (CN), which is typically used to represent the primary domain name.
+    pub subject_alt_names: Vec<String>,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,
     /// which compression encodings does the server accept for requests
@@ -329,14 +333,24 @@ pub struct GrpcSettings {
     pub draw_lookahead_period_count: u64,
     /// max number of block ids that can be included in a single request
     pub max_block_ids_per_request: u32,
+    /// max number of addresses that can be included in a single request
+    pub max_addresses_per_request: u32,
+    /// max number of endorsement ids that can be included in a single request
+    pub max_endorsement_ids_per_request: u32,
     /// max number of operation ids that can be included in a single request
     pub max_operation_ids_per_request: u32,
+    /// certificate authority root path
+    pub certificate_authority_root_path: PathBuf,
     /// server certificate path
     pub server_certificate_path: PathBuf,
     /// server private key path
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+    /// client certificate path
+    pub client_certificate_path: PathBuf,
+    /// client private key path
+    pub client_private_key_path: PathBuf,
 }
 
 /// gRPC API settings.

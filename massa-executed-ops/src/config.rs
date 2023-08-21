@@ -4,6 +4,8 @@
 pub struct ExecutedOpsConfig {
     /// Number of threads
     pub thread_count: u8,
+    /// Number of extra periods to keep executed denunciations
+    pub keep_executed_history_extra_periods: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -14,4 +16,6 @@ pub struct ExecutedDenunciationsConfig {
     pub thread_count: u8,
     /// Number of endorsements
     pub endorsement_count: u32,
+    /// Number of extra periods to keep executed denunciations
+    pub keep_executed_history_extra_periods: u64,
 }

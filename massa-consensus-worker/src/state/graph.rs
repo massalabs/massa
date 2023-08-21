@@ -33,7 +33,27 @@ impl ConsensusState {
             }
         }
 
-        // add as descendant to ancestors. Note: descendants are never removed.
+        // add same-thread creator parent
+        let same_thread_parent_creator =
+            parents_hash
+                .get(add_block_slot.thread as usize)
+                .and_then(|parent_id| {
+                    if let Some(BlockStatus::Active { a_block, .. }) =
+                        self.blocks_state.get(parent_id)
+                    {
+                        Some(a_block.creator_address)
+                    } else {
+                        None
+                    }
+                });
+        if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get_mut(&add_block_id)
+        {
+            a_block.same_thread_parent_creator = same_thread_parent_creator;
+        } else {
+            panic!("block status should be active");
+        };
+
+        // add as descendant to ancestors if not final
         let mut ancestors: VecDeque<BlockId> = parents_hash.iter().copied().collect();
         let mut visited = PreHashSet::<BlockId>::default();
         while let Some(ancestor_h) = ancestors.pop_back() {
@@ -43,6 +63,11 @@ impl ConsensusState {
             if let Some(BlockStatus::Active { a_block: ab, .. }) =
                 self.blocks_state.get_mut(&ancestor_h)
             {
+                // No need to add descendants if ancestor is final,
+                // because only non-final active blocks are scanned for descendents for finality detection.
+                if ab.is_final {
+                    continue;
+                }
                 ab.descendants.insert(add_block_id);
                 for (ancestor_parent_h, _) in ab.parents.iter() {
                     ancestors.push_front(*ancestor_parent_h);
@@ -64,7 +89,7 @@ impl ConsensusState {
             let mut sum_hash = num::BigInt::default();
             for block_h in clique.block_ids.iter() {
                 let fitness = match self.blocks_state.get(block_h) {
-                    Some(BlockStatus::Active { a_block, storage: _ }) => a_block.fitness,
+                    Some(BlockStatus::Active { a_block, .. }) => a_block.fitness,
                     _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h))),
                 };
                 clique.fitness = clique
@@ -108,7 +133,7 @@ impl ConsensusState {
         self.blocks_state.transition_map(block_id, |block_status, block_statuses| {
         if let Some(BlockStatus::Active {
             a_block: active_block,
-            storage: _storage,
+            ..
         }) = block_status
         {
             if active_block.is_final {
@@ -216,10 +241,7 @@ impl ConsensusState {
             let loc_candidates = final_candidates.clone();
             for candidate_h in loc_candidates.into_iter() {
                 let descendants = match self.blocks_state.get(&candidate_h) {
-                    Some(BlockStatus::Active {
-                        a_block,
-                        storage: _,
-                    }) => &a_block.descendants,
+                    Some(BlockStatus::Active { a_block, .. }) => &a_block.descendants,
                     _ => {
                         return Err(ConsensusError::MissingBlock(format!(
                             "missing block when computing total fitness of descendants: {}",

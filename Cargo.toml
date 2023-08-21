@@ -98,7 +98,7 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = {git = "https://github.com/massalabs/massa-proto-rs", "rev" = "32179e2"}
+massa-proto-rs = {git = "https://github.com/massalabs/massa-proto-rs", "rev" = "c7a29753d7d31864779db01e8260a8bf0748e10c"}
 massa-sc-runtime = {git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "main"}
 peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
@@ -123,7 +123,8 @@ ctrlc = "3.2.5"
 dialoguer = "0.10"
 directories = "4.0"
 displaydoc = "0.2"
-ed25519-dalek = "=1.0"
+# ed25519-dalek = "=1.0"
+ed25519-dalek = { version = "=2.0", features = ["rand_core", "zeroize"] }
 erased-serde = "0.3"
 futures = "0.3.18"
 futures-util = "0.3.25"
@@ -155,6 +156,7 @@ rand = "0.8"
 rand_distr = "=0.4.3"
 rand_xoshiro = "0.6"
 rayon = "1.7.0"
+rcgen = "0.11.1"
 rocksdb = "0.20"
 rust_decimal = "1.26"
 rustyline = "10.0.0"
@@ -164,6 +166,7 @@ serde = "1.0"
 serde_json = "1.0.87"
 serde_qs = "0.11"
 serde_with = "2.1.0"
+serde_yaml = "0.9.25"
 serial_test = "1.0.0"
 sha2 = "0.10.6"
 sha3 = "0.10.8"

@@ -15,3 +15,4 @@ massa_api_exports = {workspace = true}
 massa_models = {workspace = true}
 massa_time = {workspace = true}
 massa-proto-rs = {workspace = true, "features" = ["tonic"]}
+rcgen = {workspace = true , features = ["pem", "x509-parser"]}

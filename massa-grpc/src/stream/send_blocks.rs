@@ -34,8 +34,8 @@ pub(crate) async fn send_blocks(
 ) -> Result<SendBlocksStreamType, GrpcError> {
     let consensus_controller = grpc.consensus_controller.clone();
     let protocol_command_sender = grpc.protocol_controller.clone();
-    let storage = grpc.storage.clone_without_refs();
     let config = grpc.grpc_config.clone();
+    let storage = grpc.storage.clone_without_refs();
 
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(config.max_channel_size);
@@ -48,22 +48,24 @@ pub(crate) async fn send_blocks(
             match result {
                 Ok(req_content) => {
                     let Some(proto_block) = req_content.block else {
-                            report_error(
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                "the request payload is empty".to_owned(),
-                            ).await;
-                            continue;
-                        };
+                        report_error(
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            "the request payload is empty".to_owned(),
+                        )
+                        .await;
+                        continue;
+                    };
 
                     let Ok(blk_serialized) = secure_share_to_vec(proto_block) else {
-                            report_error(
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                "failed to convert block secure share".to_owned(),
-                            ).await;
-                            continue;
-                        };
+                        report_error(
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            "failed to convert block secure share".to_owned(),
+                        )
+                        .await;
+                        continue;
+                    };
 
                     // Create a block deserializer arguments
                     let args = BlockDeserializerArgs {

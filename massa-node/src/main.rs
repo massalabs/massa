@@ -36,7 +36,7 @@ use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_grpc::config::GrpcConfig;
+use massa_grpc::config::{GrpcConfig, ServiceName};
 use massa_grpc::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use massa_ledger_exports::LedgerConfig;
 use massa_ledger_worker::FinalLedger;
@@ -72,9 +72,9 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
-    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
-    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
+    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -209,14 +209,17 @@ async fn launch(
         max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
         max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+        initial_deferred_credits_path: SETTINGS.ledger.initial_deferred_credits_path.clone(),
     };
     let executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
+        keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
     let executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
+        keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -485,7 +488,6 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-        initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
         gas_costs: GasCosts::new(
             SETTINGS.execution.abi_gas_costs_file.clone(),
             SETTINGS.execution.wasm_gas_costs_file.clone(),
@@ -851,8 +853,12 @@ async fn launch(
 
     // Whether to spawn gRPC PUBLIC API
     let grpc_public_handle = if SETTINGS.grpc.public.enabled {
-        let grpc_public_config =
-            configure_grpc(&SETTINGS.grpc.public, keypair.clone(), &final_state);
+        let grpc_public_config = configure_grpc(
+            ServiceName::Public,
+            &SETTINGS.grpc.public,
+            keypair.clone(),
+            &final_state,
+        );
 
         let grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
@@ -887,8 +893,12 @@ async fn launch(
 
     // Whether to spawn gRPC PRIVATE API
     let grpc_private_handle = if SETTINGS.grpc.private.enabled {
-        let grpc_private_config =
-            configure_grpc(&SETTINGS.grpc.private, keypair.clone(), &final_state);
+        let grpc_private_config = configure_grpc(
+            ServiceName::Private,
+            &SETTINGS.grpc.private,
+            keypair.clone(),
+            &final_state,
+        );
 
         let bs_white_black_list = bootstrap_manager
             .as_ref()
@@ -1038,11 +1048,13 @@ async fn launch(
 
 // Get the configuration of the gRPC server
 fn configure_grpc(
+    name: ServiceName,
     settings: &GrpcSettings,
     keypair: KeyPair,
     final_state: &Arc<RwLock<FinalState>>,
 ) -> GrpcConfig {
     GrpcConfig {
+        name,
         enabled: settings.enabled,
         accept_http1: settings.accept_http1,
         enable_cors: settings.enable_cors,
@@ -1050,6 +1062,8 @@ fn configure_grpc(
         enable_reflection: settings.enable_reflection,
         enable_tls: settings.enable_tls,
         enable_mtls: settings.enable_mtls,
+        generate_self_signed_certificates: settings.generate_self_signed_certificates,
+        subject_alt_names: settings.subject_alt_names.clone(),
         bind: settings.bind,
         accept_compressed: settings.accept_compressed.clone(),
         send_compressed: settings.send_compressed.clone(),
@@ -1086,13 +1100,18 @@ fn configure_grpc(
         draw_lookahead_period_count: settings.draw_lookahead_period_count,
         last_start_period: final_state.read().last_start_period,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_addresses_per_request: settings.max_addresses_per_request,
         max_block_ids_per_request: settings.max_block_ids_per_request,
+        max_endorsement_ids_per_request: settings.max_endorsement_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
+        certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),
         client_certificate_authority_root_path: settings
             .client_certificate_authority_root_path
             .clone(),
+        client_certificate_path: settings.client_certificate_path.clone(),
+        client_private_key_path: settings.client_private_key_path.clone(),
     }
 }
 

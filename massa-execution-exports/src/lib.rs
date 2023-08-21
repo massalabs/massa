@@ -62,11 +62,11 @@ pub use event_store::EventStore;
 pub use massa_sc_runtime::GasCosts;
 pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
-    ExecutedBlockInfo, ExecutionAddressInfo, ExecutionOutput, ExecutionQueryCycleInfos,
-    ExecutionQueryExecutionStatus, ExecutionQueryRequest, ExecutionQueryRequestItem,
-    ExecutionQueryResponse, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
-    ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ExecutedBlockInfo, ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionOutput,
+    ExecutionQueryCycleInfos, ExecutionQueryExecutionStatus, ExecutionQueryRequest,
+    ExecutionQueryRequestItem, ExecutionQueryResponse, ExecutionQueryResponseItem,
+    ExecutionQueryStakerInfo, ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionOutput,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 
 #[cfg(any(feature = "testing", feature = "gas_calibration"))]
