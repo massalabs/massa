@@ -8,7 +8,6 @@ use massa_models::{
     block_id::BlockId,
     endorsement::SecureShareEndorsement,
     operation::{compute_operations_hash, OperationIdSerializer},
-    prehash::PreHashSet,
     secure_share::SecureShareContent,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
@@ -174,20 +173,6 @@ impl BlockFactoryWorker {
         // get best parents and their periods
         let parents: Vec<(BlockId, u64)> = self.channels.consensus.get_best_parents(); // Vec<(parent_id, parent_period)>
                                                                                        // generate the local storage object
-
-        // claim block parents in local storage
-        {
-            let claimed_parents = block_storage.claim_block_refs(
-                &parents
-                    .iter()
-                    .map(|(b_id, _)| *b_id)
-                    .collect::<PreHashSet<BlockId>>(),
-            );
-            if claimed_parents.len() != parents.len() {
-                warn!("block factory could claim parents for slot {}", slot);
-                return;
-            }
-        }
 
         // get the parent in the same thread, with its period
         // will not panic because the thread is validated before the call

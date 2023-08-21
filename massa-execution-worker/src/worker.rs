@@ -10,15 +10,14 @@ use crate::execution::ExecutionState;
 use crate::request_queue::RequestQueue;
 use crate::slot_sequencer::SlotSequencer;
 use massa_execution_exports::{
-    ExecutionChannels, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
+    ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
 use massa_metrics::MassaMetrics;
 use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_pos_exports::SelectorController;
-use massa_storage::Storage;
 use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
@@ -130,7 +129,7 @@ impl ExecutionThread {
             // check if there is some input data
             if input_data.new_blockclique.is_some()
                 || !input_data.finalized_blocks.is_empty()
-                || !input_data.block_storage.is_empty()
+                || !input_data.block_metadata.is_empty()
                 || !input_data.readonly_requests.is_empty()
             {
                 return (input_data, false);
@@ -189,12 +188,14 @@ impl ExecutionThread {
             self.slot_sequencer.update(
                 input_data.finalized_blocks,
                 input_data.new_blockclique,
-                input_data.block_storage,
+                input_data.block_metadata,
             );
 
             // ask the slot sequencer for a task to be executed in priority (final is higher priority than candidate)
             let run_result = self.slot_sequencer.run_task_with(
-                |is_final: bool, slot: &Slot, content: Option<&(BlockId, Storage)>| {
+                |is_final: bool,
+                 slot: &Slot,
+                 content: Option<&(BlockId, ExecutionBlockMetadata)>| {
                     if is_final {
                         self.execution_state.write().execute_final_slot(
                             slot,

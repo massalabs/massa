@@ -1,5 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#![feature(extract_if)]
+
 mod config;
 mod denunciations_changes;
 mod executed_denunciations;

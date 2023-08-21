@@ -431,7 +431,20 @@ pub fn get_state(
                             err
                         ))
                     })?;
+
+                // set initial execution trail hash
                 final_state_guard.init_execution_trail_hash();
+
+                // load initial deferred credits
+                final_state_guard
+                    .pos_state
+                    .load_initial_deferred_credits()
+                    .map_err(|err| {
+                        BootstrapError::GeneralError(format!(
+                            "could not load initial deferred credits: {}",
+                            err
+                        ))
+                    })?;
             }
 
             // create the initial cycle of PoS cycle_history

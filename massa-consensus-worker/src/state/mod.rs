@@ -5,10 +5,11 @@ use std::{
 
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport,
-    block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock},
+    block_status::{BlockStatus, ExportCompiledBlock, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
     ConsensusChannels, ConsensusConfig,
 };
+use massa_execution_exports::ExecutionBlockMetadata;
 use massa_metrics::MassaMetrics;
 use massa_models::{
     active_block::ActiveBlock,
@@ -94,9 +95,15 @@ pub struct ConsensusState {
 
 impl ConsensusState {
     /// Get a full active block
-    pub fn get_full_active_block(&self, block_id: &BlockId) -> Option<(&ActiveBlock, &Storage)> {
+    pub fn get_full_active_block(
+        &self,
+        block_id: &BlockId,
+    ) -> Option<(&ActiveBlock, &StorageOrBlock)> {
         match self.blocks_state.get(block_id) {
-            Some(BlockStatus::Active { a_block, storage }) => Some((a_block.as_ref(), storage)),
+            Some(BlockStatus::Active {
+                a_block,
+                storage_or_block,
+            }) => Some((a_block.as_ref(), storage_or_block)),
             _ => None,
         }
     }
@@ -107,7 +114,7 @@ impl ConsensusState {
     fn try_get_full_active_block(
         &self,
         block_id: &BlockId,
-    ) -> Result<(&ActiveBlock, &Storage), ConsensusError> {
+    ) -> Result<(&ActiveBlock, &StorageOrBlock), ConsensusError> {
         self.get_full_active_block(block_id).ok_or_else(|| {
             ConsensusError::ContainerInconsistency(format!("block {} is missing", block_id))
         })
@@ -164,10 +171,7 @@ impl ConsensusState {
         self.get_blockclique()
             .iter()
             .for_each(|id| match self.blocks_state.get(id) {
-                Some(BlockStatus::Active {
-                    a_block,
-                    storage: _,
-                }) => {
+                Some(BlockStatus::Active { a_block, .. }) => {
                     if a_block.is_final {
                         panic!(
                             "unexpected final block on getting latest blockclique block at slot"
@@ -406,7 +410,7 @@ impl ConsensusState {
             true
         };
 
-        for (hash, block) in self.blocks_state.iter() {
+        for (block_id, block) in self.blocks_state.iter() {
             match block {
                 BlockStatus::Discarded {
                     slot,
@@ -416,24 +420,21 @@ impl ConsensusState {
                     ..
                 } => {
                     if filter(slot) {
-                        export
-                            .discarded_blocks
-                            .insert(*hash, (reason.clone(), (*slot, *creator, parents.clone())));
+                        export.discarded_blocks.insert(
+                            *block_id,
+                            (reason.clone(), (*slot, *creator, parents.clone())),
+                        );
                     }
                 }
-                BlockStatus::Active { a_block, storage } => {
+                BlockStatus::Active {
+                    a_block,
+                    storage_or_block,
+                } => {
                     if filter(&a_block.slot) {
-                        let stored_block =
-                            storage.read_blocks().get(hash).cloned().ok_or_else(|| {
-                                ConsensusError::MissingBlock(format!(
-                                    "missing block in BlockGraphExport::extract_from: {}",
-                                    hash
-                                ))
-                            })?;
                         export.active_blocks.insert(
-                            *hash,
+                            *block_id,
                             ExportCompiledBlock {
-                                header: stored_block.content.header,
+                                header: storage_or_block.clone_block(block_id).content.header,
                                 children: a_block
                                     .children
                                     .iter()
@@ -457,18 +458,29 @@ impl ConsensusState {
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    pub fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, Storage)> {
+    pub fn get_all_final_blocks(&self) -> HashMap<BlockId, (Slot, ExecutionBlockMetadata)> {
         self.blocks_state
             .active_blocks()
             .iter()
-            .map(|b_id| {
-                let block_infos = match self.blocks_state.get(b_id) {
-                    Some(BlockStatus::Active { a_block, storage }) => {
-                        (a_block.slot, storage.clone())
+            .filter_map(|b_id| {
+                if let Some(BlockStatus::Active {
+                    a_block,
+                    storage_or_block,
+                }) = self.blocks_state.get(b_id) && a_block.is_final
+                {
+                    if !a_block.is_final {
+                        return None;
                     }
-                    _ => panic!("active block missing"),
-                };
-                (*b_id, block_infos)
+                    let storage = match storage_or_block {
+                        StorageOrBlock::Storage(storage) => Some(storage.clone()),
+                        _ => None,
+                    };
+                    return Some((*b_id, (a_block.slot, ExecutionBlockMetadata {
+                        same_thread_parent_creator: a_block.same_thread_parent_creator,
+                        storage,
+                    })));
+                }
+                None
             })
             .collect()
     }

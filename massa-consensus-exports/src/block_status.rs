@@ -1,6 +1,11 @@
 use massa_models::{
-    active_block::ActiveBlock, address::Address, block::Block, block_header::SecuredHeader,
-    block_id::BlockId, prehash::PreHashSet, slot::Slot,
+    active_block::ActiveBlock,
+    address::Address,
+    block::{Block, SecureShareBlock},
+    block_header::SecuredHeader,
+    block_id::BlockId,
+    prehash::PreHashSet,
+    slot::Slot,
 };
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
@@ -58,6 +63,47 @@ impl From<&BlockStatus> for BlockStatusId {
     }
 }
 
+/// A structure defining whether we keep a full block with operations in storage
+/// or just the raw signed block without operations
+#[derive(Debug, Clone)]
+pub enum StorageOrBlock {
+    /// Keep a full storage with operations
+    Storage(Storage),
+    /// Keep only the block header and list of ops (but not the ops)
+    Block(Box<SecureShareBlock>),
+}
+
+impl StorageOrBlock {
+    /// Return a clone of the underlying block.
+    /// This is used when we want to get a copy of the block that is referenced by a block status
+    /// (and not a copy of the block status itself)
+    pub fn clone_block(&self, block_id: &BlockId) -> SecureShareBlock {
+        match self {
+            StorageOrBlock::Storage(storage) => storage
+                .read_blocks()
+                .get(block_id)
+                .expect("block absent from its own storage")
+                .clone(),
+            StorageOrBlock::Block(block) => *block.clone(),
+        }
+    }
+
+    /// Convert any StorageOrBlock variant into a StorageOrBlock::Block variant.
+    /// This effectively drops the operations of the block.
+    pub fn strip_to_block(&mut self, block_id: &BlockId) {
+        let block = if let StorageOrBlock::Storage(storage) = self {
+            storage
+                .read_blocks()
+                .get(block_id)
+                .expect("block absent from its own storage")
+                .clone()
+        } else {
+            return;
+        };
+        *self = StorageOrBlock::Block(Box::new(block));
+    }
+}
+
 /// Enum used in `BlockGraph`'s state machine
 #[derive(Debug, Clone)]
 pub enum BlockStatus {
@@ -79,7 +125,7 @@ pub enum BlockStatus {
     /// The block was checked and included in the blockgraph
     Active {
         a_block: Box<ActiveBlock>,
-        storage: Storage,
+        storage_or_block: StorageOrBlock,
     },
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {

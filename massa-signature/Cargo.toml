@@ -1,6 +1,6 @@
 [package]
 name = "massa_signature"
-version = "0.25.0"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -11,7 +11,7 @@ ed25519-dalek = {workspace = true, "features" = ["batch"]}
 serde = {workspace = true, "features" = ["derive"]}
 thiserror = {workspace = true}
 nom = {workspace = true}
-rand = "0.7"
+rand = "0.8"
 transition = {workspace = true}
 massa_hash = {workspace = true}
 massa_serialization = {workspace = true}

@@ -6,9 +6,10 @@ use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use std::convert::Infallible;
+use std::path::Path;
 use std::sync::{Arc, Condvar, Mutex};
 
-use crate::config::GrpcConfig;
+use crate::config::{GrpcConfig, ServiceName};
 use crate::error::GrpcError;
 use futures_util::FutureExt;
 use hyper::service::Service;
@@ -17,14 +18,16 @@ use massa_consensus_exports::{ConsensusChannels, ConsensusController};
 use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolChannels, PoolController};
 use massa_pos_exports::SelectorController;
-use massa_proto_rs::massa::api::v1::FILE_DESCRIPTOR_SET;
 use massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
 };
+use massa_proto_rs::massa::api::v1::{FILE_DESCRIPTOR_SET_PRIVATE, FILE_DESCRIPTOR_SET_PUBLIC};
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
+use massa_sdk::cert_manager::{gen_cert_for_ca, gen_signed_cert};
 use massa_storage::Storage;
 
 use massa_wallet::Wallet;
+
 use tokio::sync::oneshot;
 use tonic::body::BoxBody;
 use tonic::codegen::CompressionEncoding;
@@ -192,12 +195,21 @@ where
         .max_frame_size(config.max_frame_size);
 
     if config.enable_tls {
+        if config.generate_self_signed_certificates {
+            if Path::new(&config.certificate_authority_root_path).exists() {
+                warn!("Certificate authority root already exists, remove the file if you want to generate new certificates. Skipping self signed certificates generation.");
+            } else {
+                info!("Generating self signed certificates");
+                generate_self_signed_certificates(config);
+            }
+        }
+
         let cert = std::fs::read_to_string(config.server_certificate_path.clone())
             .expect("error, failed to read server certificat");
         let key = std::fs::read_to_string(config.server_private_key_path.clone())
             .expect("error, failed to read server private key");
-        let server_identity = Identity::from_pem(cert, key);
 
+        let server_identity = Identity::from_pem(cert, key);
         let tls = ServerTlsConfig::new().identity(server_identity);
 
         if config.enable_mtls {
@@ -222,8 +234,12 @@ where
     }
 
     let reflection_service_opt = if config.enable_reflection {
+        let file_descriptor_set = match config.name {
+            ServiceName::Public => FILE_DESCRIPTOR_SET_PUBLIC,
+            ServiceName::Private => FILE_DESCRIPTOR_SET_PRIVATE,
+        };
         let reflection_service = tonic_reflection::server::Builder::configure()
-            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+            .register_encoded_file_descriptor_set(file_descriptor_set)
             .build()?;
 
         Some(reflection_service)
@@ -287,4 +303,45 @@ where
     Ok(StopHandle {
         stop_cmd_sender: shutdown_send,
     })
+}
+
+// Generate self signed certificates
+fn generate_self_signed_certificates(config: &GrpcConfig) {
+    let ca_cert = gen_cert_for_ca().expect("error, failed to generate CA cert");
+    let ca_cert_pem = ca_cert
+        .serialize_pem()
+        .expect("error: failed to convert certificate authority to UTF-8");
+
+    if config.enable_mtls {
+        std::fs::write(
+            config.client_certificate_authority_root_path.clone(),
+            ca_cert_pem.clone(),
+        )
+        .expect("error, failed to write client certificate authority root");
+
+        let (client_cert_pem, client_private_key_pem) =
+            gen_signed_cert(&ca_cert, config.subject_alt_names.clone())
+                .expect("error, failed to generate cert");
+        std::fs::write(config.client_certificate_path.clone(), client_cert_pem)
+            .expect("error, failed to write client certificat");
+        std::fs::write(
+            config.client_private_key_path.clone(),
+            client_private_key_pem,
+        )
+        .expect("error, failed to write client private key");
+    }
+
+    std::fs::write(config.certificate_authority_root_path.clone(), ca_cert_pem)
+        .expect("error, failed to write certificat authority root");
+
+    let (cert_pem, server_private_key_pem) =
+        gen_signed_cert(&ca_cert, config.subject_alt_names.clone())
+            .expect("error, failed to generate server certificat");
+    std::fs::write(config.server_certificate_path.clone(), cert_pem)
+        .expect("error, failed to write server certificat");
+    std::fs::write(
+        config.server_private_key_path.clone(),
+        server_private_key_pem,
+    )
+    .expect("error, failed to write server private key");
 }

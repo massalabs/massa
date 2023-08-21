@@ -54,6 +54,10 @@
         enable_tls = false
         # whether to enable mTLS (requires `enable_tls` to be true)
         enable_mtls = false
+        # whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
+        generate_self_signed_certificates = true
+        # list of subject alternative names for the server certificate(requires `generate_self_signed_certificates` to be true)
+        subject_alt_names = []
         # bind for the Massa gRPC API
         bind = "0.0.0.0:33037"
         # which compression encodings does the server accept for requests
@@ -80,16 +84,26 @@
         tcp_nodelay = true
         # max number of future periods considered during requests
         draw_lookahead_period_count = 10
-        # The maximum number of block IDs that can be included in a single request
+        # max number of addresses that can be included in a single request
+        max_addresses_per_request = 50
+        # max number of block ids that can be included in a single request
         max_block_ids_per_request = 50
+        # max number of endorsement ids that can be included in a single request
+        max_endorsement_ids_per_request = 100
         # max number of operation ids that can be included in a single request
         max_operation_ids_per_request = 250
+        # certificate authority root path
+        certificate_authority_root_path = "config/tls_public_ca.pem"
         # server certificate path
-        server_certificate_path = "config/tls/public/server.pem"
+        server_certificate_path = "config/tls_public_server.pem"
         # server private key path
-        server_private_key_path = "config/tls/public/server.key"
+        server_private_key_path = "config/tls_public_server.key"
         # client certificate authority root path
-        client_certificate_authority_root_path = "config/tls/public/client_ca.pem"
+        client_certificate_authority_root_path = "config/tls_public_client_ca.pem"
+        # client certificate path
+        client_certificate_path = "../massa-client/config/tls_public_client.pem"
+        # client private key path
+        client_private_key_path = "../massa-client/config/tls_public_client.key"
     [grpc.private]
         # whether to enable gRPC
         enabled = true
@@ -104,7 +118,11 @@
         # whether to enable TLS
         enable_tls = false
         # whether to enable mTLS (requires `enable_tls` to be true)
-        enable_mtls = false
+        enable_mtls = true
+        # whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
+        generate_self_signed_certificates = true
+        # list of subject alternative names for the server certificate(requires `generate_self_signed_certificates` to be true)
+        subject_alt_names = []
         # bind for the Massa gRPC API
         bind = "127.0.0.1:33038"
         # which compression encodings does the server accept for requests
@@ -131,16 +149,26 @@
         tcp_nodelay = true
         # max number of future periods considered during requests
         draw_lookahead_period_count = 10
-        # The maximum number of block IDs that can be included in a single request
+        # max number of addresses that can be included in a single request
+        max_addresses_per_request = 50
+        # max number of block ids that can be included in a single request
         max_block_ids_per_request = 50
+        # max number of endorsement ids that can be included in a single request
+        max_endorsement_ids_per_request = 100
         # max number of operation ids that can be included in a single request
         max_operation_ids_per_request = 250
+        # certificate authority root path
+        certificate_authority_root_path = "config/tls_private_ca.pem"
         # server certificate path
-        server_certificate_path = "config/tls/private/server.pem"
+        server_certificate_path = "config/tls_private_server.pem"
         # server private key path
-        server_private_key_path = "config/tls/private/server.key"
+        server_private_key_path = "config/tls_private_server.key"
         # client certificate authority root path
-        client_certificate_authority_root_path = "config/tls/private/client_ca.pem"
+        client_certificate_authority_root_path = "config/tls_private_client_ca.pem"
+        # client certificate path
+        client_certificate_path = "../massa-client/config/tls_private_client.pem"
+        # client private key path
+        client_private_key_path = "../massa-client/config/tls_private_client.key"
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000
@@ -157,8 +185,6 @@
     abi_gas_costs_file = "base_config/gas_costs/abi_gas_costs.json"
     # gas cost for wasm operator
     wasm_gas_costs_file = "base_config/gas_costs/wasm_gas_costs.json"
-    # path to the initial vesting file
-    initial_vesting_path = "base_config/initial_vesting.json"
     # path to the hard drive cache storage
     hd_cache_path = "storage/cache/rocks_db"
     # maximum number of entries we want to keep in the LRU cache
@@ -179,6 +205,8 @@
     disk_ledger_path = "storage/ledger/rocks_db"
     # length of the changes history. Higher values allow bootstrapping nodes with slower connections
     final_history_length = 100
+    # path of the initial deferred credits file
+    initial_deferred_credits_path = "base_config/deferred_credits.json"
 
 [consensus]
     # max number of previously discarded blocks kept in RAM
@@ -219,7 +247,7 @@
     # timeout after which without answer a hanshake is ended
     message_timeout = 5000
     # timeout after which a peer tester will consider the peer unreachable
-    tester_timeout = 500
+    tester_timeout = 10000
     # timeout after whick we consider a node does not have the block we asked for
     ask_block_timeout = 10000
     # Max known blocks we keep during their propagation
@@ -276,7 +304,7 @@
     # number of thread tester
     thread_tester_count = 25
     # Nb max in connections that we accept
-    max_in_connections = 100
+    max_in_connections = 250
     # Cooldown before testing again old peer
     test_oldest_peer_cooldown = 720000
     # Peer default category limits
@@ -375,8 +403,8 @@
 [factory]
     # initial delay in milliseconds to wait before starting production to avoid double staking on node restart
     initial_delay = 100
-    # path to your staking wallet
-    staking_wallet_path = "config/staking_wallet.dat"
+    # path to your staking wallets
+    staking_wallet_path = "config/staking_wallets"
     # stop or not the production in case we are not connected to anyone
     stop_production_when_zero_connections = true
 

@@ -277,10 +277,7 @@ impl ConsensusState {
             for parent_i in 0..self.config.thread_count {
                 let (parent_h, parent_period) = parents[parent_i as usize];
                 let parent = match self.blocks_state.get(&parent_h) {
-                    Some(BlockStatus::Active {
-                        a_block,
-                        storage: _,
-                    }) => a_block,
+                    Some(BlockStatus::Active { a_block, .. }) => a_block,
                     _ => {
                         panic!(
                             "inconsistency inside block statuses searching parent {} of block {}",

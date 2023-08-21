@@ -147,18 +147,22 @@ impl ExecutedDenunciations {
 
     /// Prune all denunciations that have expired, assuming the given slot is final
     fn prune_to_batch(&mut self, slot: Slot, batch: &mut DBBatch) {
-        let mut drained = Vec::new();
-        self.sorted_denunciations.retain(|de_idx_slot, de_indexes| {
-            let is_kept = !Denunciation::is_expired(
-                &de_idx_slot.period,
-                &slot.period,
-                &self.config.denunciation_expire_periods,
-            );
-            if !is_kept {
-                drained.push(de_indexes.clone());
-            }
-            is_kept
-        });
+        // Force-keep `keep_executed_history_extra_periods` for API polling safety
+        let effective_expiry_periods = self
+            .config
+            .denunciation_expire_periods
+            .saturating_add(self.config.keep_executed_history_extra_periods);
+
+        let drained: Vec<(Slot, HashSet<DenunciationIndex>)> = self
+            .sorted_denunciations
+            .extract_if(|de_idx_slot, _| {
+                Denunciation::is_expired(
+                    &de_idx_slot.period,
+                    &slot.period,
+                    &effective_expiry_periods,
+                )
+            })
+            .collect();
 
         for de_indexes in drained {
             for de_idx in de_indexes.iter() {
@@ -205,7 +209,12 @@ impl ExecutedDenunciations {
             return false;
         }
 
-        let Ok((rest, _idx)) = self.denunciation_index_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..]) else {
+        let Ok((rest, _idx)) = self
+            .denunciation_index_deserializer
+            .deserialize::<DeserializeError>(
+                &serialized_key[EXECUTED_DENUNCIATIONS_PREFIX.len()..],
+            )
+        else {
             return false;
         };
         if !rest.is_empty() {

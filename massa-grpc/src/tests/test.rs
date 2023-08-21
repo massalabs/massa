@@ -1,6 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::config::GrpcConfig;
+use crate::config::{GrpcConfig, ServiceName};
 use crate::server::MassaPublicGrpc;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
@@ -59,6 +59,7 @@ async fn test_start_grpc_server() {
     let slot_execution_output_sender = tokio::sync::broadcast::channel(5000).0;
     let keypair = KeyPair::generate(0).unwrap();
     let grpc_config = GrpcConfig {
+        name: ServiceName::Public,
         enabled: true,
         accept_http1: true,
         enable_cors: true,
@@ -66,6 +67,8 @@ async fn test_start_grpc_server() {
         enable_reflection: true,
         enable_tls: false,
         enable_mtls: false,
+        generate_self_signed_certificates: false,
+        subject_alt_names: vec![],
         bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8888),
         accept_compressed: None,
         send_compressed: None,
@@ -102,11 +105,16 @@ async fn test_start_grpc_server() {
         draw_lookahead_period_count: 10,
         last_start_period: 0,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        max_addresses_per_request: 50,
         max_block_ids_per_request: 50,
+        max_endorsement_ids_per_request: 100,
         max_operation_ids_per_request: 250,
         server_certificate_path: PathBuf::default(),
         server_private_key_path: PathBuf::default(),
+        certificate_authority_root_path: PathBuf::default(),
         client_certificate_authority_root_path: PathBuf::default(),
+        client_certificate_path: PathBuf::default(),
+        client_private_key_path: PathBuf::default(),
     };
 
     let mip_stats_config = MipStatsConfig {

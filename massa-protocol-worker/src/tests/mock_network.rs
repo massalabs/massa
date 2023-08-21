@@ -103,7 +103,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
         HashMap::new()
     }
 
-    fn get_peer_ids_connection_queue(&self) -> HashSet<std::net::SocketAddr> {
+    fn get_peer_ids_out_connection_queue(&self) -> HashSet<std::net::SocketAddr> {
         HashSet::new()
     }
 }

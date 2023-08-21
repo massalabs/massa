@@ -40,7 +40,7 @@ macro_rules! op_id_key {
 #[derive(Clone)]
 pub struct ExecutedOps {
     /// Executed operations configuration
-    _config: ExecutedOpsConfig,
+    config: ExecutedOpsConfig,
     /// RocksDB Instance
     pub db: ShareableMassaDBController,
     /// Executed operations btreemap with slot as index for better pruning complexity
@@ -63,7 +63,7 @@ impl ExecutedOps {
             (Included(0), Excluded(config.thread_count)),
         );
         Self {
-            _config: config,
+            config,
             db,
             sorted_ops: BTreeMap::new(),
             op_exec_status: HashMap::new(),
@@ -181,9 +181,18 @@ impl ExecutedOps {
             .is_some()
     }
 
-    /// Prune all operations that expire strictly before `slot`
+    /// Prune all expired operations
     fn prune_to_batch(&mut self, slot: Slot, batch: &mut DBBatch) {
-        let kept = self.sorted_ops.split_off(&slot);
+        // Force-keep `keep_executed_history_extra_periods` for API polling safety
+        let cutoff_slot = match slot
+            .period
+            .checked_sub(self.config.keep_executed_history_extra_periods)
+        {
+            Some(cutoff_slot) => Slot::new(cutoff_slot, slot.thread),
+            None => return,
+        };
+
+        let kept = self.sorted_ops.split_off(&cutoff_slot);
         let removed = std::mem::take(&mut self.sorted_ops);
         for (_, ids) in removed {
             for op_id in ids {
@@ -240,14 +249,20 @@ impl ExecutedOps {
             return false;
         }
 
-        let Ok((rest, _id)): Result<(&[u8], OperationId), nom::Err<DeserializeError>> = self.operation_id_deserializer.deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..]) else {
+        let Ok((rest, _id)): Result<(&[u8], OperationId), nom::Err<DeserializeError>> = self
+            .operation_id_deserializer
+            .deserialize::<DeserializeError>(&serialized_key[EXECUTED_OPS_PREFIX.len()..])
+        else {
             return false;
         };
         if !rest.is_empty() {
             return false;
         }
 
-        let Ok((rest, _bool)) = self.bool_deserializer.deserialize::<DeserializeError>(serialized_value) else {
+        let Ok((rest, _bool)) = self
+            .bool_deserializer
+            .deserialize::<DeserializeError>(serialized_value)
+        else {
             return false;
         };
         let Ok((rest, _slot)) = self.slot_deserializer.deserialize::<DeserializeError>(rest) else {
@@ -275,7 +290,10 @@ fn test_executed_ops_hash_computing() {
 
     // initialize the executed ops config
     let thread_count = 2;
-    let config = ExecutedOpsConfig { thread_count };
+    let config = ExecutedOpsConfig {
+        thread_count,
+        keep_executed_history_extra_periods: 2,
+    };
     let tempdir_a = TempDir::new().expect("cannot create temp directory");
     let tempdir_c = TempDir::new().expect("cannot create temp directory");
     let db_a_config = MassaDBConfig {
@@ -300,13 +318,13 @@ fn test_executed_ops_hash_computing() {
 
     // initialize the executed ops and executed ops changes
     let mut a = ExecutedOps::new(config.clone(), db_a.clone());
-    let mut c = ExecutedOps::new(config, db_c.clone());
+    let mut c = ExecutedOps::new(config.clone(), db_c.clone());
     let mut change_a = PreHashMap::default();
     let mut change_b = PreHashMap::default();
     let mut change_c = PreHashMap::default();
     for i in 0u8..20 {
         let expiration_slot = Slot {
-            period: i as u64,
+            period: (i as u64).saturating_sub(config.keep_executed_history_extra_periods),
             thread: 0,
         };
         if i < 12 {

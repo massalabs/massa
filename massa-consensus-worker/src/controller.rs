@@ -156,8 +156,10 @@ impl ConsensusController for ConsensusControllerImpl {
         };
 
         for b_id in &current_ids {
-            if let Some(BlockStatus::Active { a_block, storage }) =
-                read_shared_state.blocks_state.get(b_id)
+            if let Some(BlockStatus::Active {
+                a_block,
+                storage_or_block,
+            }) = read_shared_state.blocks_state.get(b_id)
             {
                 if final_blocks.len() as u64 >= self.bootstrap_part_size {
                     break;
@@ -171,7 +173,7 @@ impl ConsensusController for ConsensusControllerImpl {
                     _ => (),
                 }
                 if a_block.is_final {
-                    let export = ExportActiveBlock::from_active_block(a_block, storage);
+                    let export = ExportActiveBlock::from_active_block(a_block, storage_or_block);
                     final_blocks.push(export);
                     retrieved_ids.insert(*b_id);
                 }

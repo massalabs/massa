@@ -1,11 +1,11 @@
-use std::net::{SocketAddr, TcpListener, TcpStream};
-
-use mio::net::TcpListener as MioTcpListener;
-
+use mio::net::TcpListener;
 use mio::{Events, Interest, Poll, Token, Waker};
-use tracing::{info, warn};
+use std::io::ErrorKind;
+use std::net::{SocketAddr, TcpStream};
+use tracing::{error, info, warn};
 
 use crate::error::BootstrapError;
+use crate::tools::mio_stream_to_std;
 
 const NEW_CONNECTION: Token = Token(0);
 const STOP_LISTENER: Token = Token(10);
@@ -15,9 +15,6 @@ pub struct BootstrapTcpListener {
     poll: Poll,
     events: Events,
     server: TcpListener,
-    // HACK : create variable to move ownership of mio_server to the thread
-    // if mio_server is not moved, poll does not receive any event from listener
-    _mio_server: MioTcpListener,
 }
 
 pub struct BootstrapListenerStopHandle(Waker);
@@ -47,7 +44,7 @@ impl BootstrapTcpListener {
             socket.set_only_v6(false)?;
         }
         // This is needed for the mio-polling system, which depends on the socket being non-blocking.
-        // If we don't set non-blocking, then we can .accept() on the mio_server bellow, which is needed to ensure the polling triggers every time.
+        // If we don't set non-blocking, then we can .accept() on the server below, which is needed to ensure the polling triggers every time.
         socket.set_nonblocking(true)?;
         socket.bind(&(*addr).into())?;
 
@@ -55,10 +52,7 @@ impl BootstrapTcpListener {
         socket.listen(1024)?;
 
         info!("Starting bootstrap listener on {}", &addr);
-        let server: TcpListener = socket.into();
-
-        let mut mio_server =
-            MioTcpListener::from_std(server.try_clone().expect("Unable to clone server socket"));
+        let mut server = TcpListener::from_std(socket.into());
 
         let poll = Poll::new()?;
 
@@ -66,27 +60,22 @@ impl BootstrapTcpListener {
         let waker = BootstrapListenerStopHandle(Waker::new(poll.registry(), STOP_LISTENER)?);
 
         poll.registry()
-            .register(&mut mio_server, NEW_CONNECTION, Interest::READABLE)?;
+            .register(&mut server, NEW_CONNECTION, Interest::READABLE)?;
 
         // TODO use config for capacity ?
-        let events = Events::with_capacity(32);
+        let events = Events::with_capacity(128);
         Ok((
             waker,
             BootstrapTcpListener {
                 poll,
                 server,
                 events,
-                _mio_server: mio_server,
             },
         ))
     }
+
     pub(crate) fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
-
-        // Confirm that we are not being signalled to shut down
-        if self.events.iter().any(|ev| ev.token() == STOP_LISTENER) {
-            return Ok(PollEvent::Stop);
-        }
 
         let mut results = Vec::with_capacity(self.events.iter().count());
 
@@ -94,21 +83,31 @@ impl BootstrapTcpListener {
         for event in self.events.iter() {
             match event.token() {
                 NEW_CONNECTION => {
-                    results.push(self.server.accept()?);
+                    loop {
+                        match self.server.accept() {
+                            Ok((mut stream, remote_addr)) => {
+                                if let Err(e) = self.poll.registry().deregister(&mut stream) {
+                                    error!("Could not deregister the stream {:?} from the mio poll: {:?}", stream, e);
+                                };
+                                let stream: std::net::TcpStream = mio_stream_to_std(stream);
+                                stream.set_nonblocking(false)?;
+                                results.push((stream, remote_addr));
+                            }
+                            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                                break;
+                            }
+                            Err(e) => {
+                                warn!("Error accepting connection in bootstrap: {:?}", e);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                STOP_LISTENER => {
+                    return Ok(PollEvent::Stop);
                 }
                 _ => unreachable!(),
             }
-        }
-
-        // We need to have an accept() error with WouldBlock, otherwise polling may not raise any new events.
-        // See https://users.rust-lang.org/t/why-mio-poll-only-receives-the-very-first-event/87501
-        // However, we cannot add potential connections on the mio_server to the connections vec,
-        // as this yields mio::net::TcpStream instead of std::net::TcpStream
-        while let Ok((_, remote_addr)) = self._mio_server.accept() {
-            warn!(
-                "Mio server still had bootstrap connection data to read. Remote address: {}",
-                remote_addr
-            );
         }
 
         Ok(PollEvent::NewConnections(results))
