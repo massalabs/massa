@@ -12,7 +12,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_db_worker":["",[],["lib.rs","massa_db.rs"]],\
 "massa_executed_ops":["",[],["config.rs","denunciations_changes.rs","executed_denunciations.rs","executed_ops.rs","lib.rs","ops_changes.rs"]],\
 "massa_execution_exports":["",[],["channels.rs","controller_traits.rs","error.rs","event_store.rs","lib.rs","mapping_grpc.rs","settings.rs","types.rs"]],\
-"massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","worker.rs"]],\
+"massa_execution_worker":["",[],["active_history.rs","context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","vesting_manager.rs","worker.rs"]],\
 "massa_factory_exports":["",[],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]],\
 "massa_factory_worker":["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]],\
 "massa_final_state":["",[],["config.rs","error.rs","final_state.rs","lib.rs","mapping_grpc.rs","state_changes.rs"]],\
@@ -31,7 +31,7 @@ var sourcesIndex = JSON.parse('{\
 "massa_pos_worker":["",[],["controller.rs","draw.rs","lib.rs","worker.rs"]],\
 "massa_protocol_exports":["",[],["bootstrap_peers.rs","controller_trait.rs","error.rs","lib.rs","peer_id.rs","settings.rs"]],\
 "massa_protocol_worker":["",[["handlers",[["block_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["endorsement_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["operation_handler",[],["cache.rs","commands_propagation.rs","commands_retrieval.rs","messages.rs","mod.rs","propagation.rs","retrieval.rs"]],["peer_handler",[],["announcement.rs","messages.rs","mod.rs","models.rs","tester.rs"]]],["mod.rs"]]],["connectivity.rs","context.rs","controller.rs","lib.rs","manager.rs","messages.rs","sig_verifier.rs","worker.rs","wrap_network.rs"]],\
-"massa_sdk":["",[],["config.rs","lib.rs"]],\
+"massa_sdk":["",[],["cert_manager.rs","config.rs","lib.rs"]],\
 "massa_serialization":["",[],["lib.rs"]],\
 "massa_signature":["",[],["error.rs","lib.rs","signature_impl.rs"]],\
 "massa_storage":["",[],["block_indexes.rs","endorsement_indexes.rs","lib.rs","operation_indexes.rs"]],\
