@@ -21,3 +21,5 @@ pub use decrypt::decrypt;
 pub use encrypt::encrypt;
 pub use encrypt::CipherData;
 pub use error::CipherError;
+
+pub type Salt = [u8; constants::SALT_SIZE];

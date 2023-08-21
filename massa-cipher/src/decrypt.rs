@@ -19,8 +19,8 @@ use crate::error::CipherError;
 ///
 /// Read `lib.rs` module documentation for more information.
 pub fn decrypt(password: &str, data: CipherData) -> Result<Vec<u8>, CipherError> {
-    // parse PBKDF2 salt, the encoding expected is a base64 string without any padding
-    let salt = SaltString::new(data.salt.trim_end_matches('='))
+    // get PBKDF2 salt
+    let salt = SaltString::b64_encode(&data.salt)
         .map_err(|e| CipherError::DecryptionError(e.to_string()))?;
 
     // compute PBKDF2 password hash

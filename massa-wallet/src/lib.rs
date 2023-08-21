@@ -7,7 +7,7 @@
 
 pub use error::WalletError;
 
-use massa_cipher::{decrypt, encrypt, CipherData};
+use massa_cipher::{decrypt, encrypt, CipherData, Salt};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
@@ -39,7 +39,7 @@ struct WalletFileFormat {
     version: u64,
     nickname: String,
     address: String,
-    salt: String,
+    salt: Salt,
     nonce: [u8; 12],
     ciphered_data: Vec<u8>,
     public_key: Vec<u8>,
