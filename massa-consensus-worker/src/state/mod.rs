@@ -466,7 +466,7 @@ impl ConsensusState {
                 if let Some(BlockStatus::Active {
                     a_block,
                     storage_or_block,
-                }) = self.blocks_state.get(b_id) && a_block.is_final
+                }) = self.blocks_state.get(b_id)
                 {
                     if !a_block.is_final {
                         return None;
@@ -475,10 +475,16 @@ impl ConsensusState {
                         StorageOrBlock::Storage(storage) => Some(storage.clone()),
                         _ => None,
                     };
-                    return Some((*b_id, (a_block.slot, ExecutionBlockMetadata {
-                        same_thread_parent_creator: a_block.same_thread_parent_creator,
-                        storage,
-                    })));
+                    return Some((
+                        *b_id,
+                        (
+                            a_block.slot,
+                            ExecutionBlockMetadata {
+                                same_thread_parent_creator: a_block.same_thread_parent_creator,
+                                storage,
+                            },
+                        ),
+                    ));
                 }
                 None
             })
