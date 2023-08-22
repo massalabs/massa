@@ -35,6 +35,10 @@
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # General module description
@@ -61,6 +65,10 @@
 //!    * If it&#39;s the third or more we ignore the block unless we asked for it explicitly as a dependency.
 //! If a queued block reaches the slot time at which it should be processed, the worker wakes up to check it and trigger, if necessary, the consensus algorithm.
 //! It then prunes the block graph and the caches.
+
+</span><span class="attr">#![feature(deadline_api)]
+#![feature(let_chains)]
+#![feature(async_closure)]
 
 </span><span class="kw">mod </span>commands;
 <span class="kw">mod </span>controller;

@@ -33,10 +33,6 @@
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 
 <span class="doccomment">/// Why not just to_canonical ?
@@ -44,15 +40,11 @@
 /// it would fail the comparison with a canonicalized ipv4 from the config
 /// (eg. Ipv4 is not converted to ipv6 by canonicalize)
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>normalize_ip(ip: IpAddr) -&gt; IpAddr {
-    <span class="kw">let </span>ip = <span class="kw">match </span>ip {
+    <span class="kw">match </span>ip {
         IpAddr::V4(ip) =&gt; ip.to_ipv6_mapped(),
         IpAddr::V6(ip) =&gt; ip,
-    };
-    <span class="comment">// to_canonical implementation (https://doc.rust-lang.org/src/core/net/ip_addr.rs.html#1733)
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(mapped) = ip.to_ipv4_mapped() {
-        <span class="kw">return </span>IpAddr::V4(mapped);
     }
-    IpAddr::V6(ip)
+    .to_canonical()
 }
 
 <span class="doccomment">/// Convert a mio stream to std
