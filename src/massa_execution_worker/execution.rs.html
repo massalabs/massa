@@ -3445,7 +3445,7 @@
 
                 <span class="comment">// address ledger entry being updated
                 </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(entry_updates)) =&gt; {
-                    <span class="kw">let </span>c_k = candidate_keys.get_or_insert_default();
+                    <span class="kw">let </span>c_k = candidate_keys.get_or_insert_with(Default::default);
                     <span class="kw">for </span>(ds_key, ds_update) <span class="kw">in
                         </span>entry_updates.datastore.range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
                     {
@@ -3636,13 +3636,13 @@
             <span class="kw">for </span>(slot, addr_amount) <span class="kw">in </span><span class="kw-2">&amp;</span>hist_item.state_changes.pos_changes.deferred_credits.credits
             {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
-                    <span class="kw">let _ </span>= res_speculative.try_insert(<span class="kw-2">*</span>slot, <span class="kw-2">*</span>amount);
+                    res_speculative.entry(<span class="kw-2">*</span>slot).or_insert(<span class="kw-2">*</span>amount);
                 };
             }
         }
         <span class="comment">// fill missing speculative entries with final entries
         </span><span class="kw">for </span>(s, v) <span class="kw">in </span>res_final.iter() {
-            <span class="kw">let _ </span>= res_speculative.try_insert(<span class="kw-2">*</span>s, <span class="kw-2">*</span>v);
+            res_speculative.entry(<span class="kw-2">*</span>s).or_insert(<span class="kw-2">*</span>v);
         }
         <span class="comment">// remove zero entries from speculative
         </span>res_speculative.retain(|_s, a| !a.is_zero());

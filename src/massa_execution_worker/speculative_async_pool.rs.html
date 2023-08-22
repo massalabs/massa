@@ -295,6 +295,7 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -481,10 +482,11 @@
         <span class="comment">// Activate the messages that can be activated (triggered)
         </span><span class="kw">let </span><span class="kw-2">mut </span>triggered_info = Vec::new();
         <span class="kw">for </span>(id, message_info) <span class="kw">in </span><span class="self">self</span>.message_infos.iter_mut() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;</span>message_info.trigger <span class="comment">/*&amp;&amp; !message_info.can_be_executed*/ </span>&amp;&amp; is_triggered(filter, ledger_changes)
-            {
-                message_info.can_be_executed = <span class="bool-val">true</span>;
-                triggered_info.push((<span class="kw-2">*</span>id, message_info.clone()));
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = <span class="kw-2">&amp;</span>message_info.trigger {
+                <span class="kw">if </span>is_triggered(filter, ledger_changes) {
+                    message_info.can_be_executed = <span class="bool-val">true</span>;
+                    triggered_info.push((<span class="kw-2">*</span>id, message_info.clone()));
+                }
             }
         }
 

@@ -892,7 +892,7 @@
             .range(min_slot..)
         {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
-                <span class="kw">let _ </span>= res.try_insert(<span class="kw-2">*</span>slot, <span class="kw-2">*</span>amount);
+                res.entry(<span class="kw-2">*</span>slot).or_insert(<span class="kw-2">*</span>amount);
             };
         }
 
@@ -908,7 +908,7 @@
                     .range(min_slot..)
                 {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
-                        <span class="kw">let _ </span>= res.try_insert(<span class="kw-2">*</span>slot, <span class="kw-2">*</span>amount);
+                        res.entry(<span class="kw-2">*</span>slot).or_insert(<span class="kw-2">*</span>amount);
                     };
                 }
             }
@@ -923,7 +923,7 @@
                 .credits
             {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
-                    <span class="kw">let _ </span>= res.try_insert(slot, <span class="kw-2">*</span>amount);
+                    res.entry(slot).or_insert(<span class="kw-2">*</span>amount);
                 };
             }
         }
