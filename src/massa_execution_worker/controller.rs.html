@@ -509,10 +509,10 @@
 <span class="kw">use </span><span class="kw">crate</span>::request_queue::{RequestQueue, RequestWithResponseSender};
 <span class="kw">use </span>massa_channel::MassaChannel;
 <span class="kw">use </span>massa_execution_exports::{
-    ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
-    ExecutionQueryError, ExecutionQueryExecutionStatus, ExecutionQueryRequest,
-    ExecutionQueryRequestItem, ExecutionQueryResponse, ExecutionQueryResponseItem,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionConfig, ExecutionController,
+    ExecutionError, ExecutionManager, ExecutionQueryError, ExecutionQueryExecutionStatus,
+    ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
+    ExecutionQueryResponseItem, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::execution::EventFilter;
@@ -521,7 +521,6 @@
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount, operation::OperationId};
 <span class="kw">use </span>massa_models::{block_id::BlockId, slot::Slot};
-<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::fmt::Display;
@@ -537,7 +536,7 @@
     <span class="doccomment">/// new blockclique (if there is a new one)
     </span><span class="kw">pub </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
     <span class="doccomment">/// storage instances for previously unprocessed blocks
-    </span><span class="kw">pub </span>block_storage: PreHashMap&lt;BlockId, Storage&gt;,
+    </span><span class="kw">pub </span>block_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     <span class="doccomment">/// queue for read-only execution requests and response MPSCs to send back their outputs
     </span><span class="kw">pub </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ReadOnlyExecutionOutput&gt;,
 }
@@ -546,7 +545,7 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}&quot;</span>,
+            <span class="string">&quot;stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}, storage={:?}&quot;</span>,
             <span class="self">self</span>.stop,
             <span class="self">self</span>.finalized_blocks
                 .iter()
@@ -556,7 +555,8 @@
                 .iter()
                 .map(|(slot, id)| (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>id))
                 .collect::&lt;BTreeMap&lt;Slot, BlockId&gt;&gt;()),
-            <span class="self">self</span>.readonly_requests
+            <span class="self">self</span>.readonly_requests,
+            <span class="self">self</span>.block_metadata.keys().collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>BlockId&gt;&gt;(),
         )
     }
 }
@@ -568,7 +568,7 @@
             stop: Default::default(),
             finalized_blocks: Default::default(),
             new_blockclique: Default::default(),
-            block_storage: Default::default(),
+            block_metadata: Default::default(),
             readonly_requests: RequestQueue::new(config.max_final_events),
         }
     }
@@ -581,7 +581,7 @@
             stop: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.stop),
             finalized_blocks: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.finalized_blocks),
             new_blockclique: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.new_blockclique),
-            block_storage: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.block_storage),
+            block_metadata: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.block_metadata),
             readonly_requests: std::mem::replace(
                 <span class="kw-2">&amp;mut </span><span class="self">self</span>.readonly_requests,
                 RequestQueue::new(max_final_events),
@@ -606,18 +606,18 @@
     /// # Arguments
     /// * `finalized_blocks`: newly finalized blocks indexed by slot.
     /// * `blockclique`: new blockclique (if changed). Indexed by slot.
-    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
+    /// * `block_metadata`: storage instances and metadata for new blocks. Each storage owns refs to the block and its ops/endorsements.
     </span><span class="kw">fn </span>update_blockclique_status(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
         new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
-        block_storage: PreHashMap&lt;BlockId, Storage&gt;,
+        block_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
         <span class="comment">// lock input data
         </span><span class="kw">let </span><span class="kw-2">mut </span>input_data = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
 
         <span class="comment">// extend block info
-        </span>input_data.block_storage.extend(block_storage);
+        </span>input_data.block_metadata.extend(block_metadata);
 
         <span class="comment">// extend finalized blocks
         </span>input_data.finalized_blocks.extend(finalized_blocks);
