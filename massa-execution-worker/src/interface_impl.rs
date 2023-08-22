@@ -691,10 +691,7 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_op_keys_wasmv1`
     fn get_op_keys(&self, prefix_opt: Option<&[u8]>) -> Result<Vec<Vec<u8>>> {
-        // TODO return BTreeSet<Vec<u8>>
-
         let prefix: &[u8] = prefix_opt.unwrap_or_default();
-        // let prefix: &[u8] = Default::default();
 
         // compute prefix range
         let prefix_range = get_prefix_bounds(prefix);
