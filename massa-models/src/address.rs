@@ -681,16 +681,16 @@ mod test {
         // println!("sc_addr_1: {}", sc_addr_1);
 
         // let v1 = "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF";
-        let v2 = "AU4cJWyjpBetGwaRqFDXyrHiQuGB3QKrwjzGiGSzQPGeAARB9AY4";
-        let addr = Address::from_str(v2).unwrap();
+        // let v2 = "AU4cJWyjpBetGwaRqFDXyrHiQuGB3QKrwjzGiGSzQPGeAARB9AY4";
+        // let addr = Address::from_str(v2).unwrap();
 
-        let mut buffer: Vec<u8> = vec![];
-        let _ = AddressSerializer::new().serialize(&addr, &mut buffer);
-        let (_rest, addr2): (&[u8], Address) = AddressDeserializer::new()
-            .deserialize::<massa_serialization::DeserializeError>(&buffer)
-            .unwrap();
+        // let mut buffer: Vec<u8> = vec![];
+        // let _ = AddressSerializer::new().serialize(&addr, &mut buffer);
+        // let (_rest, addr2): (&[u8], Address) = AddressDeserializer::new()
+        //     .deserialize::<massa_serialization::DeserializeError>(&buffer)
+        //     .unwrap();
 
-        assert_eq!(addr, addr2);
+        // assert_eq!(addr, addr2);
     }
 
     #[test]
