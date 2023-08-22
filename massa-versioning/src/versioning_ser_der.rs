@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::mem;
 use std::ops::Bound::{Excluded, Included};
 
 use nom::{
@@ -27,8 +26,8 @@ use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
 const MIP_INFO_NAME_MAX_LEN: u32 = 255;
 const MIP_INFO_COMPONENTS_MAX_ENTRIES: u32 = 8;
-const COMPONENT_STATE_VARIANT_COUNT: u32 = mem::variant_count::<ComponentState>() as u32;
-const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = mem::variant_count::<ComponentStateTypeId>() as u32;
+const COMPONENT_STATE_VARIANT_COUNT: u32 = ComponentState::VARIANT_COUNT as u32;
+const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = ComponentStateTypeId::VARIANT_COUNT as u32;
 const MIP_STORE_MAX_ENTRIES: u32 = 4096;
 #[allow(dead_code)]
 const MIP_STORE_MAX_SIZE: usize = 2097152;
@@ -866,7 +865,7 @@ mod test {
 
     #[test]
     fn test_mip_component_non_exhaustive() {
-        let last_variant__ = std::mem::variant_count::<MipComponent>() - 2; // -1 for Nonexhaustive, -1 for index start at 0
+        let last_variant__ = MipComponent::VARIANT_COUNT - 2; // -1 for Nonexhaustive, -1 for index start at 0
         let last_variant_ = u32::try_from(last_variant__).unwrap();
         let last_variant = MipComponent::from(last_variant_);
 
@@ -881,13 +880,13 @@ mod test {
         }
 
         {
-            let variant__ = std::mem::variant_count::<MipComponent>() - 1;
+            let variant__ = MipComponent::VARIANT_COUNT - 1;
             let variant_ = u32::try_from(variant__).unwrap();
             assert_matches!(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
         }
 
         {
-            let variant__ = std::mem::variant_count::<MipComponent>();
+            let variant__ = MipComponent::VARIANT_COUNT;
             let variant_ = u32::try_from(variant__).unwrap();
             assert_matches!(MipComponent::from(variant_), MipComponent::__Nonexhaustive);
         }
