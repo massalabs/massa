@@ -26,7 +26,7 @@ use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 
 const MIP_INFO_NAME_MAX_LEN: u32 = 255;
 const MIP_INFO_COMPONENTS_MAX_ENTRIES: u32 = 8;
-const COMPONENT_STATE_VARIANT_COUNT: u32 = ComponentState::VARIANT_COUNT as u32;
+const COMPONENT_STATE_VARIANT_COUNT: u32 = ComponentStateTypeId::VARIANT_COUNT as u32 - 1;
 const COMPONENT_STATE_ID_VARIANT_COUNT: u32 = ComponentStateTypeId::VARIANT_COUNT as u32;
 const MIP_STORE_MAX_ENTRIES: u32 = 4096;
 #[allow(dead_code)]

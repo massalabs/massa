@@ -111,7 +111,7 @@ impl Eq for MipInfo {}
 
 machine!(
     /// State machine for a Versioning component that tracks the deployment state
-    #[derive(Clone, Copy, Debug, PartialEq, VariantCount)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
     pub(crate) enum ComponentState {
         /// Initial state
         Defined,
