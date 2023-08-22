@@ -1597,7 +1597,7 @@ impl ExecutionState {
 
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    let c_k = candidate_keys.get_or_insert_default();
+                    let c_k = candidate_keys.get_or_insert_with(Default::default);
                     for (ds_key, ds_update) in
                         entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
                     {
@@ -1788,13 +1788,13 @@ impl ExecutionState {
             for (slot, addr_amount) in &hist_item.state_changes.pos_changes.deferred_credits.credits
             {
                 if let Some(amount) = addr_amount.get(address) {
-                    let _ = res_speculative.try_insert(*slot, *amount);
+                    res_speculative.entry(*slot).or_insert(*amount);
                 };
             }
         }
         // fill missing speculative entries with final entries
         for (s, v) in res_final.iter() {
-            let _ = res_speculative.try_insert(*s, *v);
+            res_speculative.entry(*s).or_insert(*v);
         }
         // remove zero entries from speculative
         res_speculative.retain(|_s, a| !a.is_zero());

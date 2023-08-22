@@ -12,7 +12,6 @@
 //! * `server`: initializes the gRPC service and serve It.
 //! * `stream/`: contains the gRPC streaming methods implementations files.
 
-#![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 

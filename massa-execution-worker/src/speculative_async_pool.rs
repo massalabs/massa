@@ -184,10 +184,11 @@ impl SpeculativeAsyncPool {
         // Activate the messages that can be activated (triggered)
         let mut triggered_info = Vec::new();
         for (id, message_info) in self.message_infos.iter_mut() {
-            if let Some(filter) = &message_info.trigger /*&& !message_info.can_be_executed*/ && is_triggered(filter, ledger_changes)
-            {
-                message_info.can_be_executed = true;
-                triggered_info.push((*id, message_info.clone()));
+            if let Some(filter) = &message_info.trigger {
+                if is_triggered(filter, ledger_changes) {
+                    message_info.can_be_executed = true;
+                    triggered_info.push((*id, message_info.clone()));
+                }
             }
         }
 

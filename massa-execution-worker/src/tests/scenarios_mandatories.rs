@@ -414,8 +414,14 @@ mod tests {
         });
         assert!(events.len() > 0);
         // Check that we always subtract gas through the execution (even in sub calls)
-        assert!(
-            events.is_sorted_by_key(|event| Reverse(event.data.parse::<u64>().unwrap())),
+        let events_formatted = events
+            .iter()
+            .map(|event| event.data.parse::<u64>().unwrap())
+            .collect::<Vec<_>>();
+        let mut sorted_events = events_formatted.clone();
+        sorted_events.sort_by_key(|event| Reverse(*event));
+        assert_eq!(
+            events_formatted, sorted_events,
             "Gas is not going down through the execution."
         );
         // stop the execution controller
