@@ -58,6 +58,7 @@ use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::vec;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use serial_test::serial;
 use tempfile::TempDir;
 
 lazy_static::lazy_static! {
@@ -198,7 +199,8 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
 }
 
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+// #[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
@@ -209,7 +211,8 @@ fn test_bootstrap_whitelist() {
 }
 
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+// #[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
@@ -602,7 +605,8 @@ fn test_bootstrap_server() {
 
 // Regression test for Issue #3932
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
+// #[cfg_attr(target_os = "macos", serial_test::serial)]
 fn test_bootstrap_accept_err() {
     let thread_count = 2;
     let periods_per_cycle = 2;
