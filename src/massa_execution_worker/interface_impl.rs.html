@@ -2710,13 +2710,13 @@
     /// A list of keys (keys are byte arrays)
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_op_keys_wasmv1`
-    </span><span class="kw">fn </span>get_op_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt; {
+    </span><span class="kw">fn </span>get_op_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="comment">// TODO return BTreeSet&lt;Vec&lt;u8&gt;&gt;
 
-        </span><span class="kw">let </span>prefix: <span class="kw-2">&amp;</span>[u8] = prefix_opt.unwrap_or_default();
-        <span class="comment">// let prefix: &amp;[u8] = Default::default();
+        // TODO add prefix
+        </span><span class="kw">let </span>prefix: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>[];
 
-        // compute prefix range
+        <span class="comment">// compute prefix range
         </span><span class="kw">let </span>prefix_range = get_prefix_bounds(prefix);
         <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
 

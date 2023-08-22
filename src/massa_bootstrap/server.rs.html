@@ -809,6 +809,8 @@
 <a href="#809" id="809">809</a>
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1416,10 +1418,12 @@
                 .get_change_id()
                 .expect(CHANGE_ID_DESER_ERROR);
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot &gt; db_slot {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                    <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
-                ));
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot {
+                <span class="kw">if </span>slot &gt; db_slot {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
+                        <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
+                    ));
+                }
             }
 
             <span class="comment">// Update cursors for next turn
