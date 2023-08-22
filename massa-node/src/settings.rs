@@ -69,7 +69,7 @@ pub struct BootstrapSettings {
     pub max_simultaneous_bootstraps: u32,
     pub per_ip_min_interval: MassaTime,
     pub ip_list_max_size: usize,
-    pub max_bytes_read_write: u64,
+    pub rate_limit: u64,
     /// Allocated time with which to manage the bootstrap process
     pub bootstrap_timeout: MassaTime,
 }
@@ -267,6 +267,8 @@ pub struct ProtocolSettings {
     pub default_category_info: PeerCategoryInfo,
     /// Cooldown before testing again an old peer
     pub test_oldest_peer_cooldown: MassaTime,
+    /// Rate limitation to apply to the data stream (per second)
+    pub rate_limit: u64,
 }
 
 /// gRPC settings

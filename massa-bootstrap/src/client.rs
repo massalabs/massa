@@ -485,7 +485,7 @@ pub fn get_state(
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
-    let limit = bootstrap_config.max_bytes_read_write;
+    let limit = bootstrap_config.rate_limit;
     loop {
         // check for interuption
         if *interupted.0.lock().expect("double-lock on interupt-mutex") {
