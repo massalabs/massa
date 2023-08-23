@@ -23,6 +23,8 @@ substruct = {workspace = true}
 socket2 = {workspace = true}
 crossbeam = {workspace = true}   # BOM UPGRADE     Revert to "0.8.2" if problem
 mio = {workspace = true, "features" = ["net", "os-poll"]}
+stream_limiter = { workspace = true }
+
 massa_consensus_exports = {workspace = true}
 massa_final_state = {workspace = true}
 massa_hash = {workspace = true}

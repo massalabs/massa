@@ -249,6 +249,9 @@ pub fn start_protocol_controller(
     peernet_config.write_timeout = config.message_timeout.to_duration();
     peernet_config.read_timeout = config.message_timeout.to_duration();
 
+    peernet_config.rate_limit = config.rate_limit;
+    peernet_config.rate_bucket_size = config.rate_limit.saturating_mul(2);
+
     let initial_peers_infos = serde_json::from_str::<HashMap<PeerId, PeerData>>(
         &std::fs::read_to_string(&config.initial_peers)?,
     )?;
