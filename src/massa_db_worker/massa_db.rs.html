@@ -951,18 +951,18 @@
                     std::cmp::Ordering::Less =&gt; {
                         <span class="comment">// We should send all the new updates since last_change_id
 
-                        </span><span class="kw">let </span>cursor = <span class="self">self
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="self">self
                             </span>.change_history
-                            .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
+                            .range((Bound::Included(<span class="kw-2">&amp;</span>last_change_id), Bound::Unbounded));
 
-                        <span class="kw">if </span>cursor.peek_prev().is_none() {
+                        <span class="kw">if </span>cursor.next().is_none() {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
                                 <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
                             )));
                         }
 
-                        <span class="kw">match </span>cursor.key() {
-                            <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
+                        <span class="kw">match </span>cursor.next() {
+                            <span class="prelude-val">Some</span>((cursor_change_id, <span class="kw">_</span>)) =&gt; {
                                 <span class="comment">// We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; =
@@ -1061,18 +1061,18 @@
                     std::cmp::Ordering::Less =&gt; {
                         <span class="comment">// We should send all the new updates since last_change_id
 
-                        </span><span class="kw">let </span>cursor = <span class="self">self
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="self">self
                             </span>.change_history_versioning
-                            .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
+                            .range((Bound::Included(<span class="kw-2">&amp;</span>last_change_id), Unbounded));
 
-                        <span class="kw">if </span>cursor.peek_prev().is_none() {
+                        <span class="kw">if </span>cursor.next().is_none() {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
                                 <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
                             )));
                         }
 
-                        <span class="kw">match </span>cursor.key() {
-                            <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
+                        <span class="kw">match </span>cursor.next() {
+                            <span class="prelude-val">Some</span>((cursor_change_id, <span class="kw">_</span>)) =&gt; {
                                 <span class="comment">// We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; =

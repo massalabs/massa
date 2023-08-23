@@ -424,6 +424,15 @@
 <a href="#424" id="424">424</a>
 <a href="#425" id="425">425</a>
 <a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -775,11 +784,20 @@
 <span class="kw">impl </span>AmountDeserializer {
     <span class="doccomment">/// Create a new `AmountDeserializer`
     </span><span class="kw">pub fn </span>new(min_amount: Bound&lt;Amount&gt;, max_amount: Bound&lt;Amount&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>min = <span class="kw">match </span>min_amount {
+            Bound::Included(x) =&gt; Bound::Included(x.to_raw()),
+            Bound::Excluded(x) =&gt; Bound::Excluded(x.to_raw()),
+            Bound::Unbounded =&gt; Bound::Included(<span class="number">0</span>),
+        };
+
+        <span class="kw">let </span>max = <span class="kw">match </span>max_amount {
+            Bound::Included(x) =&gt; Bound::Included(x.to_raw()),
+            Bound::Excluded(x) =&gt; Bound::Excluded(x.to_raw()),
+            Bound::Unbounded =&gt; Bound::Included(Amount::MAX.to_raw()),
+        };
+
         <span class="self">Self </span>{
-            u64_deserializer: U64VarIntDeserializer::new(
-                min_amount.map(|amount| amount.to_raw()),
-                max_amount.map(|amount| amount.to_raw()),
-            ),
+            u64_deserializer: U64VarIntDeserializer::new(min, max),
         }
     }
 }

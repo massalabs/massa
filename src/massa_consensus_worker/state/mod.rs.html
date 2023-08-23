@@ -531,6 +531,20 @@
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
 <a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -763,8 +777,10 @@
         <span class="kw">let </span><span class="kw-2">mut </span>latest: Vec&lt;<span class="prelude-ty">Option</span>&lt;(BlockId, u64)&gt;&gt; = <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
         <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().iter() {
             <span class="kw">let </span>(block, _storage) = <span class="self">self</span>.try_get_full_active_block(id)<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = latest[block.slot.thread <span class="kw">as </span>usize] &amp;&amp; block.slot.period &lt; p {
-                <span class="kw">continue</span>;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = latest[block.slot.thread <span class="kw">as </span>usize] {
+                <span class="kw">if </span>block.slot.period &lt; p {
+                    <span class="kw">continue</span>;
+                }
             }
             <span class="kw">if </span>block.is_final &amp;&amp; block.slot &lt;= slot {
                 latest[block.slot.thread <span class="kw">as </span>usize] = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, block.slot.period));
@@ -796,11 +812,15 @@
             <span class="macro">vec!</span>[<span class="prelude-val">None</span>; <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize];
         <span class="kw">for </span>id <span class="kw">in </span>block_ids {
             <span class="kw">let </span>(block, _storage) = <span class="self">self</span>.try_get_full_active_block(id)<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot &amp;&amp; block.slot &gt; slot {
-                <span class="kw">continue</span>;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot {
+                <span class="kw">if </span>block.slot &gt; slot {
+                    <span class="kw">continue</span>;
+                }
             }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = earliest[block.slot.thread <span class="kw">as </span>usize] &amp;&amp; block.slot.period &gt; p {
-                <span class="kw">continue</span>;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, p)) = earliest[block.slot.thread <span class="kw">as </span>usize] {
+                <span class="kw">if </span>block.slot.period &gt; p {
+                    <span class="kw">continue</span>;
+                }
             }
             earliest[block.slot.thread <span class="kw">as </span>usize] = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>id, block.slot.period));
         }
@@ -829,8 +849,10 @@
     ) {
         <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.blocks_state.active_blocks().iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>((block, _storage)) = <span class="self">self</span>.get_full_active_block(id) {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot &amp;&amp; block.slot &gt; slot {
-                    <span class="kw">continue</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot {
+                    <span class="kw">if </span>block.slot &gt; slot {
+                        <span class="kw">continue</span>;
+                    }
                 }
                 <span class="kw">if </span>block.slot.period &gt;= lower_bound[block.slot.thread <span class="kw">as </span>usize].<span class="number">1 </span>{
                     kept_blocks.insert(<span class="kw-2">*</span>id);
@@ -991,7 +1013,7 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                     a_block,
                     storage_or_block,
-                }) = <span class="self">self</span>.blocks_state.get(b_id) &amp;&amp; a_block.is_final
+                }) = <span class="self">self</span>.blocks_state.get(b_id)
                 {
                     <span class="kw">if </span>!a_block.is_final {
                         <span class="kw">return </span><span class="prelude-val">None</span>;
@@ -1000,10 +1022,16 @@
                         StorageOrBlock::Storage(storage) =&gt; <span class="prelude-val">Some</span>(storage.clone()),
                         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                     };
-                    <span class="kw">return </span><span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, (a_block.slot, ExecutionBlockMetadata {
-                        same_thread_parent_creator: a_block.same_thread_parent_creator,
-                        storage,
-                    })));
+                    <span class="kw">return </span><span class="prelude-val">Some</span>((
+                        <span class="kw-2">*</span>b_id,
+                        (
+                            a_block.slot,
+                            ExecutionBlockMetadata {
+                                same_thread_parent_creator: a_block.same_thread_parent_creator,
+                                storage,
+                            },
+                        ),
+                    ));
                 }
                 <span class="prelude-val">None
             </span>})

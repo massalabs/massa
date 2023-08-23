@@ -1003,7 +1003,7 @@
 
                 <span class="comment">// address ledger entry being updated
                 </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(entry_updates)) =&gt; {
-                    <span class="kw">let </span>c_k = candidate_keys.get_or_insert_default();
+                    <span class="kw">let </span>c_k = candidate_keys.get_or_insert_with(Default::default);
                     <span class="kw">for </span>(ds_key, ds_update) <span class="kw">in
                         </span>entry_updates.datastore.range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
                     {
