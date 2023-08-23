@@ -4,7 +4,6 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(int_roundings)]
-#![feature(iter_intersperse)]
 
 extern crate lazy_static;
 

@@ -99,28 +99,30 @@ impl OperationPoolThread {
 
     /// Run the thread.
     fn run(self, config: PoolConfig) {
-        let mut next_refresh = Instant::now();
+        let mut start_time = Instant::now();
+        let tick = config.operation_pool_refresh_interval.to_duration();
         loop {
-            match self.receiver.recv_deadline(next_refresh) {
-                Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
-                Ok(Command::AddItems(operations)) => {
-                    self.operation_pool.write().add_operations(operations)
-                }
-                Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
-                    .operation_pool
-                    .write()
-                    .notify_final_cs_periods(&final_cs_periods),
-                Ok(_) => {
-                    warn!("OperationPoolThread received an unexpected command");
-                    continue;
-                }
-                Err(RecvTimeoutError::Timeout) => {}
-            };
-            if next_refresh <= Instant::now() {
+            let now = Instant::now();
+            if start_time + tick > now {
+                let duration = start_time + tick - now;
+                match self.receiver.recv_timeout(duration) {
+                    Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
+                    Ok(Command::AddItems(operations)) => {
+                        self.operation_pool.write().add_operations(operations)
+                    }
+                    Ok(Command::NotifyFinalCsPeriods(final_cs_periods)) => self
+                        .operation_pool
+                        .write()
+                        .notify_final_cs_periods(&final_cs_periods),
+                    Ok(_) => {
+                        warn!("OperationPoolThread received an unexpected command");
+                        continue;
+                    }
+                    Err(RecvTimeoutError::Timeout) => {}
+                };
+            } else {
                 self.operation_pool.write().refresh();
-                next_refresh = Instant::now()
-                    .checked_add(config.operation_pool_refresh_interval.to_duration())
-                    .expect("could not compute time of next op pool refresh")
+                start_time = Instant::now();
             }
         }
     }
