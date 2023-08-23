@@ -21,15 +21,16 @@ impl EndorsementIndexes {
     /// Arguments:
     /// - endorsement: the endorsement to insert
     pub(crate) fn insert(&mut self, endorsement: SecureShareEndorsement) {
-        if let Ok(e) = self
-            .endorsements
-            .try_insert(endorsement.id, Box::new(endorsement))
-        {
+        if !self.endorsements.contains_key(&endorsement.id) {
+            let endorsement = self
+                .endorsements
+                .entry(endorsement.id)
+                .or_insert(Box::new(endorsement));
             // update creator index
             self.index_by_creator
-                .entry(e.content_creator_address)
+                .entry(endorsement.content_creator_address)
                 .or_default()
-                .insert(e.id);
+                .insert(endorsement.id);
 
             massa_metrics::set_endorsements_counter(self.endorsements.len());
         }

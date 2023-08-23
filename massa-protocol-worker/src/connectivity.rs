@@ -20,6 +20,7 @@ use tracing::{debug, info, warn};
 use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
+    ip::to_canonical,
     worker::ProtocolChannels,
 };
 use crate::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
@@ -285,7 +286,7 @@ pub(crate) fn start_connectivity_thread(
                                         }
 
                                         if let Some((addr, _)) = last_announce.listeners.iter().next() {
-                                            let canonical_ip = addr.ip().to_canonical();
+                                            let canonical_ip = to_canonical(addr.ip());
                                             let mut allowed_local_ips = false;
                                             // Check if the peer is in a category and we didn't reached out target yet
                                             let mut category_found = None;

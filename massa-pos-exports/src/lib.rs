@@ -5,7 +5,6 @@
 //! the future cycles
 
 #![warn(missing_docs)]
-#![feature(let_chains)]
 
 mod config;
 mod controller_traits;

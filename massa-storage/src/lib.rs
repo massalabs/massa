@@ -8,7 +8,6 @@
 
 #![warn(missing_docs)]
 #![feature(hash_extract_if)]
-#![feature(map_try_insert)]
 
 mod block_indexes;
 mod endorsement_indexes;

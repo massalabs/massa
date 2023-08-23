@@ -935,8 +935,10 @@ impl PoSFinalState {
 
     /// Getter for the rng_seed of a given cycle, prioritizing the cache and querying the database as fallback.
     fn get_cycle_history_rng_seed(&self, cycle: u64) -> Option<BitVec<u8>> {
-        if let Some((cached_cycle, rng_seed)) = &self.rng_seed_cache && *cached_cycle == cycle {
-            return Some(rng_seed.clone());
+        if let Some((cached_cycle, rng_seed)) = &self.rng_seed_cache {
+            if *cached_cycle == cycle {
+                return Some(rng_seed.clone());
+            }
         }
 
         let serialized_rng_seed = self

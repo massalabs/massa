@@ -11,7 +11,7 @@ use massa_storage::Storage;
 use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{hash_map::Entry, BTreeMap, HashMap},
     sync::Arc,
 };
 use tracing::{trace, warn};
@@ -166,8 +166,8 @@ impl EndorsementPool {
                     endo.content.endorsed_block,
                 );
                 // note that we don't want equivalent endorsements (slot, index, block etc...) to overwrite each other
-                if !self.endorsements_indexed.contains_key(&key) {
-                    self.endorsements_indexed.insert(key, endo.id);
+                if let Entry::Vacant(e) = self.endorsements_indexed.entry(key) {
+                    e.insert(endo.id);
                     if self.endorsements_sorted[endo.content.slot.thread as usize]
                         .insert(key, endo.id)
                         .is_some()

@@ -47,6 +47,7 @@ use crate::{
             MassaHandshake,
         },
     },
+    ip::to_canonical,
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,
     wrap_network::NetworkControllerImpl,
@@ -287,7 +288,7 @@ pub fn start_protocol_controller(
                                         .listeners
                                         .iter()
                                         .next()
-                                        .map(|addr| addr.0.ip().to_canonical())
+                                        .map(|addr| to_canonical(addr.0.ip()))
                                         .unwrap(),
                                 )
                             } else {
@@ -348,7 +349,7 @@ pub fn start_protocol_controller(
                                             .listeners
                                             .iter()
                                             .next()
-                                            .map(|addr| addr.0.ip().to_canonical())
+                                            .map(|addr| to_canonical(addr.0.ip()))
                                             .unwrap(),
                                     )
                                 } else {

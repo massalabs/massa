@@ -734,17 +734,24 @@ impl RetrievalThread {
         );
 
         // check if we were looking to retrieve the list of ops for that block
-        let wishlist_info = if let Some(info) = self.block_wishlist.get_mut(&block_id) && info.header.is_some() && info.operation_ids.is_none() {
-            // we were actively looking for this data
-            info
+        let wishlist_info = if let Some(info) = self.block_wishlist.get_mut(&block_id) {
+            if info.header.is_some() && info.operation_ids.is_none() {
+                // we were actively looking for this data
+                info
+            } else {
+                // we were not actively looking for that data, but mark the remote node as knowing the block
+                debug!("peer {} sent us a list of operation IDs for block id {} but we were not looking for it", from_peer_id, block_id);
+                self.cache
+                    .write()
+                    .insert_peer_known_block(&from_peer_id, &[block_id], true);
+                return;
+            }
         } else {
             // we were not actively looking for that data, but mark the remote node as knowing the block
             debug!("peer {} sent us a list of operation IDs for block id {} but we were not looking for it", from_peer_id, block_id);
-            self.cache.write().insert_peer_known_block(
-                &from_peer_id,
-                &[block_id],
-                true
-            );
+            self.cache
+                .write()
+                .insert_peer_known_block(&from_peer_id, &[block_id], true);
             return;
         };
 
@@ -802,17 +809,35 @@ impl RetrievalThread {
         );
 
         // Ensure that we were looking for that data.
-        let wishlist_info = if let Some(wishlist_info) = self.block_wishlist.get_mut(&block_id) && wishlist_info.header.is_some() && wishlist_info.operation_ids.is_some() {
-            wishlist_info
+        let wishlist_info = if let Some(wishlist_info) = self.block_wishlist.get_mut(&block_id) {
+            if wishlist_info.header.is_some() && wishlist_info.operation_ids.is_some() {
+                wishlist_info
+            } else {
+                // we were not looking for this data
+                debug!("Peer id {} sent us full operations for block id {} but we were not looking for it", from_peer_id, block_id);
+                // still mark the sender as knowing the block and operations
+                self.cache
+                    .write()
+                    .insert_peer_known_block(&from_peer_id, &[block_id], true);
+                self.operation_cache.write().insert_peer_known_ops(
+                    &from_peer_id,
+                    &operations
+                        .into_iter()
+                        .map(|op| op.id.prefix())
+                        .collect::<Vec<_>>(),
+                );
+                return;
+            }
         } else {
             // we were not looking for this data
-            debug!("Peer id {} sent us full operations for block id {} but we were not looking for it", from_peer_id, block_id);
-            // still mark the sender as knowing the block and operations
-            self.cache.write().insert_peer_known_block(
-                &from_peer_id,
-                &[block_id],
-                true
+            debug!(
+                "Peer id {} sent us full operations for block id {} but we were not looking for it",
+                from_peer_id, block_id
             );
+            // still mark the sender as knowing the block and operations
+            self.cache
+                .write()
+                .insert_peer_known_block(&from_peer_id, &[block_id], true);
             self.operation_cache.write().insert_peer_known_ops(
                 &from_peer_id,
                 &operations

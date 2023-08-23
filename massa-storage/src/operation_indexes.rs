@@ -23,20 +23,21 @@ impl OperationIndexes {
     /// Arguments:
     /// * `operation`: the operation to insert
     pub(crate) fn insert(&mut self, operation: SecureShareOperation) {
-        if let Ok(o) = self
-            .operations
-            .try_insert(operation.id, Box::new(operation))
-        {
+        if !self.operations.contains_key(&operation.id) {
+            let operation = self
+                .operations
+                .entry(operation.id)
+                .or_insert(Box::new(operation));
             // update creator index
             self.index_by_creator
-                .entry(o.content_creator_address)
+                .entry(operation.content_creator_address)
                 .or_default()
-                .insert(o.id);
+                .insert(operation.id);
             // update prefix index
             self.index_by_prefix
-                .entry(o.id.prefix())
+                .entry(operation.id.prefix())
                 .or_default()
-                .insert(o.id);
+                .insert(operation.id);
 
             massa_metrics::set_operations_counter(self.operations.len());
         }
