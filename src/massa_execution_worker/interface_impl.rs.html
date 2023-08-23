@@ -2015,6 +2015,9 @@
 <a href="#2015" id="2015">2015</a>
 <a href="#2016" id="2016">2016</a>
 <a href="#2017" id="2017">2017</a>
+<a href="#2018" id="2018">2018</a>
+<a href="#2019" id="2019">2019</a>
+<a href="#2020" id="2020">2020</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2707,8 +2710,11 @@
     /// A list of keys (keys are byte arrays)
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_op_keys_wasmv1`
-    </span><span class="kw">fn </span>get_op_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="kw">let </span>prefix: <span class="kw-2">&amp;</span>[u8] = prefix_opt.unwrap_or_default();
+    </span><span class="kw">fn </span>get_op_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt; {
+        <span class="comment">// TODO return BTreeSet&lt;Vec&lt;u8&gt;&gt;
+
+        // TODO add prefix
+        </span><span class="kw">let </span>prefix: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>[];
 
         <span class="comment">// compute prefix range
         </span><span class="kw">let </span>prefix_range = get_prefix_bounds(prefix);

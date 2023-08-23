@@ -918,25 +918,25 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.stop&quot;</span>, {});
         <span class="comment">// TODO: Refactor the waker so that its existance is tied to the life of the event-loop
         </span><span class="kw">if </span><span class="self">self</span>.listener_stopper.stop().is_err() {
-            <span class="macro">warn!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;bootstrap server already dropped&quot;</span>);
         }
         <span class="kw">if </span><span class="self">self</span>.update_stopper_tx.send(()).is_err() {
-            <span class="macro">warn!</span>(<span class="string">&quot;bootstrap ip-list-updater already dropped&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;bootstrap ip-list-updater already dropped&quot;</span>);
         }
         <span class="comment">// TODO?: handle join errors.
+        // let tk = std::mem::take((self.update_stopper_tx);
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
-        </span><span class="self">self</span>.update_handle
-            .join()
-            .expect(<span class="string">&quot;in BootstrapManager::stop() joining on updater thread&quot;</span>)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>_res1 = <span class="self">self</span>.update_handle.join();
+        <span class="comment">// .expect(&quot;in BootstrapManager::stop() joining on updater thread&quot;)?;
 
-        <span class="kw">let </span>res = <span class="self">self
+        </span><span class="kw">let </span>res = <span class="self">self
             </span>.main_handle
             .join()
             .expect(<span class="string">&quot;in BootstrapManager::stop() joining on bootstrap main-loop thread&quot;</span>);
-        <span class="macro">info!</span>(<span class="string">&quot;bootstrap server stopped&quot;</span>);
-        res
+        <span class="comment">// println!(&quot;bootstrap server stopped&quot;);
+        </span>res
     }
 }
 
