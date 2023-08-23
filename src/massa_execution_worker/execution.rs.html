@@ -1846,27 +1846,6 @@
 <a href="#1846" id="1846">1846</a>
 <a href="#1847" id="1847">1847</a>
 <a href="#1848" id="1848">1848</a>
-<a href="#1849" id="1849">1849</a>
-<a href="#1850" id="1850">1850</a>
-<a href="#1851" id="1851">1851</a>
-<a href="#1852" id="1852">1852</a>
-<a href="#1853" id="1853">1853</a>
-<a href="#1854" id="1854">1854</a>
-<a href="#1855" id="1855">1855</a>
-<a href="#1856" id="1856">1856</a>
-<a href="#1857" id="1857">1857</a>
-<a href="#1858" id="1858">1858</a>
-<a href="#1859" id="1859">1859</a>
-<a href="#1860" id="1860">1860</a>
-<a href="#1861" id="1861">1861</a>
-<a href="#1862" id="1862">1862</a>
-<a href="#1863" id="1863">1863</a>
-<a href="#1864" id="1864">1864</a>
-<a href="#1865" id="1865">1865</a>
-<a href="#1866" id="1866">1866</a>
-<a href="#1867" id="1867">1867</a>
-<a href="#1868" id="1868">1868</a>
-<a href="#1869" id="1869">1869</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1881,13 +1860,12 @@
 <span class="kw">use </span><span class="kw">crate</span>::context::{ExecutionContext, ExecutionContextSnapshot};
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
-<span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionChannels, ExecutionConfig, ExecutionError,
-    ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
-    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
-    SlotExecutionOutput,
+    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
+    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
+    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 <span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -1911,7 +1889,6 @@
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
-<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
@@ -1953,8 +1930,6 @@
     </span>stats_counter: ExecutionStatsCounter,
     <span class="comment">// cache of pre compiled sc modules
     </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-    <span class="comment">// Vesting manager
-    </span>vesting_manager: Arc&lt;VestingManager&gt;,
     <span class="comment">// MipStore (Versioning)
     </span>mip_store: MipStore,
     <span class="comment">// wallet used to verify double staking on local addresses
@@ -1998,20 +1973,6 @@
         <span class="comment">// Create default active history
         </span><span class="kw">let </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt; = Default::default();
 
-        <span class="comment">// Initialize the vesting
-        </span><span class="kw">let </span>vesting_manager = <span class="kw">match </span>VestingManager::new(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            config.periods_per_cycle,
-            config.roll_price,
-            config.initial_vesting_path.clone(),
-        ) {
-            <span class="prelude-val">Ok</span>(manager) =&gt; Arc::new(manager),
-            <span class="comment">// panic if VestingManager can&#39;t load initial vesting file
-            </span><span class="prelude-val">Err</span>(e) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, e),
-        };
-
         <span class="comment">// Initialize the SC module cache
         </span><span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
@@ -2029,7 +1990,6 @@
             final_state.clone(),
             active_history.clone(),
             module_cache.clone(),
-            vesting_manager.clone(),
             mip_store.clone(),
             execution_trail_hash,
         )));
@@ -2055,7 +2015,6 @@
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             module_cache,
             config,
-            vesting_manager,
             mip_store,
             selector,
             channels,
@@ -2192,7 +2151,6 @@
     /// # Arguments
     /// * `operation`: operation to be schedule
     /// * `sender_addr`: sender address for the operation (for fee transfer)
-
     </span><span class="kw">fn </span>prepare_operation_for_execution(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>SecureShareOperation,
@@ -2210,13 +2168,17 @@
             ));
         }
 
-        <span class="comment">// Set the creator coin spending allowance.
-        // Note that this needs to be initialized before any spending from the creator.
-        </span>context.creator_coin_spending_allowance =
-            <span class="prelude-val">Some</span>(operation.get_max_spending(<span class="self">self</span>.config.roll_price));
+        <span class="comment">// Compute the minimal amount of coins the sender is allowed to have after the execution of this op based on `op.max_spending`.
+        // Note that the max spending might exceed the sender&#39;s balance.
+        </span><span class="kw">let </span>creator_initial_balance = context
+            .get_balance(<span class="kw-2">&amp;</span>sender_addr)
+            .unwrap_or_else(Amount::zero);
+        context.creator_min_balance = <span class="prelude-val">Some</span>(
+            creator_initial_balance
+                .saturating_sub(operation.get_max_spending(<span class="self">self</span>.config.roll_price)),
+        );
 
         <span class="comment">// debit the fee from the operation sender
-        // fail execution if there are not enough coins
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
             context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
         {
@@ -2226,7 +2188,8 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));
         }
 
-        <span class="comment">// from here, fees transferred. Op will be executed just after in the context of a snapshot.
+        <span class="comment">// from here, fees have been transferred.
+        // Op will be executed just after in the context of a snapshot.
 
         // save a snapshot of the context to revert any further changes on error
         </span><span class="kw">let </span>context_snapshot = context.get_snapshot();
@@ -2302,7 +2265,7 @@
         </span><span class="kw-2">*</span>block_credits = new_block_credits;
 
         <span class="comment">// Call the execution process specific to the operation type.
-        </span><span class="kw">let </span>execution_result = <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
+        </span><span class="kw">let </span><span class="kw-2">mut </span>execution_result = <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
             OperationType::ExecuteSC { .. } =&gt; {
                 <span class="self">self</span>.execute_executesc_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
             }
@@ -2310,7 +2273,7 @@
                 <span class="self">self</span>.execute_callsc_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
             }
             OperationType::RollBuy { .. } =&gt; {
-                <span class="self">self</span>.execute_roll_buy_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr, block_slot)
+                <span class="self">self</span>.execute_roll_buy_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
             }
             OperationType::RollSell { .. } =&gt; {
                 <span class="self">self</span>.execute_roll_sell_op(<span class="kw-2">&amp;</span>operation.content.op, sender_addr)
@@ -2324,13 +2287,30 @@
             <span class="comment">// lock execution context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
+            <span class="kw">if </span>execution_result.is_ok() {
+                <span class="comment">// check that the `max_coins` spending limit was respected by the sender
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(creator_min_balance) = <span class="kw-2">&amp;</span>context.creator_min_balance {
+                    <span class="kw">let </span>creator_balance = context
+                        .get_balance(<span class="kw-2">&amp;</span>sender_addr)
+                        .unwrap_or_else(Amount::zero);
+                    <span class="kw">if </span><span class="kw-2">&amp;</span>creator_balance &lt; creator_min_balance {
+                        execution_result = <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                            <span class="string">&quot;at the end of the execution of the operation, the sender {} was expected to have at least {} coins according to the operation&#39;s max spending, but has only {}.&quot;</span>,
+                            sender_addr, creator_min_balance, creator_balance
+                        )));
+                    }
+                }
+            }
+
             <span class="comment">// check execution results
             </span><span class="kw">match </span>execution_result {
-                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; context.insert_executed_op(
-                    operation_id,
-                    <span class="bool-val">true</span>,
-                    Slot::new(operation.content.expire_period, op_thread),
-                ),
+                <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                    context.insert_executed_op(
+                        operation_id,
+                        <span class="bool-val">true</span>,
+                        Slot::new(operation.content.expire_period, op_thread),
+                    );
+                }
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="comment">// an error occurred: emit error event and reset context to snapshot
                     </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
@@ -2340,7 +2320,7 @@
                     <span class="macro">debug!</span>(<span class="string">&quot;{}&quot;</span>, <span class="kw-2">&amp;</span>err);
                     context.reset_to_snapshot(context_snapshot, err);
 
-                    <span class="comment">// Insert op AFTER the context has been restore (else it would be overwritten)
+                    <span class="comment">// Insert op AFTER the context has been restored (otherwise it would be overwritten)
                     </span>context.insert_executed_op(
                         operation_id,
                         <span class="bool-val">false</span>,
@@ -2540,26 +2520,16 @@
     /// # Arguments
     /// * `operation`: the `WrappedOperation` to process, must be an `RollBuy`
     /// * `buyer_addr`: address of the buyer
-    /// * `current_slot` : current slot
     </span><span class="kw">pub fn </span>execute_roll_buy_op(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>OperationType,
         buyer_addr: Address,
-        current_slot: Slot,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// process roll buy operations only
         </span><span class="kw">let </span>roll_count = <span class="kw">match </span>operation {
             OperationType::RollBuy { roll_count } =&gt; roll_count,
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected operation type&quot;</span>),
         };
-
-        <span class="comment">// control vesting max_rolls for buyer address
-        </span><span class="self">self</span>.vesting_manager.check_vesting_rolls_buy(
-            <span class="self">self</span>.get_final_and_candidate_rolls(<span class="kw-2">&amp;</span>buyer_addr),
-            <span class="kw-2">&amp;</span>buyer_addr,
-            current_slot,
-            <span class="kw-2">*</span>roll_count,
-        )<span class="question-mark">?</span>;
 
         <span class="comment">// acquire write access to the context
         </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
@@ -2829,7 +2799,7 @@
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.creator_address = <span class="prelude-val">None</span>;
-            context.creator_coin_spending_allowance = <span class="prelude-val">None</span>;
+            context.creator_min_balance = <span class="prelude-val">None</span>;
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
@@ -2928,7 +2898,7 @@
     ///
     /// # Arguments
     /// * `slot`: slot to execute
-    /// * `opt_block`: Storage owning a ref to the block (+ its endorsements, ops, parents) if there is a block a that slot, otherwise None
+    /// * `exec_target`: metadata of the block to execute, if not miss
     /// * `selector`: Reference to the selector
     ///
     /// # Returns
@@ -2936,7 +2906,7 @@
     </span><span class="kw">pub fn </span>execute_slot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
-        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
+        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; ExecutionOutput {
         <span class="comment">// Create a new execution context for the whole active slot
@@ -2947,7 +2917,6 @@
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
-            <span class="self">self</span>.vesting_manager.clone(),
             <span class="self">self</span>.mip_store.clone(),
         );
 
@@ -2969,7 +2938,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt; = <span class="prelude-val">None</span>;
 
         <span class="comment">// Check if there is a block at this slot
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_store)) = exec_target {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((block_id, block_metadata)) = exec_target {
+            <span class="kw">let </span>block_store = block_metadata
+                .storage
+                .as_ref()
+                .expect(<span class="string">&quot;Cannot execute a block for which the storage is missing&quot;</span>);
+
             <span class="comment">// Retrieve the block from storage
             </span><span class="kw">let </span>stored_block = block_store
                 .read_blocks()
@@ -3001,29 +2975,17 @@
             <span class="macro">debug!</span>(<span class="string">&quot;executing {} operations at slot {}&quot;</span>, operations.len(), slot);
 
             <span class="comment">// gather all available endorsement creators and target blocks
-            </span><span class="kw">let </span>(endorsement_creators, endorsement_targets): <span class="kw-2">&amp;</span>(Vec&lt;Address&gt;, Vec&lt;BlockId&gt;) =
-                <span class="kw-2">&amp;</span>stored_block
-                    .content
-                    .header
-                    .content
-                    .endorsements
-                    .iter()
-                    .map(|endo| (endo.content_creator_address, endo.content.endorsed_block))
-                    .unzip();
-
-            <span class="comment">// deduce endorsement target block creators
-            </span><span class="kw">let </span>endorsement_target_creators = {
-                <span class="kw">let </span>blocks = block_store.read_blocks();
-                endorsement_targets
-                    .iter()
-                    .map(|b_id| {
-                        blocks
-                            .get(b_id)
-                            .expect(<span class="string">&quot;endorsed block absent from storage&quot;</span>)
-                            .content_creator_address
-                    })
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            };
+            </span><span class="kw">let </span>endorsement_creators: Vec&lt;Address&gt; = stored_block
+                .content
+                .header
+                .content
+                .endorsements
+                .iter()
+                .map(|endo| endo.content_creator_address)
+                .collect();
+            <span class="kw">let </span>endorsement_target_creator = block_metadata
+                .same_thread_parent_creator
+                .expect(<span class="string">&quot;same thread parent creator missing&quot;</span>);
 
             <span class="comment">// Set remaining block gas
             </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_block_gas = <span class="self">self</span>.config.max_gas_per_block;
@@ -3075,14 +3037,11 @@
             <span class="kw">let </span>block_credit_part = block_credits
                 .checked_div_u64(<span class="number">3 </span>* (<span class="number">1 </span>+ (<span class="self">self</span>.config.endorsement_count)))
                 .expect(<span class="string">&quot;critical: block_credits checked_div factor is 0&quot;</span>);
-            <span class="kw">for </span>(endorsement_creator, endorsement_target_creator) <span class="kw">in </span>endorsement_creators
-                .iter()
-                .zip(endorsement_target_creators.into_iter())
-            {
+            <span class="kw">for </span>endorsement_creator <span class="kw">in </span>endorsement_creators {
                 <span class="comment">// credit creator of the endorsement with coins
                 </span><span class="kw">match </span>context.transfer_coins(
                     <span class="prelude-val">None</span>,
-                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>endorsement_creator),
+                    <span class="prelude-val">Some</span>(endorsement_creator),
                     block_credit_part,
                     <span class="bool-val">false</span>,
                 ) {
@@ -3160,7 +3119,7 @@
     </span><span class="kw">pub fn </span>execute_candidate_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
-        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
+        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) {
         <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
@@ -3200,7 +3159,7 @@
     </span><span class="kw">pub fn </span>execute_final_slot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
-        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;,
+        exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) {
         <span class="kw">let </span>target_id = exec_target.as_ref().map(|(b_id, <span class="kw">_</span>)| <span class="kw-2">*</span>b_id);
@@ -3303,7 +3262,6 @@
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
             <span class="self">self</span>.module_cache.clone(),
-            <span class="self">self</span>.vesting_manager.clone(),
             <span class="self">self</span>.mip_store.clone(),
         );
 

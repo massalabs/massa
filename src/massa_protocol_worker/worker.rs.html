@@ -375,6 +375,9 @@
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 <span class="kw">use </span>massa_consensus_exports::ConsensusController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
@@ -624,6 +627,9 @@
     );
     peernet_config.write_timeout = config.message_timeout.to_duration();
     peernet_config.read_timeout = config.message_timeout.to_duration();
+
+    peernet_config.rate_limit = config.rate_limit;
+    peernet_config.rate_bucket_size = config.rate_limit.saturating_mul(<span class="number">2</span>);
 
     <span class="kw">let </span>initial_peers_infos = serde_json::from_str::&lt;HashMap&lt;PeerId, PeerData&gt;&gt;(
         <span class="kw-2">&amp;</span>std::fs::read_to_string(<span class="kw-2">&amp;</span>config.initial_peers)<span class="question-mark">?</span>,

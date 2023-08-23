@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["KeyPair","MassaSignatureError","PublicKey","Signature"],"fn":["verify_signature_batch"],"mod":["error","signature_impl"],"struct":["PublicKeyDeserializer","PublicKeyV0","PublicKeyV1","SignatureDeserializer"]};
+window.SIDEBAR_ITEMS = {"enum":["KeyPair","MassaSignatureError","PublicKey","Signature"],"fn":["verify_signature_batch"],"mod":["error","signature_impl"],"struct":["PublicKeyDeserializer","PublicKeyV0","SignatureDeserializer"]};

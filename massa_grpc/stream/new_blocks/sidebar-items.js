@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_filter","new_blocks","should_send"],"struct":["Filter","SlotRange"],"type":["NewBlocksStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["new_blocks"],"type":["NewBlocksStreamType"]};
