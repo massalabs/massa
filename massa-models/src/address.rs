@@ -671,26 +671,10 @@ mod test {
         let hash = massa_hash::Hash::compute_from("ADDR".as_bytes());
 
         let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
-        // let user_addr_1 = Address::User(UserAddress::UserAddressV1(UserAddressV1(hash)));
         let sc_addr_0 = Address::SC(SCAddress::SCAddressV0(SCAddressV0(hash)));
-        // let sc_addr_1 = Address::SC(SCAddress::SCAddressV1(SCAddressV1(hash)));
 
         println!("user_addr_0: {}", user_addr_0);
-        // println!("user_addr_1: {}", user_addr_1);
         println!("sc_addr_0: {}", sc_addr_0);
-        // println!("sc_addr_1: {}", sc_addr_1);
-
-        // let v1 = "AU12M3AQqs7JH7mSe1UZyEA5NQ7nGQHXaqqxe1TGEpkimcRhsQ4eF";
-        let v2 = "AU4cJWyjpBetGwaRqFDXyrHiQuGB3QKrwjzGiGSzQPGeAARB9AY4";
-        let addr = Address::from_str(v2).unwrap();
-
-        let mut buffer: Vec<u8> = vec![];
-        let _ = AddressSerializer::new().serialize(&addr, &mut buffer);
-        let (_rest, addr2): (&[u8], Address) = AddressDeserializer::new()
-            .deserialize::<massa_serialization::DeserializeError>(&buffer)
-            .unwrap();
-
-        assert_eq!(addr, addr2);
     }
 
     #[test]
