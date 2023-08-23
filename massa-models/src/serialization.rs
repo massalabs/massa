@@ -7,7 +7,6 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
-use num::integer::div_ceil;
 use nom::bytes::complete::take;
 use nom::multi::{length_count, length_data};
 use nom::sequence::preceded;
@@ -16,6 +15,7 @@ use nom::{
     error::{context, ContextError, ErrorKind, ParseError},
     IResult,
 };
+use num::integer::div_ceil;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::mem::size_of;
