@@ -45,19 +45,22 @@ use massa_models::{
     prehash::PreHashSet,
 };
 
-use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig, SelectorManager};
+use massa_pos_exports::{
+    test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
+    SelectorManager,
+};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use mockall::Sequence;
 use parking_lot::RwLock;
+use serial_test::serial;
+use std::io::Read;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::vec;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
-use std::io::Read;
-use serial_test::serial;
 use tempfile::TempDir;
 
 lazy_static::lazy_static! {
@@ -67,7 +70,10 @@ lazy_static::lazy_static! {
     };
 }
 
-fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -> (BootstrapManager, Box<dyn SelectorManager>) {
+fn mock_bootstrap_manager(
+    addr: SocketAddr,
+    bootstrap_config: BootstrapConfig,
+) -> (BootstrapManager, Box<dyn SelectorManager>) {
     // TODO from config
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let thread_count = 2;
@@ -177,24 +183,27 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .times(1)
         .returning(move || _listener.poll());
     listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
-    return (start_bootstrap_server(
-        listener,
-        listener_stopper,
-        stream_mock1,
-        mocked1,
-        final_state_server,
-        bootstrap_config.clone(),
-        keypair.clone(),
-        Version::from_str("TEST.1.10").unwrap(),
-        MassaMetrics::new(
-            false,
-            "0.0.0.0:31248".parse().unwrap(),
-            thread_count,
-            Duration::from_secs(5),
+    return (
+        start_bootstrap_server(
+            listener,
+            listener_stopper,
+            stream_mock1,
+            mocked1,
+            final_state_server,
+            bootstrap_config.clone(),
+            keypair.clone(),
+            Version::from_str("TEST.1.10").unwrap(),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:31248".parse().unwrap(),
+                thread_count,
+                Duration::from_secs(5),
+            )
+            .0,
         )
-        .0,
-    )
-    .unwrap(), server_selector_manager)
+        .unwrap(),
+        server_selector_manager,
+    );
 }
 
 #[test]
@@ -212,7 +221,6 @@ fn test_bootstrap_whitelist() {
 
     _bs_manager.stop().unwrap();
     selector_manager.stop();
-
 }
 
 #[test]
