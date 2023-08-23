@@ -2,7 +2,6 @@
 //! Unsigned time management
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(bound_map)]
 
 mod error;
 mod mapping_grpc;
@@ -77,11 +76,20 @@ impl MassaTimeDeserializer {
     /// Arguments:
     /// * range: minimum value for the time to deserialize
     pub fn new(range: (Bound<MassaTime>, Bound<MassaTime>)) -> Self {
+        let min = match range.0 {
+            Bound::Included(x) => Bound::Included(x.to_millis()),
+            Bound::Excluded(x) => Bound::Excluded(x.to_millis()),
+            Bound::Unbounded => Bound::Included(0),
+        };
+
+        let max = match range.1 {
+            Bound::Included(x) => Bound::Included(x.to_millis()),
+            Bound::Excluded(x) => Bound::Excluded(x.to_millis()),
+            Bound::Unbounded => Bound::Included(MassaTime::max().to_millis()),
+        };
+
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(
-                range.0.map(|time| time.to_millis()),
-                range.1.map(|time| time.to_millis()),
-            ),
+            u64_deserializer: U64VarIntDeserializer::new(min, max),
         }
     }
 }
