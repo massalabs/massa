@@ -78,7 +78,6 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(btree_extract_if)]
 
 mod active_history;
 mod context;

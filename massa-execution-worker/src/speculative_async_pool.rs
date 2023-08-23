@@ -149,20 +149,24 @@ impl SpeculativeAsyncPool {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
 
-        let mut eliminated_infos: Vec<_> = self
+        let (mut eliminated_infos, kept_infos) = self
             .message_infos
-            .extract_if(|_k, v| *slot >= v.validity_end)
-            .collect();
+            .clone()
+            .into_iter()
+            .partition::<Vec<_>, _>(|(_id, info)| *slot >= info.validity_end);
+        self.message_infos = kept_infos.into_iter().collect();
 
-        let eliminated_new_messages: Vec<_> = self
-            .pool_changes
-            .0
-            .extract_if(|_k, v| match v {
-                SetUpdateOrDelete::Set(v) => *slot >= v.validity_end,
-                SetUpdateOrDelete::Update(_v) => false,
-                SetUpdateOrDelete::Delete => false,
-            })
-            .collect();
+        let (eliminated_new_messages, kept_new_messages) =
+            self.pool_changes
+                .clone()
+                .0
+                .into_iter()
+                .partition::<Vec<_>, _>(|(_k, v)| match v {
+                    SetUpdateOrDelete::Set(v) => *slot >= v.validity_end,
+                    SetUpdateOrDelete::Update(_v) => false,
+                    SetUpdateOrDelete::Delete => false,
+                });
+        self.pool_changes = AsyncPoolChanges(kept_new_messages.into_iter().collect());
 
         eliminated_infos.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
             SetUpdateOrDelete::Set(v) => Some((*k, AsyncMessageInfo::from(v.clone()))),
