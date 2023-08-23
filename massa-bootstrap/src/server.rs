@@ -107,24 +107,25 @@ impl BootstrapManager {
         massa_trace!("bootstrap.lib.stop", {});
         // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
         if self.listener_stopper.stop().is_err() {
-            warn!("bootstrap server already dropped");
+            println!("bootstrap server already dropped");
         }
         if self.update_stopper_tx.send(()).is_err() {
-            warn!("bootstrap ip-list-updater already dropped");
+            println!("bootstrap ip-list-updater already dropped");
         }
         // TODO?: handle join errors.
+        // let tk = std::mem::take((self.update_stopper_tx);
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
-        self.update_handle
-            .join()
-            .expect("in BootstrapManager::stop() joining on updater thread")?;
+        let _res1 = self.update_handle
+            .join();
+            // .expect("in BootstrapManager::stop() joining on updater thread")?;
 
         let res = self
             .main_handle
             .join()
             .expect("in BootstrapManager::stop() joining on bootstrap main-loop thread");
-        info!("bootstrap server stopped");
+        // println!("bootstrap server stopped");
         res
     }
 }

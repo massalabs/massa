@@ -45,9 +45,7 @@ use massa_models::{
     prehash::PreHashSet,
 };
 
-use massa_pos_exports::{
-    test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
-};
+use massa_pos_exports::{test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
@@ -58,6 +56,7 @@ use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::vec;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::io::Read;
 use serial_test::serial;
 use tempfile::TempDir;
 
@@ -68,7 +67,7 @@ lazy_static::lazy_static! {
     };
 }
 
-fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -> BootstrapManager {
+fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -> (BootstrapManager, Box<dyn SelectorManager>) {
     // TODO from config
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let thread_count = 2;
@@ -89,7 +88,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
     mocked1.expect_clone_box().return_once(move || mocked2);
 
     // start proof-of-stake selectors
-    let (_server_selector_manager, server_selector_controller) =
+    let (server_selector_manager, server_selector_controller) =
         start_selector_worker(selector_local_config.clone())
             .expect("could not start server selector controller");
 
@@ -99,7 +98,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
         max_new_elements: 100,
-        thread_count,
+        thread_count: 2,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -178,7 +177,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .times(1)
         .returning(move || _listener.poll());
     listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
-    start_bootstrap_server(
+    return (start_bootstrap_server(
         listener,
         listener_stopper,
         stream_mock1,
@@ -195,19 +194,25 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         )
         .0,
     )
-    .unwrap()
+    .unwrap(), server_selector_manager)
 }
 
 #[test]
-// #[cfg_attr(target_os = "macos", serial_test::serial)]
 #[serial]
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let _bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
+    let (_bs_manager, mut selector_manager) = mock_bootstrap_manager(addr.clone(), config.clone());
 
     let conn = TcpStream::connect(addr);
-    conn.unwrap();
+    let mut _stream = conn.unwrap();
+    let mut buf = Vec::with_capacity(1);
+    _stream.read(&mut buf).unwrap();
+    _stream.shutdown(std::net::Shutdown::Both).unwrap();
+
+    _bs_manager.stop().unwrap();
+    selector_manager.stop();
+
 }
 
 #[test]
