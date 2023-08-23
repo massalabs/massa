@@ -1428,8 +1428,6 @@
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
 <a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1504,9 +1502,9 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
-    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
-    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
+    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -1641,17 +1639,14 @@
         max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
         max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
-        initial_deferred_credits_path: SETTINGS.ledger.initial_deferred_credits_path.clone(),
     };
     <span class="kw">let </span>executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
-        keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
     <span class="kw">let </span>executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
-        keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -1798,7 +1793,7 @@
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
-        rate_limit: SETTINGS.bootstrap.rate_limit,
+        max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -1920,6 +1915,7 @@
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
+        initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
         gas_costs: GasCosts::new(
             SETTINGS.execution.abi_gas_costs_file.clone(),
             SETTINGS.execution.wasm_gas_costs_file.clone(),
@@ -2095,7 +2091,6 @@
         version: <span class="kw-2">*</span>VERSION,
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
         test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
-        rate_limit: SETTINGS.protocol.rate_limit,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =
@@ -2519,6 +2514,7 @@
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_datastore_entries_per_request: settings.max_datastore_entries_per_request,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
