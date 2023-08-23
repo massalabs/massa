@@ -25,6 +25,7 @@ use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_serialization::{DeserializeError, Deserializer, SerializeError, Serializer};
 use massa_time::MassaTime;
+use variant_count::VariantCount;
 
 use crate::versioning_ser_der::{
     MipInfoDeserializer, MipInfoSerializer, MipStateDeserializer, MipStateSerializer,
@@ -33,7 +34,9 @@ use crate::versioning_ser_der::{
 
 /// Versioning component enum
 #[allow(missing_docs)]
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, IntoPrimitive)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, FromPrimitive, IntoPrimitive, VariantCount,
+)]
 #[repr(u32)]
 pub enum MipComponent {
     // Address and KeyPair versions are directly related
@@ -141,7 +144,9 @@ impl ComponentState {
 }
 
 #[allow(missing_docs)]
-#[derive(IntoPrimitive, Debug, Clone, Eq, PartialEq, TryFromPrimitive, PartialOrd, Ord)]
+#[derive(
+    IntoPrimitive, Debug, Clone, Eq, PartialEq, TryFromPrimitive, PartialOrd, Ord, VariantCount,
+)]
 #[repr(u32)]
 pub enum ComponentStateTypeId {
     Error = 0,

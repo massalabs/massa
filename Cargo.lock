@@ -3139,6 +3139,7 @@ dependencies = [
  "serial_test 1.0.0",
  "thiserror",
  "transition",
+ "variant_count",
 ]
 
 [[package]]
@@ -3381,6 +3382,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tracing",
+ "variant_count",
 ]
 
 [[package]]
@@ -5902,6 +5904,16 @@ name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
+
+[[package]]
+name = "variant_count"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aae2faf80ac463422992abf4de234731279c058aaf33171ca70277c98406b124"
+dependencies = [
+ "quote 1.0.33",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "vcpkg"
