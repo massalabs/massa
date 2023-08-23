@@ -1,5 +1,6 @@
 use crossbeam::channel::tick;
 use crossbeam::select;
+use ip_rfc::global;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_metrics::MassaMetrics;
@@ -322,7 +323,7 @@ pub(crate) fn start_connectivity_thread(
                                                 continue;
                                             }
 
-                                            if !canonical_ip.is_global() && !allowed_local_ips {
+                                            if !global(&canonical_ip) && !allowed_local_ips {
                                                 continue;
                                             }
 

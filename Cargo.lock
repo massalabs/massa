@@ -2087,6 +2087,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ip_rfc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b8a253fc120dd6c624b7beb0a82330fc0135e0a9cec685bf039a07ba032af1e"
+
+[[package]]
 name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3269,6 +3275,7 @@ name = "massa_protocol_worker"
 version = "0.26.0"
 dependencies = [
  "crossbeam",
+ "ip_rfc",
  "massa_channel",
  "massa_consensus_exports",
  "massa_hash",
