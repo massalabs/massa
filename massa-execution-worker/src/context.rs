@@ -14,6 +14,7 @@ use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -56,6 +57,9 @@ pub struct ExecutionContextSnapshot {
 
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: AsyncPoolChanges,
+
+    /// the associated message infos for the speculative async pool
+    pub message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
 
     /// speculative list of operations executed
     pub executed_ops: ExecutedOpsChanges,
@@ -237,9 +241,11 @@ impl ExecutionContext {
     /// Returns a snapshot containing the clone of the current execution state.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
     pub(crate) fn get_snapshot(&self) -> ExecutionContextSnapshot {
+        let (async_pool_changes, message_infos) = self.speculative_async_pool.get_snapshot();
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
-            async_pool_changes: self.speculative_async_pool.get_snapshot(),
+            async_pool_changes,
+            message_infos,
             pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
             executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
@@ -264,7 +270,7 @@ impl ExecutionContext {
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
-            .reset_to_snapshot(snapshot.async_pool_changes);
+            .reset_to_snapshot((snapshot.async_pool_changes, snapshot.message_infos));
         self.speculative_roll_state
             .reset_to_snapshot(snapshot.pos_changes);
         self.speculative_executed_ops
