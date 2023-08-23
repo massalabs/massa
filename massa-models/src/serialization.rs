@@ -7,6 +7,7 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,
 };
+use num::integer::div_ceil;
 use nom::bytes::complete::take;
 use nom::multi::{length_count, length_data};
 use nom::sequence::preceded;
@@ -643,7 +644,7 @@ impl Deserializer<BitVec<u8>> for BitVecDeserializer {
     ) -> IResult<&'a [u8], BitVec<u8>, E> {
         context("Failed rng_seed deserialization", |input| {
             let (rest, n_entries) = self.u32_deserializer.deserialize(input)?;
-            let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
+            let bits_u8_len = div_ceil(n_entries, u8::BITS) as usize;
             if rest.len() < bits_u8_len {
                 return Err(nom::Err::Error(ParseError::from_error_kind(
                     input,

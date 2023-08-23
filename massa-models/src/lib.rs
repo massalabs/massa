@@ -3,7 +3,6 @@
 //!
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(int_roundings)]
 
 extern crate lazy_static;
 
