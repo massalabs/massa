@@ -211,15 +211,15 @@ fn mock_bootstrap_manager(
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (_bs_manager, mut selector_manager) = mock_bootstrap_manager(addr.clone(), config.clone());
+    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr.clone(), config.clone());
 
     let conn = TcpStream::connect(addr);
-    let mut _stream = conn.unwrap();
+    let mut stream = conn.unwrap();
     let mut buf = Vec::with_capacity(1);
-    _stream.read(&mut buf).unwrap();
-    _stream.shutdown(std::net::Shutdown::Both).unwrap();
+    stream.read(&mut buf).unwrap();
+    stream.shutdown(std::net::Shutdown::Both).unwrap();
 
-    _bs_manager.stop().unwrap();
+    bs_manager.stop().unwrap();
     selector_manager.stop();
 }
 
