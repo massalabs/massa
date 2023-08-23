@@ -1517,11 +1517,11 @@ impl<const N: usize> TryFrom<([(MipInfo, MipState); N], MipStatsConfig)> for Mip
 mod test {
     use super::*;
 
+    use assert_matches::assert_matches;
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
     use more_asserts::assert_le;
     use parking_lot::RwLock;
-    use std::assert_matches::assert_matches;
     use std::ops::{Add, Sub};
     use std::sync::Arc;
     use tempfile::tempdir;

@@ -25,6 +25,7 @@ massa_db_exports = { workspace = true }
 variant_count = { workspace = true }
 
 [dev-dependencies]
+assert_matches = { workspace = true }
 more-asserts = { workspace = true }
 tempfile = { workspace = true }
 massa_db_worker = { workspace = true }

@@ -30,6 +30,8 @@
 //! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
 //! a denunciation can be produced (A constant value will be defined for this).
 
+#![allow(missing_docs)]
+
 use std::cmp::Ordering;
 use std::ops::Bound::{Excluded, Included};
 

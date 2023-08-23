@@ -851,7 +851,7 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
 mod test {
     use super::*;
 
-    use std::assert_matches::assert_matches;
+    use assert_matches::assert_matches;
     use std::mem::{size_of, size_of_val};
 
     use more_asserts::assert_lt;
