@@ -116,8 +116,7 @@ impl BootstrapManager {
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
-        let _res1 = self
-            .update_handle
+        self.update_handle
             .join()
             .expect("in BootstrapManager::stop() joining on updater thread")?;
 
