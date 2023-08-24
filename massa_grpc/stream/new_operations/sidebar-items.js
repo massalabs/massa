@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_request_parameters","new_operations","should_send"],"type":["NewOperationsStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["get_filter","new_operations","should_send"],"struct":["Filter"],"type":["NewOperationsStreamType"]};
