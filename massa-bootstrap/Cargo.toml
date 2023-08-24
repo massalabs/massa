@@ -17,7 +17,6 @@ serde = {workspace = true, "features" = ["derive"]}
 serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
 humantime = {workspace = true}
 thiserror = {workspace = true}
-# parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 parking_lot = {workspace = true}
 tracing = {workspace = true}
 substruct = {workspace = true}
