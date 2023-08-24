@@ -809,7 +809,6 @@
 <a href="#809" id="809">809</a>
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -928,8 +927,7 @@
 
         // when the runtime is dropped at the end of this stop, the listener is auto-aborted
 
-        </span><span class="kw">let </span>_res1 = <span class="self">self
-            </span>.update_handle
+        </span><span class="self">self</span>.update_handle
             .join()
             .expect(<span class="string">&quot;in BootstrapManager::stop() joining on updater thread&quot;</span>)<span class="question-mark">?</span>;
 
