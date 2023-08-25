@@ -13,6 +13,11 @@
     },
     "servers": [
         {
+            "name": "Massa public buildnet API",
+            "url": "https://buildnet.massa.net/api/v2",
+            "description": "Massa public buildnet url"
+        },
+        {
             "name": "Massa public testnet API",
             "url": "https://test.massa.net/api/v2",
             "description": "Massa public testnet url"
@@ -2568,6 +2573,10 @@
                     "operation": {
                         "$ref": "#/components/schemas/WrappedOperation",
                         "description": "The operation itself"
+                    },
+                    "op_exec_status": {
+                        "description": "true if the operation execution succeeded, false if failed, None means unknown",
+                        "type" : "boolean"
                     }
                 },
                 "additionalProperties": false
