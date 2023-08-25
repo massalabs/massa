@@ -1197,6 +1197,61 @@
 <a href="#1197" id="1197">1197</a>
 <a href="#1198" id="1198">1198</a>
 <a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1226,7 +1281,6 @@
 <span class="kw">use </span>massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 <span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::str::FromStr;
-<span class="kw">use </span>tracing::log::warn;
 
 <span class="doccomment">/// Execute read only call (function or bytecode)
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>execute_read_only_call(
@@ -1401,6 +1455,19 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetDatastoreEntriesResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
 
+    <span class="comment">// return error if entry are empty
+    </span><span class="kw">if </span>inner_req.filters.is_empty() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">&quot;no filter provided&quot;</span>.to_string()));
+    }
+
+    <span class="comment">// return error if entry are too many filters for a single request
+    </span><span class="kw">if </span>inner_req.filters.len() <span class="kw">as </span>u64 &gt; grpc.grpc_config.max_datastore_entries_per_request {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+            <span class="string">&quot;too many datastore entries received. Only a maximum of {} datastore entries are accepted per request&quot;</span>,
+            grpc.grpc_config.max_datastore_entries_per_request
+        )));
+    }
+
     <span class="kw">let </span>filters: Vec&lt;(Address, Vec&lt;u8&gt;)&gt; = inner_req
         .filters
         .into_iter()
@@ -1416,11 +1483,6 @@
             })
         })
         .collect();
-
-    <span class="comment">// return error if entry are empty
-    </span><span class="kw">if </span>filters.is_empty() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">&quot;no filter provided&quot;</span>.to_string()));
-    }
 
     <span class="kw">let </span>entries = grpc
         .execution_controller
@@ -1735,20 +1797,22 @@
     <span class="kw">let </span><span class="kw-2">mut </span>addresses: PreHashSet&lt;Address&gt; = PreHashSet::default();
     <span class="kw">let </span><span class="kw-2">mut </span>slot_range: (<span class="prelude-ty">Option</span>&lt;Slot&gt;, <span class="prelude-ty">Option</span>&lt;Slot&gt;) = (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
 
-    <span class="comment">// parse filters from request
-    </span>inner_req.filters.into_iter().for_each(|query| {
+    <span class="comment">// Get params filter from the request.
+    </span><span class="kw">for </span>query <span class="kw">in </span>inner_req.filters.into_iter() {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = query.filter {
             <span class="kw">match </span>filter {
                 grpc_api::selector_draws_filter::Filter::Addresses(addrs) =&gt; {
-                    addrs
-                        .addresses
-                        .into_iter()
-                        .for_each(|addr| <span class="kw">match </span>Address::from_str(<span class="kw-2">&amp;</span>addr) {
-                            <span class="prelude-val">Ok</span>(ad) =&gt; {
-                                addresses.insert(ad);
-                            }
-                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;failed to parse address: {}&quot;</span>, e),
-                        });
+                    <span class="kw">if </span>addrs.addresses.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_addresses_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">&quot;too many addresses received. Only a maximum of {} addresses are accepted per request&quot;</span>,
+                            grpc.grpc_config.max_addresses_per_request
+                        )));
+                    }
+                    <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
+                        addresses.insert(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
+                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, address))
+                        })<span class="question-mark">?</span>);
+                    }
                 }
                 grpc_api::selector_draws_filter::Filter::SlotRange(range) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(start_slot) = range.start_slot {
@@ -1760,7 +1824,7 @@
                 }
             }
         }
-    });
+    }
 
     <span class="kw">if </span>slot_range.<span class="number">0</span>.is_none() || slot_range.<span class="number">1</span>.is_none() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
@@ -2321,7 +2385,7 @@
     <span class="kw">let </span>inner_req: grpc_api::SearchOperationsRequest = request.into_inner();
 
     <span class="kw">let </span><span class="kw-2">mut </span>operation_ids = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>filter_ope_types = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>addresses = Vec::new();
 
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>inner_req.filters.into_iter() {
@@ -2342,55 +2406,101 @@
                         })<span class="question-mark">?</span>);
                     }
                 }
-                grpc_api::search_operations_filter::Filter::OperationTypes(ope_types) =&gt; {
-                    filter_ope_types.extend_from_slice(<span class="kw-2">&amp;</span>ope_types.op_types);
+                grpc_api::search_operations_filter::Filter::Addresses(addrs) =&gt; {
+                    <span class="kw">if </span>addrs.addresses.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_addresses_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">&quot;too many addresses received. Only a maximum of {} addresses are accepted per request&quot;</span>,
+                            grpc.grpc_config.max_addresses_per_request
+                        )));
+                    }
+                    <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
+                        addresses.push(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
+                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, address))
+                        })<span class="question-mark">?</span>);
+                    }
                 }
             }
         }
     }
 
-    <span class="kw">if </span>operation_ids.is_empty() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-            <span class="string">&quot;no operations ids specified&quot;</span>.to_string(),
-        ));
+    <span class="kw">if </span>operation_ids.is_empty() &amp;&amp; addresses.is_empty() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">&quot;no filter provided&quot;</span>.to_string()));
     }
 
     <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
     <span class="kw">let </span>read_ops = grpc.storage.read_operations();
 
-    <span class="comment">// Get the operations and the list of blocks that contain them from storage
-    </span><span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = operation_ids
-        .iter()
-        .filter_map(|ope_id| {
-            read_ops.get(ope_id).map(|secure_share| {
-                <span class="kw">let </span>block_ids = read_blocks
-                    .get_blocks_by_operation(ope_id)
-                    .map(|hashset| hashset.iter().cloned().collect::&lt;HashSet&lt;BlockId&gt;&gt;())
-                    .unwrap_or_default();
+    <span class="kw">let </span>operations = <span class="kw">if </span>!operation_ids.is_empty() {
+        <span class="comment">// Get the operations and the list of blocks that contain them from storage
+        </span><span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = operation_ids
+            .iter()
+            .filter_map(|ope_id| {
+                read_ops.get(ope_id).map(|secure_share| {
+                    <span class="kw">let </span>block_ids = read_blocks
+                        .get_blocks_by_operation(ope_id)
+                        .map(|hashset| hashset.iter().cloned().collect::&lt;HashSet&lt;BlockId&gt;&gt;())
+                        .unwrap_or_default();
 
-                (secure_share, block_ids)
+                    (secure_share, block_ids)
+                })
             })
-        })
-        .collect();
+            .collect();
 
-    <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationInfo&gt; = storage_info
-        .into_iter()
-        .filter_map(|secure_share| {
-            <span class="kw">let </span>(secure_share, block_ids) = secure_share;
-            <span class="kw">let </span>ope_type: grpc_model::OpType = secure_share.content.op.clone().into();
-            <span class="kw">if </span>!filter_ope_types.is_empty() &amp;&amp; !filter_ope_types.contains(<span class="kw-2">&amp;</span>(ope_type <span class="kw">as </span>i32)) {
-                <span class="kw">return </span><span class="prelude-val">None</span>;
-            }
+        <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationInfo&gt; = storage_info
+            .into_iter()
+            .filter_map(|secure_share| {
+                <span class="kw">let </span>(secure_share, block_ids) = secure_share;
 
-            <span class="prelude-val">Some</span>(grpc_model::OperationInfo {
-                id: secure_share.id.to_string(),
-                thread: secure_share
-                    .content_creator_address
-                    .get_thread(grpc.grpc_config.thread_count) <span class="kw">as </span>u32,
-                block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
+                <span class="kw">if </span>!addresses.is_empty()
+                    &amp;&amp; !addresses.contains(<span class="kw-2">&amp;</span>secure_share.content_creator_address)
+                {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
+                }
+
+                <span class="prelude-val">Some</span>(grpc_model::OperationInfo {
+                    id: secure_share.id.to_string(),
+                    thread: secure_share
+                        .content_creator_address
+                        .get_thread(grpc.grpc_config.thread_count)
+                        <span class="kw">as </span>u32,
+                    block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
+                })
             })
-        })
-        .collect();
+            .collect();
+        operations
+    } <span class="kw">else </span>{
+        <span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = addresses
+            .iter()
+            .flat_map(|address| read_ops.get_operations_created_by(address))
+            .flatten()
+            .filter_map(|ope_id| {
+                read_ops.get(ope_id).map(|secure_share| {
+                    <span class="kw">let </span>block_ids = read_blocks
+                        .get_blocks_by_operation(ope_id)
+                        .map(|hashset| hashset.iter().cloned().collect::&lt;HashSet&lt;BlockId&gt;&gt;())
+                        .unwrap_or_default();
+
+                    (secure_share, block_ids)
+                })
+            })
+            .collect();
+
+        <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationInfo&gt; = storage_info
+            .into_iter()
+            .map(|secure_share| {
+                <span class="kw">let </span>(secure_share, block_ids) = secure_share;
+                grpc_model::OperationInfo {
+                    id: secure_share.id.to_string(),
+                    thread: secure_share
+                        .content_creator_address
+                        .get_thread(grpc.grpc_config.thread_count)
+                        <span class="kw">as </span>u32,
+                    block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
+                }
+            })
+            .collect();
+        operations
+    };
 
     <span class="prelude-val">Ok</span>(grpc_api::SearchOperationsResponse {
         operation_infos: operations,

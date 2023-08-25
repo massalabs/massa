@@ -345,6 +345,8 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_bootstrap::white_black_list::SharedWhiteBlackList;
@@ -386,6 +388,7 @@
 <span class="kw">use </span>tracing::log::{info, warn};
 
 <span class="doccomment">/// gRPC PRIVATE API content
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>MassaPrivateGrpc {
     <span class="doccomment">/// link to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
@@ -438,6 +441,7 @@
 }
 
 <span class="doccomment">/// gRPC PUBLIC API content
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>MassaPublicGrpc {
     <span class="doccomment">/// link to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
