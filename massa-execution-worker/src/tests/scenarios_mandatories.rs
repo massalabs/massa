@@ -2892,9 +2892,10 @@ mod tests {
         assert!(events[0]
             .data
             .contains("runtime error when executing operation"));
+        dbg!(events[0].data.clone());
         assert!(events[0]
             .data
-            .contains("abord with date and rnd at use_builtins.ts:0 col: 0"));
+            .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
 
         assert_eq!(
             sample_state
