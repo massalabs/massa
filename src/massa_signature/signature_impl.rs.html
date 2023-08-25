@@ -1330,62 +1330,6 @@
 <a href="#1330" id="1330">1330</a>
 <a href="#1331" id="1331">1331</a>
 <a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
-<a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
-<a href="#1381" id="1381">1381</a>
-<a href="#1382" id="1382">1382</a>
-<a href="#1383" id="1383">1383</a>
-<a href="#1384" id="1384">1384</a>
-<a href="#1385" id="1385">1385</a>
-<a href="#1386" id="1386">1386</a>
-<a href="#1387" id="1387">1387</a>
-<a href="#1388" id="1388">1388</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::MassaSignatureError;
@@ -1412,23 +1356,14 @@
 
 <span class="attr">#[allow(missing_docs)]
 </span><span class="doccomment">/// versioned KeyPair used for signature and decryption
-</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
-</span><span class="kw">pub struct </span>KeyPair(ed25519_dalek::Keypair);
-
-<span class="kw">impl </span>Clone <span class="kw">for </span>KeyPair {
-    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span><span class="self">self </span>{
-            KeyPair::KeyPairV0(keypair) =&gt; KeyPair::KeyPairV0(keypair.clone()),
-            KeyPair::KeyPairV1(keypair) =&gt; KeyPair::KeyPairV1(keypair.clone()),
-        }
-    }
-}
+</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
+#[derive(Clone)]
+</span><span class="kw">pub struct </span>KeyPair(ed25519_dalek::SigningKey);
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>KeyPair {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             KeyPair::KeyPairV0(keypair) =&gt; keypair.fmt(f),
-            KeyPair::KeyPairV1(keypair) =&gt; keypair.fmt(f),
         }
     }
 }
@@ -1481,7 +1416,6 @@
     </span><span class="kw">pub fn </span>get_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="kw">match </span><span class="self">self </span>{
             KeyPair::KeyPairV0(keypair) =&gt; keypair.get_version(),
-            KeyPair::KeyPairV1(keypair) =&gt; keypair.get_version(),
         }
     }
 
@@ -1500,7 +1434,6 @@
     </span><span class="kw">pub fn </span>generate(version: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, MassaSignatureError&gt; {
         <span class="kw">match </span>version {
             &lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::generate())),
-            &lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">&quot;1&quot;</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;1&quot;</span>]&gt;::generate())),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
                 <span class="string">&quot;KeyPair version {} doesn&#39;t exist.&quot;</span>,
                 version
@@ -1522,7 +1455,6 @@
     </span><span class="kw">pub fn </span>sign(<span class="kw-2">&amp;</span><span class="self">self</span>, hash: <span class="kw-2">&amp;</span>Hash) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, MassaSignatureError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             KeyPair::KeyPairV0(keypair) =&gt; keypair.sign(hash).map(Signature::SignatureV0),
-            KeyPair::KeyPairV1(keypair) =&gt; keypair.sign(hash).map(Signature::SignatureV1),
         }
     }
 
@@ -1530,7 +1462,6 @@
     </span><span class="kw">pub fn </span>get_ser_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
             KeyPair::KeyPairV0(keypair) =&gt; keypair.get_ser_len(),
-            KeyPair::KeyPairV1(keypair) =&gt; keypair.get_ser_len(),
         }
     }
 
@@ -1545,7 +1476,6 @@
     </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             KeyPair::KeyPairV0(keypair) =&gt; keypair.to_bytes(),
-            KeyPair::KeyPairV1(keypair) =&gt; keypair.to_bytes(),
         }
     }
 
@@ -1560,7 +1490,6 @@
     </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PublicKey {
         <span class="kw">match </span><span class="self">self </span>{
             KeyPair::KeyPairV0(keypair) =&gt; PublicKey::PublicKeyV0(keypair.get_public_key()),
-            KeyPair::KeyPairV1(keypair) =&gt; PublicKey::PublicKeyV1(keypair.get_public_key()),
         }
     }
 
@@ -1583,9 +1512,6 @@
             &lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
                 <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
             }
-            &lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">&quot;1&quot;</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
-            }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
                 <span class="string">&quot;Unknown keypair version: {}&quot;</span>,
                 version
@@ -1594,18 +1520,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
-</span><span class="kw">impl </span>Clone <span class="kw">for </span>KeyPair {
-    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        KeyPair(ed25519_dalek::Keypair {
-            <span class="comment">// This will never error since self is a valid keypair
-            </span>secret: ed25519_dalek::SecretKey::from_bytes(<span class="self">self</span>.<span class="number">0</span>.secret.as_bytes()).unwrap(),
-            public: <span class="self">self</span>.<span class="number">0</span>.public,
-        })
-    }
-}
-
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>KeyPair {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
@@ -1617,7 +1532,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>), structures(<span class="string">&quot;KeyPair&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;KeyPair&quot;</span>))]
 </span><span class="kw">impl </span>KeyPair {
     <span class="kw">pub const </span>SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
 
@@ -1646,12 +1561,12 @@
         version_serializer
             .serialize(<span class="kw-2">&amp;</span><span class="self">Self</span>::VERSION, <span class="kw-2">&amp;mut </span>bytes)
             .unwrap();
-        bytes.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.secret.to_bytes());
+        bytes.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.to_bytes());
         bytes
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>), structures(<span class="string">&quot;KeyPair&quot;</span>, <span class="string">&quot;Signature&quot;</span>, <span class="string">&quot;PublicKey&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;KeyPair&quot;</span>, <span class="string">&quot;Signature&quot;</span>, <span class="string">&quot;PublicKey&quot;</span>))]
 </span><span class="kw">impl </span>KeyPair {
     <span class="doccomment">/// Returns the Signature produced by signing
     /// data bytes with a `KeyPair`.
@@ -1677,7 +1592,7 @@
     /// let public_key = keypair.get_public_key();
     /// ```
     </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PublicKey {
-        PublicKey(<span class="self">self</span>.<span class="number">0</span>.public)
+        PublicKey(<span class="self">self</span>.<span class="number">0</span>.verifying_key())
     }
 
     <span class="doccomment">/// Generate a new `KeyPair`
@@ -1694,7 +1609,7 @@
     /// ```
     </span><span class="kw">pub fn </span>generate() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>rng = OsRng;
-        KeyPair(ed25519_dalek::Keypair::generate(<span class="kw-2">&amp;mut </span>rng))
+        KeyPair(ed25519_dalek::SigningKey::generate(<span class="kw-2">&amp;mut </span>rng))
     }
 
     <span class="doccomment">/// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`.
@@ -1714,14 +1629,10 @@
                 <span class="string">&quot;keypair byte array is of invalid size&quot;</span>.to_string(),
             ));
         }
-        <span class="kw">let </span>secret = ed25519_dalek::SecretKey::from_bytes(<span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::SECRET_KEY_BYTES_SIZE])
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(<span class="macro">format!</span>(<span class="string">&quot;keypair bytes parsing error: {}&quot;</span>, err))
-            })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(KeyPair(ed25519_dalek::Keypair {
-            public: ed25519_dalek::PublicKey::from(<span class="kw-2">&amp;</span>secret),
-            secret,
-        }))
+
+        <span class="prelude-val">Ok</span>(KeyPair(ed25519_dalek::SigningKey::from_bytes(
+            <span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::SECRET_KEY_BYTES_SIZE].try_into().unwrap(),
+        )))
     }
 }
 
@@ -1864,16 +1775,15 @@
 </span><span class="doccomment">/// Public key used to check if a message was encoded
 /// by the corresponding `PublicKey`.
 /// Generated from the `KeyPair` using `SignatureEngine`
-</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
 #[derive(Clone, Copy, PartialEq, Eq)]
-</span><span class="kw">pub struct </span>PublicKey(ed25519_dalek::PublicKey);
+</span><span class="kw">pub struct </span>PublicKey(ed25519_dalek::VerifyingKey);
 
 <span class="attr">#[allow(clippy::derived_hash_with_manual_eq)]
 </span><span class="kw">impl </span>std::hash::Hash <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
         <span class="kw">match </span><span class="self">self </span>{
             PublicKey::PublicKeyV0(pubkey) =&gt; pubkey.hash(state),
-            PublicKey::PublicKeyV1(pubkey) =&gt; pubkey.hash(state),
         }
     }
 }
@@ -1891,29 +1801,31 @@
 }
 
 <span class="attr">#[test]
+#[ignore]
 </span><span class="kw">fn </span>pubkey_ordering() {
-    <span class="kw">use </span>std::collections::BTreeSet;
+    <span class="comment">// Note: keep the test code so when implementing PublicKeyV1 if will be easily re activated
+
+    </span><span class="kw">use </span>std::collections::BTreeSet;
 
     <span class="kw">let </span>v0 = <span class="macro">vec!</span>[
         PublicKey::from_str(<span class="string">&quot;P1wiuz54kR2kmvumCELcgxv1YVStCnPK8QQ6os2FNbGYwp188im&quot;</span>).unwrap(),
         PublicKey::from_str(<span class="string">&quot;P12hzfgN14TCvAM3QgWvpPdHTKLUdqh2NzWqxkr2LAEG5hJmExr1&quot;</span>).unwrap(),
     ];
-    <span class="kw">let </span>v1 = <span class="macro">vec!</span>[
-        PublicKey::from_str(<span class="string">&quot;P33GgHz13gmyTPfd1ntSWEr8WyQE6CoYj76EqwesX9VaRQDSc2d&quot;</span>).unwrap(),
-        PublicKey::from_str(<span class="string">&quot;P4PSBj9N2trF4Dp3hvQ4CUojAH5HkRMkEFH9BXHAswRvwXsTaGN&quot;</span>).unwrap(),
-    ];
+    <span class="comment">// let v1 = vec![
+    //    PublicKey::from_str(&quot;P33GgHz13gmyTPfd1ntSWEr8WyQE6CoYj76EqwesX9VaRQDSc2d&quot;).unwrap(),
+    //    PublicKey::from_str(&quot;P4PSBj9N2trF4Dp3hvQ4CUojAH5HkRMkEFH9BXHAswRvwXsTaGN&quot;).unwrap(),
+    //];
 
-    <span class="kw">let </span><span class="kw-2">mut </span>map = BTreeSet::new();
-    map.extend(v1);
-    map.extend(v0.clone());
-    <span class="macro">assert_eq!</span>(map.first(), v0.first())
-}
+    </span><span class="kw">let </span><span class="kw-2">mut </span>map = BTreeSet::new();
+    <span class="comment">// map.extend(v1);
+    </span>map.extend(v0.clone());
+    <span class="comment">// assert_eq!(map.first(), v0.first())
+</span>}
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             PublicKey::PublicKeyV0(pubkey) =&gt; pubkey.fmt(f),
-            PublicKey::PublicKeyV1(pubkey) =&gt; pubkey.fmt(f),
         }
     }
 }
@@ -1972,12 +1884,6 @@
             (PublicKey::PublicKeyV0(pubkey), Signature::SignatureV0(signature)) =&gt; {
                 pubkey.verify_signature(hash, signature)
             }
-            (PublicKey::PublicKeyV1(pubkey), Signature::SignatureV1(signature)) =&gt; {
-                pubkey.verify_signature(hash, signature)
-            }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(String::from(
-                <span class="string">&quot;The PublicKey and Signature versions do not match&quot;</span>,
-            ))),
         }
     }
 
@@ -1994,7 +1900,6 @@
     </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             PublicKey::PublicKeyV0(pubkey) =&gt; pubkey.to_bytes(),
-            PublicKey::PublicKeyV1(pubkey) =&gt; pubkey.to_bytes(),
         }
     }
 
@@ -2002,7 +1907,6 @@
     </span><span class="kw">pub fn </span>get_ser_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
             PublicKey::PublicKeyV0(pubkey) =&gt; pubkey.get_ser_len(),
-            PublicKey::PublicKeyV1(pubkey) =&gt; pubkey.get_ser_len(),
         }
     }
 
@@ -2026,9 +1930,6 @@
             &lt;<span class="macro">PublicKey!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
                 <span class="prelude-val">Ok</span>(<span class="macro">PublicKeyVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">PublicKey!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
             }
-            &lt;<span class="macro">PublicKey!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="macro">PublicKeyVariant!</span>[<span class="string">&quot;1&quot;</span>](&lt;<span class="macro">PublicKey!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
-            }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
                 <span class="string">&quot;Unknown PublicKey version: {}&quot;</span>,
                 version
@@ -2037,7 +1938,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 #[allow(clippy::derived_hash_with_manual_eq)]
 </span><span class="kw">impl </span>std::hash::Hash <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
@@ -2045,21 +1946,21 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 </span><span class="kw">impl </span>PartialOrd <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>PublicKey) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
         <span class="self">self</span>.<span class="number">0</span>.to_bytes().partial_cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>.to_bytes())
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 </span><span class="kw">impl </span>Ord <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>PublicKey) -&gt; Ordering {
         <span class="self">self</span>.<span class="number">0</span>.to_bytes().cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>.to_bytes())
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
@@ -2071,14 +1972,14 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 </span><span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>), structures(<span class="string">&quot;PublicKey&quot;</span>, <span class="string">&quot;Signature&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;PublicKey&quot;</span>, <span class="string">&quot;Signature&quot;</span>))]
 </span><span class="kw">impl </span>PublicKey {
     <span class="doccomment">/// Size of a public key
     </span><span class="kw">pub const </span>PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
@@ -2138,9 +2039,11 @@
                 <span class="string">&quot;public key byte array is of invalid size&quot;</span>.to_string(),
             ));
         }
-        ed25519_dalek::PublicKey::from_bytes(<span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::PUBLIC_KEY_SIZE_BYTES])
-            .map(<span class="self">Self</span>)
-            .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
+        ed25519_dalek::VerifyingKey::from_bytes(
+            <span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::PUBLIC_KEY_SIZE_BYTES].try_into().unwrap(),
+        )
+        .map(<span class="self">Self</span>)
+        .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
 }
 
@@ -2256,11 +2159,11 @@
 
 <span class="attr">#[allow(missing_docs)]
 </span><span class="doccomment">/// Signature generated from a message and a `KeyPair`.
-</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>Signature(ed25519_dalek::Signature);
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>), structures(<span class="string">&quot;Signature&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;Signature&quot;</span>))]
 </span><span class="kw">impl </span>Signature {
     <span class="doccomment">/// Size of a signature
     </span><span class="kw">pub const </span>SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
@@ -2270,7 +2173,6 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             Signature::SignatureV0(signature) =&gt; signature.fmt(f),
-            Signature::SignatureV1(signature) =&gt; signature.fmt(f),
         }
     }
 }
@@ -2317,7 +2219,6 @@
     </span><span class="kw">pub fn </span>to_bs58_check(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             Signature::SignatureV0(signature) =&gt; signature.to_bs58_check(),
-            Signature::SignatureV1(signature) =&gt; signature.to_bs58_check(),
         }
     }
 
@@ -2352,7 +2253,6 @@
     </span><span class="kw">pub fn </span>get_ser_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
             Signature::SignatureV0(signature) =&gt; signature.get_ser_len(),
-            Signature::SignatureV1(signature) =&gt; signature.get_ser_len(),
         }
     }
 
@@ -2372,7 +2272,6 @@
     </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Signature::SignatureV0(signature) =&gt; signature.to_bytes(),
-            Signature::SignatureV1(signature) =&gt; signature.to_bytes(),
         }
     }
 
@@ -2399,9 +2298,6 @@
             &lt;<span class="macro">Signature!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
                 <span class="prelude-val">Ok</span>(<span class="macro">SignatureVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">Signature!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
             }
-            &lt;<span class="macro">Signature!</span>[<span class="string">&quot;1&quot;</span>]&gt;::VERSION =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="macro">SignatureVariant!</span>[<span class="string">&quot;1&quot;</span>](&lt;<span class="macro">Signature!</span>[<span class="string">&quot;1&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
-            }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
                 <span class="string">&quot;Unknown signature version: {}&quot;</span>,
                 version
@@ -2410,14 +2306,14 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Signature {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_bs58_check())
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>), structures(<span class="string">&quot;Signature&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;Signature&quot;</span>))]
 </span><span class="kw">impl </span>Signature {
     <span class="doccomment">/// Serialize a `Signature` using `bs58` encoding with checksum.
     ///
@@ -2487,11 +2383,9 @@
                 <span class="string">&quot;signature byte array is of invalid size&quot;</span>.to_string(),
             ));
         }
-        ed25519_dalek::Signature::from_bytes(<span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::SIGNATURE_SIZE_BYTES])
-            .map(<span class="self">Self</span>)
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(<span class="macro">format!</span>(<span class="string">&quot;signature bytes parsing error: {}&quot;</span>, err))
-            })
+        <span class="prelude-val">Ok</span>(Signature(ed25519_dalek::Signature::from_bytes(
+            <span class="kw-2">&amp;</span>data[..<span class="self">Self</span>::SIGNATURE_SIZE_BYTES].try_into().unwrap(),
+        )))
     }
 
     <span class="doccomment">/// Deserialize a `Signature` using `bs58` encoding with checksum.
@@ -2688,12 +2582,6 @@
     <span class="kw">for </span>(hash, signature_, public_key_) <span class="kw">in </span>batch.iter() {
         <span class="kw">let </span>(signature, public_key) = <span class="kw">match </span>(signature_, public_key_) {
             (Signature::SignatureV0(s), PublicKey::PublicKeyV0(pk)) =&gt; (s.<span class="number">0</span>, pk.<span class="number">0</span>),
-            (Signature::SignatureV1(s), PublicKey::PublicKeyV1(pk)) =&gt; (s.<span class="number">0</span>, pk.<span class="number">0</span>),
-            <span class="kw">_ </span>=&gt; {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(String::from(
-                    <span class="string">&quot;Batch contains unsupported or incompatible versions&quot;</span>,
-                )))
-            }
         };
 
         hashes.push(hash.to_bytes().as_slice());
@@ -2740,10 +2628,10 @@
 
         <span class="kw">match </span>(keypair, deserialized) {
             (KeyPair::KeyPairV0(keypair), KeyPair::KeyPairV0(deserialized)) =&gt; {
-                <span class="macro">assert_eq!</span>(keypair.<span class="number">0</span>.public, deserialized.<span class="number">0</span>.public);
-            }
-            <span class="kw">_ </span>=&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;Wrong version provided&quot;</span>);
+                <span class="macro">assert_eq!</span>(
+                    keypair.<span class="number">0</span>.to_keypair_bytes(),
+                    deserialized.<span class="number">0</span>.to_keypair_bytes()
+                );
             }
         }
     }
