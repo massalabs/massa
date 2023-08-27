@@ -1071,15 +1071,6 @@
 <a href="#1071" id="1071">1071</a>
 <a href="#1072" id="1072">1072</a>
 <a href="#1073" id="1073">1073</a>
-<a href="#1074" id="1074">1074</a>
-<a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1542,18 +1533,6 @@
         )
         .expect(<span class="string">&quot;could not compute current slot timestamp&quot;</span>);
 
-        <span class="comment">// create a seed from the current slot
-        </span><span class="kw">let </span><span class="kw-2">mut </span>data: Vec&lt;u8&gt; = <span class="self">self</span>.slot.to_bytes_key().to_vec();
-        <span class="comment">// add the index of the created address within this context to the seed
-        </span>data.extend(<span class="self">self</span>.created_addr_index.to_be_bytes());
-        <span class="comment">// add a flag on whether we are in read-only mode or not to the seed
-        // this prevents read-only contexts from shadowing existing addresses
-        </span><span class="kw">if </span><span class="self">self</span>.read_only {
-            data.push(<span class="number">0u8</span>);
-        } <span class="kw">else </span>{
-            data.push(<span class="number">1u8</span>);
-        }
-
         <span class="comment">// Loop over nonces until we find an address that doesn&#39;t exist in the speculative ledger.
         // Note that this loop is here for robustness, and should not be looping because
         // even through the SC addresses are predictable, nobody can create them beforehand because:
@@ -1561,28 +1540,31 @@
         // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
         </span><span class="kw">let </span><span class="kw-2">mut </span>nonce = <span class="number">0u64</span>;
         <span class="kw">let </span>address = <span class="kw">loop </span>{
-            <span class="comment">// compute the hash of the concatenation [data, nonce]
-            </span><span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>data[..], <span class="kw-2">&amp;</span>nonce.to_be_bytes()[..]].concat());
-            <span class="kw">let </span>addr = <span class="self">self</span>.address_factory.create(
+            <span class="comment">// get a deterministic seed hash
+            </span><span class="kw">let </span>hash = massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
+                <span class="string">&quot;SC_ADDRESS&quot;</span>.as_bytes(),
+                <span class="self">self</span>.execution_trail_hash.to_bytes(),
+                <span class="kw-2">&amp;</span><span class="self">self</span>.created_addr_index.to_be_bytes(),
+                <span class="kw-2">&amp;</span>nonce.to_be_bytes(),
+            ]);
+
+            <span class="comment">// deduce the address
+            </span><span class="kw">let </span>addr = <span class="self">self</span>.address_factory.create(
                 <span class="kw-2">&amp;</span>AddressArgs::SC { hash },
                 FactoryStrategy::At(slot_timestamp),
             )<span class="question-mark">?</span>;
+
             <span class="comment">// check if this address already exists in the speculative ledger
             </span><span class="kw">if </span>!<span class="self">self</span>.speculative_ledger.entry_exists(<span class="kw-2">&amp;</span>addr) {
                 <span class="comment">// if not, we can use it
                 </span><span class="kw">break </span>addr;
             }
+
             <span class="comment">// otherwise, increment the nonce to get a new hash and try again
             </span>nonce = nonce.checked_add(<span class="number">1</span>).ok_or_else(|| {
                 ExecutionError::RuntimeError(<span class="string">&quot;nonce overflow when creating SC address&quot;</span>.into())
             })<span class="question-mark">?</span>;
         };
-        <span class="kw">if </span>nonce &gt; <span class="number">0 </span>{
-            <span class="macro">warn!</span>(
-                <span class="string">&quot;smart contract address generation required {} nonces&quot;</span>,
-                nonce
-            );
-        }
 
         <span class="comment">// add this address with its bytecode to the speculative ledger
         </span><span class="self">self</span>.speculative_ledger.create_new_sc_address(
