@@ -460,18 +460,6 @@ impl ExecutionContext {
         )
         .expect("could not compute current slot timestamp");
 
-        // create a seed from the current slot
-        let mut data: Vec<u8> = self.slot.to_bytes_key().to_vec();
-        // add the index of the created address within this context to the seed
-        data.extend(self.created_addr_index.to_be_bytes());
-        // add a flag on whether we are in read-only mode or not to the seed
-        // this prevents read-only contexts from shadowing existing addresses
-        if self.read_only {
-            data.push(0u8);
-        } else {
-            data.push(1u8);
-        }
-
         // Loop over nonces until we find an address that doesn't exist in the speculative ledger.
         // Note that this loop is here for robustness, and should not be looping because
         // even through the SC addresses are predictable, nobody can create them beforehand because:
@@ -479,28 +467,31 @@ impl ExecutionContext {
         // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
         let mut nonce = 0u64;
         let address = loop {
-            // compute the hash of the concatenation [data, nonce]
-            let hash = Hash::compute_from(&[&data[..], &nonce.to_be_bytes()[..]].concat());
+            // get a deterministic seed hash
+            let hash = massa_hash::Hash::compute_from_tuple(&[
+                "SC_ADDRESS".as_bytes(),
+                self.execution_trail_hash.to_bytes(),
+                &self.created_addr_index.to_be_bytes(),
+                &nonce.to_be_bytes(),
+            ]);
+
+            // deduce the address
             let addr = self.address_factory.create(
                 &AddressArgs::SC { hash },
                 FactoryStrategy::At(slot_timestamp),
             )?;
+
             // check if this address already exists in the speculative ledger
             if !self.speculative_ledger.entry_exists(&addr) {
                 // if not, we can use it
                 break addr;
             }
+
             // otherwise, increment the nonce to get a new hash and try again
             nonce = nonce.checked_add(1).ok_or_else(|| {
                 ExecutionError::RuntimeError("nonce overflow when creating SC address".into())
             })?;
         };
-        if nonce > 0 {
-            warn!(
-                "smart contract address generation required {} nonces",
-                nonce
-            );
-        }
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(
