@@ -946,11 +946,7 @@ mod tests {
         );
         assert_eq!(events[2].data, "one local execution completed");
         let amount = Amount::from_raw(events[5].data.parse().unwrap());
-        assert!(
-            // start (299_000) - fee (1000) - storage cost
-            Amount::from_str("299_976").unwrap() < amount
-                && amount < Amount::from_str("299_977").unwrap()
-        );
+        assert_eq!(Amount::from_str("299979.6713").unwrap(), amount);
         assert_eq!(events[5].context.call_stack.len(), 1);
         assert_eq!(
             events[1].context.call_stack.back().unwrap(),
@@ -2898,9 +2894,10 @@ mod tests {
         assert!(events[0]
             .data
             .contains("runtime error when executing operation"));
+        dbg!(events[0].data.clone());
         assert!(events[0]
             .data
-            .contains("abord with date and rnd at use_builtins.ts:0 col: 0"));
+            .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
 
         assert_eq!(
             sample_state

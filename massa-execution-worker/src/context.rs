@@ -14,6 +14,7 @@ use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -56,6 +57,9 @@ pub struct ExecutionContextSnapshot {
 
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: AsyncPoolChanges,
+
+    /// the associated message infos for the speculative async pool
+    pub message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
 
     /// speculative list of operations executed
     pub executed_ops: ExecutedOpsChanges,
@@ -237,9 +241,11 @@ impl ExecutionContext {
     /// Returns a snapshot containing the clone of the current execution state.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
     pub(crate) fn get_snapshot(&self) -> ExecutionContextSnapshot {
+        let (async_pool_changes, message_infos) = self.speculative_async_pool.get_snapshot();
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
-            async_pool_changes: self.speculative_async_pool.get_snapshot(),
+            async_pool_changes,
+            message_infos,
             pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
             executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
@@ -264,7 +270,7 @@ impl ExecutionContext {
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
-            .reset_to_snapshot(snapshot.async_pool_changes);
+            .reset_to_snapshot((snapshot.async_pool_changes, snapshot.message_infos));
         self.speculative_roll_state
             .reset_to_snapshot(snapshot.pos_changes);
         self.speculative_executed_ops
@@ -460,18 +466,6 @@ impl ExecutionContext {
         )
         .expect("could not compute current slot timestamp");
 
-        // create a seed from the current slot
-        let mut data: Vec<u8> = self.slot.to_bytes_key().to_vec();
-        // add the index of the created address within this context to the seed
-        data.extend(self.created_addr_index.to_be_bytes());
-        // add a flag on whether we are in read-only mode or not to the seed
-        // this prevents read-only contexts from shadowing existing addresses
-        if self.read_only {
-            data.push(0u8);
-        } else {
-            data.push(1u8);
-        }
-
         // Loop over nonces until we find an address that doesn't exist in the speculative ledger.
         // Note that this loop is here for robustness, and should not be looping because
         // even through the SC addresses are predictable, nobody can create them beforehand because:
@@ -479,28 +473,31 @@ impl ExecutionContext {
         // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
         let mut nonce = 0u64;
         let address = loop {
-            // compute the hash of the concatenation [data, nonce]
-            let hash = Hash::compute_from(&[&data[..], &nonce.to_be_bytes()[..]].concat());
+            // get a deterministic seed hash
+            let hash = massa_hash::Hash::compute_from_tuple(&[
+                "SC_ADDRESS".as_bytes(),
+                self.execution_trail_hash.to_bytes(),
+                &self.created_addr_index.to_be_bytes(),
+                &nonce.to_be_bytes(),
+            ]);
+
+            // deduce the address
             let addr = self.address_factory.create(
                 &AddressArgs::SC { hash },
                 FactoryStrategy::At(slot_timestamp),
             )?;
+
             // check if this address already exists in the speculative ledger
             if !self.speculative_ledger.entry_exists(&addr) {
                 // if not, we can use it
                 break addr;
             }
+
             // otherwise, increment the nonce to get a new hash and try again
             nonce = nonce.checked_add(1).ok_or_else(|| {
                 ExecutionError::RuntimeError("nonce overflow when creating SC address".into())
             })?;
         };
-        if nonce > 0 {
-            warn!(
-                "smart contract address generation required {} nonces",
-                nonce
-            );
-        }
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger.create_new_sc_address(
