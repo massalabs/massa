@@ -127,6 +127,9 @@ jobs:
       - name: Purge more (Ubuntu)
         if: runner.os == 'Linux'
         run: |
+          sudo docker rmi $(docker image ls -aq) || true
+          sudo swapoff /swapfile || true
+          sudo rm -rf /swapfile /usr/share/dotnet /usr/local/lib/android /opt/ghc  || true
           sudo apt purge aria2 ansible azure-cli shellcheck rpm xorriso zsync \
             clang-6.0 lldb-6.0 lld-6.0 clang-format-6.0 clang-8 lldb-8 lld-8 clang-format-8 \
             dotnet-sdk-3.0 dotnet-sdk-3.1=3.1.101-1 \
