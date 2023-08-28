@@ -22,7 +22,7 @@ pub(crate) struct SpeculativeAsyncPool {
     active_history: Arc<RwLock<ActiveHistory>>,
     // current speculative pool changes
     pool_changes: AsyncPoolChanges,
-    // Used to know which messages we want to take
+    // Used to know which messages we want to take (contains active and final messages)
     message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
 }
 
@@ -67,18 +67,23 @@ impl SpeculativeAsyncPool {
     /// Returns the changes caused to the `SpeculativeAsyncPool` since its creation,
     /// and resets their local value to nothing.
     /// This must be called after `settle_emitted_messages()`
+    /// The message_infos should already be removed if taken, no need to do it here.
     pub fn take(&mut self) -> AsyncPoolChanges {
         std::mem::take(&mut self.pool_changes)
     }
 
     /// Takes a snapshot (clone) of the emitted messages
-    pub fn get_snapshot(&self) -> AsyncPoolChanges {
-        self.pool_changes.clone()
+    pub fn get_snapshot(&self) -> (AsyncPoolChanges, BTreeMap<AsyncMessageId, AsyncMessageInfo>) {
+        (self.pool_changes.clone(), self.message_infos.clone())
     }
 
     /// Resets the `SpeculativeAsyncPool` emitted messages to a snapshot (see `get_snapshot` method)
-    pub fn reset_to_snapshot(&mut self, snapshot: AsyncPoolChanges) {
-        self.pool_changes = snapshot;
+    pub fn reset_to_snapshot(
+        &mut self,
+        snapshot: (AsyncPoolChanges, BTreeMap<AsyncMessageId, AsyncMessageInfo>),
+    ) {
+        self.pool_changes = snapshot.0;
+        self.message_infos = snapshot.1;
     }
 
     /// Add a new message to the list of changes of this `SpeculativeAsyncPool`
