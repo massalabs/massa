@@ -295,6 +295,11 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -319,7 +324,7 @@
     active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
     <span class="comment">// current speculative pool changes
     </span>pool_changes: AsyncPoolChanges,
-    <span class="comment">// Used to know which messages we want to take
+    <span class="comment">// Used to know which messages we want to take (contains active and final messages)
     </span>message_infos: BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;,
 }
 
@@ -364,18 +369,23 @@
     <span class="doccomment">/// Returns the changes caused to the `SpeculativeAsyncPool` since its creation,
     /// and resets their local value to nothing.
     /// This must be called after `settle_emitted_messages()`
+    /// The message_infos should already be removed if taken, no need to do it here.
     </span><span class="kw">pub fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; AsyncPoolChanges {
         std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_changes)
     }
 
     <span class="doccomment">/// Takes a snapshot (clone) of the emitted messages
-    </span><span class="kw">pub fn </span>get_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AsyncPoolChanges {
-        <span class="self">self</span>.pool_changes.clone()
+    </span><span class="kw">pub fn </span>get_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (AsyncPoolChanges, BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;) {
+        (<span class="self">self</span>.pool_changes.clone(), <span class="self">self</span>.message_infos.clone())
     }
 
     <span class="doccomment">/// Resets the `SpeculativeAsyncPool` emitted messages to a snapshot (see `get_snapshot` method)
-    </span><span class="kw">pub fn </span>reset_to_snapshot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, snapshot: AsyncPoolChanges) {
-        <span class="self">self</span>.pool_changes = snapshot;
+    </span><span class="kw">pub fn </span>reset_to_snapshot(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        snapshot: (AsyncPoolChanges, BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;),
+    ) {
+        <span class="self">self</span>.pool_changes = snapshot.<span class="number">0</span>;
+        <span class="self">self</span>.message_infos = snapshot.<span class="number">1</span>;
     }
 
     <span class="doccomment">/// Add a new message to the list of changes of this `SpeculativeAsyncPool`
