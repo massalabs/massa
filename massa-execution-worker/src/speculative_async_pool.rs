@@ -22,7 +22,7 @@ pub(crate) struct SpeculativeAsyncPool {
     active_history: Arc<RwLock<ActiveHistory>>,
     // current speculative pool changes
     pool_changes: AsyncPoolChanges,
-    // Used to know which messages we want to take
+    // Used to know which messages we want to take (contains active and final messages)
     message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
 }
 
