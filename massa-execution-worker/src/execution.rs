@@ -1818,7 +1818,7 @@ impl ExecutionState {
             .get_ops_exec_status(batch);
         speculative_exec
             .into_iter()
-            .zip(final_exec.into_iter())
+            .zip(final_exec)
             .map(|(speculative_v, final_v)| {
                 match (speculative_v, final_v) {
                     (None, Some(f)) => (Some(f), Some(f)), // special case: a final execution should also appear as speculative

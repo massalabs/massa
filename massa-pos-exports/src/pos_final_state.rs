@@ -205,7 +205,9 @@ impl PoSFinalState {
 
     /// Try load initial deferred credits from file
     pub fn load_initial_deferred_credits(&mut self) -> Result<(), PosError> {
-        let Some(initial_deferred_credits_path) = &self.config.initial_deferred_credits_path else { return Ok(()) };
+        let Some(initial_deferred_credits_path) = &self.config.initial_deferred_credits_path else {
+            return Ok(());
+        };
 
         use serde::Deserialize;
         #[derive(Deserialize)]
