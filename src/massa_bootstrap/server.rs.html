@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/server.rs`."><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/server.rs`."><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -790,27 +790,6 @@
 <a href="#790" id="790">790</a>
 <a href="#791" id="791">791</a>
 <a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -961,9 +940,7 @@
     </span><span class="kw">let </span>(update_stopper_tx, update_stopper_rx) = crossbeam::channel::bounded::&lt;()&gt;(<span class="number">1</span>);
 
     <span class="kw">let </span><span class="prelude-val">Ok</span>(max_bootstraps) = config.max_simultaneous_bootstraps.try_into() <span class="kw">else </span>{
-        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-            <span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string(),
-        ));
+        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="string">&quot;Fail to convert u32 to usize&quot;</span>.to_string()));
     };
 
     <span class="kw">let </span>white_black_list = SharedWhiteBlackList::new(
@@ -1057,7 +1034,7 @@
         </span><span class="kw">let </span>bootstrap_sessions_counter: Arc&lt;()&gt; = Arc::new(());
         <span class="kw">let </span>per_ip_min_interval = <span class="self">self</span>.bootstrap_config.per_ip_min_interval.to_duration();
         <span class="comment">// TODO: Work out how to integration-test this
-        </span><span class="kw">let </span>limit = <span class="self">self</span>.bootstrap_config.rate_limit;
+        </span><span class="kw">let </span>limit = <span class="self">self</span>.bootstrap_config.max_bytes_read_write;
         <span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
 
@@ -1418,12 +1395,10 @@
                 .get_change_id()
                 .expect(CHANGE_ID_DESER_ERROR);
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot {
-                <span class="kw">if </span>slot &gt; db_slot {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                        <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
-                    ));
-                }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot &amp;&amp; slot &gt; db_slot {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
+                    <span class="string">&quot;Bootstrap cursor set to future slot&quot;</span>.to_string(),
+                ));
             }
 
             <span class="comment">// Update cursors for next turn
@@ -1481,9 +1456,7 @@
         }
 
         <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(bs_deadline, <span class="kw-2">&amp;</span>write_timeout) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
-                <span class="string">&quot;insufficient time left to provide next bootstrap part&quot;</span>.to_string(),
-            ));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to provide next bootstrap part&quot;</span>.to_string()));
         };
         <span class="comment">// At this point we know that consensus, final state or both are not finished
         </span>server.send_msg(
@@ -1526,12 +1499,8 @@
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.manage_bootstrap&quot;</span>, {});
     <span class="kw">let </span>read_error_timeout: Duration = bootstrap_config.read_error_timeout.into();
 
-    <span class="kw">let </span><span class="prelude-val">Some</span>(hs_timeout) =
-        step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration())
-    <span class="kw">else </span>{
-        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
-            <span class="string">&quot;insufficient time left to begin handshake&quot;</span>.to_string(),
-        ));
+    <span class="kw">let </span><span class="prelude-val">Some</span>(hs_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration()) <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to begin handshake&quot;</span>.to_string()));
     };
 
     server.handshake_timeout(version, <span class="prelude-val">Some</span>(hs_timeout))<span class="question-mark">?</span>;
@@ -1555,9 +1524,7 @@
     </span><span class="kw">let </span>send_time_timeout =
         step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration());
     <span class="kw">let </span><span class="prelude-val">Some</span>(next_step_timeout) = send_time_timeout <span class="kw">else </span>{
-        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
-            <span class="string">&quot;insufficient time left to send server time&quot;</span>.to_string(),
-        ));
+        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to send server time&quot;</span>.to_string()));
     };
     server.send_msg(
         next_step_timeout,
@@ -1568,25 +1535,16 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">loop </span>{
-        <span class="kw">let </span><span class="prelude-val">Some</span>(read_timeout) =
-            step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration())
-        <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
-                <span class="string">&quot;insufficient time left to process next message&quot;</span>.to_string(),
-            ));
+        <span class="kw">let </span><span class="prelude-val">Some</span>(read_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.read_timeout.to_duration()) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to process next message&quot;</span>.to_string()));
         };
         <span class="kw">match </span>server.next_timeout(<span class="prelude-val">Some</span>(read_timeout)) {
             <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; <span class="kw">break </span><span class="prelude-val">Ok</span>(()),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">break </span><span class="prelude-val">Err</span>(e),
             <span class="prelude-val">Ok</span>(msg) =&gt; <span class="kw">match </span>msg {
                 BootstrapClientMessage::AskBootstrapPeers =&gt; {
-                    <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(
-                        <span class="kw-2">&amp;</span>deadline,
-                        <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration(),
-                    ) <span class="kw">else </span>{
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
-                            <span class="string">&quot;insufficient time left to respond te request for peers&quot;</span>.to_string(),
-                        ));
+                    <span class="kw">let </span><span class="prelude-val">Some</span>(write_timeout) = step_timeout_duration(<span class="kw-2">&amp;</span>deadline, <span class="kw-2">&amp;</span>bootstrap_config.write_timeout.to_duration()) <span class="kw">else </span>{
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(<span class="string">&quot;insufficient time left to respond te request for peers&quot;</span>.to_string()));
                     };
 
                     server.send_msg(

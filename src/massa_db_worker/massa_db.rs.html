@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-db-worker/src/massa_db.rs`."><title>massa_db.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_db_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_db_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-db-worker/src/massa_db.rs`."><title>massa_db.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_db_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_db_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -781,62 +781,6 @@
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
 <a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -845,7 +789,6 @@
 };
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
-    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -951,18 +894,18 @@
                     std::cmp::Ordering::Less =&gt; {
                         <span class="comment">// We should send all the new updates since last_change_id
 
-                        </span><span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="self">self
+                        </span><span class="kw">let </span>cursor = <span class="self">self
                             </span>.change_history
-                            .range((Bound::Included(<span class="kw-2">&amp;</span>last_change_id), Bound::Unbounded));
+                            .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
 
-                        <span class="kw">if </span>cursor.next().is_none() {
+                        <span class="kw">if </span>cursor.peek_prev().is_none() {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
                                 <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
                             )));
                         }
 
-                        <span class="kw">match </span>cursor.next() {
-                            <span class="prelude-val">Some</span>((cursor_change_id, <span class="kw">_</span>)) =&gt; {
+                        <span class="kw">match </span>cursor.key() {
+                            <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
                                 <span class="comment">// We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; =
@@ -1061,18 +1004,18 @@
                     std::cmp::Ordering::Less =&gt; {
                         <span class="comment">// We should send all the new updates since last_change_id
 
-                        </span><span class="kw">let </span><span class="kw-2">mut </span>cursor = <span class="self">self
+                        </span><span class="kw">let </span>cursor = <span class="self">self
                             </span>.change_history_versioning
-                            .range((Bound::Included(<span class="kw-2">&amp;</span>last_change_id), Unbounded));
+                            .lower_bound(Bound::Excluded(<span class="kw-2">&amp;</span>last_change_id));
 
-                        <span class="kw">if </span>cursor.next().is_none() {
+                        <span class="kw">if </span>cursor.peek_prev().is_none() {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
                                 <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
                             )));
                         }
 
-                        <span class="kw">match </span>cursor.next() {
-                            <span class="prelude-val">Some</span>((cursor_change_id, <span class="kw">_</span>)) =&gt; {
+                        <span class="kw">match </span>cursor.key() {
+                            <span class="prelude-val">Some</span>(cursor_change_id) =&gt; {
                                 <span class="comment">// We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 </span><span class="kw">let </span><span class="kw-2">mut </span>updates: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; =
@@ -1220,29 +1163,15 @@
             })<span class="question-mark">?</span>;
         }
 
-        <span class="kw">match </span><span class="self">self
-            </span>.change_history
+        <span class="self">self</span>.change_history
             .entry(<span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-        {
-            std::collections::btree_map::Entry::Vacant(entry) =&gt; {
-                entry.insert(changes);
-            }
-            std::collections::btree_map::Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
-                entry.get_mut().extend(changes);
-            }
-        }
+            .and_modify(|map| map.extend(changes.clone().into_iter()))
+            .or_insert(changes);
 
-        <span class="kw">match </span><span class="self">self
-            </span>.change_history_versioning
+        <span class="self">self</span>.change_history_versioning
             .entry(<span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-        {
-            std::collections::btree_map::Entry::Vacant(entry) =&gt; {
-                entry.insert(versioning_changes);
-            }
-            std::collections::btree_map::Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
-                entry.get_mut().extend(versioning_changes);
-            }
-        }
+            .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
+            .or_insert(versioning_changes);
 
         <span class="kw">if </span>reset_history {
             <span class="self">self</span>.change_history.clear();
@@ -1251,11 +1180,6 @@
         <span class="kw">while </span><span class="self">self</span>.change_history.len() &gt; <span class="self">self</span>.config.max_history_length {
             <span class="self">self</span>.change_history.pop_first();
         }
-
-        <span class="kw">while </span><span class="self">self</span>.change_history_versioning.len() &gt; <span class="self">self</span>.config.max_history_length {
-            <span class="self">self</span>.change_history_versioning.pop_first();
-        }
-
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1265,9 +1189,7 @@
         <span class="kw">let </span>handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(change_id_bytes)) = db.get_pinned_cf(handle, CHANGE_ID_KEY) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(
-                <span class="string">&quot;Could not recover change_id in database&quot;</span>,
-            )));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(<span class="string">&quot;Could not recover change_id in database&quot;</span>)));
         };
 
         <span class="kw">let </span>(_rest, change_id) = <span class="self">self
@@ -1462,42 +1384,8 @@
     <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
     </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
+
         <span class="kw">let </span>subpath = <span class="macro">format!</span>(<span class="string">&quot;backup_{}_{}&quot;</span>, slot.period, slot.thread);
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(max_backups) = MAX_BACKUPS_TO_KEEP {
-            <span class="kw">let </span>previous_backups_paths = std::fs::read_dir(db.path())
-                .expect(<span class="string">&quot;Cannot walk db path&quot;</span>)
-                .map(|res| res.map(|e| e.path()))
-                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, std::io::Error&gt;&gt;()
-                .expect(<span class="string">&quot;Cannot walk db path&quot;</span>);
-
-            <span class="kw">let </span><span class="kw-2">mut </span>previous_backups = BTreeMap::new();
-
-            <span class="kw">for </span>backup_path <span class="kw">in </span>previous_backups_paths.iter() {
-                <span class="kw">let </span><span class="prelude-val">Some</span>(path_str) = backup_path.file_name().and_then(|f| f.to_str()) <span class="kw">else </span>{
-                    <span class="kw">continue</span>;
-                };
-                <span class="kw">let </span>vec = path_str.split(<span class="string">&#39;_&#39;</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;();
-                <span class="kw">if </span>vec.len() == <span class="number">3 </span>&amp;&amp; vec[<span class="number">0</span>] == <span class="string">&quot;backup&quot; </span>{
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(period) = vec[<span class="number">1</span>].parse::&lt;u64&gt;() <span class="kw">else </span>{
-                        <span class="kw">continue</span>;
-                    };
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(thread) = vec[<span class="number">2</span>].parse::&lt;u8&gt;() <span class="kw">else </span>{
-                        <span class="kw">continue</span>;
-                    };
-                    <span class="kw">let </span>backup_slot = Slot::new(period, thread);
-                    previous_backups.insert(backup_slot, backup_path);
-                }
-            }
-
-            <span class="comment">// Remove the oldest backups if we have too many
-            </span><span class="kw">while </span>previous_backups.len() &gt;= max_backups {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, oldest_backup_path)) = previous_backups.pop_first() {
-                    std::fs::remove_dir_all(oldest_backup_path)
-                        .expect(<span class="string">&quot;Cannot remove oldest backup&quot;</span>);
-                }
-            }
-        }
 
         Checkpoint::new(db)
             .expect(<span class="string">&quot;Cannot init checkpoint&quot;</span>)

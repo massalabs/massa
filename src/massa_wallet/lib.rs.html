@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-wallet/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_wallet" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_wallet/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-wallet/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_wallet" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_wallet/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -165,63 +165,16 @@
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(map_try_insert)]
 
 </span><span class="kw">pub use </span>error::WalletError;
 
-<span class="kw">use </span>massa_cipher::{decrypt, encrypt, CipherData, Salt};
+<span class="kw">use </span>massa_cipher::{decrypt, encrypt};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
@@ -230,9 +183,7 @@
 <span class="kw">use </span>massa_models::secure_share::SecureShareContent;
 <span class="kw">use </span>massa_signature::{KeyPair, PublicKey};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::path::PathBuf;
-<span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">mod </span>error;
 
@@ -247,44 +198,14 @@
     </span>password: String,
 }
 
-<span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = <span class="string">&quot;PascalCase&quot;</span>)]
-</span><span class="doccomment">/// Follow the standard: https://github.com/massalabs/massa-standards/blob/main/wallet/file-format.md
-</span><span class="kw">struct </span>WalletFileFormat {
-    version: u64,
-    nickname: String,
-    address: String,
-    salt: Salt,
-    nonce: [u8; <span class="number">12</span>],
-    ciphered_data: Vec&lt;u8&gt;,
-    public_key: Vec&lt;u8&gt;,
-}
-
 <span class="kw">impl </span>Wallet {
     <span class="doccomment">/// Generates a new wallet initialized with the provided file content
     </span><span class="kw">pub fn </span>new(path: PathBuf, password: String) -&gt; <span class="prelude-ty">Result</span>&lt;Wallet, WalletError&gt; {
-        <span class="kw">if </span>path.is_dir() {
-            <span class="kw">let </span><span class="kw-2">mut </span>keys = PreHashMap::default();
-            <span class="kw">for </span>entry <span class="kw">in </span>std::fs::read_dir(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>{
-                <span class="kw">let </span>entry = entry<span class="question-mark">?</span>;
-                <span class="kw">let </span>path = entry.path();
-                <span class="kw">if </span>path.is_file() {
-                    <span class="kw">let </span>content = <span class="kw-2">&amp;</span>std::fs::read(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>[..];
-                    <span class="kw">let </span>wallet = serde_yaml::from_slice::&lt;WalletFileFormat&gt;(content)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>secret_key = decrypt(
-                        <span class="kw-2">&amp;</span>password,
-                        CipherData {
-                            salt: wallet.salt,
-                            nonce: wallet.nonce,
-                            encrypted_bytes: wallet.ciphered_data,
-                        },
-                    )<span class="question-mark">?</span>;
-                    keys.insert(
-                        Address::from_str(<span class="kw-2">&amp;</span>wallet.address)<span class="question-mark">?</span>,
-                        KeyPair::from_bytes(<span class="kw-2">&amp;</span>secret_key)<span class="question-mark">?</span>,
-                    );
-                }
-            }
+        <span class="kw">if </span>path.is_file() {
+            <span class="kw">let </span>content = <span class="kw-2">&amp;</span>std::fs::read(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>[..];
+            <span class="kw">let </span>(_version, decrypted_content) = decrypt(<span class="kw-2">&amp;</span>password, content)<span class="question-mark">?</span>;
+            <span class="kw">let </span>keys =
+                serde_json::from_slice::&lt;PreHashMap&lt;Address, KeyPair&gt;&gt;(<span class="kw-2">&amp;</span>decrypted_content[..])<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(Wallet {
                 keys,
                 wallet_path: path,
@@ -326,8 +247,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>addrs = Vec::with_capacity(keys.len());
         <span class="kw">for </span>key <span class="kw">in </span>keys {
             <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>key.get_public_key());
-            <span class="kw">if let </span>Entry::Vacant(e) = <span class="self">self</span>.keys.entry(addr) {
-                e.insert(key);
+            <span class="kw">if </span><span class="self">self</span>.keys.try_insert(addr, key).is_ok() {
                 changed = <span class="bool-val">true</span>;
             }
             addrs.push(addr);
@@ -370,28 +290,12 @@
         <span class="self">self</span>.keys.keys().copied().collect()
     }
 
-    <span class="doccomment">/// Save the wallets in a directory, each wallet in a yaml file.
+    <span class="doccomment">/// Save the wallet in json format in a file
+    /// Only the keypair is dumped
     </span><span class="kw">fn </span>save(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), WalletError&gt; {
-        <span class="kw">if </span>!<span class="self">self</span>.wallet_path.exists() {
-            std::fs::create_dir_all(<span class="kw-2">&amp;</span><span class="self">self</span>.wallet_path)<span class="question-mark">?</span>;
-        }
-        <span class="kw">for </span>(addr, keypair) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.keys {
-            <span class="kw">let </span>encrypted_secret = encrypt(<span class="kw-2">&amp;</span><span class="self">self</span>.password, <span class="kw-2">&amp;</span>keypair.to_bytes())<span class="question-mark">?</span>;
-            <span class="kw">let </span>file_formatted = WalletFileFormat {
-                version: keypair.get_version(),
-                nickname: addr.to_string(),
-                address: addr.to_string(),
-                salt: encrypted_secret.salt,
-                nonce: encrypted_secret.nonce,
-                ciphered_data: encrypted_secret.encrypted_bytes,
-                public_key: keypair.get_public_key().to_bytes().to_vec(),
-            };
-            <span class="kw">let </span>ser_keys = serde_yaml::to_string(<span class="kw-2">&amp;</span>file_formatted)<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>file_path = <span class="self">self</span>.wallet_path.clone();
-            file_path.push(<span class="macro">format!</span>(<span class="string">&quot;wallet_{}&quot;</span>, addr));
-            file_path.set_extension(<span class="string">&quot;yaml&quot;</span>);
-            std::fs::write(<span class="kw-2">&amp;</span>file_path, ser_keys)<span class="question-mark">?</span>;
-        }
+        <span class="kw">let </span>ser_keys = serde_json::to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.keys)<span class="question-mark">?</span>;
+        <span class="kw">let </span>encrypted_content = encrypt(<span class="kw-2">&amp;</span><span class="self">self</span>.password, ser_keys.as_bytes())<span class="question-mark">?</span>;
+        std::fs::write(<span class="kw-2">&amp;</span><span class="self">self</span>.wallet_path, encrypted_content)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
