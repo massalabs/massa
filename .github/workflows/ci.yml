@@ -127,7 +127,17 @@ jobs:
       - name: Purge more (Ubuntu)
         if: runner.os == 'Linux'
         run: |
-          sudo apt purge azure-cli rpm firefox google-chrome-stable google-cloud-sdk heroku mercurial \
+          sudo apt purge aria2 ansible azure-cli shellcheck rpm xorriso zsync \
+            clang-6.0 lldb-6.0 lld-6.0 clang-format-6.0 clang-8 lldb-8 lld-8 clang-format-8 \
+            dotnet-sdk-3.0 dotnet-sdk-3.1=3.1.101-1 \
+            esl-erlang firefox g++-8 g++-9 gfortran-8 gfortran-9 google-chrome-stable \
+            google-cloud-sdk ghc-8.0.2 ghc-8.2.2 ghc-8.4.4 ghc-8.6.2 ghc-8.6.3 ghc-8.6.4 \
+            ghc-8.6.5 ghc-8.8.1 ghc-8.8.2 ghc-8.8.3 ghc-8.10.1 cabal-install-2.0 cabal-install-2.2 \
+            cabal-install-2.4 cabal-install-3.0 cabal-install-3.2 heroku imagemagick \
+            libmagickcore-dev libmagickwand-dev libmagic-dev ant ant-optional kubectl \
+            mercurial apt-transport-https mono-complete mysql-client libmysqlclient-dev \
+            mysql-server mssql-tools unixodbc-dev yarn bazel chrpath libxft-dev \
+            libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev php7.1 php7.1-bcmath \
             php7.1-bz2 php7.1-cgi php7.1-cli php7.1-common php7.1-curl php7.1-dba php7.1-dev \
             php7.1-enchant php7.1-fpm php7.1-gd php7.1-gmp php7.1-imap php7.1-interbase php7.1-intl \
             php7.1-json php7.1-ldap php7.1-mbstring php7.1-mcrypt php7.1-mysql php7.1-odbc \
@@ -155,6 +165,9 @@ jobs:
             sphinxsearch subversion mongodb-org -yq >/dev/null 2>&1 || true
           sudo apt-get autoremove -y >/dev/null 2>&1 || true
           sudo apt-get autoclean -y >/dev/null 2>&1 || true
+      - name: Check disk space (Ubuntu)
+        if: runner.os == 'Linux'
+        run: df -h
       - uses: ilammy/setup-nasm@v1
       - uses: actions/checkout@v3
         with:
