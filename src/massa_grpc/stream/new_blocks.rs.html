@@ -227,6 +227,36 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -263,7 +293,7 @@
     <span class="comment">// Addresses to filter
     </span>addresses: Vec&lt;Address&gt;,
     <span class="comment">// Slot range to filter
-    </span>slot_range: <span class="prelude-ty">Option</span>&lt;SlotRange&gt;,
+    </span>slot_ranges: Vec&lt;SlotRange&gt;,
 }
 
 <span class="attr">#[derive(Clone, Debug, Default)]
@@ -385,7 +415,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Filter, GrpcError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>block_ids: Vec&lt;BlockId&gt; = Vec::new();
     <span class="kw">let </span><span class="kw-2">mut </span>addresses: Vec&lt;Address&gt; = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>slot_range: <span class="prelude-ty">Option</span>&lt;SlotRange&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>slot_ranges: Vec&lt;SlotRange&gt; = Vec::new();
 
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>request.filters.into_iter() {
@@ -418,9 +448,37 @@
                     }
                 }
                 grpc_api::new_blocks_filter::Filter::SlotRange(s_range) =&gt; {
-                    slot_range = <span class="prelude-val">Some</span>(SlotRange {
-                        start_slot: s_range.start_slot.map(|s| s.into()),
-                        end_slot: s_range.end_slot.map(|s| s.into()),
+                    <span class="kw">if </span>slot_ranges.len() <span class="kw">as </span>u32 &gt; grpc_config.max_slot_ranges_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">&quot;too many slot ranges received. Only a maximum of {} slot ranges are accepted per request&quot;</span>,
+                         grpc_config.max_slot_ranges_per_request
+                        )));
+                    }
+
+                    <span class="kw">let </span>start_slot = s_range.start_slot.map(|s| s.into());
+                    <span class="kw">let </span>end_slot = s_range.end_slot.map(|s| s.into());
+
+                    <span class="kw">if </span>start_slot.is_none() &amp; end_slot.is_none() {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+                            <span class="string">&quot;invalid slot range: start slot and end slot cannot be both empty&quot;
+                                </span>.to_string(),
+                        ));
+                    };
+
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(s_slot) = <span class="kw-2">&amp;</span>start_slot {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(e_slot) = <span class="kw-2">&amp;</span>end_slot {
+                            <span class="kw">if </span>s_slot &gt; e_slot {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                                    <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
+                                    s_slot, e_slot
+                                )));
+                            }
+                        }
+                    }
+
+                    slot_ranges.push(SlotRange {
+                        start_slot,
+                        end_slot,
                     });
                 }
             }
@@ -430,7 +488,7 @@
     <span class="prelude-val">Ok</span>(Filter {
         block_ids,
         addresses,
-        slot_range,
+        slot_ranges,
     })
 }
 
@@ -444,15 +502,17 @@
             .addresses
             .contains(<span class="kw-2">&amp;</span>signed_block.content_creator_address);
 
-    <span class="kw">let </span>slot_range_matches = filters.slot_range.as_ref().map_or(<span class="bool-val">true</span>, |slot_range| {
-        <span class="kw">let </span>start_slot_check = slot_range.start_slot.map_or(<span class="bool-val">true</span>, |start_slot| {
-            signed_block.content.header.content.slot &gt;= start_slot
+    <span class="kw">let </span>slot_range_matches = filters.slot_ranges.is_empty()
+        || filters.slot_ranges.iter().any(|slot_range| {
+            <span class="kw">let </span>start_slot_check = slot_range.start_slot.map_or(<span class="bool-val">true</span>, |start_slot| {
+                signed_block.content.header.content.slot &gt;= start_slot
+            });
+            <span class="kw">let </span>end_slot_check = slot_range.end_slot.map_or(<span class="bool-val">true</span>, |end_slot| {
+                signed_block.content.header.content.slot &lt;= end_slot
+            });
+
+            start_slot_check &amp;&amp; end_slot_check
         });
-        <span class="kw">let </span>end_slot_check = slot_range.end_slot.map_or(<span class="bool-val">true</span>, |end_slot| {
-            signed_block.content.header.content.slot &lt;= end_slot
-        });
-        start_slot_check &amp;&amp; end_slot_check
-    });
 
     block_id_matches &amp;&amp; address_matches &amp;&amp; slot_range_matches
 }

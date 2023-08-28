@@ -1252,6 +1252,37 @@
 <a href="#1252" id="1252">1252</a>
 <a href="#1253" id="1253">1253</a>
 <a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1795,7 +1826,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetSelectorDrawsResponse, GrpcError&gt; {
     <span class="kw">let </span>inner_req = request.into_inner();
     <span class="kw">let </span><span class="kw-2">mut </span>addresses: PreHashSet&lt;Address&gt; = PreHashSet::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>slot_range: (<span class="prelude-ty">Option</span>&lt;Slot&gt;, <span class="prelude-ty">Option</span>&lt;Slot&gt;) = (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>slot_ranges: Vec&lt;(<span class="prelude-ty">Option</span>&lt;Slot&gt;, <span class="prelude-ty">Option</span>&lt;Slot&gt;)&gt; = Vec::new();
 
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>inner_req.filters.into_iter() {
@@ -1814,68 +1845,99 @@
                         })<span class="question-mark">?</span>);
                     }
                 }
-                grpc_api::selector_draws_filter::Filter::SlotRange(range) =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(start_slot) = range.start_slot {
-                        slot_range.<span class="number">0 </span>= <span class="prelude-val">Some</span>(start_slot.into());
+                grpc_api::selector_draws_filter::Filter::SlotRange(s_range) =&gt; {
+                    <span class="kw">if </span>slot_ranges.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_slot_ranges_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">&quot;too many slot ranges received. Only a maximum of {} slot ranges are accepted per request&quot;</span>,
+                            grpc.grpc_config.max_slot_ranges_per_request
+                        )));
                     }
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(end_slot) = range.end_slot {
-                        slot_range.<span class="number">1 </span>= <span class="prelude-val">Some</span>(end_slot.into());
+
+                    <span class="kw">let </span>start_slot = s_range.start_slot.map(|s| s.into());
+                    <span class="kw">let </span>end_slot = s_range.end_slot.map(|s| s.into());
+
+                    <span class="comment">//TODO add current slot and lookahead slot
+                    </span><span class="kw">if </span>start_slot.is_none() || end_slot.is_none() {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+                            <span class="string">&quot;invalid slot range: start slot or end slot cannot be empty&quot;
+                                </span>.to_string(),
+                        ));
+                    };
+
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(s_slot) = <span class="kw-2">&amp;</span>start_slot {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(e_slot) = <span class="kw-2">&amp;</span>end_slot {
+                            <span class="kw">if </span>s_slot &gt; e_slot {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                                    <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
+                                    s_slot, e_slot
+                                )));
+                            }
+                        }
                     }
+
+                    slot_ranges.push((start_slot, end_slot));
                 }
             }
         }
     }
 
-    <span class="kw">if </span>slot_range.<span class="number">0</span>.is_none() || slot_range.<span class="number">1</span>.is_none() {
+    <span class="kw">if </span>slot_ranges.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
             <span class="string">&quot;slot range is required&quot;</span>.to_string(),
         ));
     }
 
-    <span class="comment">// get future draws from selector
-    </span><span class="kw">let </span>selection_draws = {
-        <span class="kw">let </span>slot_start = slot_range.<span class="number">0</span>.unwrap();
-        <span class="kw">let </span>slot_end = slot_range.<span class="number">1</span>.unwrap();
-        <span class="kw">let </span>restrict_to_addresses = <span class="kw">if </span>addresses.is_empty() {
-            <span class="prelude-val">None
-        </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>addresses)
+    <span class="kw">let </span><span class="kw-2">mut </span>selection_draws = Vec::new();
+
+    <span class="kw">for </span>slot_range <span class="kw">in </span>slot_ranges {
+        <span class="comment">// get future draws from selector
+        </span><span class="kw">let </span>s_range_selection_draws: Vec&lt;grpc_model::SlotDraw&gt; = {
+            <span class="comment">//TODO to be enhanced
+            </span><span class="kw">let </span>slot_start = slot_range.<span class="number">0</span>.unwrap();
+            <span class="kw">let </span>slot_end = slot_range.<span class="number">1</span>.unwrap();
+            <span class="kw">let </span>restrict_to_addresses = <span class="kw">if </span>addresses.is_empty() {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>addresses)
+            };
+
+            grpc.selector_controller
+                .get_available_selections_in_range(slot_start..=slot_end, restrict_to_addresses)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(v_slot, v_sel)| {
+                    <span class="kw">let </span>block_producer: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="kw">if </span>addresses.contains(<span class="kw-2">&amp;</span>v_sel.producer) {
+                        <span class="prelude-val">Some</span>(v_sel.producer.to_string())
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>};
+                    <span class="kw">let </span>endorsement_producers: Vec&lt;grpc_model::EndorsementDraw&gt; = v_sel
+                        .endorsements
+                        .into_iter()
+                        .enumerate()
+                        .filter_map(|(index, endo_sel)| {
+                            <span class="kw">if </span>addresses.contains(<span class="kw-2">&amp;</span>endo_sel) {
+                                <span class="prelude-val">Some</span>(grpc_model::EndorsementDraw {
+                                    index: index <span class="kw">as </span>u64,
+                                    producer: endo_sel.to_string(),
+                                })
+                            } <span class="kw">else </span>{
+                                <span class="prelude-val">None
+                            </span>}
+                        })
+                        .collect();
+
+                    grpc_model::SlotDraw {
+                        slot: <span class="prelude-val">Some</span>(v_slot.into()),
+                        block_producer,
+                        endorsement_draws: endorsement_producers,
+                    }
+                })
+                .collect()
         };
 
-        grpc.selector_controller
-            .get_available_selections_in_range(slot_start..=slot_end, restrict_to_addresses)
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(v_slot, v_sel)| {
-                <span class="kw">let </span>block_producer: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="kw">if </span>addresses.contains(<span class="kw-2">&amp;</span>v_sel.producer) {
-                    <span class="prelude-val">Some</span>(v_sel.producer.to_string())
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>};
-                <span class="kw">let </span>endorsement_producers: Vec&lt;grpc_model::EndorsementDraw&gt; = v_sel
-                    .endorsements
-                    .into_iter()
-                    .enumerate()
-                    .filter_map(|(index, endo_sel)| {
-                        <span class="kw">if </span>addresses.contains(<span class="kw-2">&amp;</span>endo_sel) {
-                            <span class="prelude-val">Some</span>(grpc_model::EndorsementDraw {
-                                index: index <span class="kw">as </span>u64,
-                                producer: endo_sel.to_string(),
-                            })
-                        } <span class="kw">else </span>{
-                            <span class="prelude-val">None
-                        </span>}
-                    })
-                    .collect();
-
-                grpc_model::SlotDraw {
-                    slot: <span class="prelude-val">Some</span>(v_slot.into()),
-                    block_producer,
-                    endorsement_draws: endorsement_producers,
-                }
-            })
-            .collect()
-    };
+        selection_draws.extend(s_range_selection_draws);
+    }
 
     <span class="prelude-val">Ok</span>(grpc_api::GetSelectorDrawsResponse {
         draws: selection_draws,

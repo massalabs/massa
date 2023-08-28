@@ -1428,6 +1428,7 @@
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
 <a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -2529,6 +2530,7 @@
         last_start_period: final_state.read().last_start_period,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_addresses_per_request: settings.max_addresses_per_request,
+        max_slot_ranges_per_request: settings.max_slot_ranges_per_request,
         max_block_ids_per_request: settings.max_block_ids_per_request,
         max_endorsement_ids_per_request: settings.max_endorsement_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
