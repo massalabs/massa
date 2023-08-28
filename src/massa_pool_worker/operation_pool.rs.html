@@ -630,7 +630,7 @@
             .execution_controller
             .get_ops_exec_status(<span class="kw-2">&amp;</span>op_ids)
             .into_iter()
-            .zip(op_ids.into_iter())
+            .zip(op_ids)
             .filter_map(
                 |((spec_status, final_status), op_id)| <span class="kw">match </span>(spec_status, final_status) {
                     (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>((op_id, <span class="bool-val">true</span>)),
@@ -656,7 +656,7 @@
             .execution_controller
             .get_final_and_candidate_balance(<span class="kw-2">&amp;</span>addrs);
         ret.into_iter()
-            .zip(addrs.into_iter())
+            .zip(addrs)
             .filter_map(|((<span class="kw">_</span>, c_balance), addr)| c_balance.map(|v| (addr, v)))
             .collect()
     }

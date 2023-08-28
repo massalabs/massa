@@ -2039,6 +2039,8 @@
 <a href="#2039" id="2039">2039</a>
 <a href="#2040" id="2040">2040</a>
 <a href="#2041" id="2041">2041</a>
+<a href="#2042" id="2042">2042</a>
+<a href="#2043" id="2043">2043</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2246,7 +2248,9 @@
 
     <span class="doccomment">/// Try load initial deferred credits from file
     </span><span class="kw">pub fn </span>load_initial_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt; {
-        <span class="kw">let </span><span class="prelude-val">Some</span>(initial_deferred_credits_path) = <span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_deferred_credits_path <span class="kw">else </span>{ <span class="kw">return </span><span class="prelude-val">Ok</span>(()) };
+        <span class="kw">let </span><span class="prelude-val">Some</span>(initial_deferred_credits_path) = <span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_deferred_credits_path <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        };
 
         <span class="kw">use </span>serde::Deserialize;
         <span class="attr">#[derive(Deserialize)]

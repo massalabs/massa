@@ -3666,7 +3666,7 @@
             .get_ops_exec_status(batch);
         speculative_exec
             .into_iter()
-            .zip(final_exec.into_iter())
+            .zip(final_exec)
             .map(|(speculative_v, final_v)| {
                 <span class="kw">match </span>(speculative_v, final_v) {
                     (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(f)) =&gt; (<span class="prelude-val">Some</span>(f), <span class="prelude-val">Some</span>(f)), <span class="comment">// special case: a final execution should also appear as speculative

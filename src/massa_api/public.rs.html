@@ -1688,7 +1688,7 @@
 
             <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
                 .into_iter()
-                .zip(involved_block_statuses.into_iter())
+                .zip(involved_block_statuses)
                 .collect();
             storage_info
                 .iter()

@@ -165,7 +165,7 @@
 
     <span class="doccomment">/// Extend the event store with another store
     </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: EventStore) {
-        <span class="self">self</span>.<span class="number">0</span>.extend(other.<span class="number">0</span>.into_iter());
+        <span class="self">self</span>.<span class="number">0</span>.extend(other.<span class="number">0</span>);
     }
 
     <span class="doccomment">/// Set the events of this store as final
