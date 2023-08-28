@@ -1071,6 +1071,12 @@
 <a href="#1071" id="1071">1071</a>
 <a href="#1072" id="1072">1072</a>
 <a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1087,6 +1093,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+<span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -1129,6 +1136,9 @@
 
     <span class="doccomment">/// speculative asynchronous pool messages emitted so far in the context
     </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
+
+    <span class="doccomment">/// the associated message infos for the speculative async pool
+    </span><span class="kw">pub </span>message_infos: BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;,
 
     <span class="doccomment">/// speculative list of operations executed
     </span><span class="kw">pub </span>executed_ops: ExecutedOpsChanges,
@@ -1310,9 +1320,11 @@
     <span class="doccomment">/// Returns a snapshot containing the clone of the current execution state.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionContextSnapshot {
+        <span class="kw">let </span>(async_pool_changes, message_infos) = <span class="self">self</span>.speculative_async_pool.get_snapshot();
         ExecutionContextSnapshot {
             ledger_changes: <span class="self">self</span>.speculative_ledger.get_snapshot(),
-            async_pool_changes: <span class="self">self</span>.speculative_async_pool.get_snapshot(),
+            async_pool_changes,
+            message_infos,
             pos_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
             executed_ops: <span class="self">self</span>.speculative_executed_ops.get_snapshot(),
             executed_denunciations: <span class="self">self</span>.speculative_executed_denunciations.get_snapshot(),
@@ -1337,7 +1349,7 @@
         </span><span class="self">self</span>.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         <span class="self">self</span>.speculative_async_pool
-            .reset_to_snapshot(snapshot.async_pool_changes);
+            .reset_to_snapshot((snapshot.async_pool_changes, snapshot.message_infos));
         <span class="self">self</span>.speculative_roll_state
             .reset_to_snapshot(snapshot.pos_changes);
         <span class="self">self</span>.speculative_executed_ops
