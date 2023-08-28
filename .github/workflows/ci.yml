@@ -198,6 +198,9 @@ jobs:
           args: run --features testing --retries 10
       - uses: actions-rs/cargo@v1
         with:
+          command: clean
+      - uses: actions-rs/cargo@v1
+        with:
           command: test
           args: --features testing --doc
 
