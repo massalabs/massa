@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BlockStatus","BlockStatusId","DiscardReason","ExportBlockStatus","HeaderOrBlock","Status","StorageOrBlock"],"struct":["ExportCompiledBlock"]};
+window.SIDEBAR_ITEMS = {"enum":["BlockStatus","BlockStatusId","DiscardReason","ExportBlockStatus","HeaderOrBlock","Status"],"struct":["ExportCompiledBlock"]};
