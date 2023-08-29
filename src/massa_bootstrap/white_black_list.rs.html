@@ -241,7 +241,7 @@
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>tracing::{info, warn};
 
-<span class="kw">use </span><span class="kw">crate</span>::tools::normalize_ip;
+<span class="kw">use </span><span class="kw">crate</span>::tools::to_canonical;
 
 <span class="doccomment">/// A wrapper around the white/black lists that allows efficient sharing between threads
 </span><span class="comment">// TODO: don&#39;t clone the path-bufs...
@@ -372,7 +372,7 @@
         <span class="attr">#[cfg(test)]
         </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
 
-        <span class="kw">let </span>ip = normalize_ip(remote_addr.ip());
+        <span class="kw">let </span>ip = to_canonical(remote_addr.ip());
         <span class="comment">// whether the peer IP address is blacklisted
         </span><span class="kw">let </span>read = <span class="self">self</span>.inner.read();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(ip_list) = <span class="kw-2">&amp;</span>read.black_list {
@@ -444,7 +444,7 @@
                             ))
                         })<span class="question-mark">?
                         </span>.into_iter()
-                        .map(normalize_ip)
+                        .map(to_canonical)
                         .collect(),
                 );
                 <span class="prelude-val">Ok</span>(res)
