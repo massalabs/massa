@@ -11,7 +11,7 @@ use massa_logging::massa_trace;
 use parking_lot::RwLock;
 use tracing::{info, warn};
 
-use crate::tools::normalize_ip;
+use crate::tools::to_canonical;
 
 /// A wrapper around the white/black lists that allows efficient sharing between threads
 // TODO: don't clone the path-bufs...
@@ -142,7 +142,7 @@ impl SharedWhiteBlackList<'_> {
         #[cfg(test)]
         return Ok(());
 
-        let ip = normalize_ip(remote_addr.ip());
+        let ip = to_canonical(remote_addr.ip());
         // whether the peer IP address is blacklisted
         let read = self.inner.read();
         if let Some(ip_list) = &read.black_list {
@@ -214,7 +214,7 @@ impl WhiteBlackListInner {
                             ))
                         })?
                         .into_iter()
-                        .map(normalize_ip)
+                        .map(to_canonical)
                         .collect(),
                 );
                 Ok(res)
