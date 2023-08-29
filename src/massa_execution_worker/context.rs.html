@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/context.rs`."><title>context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/context.rs`."><title>context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1077,48 +1077,6 @@
 <a href="#1077" id="1077">1077</a>
 <a href="#1078" id="1078">1078</a>
 <a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1133,9 +1091,9 @@
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
-<span class="kw">use </span><span class="kw">crate</span>::vesting_manager::VestingManager;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+<span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -1179,6 +1137,9 @@
     <span class="doccomment">/// speculative asynchronous pool messages emitted so far in the context
     </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
 
+    <span class="doccomment">/// the associated message infos for the speculative async pool
+    </span><span class="kw">pub </span>message_infos: BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;,
+
     <span class="doccomment">/// speculative list of operations executed
     </span><span class="kw">pub </span>executed_ops: ExecutedOpsChanges,
 
@@ -1193,6 +1154,9 @@
 
     <span class="doccomment">/// counter of newly created events so far during this execution
     </span><span class="kw">pub </span>created_event_index: u64,
+
+    <span class="doccomment">/// counter of async messages emitted so far in this execution
+    </span><span class="kw">pub </span>created_message_index: u64,
 
     <span class="doccomment">/// address call stack, most recent is at the back
     </span><span class="kw">pub </span>stack: Vec&lt;ExecutionStackElement&gt;,
@@ -1243,8 +1207,8 @@
     <span class="doccomment">/// max gas for this execution
     </span><span class="kw">pub </span>max_gas: u64,
 
-    <span class="doccomment">/// coin spending allowance for the operation creator
-    </span><span class="kw">pub </span>creator_coin_spending_allowance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
+    <span class="doccomment">/// minimal balance allowed for the creator of the operation after its execution
+    </span><span class="kw">pub </span>creator_min_balance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
 
     <span class="doccomment">/// slot at which the execution happens
     </span><span class="kw">pub </span>slot: Slot,
@@ -1285,9 +1249,6 @@
     <span class="doccomment">/// cache of compiled runtime modules
     </span><span class="kw">pub </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
 
-    <span class="doccomment">/// Vesting Manager
-    </span><span class="kw">pub </span>vesting_manager: Arc&lt;VestingManager&gt;,
-
     <span class="doccomment">/// Address factory
     </span><span class="kw">pub </span>address_factory: AddressFactory,
 }
@@ -1308,7 +1269,6 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
         execution_trail_hash: massa_hash::Hash,
     ) -&gt; <span class="self">Self </span>{
@@ -1338,7 +1298,7 @@
                 active_history,
             ),
             max_gas: Default::default(),
-            creator_coin_spending_allowance: Default::default(),
+            creator_min_balance: Default::default(),
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
@@ -1352,7 +1312,6 @@
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            vesting_manager,
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
         }
@@ -1361,14 +1320,17 @@
     <span class="doccomment">/// Returns a snapshot containing the clone of the current execution state.
     /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionContextSnapshot {
+        <span class="kw">let </span>(async_pool_changes, message_infos) = <span class="self">self</span>.speculative_async_pool.get_snapshot();
         ExecutionContextSnapshot {
             ledger_changes: <span class="self">self</span>.speculative_ledger.get_snapshot(),
-            async_pool_changes: <span class="self">self</span>.speculative_async_pool.get_snapshot(),
+            async_pool_changes,
+            message_infos,
             pos_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
             executed_ops: <span class="self">self</span>.speculative_executed_ops.get_snapshot(),
             executed_denunciations: <span class="self">self</span>.speculative_executed_denunciations.get_snapshot(),
             created_addr_index: <span class="self">self</span>.created_addr_index,
             created_event_index: <span class="self">self</span>.created_event_index,
+            created_message_index: <span class="self">self</span>.created_message_index,
             stack: <span class="self">self</span>.stack.clone(),
             events: <span class="self">self</span>.events.clone(),
             unsafe_rng: <span class="self">self</span>.unsafe_rng.clone(),
@@ -1387,7 +1349,7 @@
         </span><span class="self">self</span>.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         <span class="self">self</span>.speculative_async_pool
-            .reset_to_snapshot(snapshot.async_pool_changes);
+            .reset_to_snapshot((snapshot.async_pool_changes, snapshot.message_infos));
         <span class="self">self</span>.speculative_roll_state
             .reset_to_snapshot(snapshot.pos_changes);
         <span class="self">self</span>.speculative_executed_ops
@@ -1396,6 +1358,7 @@
             .reset_to_snapshot(snapshot.executed_denunciations);
         <span class="self">self</span>.created_addr_index = snapshot.created_addr_index;
         <span class="self">self</span>.created_event_index = snapshot.created_event_index;
+        <span class="self">self</span>.created_message_index = snapshot.created_message_index;
         <span class="self">self</span>.stack = snapshot.stack;
         <span class="self">self</span>.unsafe_rng = snapshot.unsafe_rng;
 
@@ -1432,7 +1395,6 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Get the execution hash trail
@@ -1455,7 +1417,6 @@
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -1500,7 +1461,6 @@
         final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
-        vesting_manager: Arc&lt;VestingManager&gt;,
         mip_store: MipStore,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Get the execution hash trail
@@ -1525,7 +1485,6 @@
                 final_state,
                 active_history,
                 module_cache,
-                vesting_manager,
                 mip_store,
                 execution_trail_hash,
             )
@@ -1586,18 +1545,6 @@
         )
         .expect(<span class="string">&quot;could not compute current slot timestamp&quot;</span>);
 
-        <span class="comment">// create a seed from the current slot
-        </span><span class="kw">let </span><span class="kw-2">mut </span>data: Vec&lt;u8&gt; = <span class="self">self</span>.slot.to_bytes_key().to_vec();
-        <span class="comment">// add the index of the created address within this context to the seed
-        </span>data.extend(<span class="self">self</span>.created_addr_index.to_be_bytes());
-        <span class="comment">// add a flag on whether we are in read-only mode or not to the seed
-        // this prevents read-only contexts from shadowing existing addresses
-        </span><span class="kw">if </span><span class="self">self</span>.read_only {
-            data.push(<span class="number">0u8</span>);
-        } <span class="kw">else </span>{
-            data.push(<span class="number">1u8</span>);
-        }
-
         <span class="comment">// Loop over nonces until we find an address that doesn&#39;t exist in the speculative ledger.
         // Note that this loop is here for robustness, and should not be looping because
         // even through the SC addresses are predictable, nobody can create them beforehand because:
@@ -1605,28 +1552,31 @@
         // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
         </span><span class="kw">let </span><span class="kw-2">mut </span>nonce = <span class="number">0u64</span>;
         <span class="kw">let </span>address = <span class="kw">loop </span>{
-            <span class="comment">// compute the hash of the concatenation [data, nonce]
-            </span><span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>data[..], <span class="kw-2">&amp;</span>nonce.to_be_bytes()[..]].concat());
-            <span class="kw">let </span>addr = <span class="self">self</span>.address_factory.create(
+            <span class="comment">// get a deterministic seed hash
+            </span><span class="kw">let </span>hash = massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
+                <span class="string">&quot;SC_ADDRESS&quot;</span>.as_bytes(),
+                <span class="self">self</span>.execution_trail_hash.to_bytes(),
+                <span class="kw-2">&amp;</span><span class="self">self</span>.created_addr_index.to_be_bytes(),
+                <span class="kw-2">&amp;</span>nonce.to_be_bytes(),
+            ]);
+
+            <span class="comment">// deduce the address
+            </span><span class="kw">let </span>addr = <span class="self">self</span>.address_factory.create(
                 <span class="kw-2">&amp;</span>AddressArgs::SC { hash },
                 FactoryStrategy::At(slot_timestamp),
             )<span class="question-mark">?</span>;
+
             <span class="comment">// check if this address already exists in the speculative ledger
             </span><span class="kw">if </span>!<span class="self">self</span>.speculative_ledger.entry_exists(<span class="kw-2">&amp;</span>addr) {
                 <span class="comment">// if not, we can use it
                 </span><span class="kw">break </span>addr;
             }
+
             <span class="comment">// otherwise, increment the nonce to get a new hash and try again
             </span>nonce = nonce.checked_add(<span class="number">1</span>).ok_or_else(|| {
                 ExecutionError::RuntimeError(<span class="string">&quot;nonce overflow when creating SC address&quot;</span>.into())
             })<span class="question-mark">?</span>;
         };
-        <span class="kw">if </span>nonce &gt; <span class="number">0 </span>{
-            <span class="macro">warn!</span>(
-                <span class="string">&quot;smart contract address generation required {} nonces&quot;</span>,
-                nonce
-            );
-        }
 
         <span class="comment">// add this address with its bytecode to the speculative ledger
         </span><span class="self">self</span>.speculative_ledger.create_new_sc_address(
@@ -1679,16 +1629,6 @@
     <span class="doccomment">/// gets the effective balance of an address
     </span><span class="kw">pub fn </span>get_balance(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
         <span class="self">self</span>.speculative_ledger.get_balance(address)
-    }
-
-    <span class="doccomment">/// Get deferred credits of an address starting from a given slot
-    </span><span class="kw">pub fn </span>get_address_deferred_credits(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        address: <span class="kw-2">&amp;</span>Address,
-        min_slot: Slot,
-    ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
-        <span class="self">self</span>.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
     }
 
     <span class="doccomment">/// Sets a datastore entry for an address in the speculative ledger.
@@ -1792,7 +1732,6 @@
     /// * `to_addr`: optional crediting address (use None for pure coin destruction)
     /// * `amount`: amount of coins to transfer
     /// * `check_rights`: check that the sender has the right to spend the coins according to the call stack
-    /// * `current_slot`: necessary for check vesting (use None if from_addr = None)
     </span><span class="kw">pub fn </span>transfer_coins(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         from_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
@@ -1821,34 +1760,11 @@
                     }
                 }
             }
-            <span class="comment">// control vesting min_balance for sender address
-            </span><span class="self">self</span>.vesting_manager
-                .check_vesting_transfer_coins(<span class="self">self</span>, from_addr, amount)<span class="question-mark">?</span>;
         }
-
-        <span class="comment">// check remaining sender allowance
-        </span><span class="kw">let </span>sender_allowance = {
-            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(op_creator_allowance), <span class="prelude-val">Some</span>(op_creator_addr)) = (<span class="kw-2">&amp;mut </span><span class="self">self</span>.creator_coin_spending_allowance, <span class="self">self</span>.creator_address) &amp;&amp; from_addr == <span class="prelude-val">Some</span>(op_creator_addr) {
-                <span class="kw">if </span>amount &gt; <span class="kw-2">*</span>op_creator_allowance {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed transfer of {} coins from spending address {} due to limited allowance&quot;</span>, amount, op_creator_addr)));
-                }
-                <span class="prelude-val">Some</span>(op_creator_allowance)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        };
 
         <span class="comment">// do the transfer
-        </span><span class="kw">let </span>result = <span class="self">self
-            </span>.speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount);
-
-        <span class="comment">// update allowance
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(allowance) = sender_allowance &amp;&amp; result.is_ok() {
-            <span class="kw-2">*</span>allowance = allowance.saturating_sub(amount);
-        }
-
-        result
+        </span><span class="self">self</span>.speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount)
     }
 
     <span class="doccomment">/// Add a new asynchronous message to speculative pool
