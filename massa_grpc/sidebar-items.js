@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["config","error","handler","private","public","server","stream"],"struct":["SlotRange"]};
+window.SIDEBAR_ITEMS = {"mod":["config","error","handler","private","public","server","stream"],"struct":["EndorsementDraw","SlotDraw","SlotRange"]};

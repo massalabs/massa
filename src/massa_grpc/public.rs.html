@@ -1309,12 +1309,11 @@
 <a href="#1309" id="1309">1309</a>
 <a href="#1310" id="1310">1310</a>
 <a href="#1311" id="1311">1311</a>
-<a href="#1312" id="1312">1312</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
-<span class="kw">use </span><span class="kw">crate</span>::SlotRange;
+<span class="kw">use crate</span>::{EndorsementDraw, SlotDraw, SlotRange};
 
 <span class="kw">use </span>itertools::{izip, Itertools};
 <span class="kw">use </span>massa_execution_exports::mapping_grpc::{
@@ -1919,15 +1918,15 @@
 
     <span class="kw">if </span>slot_ranges.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-            <span class="string">&quot;slot range is required&quot;</span>.to_string(),
+            <span class="string">&quot;at leat, one slot range is required&quot;</span>.to_string(),
         ));
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>selection_draws = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>selection_draws: HashSet&lt;SlotDraw&gt; = HashSet::new();
 
     <span class="kw">for </span>slot_range <span class="kw">in </span>slot_ranges {
         <span class="comment">// get future draws from selector
-        </span><span class="kw">let </span>s_range_selection_draws: Vec&lt;grpc_model::SlotDraw&gt; = {
+        </span><span class="kw">let </span>s_range_selection_draws: HashSet&lt;SlotDraw&gt; = {
             <span class="kw">let </span>slot_start = slot_range.start_slot.unwrap();
             <span class="kw">let </span>slot_end = slot_range.end_slot.unwrap();
             <span class="kw">let </span>restrict_to_addresses = <span class="kw">if </span>addresses.is_empty() {
@@ -1946,13 +1945,13 @@
                     } <span class="kw">else </span>{
                         <span class="prelude-val">None
                     </span>};
-                    <span class="kw">let </span>endorsement_producers: Vec&lt;grpc_model::EndorsementDraw&gt; = v_sel
+                    <span class="kw">let </span>endorsement_producers: Vec&lt;EndorsementDraw&gt; = v_sel
                         .endorsements
                         .into_iter()
                         .enumerate()
                         .filter_map(|(index, endo_sel)| {
                             <span class="kw">if </span>addresses.contains(<span class="kw-2">&amp;</span>endo_sel) {
-                                <span class="prelude-val">Some</span>(grpc_model::EndorsementDraw {
+                                <span class="prelude-val">Some</span>(EndorsementDraw {
                                     index: index <span class="kw">as </span>u64,
                                     producer: endo_sel.to_string(),
                                 })
@@ -1962,8 +1961,8 @@
                         })
                         .collect();
 
-                    grpc_model::SlotDraw {
-                        slot: <span class="prelude-val">Some</span>(v_slot.into()),
+                    SlotDraw {
+                        slot: <span class="prelude-val">Some</span>(v_slot),
                         block_producer,
                         endorsement_draws: endorsement_producers,
                     }
@@ -1974,9 +1973,8 @@
         selection_draws.extend(s_range_selection_draws);
     }
 
-    <span class="comment">//TODO add unique results, needs to update massa-proto-rs
-    </span><span class="prelude-val">Ok</span>(grpc_api::GetSelectorDrawsResponse {
-        draws: selection_draws,
+    <span class="prelude-val">Ok</span>(grpc_api::GetSelectorDrawsResponse {
+        draws: selection_draws.into_iter().map(Into::into).collect(),
     })
 }
 
