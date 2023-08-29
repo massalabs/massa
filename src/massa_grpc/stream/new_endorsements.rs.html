@@ -231,6 +231,15 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -241,6 +250,7 @@
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api, NewEndorsementsRequest};
+<span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>std::str::FromStr;
@@ -262,11 +272,11 @@
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span>Filter {
     <span class="comment">// Endorsement ids to filter
-    </span>endorsement_ids: Vec&lt;EndorsementId&gt;,
+    </span>endorsement_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;EndorsementId&gt;&gt;,
     <span class="comment">// Addresses to filter
-    </span>addresses: Vec&lt;Address&gt;,
+    </span>addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
     <span class="comment">// Block ids to filter
-    </span>block_ids: Vec&lt;BlockId&gt;,
+    </span>block_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;BlockId&gt;&gt;,
 }
 
 <span class="doccomment">/// Creates a new stream of new produced and received endorsements
@@ -387,9 +397,9 @@
         )));
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids: Vec&lt;EndorsementId&gt; = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>addresses: Vec&lt;Address&gt; = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>block_ids = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;EndorsementId&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>block_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;BlockId&gt;&gt; = <span class="prelude-val">None</span>;
 
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>request.filters.into_iter() {
@@ -404,8 +414,9 @@
                          grpc_config.max_block_ids_per_request
                         )));
                     }
+                    <span class="kw">let </span>endorsement_ids = endorsement_ids.get_or_insert_with(HashSet::new);
                     <span class="kw">for </span>id <span class="kw">in </span>ids.endorsement_ids {
-                        endorsement_ids.push(EndorsementId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
+                        endorsement_ids.insert(EndorsementId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid endorsement id: {}&quot;</span>, id))
                         })<span class="question-mark">?</span>);
                     }
@@ -417,8 +428,9 @@
                          grpc_config.max_addresses_per_request
                         )));
                     }
+                    <span class="kw">let </span>addresses = addresses.get_or_insert_with(HashSet::new);
                     <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
-                        addresses.push(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
+                        addresses.insert(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, address))
                         })<span class="question-mark">?</span>);
                     }
@@ -430,8 +442,9 @@
                             grpc_config.max_block_ids_per_request
                         )));
                     }
+                    <span class="kw">let </span>block_ids = block_ids.get_or_insert_with(HashSet::new);
                     <span class="kw">for </span>block_id <span class="kw">in </span>ids.block_ids {
-                        block_ids.push(BlockId::from_str(<span class="kw-2">&amp;</span>block_id).map_err(|<span class="kw">_</span>| {
+                        block_ids.insert(BlockId::from_str(<span class="kw-2">&amp;</span>block_id).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid block id: {}&quot;</span>, block_id))
                         })<span class="question-mark">?</span>);
                     }
@@ -449,19 +462,24 @@
 
 <span class="comment">// This function checks if the endorsement should be sent
 </span><span class="kw">fn </span>should_send(filters: <span class="kw-2">&amp;</span>Filter, signed_endorsement: <span class="kw-2">&amp;</span>SecureShareEndorsement) -&gt; bool {
-    <span class="kw">let </span>endorsement_id_matches = filters.endorsement_ids.is_empty()
-        || filters.endorsement_ids.contains(<span class="kw-2">&amp;</span>signed_endorsement.id);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(endorsement_ids) = <span class="kw-2">&amp;</span>filters.endorsement_ids {
+        <span class="kw">if </span>!endorsement_ids.contains(<span class="kw-2">&amp;</span>signed_endorsement.id) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
 
-    <span class="kw">let </span>address_matches = filters.addresses.is_empty()
-        || filters
-            .addresses
-            .contains(<span class="kw-2">&amp;</span>signed_endorsement.content_creator_address);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(addresses) = <span class="kw-2">&amp;</span>filters.addresses {
+        <span class="kw">if </span>!addresses.contains(<span class="kw-2">&amp;</span>signed_endorsement.content_creator_address) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
 
-    <span class="kw">let </span>block_id_matches = filters.block_ids.is_empty()
-        || filters
-            .block_ids
-            .contains(<span class="kw-2">&amp;</span>signed_endorsement.content.endorsed_block);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(block_ids) = <span class="kw-2">&amp;</span>filters.block_ids {
+        <span class="kw">if </span>!block_ids.contains(<span class="kw-2">&amp;</span>signed_endorsement.content.endorsed_block) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
 
-    endorsement_id_matches &amp;&amp; address_matches &amp;&amp; block_id_matches
-}
+    <span class="bool-val">true
+</span>}
 </code></pre></div></section></main></body></html>

@@ -206,6 +206,16 @@
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -216,6 +226,7 @@
 <span class="kw">use </span>massa_models::operation::{OperationId, SecureShareOperation};
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api, NewOperationsRequest};
 <span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
+<span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>tokio::select;
@@ -236,11 +247,11 @@
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span>Filter {
     <span class="comment">// Operation ids to filter
-    </span>operation_ids: Vec&lt;OperationId&gt;,
+    </span>operation_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;OperationId&gt;&gt;,
     <span class="comment">// Addresses to filter
-    </span>addresses: Vec&lt;Address&gt;,
+    </span>addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
     <span class="comment">// Operation types to filter
-    </span>operation_types: Vec&lt;i32&gt;,
+    </span>operation_types: <span class="prelude-ty">Option</span>&lt;HashSet&lt;i32&gt;&gt;,
 }
 
 <span class="doccomment">/// Creates a new stream of new produced and received operations
@@ -343,9 +354,9 @@
         )));
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>operation_ids: Vec&lt;OperationId&gt; = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>addresses: Vec&lt;Address&gt; = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>operation_types = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>operation_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;OperationId&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>operation_types: <span class="prelude-ty">Option</span>&lt;HashSet&lt;i32&gt;&gt; = <span class="prelude-val">None</span>;
 
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>request.filters.into_iter() {
@@ -358,8 +369,9 @@
                          grpc_config.max_block_ids_per_request
                         )));
                     }
+                    <span class="kw">let </span>operation_ids = operation_ids.get_or_insert_with(HashSet::new);
                     <span class="kw">for </span>id <span class="kw">in </span>ids.operation_ids {
-                        operation_ids.push(OperationId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
+                        operation_ids.insert(OperationId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid operation id: {}&quot;</span>, id))
                         })<span class="question-mark">?</span>);
                     }
@@ -371,8 +383,9 @@
                          grpc_config.max_addresses_per_request
                         )));
                     }
+                    <span class="kw">let </span>addresses = addresses.get_or_insert_with(HashSet::new);
                     <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
-                        addresses.push(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
+                        addresses.insert(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, address))
                         })<span class="question-mark">?</span>);
                     }
@@ -384,7 +397,8 @@
                             <span class="string">&quot;too many operation types received. Only a maximum of 6 operation types are accepted per request&quot;</span>.to_string()
                         ));
                     }
-                    operation_types.extend_from_slice(<span class="kw-2">&amp;</span>ope_types.op_types);
+                    <span class="kw">let </span>operation_types = operation_types.get_or_insert_with(HashSet::new);
+                    operation_types.extend(<span class="kw-2">&amp;</span>ope_types.op_types);
                 }
             }
         }
@@ -399,19 +413,25 @@
 
 <span class="comment">// This function checks if the operation should be sent
 </span><span class="kw">fn </span>should_send(filters: <span class="kw-2">&amp;</span>Filter, signed_operation: <span class="kw-2">&amp;</span>SecureShareOperation) -&gt; bool {
-    <span class="kw">let </span>block_id_matches =
-        filters.operation_ids.is_empty() || filters.operation_ids.contains(<span class="kw-2">&amp;</span>signed_operation.id);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_ids) = <span class="kw-2">&amp;</span>filters.operation_ids {
+        <span class="kw">if </span>!operation_ids.contains(<span class="kw-2">&amp;</span>signed_operation.id) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
 
-    <span class="kw">let </span>address_matches = filters.addresses.is_empty()
-        || filters
-            .addresses
-            .contains(<span class="kw-2">&amp;</span>signed_operation.content_creator_address);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(addresses) = <span class="kw-2">&amp;</span>filters.addresses {
+        <span class="kw">if </span>!addresses.contains(<span class="kw-2">&amp;</span>signed_operation.content_creator_address) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
 
-    <span class="kw">let </span>operation_type_matches = filters.operation_types.is_empty()
-        || filters
-            .operation_types
-            .contains(<span class="kw-2">&amp;</span>(grpc_model::OpType::from(signed_operation.content.op.clone()) <span class="kw">as </span>i32));
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_types) = <span class="kw-2">&amp;</span>filters.operation_types {
+        <span class="kw">let </span>op_type = grpc_model::OpType::from(signed_operation.content.op.clone()) <span class="kw">as </span>i32;
+        <span class="kw">if </span>!operation_types.contains(<span class="kw-2">&amp;</span>op_type) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
 
-    block_id_matches &amp;&amp; address_matches &amp;&amp; operation_type_matches
-}
+    <span class="bool-val">true
+</span>}
 </code></pre></div></section></main></body></html>
