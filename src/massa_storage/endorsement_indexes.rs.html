@@ -79,11 +79,7 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map;
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map::Entry;
 
 <span class="kw">use </span>massa_models::{
     address::Address,
@@ -106,11 +102,8 @@
     /// Arguments:
     /// - endorsement: the endorsement to insert
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, endorsement: SecureShareEndorsement) {
-        <span class="kw">if </span>!<span class="self">self</span>.endorsements.contains_key(<span class="kw-2">&amp;</span>endorsement.id) {
-            <span class="kw">let </span>endorsement = <span class="self">self
-                </span>.endorsements
-                .entry(endorsement.id)
-                .or_insert(Box::new(endorsement));
+        <span class="kw">if let </span>Entry::Vacant(vac) = <span class="self">self</span>.endorsements.entry(endorsement.id) {
+            <span class="kw">let </span>endorsement = vac.insert(Box::new(endorsement));
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(endorsement.content_creator_address)
@@ -132,8 +125,7 @@
             massa_metrics::set_endorsements_counter(<span class="self">self</span>.endorsements.len());
 
             <span class="comment">// update creator index
-            </span><span class="kw">if let </span>hash_map::Entry::Occupied(<span class="kw-2">mut </span>occ) =
-                <span class="self">self</span>.index_by_creator.entry(e.content_creator_address)
+            </span><span class="kw">if let </span>Entry::Occupied(<span class="kw-2">mut </span>occ) = <span class="self">self</span>.index_by_creator.entry(e.content_creator_address)
             {
                 occ.get_mut().remove(<span class="kw-2">&amp;</span>e.id);
                 <span class="kw">if </span>occ.get().is_empty() {

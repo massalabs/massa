@@ -168,7 +168,13 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::hash_map, collections::HashMap};
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
+    collections::hash_map::{<span class="self">self</span>, Entry},
+    collections::HashMap,
+};
 
 <span class="kw">use </span>massa_models::{
     address::Address,
@@ -202,8 +208,8 @@
     /// - block: the block to insert
 
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: SecureShareBlock) {
-        <span class="kw">if </span>!<span class="self">self</span>.blocks.contains_key(<span class="kw-2">&amp;</span>block.id) {
-            <span class="kw">let </span>block = <span class="self">self</span>.blocks.entry(block.id).or_insert(Box::new(block));
+        <span class="kw">if let </span>Entry::Vacant(vac) = <span class="self">self</span>.blocks.entry(block.id) {
+            <span class="kw">let </span>block = vac.insert(Box::new(block));
             <span class="comment">// update creator index
             </span><span class="self">self</span>.index_by_creator
                 .entry(block.content_creator_address)
