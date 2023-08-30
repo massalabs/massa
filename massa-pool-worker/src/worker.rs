@@ -102,10 +102,8 @@ impl OperationPoolThread {
         let mut start_time = Instant::now();
         let tick = config.operation_pool_refresh_interval.to_duration();
         loop {
-            let now = Instant::now();
             let duration = (start_time + tick).saturating_duration_since(Instant::now());
             if !duration.is_zero() {
-                let duration = start_time + tick - now;
                 match self.receiver.recv_timeout(duration) {
                     Err(RecvTimeoutError::Disconnected) | Ok(Command::Stop) => break,
                     Ok(Command::AddItems(operations)) => {
