@@ -806,7 +806,7 @@ impl RetrievalThread {
         let wishlist_info = if let Some(info) = self
             .block_wishlist
             .get_mut(&block_id)
-            .filter(|i| i.header.is_some() && i.operation_ids.is_none())
+            .filter(|i| i.header.is_some() && i.operation_ids.is_some())
         {
             info
         } else {
