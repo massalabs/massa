@@ -3,7 +3,6 @@
 //! Keypair management
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(map_try_insert)]
 
 pub use error::WalletError;
 
@@ -16,6 +15,7 @@ use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::secure_share::SecureShareContent;
 use massa_signature::{KeyPair, PublicKey};
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::Entry;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -111,7 +111,8 @@ impl Wallet {
         let mut addrs = Vec::with_capacity(keys.len());
         for key in keys {
             let addr = Address::from_public_key(&key.get_public_key());
-            if self.keys.try_insert(addr, key).is_ok() {
+            if let Entry::Vacant(e) = self.keys.entry(addr) {
+                e.insert(key);
                 changed = true;
             }
             addrs.push(addr);

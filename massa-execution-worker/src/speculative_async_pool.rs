@@ -154,20 +154,29 @@ impl SpeculativeAsyncPool {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
 
-        let mut eliminated_infos: Vec<_> = self
-            .message_infos
-            .extract_if(|_k, v| *slot >= v.validity_end)
-            .collect();
+        let mut eliminated_infos = Vec::new();
+        self.message_infos.retain(|id, info| {
+            if *slot < info.validity_end {
+                true
+            } else {
+                eliminated_infos.push((*id, info.clone()));
+                false
+            }
+        });
 
-        let eliminated_new_messages: Vec<_> = self
-            .pool_changes
-            .0
-            .extract_if(|_k, v| match v {
-                SetUpdateOrDelete::Set(v) => *slot >= v.validity_end,
-                SetUpdateOrDelete::Update(_v) => false,
-                SetUpdateOrDelete::Delete => false,
-            })
-            .collect();
+        let mut eliminated_new_messages = Vec::new();
+        self.pool_changes.0.retain(|k, v| match v {
+            SetUpdateOrDelete::Set(message) => {
+                if *slot < message.validity_end {
+                    true
+                } else {
+                    eliminated_new_messages.push((*k, v.clone()));
+                    false
+                }
+            }
+            SetUpdateOrDelete::Update(_v) => true,
+            SetUpdateOrDelete::Delete => true,
+        });
 
         eliminated_infos.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
             SetUpdateOrDelete::Set(v) => Some((*k, AsyncMessageInfo::from(v.clone()))),
@@ -189,10 +198,11 @@ impl SpeculativeAsyncPool {
         // Activate the messages that can be activated (triggered)
         let mut triggered_info = Vec::new();
         for (id, message_info) in self.message_infos.iter_mut() {
-            if let Some(filter) = &message_info.trigger /*&& !message_info.can_be_executed*/ && is_triggered(filter, ledger_changes)
-            {
-                message_info.can_be_executed = true;
-                triggered_info.push((*id, message_info.clone()));
+            if let Some(filter) = &message_info.trigger {
+                if is_triggered(filter, ledger_changes) {
+                    message_info.can_be_executed = true;
+                    triggered_info.push((*id, message_info.clone()));
+                }
             }
         }
 

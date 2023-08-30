@@ -555,10 +555,10 @@ impl LedgerChanges {
                     }
                 }
                 SetUpdateOrDelete::Update(entry_update) => {
-                    if let SetOrKeep::Set(bytecode) =
-                        entry_update.bytecode.clone() && !bytecode.0.is_empty()
-                    {
-                        v.push(bytecode);
+                    if let SetOrKeep::Set(bytecode) = entry_update.bytecode.clone() {
+                        if !bytecode.0.is_empty() {
+                            v.push(bytecode);
+                        }
                     }
                 }
                 SetUpdateOrDelete::Delete => (),

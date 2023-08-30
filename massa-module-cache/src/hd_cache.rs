@@ -143,27 +143,28 @@ impl HDCache {
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
 
-        if let (
-            Some(Ok((key_1, ser_module))),
-            Some(Ok((key_2, ser_metadata))),
-        ) = (iterator.next(), iterator.next())
-            && *key_1 == module_key!(hash)
-            && *key_2 == metadata_key!(hash)
+        if let (Some(Ok((key_1, ser_module))), Some(Ok((key_2, ser_metadata)))) =
+            (iterator.next(), iterator.next())
         {
-            let (_, metadata) = self
-                .meta_deser
-                .deserialize::<DeserializeError>(&ser_metadata)
-                .expect(DATA_DESER_ERROR);
-            if metadata == ModuleMetadata::Invalid {
-                return Some(ModuleInfo::Invalid);
+            if *key_1 == module_key!(hash) && *key_2 == metadata_key!(hash) {
+                let (_, metadata) = self
+                    .meta_deser
+                    .deserialize::<DeserializeError>(&ser_metadata)
+                    .expect(DATA_DESER_ERROR);
+                if metadata == ModuleMetadata::Invalid {
+                    return Some(ModuleInfo::Invalid);
+                }
+                let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs)
+                    .expect(MOD_DESER_ERROR);
+                let result = match metadata {
+                    ModuleMetadata::Invalid => ModuleInfo::Invalid,
+                    ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
+                    ModuleMetadata::Delta(delta) => ModuleInfo::ModuleAndDelta((module, delta)),
+                };
+                Some(result)
+            } else {
+                None
             }
-            let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs).expect(MOD_DESER_ERROR);
-            let result = match metadata {
-                ModuleMetadata::Invalid => ModuleInfo::Invalid,
-                ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
-                ModuleMetadata::Delta(delta) => ModuleInfo::ModuleAndDelta((module, delta)),
-            };
-            Some(result)
         } else {
             None
         }

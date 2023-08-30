@@ -395,7 +395,7 @@ impl SpeculativeLedger {
 
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    let c_k = candidate_keys.get_or_insert_default();
+                    let c_k = candidate_keys.get_or_insert_with(Default::default);
                     for (ds_key, ds_update) in
                         entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
                     {

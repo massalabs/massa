@@ -2,8 +2,6 @@
 //!
 //! TODO
 
-#![feature(let_chains)]
-
 mod config;
 mod controller;
 mod error;

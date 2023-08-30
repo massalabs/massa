@@ -112,18 +112,18 @@ where
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
 
-                        let cursor = self
+                        let mut cursor = self
                             .change_history
-                            .lower_bound(Bound::Excluded(&last_change_id));
+                            .range((Bound::Included(&last_change_id), Bound::Unbounded));
 
-                        if cursor.peek_prev().is_none() {
+                        if cursor.next().is_none() {
                             return Err(MassaDBError::TimeError(String::from(
                                 "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                             )));
                         }
 
-                        match cursor.key() {
-                            Some(cursor_change_id) => {
+                        match cursor.next() {
+                            Some((cursor_change_id, _)) => {
                                 // We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
@@ -222,18 +222,18 @@ where
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
 
-                        let cursor = self
+                        let mut cursor = self
                             .change_history_versioning
-                            .lower_bound(Bound::Excluded(&last_change_id));
+                            .range((Bound::Included(&last_change_id), Unbounded));
 
-                        if cursor.peek_prev().is_none() {
+                        if cursor.next().is_none() {
                             return Err(MassaDBError::TimeError(String::from(
                                 "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                             )));
                         }
 
-                        match cursor.key() {
-                            Some(cursor_change_id) => {
+                        match cursor.next() {
+                            Some((cursor_change_id, _)) => {
                                 // We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
