@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["mio_stream_to_std","to_canonical"]};
+window.SIDEBAR_ITEMS = {"fn":["mio_stream_to_std","normalize_ip"]};
