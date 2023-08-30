@@ -2108,7 +2108,7 @@
         </span><span class="kw">let </span>wishlist_info = <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="self">self
             </span>.block_wishlist
             .get_mut(<span class="kw-2">&amp;</span>block_id)
-            .filter(|i| i.header.is_some() &amp;&amp; i.operation_ids.is_none())
+            .filter(|i| i.header.is_some() &amp;&amp; i.operation_ids.is_some())
         {
             info
         } <span class="kw">else </span>{
