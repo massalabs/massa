@@ -1,4 +1,4 @@
-use std::collections::hash_map;
+use std::collections::hash_map::Entry;
 
 use massa_models::{
     address::Address,
@@ -21,11 +21,8 @@ impl EndorsementIndexes {
     /// Arguments:
     /// - endorsement: the endorsement to insert
     pub(crate) fn insert(&mut self, endorsement: SecureShareEndorsement) {
-        if !self.endorsements.contains_key(&endorsement.id) {
-            let endorsement = self
-                .endorsements
-                .entry(endorsement.id)
-                .or_insert(Box::new(endorsement));
+        if let Entry::Vacant(vac) = self.endorsements.entry(endorsement.id) {
+            let endorsement = vac.insert(Box::new(endorsement));
             // update creator index
             self.index_by_creator
                 .entry(endorsement.content_creator_address)
@@ -47,8 +44,7 @@ impl EndorsementIndexes {
             massa_metrics::set_endorsements_counter(self.endorsements.len());
 
             // update creator index
-            if let hash_map::Entry::Occupied(mut occ) =
-                self.index_by_creator.entry(e.content_creator_address)
+            if let Entry::Occupied(mut occ) = self.index_by_creator.entry(e.content_creator_address)
             {
                 occ.get_mut().remove(&e.id);
                 if occ.get().is_empty() {

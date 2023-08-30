@@ -132,26 +132,17 @@ impl Storage {
     pub fn extend(&mut self, mut other: Storage) {
         // Take ownership ot `other`'s references.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
-        let (extracted, kept) = other
+        other
             .local_used_ops
-            .iter()
-            .partition::<Vec<OperationId>, _>(|id| !self.local_used_ops.contains(id));
-        self.local_used_ops.extend(&extracted);
-        other.local_used_ops = kept.into_iter().collect();
+            .retain(|id| !self.local_used_ops.insert(*id));
 
-        let (extracted, kept) = other
+        other
             .local_used_blocks
-            .iter()
-            .partition::<Vec<BlockId>, _>(|id| !self.local_used_blocks.contains(id));
-        self.local_used_blocks.extend(&extracted);
-        other.local_used_blocks = kept.into_iter().collect();
+            .retain(|id| !self.local_used_blocks.insert(*id));
 
-        let (extracted, kept) = other
+        other
             .local_used_endorsements
-            .iter()
-            .partition::<Vec<EndorsementId>, _>(|id| !self.local_used_endorsements.contains(id));
-        self.local_used_endorsements.extend(&extracted);
-        other.local_used_endorsements = kept.into_iter().collect();
+            .retain(|id| !self.local_used_endorsements.insert(*id));
     }
 
     /// Efficiently splits off a subset of the reference ownership into a new Storage object.

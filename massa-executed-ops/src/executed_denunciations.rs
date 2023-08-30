@@ -152,24 +152,20 @@ impl ExecutedDenunciations {
             .config
             .denunciation_expire_periods
             .saturating_add(self.config.keep_executed_history_extra_periods);
-
-        let (drained, denunciations): (Vec<(Slot, HashSet<DenunciationIndex>)>, _) = self
-            .sorted_denunciations
-            .clone()
-            .into_iter()
-            .partition(|(de_idx_slot, _)| {
-                Denunciation::is_expired(
-                    &de_idx_slot.period,
-                    &slot.period,
-                    &effective_expiry_periods,
-                )
-            });
-        self.sorted_denunciations = denunciations.into_iter().collect();
-
-        for (_, de_indexes) in drained {
-            for de_idx in de_indexes.iter() {
-                self.delete_entry(de_idx, batch)
+        let mut drained: HashSet<DenunciationIndex> = Default::default();
+        self.sorted_denunciations.retain(|de_idx_slot, de_idx| {
+            if Denunciation::is_expired(
+                &de_idx_slot.period,
+                &slot.period,
+                &effective_expiry_periods,
+            ) {
+                drained.extend(de_idx.iter());
+                return false;
             }
+            true
+        });
+        for de_idx in drained {
+            self.delete_entry(&de_idx, batch);
         }
     }
 

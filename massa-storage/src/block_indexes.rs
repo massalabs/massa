@@ -1,4 +1,7 @@
-use std::{collections::hash_map, collections::HashMap};
+use std::{
+    collections::hash_map::{self, Entry},
+    collections::HashMap,
+};
 
 use massa_models::{
     address::Address,
@@ -32,8 +35,8 @@ impl BlockIndexes {
     /// - block: the block to insert
 
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
-        if !self.blocks.contains_key(&block.id) {
-            let block = self.blocks.entry(block.id).or_insert(Box::new(block));
+        if let Entry::Vacant(vac) = self.blocks.entry(block.id) {
+            let block = vac.insert(Box::new(block));
             // update creator index
             self.index_by_creator
                 .entry(block.content_creator_address)

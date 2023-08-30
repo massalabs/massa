@@ -1,4 +1,4 @@
-use std::collections::hash_map;
+use std::collections::hash_map::{self, Entry};
 
 use massa_models::{
     address::Address,
@@ -23,11 +23,8 @@ impl OperationIndexes {
     /// Arguments:
     /// * `operation`: the operation to insert
     pub(crate) fn insert(&mut self, operation: SecureShareOperation) {
-        if !self.operations.contains_key(&operation.id) {
-            let operation = self
-                .operations
-                .entry(operation.id)
-                .or_insert(Box::new(operation));
+        if let Entry::Vacant(vac) = self.operations.entry(operation.id) {
+            let operation = vac.insert(Box::new(operation));
             // update creator index
             self.index_by_creator
                 .entry(operation.content_creator_address)
