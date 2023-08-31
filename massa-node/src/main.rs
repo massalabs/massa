@@ -3,7 +3,6 @@
 #![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(ip)]
 extern crate massa_logging;
 
 #[cfg(feature = "op_spammer")]

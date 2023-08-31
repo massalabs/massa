@@ -13,6 +13,7 @@ rand = {workspace = true}
 parking_lot = {workspace = true}
 crossbeam = {workspace = true}
 serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+ip_rfc = {workspace = true}
 nom = {workspace = true}
 num_enum = {workspace = true}
 peernet = {workspace = true}

@@ -3,10 +3,6 @@
 //!
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(bound_map)]
-#![feature(int_roundings)]
-#![feature(iter_intersperse)]
-#![feature(variant_count)]
 
 extern crate lazy_static;
 

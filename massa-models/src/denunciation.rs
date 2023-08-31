@@ -30,6 +30,8 @@
 //! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
 //! a denunciation can be produced (A constant value will be defined for this).
 
+#![allow(missing_docs)]
+
 use std::cmp::Ordering;
 use std::ops::Bound::{Excluded, Included};
 
@@ -54,6 +56,7 @@ use massa_serialization::{
 use massa_signature::{
     MassaSignatureError, PublicKey, PublicKeyDeserializer, Signature, SignatureDeserializer,
 };
+use variant_count::VariantCount;
 
 /// A Variant of Denunciation enum for endorsement
 #[allow(dead_code)]
@@ -391,7 +394,7 @@ impl TryFrom<(&SecuredHeader, &SecuredHeader)> for Denunciation {
 }
 
 #[allow(missing_docs)]
-#[derive(IntoPrimitive, Debug, TryFromPrimitive)]
+#[derive(IntoPrimitive, Debug, TryFromPrimitive, VariantCount)]
 #[repr(u32)]
 pub enum DenunciationTypeId {
     BlockHeader = 0,
@@ -684,9 +687,6 @@ impl Serializer<Denunciation> for DenunciationSerializer {
     }
 }
 
-const DENUNCIATION_TYPE_ID_VARIANT_COUNT: u32 =
-    std::mem::variant_count::<DenunciationTypeId>() as u32;
-
 /// Deserializer for `Denunciation`
 pub struct DenunciationDeserializer {
     endo_de_deserializer: EndorsementDenunciationDeserializer,
@@ -705,7 +705,7 @@ impl DenunciationDeserializer {
             blkh_de_deserializer: BlockHeaderDenunciationDeserializer::new(thread_count),
             type_id_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(DENUNCIATION_TYPE_ID_VARIANT_COUNT),
+                Excluded(DenunciationTypeId::VARIANT_COUNT as u32),
             ),
         }
     }

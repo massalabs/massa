@@ -78,12 +78,6 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(is_sorted)]
-#![feature(map_try_insert)]
-#![feature(let_chains)]
-#![feature(option_get_or_insert_default)]
-#![feature(btree_extract_if)]
-#![feature(extract_if)]
 
 mod active_history;
 mod context;

@@ -1,4 +1,7 @@
-use std::{collections::hash_map, collections::HashMap};
+use std::{
+    collections::hash_map::{self, Entry},
+    collections::HashMap,
+};
 
 use massa_models::{
     address::Address,
@@ -32,30 +35,31 @@ impl BlockIndexes {
     /// - block: the block to insert
 
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
-        if let Ok(b) = self.blocks.try_insert(block.id, Box::new(block)) {
+        if let Entry::Vacant(vac) = self.blocks.entry(block.id) {
+            let block = vac.insert(Box::new(block));
             // update creator index
             self.index_by_creator
-                .entry(b.content_creator_address)
+                .entry(block.content_creator_address)
                 .or_default()
-                .insert(b.id);
+                .insert(block.id);
 
             // update slot index
             self.index_by_slot
-                .entry(b.content.header.content.slot)
+                .entry(block.content.header.content.slot)
                 .or_default()
-                .insert(b.id);
+                .insert(block.id);
 
             // update index_by_op
-            for op in &b.content.operations {
-                self.index_by_op.entry(*op).or_default().insert(b.id);
+            for op in &block.content.operations {
+                self.index_by_op.entry(*op).or_default().insert(block.id);
             }
 
             // update index_by_endorsement
-            for ed in &b.content.header.content.endorsements {
+            for ed in &block.content.header.content.endorsements {
                 self.index_by_endorsement
                     .entry(ed.id)
                     .or_default()
-                    .insert(b.id);
+                    .insert(block.id);
             }
 
             massa_metrics::set_blocks_counter(self.blocks.len());

@@ -85,8 +85,6 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See `test_exports/mod.rs` for details.
 
-#![feature(let_chains)]
-
 mod changes;
 mod config;
 mod mapping_grpc;

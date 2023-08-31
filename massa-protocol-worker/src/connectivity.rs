@@ -1,5 +1,6 @@
 use crossbeam::channel::tick;
 use crossbeam::select;
+use ip_rfc::global;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_metrics::MassaMetrics;
@@ -20,6 +21,7 @@ use tracing::{debug, info, warn};
 use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
+    ip::to_canonical,
     worker::ProtocolChannels,
 };
 use crate::{handlers::peer_handler::PeerManagementHandler, messages::MessagesHandler};
@@ -285,7 +287,7 @@ pub(crate) fn start_connectivity_thread(
                                         }
 
                                         if let Some((addr, _)) = last_announce.listeners.iter().next() {
-                                            let canonical_ip = addr.ip().to_canonical();
+                                            let canonical_ip = to_canonical(addr.ip());
                                             let mut allowed_local_ips = false;
                                             // Check if the peer is in a category and we didn't reached out target yet
                                             let mut category_found = None;
@@ -321,7 +323,7 @@ pub(crate) fn start_connectivity_thread(
                                                 continue;
                                             }
 
-                                            if !canonical_ip.is_global() && !allowed_local_ips {
+                                            if !global(&canonical_ip) && !allowed_local_ips {
                                                 continue;
                                             }
 

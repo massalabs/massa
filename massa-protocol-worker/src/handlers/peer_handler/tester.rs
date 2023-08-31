@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use crate::messages::MessagesHandler;
+use crate::{ip::to_canonical, messages::MessagesHandler};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 use massa_metrics::MassaMetrics;
 use massa_models::version::VersionDeserializer;
@@ -347,7 +347,7 @@ impl Tester {
                                         }
 
                                         //Find category of that address
-                                        let ip_canonical = addr.ip().to_canonical();
+                                        let ip_canonical = to_canonical(addr.ip());
                                         let cooldown = 'cooldown: {
                                             for category in &slots_out_connections {
                                                 if category.1.0.contains(&ip_canonical) {
@@ -378,7 +378,7 @@ impl Tester {
                                         }
                                         // TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
-                                        if !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
+                                        if !active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| to_canonical(addr.ip()) == ip_canonical) {
                                             //Don't test our local addresses
                                             if protocol_config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
                                                 db.write().peers_in_test.remove(addr);
@@ -387,7 +387,7 @@ impl Tester {
 
                                             //Don't test our proper ip
                                             if let Some(ip) = protocol_config.routable_ip {
-                                                if ip.to_canonical() == ip_canonical {
+                                                if to_canonical(ip) == ip_canonical {
                                                     db.write().peers_in_test.remove(addr);
                                                     continue 'main_loop;
                                                 }
@@ -439,8 +439,8 @@ impl Tester {
                         };
 
                         // we try to connect to all peer listener (For now we have only one listener)
-                        let ip_canonical = listener.ip().to_canonical();
-                        if active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| addr.ip().to_canonical() == ip_canonical) {
+                        let ip_canonical = to_canonical(listener.ip());
+                        if active_connections.get_peers_connected().iter().any(|(_, (addr, _, _))| to_canonical(addr.ip()) == ip_canonical) {
                             db.write().peers_in_test.remove(&listener);
                             continue;
                         }
@@ -453,7 +453,7 @@ impl Tester {
                         }
                         //Don't test our proper ip
                         if let Some(ip) = protocol_config.routable_ip {
-                            if ip.to_canonical() == ip_canonical {
+                            if to_canonical(ip) == ip_canonical {
                                 db.write().peers_in_test.remove(&listener);
                                 continue;
                             }

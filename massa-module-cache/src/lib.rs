@@ -4,8 +4,6 @@
 //! See [this discussion](https://github.com/massalabs/massa/discussions/3560#discussioncomment-5190071)
 //! for more information about its behaviour.
 
-#![feature(let_chains)]
-
 pub mod config;
 pub mod controller;
 pub mod error;

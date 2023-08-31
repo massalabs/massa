@@ -307,7 +307,7 @@ pub(crate) fn get_endorsements(
 
         let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
             .into_iter()
-            .zip(involved_block_statuses.into_iter())
+            .zip(involved_block_statuses)
             .collect();
         storage_info
             .iter()
@@ -1079,7 +1079,7 @@ pub(crate) fn search_endorsements(
 
         let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
             .into_iter()
-            .zip(involved_block_statuses.into_iter())
+            .zip(involved_block_statuses)
             .collect();
         storage_info
             .iter()

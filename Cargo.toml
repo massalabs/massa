@@ -98,8 +98,8 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = {git = "https://github.com/massalabs/massa-proto-rs", "rev" = "c7a29753d7d31864779db01e8260a8bf0748e10c"}
-massa-sc-runtime = {git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "main"}
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "c7a29753d7d31864779db01e8260a8bf0748e10c" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "main" }
 peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
@@ -109,6 +109,7 @@ substruct = { git = "https://github.com/sydhds/substruct", branch = "main" }
 machine = { git = "https://github.com/antifuchs/machine", "branch" = "fix-workspace-build" }
 aes-gcm = "0.10"
 anyhow = "1.0"
+assert_matches = "1.5"
 async-trait = "0.1.58"
 atty = "0.2"
 bitvec = "1.0"
@@ -134,6 +135,7 @@ hex-literal = "0.3.4"
 http = "0.2.8"
 humantime = "2.1.0"
 hyper = "0.14.25"
+ip_rfc = "0.1.0"
 itertools = "0.10"
 jsonrpsee = "0.19.0"
 jsonrpsee-http-client = "0.19.0"
@@ -171,6 +173,7 @@ serial_test = "1.0.0"
 sha2 = "0.10.6"
 sha3 = "0.10.8"
 socket2 = "0.4.7"
+stream_limiter = "3.2.0"
 structopt = "0.3"
 strum = "0.24"
 strum_macros = "0.24"
@@ -189,4 +192,4 @@ tower-http = "0.4.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 walkdir = "2.3.3"
-stream_limiter = "3.2.0"
+variant_count = "1.1.0"

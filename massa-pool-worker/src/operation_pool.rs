@@ -113,7 +113,7 @@ impl OperationPool {
             .execution_controller
             .get_ops_exec_status(&op_ids)
             .into_iter()
-            .zip(op_ids.into_iter())
+            .zip(op_ids)
             .filter_map(
                 |((spec_status, final_status), op_id)| match (spec_status, final_status) {
                     (Some(_), Some(_)) => Some((op_id, true)),
@@ -139,7 +139,7 @@ impl OperationPool {
             .execution_controller
             .get_final_and_candidate_balance(&addrs);
         ret.into_iter()
-            .zip(addrs.into_iter())
+            .zip(addrs)
             .filter_map(|((_, c_balance), addr)| c_balance.map(|v| (addr, v)))
             .collect()
     }

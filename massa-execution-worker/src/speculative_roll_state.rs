@@ -304,7 +304,7 @@ impl SpeculativeRollState {
             .range(min_slot..)
         {
             if let Some(amount) = addr_amount.get(address) {
-                let _ = res.try_insert(*slot, *amount);
+                res.entry(*slot).or_insert(*amount);
             };
         }
 
@@ -320,7 +320,7 @@ impl SpeculativeRollState {
                     .range(min_slot..)
                 {
                     if let Some(amount) = addr_amount.get(address) {
-                        let _ = res.try_insert(*slot, *amount);
+                        res.entry(*slot).or_insert(*amount);
                     };
                 }
             }
@@ -335,7 +335,7 @@ impl SpeculativeRollState {
                 .credits
             {
                 if let Some(amount) = addr_amount.get(address) {
-                    let _ = res.try_insert(slot, *amount);
+                    res.entry(slot).or_insert(*amount);
                 };
             }
         }

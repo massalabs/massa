@@ -8,22 +8,24 @@ edition = "2021"
 testing = []
 
 [dependencies]
-machine = {workspace = true}
-parking_lot = {workspace = true}
-thiserror = {workspace = true}
-num = {workspace = true}
-num_enum = {workspace = true}
-nom = {workspace = true}
-tracing = {workspace = true}
-massa_time = {workspace = true}
-massa_models = {workspace = true}
-massa_serialization = {workspace = true}
-massa_hash = {workspace = true}
-massa_signature = {workspace = true}
-massa-proto-rs = {workspace = true, "features" = ["tonic"]}
-massa_db_exports = {workspace = true}
+machine = { workspace = true }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+num = { workspace = true }
+num_enum = { workspace = true }
+nom = { workspace = true }
+tracing = { workspace = true }
+massa_time = { workspace = true }
+massa_models = { workspace = true }
+massa_serialization = { workspace = true }
+massa_hash = { workspace = true }
+massa_signature = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+massa_db_exports = { workspace = true }
+variant_count = { workspace = true }
 
 [dev-dependencies]
-more-asserts = {workspace = true}
-tempfile = {workspace = true}
-massa_db_worker = {workspace = true}
+assert_matches = { workspace = true }
+more-asserts = { workspace = true }
+tempfile = { workspace = true }
+massa_db_worker = { workspace = true }
