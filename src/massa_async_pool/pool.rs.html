@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/pool.rs`."><title>pool.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -962,63 +962,6 @@
 <a href="#962" id="962">962</a>
 <a href="#963" id="963">963</a>
 <a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
-<a href="#976" id="976">976</a>
-<a href="#977" id="977">977</a>
-<a href="#978" id="978">978</a>
-<a href="#979" id="979">979</a>
-<a href="#980" id="980">980</a>
-<a href="#981" id="981">981</a>
-<a href="#982" id="982">982</a>
-<a href="#983" id="983">983</a>
-<a href="#984" id="984">984</a>
-<a href="#985" id="985">985</a>
-<a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
-<a href="#988" id="988">988</a>
-<a href="#989" id="989">989</a>
-<a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a>
-<a href="#992" id="992">992</a>
-<a href="#993" id="993">993</a>
-<a href="#994" id="994">994</a>
-<a href="#995" id="995">995</a>
-<a href="#996" id="996">996</a>
-<a href="#997" id="997">997</a>
-<a href="#998" id="998">998</a>
-<a href="#999" id="999">999</a>
-<a href="#1000" id="1000">1000</a>
-<a href="#1001" id="1001">1001</a>
-<a href="#1002" id="1002">1002</a>
-<a href="#1003" id="1003">1003</a>
-<a href="#1004" id="1004">1004</a>
-<a href="#1005" id="1005">1005</a>
-<a href="#1006" id="1006">1006</a>
-<a href="#1007" id="1007">1007</a>
-<a href="#1008" id="1008">1008</a>
-<a href="#1009" id="1009">1009</a>
-<a href="#1010" id="1010">1010</a>
-<a href="#1011" id="1011">1011</a>
-<a href="#1012" id="1012">1012</a>
-<a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
-<a href="#1018" id="1018">1018</a>
-<a href="#1019" id="1019">1019</a>
-<a href="#1020" id="1020">1020</a>
-<a href="#1021" id="1021">1021</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1377,10 +1320,7 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _id)) = <span class="self">self
-            </span>.message_id_deserializer
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[ASYNC_POOL_PREFIX.len()..])
-        <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _id)) = <span class="self">self</span>.message_id_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[ASYNC_POOL_PREFIX.len()..]) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>rest.len() != <span class="number">1 </span>{
@@ -1389,11 +1329,7 @@
 
         <span class="kw">match </span>rest[<span class="number">0</span>] {
             EMISSION_SLOT_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .slot_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.slot_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1401,11 +1337,7 @@
                 }
             }
             EMISSION_INDEX_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .emission_index_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.emission_index_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1413,14 +1345,7 @@
                 }
             }
             SENDER_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)): std::result::Result&lt;
-                    (<span class="kw-2">&amp;</span>[u8], Address),
-                    nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
-                &gt; = <span class="self">self
-                    </span>.message_deserializer_db
-                    .address_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)): std::result::Result&lt;(<span class="kw-2">&amp;</span>[u8], Address), nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;&gt; = <span class="self">self</span>.message_deserializer_db.address_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1428,14 +1353,7 @@
                 }
             }
             DESTINATION_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)): std::result::Result&lt;
-                    (<span class="kw-2">&amp;</span>[u8], Address),
-                    nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
-                &gt; = <span class="self">self
-                    </span>.message_deserializer_db
-                    .address_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)): std::result::Result&lt;(<span class="kw-2">&amp;</span>[u8], Address), nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;&gt; = <span class="self">self</span>.message_deserializer_db.address_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1456,11 +1374,7 @@
                 };
             }
             MAX_GAS_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .max_gas_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.max_gas_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1468,11 +1382,7 @@
                 }
             }
             FEE_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .amount_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.amount_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1480,11 +1390,7 @@
                 }
             }
             COINS_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .amount_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.amount_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1492,11 +1398,7 @@
                 }
             }
             VALIDITY_START_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .slot_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.slot_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1504,11 +1406,7 @@
                 }
             }
             VALIDITY_END_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .slot_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.slot_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1516,11 +1414,7 @@
                 }
             }
             DATA_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .data_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.data_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1528,11 +1422,7 @@
                 }
             }
             TRIGGER_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .trigger_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.trigger_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
@@ -1540,11 +1430,7 @@
                 }
             }
             CAN_BE_EXECUTED_IDENT =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
-                    </span>.message_deserializer_db
-                    .bool_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self</span>.message_deserializer_db.bool_deserializer.deserialize::&lt;DeserializeError&gt;(serialized_value) <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
                 <span class="kw">if </span>!rest.is_empty() {
