@@ -26,6 +26,7 @@
   "assembly_script_get_keys_for": 239,
   "assembly_script_get_op_data": 10000,
   "assembly_script_get_op_keys": 280,
+  "assembly_script_get_op_keys_prefix": 280,
   "assembly_script_get_owned_addresses": 320,
   "assembly_script_get_remaining_gas": 116,
   "assembly_script_get_time": 150,
