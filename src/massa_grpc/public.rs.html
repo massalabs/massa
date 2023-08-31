@@ -1964,10 +1964,10 @@
                                 )));
                             }
                             <span class="kw">let </span>s_slot_range_len = e_slot.period - s_slot.period;
-                            <span class="kw">if </span>s_slot_range_len &gt; <span class="number">100 </span>{
+                            <span class="kw">if </span>s_slot_range_len &gt; grpc.grpc_config.max_slot_ranges_length {
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                    <span class="string">&quot;invalid slot range: slot range length {} is greater than 100&quot;</span>,
-                                    s_slot_range_len
+                                    <span class="string">&quot;invalid slot range: slot range length {} is greater than {}&quot;</span>,
+                                    s_slot_range_len, grpc.grpc_config.max_slot_ranges_length
                                 )));
                             }
                         }
@@ -2231,10 +2231,10 @@
                                 )));
                             }
                             <span class="kw">let </span>s_slot_range_len = e_slot.period - s_slot.period;
-                            <span class="kw">if </span>s_slot_range_len &gt; <span class="number">100 </span>{
+                            <span class="kw">if </span>s_slot_range_len &gt; grpc.grpc_config.max_slot_ranges_length {
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                    <span class="string">&quot;invalid slot range: slot range length {} is greater than 100&quot;</span>,
-                                    s_slot_range_len
+                                    <span class="string">&quot;invalid slot range: slot range length {} is greater than {}&quot;</span>,
+                                    s_slot_range_len, grpc.grpc_config.max_slot_ranges_length
                                 )));
                             }
                         }
