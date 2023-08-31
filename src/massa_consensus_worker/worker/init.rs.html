@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/worker/init.rs`."><title>init.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../massa_consensus_worker/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/worker/init.rs`."><title>init.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../massa_consensus_worker/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -327,17 +327,14 @@
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
 <span class="kw">use </span>massa_consensus_exports::{
-    block_status::BlockStatus, bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
+    block_status::{BlockStatus, StorageOrBlock},
+    bootstrapable_graph::BootstrapableGraph,
+    error::ConsensusError,
     ConsensusConfig,
 };
+<span class="kw">use </span>massa_execution_exports::ExecutionBlockMetadata;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -452,8 +449,9 @@
                         block_id: block.id,
                         slot: block.content.header.content.slot,
                         fitness: block.get_fitness(),
+                        same_thread_parent_creator: <span class="prelude-val">None</span>,
                     }),
-                    storage,
+                    storage_or_block: StorageOrBlock::Storage(storage),
                 },
             );
         }
@@ -534,9 +532,9 @@
         // with already produced blocks received from the bootstrap.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(BootstrapableGraph { final_blocks }) = init_graph {
             <span class="comment">// load final blocks
-            </span><span class="kw">let </span>final_blocks: Vec&lt;(ActiveBlock, Storage)&gt; = final_blocks
+            </span><span class="kw">let </span>final_blocks: Vec&lt;(ActiveBlock, StorageOrBlock)&gt; = final_blocks
                 .into_iter()
-                .map(|export_b| export_b.to_active_block(<span class="kw-2">&amp;</span>storage, config.thread_count))
+                .map(|export_b| export_b.to_active_block(config.thread_count))
                 .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, ConsensusError&gt;&gt;()<span class="question-mark">?</span>;
 
             <span class="comment">// compute latest_final_blocks_periods
@@ -555,13 +553,13 @@
                 write_shared_state.genesis_hashes = genesis_block_ids;
                 write_shared_state.best_parents = latest_final_blocks_periods.clone();
                 write_shared_state.latest_final_blocks_periods = latest_final_blocks_periods;
-                <span class="kw">for </span>(b, s) <span class="kw">in </span>final_blocks {
+                <span class="kw">for </span>(b, storage_or_block) <span class="kw">in </span>final_blocks {
                     write_shared_state.blocks_state.transition_map(
                         <span class="kw-2">&amp;</span>(b.block_id.clone()),
                         |<span class="kw">_</span>, <span class="kw">_</span>| {
                             <span class="prelude-val">Some</span>(BlockStatus::Active {
                                 a_block: Box::new(b),
-                                storage: s,
+                                storage_or_block,
                             })
                         },
                     );
@@ -593,25 +591,35 @@
         // because the two modules run concurrently and out of sync.
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = res_consensus.shared_state.write();
-            <span class="kw">let </span><span class="kw-2">mut </span>block_storage: PreHashMap&lt;BlockId, Storage&gt; = Default::default();
+            <span class="kw">let </span><span class="kw-2">mut </span>block_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt; =
+                Default::default();
             <span class="kw">let </span>notify_finals: HashMap&lt;Slot, BlockId&gt; = write_shared_state
                 .get_all_final_blocks()
                 .into_iter()
-                .map(|(b_id, block_infos)| {
-                    block_storage.insert(b_id, block_infos.<span class="number">1</span>);
-                    (block_infos.<span class="number">0</span>, b_id)
+                .map(|(b_id, (b_slot, b_metadata))| {
+                    block_metadata.insert(b_id, b_metadata);
+                    (b_slot, b_id)
                 })
                 .collect();
             <span class="kw">let </span>notify_blockclique: HashMap&lt;Slot, BlockId&gt; = write_shared_state
                 .get_blockclique()
                 .iter()
                 .map(|b_id| {
-                    <span class="kw">let </span>(a_block, storage) = write_shared_state
+                    <span class="kw">let </span>(a_block, storage_or_block) = write_shared_state
                         .get_full_active_block(b_id)
                         .expect(<span class="string">&quot;active block missing from block_db&quot;</span>);
-                    <span class="kw">let </span>slot = a_block.slot;
-                    block_storage.insert(<span class="kw-2">*</span>b_id, storage.clone());
-                    (slot, <span class="kw-2">*</span>b_id)
+                    <span class="kw">let </span>storage = <span class="kw">match </span>storage_or_block {
+                        StorageOrBlock::Storage(storage) =&gt; <span class="prelude-val">Some</span>(storage.clone()),
+                        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+                    };
+                    block_metadata.insert(
+                        <span class="kw-2">*</span>b_id,
+                        ExecutionBlockMetadata {
+                            same_thread_parent_creator: a_block.same_thread_parent_creator,
+                            storage,
+                        },
+                    );
+                    (a_block.slot, <span class="kw-2">*</span>b_id)
                 })
                 .collect();
             write_shared_state.prev_blockclique =
@@ -619,7 +627,7 @@
             write_shared_state
                 .channels
                 .execution_controller
-                .update_blockclique_status(notify_finals, <span class="prelude-val">Some</span>(notify_blockclique), block_storage);
+                .update_blockclique_status(notify_finals, <span class="prelude-val">Some</span>(notify_blockclique), block_metadata);
         }
 
         <span class="prelude-val">Ok</span>(res_consensus)
@@ -628,27 +636,6 @@
     <span class="doccomment">/// Internal function used at initialization of the `ConsensusWorker` to link blocks with their parents
     </span><span class="kw">fn </span>claim_parent_refs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>write_shared_state = <span class="self">self</span>.shared_state.write();
-        <span class="kw">for </span>(_b_id, block_status) <span class="kw">in </span>write_shared_state.blocks_state.iter_mut() {
-            <span class="kw">if let </span>BlockStatus::Active {
-                a_block,
-                storage: block_storage,
-            } = block_status
-            {
-                <span class="comment">// claim parent refs
-                </span><span class="kw">let </span>n_claimed_parents = block_storage
-                    .claim_block_refs(<span class="kw-2">&amp;</span>a_block.parents.iter().map(|(p_id, <span class="kw">_</span>)| <span class="kw-2">*</span>p_id).collect())
-                    .len();
-
-                <span class="kw">if </span>!a_block.is_final {
-                    <span class="comment">// note: parents of final blocks will be missing, that&#39;s ok, but it shouldn&#39;t be the case for non-finals
-                    </span><span class="kw">if </span>n_claimed_parents != <span class="self">self</span>.config.thread_count <span class="kw">as </span>usize {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::MissingBlock(
-                            <span class="string">&quot;block storage could not claim refs to all parent blocks&quot;</span>.into(),
-                        ));
-                    }
-                }
-            }
-        }
 
         <span class="comment">// list active block parents
         </span><span class="kw">let </span>active_blocks_map: PreHashMap&lt;BlockId, (Slot, Vec&lt;BlockId&gt;)&gt; = write_shared_state
@@ -663,7 +650,8 @@
             .collect();
 
         <span class="kw">for </span>(b_id, (b_slot, b_parents)) <span class="kw">in </span>active_blocks_map.into_iter() {
-            write_shared_state.insert_parents_descendants(b_id, b_slot, b_parents);
+            <span class="comment">// update aprenthood relationships
+            </span>write_shared_state.insert_parents_descendants(b_id, b_slot, b_parents);
         }
         <span class="prelude-val">Ok</span>(())
     }

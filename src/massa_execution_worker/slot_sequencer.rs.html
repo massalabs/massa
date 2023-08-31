@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/slot_sequencer.rs`."><title>slot_sequencer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/slot_sequencer.rs`."><title>slot_sequencer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -764,21 +764,19 @@
 <a href="#764" id="764">764</a>
 <a href="#765" id="765">765</a>
 <a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
 
 </span><span class="kw">use </span>std::collections::{HashMap, VecDeque};
 
-<span class="kw">use </span>massa_execution_exports::ExecutionConfig;
+<span class="kw">use </span>massa_execution_exports::{ExecutionBlockMetadata, ExecutionConfig};
 <span class="kw">use </span>massa_models::{
     block_id::BlockId,
     prehash::PreHashMap,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
 };
-<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>massa_time::MassaTime;
 
 <span class="doccomment">/// Information about a slot in the execution sequence
@@ -790,8 +788,8 @@
     </span>css_final: bool,
     <span class="doccomment">/// Whether the slot is SCE-final
     </span>sce_final: bool,
-    <span class="doccomment">/// Content of the slot (None if miss, otherwise block ID and associated Storage instance)
-    </span>content: <span class="prelude-ty">Option</span>&lt;(BlockId, Storage)&gt;,
+    <span class="doccomment">/// Content of the slot (None if miss, otherwise block ID and associated metadata)
+    </span>content: <span class="prelude-ty">Option</span>&lt;(BlockId, ExecutionBlockMetadata)&gt;,
 }
 
 <span class="kw">impl </span>SlotInfo {
@@ -857,12 +855,12 @@
     ///
     /// `initial_css_final_blocks`: the list of CSS-final blocks (must not be empty)
     /// `initial_blockclique`: initial blockclique, usually empty except on major bootstrap latency
-    /// `blocks_storage`: Storage instances for all the blocks referenced in `initial_css_final_blocks` and `blocks_storage`
+    /// `blocks_metadata`: Metadata for all the blocks referenced in `initial_css_final_blocks` and `initial_blockclique`
     </span><span class="kw">fn </span>init(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw-2">mut </span>initial_css_final_blocks: HashMap&lt;Slot, BlockId&gt;,
         <span class="kw-2">mut </span>initial_blockclique: HashMap&lt;Slot, BlockId&gt;,
-        <span class="kw-2">mut </span>blocks_storage: PreHashMap&lt;BlockId, Storage&gt;,
+        <span class="kw-2">mut </span>blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
         <span class="comment">// Compute the latest CSS-final slots
         </span><span class="kw">for </span>(s, <span class="kw">_</span>) <span class="kw">in </span>initial_css_final_blocks.iter() {
@@ -918,9 +916,9 @@
                     </span>(
                         b_id,
                         <span class="comment">// The block&#39;s storage should be in `blocks_storage`
-                        </span>blocks_storage
+                        </span>blocks_metadata
                             .remove(<span class="kw-2">&amp;</span>b_id)
-                            .expect(<span class="string">&quot;block storage missing in execution init&quot;</span>),
+                            .expect(<span class="string">&quot;block metadata missing in execution init&quot;</span>),
                     )
                 });
 
@@ -944,7 +942,7 @@
         <span class="kw">if </span>initial_blockclique.into_iter().next().is_some() {
             <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in blockclique after slot sequencing&quot;</span>);
         }
-        std::mem::drop(blocks_storage);
+        std::mem::drop(blocks_metadata);
 
         <span class="comment">// Cleanup the constructed sequence to remove older, executed CSS-final slots
         </span><span class="self">self</span>.cleanup_sequence();
@@ -975,12 +973,12 @@
     /// # Arguments
     /// * `new_css_final_blocks`: new CSS-finalized blocks
     /// * `new_blockclique`: new blockclique (if changed since the last call to this method, otherwise None)
-    /// * `new_blocks_storage`: storage instances for blocks that have not been seen previously by the sequencer
+    /// * `new_blocks_metadata`: metadata for blocks that have not been seen previously by the sequencer
     </span><span class="kw">pub fn </span>update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw-2">mut </span>new_css_final_blocks: HashMap&lt;Slot, BlockId&gt;,
         <span class="kw-2">mut </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
-        <span class="kw-2">mut </span>new_blocks_storage: PreHashMap&lt;BlockId, Storage&gt;,
+        <span class="kw-2">mut </span>new_blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
         <span class="comment">// If the slot sequence is empty, initialize it by calling `Self::init` and quit.
         // This happens on the first call to `Self::update` (see the doc of `Self::update`).
@@ -989,7 +987,7 @@
                 <span class="self">self</span>.init(
                     new_css_final_blocks,
                     new_blockclique.unwrap_or_default(),
-                    new_blocks_storage,
+                    new_blocks_metadata,
                 );
             }
             <span class="kw">return</span>;
@@ -1092,7 +1090,7 @@
                 new_css_final_block,
                 blockclique_updated,
                 new_blockclique_block,
-                <span class="kw-2">&amp;mut </span>new_blocks_storage,
+                <span class="kw-2">&amp;mut </span>new_blocks_metadata,
                 in_sce_finality,
             );
 
@@ -1132,7 +1130,7 @@
                 <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in new_blockclique after slot sequencing&quot;</span>);
             }
         }
-        std::mem::drop(new_blocks_storage);
+        std::mem::drop(new_blocks_metadata);
 
         <span class="comment">// Set the slot sequence to be the new sequence.
         </span><span class="self">self</span>.sequence = new_sequence;
@@ -1151,7 +1149,7 @@
     /// * `new_css_final_block`: newly CSS-finalized block at that slot, if any
     /// * `blockclique_updated`: whether a new blockclique was provided when `Self::update` was called
     /// * `new_blockclique_block`: block at that slot within the new blockclique, if any
-    /// * `new_blocks_storage`: a mutable reference to the list dictionary of block storages provided to `Self::update`
+    /// * `new_blocks_metadata`: block metadata for execution
     /// * `in_sce_finality`: whether the previous slot was SCE-final
     ///
     /// # Returns
@@ -1164,7 +1162,7 @@
         new_css_final_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
         blockclique_updated: bool,
         new_blockclique_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
-        new_blocks_storage: <span class="kw-2">&amp;mut </span>PreHashMap&lt;BlockId, Storage&gt;,
+        new_blocks_metadata: <span class="kw-2">&amp;mut </span>PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
         in_sce_finality: bool,
     ) -&gt; (SlotInfo, bool) {
         <span class="comment">// Match the slot state from the old sequence.
@@ -1207,10 +1205,10 @@
                 </span>prev_slot_info.content = new_css_final_block.map(|b_id| {
                     (
                         b_id,
-                        <span class="comment">// Can&#39;t recycle any old Storage because of the mismatch: get it from `new_blocks_storage`.
-                        </span>new_blocks_storage
+                        <span class="comment">// Can&#39;t recycle any old Storage because of the mismatch: get it from `new_blocks_metadata`.
+                        </span>new_blocks_metadata
                             .remove(<span class="kw-2">&amp;</span>b_id)
-                            .expect(<span class="string">&quot;new css final block storage absent from new_blocks_storage&quot;</span>),
+                            .expect(<span class="string">&quot;new css final block metadata absent from new_blocks_metadata&quot;</span>),
                     )
                 });
 
@@ -1237,10 +1235,10 @@
             </span>prev_slot_info.content = new_blockclique_block.map(|b_id| {
                 (
                     b_id,
-                    <span class="comment">// Can&#39;t recycle any old Storage because of the mismatch: get it from `new_blocks_storage`.
-                    </span>new_blocks_storage
-                        .remove(<span class="kw-2">&amp;</span>b_id)
-                        .expect(<span class="string">&quot;new css blockclique block storage absent from new_blocks_storage&quot;</span>),
+                    <span class="comment">// Can&#39;t recycle any old metadata because of the mismatch: get it from `new_blocks_metadata`.
+                    </span>new_blocks_metadata.remove(<span class="kw-2">&amp;</span>b_id).expect(
+                        <span class="string">&quot;new css blockclique block metadata absent from new_blocks_metadata&quot;</span>,
+                    ),
                 )
             });
 
@@ -1265,10 +1263,10 @@
                     <span class="comment">// Get the newly CSS-finalized block at that slot, if any
                     </span>(
                         b_id,
-                        <span class="comment">// Get the block Storage from `new_blocks_storage` as this slot is new to the sequencer.
-                        </span>new_blocks_storage
+                        <span class="comment">// Get the block Storage from `new_blocks_metadata` as this slot is new to the sequencer.
+                        </span>new_blocks_metadata
                             .remove(<span class="kw-2">&amp;</span>b_id)
-                            .expect(<span class="string">&quot;new css final block storage absent from new_blocks_storage&quot;</span>),
+                            .expect(<span class="string">&quot;new css final block metadata absent from new_blocks_metadata&quot;</span>),
                     )
                 }),
             };
@@ -1291,9 +1289,9 @@
             content: new_blockclique_block.map(|b_id| {
                 (
                     b_id,
-                    new_blocks_storage
-                        .remove(<span class="kw-2">&amp;</span>b_id)
-                        .expect(<span class="string">&quot;new css blockclique block storage absent from new_blocks_storage&quot;</span>),
+                    new_blocks_metadata.remove(<span class="kw-2">&amp;</span>b_id).expect(
+                        <span class="string">&quot;new css blockclique block metadata absent from new_blocks_metadata&quot;</span>,
+                    ),
                 )
             }),
         };
@@ -1423,7 +1421,7 @@
     /// or `Some(T)` where `T` is the value returned by the `callback` function otherwise.
     </span><span class="kw">pub fn </span>run_task_with&lt;F, T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, callback: F) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt;
     <span class="kw">where
-        </span>F: Fn(bool, <span class="kw-2">&amp;</span>Slot, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, Storage)&gt;) -&gt; T,
+        </span>F: Fn(bool, <span class="kw-2">&amp;</span>Slot, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;) -&gt; T,
     {
         <span class="comment">// The slot sequence is empty =&gt; nothing to do.
         </span><span class="kw">if </span><span class="self">self</span>.sequence.is_empty() {
