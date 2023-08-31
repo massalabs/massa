@@ -1361,6 +1361,17 @@
 <a href="#1361" id="1361">1361</a>
 <a href="#1362" id="1362">1362</a>
 <a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2254,6 +2265,18 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">&quot;no filter provided&quot;</span>.to_string()));
     }
 
+    <span class="kw">let </span>slot_range_filter = <span class="kw">match </span><span class="kw-2">&amp;</span>slot_ranges_filter {
+        <span class="prelude-val">Some</span>(slot_ranges) =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>s_range: <span class="prelude-ty">Option</span>&lt;SlotRange&gt; = <span class="prelude-val">None</span>;
+            <span class="kw">for </span>slot_range <span class="kw">in </span>slot_ranges {
+                s_range = s_range.and_then(|s| s.intersection(<span class="kw-2">&amp;</span>slot_range))
+            }
+
+            s_range
+        }
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+    };
+
     <span class="kw">let </span><span class="kw-2">mut </span>res: <span class="prelude-ty">Option</span>&lt;PreHashSet&lt;BlockId&gt;&gt; = <span class="prelude-val">None</span>;
 
     <span class="comment">// filter by block ids
@@ -2283,22 +2306,21 @@
     }
 
     <span class="comment">// filter by slot ranges
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(slot_ranges) = slot_ranges_filter {
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(slot_range) = slot_range_filter {
         <span class="kw">let </span>b_ids: PreHashSet&lt;BlockId&gt; = {
             <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
             <span class="kw">let </span><span class="kw-2">mut </span>block_ids: PreHashSet&lt;BlockId&gt; = PreHashSet::default();
-            <span class="kw">for </span>slot_range <span class="kw">in </span>slot_ranges {
-                <span class="kw">let </span><span class="kw-2">mut </span>cur_slot = slot_range.start_slot.unwrap();
-                <span class="kw">while </span>slot_range.contains(cur_slot) {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = read_blocks.get_blocks_by_slot(<span class="kw-2">&amp;</span>cur_slot) {
-                        block_ids.extend(v.clone());
-                    }
+            <span class="kw">let </span><span class="kw-2">mut </span>cur_slot = slot_range.start_slot.unwrap();
 
-                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(next_slot) = cur_slot.get_next_slot(grpc.grpc_config.thread_count) {
-                        cur_slot = next_slot;
-                    } <span class="kw">else </span>{
-                        <span class="kw">break</span>;
-                    }
+            <span class="kw">while </span>slot_range.contains(cur_slot) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = read_blocks.get_blocks_by_slot(<span class="kw-2">&amp;</span>cur_slot) {
+                    block_ids.extend(v.clone());
+                }
+
+                <span class="kw">if let </span><span class="prelude-val">Ok</span>(next_slot) = cur_slot.get_next_slot(grpc.grpc_config.thread_count) {
+                    cur_slot = next_slot;
+                } <span class="kw">else </span>{
+                    <span class="kw">break</span>;
                 }
             }
 

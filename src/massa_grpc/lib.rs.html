@@ -108,6 +108,23 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 //
 </span><span class="doccomment">//! ## **Overview**
@@ -160,19 +177,36 @@
 }
 
 <span class="kw">impl </span>SlotRange {
+    <span class="doccomment">/// Create a new slot range
+    </span><span class="kw">pub fn </span>new(start_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;, end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            start_slot,
+            end_slot,
+        }
+    }
+
     <span class="doccomment">/// Check if the slot is in the range(Include the start and end slot)
     </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; bool {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(start) = <span class="self">self</span>.start_slot {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.end_slot {
-                <span class="kw">return </span>start &lt;= slot &amp;&amp; slot &lt;= end;
-            } <span class="kw">else </span>{
-                <span class="kw">return </span>slot &gt;= start;
-            }
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.end_slot {
-            <span class="kw">return </span>slot &lt;= end;
+        <span class="kw">if let </span>(<span class="prelude-val">Some</span>(start), <span class="prelude-val">Some</span>(end)) = (<span class="self">self</span>.start_slot, <span class="self">self</span>.end_slot) {
+            <span class="kw">return </span>start &lt;= slot &amp;&amp; slot &lt;= end;
         }
 
         <span class="bool-val">false
+    </span>}
+
+    <span class="doccomment">/// Return the intersection of two slot ranges if start and end slots are present
+    </span><span class="kw">pub fn </span>intersection(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">if let </span>(<span class="prelude-val">Some</span>(self_start), <span class="prelude-val">Some</span>(self_end)) = (<span class="self">self</span>.start_slot, <span class="self">self</span>.end_slot) {
+            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(other_start), <span class="prelude-val">Some</span>(other_end)) = (other.start_slot, other.end_slot) {
+                <span class="kw">let </span>start = std::cmp::min(self_start, other_start);
+                <span class="kw">let </span>end = std::cmp::max(self_end, other_end);
+                <span class="kw">if </span>start &lt;= end {
+                    <span class="kw">return </span><span class="prelude-val">Some</span>(SlotRange::new(<span class="prelude-val">Some</span>(start), <span class="prelude-val">Some</span>(end)));
+                }
+            }
+        }
+
+        <span class="prelude-val">None
     </span>}
 }
 
