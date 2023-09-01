@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["WalletError"],"mod":["error"],"struct":["Wallet","WalletFileFormat"]};
+window.SIDEBAR_ITEMS = {"enum":["WalletError"],"mod":["error"],"struct":["Wallet"]};

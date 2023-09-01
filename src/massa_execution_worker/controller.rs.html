@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/controller.rs`."><title>controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0 (5680fa18f 2023-08-23)" data-channel="1.72.0" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/controller.rs`."><title>controller.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-a23c9d150ad85d8b.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (f4b80cacf 2023-06-30)" data-channel="nightly" data-search-js="search-91b58767224854cb.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -509,10 +509,10 @@
 <span class="kw">use </span><span class="kw">crate</span>::request_queue::{RequestQueue, RequestWithResponseSender};
 <span class="kw">use </span>massa_channel::MassaChannel;
 <span class="kw">use </span>massa_execution_exports::{
-    ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionConfig, ExecutionController,
-    ExecutionError, ExecutionManager, ExecutionQueryError, ExecutionQueryExecutionStatus,
-    ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionQueryResponse,
-    ExecutionQueryResponseItem, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionAddressInfo, ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager,
+    ExecutionQueryError, ExecutionQueryExecutionStatus, ExecutionQueryRequest,
+    ExecutionQueryRequestItem, ExecutionQueryResponse, ExecutionQueryResponseItem,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::execution::EventFilter;
@@ -521,6 +521,7 @@
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount, operation::OperationId};
 <span class="kw">use </span>massa_models::{block_id::BlockId, slot::Slot};
+<span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::fmt::Display;
@@ -536,7 +537,7 @@
     <span class="doccomment">/// new blockclique (if there is a new one)
     </span><span class="kw">pub </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
     <span class="doccomment">/// storage instances for previously unprocessed blocks
-    </span><span class="kw">pub </span>block_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
+    </span><span class="kw">pub </span>block_storage: PreHashMap&lt;BlockId, Storage&gt;,
     <span class="doccomment">/// queue for read-only execution requests and response MPSCs to send back their outputs
     </span><span class="kw">pub </span>readonly_requests: RequestQueue&lt;ReadOnlyExecutionRequest, ReadOnlyExecutionOutput&gt;,
 }
@@ -545,7 +546,7 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}, storage={:?}&quot;</span>,
+            <span class="string">&quot;stop={:?}, finalized={:?}, blockclique={:?}, readonly={:?}&quot;</span>,
             <span class="self">self</span>.stop,
             <span class="self">self</span>.finalized_blocks
                 .iter()
@@ -555,8 +556,7 @@
                 .iter()
                 .map(|(slot, id)| (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>id))
                 .collect::&lt;BTreeMap&lt;Slot, BlockId&gt;&gt;()),
-            <span class="self">self</span>.readonly_requests,
-            <span class="self">self</span>.block_metadata.keys().collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>BlockId&gt;&gt;(),
+            <span class="self">self</span>.readonly_requests
         )
     }
 }
@@ -568,7 +568,7 @@
             stop: Default::default(),
             finalized_blocks: Default::default(),
             new_blockclique: Default::default(),
-            block_metadata: Default::default(),
+            block_storage: Default::default(),
             readonly_requests: RequestQueue::new(config.max_final_events),
         }
     }
@@ -581,7 +581,7 @@
             stop: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.stop),
             finalized_blocks: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.finalized_blocks),
             new_blockclique: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.new_blockclique),
-            block_metadata: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.block_metadata),
+            block_storage: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.block_storage),
             readonly_requests: std::mem::replace(
                 <span class="kw-2">&amp;mut </span><span class="self">self</span>.readonly_requests,
                 RequestQueue::new(max_final_events),
@@ -606,18 +606,18 @@
     /// # Arguments
     /// * `finalized_blocks`: newly finalized blocks indexed by slot.
     /// * `blockclique`: new blockclique (if changed). Indexed by slot.
-    /// * `block_metadata`: storage instances and metadata for new blocks. Each storage owns refs to the block and its ops/endorsements.
+    /// * `block_storage`: storage instances for new blocks. Each one owns refs to the block and its ops/endorsements/parents.
     </span><span class="kw">fn </span>update_blockclique_status(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         finalized_blocks: HashMap&lt;Slot, BlockId&gt;,
         new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
-        block_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
+        block_storage: PreHashMap&lt;BlockId, Storage&gt;,
     ) {
         <span class="comment">// lock input data
         </span><span class="kw">let </span><span class="kw-2">mut </span>input_data = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
 
         <span class="comment">// extend block info
-        </span>input_data.block_metadata.extend(block_metadata);
+        </span>input_data.block_storage.extend(block_storage);
 
         <span class="comment">// extend finalized blocks
         </span>input_data.finalized_blocks.extend(finalized_blocks);
