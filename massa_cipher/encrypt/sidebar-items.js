@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["encrypt"]};
+window.SIDEBAR_ITEMS = {"fn":["encrypt"],"struct":["CipherData"]};
