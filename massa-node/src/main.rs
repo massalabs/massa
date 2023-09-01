@@ -1102,7 +1102,6 @@ fn configure_grpc(
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_addresses_per_request: settings.max_addresses_per_request,
         max_slot_ranges_per_request: settings.max_slot_ranges_per_request,
-        max_slot_ranges_length: settings.max_slot_ranges_length,
         max_block_ids_per_request: settings.max_block_ids_per_request,
         max_endorsement_ids_per_request: settings.max_endorsement_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,

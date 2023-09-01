@@ -108,7 +108,6 @@ async fn test_start_grpc_server() {
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_addresses_per_request: 50,
         max_slot_ranges_per_request: 50,
-        max_slot_ranges_length: 100,
         max_block_ids_per_request: 50,
         max_endorsement_ids_per_request: 100,
         max_operation_ids_per_request: 250,

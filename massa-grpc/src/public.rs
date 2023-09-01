@@ -600,13 +600,6 @@ pub(crate) fn get_selector_draws(
                                     s_slot, e_slot
                                 )));
                             }
-                            let s_slot_range_len = e_slot.period - s_slot.period;
-                            if s_slot_range_len > grpc.grpc_config.max_slot_ranges_length {
-                                return Err(GrpcError::InvalidArgument(format!(
-                                    "invalid slot range: slot range length {} is greater than {}",
-                                    s_slot_range_len, grpc.grpc_config.max_slot_ranges_length
-                                )));
-                            }
                         }
                     }
 
@@ -845,16 +838,9 @@ pub(crate) fn search_blocks(
                     let start_slot: Option<Slot> = s_range.start_slot.map(|s| s.into());
                     let end_slot: Option<Slot> = s_range.end_slot.map(|s| s.into());
 
-                    if start_slot.is_none() || end_slot.is_none() {
+                    if start_slot.is_none() && end_slot.is_none() {
                         return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot or end slot cannot be empty"
-                                .to_string(),
-                        ));
-                    };
-
-                    if start_slot.is_none() || end_slot.is_none() {
-                        return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot or end slot cannot be empty"
+                            "invalid slot range: start slot and end slot cannot be empty"
                                 .to_string(),
                         ));
                     };
@@ -865,13 +851,6 @@ pub(crate) fn search_blocks(
                                 return Err(GrpcError::InvalidArgument(format!(
                                     "invalid slot range: start slot {} is greater than end slot {}",
                                     s_slot, e_slot
-                                )));
-                            }
-                            let s_slot_range_len = e_slot.period - s_slot.period;
-                            if s_slot_range_len > grpc.grpc_config.max_slot_ranges_length {
-                                return Err(GrpcError::InvalidArgument(format!(
-                                    "invalid slot range: slot range length {} is greater than {}",
-                                    s_slot_range_len, grpc.grpc_config.max_slot_ranges_length
                                 )));
                             }
                         }
@@ -891,38 +870,28 @@ pub(crate) fn search_blocks(
         return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
     }
 
-    let slot_range_filter = match &slot_ranges_filter {
-        Some(slot_ranges) => {
-            let mut s_range: Option<SlotRange> = None;
-            for slot_range in slot_ranges {
-                s_range = s_range.and_then(|s| s.intersection(slot_range))
-            }
-
-            s_range
-        }
-        None => None,
-    };
-
     let mut res: Option<PreHashSet<BlockId>> = None;
 
     // filter by block ids
-    if let Some(mut f) = block_ids_filter {
-        let read_blocks = grpc.storage.read_blocks();
-        f.retain(|id: &BlockId| read_blocks.contains(id));
-        res = Some(f);
+    if let Some(mut b_ids) = block_ids_filter {
+        let read_lock = grpc.storage.read_blocks();
+        b_ids.retain(|id: &BlockId| read_lock.contains(id));
+
+        res = Some(b_ids);
     }
 
     // filter by addresses
     if let Some(addrs) = addresses_filter {
         let b_ids: PreHashSet<BlockId> = {
-            let read_blocks = grpc.storage.read_blocks();
-            let mut block_ids: PreHashSet<BlockId> = PreHashSet::default();
+            let read_lock = grpc.storage.read_blocks();
+            let mut b_ids: PreHashSet<BlockId> = PreHashSet::default();
             for addr in addrs {
-                if let Some(v) = read_blocks.get_blocks_created_by(&addr) {
-                    block_ids.extend(v.clone());
+                if let Some(addr_b_ids) = read_lock.get_blocks_created_by(&addr) {
+                    b_ids.extend(addr_b_ids.clone());
                 }
             }
-            block_ids
+
+            b_ids
         };
         if let Some(block_ids) = res.as_mut() {
             block_ids.extend(b_ids);
@@ -932,26 +901,23 @@ pub(crate) fn search_blocks(
     }
 
     // filter by slot ranges
-    if let Some(slot_range) = slot_range_filter {
-        let b_ids: PreHashSet<BlockId> = {
-            let read_blocks = grpc.storage.read_blocks();
-            let mut block_ids: PreHashSet<BlockId> = PreHashSet::default();
-            let mut cur_slot = slot_range.start_slot.unwrap();
+    if let Some(slot_ranges) = slot_ranges_filter {
+        let mut slot_start = Slot::new(0, 0); // inclusive
+        let mut slot_end = Slot::new(u64::MAX, grpc.grpc_config.thread_count - 1); // exclusive
+        for slot_range in &slot_ranges {
+            slot_start = slot_start.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
+            slot_end = slot_end.min(
+                slot_range
+                    .end_slot
+                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc.grpc_config.thread_count - 1)),
+            );
+        }
+        slot_end = slot_end.max(slot_start);
 
-            while slot_range.contains(cur_slot) {
-                if let Some(v) = read_blocks.get_blocks_by_slot(&cur_slot) {
-                    block_ids.extend(v.clone());
-                }
+        let read_lock = grpc.storage.read_blocks();
+        let b_ids: PreHashSet<BlockId> =
+            read_lock.aggregate_blocks_by_slot_range(slot_start..slot_end);
 
-                if let Ok(next_slot) = cur_slot.get_next_slot(grpc.grpc_config.thread_count) {
-                    cur_slot = next_slot;
-                } else {
-                    break;
-                }
-            }
-
-            block_ids
-        };
         if let Some(block_ids) = res.as_mut() {
             block_ids.extend(b_ids);
         } else {

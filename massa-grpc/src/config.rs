@@ -107,8 +107,6 @@ pub struct GrpcConfig {
     pub max_addresses_per_request: u32,
     /// max number of slot ranges that can be included in a single request
     pub max_slot_ranges_per_request: u32,
-    /// max length of slot ranges
-    pub max_slot_ranges_length: u64,
     /// max number of block ids that can be included in a single request
     pub max_block_ids_per_request: u32,
     /// max number of endorsement ids that can be included in a single request
