@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["HASH_PARAMS","NONCE_SIZE","SALT_SIZE","VERSION"]};
+window.SIDEBAR_ITEMS = {"constant":["HASH_PARAMS","NONCE_SIZE","SALT_SIZE"]};
