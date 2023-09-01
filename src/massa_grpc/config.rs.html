@@ -140,6 +140,14 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::KeyPair;
@@ -217,6 +225,8 @@
     </span><span class="kw">pub </span>max_datastore_value_length: u64,
     <span class="doccomment">/// max op datastore entry
     </span><span class="kw">pub </span>max_op_datastore_entry_count: u64,
+    <span class="doccomment">/// max op datastore entries per request
+    </span><span class="kw">pub </span>max_datastore_entries_per_request: u64,
     <span class="doccomment">/// max datastore key length
     </span><span class="kw">pub </span>max_op_datastore_key_length: u8,
     <span class="doccomment">/// max datastore value length
@@ -245,12 +255,18 @@
     </span><span class="kw">pub </span>max_denunciations_per_block_header: u32,
     <span class="doccomment">/// max number of addresses that can be included in a single request
     </span><span class="kw">pub </span>max_addresses_per_request: u32,
+    <span class="doccomment">/// max number of slot ranges that can be included in a single request
+    </span><span class="kw">pub </span>max_slot_ranges_per_request: u32,
+    <span class="doccomment">/// max length of slot ranges
+    </span><span class="kw">pub </span>max_slot_ranges_length: u64,
     <span class="doccomment">/// max number of block ids that can be included in a single request
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
     <span class="doccomment">/// max number of endorsement ids that can be included in a single request
     </span><span class="kw">pub </span>max_endorsement_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
+    <span class="doccomment">/// max number of filters that can be included in a single request
+    </span><span class="kw">pub </span>max_filters_per_request: u32,
     <span class="doccomment">/// certificate authority root path
     </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path

@@ -373,6 +373,14 @@
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -710,10 +718,18 @@
     </span><span class="kw">pub </span>max_block_ids_per_request: u32,
     <span class="doccomment">/// max number of addresses that can be included in a single request
     </span><span class="kw">pub </span>max_addresses_per_request: u32,
+    <span class="doccomment">/// max number of slot ranges that can be included in a single request
+    </span><span class="kw">pub </span>max_slot_ranges_per_request: u32,
+    <span class="doccomment">/// max length of slot ranges
+    </span><span class="kw">pub </span>max_slot_ranges_length: u64,
     <span class="doccomment">/// max number of endorsement ids that can be included in a single request
     </span><span class="kw">pub </span>max_endorsement_ids_per_request: u32,
     <span class="doccomment">/// max number of operation ids that can be included in a single request
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
+    <span class="doccomment">/// max op datastore entries per request
+    </span><span class="kw">pub </span>max_datastore_entries_per_request: u64,
+    <span class="doccomment">/// max number of filters that can be included in a single request
+    </span><span class="kw">pub </span>max_filters_per_request: u32,
     <span class="doccomment">/// certificate authority root path
     </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path
