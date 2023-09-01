@@ -548,8 +548,8 @@ pub(crate) fn get_selector_draws(
         )));
     }
 
-    let mut addresses: PreHashSet<Address> = PreHashSet::default();
-    let mut slot_ranges: HashSet<SlotRange> = HashSet::new();
+    let mut addresses_filter: Option<PreHashSet<Address>> = None;
+    let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
     // Get params filter from the request.
     for query in inner_req.filters.into_iter() {
         if let Some(filter) = query.filter {
@@ -561,6 +561,7 @@ pub(crate) fn get_selector_draws(
                             grpc.grpc_config.max_addresses_per_request
                         )));
                     }
+                    let addresses = addresses_filter.get_or_insert_with(PreHashSet::default);
                     for address in addrs.addresses {
                         addresses.insert(Address::from_str(&address).map_err(|_| {
                             GrpcError::InvalidArgument(format!("invalid address: {}", address))
@@ -568,6 +569,7 @@ pub(crate) fn get_selector_draws(
                     }
                 }
                 grpc_api::selector_draws_filter::Filter::SlotRange(s_range) => {
+                    let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
                     if slot_ranges.len() as u32 > grpc.grpc_config.max_slot_ranges_per_request {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
@@ -578,30 +580,21 @@ pub(crate) fn get_selector_draws(
                     let start_slot: Option<Slot> = s_range.start_slot.map(|s| s.into());
                     let end_slot: Option<Slot> = s_range.end_slot.map(|s| s.into());
 
-                    if start_slot.is_none() || end_slot.is_none() {
+                    if start_slot.is_none() && end_slot.is_none() {
                         return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot or end slot cannot be empty"
+                            "invalid slot range: start slot and end slot cannot be both empty"
                                 .to_string(),
                         ));
                     };
 
-                    if start_slot.is_none() || end_slot.is_none() {
-                        return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot or end slot cannot be empty"
-                                .to_string(),
-                        ));
+                    if let (Some(s_slot), Some(e_slot)) = (&start_slot, &end_slot) {
+                        if s_slot > e_slot {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "invalid slot range: start slot {} is greater than end slot {}",
+                                s_slot, e_slot
+                            )));
+                        };
                     };
-
-                    if let Some(s_slot) = &start_slot {
-                        if let Some(e_slot) = &end_slot {
-                            if s_slot > e_slot {
-                                return Err(GrpcError::InvalidArgument(format!(
-                                    "invalid slot range: start slot {} is greater than end slot {}",
-                                    s_slot, e_slot
-                                )));
-                            }
-                        }
-                    }
 
                     slot_ranges.insert(SlotRange {
                         start_slot,
@@ -612,62 +605,69 @@ pub(crate) fn get_selector_draws(
         }
     }
 
-    if slot_ranges.is_empty() {
-        return Err(GrpcError::InvalidArgument(
-            "at leat, one slot range is required".to_string(),
-        ));
-    }
+    // filter by slot ranges
+    let selection_draws: HashSet<SlotDraw> = if let Some(slot_ranges) = slot_ranges_filter {
+        if slot_ranges.is_empty() {
+            return Err(GrpcError::InvalidArgument(
+                "at least, one slot range is required".to_string(),
+            ));
+        }
 
-    let mut selection_draws: HashSet<SlotDraw> = HashSet::new();
+        let mut start_slot = Slot::new(0, 0); // inclusive
+        let mut end_slot = Slot::new(u64::MAX, grpc.grpc_config.thread_count - 1); // exclusive
+        for slot_range in &slot_ranges {
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
+            end_slot = end_slot.min(
+                slot_range
+                    .end_slot
+                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc.grpc_config.thread_count - 1)),
+            );
+        }
+        end_slot = end_slot.max(start_slot);
 
-    for slot_range in slot_ranges {
         // get future draws from selector
-        let s_range_selection_draws: HashSet<SlotDraw> = {
-            let slot_start = slot_range.start_slot.unwrap();
-            let slot_end = slot_range.end_slot.unwrap();
-            let restrict_to_addresses = if addresses.is_empty() {
-                None
-            } else {
-                Some(&addresses)
-            };
+        let mut restrict_to_addresses: Option<&PreHashSet<Address>> = None;
+        if let Some(addresses) = &addresses_filter {
+            if !addresses.is_empty() {
+                restrict_to_addresses = Some(addresses);
+            }
+        }
 
-            grpc.selector_controller
-                .get_available_selections_in_range(slot_start..=slot_end, restrict_to_addresses)
-                .unwrap_or_default()
-                .into_iter()
-                .map(|(v_slot, v_sel)| {
-                    let block_producer: Option<String> = if addresses.contains(&v_sel.producer) {
-                        Some(v_sel.producer.to_string())
-                    } else {
-                        None
-                    };
-                    let endorsement_producers: Vec<EndorsementDraw> = v_sel
-                        .endorsements
-                        .into_iter()
-                        .enumerate()
-                        .filter_map(|(index, endo_sel)| {
-                            if addresses.contains(&endo_sel) {
-                                Some(EndorsementDraw {
-                                    index: index as u64,
-                                    producer: endo_sel.to_string(),
-                                })
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
+        grpc.selector_controller
+            .get_available_selections_in_range(start_slot..=end_slot, restrict_to_addresses)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(v_slot, v_sel)| {
+                let block_producer: Option<String> = match restrict_to_addresses {
+                    Some(restrict_to_addrs) if !restrict_to_addrs.contains(&v_sel.producer) => None,
+                    _ => Some(v_sel.producer.to_string()),
+                };
 
-                    SlotDraw {
-                        slot: Some(v_slot),
-                        block_producer,
-                        endorsement_draws: endorsement_producers,
-                    }
-                })
-                .collect()
-        };
+                let endorsement_producers: Vec<EndorsementDraw> = v_sel
+                    .endorsements
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(index, endo_sel)| match restrict_to_addresses {
+                        Some(restrict_to_addrs) if !restrict_to_addrs.contains(&endo_sel) => None,
+                        _ => Some(EndorsementDraw {
+                            index: index as u64,
+                            producer: endo_sel.to_string(),
+                        }),
+                    })
+                    .collect();
 
-        selection_draws.extend(s_range_selection_draws);
-    }
+                SlotDraw {
+                    slot: Some(v_slot),
+                    block_producer,
+                    endorsement_draws: endorsement_producers,
+                }
+            })
+            .collect()
+    } else {
+        return Err(GrpcError::InvalidArgument(
+            "at least, one slot range is required".to_string(),
+        ));
+    };
 
     Ok(grpc_api::GetSelectorDrawsResponse {
         draws: selection_draws.into_iter().map(Into::into).collect(),
@@ -840,21 +840,19 @@ pub(crate) fn search_blocks(
 
                     if start_slot.is_none() && end_slot.is_none() {
                         return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot and end slot cannot be empty"
+                            "invalid slot range: start slot and end slot cannot be both empty"
                                 .to_string(),
                         ));
                     };
 
-                    if let Some(s_slot) = &start_slot {
-                        if let Some(e_slot) = &end_slot {
-                            if s_slot > e_slot {
-                                return Err(GrpcError::InvalidArgument(format!(
-                                    "invalid slot range: start slot {} is greater than end slot {}",
-                                    s_slot, e_slot
-                                )));
-                            }
-                        }
-                    }
+                    if let (Some(s_slot), Some(e_slot)) = (&start_slot, &end_slot) {
+                        if s_slot > e_slot {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "invalid slot range: start slot {} is greater than end slot {}",
+                                s_slot, e_slot
+                            )));
+                        };
+                    };
 
                     slot_ranges.insert(SlotRange {
                         start_slot,
@@ -902,21 +900,21 @@ pub(crate) fn search_blocks(
 
     // filter by slot ranges
     if let Some(slot_ranges) = slot_ranges_filter {
-        let mut slot_start = Slot::new(0, 0); // inclusive
-        let mut slot_end = Slot::new(u64::MAX, grpc.grpc_config.thread_count - 1); // exclusive
+        let mut start_slot = Slot::new(0, 0); // inclusive
+        let mut end_slot = Slot::new(u64::MAX, grpc.grpc_config.thread_count - 1); // exclusive
         for slot_range in &slot_ranges {
-            slot_start = slot_start.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
-            slot_end = slot_end.min(
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
+            end_slot = end_slot.min(
                 slot_range
                     .end_slot
                     .unwrap_or_else(|| Slot::new(u64::MAX, grpc.grpc_config.thread_count - 1)),
             );
         }
-        slot_end = slot_end.max(slot_start);
+        end_slot = end_slot.max(start_slot);
 
         let read_lock = grpc.storage.read_blocks();
         let b_ids: PreHashSet<BlockId> =
-            read_lock.aggregate_blocks_by_slot_range(slot_start..slot_end);
+            read_lock.aggregate_blocks_by_slot_range(start_slot..end_slot);
 
         if let Some(block_ids) = res.as_mut() {
             block_ids.extend(b_ids);

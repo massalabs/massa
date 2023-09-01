@@ -53,7 +53,7 @@ pub(crate) async fn new_operations(
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
             // Spawn a new task for sending new operations
-            let mut filters = match get_filter(request, grpc.grpc_config.clone()) {
+            let mut filters = match get_filter(request, &grpc.grpc_config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -92,7 +92,7 @@ pub(crate) async fn new_operations(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter(message, grpc.grpc_config.clone()) {
+                                        filters = match get_filter(message, &grpc.grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);
@@ -128,7 +128,10 @@ pub(crate) async fn new_operations(
 }
 
 // This function returns a filter from the request
-fn get_filter(request: NewOperationsRequest, grpc_config: GrpcConfig) -> Result<Filter, GrpcError> {
+fn get_filter(
+    request: NewOperationsRequest,
+    grpc_config: &GrpcConfig,
+) -> Result<Filter, GrpcError> {
     if request.filters.len() as u32 > grpc_config.max_filters_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many filters received. Only a maximum of {} filters are accepted per request",

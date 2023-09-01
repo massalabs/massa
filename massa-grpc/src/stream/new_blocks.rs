@@ -8,6 +8,7 @@ use futures_util::StreamExt;
 use massa_models::address::Address;
 use massa_models::block::SecureShareBlock;
 use massa_models::block_id::BlockId;
+use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use std::collections::HashSet;
 use std::io::ErrorKind;
@@ -54,7 +55,7 @@ pub(crate) async fn new_blocks(
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters = match get_filter(request, grpc.grpc_config.clone()) {
+            let mut filters = match get_filter(request, &grpc.grpc_config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -73,7 +74,7 @@ pub(crate) async fn new_blocks(
                         match event {
                             Ok(massa_block) => {
                                 // Check if the block should be sent
-                                if !should_send(&massa_block, &filters) {
+                                if !should_send(&massa_block, &filters, &grpc.grpc_config) {
                                     continue;
                                 }
                                 // Send the new block through the channel
@@ -93,7 +94,7 @@ pub(crate) async fn new_blocks(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter(message, grpc.grpc_config.clone()) {
+                                        filters = match get_filter(message, &grpc.grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);
@@ -145,7 +146,7 @@ pub(crate) async fn new_blocks(
 // This function returns a filter from the request
 fn get_filter(
     request: grpc_api::NewBlocksRequest,
-    grpc_config: GrpcConfig,
+    grpc_config: &GrpcConfig,
 ) -> Result<Filter, GrpcError> {
     if request.filters.len() as u32 > grpc_config.max_filters_per_request {
         return Err(GrpcError::InvalidArgument(format!(
@@ -186,7 +187,6 @@ fn get_filter(
                     }
 
                     let addresses = addresses_filter.get_or_insert_with(HashSet::new);
-
                     for address in addrs.addresses {
                         addresses.insert(Address::from_str(&address).map_err(|_| {
                             GrpcError::InvalidArgument(format!("invalid address: {}", address))
@@ -205,23 +205,21 @@ fn get_filter(
                     let start_slot = s_range.start_slot.map(|s| s.into());
                     let end_slot = s_range.end_slot.map(|s| s.into());
 
-                    if start_slot.is_none() & end_slot.is_none() {
+                    if start_slot.is_none() && end_slot.is_none() {
                         return Err(GrpcError::InvalidArgument(
                             "invalid slot range: start slot and end slot cannot be both empty"
                                 .to_string(),
                         ));
                     };
 
-                    if let Some(s_slot) = &start_slot {
-                        if let Some(e_slot) = &end_slot {
-                            if s_slot > e_slot {
-                                return Err(GrpcError::InvalidArgument(format!(
-                                    "invalid slot range: start slot {} is greater than end slot {}",
-                                    s_slot, e_slot
-                                )));
-                            }
-                        }
-                    }
+                    if let (Some(s_slot), Some(e_slot)) = (&start_slot, &end_slot) {
+                        if s_slot > e_slot {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "invalid slot range: start slot {} is greater than end slot {}",
+                                s_slot, e_slot
+                            )));
+                        };
+                    };
 
                     slot_ranges.insert(SlotRange {
                         start_slot,
@@ -240,7 +238,11 @@ fn get_filter(
 }
 
 // This function checks if the block should be sent
-fn should_send(signed_block: &SecureShareBlock, filters: &Filter) -> bool {
+fn should_send(
+    signed_block: &SecureShareBlock,
+    filters: &Filter,
+    grpc_config: &GrpcConfig,
+) -> bool {
     if let Some(block_ids) = &filters.block_ids {
         if !block_ids.contains(&signed_block.id) {
             return false;
@@ -254,16 +256,22 @@ fn should_send(signed_block: &SecureShareBlock, filters: &Filter) -> bool {
     }
 
     if let Some(slot_ranges) = &filters.slot_ranges {
-        return slot_ranges.iter().any(|slot_range| {
-            let start_slot_check = slot_range.start_slot.map_or(true, |start_slot| {
-                signed_block.content.header.content.slot >= start_slot
-            });
-            let end_slot_check = slot_range.end_slot.map_or(true, |end_slot| {
-                signed_block.content.header.content.slot <= end_slot
-            });
+        let mut start_slot = Slot::new(0, 0); // inclusive
+        let mut end_slot = Slot::new(u64::MAX, grpc_config.thread_count - 1); // exclusive
 
-            start_slot_check && end_slot_check
-        });
+        for slot_range in slot_ranges {
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
+            end_slot = end_slot.min(
+                slot_range
+                    .end_slot
+                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc_config.thread_count - 1)),
+            );
+        }
+        end_slot = end_slot.max(start_slot);
+        let current_slot = signed_block.content.header.content.slot;
+
+        return current_slot >= start_slot // inclusive
+            && current_slot < end_slot; // exclusive
     }
 
     true

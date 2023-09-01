@@ -6,6 +6,7 @@ use crate::server::MassaPublicGrpc;
 use crate::SlotRange;
 use futures_util::StreamExt;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
+use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{self as grpc_api, NewSlotExecutionOutputsRequest};
 use massa_proto_rs::massa::model::v1::{self as grpc_model};
 use std::collections::HashSet;
@@ -112,7 +113,7 @@ pub(crate) async fn new_slot_execution_outputs(
                     event = subscriber.recv() => {
                         match event {
                             Ok(massa_slot_execution_output) => {
-                                let slot_execution_output = filter_map(massa_slot_execution_output, &filters);
+                                let slot_execution_output = filter_map(massa_slot_execution_output, &filters, &grpc.grpc_config);
                                 // Check if the slot execution output should be sent
                                 if let Some(slot_execution_output) = slot_execution_output {
                                     // Send the new slot execution output through the channel
@@ -210,6 +211,7 @@ fn get_filter(
             match filter {
                 grpc_api::new_slot_execution_outputs_filter::Filter::Status(status) => {
                     let statuses = status_filter.get_or_insert_with(HashSet::new);
+                    // The limit is the number of valid enum values
                     if statuses.len() as u32 > 3 {
                         return Err(GrpcError::InvalidArgument(format!(
                             "too many statuses received. Only a maximum of {} statuses are accepted per request",
@@ -230,23 +232,21 @@ fn get_filter(
                     let start_slot = s_range.start_slot.map(|s| s.into());
                     let end_slot = s_range.end_slot.map(|s| s.into());
 
-                    if start_slot.is_none() & end_slot.is_none() {
+                    if start_slot.is_none() && end_slot.is_none() {
                         return Err(GrpcError::InvalidArgument(
                             "invalid slot range: start slot and end slot cannot be both empty"
                                 .to_string(),
                         ));
                     };
 
-                    if let Some(s_slot) = &start_slot {
-                        if let Some(e_slot) = &end_slot {
-                            if s_slot > e_slot {
-                                return Err(GrpcError::InvalidArgument(format!(
-                                    "invalid slot range: start slot {} is greater than end slot {}",
-                                    s_slot, e_slot
-                                )));
-                            }
-                        }
-                    }
+                    if let (Some(s_slot), Some(e_slot)) = (&start_slot, &end_slot) {
+                        if s_slot > e_slot {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "invalid slot range: start slot {} is greater than end slot {}",
+                                s_slot, e_slot
+                            )));
+                        };
+                    };
 
                     slot_ranges.insert(SlotRange {
                         start_slot,
@@ -343,6 +343,7 @@ fn get_filter(
 fn filter_map(
     slot_execution_output: SlotExecutionOutput,
     filters: &Filter,
+    grpc_config: &GrpcConfig,
 ) -> Option<SlotExecutionOutput> {
     match &slot_execution_output {
         SlotExecutionOutput::ExecutedSlot(e_output) => {
@@ -352,7 +353,8 @@ fn filter_map(
                     return None;
                 }
             }
-            filter_map_exec_output(e_output.clone(), filters).map(SlotExecutionOutput::ExecutedSlot)
+            filter_map_exec_output(e_output.clone(), filters, grpc_config)
+                .map(SlotExecutionOutput::ExecutedSlot)
         }
         SlotExecutionOutput::FinalizedSlot(e_output) => {
             let id = grpc_model::ExecutionOutputStatus::Final as i32;
@@ -361,7 +363,7 @@ fn filter_map(
                     return None;
                 }
             }
-            filter_map_exec_output(e_output.clone(), filters)
+            filter_map_exec_output(e_output.clone(), filters, grpc_config)
                 .map(SlotExecutionOutput::FinalizedSlot)
         }
     }
@@ -371,7 +373,28 @@ fn filter_map(
 fn filter_map_exec_output(
     mut exec_output: ExecutionOutput,
     filters: &Filter,
+    grpc_config: &GrpcConfig,
 ) -> Option<ExecutionOutput> {
+    if let Some(slot_ranges) = &filters.slot_ranges_filter {
+        let mut start_slot = Slot::new(0, 0); // inclusive
+        let mut end_slot = Slot::new(u64::MAX, grpc_config.thread_count - 1); // exclusive
+
+        for slot_range in slot_ranges {
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
+            end_slot = end_slot.min(
+                slot_range
+                    .end_slot
+                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc_config.thread_count - 1)),
+            );
+        }
+        end_slot = end_slot.max(start_slot);
+        let current_slot = exec_output.slot;
+
+        if current_slot < start_slot || current_slot >= end_slot {
+            return None;
+        }
+    }
+
     if let Some(slot_ranges) = &filters.slot_ranges_filter {
         let slot_changes_matches = slot_ranges.iter().any(|slot_range| {
             let start_slot_check = slot_range
