@@ -232,26 +232,12 @@ fn get_filter(
                     let start_slot = s_range.start_slot.map(|s| s.into());
                     let end_slot = s_range.end_slot.map(|s| s.into());
 
-                    if start_slot.is_none() && end_slot.is_none() {
-                        return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot and end slot cannot be both empty"
-                                .to_string(),
-                        ));
-                    };
-
-                    if let (Some(s_slot), Some(e_slot)) = (&start_slot, &end_slot) {
-                        if s_slot > e_slot {
-                            return Err(GrpcError::InvalidArgument(format!(
-                                "invalid slot range: start slot {} is greater than end slot {}",
-                                s_slot, e_slot
-                            )));
-                        };
-                    };
-
-                    slot_ranges.insert(SlotRange {
+                    let slot_range = SlotRange {
                         start_slot,
                         end_slot,
-                    });
+                    };
+                    slot_range.check()?;
+                    slot_ranges.insert(slot_range);
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => {
                     if let Some(filter) = filter.filter {

@@ -15,6 +15,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 
+use error::GrpcError;
 use massa_models::slot::Slot;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use std::hash::Hash;
@@ -47,6 +48,29 @@ pub struct SlotRange {
     start_slot: Option<Slot>,
     // End slot
     end_slot: Option<Slot>,
+}
+
+impl SlotRange {
+    /// Check if the slot range is valid
+    pub fn check(&self) -> Result<(), GrpcError> {
+        match (self.start_slot, self.end_slot) {
+            (None, None) => Err(GrpcError::InvalidArgument(
+                "Invalid slot range: both start slot and end slot are empty".to_string(),
+            )),
+            (Some(s_slot), Some(e_slot)) if s_slot > e_slot => {
+                Err(GrpcError::InvalidArgument(format!(
+                    "Invalid slot range: start slot {} is greater than end slot {}",
+                    s_slot, e_slot
+                )))
+            }
+            (Some(s_slot), Some(e_slot)) if s_slot < e_slot => Ok(()),
+            (Some(s_slot), Some(e_slot)) => Err(GrpcError::InvalidArgument(format!(
+                "Invalid slot range: start slot {} is equal to end slot {}",
+                s_slot, e_slot
+            ))),
+            _ => Ok(()),
+        }
+    }
 }
 
 // Slot draw

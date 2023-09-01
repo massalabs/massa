@@ -580,26 +580,12 @@ pub(crate) fn get_selector_draws(
                     let start_slot: Option<Slot> = s_range.start_slot.map(|s| s.into());
                     let end_slot: Option<Slot> = s_range.end_slot.map(|s| s.into());
 
-                    if start_slot.is_none() && end_slot.is_none() {
-                        return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot and end slot cannot be both empty"
-                                .to_string(),
-                        ));
-                    };
-
-                    if let (Some(s_slot), Some(e_slot)) = (&start_slot, &end_slot) {
-                        if s_slot > e_slot {
-                            return Err(GrpcError::InvalidArgument(format!(
-                                "invalid slot range: start slot {} is greater than end slot {}",
-                                s_slot, e_slot
-                            )));
-                        };
-                    };
-
-                    slot_ranges.insert(SlotRange {
+                    let slot_range = SlotRange {
                         start_slot,
                         end_slot,
-                    });
+                    };
+                    slot_range.check()?;
+                    slot_ranges.insert(slot_range);
                 }
             }
         }
@@ -838,26 +824,12 @@ pub(crate) fn search_blocks(
                     let start_slot: Option<Slot> = s_range.start_slot.map(|s| s.into());
                     let end_slot: Option<Slot> = s_range.end_slot.map(|s| s.into());
 
-                    if start_slot.is_none() && end_slot.is_none() {
-                        return Err(GrpcError::InvalidArgument(
-                            "invalid slot range: start slot and end slot cannot be both empty"
-                                .to_string(),
-                        ));
-                    };
-
-                    if let (Some(s_slot), Some(e_slot)) = (&start_slot, &end_slot) {
-                        if s_slot > e_slot {
-                            return Err(GrpcError::InvalidArgument(format!(
-                                "invalid slot range: start slot {} is greater than end slot {}",
-                                s_slot, e_slot
-                            )));
-                        };
-                    };
-
-                    slot_ranges.insert(SlotRange {
+                    let slot_range = SlotRange {
                         start_slot,
                         end_slot,
-                    });
+                    };
+                    slot_range.check()?;
+                    slot_ranges.insert(slot_range);
                 }
             }
         }
@@ -960,9 +932,9 @@ pub(crate) fn search_endorsements(
         )));
     }
 
-    let mut endorsement_ids_filter: Option<HashSet<EndorsementId>> = None;
-    let mut addresses_filter: Option<HashSet<Address>> = None;
-    let mut block_ids_filter: Option<HashSet<BlockId>> = None;
+    let mut endorsement_ids_filter: Option<PreHashSet<EndorsementId>> = None;
+    let mut addresses_filter: Option<PreHashSet<Address>> = None;
+    let mut block_ids_filter: Option<PreHashSet<BlockId>> = None;
 
     // Get params filter from the request.
     for query in inner_req.filters.into_iter() {
@@ -977,7 +949,8 @@ pub(crate) fn search_endorsements(
                             grpc.grpc_config.max_endorsement_ids_per_request
                         )));
                     }
-                    let endorsement_ids = endorsement_ids_filter.get_or_insert_with(HashSet::new);
+                    let endorsement_ids =
+                        endorsement_ids_filter.get_or_insert_with(PreHashSet::default);
                     for id in ids.endorsement_ids {
                         endorsement_ids.insert(EndorsementId::from_str(&id).map_err(|_| {
                             GrpcError::InvalidArgument(format!("invalid endorsement id: {}", id))
@@ -991,7 +964,7 @@ pub(crate) fn search_endorsements(
                             grpc.grpc_config.max_addresses_per_request
                         )));
                     }
-                    let addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                    let addresses = addresses_filter.get_or_insert_with(PreHashSet::default);
                     for address in addrs.addresses {
                         addresses.insert(Address::from_str(&address).map_err(|_| {
                             GrpcError::InvalidArgument(format!("invalid address: {}", address))
@@ -1005,7 +978,7 @@ pub(crate) fn search_endorsements(
                             grpc.grpc_config.max_block_ids_per_request
                         )));
                     }
-                    let block_ids = block_ids_filter.get_or_insert_with(HashSet::new);
+                    let block_ids = block_ids_filter.get_or_insert_with(PreHashSet::default);
                     for block_id in ids.block_ids {
                         block_ids.insert(BlockId::from_str(&block_id).map_err(|_| {
                             GrpcError::InvalidArgument(format!("invalid block id: {}", block_id))
@@ -1022,129 +995,86 @@ pub(crate) fn search_endorsements(
         return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
     }
 
-    let read_blocks = grpc.storage.read_blocks();
-    let read_endorsements = grpc.storage.read_endorsements();
+    let mut eds_ids: Option<PreHashSet<EndorsementId>> = None;
 
-    let storage_info: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> =
-        if let Some(endorsement_ids) = endorsement_ids_filter {
-            endorsement_ids
-                .into_iter()
-                .filter_map(|id| {
-                    let (wrapped_endorsement, block_ids) = match read_endorsements.get(&id) {
-                        Some(wrapped_endorsement) => {
-                            let block_ids = read_blocks
-                                .get_blocks_by_endorsement(&id)
-                                .cloned()
-                                .unwrap_or_default();
-
-                            (wrapped_endorsement, block_ids)
-                        }
-                        None => return None,
-                    };
-
-                    // check addresses filter
-                    if let Some(addresses) = &addresses_filter {
-                        if !addresses
-                            .iter()
-                            .any(|addr| wrapped_endorsement.content_creator_address.eq(addr))
-                        {
-                            return None;
-                        }
-                    }
-
-                    // check block ids filter
-                    if let Some(block_ids) = &block_ids_filter {
-                        if !block_ids.iter().any(|block_id| block_id.eq(block_id)) {
-                            return None;
-                        }
-                    }
-
-                    Some((wrapped_endorsement, block_ids))
-                })
-                .collect()
-        } else if let Some(addresses) = addresses_filter {
-            let mut result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = Vec::new();
-            for address in addresses.into_iter() {
-                if let Some(hash_set) = read_endorsements.get_endorsements_created_by(&address) {
-                    let addr_result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = hash_set
-                        .iter()
-                        .filter_map(|id| {
-                            let (wrapped_endorsement, block_ids) = match read_endorsements.get(id) {
-                                Some(wrapped_endorsement) => {
-                                    let block_ids = read_blocks
-                                        .get_blocks_by_endorsement(id)
-                                        .cloned()
-                                        .unwrap_or_default();
-
-                                    (wrapped_endorsement, block_ids)
-                                }
-                                None => return None,
-                            };
-
-                            // check block ids filter
-                            if let Some(block_ids) = &block_ids_filter {
-                                if !block_ids.iter().any(|block_id| block_id.eq(block_id)) {
-                                    return None;
-                                }
-                            }
-
-                            Some((wrapped_endorsement, block_ids))
-                        })
-                        .collect();
-
-                    result.extend_from_slice(&addr_result);
-                } else {
-                    return Err(GrpcError::InvalidArgument(format!(
-                        "no endorsement found for address: {}",
-                        address
-                    )));
-                }
-            }
-
-            result
-        } else if let Some(block_ids) = block_ids_filter {
-            let mut result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> = Vec::new();
-            for block_id in block_ids {
-                if let Some(wrapped_block) = read_blocks.get(&block_id) {
-                    let block_result: Vec<(&SecureShareEndorsement, PreHashSet<BlockId>)> =
-                        wrapped_block
-                            .content
-                            .header
-                            .content
-                            .endorsements
-                            .iter()
-                            .map(|wrapped_endorsement| {
-                                let mut block_ids_set: PreHashSet<BlockId> = PreHashSet::default();
-                                block_ids_set.insert(block_id);
-                                (wrapped_endorsement, block_ids_set)
-                            })
-                            .collect();
-
-                    result.extend_from_slice(&block_result);
-                } else {
-                    return Err(GrpcError::InvalidArgument(format!(
-                        "no endorsement found for block id: {}",
-                        block_id
-                    )));
-                }
-            }
-
-            result
-        } else {
-            Vec::new()
-        };
-
-    if storage_info.is_empty() {
-        return Ok(grpc_api::SearchEndorsementsResponse {
-            endorsement_infos: Vec::new(),
-        });
+    // filter by endorsement ids
+    if let Some(mut e_ids) = endorsement_ids_filter {
+        let read_lock = grpc.storage.read_endorsements();
+        e_ids.retain(|id: &EndorsementId| read_lock.contains(id));
+        eds_ids = Some(e_ids);
     }
 
+    // filter by addresses
+    if let Some(addrs) = addresses_filter {
+        let e_ids: PreHashSet<EndorsementId> = {
+            let mut e_ids: PreHashSet<EndorsementId> = PreHashSet::default();
+            let read_lock = grpc.storage.read_endorsements();
+            for addr in addrs {
+                if let Some(addr_e_ids) = read_lock.get_endorsements_created_by(&addr) {
+                    e_ids.extend(addr_e_ids.clone());
+                }
+            }
+
+            e_ids
+        };
+        if let Some(endorsement_ids) = eds_ids.as_mut() {
+            endorsement_ids.extend(e_ids);
+        } else {
+            eds_ids = Some(e_ids)
+        }
+    }
+
+    // filter by block ids
+    if let Some(b_ids) = block_ids_filter {
+        let mut e_ids: PreHashSet<EndorsementId> = PreHashSet::default();
+        let read_lock = grpc.storage.read_blocks();
+        for block_id in b_ids {
+            if let Some(wrapped_block) = read_lock.get(&block_id) {
+                let b_endorsements: PreHashSet<EndorsementId> = wrapped_block
+                    .content
+                    .header
+                    .content
+                    .endorsements
+                    .iter()
+                    .map(|wrapped_endorsement| wrapped_endorsement.id)
+                    .collect();
+                e_ids.extend(&b_endorsements);
+            }
+        }
+
+        if let Some(endorsement_ids) = eds_ids.as_mut() {
+            endorsement_ids.extend(e_ids);
+        } else {
+            eds_ids = Some(e_ids)
+        }
+    }
+
+    let storage_info: Vec<(EndorsementId, PreHashSet<BlockId>)> = {
+        let read_blocks_lock = grpc.storage.read_blocks();
+        if let Some(endorsement_ids) = eds_ids {
+            endorsement_ids
+                .into_iter()
+                .map(|id| {
+                    let block_ids = read_blocks_lock
+                        .get_blocks_by_endorsement(&id)
+                        .cloned()
+                        .unwrap_or_default();
+
+                    (id, block_ids)
+                })
+                .collect()
+        } else {
+            return Ok(grpc_api::SearchEndorsementsResponse {
+                endorsement_infos: Vec::new(),
+            });
+        }
+    };
+
     // keep only the endorsements found in storage
-    let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
+    let e_ids: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| *ed).collect();
 
     // ask pool whether it carries the endorsements
-    let in_pool = grpc.pool_controller.contains_endorsements(&eds);
+    let in_pool = grpc.pool_controller.contains_endorsements(&e_ids);
 
     let consensus_controller = grpc.consensus_controller.clone();
 
@@ -1173,13 +1103,14 @@ pub(crate) fn search_endorsements(
     };
 
     // gather all values into a vector of EndorsementInfo instances
-    let mut res: Vec<grpc_model::EndorsementInfo> = Vec::with_capacity(eds.len());
+    let mut res: Vec<grpc_model::EndorsementInfo> = Vec::with_capacity(e_ids.len());
     let zipped_iterator = izip!(
         storage_info.into_iter(),
         in_pool.into_iter(),
         is_final.into_iter()
     );
-    for ((endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
+
+    for ((e_id, in_blocks), in_pool, is_final) in zipped_iterator {
         res.push(grpc_model::EndorsementInfo {
             in_pool,
             is_final,
@@ -1187,7 +1118,7 @@ pub(crate) fn search_endorsements(
                 .into_iter()
                 .map(|block_id| block_id.to_string())
                 .collect(),
-            endorsement_id: endorsement.id.to_string(),
+            endorsement_id: e_id.to_string(),
         });
     }
 
@@ -1267,14 +1198,14 @@ pub(crate) fn search_operations(
     if let Some(addrs) = addresses_filter {
         let o_ids: PreHashSet<OperationId> = {
             let read_lock = grpc.storage.read_operations();
-            let mut b_ids: PreHashSet<OperationId> = PreHashSet::default();
+            let mut o_ids: PreHashSet<OperationId> = PreHashSet::default();
             for addr in addrs {
-                if let Some(addr_b_ids) = read_lock.get_operations_created_by(&addr) {
-                    b_ids.extend(addr_b_ids.clone());
+                if let Some(addr_o_ids) = read_lock.get_operations_created_by(&addr) {
+                    o_ids.extend(addr_o_ids.clone());
                 }
             }
 
-            b_ids
+            o_ids
         };
         if let Some(operation_ids) = ops_ids.as_mut() {
             operation_ids.extend(o_ids);
