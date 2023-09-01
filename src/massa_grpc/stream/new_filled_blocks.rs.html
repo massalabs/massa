@@ -265,6 +265,15 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -276,6 +285,7 @@
 <span class="kw">use </span>massa_models::block_header::BlockHeader;
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::secure_share::SecureShare;
+<span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
 <span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::io::ErrorKind;
@@ -322,7 +332,7 @@
 
     tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>filters = <span class="kw">match </span>get_filter(request, grpc.grpc_config.clone()) {
+            <span class="kw">let </span><span class="kw-2">mut </span>filters = <span class="kw">match </span>get_filter(request, <span class="kw-2">&amp;</span>grpc.grpc_config) {
                 <span class="prelude-val">Ok</span>(filter) =&gt; filter,
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;failed to get filter: {}&quot;</span>, err);
@@ -341,7 +351,7 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(massa_filled_block) =&gt; {
                                 <span class="comment">// Check if the block should be sent
-                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>massa_filled_block.header, <span class="kw-2">&amp;</span>filters) {
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>massa_filled_block.header, <span class="kw-2">&amp;</span>filters, <span class="kw-2">&amp;</span>grpc.grpc_config) {
                                     <span class="kw">continue</span>;
                                 }
                                 <span class="comment">// Send the new filled block through the channel
@@ -362,7 +372,7 @@
                             <span class="kw">match </span>res {
                                 <span class="prelude-val">Ok</span>(message) =&gt; {
                                     <span class="comment">// Update current filter
-                                    </span>filters = <span class="kw">match </span>get_filter(message, grpc.grpc_config.clone()) {
+                                    </span>filters = <span class="kw">match </span>get_filter(message, <span class="kw-2">&amp;</span>grpc.grpc_config) {
                                         <span class="prelude-val">Ok</span>(filter) =&gt; filter,
                                         <span class="prelude-val">Err</span>(err) =&gt; {
                                             <span class="macro">error!</span>(<span class="string">&quot;failed to get filter: {}&quot;</span>, err);
@@ -411,7 +421,7 @@
 <span class="comment">// This function returns a filter from the request
 </span><span class="kw">fn </span>get_filter(
     request: grpc_api::NewFilledBlocksRequest,
-    grpc_config: GrpcConfig,
+    grpc_config: <span class="kw-2">&amp;</span>GrpcConfig,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Filter, GrpcError&gt; {
     <span class="kw">if </span>request.filters.len() <span class="kw">as </span>u32 &gt; grpc_config.max_filters_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
@@ -469,23 +479,21 @@
                     <span class="kw">let </span>start_slot = s_range.start_slot.map(|s| s.into());
                     <span class="kw">let </span>end_slot = s_range.end_slot.map(|s| s.into());
 
-                    <span class="kw">if </span>start_slot.is_none() &amp; end_slot.is_none() {
+                    <span class="kw">if </span>start_slot.is_none() &amp;&amp; end_slot.is_none() {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
                             <span class="string">&quot;invalid slot range: start slot and end slot cannot be both empty&quot;
                                 </span>.to_string(),
                         ));
                     };
 
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(s_slot) = <span class="kw-2">&amp;</span>start_slot {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(e_slot) = <span class="kw-2">&amp;</span>end_slot {
-                            <span class="kw">if </span>s_slot &gt; e_slot {
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                    <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
-                                    s_slot, e_slot
-                                )));
-                            }
-                        }
-                    }
+                    <span class="kw">if let </span>(<span class="prelude-val">Some</span>(s_slot), <span class="prelude-val">Some</span>(e_slot)) = (<span class="kw-2">&amp;</span>start_slot, <span class="kw-2">&amp;</span>end_slot) {
+                        <span class="kw">if </span>s_slot &gt; e_slot {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                                <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
+                                s_slot, e_slot
+                            )));
+                        };
+                    };
 
                     slot_ranges.insert(SlotRange {
                         start_slot,
@@ -504,31 +512,41 @@
 }
 
 <span class="comment">// This function checks if the block should be sent
-</span><span class="kw">fn </span>should_send(signed_block: <span class="kw-2">&amp;</span>SecureShare&lt;BlockHeader, BlockId&gt;, filters: <span class="kw-2">&amp;</span>Filter) -&gt; bool {
+</span><span class="kw">fn </span>should_send(
+    signed_block_header: <span class="kw-2">&amp;</span>SecureShare&lt;BlockHeader, BlockId&gt;,
+    filters: <span class="kw-2">&amp;</span>Filter,
+    grpc_config: <span class="kw-2">&amp;</span>GrpcConfig,
+) -&gt; bool {
     <span class="kw">if let </span><span class="prelude-val">Some</span>(block_ids) = <span class="kw-2">&amp;</span>filters.block_ids {
-        <span class="kw">if </span>!block_ids.contains(<span class="kw-2">&amp;</span>signed_block.id) {
+        <span class="kw">if </span>!block_ids.contains(<span class="kw-2">&amp;</span>signed_block_header.id) {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
     }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(addresses) = <span class="kw-2">&amp;</span>filters.addresses {
-        <span class="kw">if </span>!addresses.contains(<span class="kw-2">&amp;</span>signed_block.content_creator_address) {
+        <span class="kw">if </span>!addresses.contains(<span class="kw-2">&amp;</span>signed_block_header.content_creator_address) {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
     }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(slot_ranges) = <span class="kw-2">&amp;</span>filters.slot_ranges {
-        <span class="kw">return </span>slot_ranges.iter().any(|slot_range| {
-            <span class="kw">let </span>start_slot_check = slot_range
-                .start_slot
-                .map_or(<span class="bool-val">true</span>, |start_slot| signed_block.content.slot &gt;= start_slot);
-            <span class="kw">let </span>end_slot_check = slot_range
-                .end_slot
-                .map_or(<span class="bool-val">true</span>, |end_slot| signed_block.content.slot &lt;= end_slot);
+        <span class="kw">let </span><span class="kw-2">mut </span>start_slot = Slot::new(<span class="number">0</span>, <span class="number">0</span>); <span class="comment">// inclusive
+        </span><span class="kw">let </span><span class="kw-2">mut </span>end_slot = Slot::new(u64::MAX, grpc_config.thread_count - <span class="number">1</span>); <span class="comment">// exclusive
 
-            start_slot_check &amp;&amp; end_slot_check
-        });
-    }
+        </span><span class="kw">for </span>slot_range <span class="kw">in </span>slot_ranges {
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>)));
+            end_slot = end_slot.min(
+                slot_range
+                    .end_slot
+                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc_config.thread_count - <span class="number">1</span>)),
+            );
+        }
+        end_slot = end_slot.max(start_slot);
+        <span class="kw">let </span>current_slot = signed_block_header.content.slot;
+
+        <span class="kw">return </span>current_slot &gt;= start_slot <span class="comment">// inclusive
+            </span>&amp;&amp; current_slot &lt; end_slot; <span class="comment">// exclusive
+    </span>}
 
     <span class="bool-val">true
 </span>}

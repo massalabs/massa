@@ -1336,8 +1336,6 @@
 <a href="#1336" id="1336">1336</a>
 <a href="#1337" id="1337">1337</a>
 <a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1888,8 +1886,8 @@
         )));
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>addresses: PreHashSet&lt;Address&gt; = PreHashSet::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>slot_ranges: HashSet&lt;SlotRange&gt; = HashSet::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>addresses_filter: <span class="prelude-ty">Option</span>&lt;PreHashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>slot_ranges_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;SlotRange&gt;&gt; = <span class="prelude-val">None</span>;
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>inner_req.filters.into_iter() {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = query.filter {
@@ -1901,6 +1899,7 @@
                             grpc.grpc_config.max_addresses_per_request
                         )));
                     }
+                    <span class="kw">let </span>addresses = addresses_filter.get_or_insert_with(PreHashSet::default);
                     <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
                         addresses.insert(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, address))
@@ -1908,6 +1907,7 @@
                     }
                 }
                 grpc_api::selector_draws_filter::Filter::SlotRange(s_range) =&gt; {
+                    <span class="kw">let </span>slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
                     <span class="kw">if </span>slot_ranges.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_slot_ranges_per_request {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
                             <span class="string">&quot;too many slot ranges received. Only a maximum of {} slot ranges are accepted per request&quot;</span>,
@@ -1918,30 +1918,21 @@
                     <span class="kw">let </span>start_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt; = s_range.start_slot.map(|s| s.into());
                     <span class="kw">let </span>end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt; = s_range.end_slot.map(|s| s.into());
 
-                    <span class="kw">if </span>start_slot.is_none() || end_slot.is_none() {
+                    <span class="kw">if </span>start_slot.is_none() &amp;&amp; end_slot.is_none() {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                            <span class="string">&quot;invalid slot range: start slot or end slot cannot be empty&quot;
+                            <span class="string">&quot;invalid slot range: start slot and end slot cannot be both empty&quot;
                                 </span>.to_string(),
                         ));
                     };
 
-                    <span class="kw">if </span>start_slot.is_none() || end_slot.is_none() {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                            <span class="string">&quot;invalid slot range: start slot or end slot cannot be empty&quot;
-                                </span>.to_string(),
-                        ));
+                    <span class="kw">if let </span>(<span class="prelude-val">Some</span>(s_slot), <span class="prelude-val">Some</span>(e_slot)) = (<span class="kw-2">&amp;</span>start_slot, <span class="kw-2">&amp;</span>end_slot) {
+                        <span class="kw">if </span>s_slot &gt; e_slot {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                                <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
+                                s_slot, e_slot
+                            )));
+                        };
                     };
-
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(s_slot) = <span class="kw-2">&amp;</span>start_slot {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(e_slot) = <span class="kw-2">&amp;</span>end_slot {
-                            <span class="kw">if </span>s_slot &gt; e_slot {
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                    <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
-                                    s_slot, e_slot
-                                )));
-                            }
-                        }
-                    }
 
                     slot_ranges.insert(SlotRange {
                         start_slot,
@@ -1952,62 +1943,69 @@
         }
     }
 
-    <span class="kw">if </span>slot_ranges.is_empty() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-            <span class="string">&quot;at leat, one slot range is required&quot;</span>.to_string(),
-        ));
-    }
+    <span class="comment">// filter by slot ranges
+    </span><span class="kw">let </span>selection_draws: HashSet&lt;SlotDraw&gt; = <span class="kw">if let </span><span class="prelude-val">Some</span>(slot_ranges) = slot_ranges_filter {
+        <span class="kw">if </span>slot_ranges.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+                <span class="string">&quot;at least, one slot range is required&quot;</span>.to_string(),
+            ));
+        }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>selection_draws: HashSet&lt;SlotDraw&gt; = HashSet::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>start_slot = Slot::new(<span class="number">0</span>, <span class="number">0</span>); <span class="comment">// inclusive
+        </span><span class="kw">let </span><span class="kw-2">mut </span>end_slot = Slot::new(u64::MAX, grpc.grpc_config.thread_count - <span class="number">1</span>); <span class="comment">// exclusive
+        </span><span class="kw">for </span>slot_range <span class="kw">in </span><span class="kw-2">&amp;</span>slot_ranges {
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>)));
+            end_slot = end_slot.min(
+                slot_range
+                    .end_slot
+                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc.grpc_config.thread_count - <span class="number">1</span>)),
+            );
+        }
+        end_slot = end_slot.max(start_slot);
 
-    <span class="kw">for </span>slot_range <span class="kw">in </span>slot_ranges {
         <span class="comment">// get future draws from selector
-        </span><span class="kw">let </span>s_range_selection_draws: HashSet&lt;SlotDraw&gt; = {
-            <span class="kw">let </span>slot_start = slot_range.start_slot.unwrap();
-            <span class="kw">let </span>slot_end = slot_range.end_slot.unwrap();
-            <span class="kw">let </span>restrict_to_addresses = <span class="kw">if </span>addresses.is_empty() {
-                <span class="prelude-val">None
-            </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>addresses)
-            };
+        </span><span class="kw">let </span><span class="kw-2">mut </span>restrict_to_addresses: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PreHashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(addresses) = <span class="kw-2">&amp;</span>addresses_filter {
+            <span class="kw">if </span>!addresses.is_empty() {
+                restrict_to_addresses = <span class="prelude-val">Some</span>(addresses);
+            }
+        }
 
-            grpc.selector_controller
-                .get_available_selections_in_range(slot_start..=slot_end, restrict_to_addresses)
-                .unwrap_or_default()
-                .into_iter()
-                .map(|(v_slot, v_sel)| {
-                    <span class="kw">let </span>block_producer: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="kw">if </span>addresses.contains(<span class="kw-2">&amp;</span>v_sel.producer) {
-                        <span class="prelude-val">Some</span>(v_sel.producer.to_string())
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
-                    </span>};
-                    <span class="kw">let </span>endorsement_producers: Vec&lt;EndorsementDraw&gt; = v_sel
-                        .endorsements
-                        .into_iter()
-                        .enumerate()
-                        .filter_map(|(index, endo_sel)| {
-                            <span class="kw">if </span>addresses.contains(<span class="kw-2">&amp;</span>endo_sel) {
-                                <span class="prelude-val">Some</span>(EndorsementDraw {
-                                    index: index <span class="kw">as </span>u64,
-                                    producer: endo_sel.to_string(),
-                                })
-                            } <span class="kw">else </span>{
-                                <span class="prelude-val">None
-                            </span>}
-                        })
-                        .collect();
+        grpc.selector_controller
+            .get_available_selections_in_range(start_slot..=end_slot, restrict_to_addresses)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(v_slot, v_sel)| {
+                <span class="kw">let </span>block_producer: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="kw">match </span>restrict_to_addresses {
+                    <span class="prelude-val">Some</span>(restrict_to_addrs) <span class="kw">if </span>!restrict_to_addrs.contains(<span class="kw-2">&amp;</span>v_sel.producer) =&gt; <span class="prelude-val">None</span>,
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(v_sel.producer.to_string()),
+                };
 
-                    SlotDraw {
-                        slot: <span class="prelude-val">Some</span>(v_slot),
-                        block_producer,
-                        endorsement_draws: endorsement_producers,
-                    }
-                })
-                .collect()
-        };
+                <span class="kw">let </span>endorsement_producers: Vec&lt;EndorsementDraw&gt; = v_sel
+                    .endorsements
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(index, endo_sel)| <span class="kw">match </span>restrict_to_addresses {
+                        <span class="prelude-val">Some</span>(restrict_to_addrs) <span class="kw">if </span>!restrict_to_addrs.contains(<span class="kw-2">&amp;</span>endo_sel) =&gt; <span class="prelude-val">None</span>,
+                        <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(EndorsementDraw {
+                            index: index <span class="kw">as </span>u64,
+                            producer: endo_sel.to_string(),
+                        }),
+                    })
+                    .collect();
 
-        selection_draws.extend(s_range_selection_draws);
-    }
+                SlotDraw {
+                    slot: <span class="prelude-val">Some</span>(v_slot),
+                    block_producer,
+                    endorsement_draws: endorsement_producers,
+                }
+            })
+            .collect()
+    } <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+            <span class="string">&quot;at least, one slot range is required&quot;</span>.to_string(),
+        ));
+    };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetSelectorDrawsResponse {
         draws: selection_draws.into_iter().map(Into::into).collect(),
@@ -2180,21 +2178,19 @@
 
                     <span class="kw">if </span>start_slot.is_none() &amp;&amp; end_slot.is_none() {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                            <span class="string">&quot;invalid slot range: start slot and end slot cannot be empty&quot;
+                            <span class="string">&quot;invalid slot range: start slot and end slot cannot be both empty&quot;
                                 </span>.to_string(),
                         ));
                     };
 
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(s_slot) = <span class="kw-2">&amp;</span>start_slot {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(e_slot) = <span class="kw-2">&amp;</span>end_slot {
-                            <span class="kw">if </span>s_slot &gt; e_slot {
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                    <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
-                                    s_slot, e_slot
-                                )));
-                            }
-                        }
-                    }
+                    <span class="kw">if let </span>(<span class="prelude-val">Some</span>(s_slot), <span class="prelude-val">Some</span>(e_slot)) = (<span class="kw-2">&amp;</span>start_slot, <span class="kw-2">&amp;</span>end_slot) {
+                        <span class="kw">if </span>s_slot &gt; e_slot {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                                <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
+                                s_slot, e_slot
+                            )));
+                        };
+                    };
 
                     slot_ranges.insert(SlotRange {
                         start_slot,
@@ -2242,21 +2238,21 @@
 
     <span class="comment">// filter by slot ranges
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(slot_ranges) = slot_ranges_filter {
-        <span class="kw">let </span><span class="kw-2">mut </span>slot_start = Slot::new(<span class="number">0</span>, <span class="number">0</span>); <span class="comment">// inclusive
-        </span><span class="kw">let </span><span class="kw-2">mut </span>slot_end = Slot::new(u64::MAX, grpc.grpc_config.thread_count - <span class="number">1</span>); <span class="comment">// exclusive
+        <span class="kw">let </span><span class="kw-2">mut </span>start_slot = Slot::new(<span class="number">0</span>, <span class="number">0</span>); <span class="comment">// inclusive
+        </span><span class="kw">let </span><span class="kw-2">mut </span>end_slot = Slot::new(u64::MAX, grpc.grpc_config.thread_count - <span class="number">1</span>); <span class="comment">// exclusive
         </span><span class="kw">for </span>slot_range <span class="kw">in </span><span class="kw-2">&amp;</span>slot_ranges {
-            slot_start = slot_start.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>)));
-            slot_end = slot_end.min(
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>)));
+            end_slot = end_slot.min(
                 slot_range
                     .end_slot
                     .unwrap_or_else(|| Slot::new(u64::MAX, grpc.grpc_config.thread_count - <span class="number">1</span>)),
             );
         }
-        slot_end = slot_end.max(slot_start);
+        end_slot = end_slot.max(start_slot);
 
         <span class="kw">let </span>read_lock = grpc.storage.read_blocks();
         <span class="kw">let </span>b_ids: PreHashSet&lt;BlockId&gt; =
-            read_lock.aggregate_blocks_by_slot_range(slot_start..slot_end);
+            read_lock.aggregate_blocks_by_slot_range(start_slot..end_slot);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(block_ids) = res.as_mut() {
             block_ids.extend(b_ids);
