@@ -1208,8 +1208,8 @@ pub(crate) fn search_operations(
             grpc.grpc_config.max_filters_per_request
         )));
     }
-    let mut operation_ids_filter: Option<HashSet<OperationId>> = None;
-    let mut addresses_filter: Option<HashSet<Address>> = None;
+    let mut operation_ids_filter: Option<PreHashSet<OperationId>> = None;
+    let mut addresses_filter: Option<PreHashSet<Address>> = None;
 
     // Get params filter from the request.
     for query in inner_req.filters.into_iter() {
@@ -1224,7 +1224,8 @@ pub(crate) fn search_operations(
                             grpc.grpc_config.max_block_ids_per_request
                         )));
                     }
-                    let operation_ids = operation_ids_filter.get_or_insert_with(HashSet::new);
+                    let operation_ids =
+                        operation_ids_filter.get_or_insert_with(PreHashSet::default);
                     for id in ids.operation_ids {
                         operation_ids.insert(OperationId::from_str(&id).map_err(|_| {
                             GrpcError::InvalidArgument(format!("invalid operation id: {}", id))
@@ -1238,7 +1239,7 @@ pub(crate) fn search_operations(
                             grpc.grpc_config.max_addresses_per_request
                         )));
                     }
-                    let addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                    let addresses = addresses_filter.get_or_insert_with(PreHashSet::default);
                     for address in addrs.addresses {
                         addresses.insert(Address::from_str(&address).map_err(|_| {
                             GrpcError::InvalidArgument(format!("invalid address: {}", address))
@@ -1253,58 +1254,45 @@ pub(crate) fn search_operations(
         return Err(GrpcError::InvalidArgument("no filter provided".to_string()));
     }
 
-    let read_blocks = grpc.storage.read_blocks();
-    let read_ops = grpc.storage.read_operations();
+    let mut ops_ids: Option<PreHashSet<OperationId>> = None;
 
-    let operations = if let Some(operation_ids) = operation_ids_filter {
-        // Get the operations and the list of blocks that contain them from storage
-        let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
-            .iter()
-            .filter_map(|ope_id| {
-                read_ops.get(ope_id).map(|secure_share| {
-                    let block_ids = read_blocks
-                        .get_blocks_by_operation(ope_id)
-                        .map(|hashset| hashset.iter().cloned().collect::<HashSet<BlockId>>())
-                        .unwrap_or_default();
+    // filter by operation ids
+    if let Some(mut o_ids) = operation_ids_filter {
+        let read_lock = grpc.storage.read_operations();
+        o_ids.retain(|id: &OperationId| read_lock.contains(id));
+        ops_ids = Some(o_ids);
+    }
 
-                    (secure_share, block_ids)
-                })
-            })
-            .collect();
-
-        let operations: Vec<grpc_model::OperationInfo> = storage_info
-            .into_iter()
-            .filter_map(|secure_share| {
-                let (secure_share, block_ids) = secure_share;
-
-                if let Some(addresses) = &addresses_filter {
-                    if !addresses.is_empty()
-                        && !addresses.contains(&secure_share.content_creator_address)
-                    {
-                        return None;
-                    }
+    // filter by addresses
+    if let Some(addrs) = addresses_filter {
+        let o_ids: PreHashSet<OperationId> = {
+            let read_lock = grpc.storage.read_operations();
+            let mut b_ids: PreHashSet<OperationId> = PreHashSet::default();
+            for addr in addrs {
+                if let Some(addr_b_ids) = read_lock.get_operations_created_by(&addr) {
+                    b_ids.extend(addr_b_ids.clone());
                 }
+            }
 
-                Some(grpc_model::OperationInfo {
-                    id: secure_share.id.to_string(),
-                    thread: secure_share
-                        .content_creator_address
-                        .get_thread(grpc.grpc_config.thread_count)
-                        as u32,
-                    block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
-                })
-            })
-            .collect();
-        operations
-    } else if let Some(addresses) = addresses_filter {
-        let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = addresses
-            .iter()
-            .flat_map(|address| read_ops.get_operations_created_by(address))
-            .flatten()
+            b_ids
+        };
+        if let Some(operation_ids) = ops_ids.as_mut() {
+            operation_ids.extend(o_ids);
+        } else {
+            ops_ids = Some(o_ids)
+        }
+    }
+
+    let operations: Vec<grpc_model::OperationInfo> = if let Some(operation_ids) = ops_ids {
+        // Get the operations and the list of blocks that contain them from storage
+        let read_ops_lock = grpc.storage.read_operations();
+        let read_blocks_lock = grpc.storage.read_blocks();
+        let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
+            .into_iter()
             .filter_map(|ope_id| {
-                read_ops.get(ope_id).map(|secure_share| {
-                    let block_ids = read_blocks
-                        .get_blocks_by_operation(ope_id)
+                read_ops_lock.get(&ope_id).map(|secure_share| {
+                    let block_ids = read_blocks_lock
+                        .get_blocks_by_operation(&ope_id)
                         .map(|hashset| hashset.iter().cloned().collect::<HashSet<BlockId>>())
                         .unwrap_or_default();
 
@@ -1313,7 +1301,7 @@ pub(crate) fn search_operations(
             })
             .collect();
 
-        let operations: Vec<grpc_model::OperationInfo> = storage_info
+        storage_info
             .into_iter()
             .map(|secure_share| {
                 let (secure_share, block_ids) = secure_share;
@@ -1326,8 +1314,7 @@ pub(crate) fn search_operations(
                     block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
                 }
             })
-            .collect();
-        operations
+            .collect()
     } else {
         Vec::new()
     };
