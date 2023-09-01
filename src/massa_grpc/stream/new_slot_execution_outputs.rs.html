@@ -430,20 +430,6 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -678,26 +664,12 @@
                     <span class="kw">let </span>start_slot = s_range.start_slot.map(|s| s.into());
                     <span class="kw">let </span>end_slot = s_range.end_slot.map(|s| s.into());
 
-                    <span class="kw">if </span>start_slot.is_none() &amp;&amp; end_slot.is_none() {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                            <span class="string">&quot;invalid slot range: start slot and end slot cannot be both empty&quot;
-                                </span>.to_string(),
-                        ));
-                    };
-
-                    <span class="kw">if let </span>(<span class="prelude-val">Some</span>(s_slot), <span class="prelude-val">Some</span>(e_slot)) = (<span class="kw-2">&amp;</span>start_slot, <span class="kw-2">&amp;</span>end_slot) {
-                        <span class="kw">if </span>s_slot &gt; e_slot {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
-                                s_slot, e_slot
-                            )));
-                        };
-                    };
-
-                    slot_ranges.insert(SlotRange {
+                    <span class="kw">let </span>slot_range = SlotRange {
                         start_slot,
                         end_slot,
-                    });
+                    };
+                    slot_range.check()<span class="question-mark">?</span>;
+                    slot_ranges.insert(slot_range);
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter.filter {

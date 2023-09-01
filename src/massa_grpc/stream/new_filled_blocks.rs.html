@@ -260,20 +260,6 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -479,26 +465,12 @@
                     <span class="kw">let </span>start_slot = s_range.start_slot.map(|s| s.into());
                     <span class="kw">let </span>end_slot = s_range.end_slot.map(|s| s.into());
 
-                    <span class="kw">if </span>start_slot.is_none() &amp;&amp; end_slot.is_none() {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                            <span class="string">&quot;invalid slot range: start slot and end slot cannot be both empty&quot;
-                                </span>.to_string(),
-                        ));
-                    };
-
-                    <span class="kw">if let </span>(<span class="prelude-val">Some</span>(s_slot), <span class="prelude-val">Some</span>(e_slot)) = (<span class="kw-2">&amp;</span>start_slot, <span class="kw-2">&amp;</span>end_slot) {
-                        <span class="kw">if </span>s_slot &gt; e_slot {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                                <span class="string">&quot;invalid slot range: start slot {} is greater than end slot {}&quot;</span>,
-                                s_slot, e_slot
-                            )));
-                        };
-                    };
-
-                    slot_ranges.insert(SlotRange {
+                    <span class="kw">let </span>slot_range = SlotRange {
                         start_slot,
                         end_slot,
-                    });
+                    };
+                    slot_range.check()<span class="question-mark">?</span>;
+                    slot_ranges.insert(slot_range);
                 }
             }
         }
