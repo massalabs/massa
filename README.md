@@ -32,8 +32,8 @@ Here is a list of tools to easily build applications on the Massa blockchain:
 - [Examples of applications](https://github.com/massalabs/massa-sc-examples) built on Massa.
 - [Explorer](https://test.massa.net).
 - [Interactive API specification](https://playground.open-rpc.org/?schemaUrl=https://test.massa.net/api/v2&uiSchema\[appBar\]\[ui:input\]=false&uiSchema\[appBar\]\[ui:inputPlaceholder\]=Enter+Massa+JSON-RPC+server+URL&uiSchema\[appBar\]\[ui:logoUrl\]=https://massa.net/favicons/favicon.ico&uiSchema\[appBar\]\[ui:splitView\]=false&uiSchema\[appBar\]\[ui:darkMode\]=false&uiSchema\[appBar\]\[ui:title\]=Massa&uiSchema\[appBar\]\[ui:examplesDropdown\]=false&uiSchema\[methods\]\[ui:defaultExpanded\]=false&uiSchema\[methods\]\[ui:methodPlugins\]=true&uiSchema\[params\]\[ui:defaultExpanded\]=false).
-- [Lots of documentation](https://docs.massa.net), from [web3 development](https://docs.massa.net/en/latest/web3-dev/smart-contracts.html)
-  to [Massa's architecture](https://docs.massa.net/en/latest/general-doc/architecture.html).
+- [Lots of documentation](https://docs.massa.net), from [web3 development](https://docs.massa.net/docs/build/home)
+  to [Massa's architecture](https://docs.massa.net/docs/learn/home).
 
 ## Join the Testnet
 
