@@ -75,6 +75,8 @@ pub struct GrpcConfig {
     pub max_datastore_value_length: u64,
     /// max op datastore entry
     pub max_op_datastore_entry_count: u64,
+    /// max op datastore entries per request
+    pub max_datastore_entries_per_request: u64,
     /// max datastore key length
     pub max_op_datastore_key_length: u8,
     /// max datastore value length
@@ -103,12 +105,18 @@ pub struct GrpcConfig {
     pub max_denunciations_per_block_header: u32,
     /// max number of addresses that can be included in a single request
     pub max_addresses_per_request: u32,
+    /// max number of slot ranges that can be included in a single request
+    pub max_slot_ranges_per_request: u32,
+    /// max length of slot ranges
+    pub max_slot_ranges_length: u64,
     /// max number of block ids that can be included in a single request
     pub max_block_ids_per_request: u32,
     /// max number of endorsement ids that can be included in a single request
     pub max_endorsement_ids_per_request: u32,
     /// max number of operation ids that can be included in a single request
     pub max_operation_ids_per_request: u32,
+    /// max number of filters that can be included in a single request
+    pub max_filters_per_request: u32,
     /// certificate authority root path
     pub certificate_authority_root_path: PathBuf,
     /// server certificate path

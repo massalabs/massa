@@ -1,11 +1,19 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use crate::config::GrpcConfig;
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
+use crate::SlotRange;
 use futures_util::StreamExt;
+use massa_models::address::Address;
+use massa_models::block_header::BlockHeader;
+use massa_models::block_id::BlockId;
+use massa_models::secure_share::SecureShare;
 use massa_proto_rs::massa::api::v1 as grpc_api;
+use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::pin::Pin;
+use std::str::FromStr;
 use tokio::select;
 use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
@@ -20,6 +28,17 @@ pub type NewFilledBlocksStreamType = Pin<
     >,
 >;
 
+// Type declaration for NewFilledBlocksFilter
+#[derive(Clone, Debug)]
+struct Filter {
+    // Block ids to filter
+    block_ids: Option<HashSet<BlockId>>,
+    // Addresses to filter
+    addresses: Option<HashSet<Address>>,
+    // Slot range to filter
+    slot_ranges: Option<HashSet<SlotRange>>,
+}
+
 /// Creates a new stream of new produced and received filled blocks
 pub(crate) async fn new_filled_blocks(
     grpc: &MassaPublicGrpc,
@@ -31,55 +50,218 @@ pub(crate) async fn new_filled_blocks(
     let mut in_stream = request.into_inner();
     // Subscribe to the new filled blocks channel
     let mut subscriber = grpc.consensus_channels.filled_block_sender.subscribe();
+    // Clone grpc to be able to use it in the spawned task
+    let grpc = grpc.clone();
 
     tokio::spawn(async move {
-        loop {
-            select! {
-                // Receive a new filled block from the subscriber
-                 event = subscriber.recv() => {
-                    match event {
-                        Ok(massa_filled_block) => {
-                            // Send the new filled block through the channel
-                            if let Err(e) = tx.send(Ok(grpc_api::NewFilledBlocksResponse {
-                                    filled_block: Some(massa_filled_block.into())
-                            })).await {
-                                error!("failed to send new block : {}", e);
-                                break;
-                            }
-                        },
-                        Err(e) => error!("error on receive new block : {}", e)
+        if let Some(Ok(request)) = in_stream.next().await {
+            let mut filters = match get_filter(request, grpc.grpc_config.clone()) {
+                Ok(filter) => filter,
+                Err(err) => {
+                    error!("failed to get filter: {}", err);
+                    // Send the error response back to the client
+                    if let Err(e) = tx.send(Err(err.into())).await {
+                        error!("failed to send back NewFilledBlocks error response: {}", e);
                     }
-                },
-            // Receive a new message from the in_stream
-            res = in_stream.next() => {
-                match res {
-                    Some(res) => {
-                        if let Err(err) = res {
-                                // Check if the error matches any IO errors
-                                if let Some(io_err) = match_for_io_error(&err) {
-                                    if io_err.kind() == ErrorKind::BrokenPipe {
-                                        warn!("client disconnected, broken pipe: {}", io_err);
+                    return;
+                }
+            };
+
+            loop {
+                select! {
+                    // Receive a new filled block from the subscriber
+                     event = subscriber.recv() => {
+                        match event {
+                            Ok(massa_filled_block) => {
+                                // Check if the block should be sent
+                                if !should_send(&massa_filled_block.header, &filters) {
+                                    continue;
+                                }
+                                // Send the new filled block through the channel
+                                if let Err(e) = tx.send(Ok(grpc_api::NewFilledBlocksResponse {
+                                        filled_block: Some(massa_filled_block.into())
+                                })).await {
+                                    error!("failed to send new filled block : {}", e);
+                                    break;
+                                }
+                            },
+                            Err(e) => error!("error on receive new filled block : {}", e)
+                        }
+                    },
+                // Receive a new message from the in_stream
+                res = in_stream.next() => {
+                    match res {
+                        Some(res) => {
+                            match res {
+                                Ok(message) => {
+                                    // Update current filter
+                                    filters = match get_filter(message, grpc.grpc_config.clone()) {
+                                        Ok(filter) => filter,
+                                        Err(err) => {
+                                            error!("failed to get filter: {}", err);
+                                            // Send the error response back to the client
+                                            if let Err(e) = tx.send(Err(err.into())).await {
+                                                error!("failed to send back NewFilledBlocks error response: {}", e);
+                                            }
+                                            return;
+                                        }
+                                    };
+                                },
+                                Err(err) => {
+                                    // Check if the error matches any IO errors
+                                    if let Some(io_err) = match_for_io_error(&err) {
+                                        if io_err.kind() == ErrorKind::BrokenPipe {
+                                            warn!("client disconnected, broken pipe: {}", io_err);
+                                            break;
+                                        }
+                                    }
+                                    error!("{}", err);
+                                    // Send the error response back to the client
+                                    if let Err(e) = tx.send(Err(err)).await {
+                                        error!("failed to send back NewFilledBlocks error response: {}", e);
                                         break;
                                     }
                                 }
-                                error!("{}", err);
-                                // Send the error response back to the client
-                                if let Err(e) = tx.send(Err(err)).await {
-                                    error!("failed to send back new_filled_blocks error response: {}", e);
-                                    break;
-                                }
                         }
                     },
-                    None => {
-                        // The client has disconnected
-                        break;
-                    },
+                        None => {
+                            // The client has disconnected
+                            break;
+                        },
+                    }
+                }
                 }
             }
-            }
+        } else {
+            error!("empty request");
         }
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     Ok(Box::pin(out_stream) as NewFilledBlocksStreamType)
+}
+
+// This function returns a filter from the request
+fn get_filter(
+    request: grpc_api::NewFilledBlocksRequest,
+    grpc_config: GrpcConfig,
+) -> Result<Filter, GrpcError> {
+    if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+        return Err(GrpcError::InvalidArgument(format!(
+            "too many filters received. Only a maximum of {} filters are accepted per request",
+            grpc_config.max_filters_per_request
+        )));
+    }
+
+    let mut block_ids_filter: Option<HashSet<BlockId>> = None;
+    let mut addresses_filter: Option<HashSet<Address>> = None;
+    let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
+
+    // Get params filter from the request.
+    for query in request.filters.into_iter() {
+        if let Some(filter) = query.filter {
+            match filter {
+                grpc_api::new_blocks_filter::Filter::BlockIds(ids) => {
+                    if ids.block_ids.len() as u32 > grpc_config.max_block_ids_per_request {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many block ids received. Only a maximum of {} block ids are accepted per request",
+                            grpc_config.max_block_ids_per_request
+                        )));
+                    }
+                    let block_ids = block_ids_filter.get_or_insert_with(HashSet::new);
+                    for block_id in ids.block_ids {
+                        block_ids.insert(BlockId::from_str(&block_id).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid block id: {}", block_id))
+                        })?);
+                    }
+                }
+                grpc_api::new_blocks_filter::Filter::Addresses(addrs) => {
+                    if addrs.addresses.len() as u32 > grpc_config.max_addresses_per_request {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many addresses received. Only a maximum of {} addresses are accepted per request",
+                         grpc_config.max_addresses_per_request
+                        )));
+                    }
+
+                    let addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                    for address in addrs.addresses {
+                        addresses.insert(Address::from_str(&address).map_err(|_| {
+                            GrpcError::InvalidArgument(format!("invalid address: {}", address))
+                        })?);
+                    }
+                }
+                grpc_api::new_blocks_filter::Filter::SlotRange(s_range) => {
+                    let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
+                    if slot_ranges.len() as u32 > grpc_config.max_slot_ranges_per_request {
+                        return Err(GrpcError::InvalidArgument(format!(
+                            "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
+                         grpc_config.max_slot_ranges_per_request
+                        )));
+                    }
+
+                    let start_slot = s_range.start_slot.map(|s| s.into());
+                    let end_slot = s_range.end_slot.map(|s| s.into());
+
+                    if start_slot.is_none() & end_slot.is_none() {
+                        return Err(GrpcError::InvalidArgument(
+                            "invalid slot range: start slot and end slot cannot be both empty"
+                                .to_string(),
+                        ));
+                    };
+
+                    if let Some(s_slot) = &start_slot {
+                        if let Some(e_slot) = &end_slot {
+                            if s_slot > e_slot {
+                                return Err(GrpcError::InvalidArgument(format!(
+                                    "invalid slot range: start slot {} is greater than end slot {}",
+                                    s_slot, e_slot
+                                )));
+                            }
+                        }
+                    }
+
+                    slot_ranges.insert(SlotRange {
+                        start_slot,
+                        end_slot,
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(Filter {
+        block_ids: block_ids_filter,
+        addresses: addresses_filter,
+        slot_ranges: slot_ranges_filter,
+    })
+}
+
+// This function checks if the block should be sent
+fn should_send(signed_block: &SecureShare<BlockHeader, BlockId>, filters: &Filter) -> bool {
+    if let Some(block_ids) = &filters.block_ids {
+        if !block_ids.contains(&signed_block.id) {
+            return false;
+        }
+    }
+
+    if let Some(addresses) = &filters.addresses {
+        if !addresses.contains(&signed_block.content_creator_address) {
+            return false;
+        }
+    }
+
+    if let Some(slot_ranges) = &filters.slot_ranges {
+        return slot_ranges.iter().any(|slot_range| {
+            let start_slot_check = slot_range
+                .start_slot
+                .map_or(true, |start_slot| signed_block.content.slot >= start_slot);
+            let end_slot_check = slot_range
+                .end_slot
+                .map_or(true, |end_slot| signed_block.content.slot <= end_slot);
+
+            start_slot_check && end_slot_check
+        });
+    }
+
+    true
 }
