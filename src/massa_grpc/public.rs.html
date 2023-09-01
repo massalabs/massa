@@ -1323,19 +1323,6 @@
 <a href="#1323" id="1323">1323</a>
 <a href="#1324" id="1324">1324</a>
 <a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2546,8 +2533,8 @@
             grpc.grpc_config.max_filters_per_request
         )));
     }
-    <span class="kw">let </span><span class="kw-2">mut </span>operation_ids_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;OperationId&gt;&gt; = <span class="prelude-val">None</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>addresses_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>operation_ids_filter: <span class="prelude-ty">Option</span>&lt;PreHashSet&lt;OperationId&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>addresses_filter: <span class="prelude-ty">Option</span>&lt;PreHashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
 
     <span class="comment">// Get params filter from the request.
     </span><span class="kw">for </span>query <span class="kw">in </span>inner_req.filters.into_iter() {
@@ -2562,7 +2549,8 @@
                             grpc.grpc_config.max_block_ids_per_request
                         )));
                     }
-                    <span class="kw">let </span>operation_ids = operation_ids_filter.get_or_insert_with(HashSet::new);
+                    <span class="kw">let </span>operation_ids =
+                        operation_ids_filter.get_or_insert_with(PreHashSet::default);
                     <span class="kw">for </span>id <span class="kw">in </span>ids.operation_ids {
                         operation_ids.insert(OperationId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid operation id: {}&quot;</span>, id))
@@ -2576,7 +2564,7 @@
                             grpc.grpc_config.max_addresses_per_request
                         )));
                     }
-                    <span class="kw">let </span>addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                    <span class="kw">let </span>addresses = addresses_filter.get_or_insert_with(PreHashSet::default);
                     <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
                         addresses.insert(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
                             GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;invalid address: {}&quot;</span>, address))
@@ -2591,58 +2579,45 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="string">&quot;no filter provided&quot;</span>.to_string()));
     }
 
-    <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
-    <span class="kw">let </span>read_ops = grpc.storage.read_operations();
+    <span class="kw">let </span><span class="kw-2">mut </span>ops_ids: <span class="prelude-ty">Option</span>&lt;PreHashSet&lt;OperationId&gt;&gt; = <span class="prelude-val">None</span>;
 
-    <span class="kw">let </span>operations = <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_ids) = operation_ids_filter {
-        <span class="comment">// Get the operations and the list of blocks that contain them from storage
-        </span><span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = operation_ids
-            .iter()
-            .filter_map(|ope_id| {
-                read_ops.get(ope_id).map(|secure_share| {
-                    <span class="kw">let </span>block_ids = read_blocks
-                        .get_blocks_by_operation(ope_id)
-                        .map(|hashset| hashset.iter().cloned().collect::&lt;HashSet&lt;BlockId&gt;&gt;())
-                        .unwrap_or_default();
+    <span class="comment">// filter by operation ids
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>o_ids) = operation_ids_filter {
+        <span class="kw">let </span>read_lock = grpc.storage.read_operations();
+        o_ids.retain(|id: <span class="kw-2">&amp;</span>OperationId| read_lock.contains(id));
+        ops_ids = <span class="prelude-val">Some</span>(o_ids);
+    }
 
-                    (secure_share, block_ids)
-                })
-            })
-            .collect();
-
-        <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationInfo&gt; = storage_info
-            .into_iter()
-            .filter_map(|secure_share| {
-                <span class="kw">let </span>(secure_share, block_ids) = secure_share;
-
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(addresses) = <span class="kw-2">&amp;</span>addresses_filter {
-                    <span class="kw">if </span>!addresses.is_empty()
-                        &amp;&amp; !addresses.contains(<span class="kw-2">&amp;</span>secure_share.content_creator_address)
-                    {
-                        <span class="kw">return </span><span class="prelude-val">None</span>;
-                    }
+    <span class="comment">// filter by addresses
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(addrs) = addresses_filter {
+        <span class="kw">let </span>o_ids: PreHashSet&lt;OperationId&gt; = {
+            <span class="kw">let </span>read_lock = grpc.storage.read_operations();
+            <span class="kw">let </span><span class="kw-2">mut </span>b_ids: PreHashSet&lt;OperationId&gt; = PreHashSet::default();
+            <span class="kw">for </span>addr <span class="kw">in </span>addrs {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(addr_b_ids) = read_lock.get_operations_created_by(<span class="kw-2">&amp;</span>addr) {
+                    b_ids.extend(addr_b_ids.clone());
                 }
+            }
 
-                <span class="prelude-val">Some</span>(grpc_model::OperationInfo {
-                    id: secure_share.id.to_string(),
-                    thread: secure_share
-                        .content_creator_address
-                        .get_thread(grpc.grpc_config.thread_count)
-                        <span class="kw">as </span>u32,
-                    block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
-                })
-            })
-            .collect();
-        operations
-    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(addresses) = addresses_filter {
-        <span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = addresses
-            .iter()
-            .flat_map(|address| read_ops.get_operations_created_by(address))
-            .flatten()
+            b_ids
+        };
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_ids) = ops_ids.as_mut() {
+            operation_ids.extend(o_ids);
+        } <span class="kw">else </span>{
+            ops_ids = <span class="prelude-val">Some</span>(o_ids)
+        }
+    }
+
+    <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationInfo&gt; = <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_ids) = ops_ids {
+        <span class="comment">// Get the operations and the list of blocks that contain them from storage
+        </span><span class="kw">let </span>read_ops_lock = grpc.storage.read_operations();
+        <span class="kw">let </span>read_blocks_lock = grpc.storage.read_blocks();
+        <span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = operation_ids
+            .into_iter()
             .filter_map(|ope_id| {
-                read_ops.get(ope_id).map(|secure_share| {
-                    <span class="kw">let </span>block_ids = read_blocks
-                        .get_blocks_by_operation(ope_id)
+                read_ops_lock.get(<span class="kw-2">&amp;</span>ope_id).map(|secure_share| {
+                    <span class="kw">let </span>block_ids = read_blocks_lock
+                        .get_blocks_by_operation(<span class="kw-2">&amp;</span>ope_id)
                         .map(|hashset| hashset.iter().cloned().collect::&lt;HashSet&lt;BlockId&gt;&gt;())
                         .unwrap_or_default();
 
@@ -2651,7 +2626,7 @@
             })
             .collect();
 
-        <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationInfo&gt; = storage_info
+        storage_info
             .into_iter()
             .map(|secure_share| {
                 <span class="kw">let </span>(secure_share, block_ids) = secure_share;
@@ -2664,8 +2639,7 @@
                     block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
                 }
             })
-            .collect();
-        operations
+            .collect()
     } <span class="kw">else </span>{
         Vec::new()
     };
