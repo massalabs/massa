@@ -5,6 +5,7 @@ use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::block::{BlockDeserializer, BlockDeserializerArgs, SecureShareBlock};
 use massa_models::error::ModelsError;
+use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{DeserializeError, Deserializer};
@@ -46,11 +47,21 @@ pub(crate) async fn send_blocks(
         while let Some(result) = in_stream.next().await {
             match result {
                 Ok(req_content) => {
-                    if req_content.block.is_empty() {
+                    let Some(proto_block) = req_content.block else {
                         report_error(
                             tx.clone(),
                             tonic::Code::InvalidArgument,
                             "the request payload is empty".to_owned(),
+                        )
+                        .await;
+                        continue;
+                    };
+
+                    let Ok(blk_serialized) = secure_share_to_vec(proto_block) else {
+                        report_error(
+                            tx.clone(),
+                            tonic::Code::InvalidArgument,
+                            "failed to convert block secure share".to_owned(),
                         )
                         .await;
                         continue;
@@ -67,7 +78,7 @@ pub(crate) async fn send_blocks(
                     };
                     // Deserialize and verify received block in the incoming message
                     match SecureShareDeserializer::new(BlockDeserializer::new(args))
-                        .deserialize::<DeserializeError>(&req_content.block)
+                        .deserialize::<DeserializeError>(&blk_serialized)
                     {
                         Ok(tuple) => {
                             let (rest, res_block): (&[u8], SecureShareBlock) = tuple;
