@@ -2486,7 +2486,8 @@ mod tests {
             events[3].data
         );
 
-        // Length of the value left in the datastore. See sources for more context.
+        // Length of the key and value left in the datastore. See sources for more context.
+        let key_len = (key_a.len() + key_b.len()) as u64;
         let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
 
         assert_eq!(
@@ -2499,12 +2500,19 @@ mod tests {
                 .unwrap()
                 // Gas fee
                 .saturating_sub(Amount::const_init(10, 0))
-                // Storage cost key
+                // Storage cost base
                 .saturating_sub(
                     exec_cfg
                         .storage_costs_constants
                         .ledger_cost_per_byte
                         .saturating_mul_u64(2 * LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+                )
+                // Storage cost key
+                .saturating_sub(
+                    exec_cfg
+                        .storage_costs_constants
+                        .ledger_cost_per_byte
+                        .saturating_mul_u64(key_len)
                 )
                 // Storage cost value
                 .saturating_sub(

@@ -477,7 +477,9 @@ impl SpeculativeLedger {
     ) -> Result<Amount, ExecutionError> {
         // Base cost, charged for each datastore entry.
         // This accounts for small entries that still take space in practice.
-        let base_cost = self.storage_costs_constants.ledger_entry_base_cost;
+        let base_cost = self
+            .storage_costs_constants
+            .ledger_entry_datastore_base_cost;
 
         // key cost
         let key_cost = self
