@@ -14,6 +14,7 @@ use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use tracing::debug;
@@ -528,33 +529,37 @@ impl SpeculativeLedger {
         // compute the old storage cost of the entry
         let old_storage_cost = old_key_value.map_or_else(
             || Ok(Amount::zero()),
-            |(old_key, old_value)| self.get_storage_cost_datastore_entry(&old_key, &old_value),
+            |(old_key, old_value)| self.get_storage_cost_datastore_entry(old_key, old_value),
         )?;
 
         // compute the new storage cost of the entry
         let new_storage_cost = new_key_value.map_or_else(
             || Ok(Amount::zero()),
-            |(new_key, new_value)| self.get_storage_cost_datastore_entry(&new_key, &new_value),
+            |(new_key, new_value)| self.get_storage_cost_datastore_entry(new_key, new_value),
         )?;
 
         // charge the difference
-        if new_storage_cost > old_storage_cost {
-            // more bytes are now occupied
-            self.transfer_coins(
-                Some(*caller_addr),
-                None,
-                new_storage_cost.saturating_sub(old_storage_cost),
-            )
-        } else if new_storage_cost < old_storage_cost {
-            // some bytes have been freed
-            self.transfer_coins(
-                None,
-                Some(*caller_addr),
-                old_storage_cost.saturating_sub(new_storage_cost),
-            )
-        } else {
-            // no change
-            Ok(())
+        match new_storage_cost.cmp(&old_storage_cost) {
+            Ordering::Greater => {
+                // more bytes are now occupied
+                self.transfer_coins(
+                    Some(*caller_addr),
+                    None,
+                    new_storage_cost.saturating_sub(old_storage_cost),
+                )
+            }
+            Ordering::Less => {
+                // some bytes have been freed
+                self.transfer_coins(
+                    None,
+                    Some(*caller_addr),
+                    old_storage_cost.saturating_sub(new_storage_cost),
+                )
+            }
+            Ordering::Equal => {
+                // no change
+                Ok(())
+            }
         }
         .map_err(|err| {
             ExecutionError::RuntimeError(format!(
