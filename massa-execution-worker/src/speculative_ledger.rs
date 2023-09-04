@@ -14,6 +14,7 @@ use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use tracing::debug;
@@ -469,8 +470,34 @@ impl SpeculativeLedger {
         })
     }
 
-    fn get_storage_cost_datastore_value(&self, value: &Vec<u8>) -> Result<Amount, ExecutionError> {
-        self.storage_costs_constants
+    /// Compute the storage costs of a full datastore entry
+    fn get_storage_cost_datastore_entry(
+        &self,
+        key: &[u8],
+        value: &[u8],
+    ) -> Result<Amount, ExecutionError> {
+        // Base cost, charged for each datastore entry.
+        // This accounts for small entries that still take space in practice.
+        let base_cost = self
+            .storage_costs_constants
+            .ledger_entry_datastore_base_cost;
+
+        // key cost
+        let key_cost = self
+            .storage_costs_constants
+            .ledger_cost_per_byte
+            .checked_mul_u64(key.len().try_into().map_err(|_| {
+                ExecutionError::RuntimeError("key in datastore is too big".to_string())
+            })?)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(
+                    "overflow when calculating storage cost for datastore key".to_string(),
+                )
+            })?;
+
+        // value cost
+        let value_cost = self
+            .storage_costs_constants
             .ledger_cost_per_byte
             .checked_mul_u64(value.len().try_into().map_err(|_| {
                 ExecutionError::RuntimeError("value in datastore is too big".to_string())
@@ -479,7 +506,67 @@ impl SpeculativeLedger {
                 ExecutionError::RuntimeError(
                     "overflow when calculating storage cost for datastore value".to_string(),
                 )
+            })?;
+
+        // total cost
+        base_cost
+            .checked_add(key_cost)
+            .and_then(|c| c.checked_add(value_cost))
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(
+                    "overflow when calculating storage cost for datastore key/value".to_string(),
+                )
             })
+    }
+
+    /// Charge the storage costs of a datastore entry change, if any.
+    fn charge_datastore_entry_change_storage(
+        &mut self,
+        caller_addr: &Address,
+        old_key_value: Option<(&[u8], &[u8])>,
+        new_key_value: Option<(&[u8], &[u8])>,
+    ) -> Result<(), ExecutionError> {
+        // compute the old storage cost of the entry
+        let old_storage_cost = old_key_value.map_or_else(
+            || Ok(Amount::zero()),
+            |(old_key, old_value)| self.get_storage_cost_datastore_entry(old_key, old_value),
+        )?;
+
+        // compute the new storage cost of the entry
+        let new_storage_cost = new_key_value.map_or_else(
+            || Ok(Amount::zero()),
+            |(new_key, new_value)| self.get_storage_cost_datastore_entry(new_key, new_value),
+        )?;
+
+        // charge the difference
+        match new_storage_cost.cmp(&old_storage_cost) {
+            Ordering::Greater => {
+                // more bytes are now occupied
+                self.transfer_coins(
+                    Some(*caller_addr),
+                    None,
+                    new_storage_cost.saturating_sub(old_storage_cost),
+                )
+            }
+            Ordering::Less => {
+                // some bytes have been freed
+                self.transfer_coins(
+                    None,
+                    Some(*caller_addr),
+                    old_storage_cost.saturating_sub(new_storage_cost),
+                )
+            }
+            Ordering::Equal => {
+                // no change
+                Ok(())
+            }
+        }
+        .map_err(|err| {
+            ExecutionError::RuntimeError(format!(
+                "failed to charge storage costs for datastore entry change: {}",
+                err
+            ))
+        })
     }
 
     /// Sets a data set entry for a given address in the ledger.
@@ -523,38 +610,13 @@ impl SpeculativeLedger {
             )));
         }
 
-        // Debit the cost of the key if it is a new one
-        // and the cost of value if new or if it change
-        if let Some(old_value) = self.get_data_entry(addr, &key) {
-            let diff_size_storage: i64 = (value.len() as i64) - (old_value.len() as i64);
-            let storage_cost_value = self
-                .storage_costs_constants
-                .ledger_cost_per_byte
-                .checked_mul_u64(diff_size_storage.unsigned_abs())
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError(
-                        "overflow on datastore delta storage costs computation".to_string(),
-                    )
-                })?;
-            match diff_size_storage.signum() {
-                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_value)?,
-                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_value)?,
-                _ => {}
-            };
-        } else {
-            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
-            self.transfer_coins(
-                Some(*caller_addr),
-                None,
-                self.storage_costs_constants
-                    .ledger_entry_datastore_base_cost
-                    .checked_add(value_storage_cost)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow when calculating storage cost for datastore key/value"
-                                .to_string(),
-                        )
-                    })?,
+        // charge the storage costs of the entry change
+        {
+            let prev_value = self.get_data_entry(addr, &key);
+            self.charge_datastore_entry_change_storage(
+                caller_addr,
+                prev_value.as_ref().map(|v| (&key[..], &v[..])),
+                Some((&key, &value)),
             )?;
         }
 
@@ -579,20 +641,8 @@ impl SpeculativeLedger {
     ) -> Result<(), ExecutionError> {
         // check if the entry exists
         if let Some(value) = self.get_data_entry(addr, key) {
-            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
-            self.transfer_coins(
-                None,
-                Some(*caller_addr),
-                self.storage_costs_constants
-                    .ledger_entry_datastore_base_cost
-                    .checked_add(value_storage_cost)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow when calculating storage cost for datastore key/value"
-                                .to_string(),
-                        )
-                    })?,
-            )?;
+            // reimburse the storage costs of the entry
+            self.charge_datastore_entry_change_storage(caller_addr, Some((key, &value)), None)?;
         } else {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not delete data entry {:?} for address {}: entry or address does not exist",
