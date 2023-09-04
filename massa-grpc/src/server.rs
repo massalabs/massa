@@ -39,6 +39,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::log::{info, warn};
 
 /// gRPC PRIVATE API content
+#[derive(Clone)]
 pub struct MassaPrivateGrpc {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
@@ -91,6 +92,7 @@ impl MassaPrivateGrpc {
 }
 
 /// gRPC PUBLIC API content
+#[derive(Clone)]
 pub struct MassaPublicGrpc {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,

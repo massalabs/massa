@@ -335,10 +335,16 @@ pub struct GrpcSettings {
     pub max_block_ids_per_request: u32,
     /// max number of addresses that can be included in a single request
     pub max_addresses_per_request: u32,
+    /// max number of slot ranges that can be included in a single request
+    pub max_slot_ranges_per_request: u32,
     /// max number of endorsement ids that can be included in a single request
     pub max_endorsement_ids_per_request: u32,
     /// max number of operation ids that can be included in a single request
     pub max_operation_ids_per_request: u32,
+    /// max op datastore entries per request
+    pub max_datastore_entries_per_request: u64,
+    /// max number of filters that can be included in a single request
+    pub max_filters_per_request: u32,
     /// certificate authority root path
     pub certificate_authority_root_path: PathBuf,
     /// server certificate path

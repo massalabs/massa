@@ -2,7 +2,7 @@
 
 use crate::StateChanges;
 use massa_async_pool::AsyncMessageId;
-use massa_ledger_exports::SetUpdateOrDelete;
+use massa_ledger_exports::{SetOrKeep, SetUpdateOrDelete};
 use massa_proto_rs::massa::model::v1 as grpc_model;
 
 impl From<StateChanges> for grpc_model::StateChanges {
@@ -95,6 +95,18 @@ impl From<StateChanges> for grpc_model::StateChanges {
                 .into_iter()
                 .map(|de_idx| de_idx.into())
                 .collect(),
+            execution_trail_hash_change: match value.execution_trail_hash_change {
+                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepString {
+                    change: Some(grpc_model::set_or_keep_string::Change::Set(
+                        value.to_string(),
+                    )),
+                }),
+                SetOrKeep::Keep => Some(grpc_model::SetOrKeepString {
+                    change: Some(grpc_model::set_or_keep_string::Change::Keep(
+                        grpc_model::Empty {},
+                    )),
+                }),
+            },
         }
     }
 }

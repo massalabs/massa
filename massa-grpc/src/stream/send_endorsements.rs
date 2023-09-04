@@ -4,7 +4,6 @@ use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_models::endorsement::{EndorsementDeserializer, SecureShareEndorsement};
-use massa_models::mapping_grpc::secure_share_to_vec;
 use massa_models::secure_share::SecureShareDeserializer;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
@@ -74,8 +73,7 @@ pub(crate) async fn send_endorsements(
                             let verified_eds_res: Result<HashMap<String, SecureShareEndorsement>, GrpcError> = proto_endorsement
                                 .into_iter()
                                 .map(|proto_endorsement| {
-                                    let ed_serialized = secure_share_to_vec(proto_endorsement)?;
-                                    let verified_op = match endorsement_deserializer.deserialize::<DeserializeError>(&ed_serialized) {
+                                    let verified_op = match endorsement_deserializer.deserialize::<DeserializeError>(&proto_endorsement) {
                                         Ok(tuple) => {
                                             // Deserialize the endorsement and verify its signature
                                             let (rest, res_endorsement): (&[u8], SecureShareEndorsement) = tuple;
