@@ -63,11 +63,18 @@ impl SlotRange {
                     s_slot, e_slot
                 )))
             }
-            (Some(s_slot), Some(e_slot)) if s_slot < e_slot => Ok(()),
-            (Some(s_slot), Some(e_slot)) => Err(GrpcError::InvalidArgument(format!(
-                "Invalid slot range: start slot {} is equal to end slot {}",
-                s_slot, e_slot
-            ))),
+            (Some(s_slot), Some(e_slot)) if e_slot < s_slot => {
+                Err(GrpcError::InvalidArgument(format!(
+                    "Invalid slot range: end slot {} is lower to start slot {}",
+                    s_slot, e_slot
+                )))
+            }
+            (Some(s_slot), Some(e_slot)) if s_slot == e_slot => {
+                Err(GrpcError::InvalidArgument(format!(
+                    "Invalid slot range: start slot {} is equal to end slot {}",
+                    s_slot, e_slot
+                )))
+            }
             _ => Ok(()),
         }
     }
