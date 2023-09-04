@@ -107,8 +107,8 @@ pub const BLOCK_REWARD: Amount = Amount::const_init(102, 2);
 pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 4);
 /// Cost for a base entry default 0.01 MASSA
 pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(1, 3);
-/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
-pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 8;
+/// Base size of a empty datastore entry (not counting the key nor the value)
+pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 4;
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
