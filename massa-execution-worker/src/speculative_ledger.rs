@@ -519,7 +519,7 @@ impl SpeculativeLedger {
     }
 
     /// Charge the storage costs of a datastore entry change, if any.
-    pub fn charge_datastore_entry_change_storage(
+    fn charge_datastore_entry_change_storage(
         &mut self,
         caller_addr: &Address,
         old_key_value: Option<(&[u8], &[u8])>,
