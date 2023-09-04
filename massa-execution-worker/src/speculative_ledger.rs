@@ -604,12 +604,14 @@ impl SpeculativeLedger {
         }
 
         // charge the storage costs of the entry change
-        self.charge_datastore_entry_change_storage(
-            caller_addr,
-            self.get_data_entry(addr, &key)
-                .map(|v| (key.as_slice(), v.as_slice())),
-            Some((&key, &value)),
-        )?;
+        {
+            let prev_value = self.get_data_entry(addr, &key);
+            self.charge_datastore_entry_change_storage(
+                caller_addr,
+                prev_value.as_ref().map(|v| (&key[..], &v[..])),
+                Some((&key, &value)),
+            )?;
+        }
 
         // set data
         self.added_changes.set_data_entry(*addr, key, value);
