@@ -864,7 +864,7 @@ pub(crate) fn search_blocks(
             b_ids
         };
         if let Some(block_ids) = res.as_mut() {
-            block_ids.extend(b_ids);
+            block_ids.retain(|id: &BlockId| b_ids.contains(id));
         } else {
             res = Some(b_ids)
         }
@@ -889,7 +889,7 @@ pub(crate) fn search_blocks(
             read_lock.aggregate_blocks_by_slot_range(start_slot..end_slot);
 
         if let Some(block_ids) = res.as_mut() {
-            block_ids.extend(b_ids);
+            block_ids.retain(|id: &BlockId| b_ids.contains(id));
         } else {
             res = Some(b_ids)
         }
@@ -1018,7 +1018,7 @@ pub(crate) fn search_endorsements(
             e_ids
         };
         if let Some(endorsement_ids) = eds_ids.as_mut() {
-            endorsement_ids.extend(e_ids);
+            endorsement_ids.retain(|id: &EndorsementId| e_ids.contains(id));
         } else {
             eds_ids = Some(e_ids)
         }
@@ -1043,7 +1043,7 @@ pub(crate) fn search_endorsements(
         }
 
         if let Some(endorsement_ids) = eds_ids.as_mut() {
-            endorsement_ids.extend(e_ids);
+            endorsement_ids.retain(|id: &EndorsementId| e_ids.contains(id));
         } else {
             eds_ids = Some(e_ids)
         }
@@ -1208,7 +1208,7 @@ pub(crate) fn search_operations(
             o_ids
         };
         if let Some(operation_ids) = ops_ids.as_mut() {
-            operation_ids.extend(o_ids);
+            operation_ids.retain(|id: &OperationId| o_ids.contains(id));
         } else {
             ops_ids = Some(o_ids)
         }

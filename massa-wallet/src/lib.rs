@@ -16,6 +16,7 @@ use massa_models::secure_share::SecureShareContent;
 use massa_signature::{KeyPair, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -157,9 +158,17 @@ impl Wallet {
 
     /// Save the wallets in a directory, each wallet in a yaml file.
     fn save(&self) -> Result<(), WalletError> {
+        let mut existing_keys: HashSet<PathBuf> = HashSet::new();
         if !self.wallet_path.exists() {
             std::fs::create_dir_all(&self.wallet_path)?;
+        } else {
+            let read_dir = std::fs::read_dir(&self.wallet_path)?;
+            for path in read_dir {
+                existing_keys.insert(path?.path());
+            }
         }
+        let mut persisted_keys: HashSet<PathBuf> = HashSet::new();
+        // write the keys in the directory
         for (addr, keypair) in &self.keys {
             let encrypted_secret = encrypt(&self.password, &keypair.to_bytes())?;
             let file_formatted = WalletFileFormat {
@@ -172,11 +181,17 @@ impl Wallet {
                 public_key: keypair.get_public_key().to_bytes().to_vec(),
             };
             let ser_keys = serde_yaml::to_string(&file_formatted)?;
-            let mut file_path = self.wallet_path.clone();
-            file_path.push(format!("wallet_{}", addr));
-            file_path.set_extension("yaml");
+            let file_path = self.wallet_path.join(format!("wallet_{}.yaml", addr));
+
             std::fs::write(&file_path, ser_keys)?;
+            persisted_keys.insert(file_path);
         }
+
+        let to_remove = existing_keys.difference(&persisted_keys);
+        for path in to_remove {
+            std::fs::remove_file(path)?;
+        }
+
         Ok(())
     }
 
