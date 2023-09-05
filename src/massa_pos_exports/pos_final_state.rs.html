@@ -3719,7 +3719,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_new_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -3828,7 +3828,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_new_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -3941,7 +3941,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_new_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
