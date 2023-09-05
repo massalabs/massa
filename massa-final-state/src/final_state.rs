@@ -72,6 +72,7 @@ impl FinalState {
         selector: Box<dyn SelectorController>,
         mip_store: MipStore,
         reset_final_state: bool,
+        keep_ledger: bool,
     ) -> Result<Self, FinalStateError> {
         let db_slot = db
             .read()
@@ -119,11 +120,13 @@ impl FinalState {
         };
 
         if reset_final_state {
-            // delete the execution trail hash
-            final_state
-                .db
-                .write()
-                .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
+            if !keep_ledger {
+                // delete the execution trail hash
+                final_state
+                    .db
+                    .write()
+                    .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
+            }
             final_state.async_pool.reset();
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
@@ -191,7 +194,7 @@ impl FinalState {
         info!("Restarting from snapshot");
 
         let mut final_state =
-            FinalState::new(db, config.clone(), ledger, selector, mip_store, false)?;
+            FinalState::new(db, config.clone(), ledger, selector, mip_store, false, true)?;
 
         let recovered_slot =
             final_state.db.read().get_change_id().map_err(|_| {

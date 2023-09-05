@@ -125,6 +125,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
             selector_controller,
             mip_store,
             reset_final_state,
+            false
         )
         .unwrap(),
     ))

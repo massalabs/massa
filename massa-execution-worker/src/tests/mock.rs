@@ -138,6 +138,7 @@ pub fn get_sample_state(
             selector_controller,
             mip_store,
             true,
+            false
         )
         .unwrap()
     };
