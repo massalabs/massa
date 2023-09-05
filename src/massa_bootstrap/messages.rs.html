@@ -1201,7 +1201,7 @@
             ),
             state_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(u64::MAX),
+                Included(args.max_new_elements),
             ),
             state_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
