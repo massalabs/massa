@@ -6,7 +6,7 @@ use massa_db_exports::{
 };
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
-    config::MAX_BACKUPS_TO_KEEP,
+    config::{MAX_BACKUPS_TO_KEEP, MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE},
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -157,6 +157,7 @@ where
         };
 
         let mut new_elements = BTreeMap::new();
+        let mut new_elements_size = 0;
 
         if !last_state_step.finished() {
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -174,7 +175,8 @@ where
             };
 
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                if new_elements.len() < self.config.max_new_elements {
+                new_elements_size += serialized_value.len();
+                if new_elements_size < MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE as usize {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -267,6 +269,7 @@ where
         };
 
         let mut new_elements = BTreeMap::new();
+        let mut new_elements_size = 0;
 
         if !last_versioning_step.finished() {
             let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -283,8 +286,11 @@ where
                 _ => self.db.iterator_cf(handle, IteratorMode::Start),
             };
 
+            
+
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                if new_elements.len() < self.config.max_new_elements {
+                new_elements_size += serialized_value.len();
+                if new_elements_size < self.config.max_new_elements_size as usize {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;

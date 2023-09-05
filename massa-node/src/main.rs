@@ -71,7 +71,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE,
     MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
@@ -264,7 +264,7 @@ async fn launch(
     let db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
+        max_new_elements_size: MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE as usize,
         thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(
@@ -374,7 +374,7 @@ async fn launch(
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
+        max_new_elements_size: MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE,
         max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
         max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
