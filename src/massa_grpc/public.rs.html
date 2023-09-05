@@ -2120,7 +2120,7 @@
             b_ids
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(block_ids) = res.as_mut() {
-            block_ids.extend(b_ids);
+            block_ids.retain(|id: <span class="kw-2">&amp;</span>BlockId| b_ids.contains(id));
         } <span class="kw">else </span>{
             res = <span class="prelude-val">Some</span>(b_ids)
         }
@@ -2145,7 +2145,7 @@
             read_lock.aggregate_blocks_by_slot_range(start_slot..end_slot);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(block_ids) = res.as_mut() {
-            block_ids.extend(b_ids);
+            block_ids.retain(|id: <span class="kw-2">&amp;</span>BlockId| b_ids.contains(id));
         } <span class="kw">else </span>{
             res = <span class="prelude-val">Some</span>(b_ids)
         }
@@ -2274,7 +2274,7 @@
             e_ids
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(endorsement_ids) = eds_ids.as_mut() {
-            endorsement_ids.extend(e_ids);
+            endorsement_ids.retain(|id: <span class="kw-2">&amp;</span>EndorsementId| e_ids.contains(id));
         } <span class="kw">else </span>{
             eds_ids = <span class="prelude-val">Some</span>(e_ids)
         }
@@ -2299,7 +2299,7 @@
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(endorsement_ids) = eds_ids.as_mut() {
-            endorsement_ids.extend(e_ids);
+            endorsement_ids.retain(|id: <span class="kw-2">&amp;</span>EndorsementId| e_ids.contains(id));
         } <span class="kw">else </span>{
             eds_ids = <span class="prelude-val">Some</span>(e_ids)
         }
@@ -2464,7 +2464,7 @@
             o_ids
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_ids) = ops_ids.as_mut() {
-            operation_ids.extend(o_ids);
+            operation_ids.retain(|id: <span class="kw-2">&amp;</span>OperationId| o_ids.contains(id));
         } <span class="kw">else </span>{
             ops_ids = <span class="prelude-val">Some</span>(o_ids)
         }
