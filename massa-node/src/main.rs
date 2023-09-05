@@ -336,7 +336,6 @@ async fn launch(
                     selector_controller.clone(),
                     mip_store,
                     true,
-                    args.keep_ledger,
                 )
                 .expect("could not init final state")
             }
