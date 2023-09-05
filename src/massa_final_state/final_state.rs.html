@@ -813,6 +813,9 @@
 <a href="#813" id="813">813</a>
 <a href="#814" id="814">814</a>
 <a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -887,6 +890,7 @@
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         mip_store: MipStore,
         reset_final_state: bool,
+        keep_ledger: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
         <span class="kw">let </span>db_slot = db
             .read()
@@ -934,11 +938,13 @@
         };
 
         <span class="kw">if </span>reset_final_state {
-            <span class="comment">// delete the execution trail hash
-            </span>final_state
-                .db
-                .write()
-                .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
+            <span class="kw">if </span>!keep_ledger {
+                <span class="comment">// delete the execution trail hash
+                </span>final_state
+                    .db
+                    .write()
+                    .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
+            }
             final_state.async_pool.reset();
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
@@ -1006,7 +1012,7 @@
         <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>final_state =
-            FinalState::new(db, config.clone(), ledger, selector, mip_store, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+            FinalState::new(db, config.clone(), ledger, selector, mip_store, <span class="bool-val">false</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>recovered_slot =
             final_state.db.read().get_change_id().map_err(|<span class="kw">_</span>| {
