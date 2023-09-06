@@ -6,6 +6,7 @@ use massa_db_exports::{
 };
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
+    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -111,18 +112,18 @@ where
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
 
-                        let cursor = self
+                        let mut cursor = self
                             .change_history
-                            .lower_bound(Bound::Excluded(&last_change_id));
+                            .range((Bound::Included(&last_change_id), Bound::Unbounded));
 
-                        if cursor.peek_prev().is_none() {
+                        if cursor.next().is_none() {
                             return Err(MassaDBError::TimeError(String::from(
                                 "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                             )));
                         }
 
-                        match cursor.key() {
-                            Some(cursor_change_id) => {
+                        match cursor.next() {
+                            Some((cursor_change_id, _)) => {
                                 // We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
@@ -221,18 +222,18 @@ where
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
 
-                        let cursor = self
+                        let mut cursor = self
                             .change_history_versioning
-                            .lower_bound(Bound::Excluded(&last_change_id));
+                            .range((Bound::Included(&last_change_id), Unbounded));
 
-                        if cursor.peek_prev().is_none() {
+                        if cursor.next().is_none() {
                             return Err(MassaDBError::TimeError(String::from(
                                 "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                             )));
                         }
 
-                        match cursor.key() {
-                            Some(cursor_change_id) => {
+                        match cursor.next() {
+                            Some((cursor_change_id, _)) => {
                                 // We have to send all the updates since cursor_change_id
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
@@ -380,15 +381,29 @@ where
             })?;
         }
 
-        self.change_history
+        match self
+            .change_history
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-            .and_modify(|map| map.extend(changes.clone().into_iter()))
-            .or_insert(changes);
+        {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(changes);
+            }
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(changes);
+            }
+        }
 
-        self.change_history_versioning
+        match self
+            .change_history_versioning
             .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
-            .and_modify(|map| map.extend(versioning_changes.clone().into_iter()))
-            .or_insert(versioning_changes);
+        {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(versioning_changes);
+            }
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(versioning_changes);
+            }
+        }
 
         if reset_history {
             self.change_history.clear();
@@ -397,6 +412,11 @@ where
         while self.change_history.len() > self.config.max_history_length {
             self.change_history.pop_first();
         }
+
+        while self.change_history_versioning.len() > self.config.max_history_length {
+            self.change_history_versioning.pop_first();
+        }
+
         Ok(())
     }
 
@@ -406,7 +426,9 @@ where
         let handle = db.cf_handle(METADATA_CF).expect(CF_ERROR);
 
         let Ok(Some(change_id_bytes)) = db.get_pinned_cf(handle, CHANGE_ID_KEY) else {
-            return Err(ModelsError::BufferError(String::from("Could not recover change_id in database")));
+            return Err(ModelsError::BufferError(String::from(
+                "Could not recover change_id in database",
+            )));
         };
 
         let (_rest, change_id) = self
@@ -601,8 +623,42 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot) {
         let db = &self.db;
-
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
+
+        if let Some(max_backups) = MAX_BACKUPS_TO_KEEP {
+            let previous_backups_paths = std::fs::read_dir(db.path())
+                .expect("Cannot walk db path")
+                .map(|res| res.map(|e| e.path()))
+                .collect::<Result<Vec<_>, std::io::Error>>()
+                .expect("Cannot walk db path");
+
+            let mut previous_backups = BTreeMap::new();
+
+            for backup_path in previous_backups_paths.iter() {
+                let Some(path_str) = backup_path.file_name().and_then(|f| f.to_str()) else {
+                    continue;
+                };
+                let vec = path_str.split('_').collect::<Vec<&str>>();
+                if vec.len() == 3 && vec[0] == "backup" {
+                    let Ok(period) = vec[1].parse::<u64>() else {
+                        continue;
+                    };
+                    let Ok(thread) = vec[2].parse::<u8>() else {
+                        continue;
+                    };
+                    let backup_slot = Slot::new(period, thread);
+                    previous_backups.insert(backup_slot, backup_path);
+                }
+            }
+
+            // Remove the oldest backups if we have too many
+            while previous_backups.len() >= max_backups {
+                if let Some((_, oldest_backup_path)) = previous_backups.pop_first() {
+                    std::fs::remove_dir_all(oldest_backup_path)
+                        .expect("Cannot remove oldest backup");
+                }
+            }
+        }
 
         Checkpoint::new(db)
             .expect("Cannot init checkpoint")

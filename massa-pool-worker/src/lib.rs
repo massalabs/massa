@@ -4,10 +4,6 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(async_closure)]
-#![feature(map_try_insert)]
-#![feature(let_chains)]
-#![feature(deadline_api)]
 
 mod controller_impl;
 mod denunciation_pool;

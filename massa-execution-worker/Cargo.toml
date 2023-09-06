@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "0.25.2"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -67,7 +67,6 @@ massa_channel = { workspace = true }
 massa_executed_ops = { workspace = true }
 massa_execution_exports = { workspace = true }
 massa_models = { workspace = true }
-massa_storage = { workspace = true }
 massa_hash = { workspace = true }
 massa-sc-runtime = { workspace = true }
 massa_metrics = { workspace = true }
@@ -85,6 +84,7 @@ massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 
 [dev-dependencies]
+massa_storage = { workspace = true }
 tokio = { workspace = true, "features" = ["sync"] }
 massa_pos_worker = { workspace = true }
 massa_ledger_worker = { workspace = true }

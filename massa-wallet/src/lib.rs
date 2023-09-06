@@ -3,11 +3,10 @@
 //! Keypair management
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(map_try_insert)]
 
 pub use error::WalletError;
 
-use massa_cipher::{decrypt, encrypt};
+use massa_cipher::{decrypt, encrypt, CipherData, Salt};
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
@@ -16,7 +15,10 @@ use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::secure_share::SecureShareContent;
 use massa_signature::{KeyPair, PublicKey};
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::Entry;
+use std::collections::HashSet;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 mod error;
 
@@ -31,14 +33,44 @@ pub struct Wallet {
     password: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+/// Follow the standard: https://github.com/massalabs/massa-standards/blob/main/wallet/file-format.md
+struct WalletFileFormat {
+    version: u64,
+    nickname: String,
+    address: String,
+    salt: Salt,
+    nonce: [u8; 12],
+    ciphered_data: Vec<u8>,
+    public_key: Vec<u8>,
+}
+
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
-        if path.is_file() {
-            let content = &std::fs::read(&path)?[..];
-            let (_version, decrypted_content) = decrypt(&password, content)?;
-            let keys =
-                serde_json::from_slice::<PreHashMap<Address, KeyPair>>(&decrypted_content[..])?;
+        if path.is_dir() {
+            let mut keys = PreHashMap::default();
+            for entry in std::fs::read_dir(&path)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file() {
+                    let content = &std::fs::read(&path)?[..];
+                    let wallet = serde_yaml::from_slice::<WalletFileFormat>(content)?;
+                    let secret_key = decrypt(
+                        &password,
+                        CipherData {
+                            salt: wallet.salt,
+                            nonce: wallet.nonce,
+                            encrypted_bytes: wallet.ciphered_data,
+                        },
+                    )?;
+                    keys.insert(
+                        Address::from_str(&wallet.address)?,
+                        KeyPair::from_bytes(&secret_key)?,
+                    );
+                }
+            }
             Ok(Wallet {
                 keys,
                 wallet_path: path,
@@ -80,7 +112,8 @@ impl Wallet {
         let mut addrs = Vec::with_capacity(keys.len());
         for key in keys {
             let addr = Address::from_public_key(&key.get_public_key());
-            if self.keys.try_insert(addr, key).is_ok() {
+            if let Entry::Vacant(e) = self.keys.entry(addr) {
+                e.insert(key);
                 changed = true;
             }
             addrs.push(addr);
@@ -123,12 +156,42 @@ impl Wallet {
         self.keys.keys().copied().collect()
     }
 
-    /// Save the wallet in json format in a file
-    /// Only the keypair is dumped
+    /// Save the wallets in a directory, each wallet in a yaml file.
     fn save(&self) -> Result<(), WalletError> {
-        let ser_keys = serde_json::to_string(&self.keys)?;
-        let encrypted_content = encrypt(&self.password, ser_keys.as_bytes())?;
-        std::fs::write(&self.wallet_path, encrypted_content)?;
+        let mut existing_keys: HashSet<PathBuf> = HashSet::new();
+        if !self.wallet_path.exists() {
+            std::fs::create_dir_all(&self.wallet_path)?;
+        } else {
+            let read_dir = std::fs::read_dir(&self.wallet_path)?;
+            for path in read_dir {
+                existing_keys.insert(path?.path());
+            }
+        }
+        let mut persisted_keys: HashSet<PathBuf> = HashSet::new();
+        // write the keys in the directory
+        for (addr, keypair) in &self.keys {
+            let encrypted_secret = encrypt(&self.password, &keypair.to_bytes())?;
+            let file_formatted = WalletFileFormat {
+                version: keypair.get_version(),
+                nickname: addr.to_string(),
+                address: addr.to_string(),
+                salt: encrypted_secret.salt,
+                nonce: encrypted_secret.nonce,
+                ciphered_data: encrypted_secret.encrypted_bytes,
+                public_key: keypair.get_public_key().to_bytes().to_vec(),
+            };
+            let ser_keys = serde_yaml::to_string(&file_formatted)?;
+            let file_path = self.wallet_path.join(format!("wallet_{}.yaml", addr));
+
+            std::fs::write(&file_path, ser_keys)?;
+            persisted_keys.insert(file_path);
+        }
+
+        let to_remove = existing_keys.difference(&persisted_keys);
+        for path in to_remove {
+            std::fs::remove_file(path)?;
+        }
+
         Ok(())
     }
 

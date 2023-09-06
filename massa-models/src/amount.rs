@@ -349,11 +349,20 @@ pub struct AmountDeserializer {
 impl AmountDeserializer {
     /// Create a new `AmountDeserializer`
     pub fn new(min_amount: Bound<Amount>, max_amount: Bound<Amount>) -> Self {
+        let min = match min_amount {
+            Bound::Included(x) => Bound::Included(x.to_raw()),
+            Bound::Excluded(x) => Bound::Excluded(x.to_raw()),
+            Bound::Unbounded => Bound::Included(0),
+        };
+
+        let max = match max_amount {
+            Bound::Included(x) => Bound::Included(x.to_raw()),
+            Bound::Excluded(x) => Bound::Excluded(x.to_raw()),
+            Bound::Unbounded => Bound::Included(Amount::MAX.to_raw()),
+        };
+
         Self {
-            u64_deserializer: U64VarIntDeserializer::new(
-                min_amount.map(|amount| amount.to_raw()),
-                max_amount.map(|amount| amount.to_raw()),
-            ),
+            u64_deserializer: U64VarIntDeserializer::new(min, max),
         }
     }
 }

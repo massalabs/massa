@@ -4,14 +4,13 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use massa_execution_exports::ExecutionConfig;
+use massa_execution_exports::{ExecutionBlockMetadata, ExecutionConfig};
 use massa_models::{
     block_id::BlockId,
     prehash::PreHashMap,
     slot::Slot,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
 };
-use massa_storage::Storage;
 use massa_time::MassaTime;
 
 /// Information about a slot in the execution sequence
@@ -23,8 +22,8 @@ pub struct SlotInfo {
     css_final: bool,
     /// Whether the slot is SCE-final
     sce_final: bool,
-    /// Content of the slot (None if miss, otherwise block ID and associated Storage instance)
-    content: Option<(BlockId, Storage)>,
+    /// Content of the slot (None if miss, otherwise block ID and associated metadata)
+    content: Option<(BlockId, ExecutionBlockMetadata)>,
 }
 
 impl SlotInfo {
@@ -90,12 +89,12 @@ impl SlotSequencer {
     ///
     /// `initial_css_final_blocks`: the list of CSS-final blocks (must not be empty)
     /// `initial_blockclique`: initial blockclique, usually empty except on major bootstrap latency
-    /// `blocks_storage`: Storage instances for all the blocks referenced in `initial_css_final_blocks` and `blocks_storage`
+    /// `blocks_metadata`: Metadata for all the blocks referenced in `initial_css_final_blocks` and `initial_blockclique`
     fn init(
         &mut self,
         mut initial_css_final_blocks: HashMap<Slot, BlockId>,
         mut initial_blockclique: HashMap<Slot, BlockId>,
-        mut blocks_storage: PreHashMap<BlockId, Storage>,
+        mut blocks_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     ) {
         // Compute the latest CSS-final slots
         for (s, _) in initial_css_final_blocks.iter() {
@@ -151,9 +150,9 @@ impl SlotSequencer {
                     (
                         b_id,
                         // The block's storage should be in `blocks_storage`
-                        blocks_storage
+                        blocks_metadata
                             .remove(&b_id)
-                            .expect("block storage missing in execution init"),
+                            .expect("block metadata missing in execution init"),
                     )
                 });
 
@@ -177,7 +176,7 @@ impl SlotSequencer {
         if initial_blockclique.into_iter().next().is_some() {
             panic!("remaining elements in blockclique after slot sequencing");
         }
-        std::mem::drop(blocks_storage);
+        std::mem::drop(blocks_metadata);
 
         // Cleanup the constructed sequence to remove older, executed CSS-final slots
         self.cleanup_sequence();
@@ -208,12 +207,12 @@ impl SlotSequencer {
     /// # Arguments
     /// * `new_css_final_blocks`: new CSS-finalized blocks
     /// * `new_blockclique`: new blockclique (if changed since the last call to this method, otherwise None)
-    /// * `new_blocks_storage`: storage instances for blocks that have not been seen previously by the sequencer
+    /// * `new_blocks_metadata`: metadata for blocks that have not been seen previously by the sequencer
     pub fn update(
         &mut self,
         mut new_css_final_blocks: HashMap<Slot, BlockId>,
         mut new_blockclique: Option<HashMap<Slot, BlockId>>,
-        mut new_blocks_storage: PreHashMap<BlockId, Storage>,
+        mut new_blocks_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     ) {
         // If the slot sequence is empty, initialize it by calling `Self::init` and quit.
         // This happens on the first call to `Self::update` (see the doc of `Self::update`).
@@ -222,7 +221,7 @@ impl SlotSequencer {
                 self.init(
                     new_css_final_blocks,
                     new_blockclique.unwrap_or_default(),
-                    new_blocks_storage,
+                    new_blocks_metadata,
                 );
             }
             return;
@@ -325,7 +324,7 @@ impl SlotSequencer {
                 new_css_final_block,
                 blockclique_updated,
                 new_blockclique_block,
-                &mut new_blocks_storage,
+                &mut new_blocks_metadata,
                 in_sce_finality,
             );
 
@@ -365,7 +364,7 @@ impl SlotSequencer {
                 panic!("remaining elements in new_blockclique after slot sequencing");
             }
         }
-        std::mem::drop(new_blocks_storage);
+        std::mem::drop(new_blocks_metadata);
 
         // Set the slot sequence to be the new sequence.
         self.sequence = new_sequence;
@@ -384,7 +383,7 @@ impl SlotSequencer {
     /// * `new_css_final_block`: newly CSS-finalized block at that slot, if any
     /// * `blockclique_updated`: whether a new blockclique was provided when `Self::update` was called
     /// * `new_blockclique_block`: block at that slot within the new blockclique, if any
-    /// * `new_blocks_storage`: a mutable reference to the list dictionary of block storages provided to `Self::update`
+    /// * `new_blocks_metadata`: block metadata for execution
     /// * `in_sce_finality`: whether the previous slot was SCE-final
     ///
     /// # Returns
@@ -397,7 +396,7 @@ impl SlotSequencer {
         new_css_final_block: Option<BlockId>,
         blockclique_updated: bool,
         new_blockclique_block: Option<BlockId>,
-        new_blocks_storage: &mut PreHashMap<BlockId, Storage>,
+        new_blocks_metadata: &mut PreHashMap<BlockId, ExecutionBlockMetadata>,
         in_sce_finality: bool,
     ) -> (SlotInfo, bool) {
         // Match the slot state from the old sequence.
@@ -440,10 +439,10 @@ impl SlotSequencer {
                 prev_slot_info.content = new_css_final_block.map(|b_id| {
                     (
                         b_id,
-                        // Can't recycle any old Storage because of the mismatch: get it from `new_blocks_storage`.
-                        new_blocks_storage
+                        // Can't recycle any old Storage because of the mismatch: get it from `new_blocks_metadata`.
+                        new_blocks_metadata
                             .remove(&b_id)
-                            .expect("new css final block storage absent from new_blocks_storage"),
+                            .expect("new css final block metadata absent from new_blocks_metadata"),
                     )
                 });
 
@@ -470,10 +469,10 @@ impl SlotSequencer {
             prev_slot_info.content = new_blockclique_block.map(|b_id| {
                 (
                     b_id,
-                    // Can't recycle any old Storage because of the mismatch: get it from `new_blocks_storage`.
-                    new_blocks_storage
-                        .remove(&b_id)
-                        .expect("new css blockclique block storage absent from new_blocks_storage"),
+                    // Can't recycle any old metadata because of the mismatch: get it from `new_blocks_metadata`.
+                    new_blocks_metadata.remove(&b_id).expect(
+                        "new css blockclique block metadata absent from new_blocks_metadata",
+                    ),
                 )
             });
 
@@ -498,10 +497,10 @@ impl SlotSequencer {
                     // Get the newly CSS-finalized block at that slot, if any
                     (
                         b_id,
-                        // Get the block Storage from `new_blocks_storage` as this slot is new to the sequencer.
-                        new_blocks_storage
+                        // Get the block Storage from `new_blocks_metadata` as this slot is new to the sequencer.
+                        new_blocks_metadata
                             .remove(&b_id)
-                            .expect("new css final block storage absent from new_blocks_storage"),
+                            .expect("new css final block metadata absent from new_blocks_metadata"),
                     )
                 }),
             };
@@ -524,9 +523,9 @@ impl SlotSequencer {
             content: new_blockclique_block.map(|b_id| {
                 (
                     b_id,
-                    new_blocks_storage
-                        .remove(&b_id)
-                        .expect("new css blockclique block storage absent from new_blocks_storage"),
+                    new_blocks_metadata.remove(&b_id).expect(
+                        "new css blockclique block metadata absent from new_blocks_metadata",
+                    ),
                 )
             }),
         };
@@ -656,7 +655,7 @@ impl SlotSequencer {
     /// or `Some(T)` where `T` is the value returned by the `callback` function otherwise.
     pub fn run_task_with<F, T>(&mut self, callback: F) -> Option<T>
     where
-        F: Fn(bool, &Slot, Option<&(BlockId, Storage)>) -> T,
+        F: Fn(bool, &Slot, Option<&(BlockId, ExecutionBlockMetadata)>) -> T,
     {
         // The slot sequence is empty => nothing to do.
         if self.sequence.is_empty() {

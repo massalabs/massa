@@ -1,6 +1,6 @@
 [package]
 name = "massa_bootstrap"
-version = "0.25.2"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -17,12 +17,14 @@ serde = {workspace = true, "features" = ["derive"]}
 serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
 humantime = {workspace = true}
 thiserror = {workspace = true}
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
+parking_lot = {workspace = true}
 tracing = {workspace = true}
 substruct = {workspace = true}
 socket2 = {workspace = true}
 crossbeam = {workspace = true}   # BOM UPGRADE     Revert to "0.8.2" if problem
 mio = {workspace = true, "features" = ["net", "os-poll"]}
+stream_limiter = { workspace = true }
+
 massa_consensus_exports = {workspace = true}
 massa_final_state = {workspace = true}
 massa_hash = {workspace = true}

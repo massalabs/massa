@@ -1,6 +1,6 @@
 [package]
 name = "massa_grpc"
-version = "0.25.2"
+version = "0.26.0"
 edition = "2021"
 description = "GRPC API for Massa Blockchain"
 repository = "https://github.com/massalabs/massa/"
@@ -24,6 +24,7 @@ tokio-stream = {workspace = true}   # BOM UPGRADE     Revert to "0.1.12" if prob
 tracing = {workspace = true}
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 h2 = {workspace = true}
+itertools = {workspace = true}
 
 massa_consensus_exports = {workspace = true}
 massa_hash = {workspace = true}
@@ -39,6 +40,7 @@ massa_serialization = {workspace = true}
 massa_versioning = {workspace = true}
 massa_signature = {workspace = true}
 massa_bootstrap = {workspace = true}
+massa_sdk = {workspace = true}
 
 [dev-dependencies]
 num = {workspace = true}

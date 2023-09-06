@@ -7,8 +7,6 @@ use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerEr
 use massa_ledger_worker::FinalLedger;
 use massa_models::config::{ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, T0};
 use massa_models::denunciation::Denunciation;
-use massa_models::execution::TempFileVestingRange;
-use massa_models::prehash::PreHashMap;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -22,7 +20,6 @@ use massa_models::{
 use massa_pos_exports::SelectorConfig;
 use massa_pos_worker::start_selector_worker;
 use massa_signature::KeyPair;
-use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use num::rational::Ratio;
 use parking_lot::RwLock;
@@ -194,53 +191,4 @@ pub fn create_block(
         BlockSerializer::new(),
         &creator_keypair,
     )?)
-}
-
-/// get the mocked file for initial vesting
-#[allow(dead_code)]
-pub fn get_initials_vesting(with_value: bool) -> NamedTempFile {
-    let file = NamedTempFile::new().unwrap();
-    let mut map: PreHashMap<Address, Vec<TempFileVestingRange>> = PreHashMap::default();
-
-    if with_value {
-        const PAST_TIMESTAMP: u64 = 1675356692000; // 02/02/2023 17h51
-        const SEC_TIMESTAMP: u64 = 1677775892000; // 02/03/2023 17h51;
-        const FUTURE_TIMESTAMP: u64 = 1731257385000; // 10/11/2024 17h49;
-
-        let vec = vec![
-            TempFileVestingRange {
-                timestamp: MassaTime::from_millis(SEC_TIMESTAMP),
-                min_balance: Some(Amount::from_str("100000").unwrap()),
-                max_rolls: Some(50),
-            },
-            TempFileVestingRange {
-                timestamp: MassaTime::from_millis(FUTURE_TIMESTAMP),
-                min_balance: Some(Amount::from_str("80000").unwrap()),
-                max_rolls: None,
-            },
-            TempFileVestingRange {
-                timestamp: MassaTime::from_millis(PAST_TIMESTAMP),
-                min_balance: Some(Amount::from_str("150000").unwrap()),
-                max_rolls: Some(30),
-            },
-        ];
-
-        let keypair_0 =
-            KeyPair::from_str("S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC").unwrap();
-        let addr_0 = Address::from_public_key(&keypair_0.get_public_key());
-
-        map.insert(addr_0, vec);
-    }
-
-    // write file
-    serde_json::to_writer_pretty::<&File, PreHashMap<Address, Vec<TempFileVestingRange>>>(
-        file.as_file(),
-        &map,
-    )
-    .expect("unable to write initial vesting file");
-    file.as_file()
-        .seek(std::io::SeekFrom::Start(0))
-        .expect("could not seek file");
-
-    file
 }

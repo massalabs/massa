@@ -431,7 +431,20 @@ pub fn get_state(
                             err
                         ))
                     })?;
+
+                // set initial execution trail hash
                 final_state_guard.init_execution_trail_hash();
+
+                // load initial deferred credits
+                final_state_guard
+                    .pos_state
+                    .load_initial_deferred_credits()
+                    .map_err(|err| {
+                        BootstrapError::GeneralError(format!(
+                            "could not load initial deferred credits: {}",
+                            err
+                        ))
+                    })?;
             }
 
             // create the initial cycle of PoS cycle_history
@@ -472,7 +485,7 @@ pub fn get_state(
         };
     let mut global_bootstrap_state = GlobalBootstrapState::new(final_state);
 
-    let limit = bootstrap_config.max_bytes_read_write;
+    let limit = bootstrap_config.rate_limit;
     loop {
         // check for interuption
         if *interupted.0.lock().expect("double-lock on interupt-mutex") {

@@ -123,8 +123,10 @@ impl SelectorController for SelectorControllerImpl {
         if slot_range.is_empty() {
             return Ok(BTreeMap::new());
         }
-        if let Some(r) = &restrict_to_addresses && r.is_empty() {
-            return Ok(BTreeMap::new());
+        if let Some(r) = &restrict_to_addresses {
+            if r.is_empty() {
+                return Ok(BTreeMap::new());
+            }
         }
         // take lock
         let (_cache_cv, cache_lock) = &*self.cache;

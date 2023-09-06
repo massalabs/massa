@@ -10,6 +10,8 @@ use std::{net::SocketAddr, path::PathBuf, time::Duration};
 #[derive(Debug, Deserialize, Clone)]
 pub struct GrpcConfig {
     /// whether to enable gRPC
+    pub name: ServiceName,
+    /// whether to enable gRPC
     pub enabled: bool,
     /// whether to accept HTTP/1.1 requests
     pub accept_http1: bool,
@@ -23,6 +25,10 @@ pub struct GrpcConfig {
     pub enable_tls: bool,
     /// whether to enable mTLS (requires `enable_tls` to be true)
     pub enable_mtls: bool,
+    /// whether to generate a self-signed certificate if none is provided(ignored if `enable_tls` is false)
+    pub generate_self_signed_certificates: bool,
+    /// Subject Alternative Names is an extension in X.509 certificates that allows a certificate to specify additional subject identifiers. It is used to support alternative names for a subject, other than its primary Common Name (CN), which is typically used to represent the primary domain name.
+    pub subject_alt_names: Vec<String>,
     /// bind for the Massa gRPC API
     pub bind: SocketAddr,
     /// which compression encodings does the server accept for requests
@@ -69,6 +75,8 @@ pub struct GrpcConfig {
     pub max_datastore_value_length: u64,
     /// max op datastore entry
     pub max_op_datastore_entry_count: u64,
+    /// max op datastore entries per request
+    pub max_datastore_entries_per_request: u64,
     /// max datastore key length
     pub max_op_datastore_key_length: u8,
     /// max datastore value length
@@ -95,16 +103,30 @@ pub struct GrpcConfig {
     pub last_start_period: u64,
     /// max denunciations in block header
     pub max_denunciations_per_block_header: u32,
+    /// max number of addresses that can be included in a single request
+    pub max_addresses_per_request: u32,
+    /// max number of slot ranges that can be included in a single request
+    pub max_slot_ranges_per_request: u32,
     /// max number of block ids that can be included in a single request
     pub max_block_ids_per_request: u32,
+    /// max number of endorsement ids that can be included in a single request
+    pub max_endorsement_ids_per_request: u32,
     /// max number of operation ids that can be included in a single request
     pub max_operation_ids_per_request: u32,
+    /// max number of filters that can be included in a single request
+    pub max_filters_per_request: u32,
+    /// certificate authority root path
+    pub certificate_authority_root_path: PathBuf,
     /// server certificate path
     pub server_certificate_path: PathBuf,
     /// server private key path
     pub server_private_key_path: PathBuf,
     /// client certificate authority root path
     pub client_certificate_authority_root_path: PathBuf,
+    /// client certificate path
+    pub client_certificate_path: PathBuf,
+    /// client private key path
+    pub client_private_key_path: PathBuf,
 }
 
 /// gRPC API configuration.
@@ -114,4 +136,13 @@ pub struct GrpcApiConfig {
     pub public: GrpcConfig,
     /// Private server gRPC configuration.
     pub private: GrpcConfig,
+}
+
+/// gRPC service name
+#[derive(Debug, Deserialize, Clone)]
+pub enum ServiceName {
+    /// Public service name
+    Public,
+    /// Private service name
+    Private,
 }

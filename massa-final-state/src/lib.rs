@@ -86,9 +86,6 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(async_closure)]
-#![feature(map_try_insert)]
-#![feature(let_chains)]
 
 mod config;
 mod error;

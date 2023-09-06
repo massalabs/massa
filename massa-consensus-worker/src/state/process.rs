@@ -4,9 +4,10 @@ use std::{
 };
 
 use massa_consensus_exports::{
-    block_status::{BlockStatus, DiscardReason, HeaderOrBlock},
+    block_status::{BlockStatus, DiscardReason, HeaderOrBlock, StorageOrBlock},
     error::ConsensusError,
 };
+use massa_execution_exports::ExecutionBlockMetadata;
 use massa_logging::massa_trace;
 use massa_models::{
     active_block::ActiveBlock,
@@ -255,17 +256,7 @@ impl ConsensusState {
                                 }
                             };
                             match new_state {
-                                Some(BlockCheckOutcome::BlockInfos(mut infos)) => {
-                                    // Ensure block parents are claimed by the block's storage.
-                                    // Note that operations and endorsements should already be there (claimed in Protocol).
-                                    infos.storage.claim_block_refs(
-                                        &infos
-                                            .parents_hash_period
-                                            .iter()
-                                            .map(|(p_id, _)| *p_id)
-                                            .collect(),
-                                    );
-
+                                Some(BlockCheckOutcome::BlockInfos(infos)) => {
                                     block_infos = Some((
                                         infos.parents_hash_period.clone(),
                                         infos.slot,
@@ -288,8 +279,9 @@ impl ConsensusState {
                                             is_final: false,
                                             slot: infos.slot,
                                             fitness: infos.fitness,
+                                            same_thread_parent_creator: None, // added below in add_block_to_graph
                                         }),
-                                        storage: infos.storage,
+                                        storage_or_block: StorageOrBlock::Storage(infos.storage),
                                     })
                                 }
                                 Some(BlockCheckOutcome::BlockStatus(status)) => Some(status),
@@ -379,7 +371,11 @@ impl ConsensusState {
         };
 
         // if the block was added, update linked dependencies and mark satisfied ones for recheck
-        if let Some(BlockStatus::Active { storage, .. }) = self.blocks_state.get(&block_id) {
+        if let Some(BlockStatus::Active {
+            storage_or_block: StorageOrBlock::Storage(storage),
+            ..
+        }) = self.blocks_state.get(&block_id)
+        {
             massa_trace!("consensus.block_graph.process.is_active", {
                 "block_id": block_id
             });
@@ -522,7 +518,7 @@ impl ConsensusState {
             // if its period is higher than the current best_parent in that thread
             for block_h in blockclique.block_ids.iter() {
                 let b_slot = match self.blocks_state.get(block_h) {
-                    Some(BlockStatus::Active { a_block, storage: _ }) => a_block.slot,
+                    Some(BlockStatus::Active { a_block, .. }) => a_block.slot,
                     _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h))),
                 };
                 if b_slot.period > self.best_parents[b_slot.thread as usize].1 {
@@ -574,10 +570,9 @@ impl ConsensusState {
                 self.config.genesis_timestamp,
                 add_block_slot,
             )?;
-            let now = MassaTime::now()?;
-            let diff = now.saturating_sub(add_slot_timestamp);
-            self.massa_metrics.inc_block_graph_counter();
-            self.massa_metrics.inc_block_graph_ms(diff.to_millis());
+            let diff = MassaTime::now()?.saturating_sub(add_slot_timestamp);
+            self.massa_metrics
+                .set_block_slot_delay(diff.to_duration().as_secs_f64());
         }
 
         Ok(())
@@ -603,21 +598,27 @@ impl ConsensusState {
     fn notify_execution(&mut self, finalized_blocks: HashMap<Slot, BlockId>) {
         // List new block storage instances that Execution doesn't know about.
         // That's blocks that have not been sent to execution before, ie. in the previous blockclique).
-        let mut new_blocks_storage: PreHashMap<BlockId, Storage> = finalized_blocks
+        let mut new_blocks_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = finalized_blocks
             .iter()
             .filter_map(|(_slot, b_id)| {
                 if self.prev_blockclique.contains_key(b_id) {
                     // was previously sent as a blockclique element
                     return None;
                 }
-                let storage = match self.blocks_state.get(b_id) {
+                let metadata = match self.blocks_state.get(b_id) {
                     Some(BlockStatus::Active {
-                        a_block: _,
-                        storage,
-                    }) => storage,
-                    _ => panic!("final block not found in active blocks"),
+                        a_block,
+                        storage_or_block: StorageOrBlock::Storage(storage),
+                        ..
+                    }) => ExecutionBlockMetadata {
+                        same_thread_parent_creator: a_block.same_thread_parent_creator,
+                        storage: Some(storage.clone()),
+                    },
+                    _ => panic!(
+                        "final block not found in active blocks and/or its operations are missing"
+                    ),
                 };
-                Some((*b_id, storage.clone()))
+                Some((*b_id, metadata))
             })
             .collect();
 
@@ -636,12 +637,15 @@ impl ConsensusState {
                     // The block was not present in the previous blockclique:
                     // the blockclique has changed => get the block's slot by querying Storage.
                     blockclique_changed = true;
-                    let (slot, storage) = match self.blocks_state.get(b_id) {
-                        Some(BlockStatus::Active { a_block, storage }) => (a_block.slot, storage),
-                        _ => panic!("blockclique block not found in active blocks"),
+                    let (a_block, storage) = match self.blocks_state.get(b_id) {
+                        Some(BlockStatus::Active {
+                            a_block,
+                            storage_or_block: StorageOrBlock::Storage(storage),
+                        }) => (a_block, storage),
+                        _ => panic!("blockclique block not found in active blocks and/or its operations are missing"),
                     };
-                    new_blocks_storage.insert(*b_id, storage.clone());
-                    (*b_id, slot)
+                    new_blocks_metadata.insert(*b_id, ExecutionBlockMetadata { same_thread_parent_creator: a_block.same_thread_parent_creator, storage: Some(storage.clone()) });
+                    (*b_id, a_block.slot)
                 }
             })
             .collect();
@@ -670,7 +674,7 @@ impl ConsensusState {
                 } else {
                     None
                 },
-                new_blocks_storage,
+                new_blocks_metadata,
             );
     }
 
@@ -718,11 +722,7 @@ impl ConsensusState {
             let mut final_block_slots = HashMap::with_capacity(finalized_blocks.len());
             let mut final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
             for b_id in finalized_blocks {
-                if let Some(BlockStatus::Active {
-                    a_block,
-                    storage: _,
-                }) = self.blocks_state.get(&b_id)
-                {
+                if let Some(BlockStatus::Active { a_block, .. }) = self.blocks_state.get(&b_id) {
                     // add to final blocks to notify execution
                     final_block_slots.insert(a_block.slot, b_id);
 

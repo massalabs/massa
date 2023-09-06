@@ -36,7 +36,7 @@ impl EventStore {
 
     /// Extend the event store with another store
     pub fn extend(&mut self, other: EventStore) {
-        self.0.extend(other.0.into_iter());
+        self.0.extend(other.0);
     }
 
     /// Set the events of this store as final

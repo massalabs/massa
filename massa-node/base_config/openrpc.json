@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "TEST.25.2",
+        "version": "TEST.26.0",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/en/latest/technical-doc/api.html",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -12,6 +12,11 @@
         }
     },
     "servers": [
+        {
+            "name": "Massa public buildnet API",
+            "url": "https://buildnet.massa.net/api/v2",
+            "description": "Massa public buildnet url"
+        },
         {
             "name": "Massa public testnet API",
             "url": "https://test.massa.net/api/v2",
@@ -2568,6 +2573,10 @@
                     "operation": {
                         "$ref": "#/components/schemas/WrappedOperation",
                         "description": "The operation itself"
+                    },
+                    "op_exec_status": {
+                        "description": "true if the operation execution succeeded, false if failed, None means unknown",
+                        "type" : "boolean"
                     }
                 },
                 "additionalProperties": false

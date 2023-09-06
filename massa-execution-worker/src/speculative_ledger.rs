@@ -14,6 +14,7 @@ use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use tracing::debug;
@@ -163,69 +164,40 @@ impl SpeculativeLedger {
                     ExecutionError::RuntimeError(format!("failed to transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
                     .get_balance(&from_addr).unwrap_or_default()))
                 })?;
+
+            // update the balance of the sender address
             changes.set_balance(from_addr, new_balance);
         }
 
         // simulate crediting coins to destination address (if any)
         // note that to_addr can be the same as from_addr
         if let Some(to_addr) = to_addr {
-            let old_balance = changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr));
-            match (old_balance, from_addr) {
-                // if `to_addr` exists we increase the balance
-                (Some(old_balance), _from_addr) => {
-                    let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
-                        ExecutionError::RuntimeError(format!(
-                            "overflow in crediting address {} balance {} due to adding {}",
-                            to_addr, old_balance, amount
-                        ))
-                    })?;
-                    changes.set_balance(to_addr, new_balance);
-                }
-                // if `to_addr` doesn't exist but `from_addr` is defined. `from_addr` will create the address using the coins sent.
-                (None, Some(_from_addr)) => {
-                    //TODO: Remove when stabilized
-                    debug!("Creating address {} from coins in transactions", to_addr);
-                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
-                        changes.create_address(&to_addr);
-                        changes.set_balance(
-                            to_addr,
-                            amount
-                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
-                                .ok_or_else(|| {
-                                    ExecutionError::RuntimeError(
-                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
-                                    )
-                                })?,
-                        );
-                    } else {
-                        return Err(ExecutionError::RuntimeError(format!(
-                            "insufficient amount {} to create crediting address {}",
-                            amount, to_addr
-                        )));
-                    }
-                }
-                // if `from_addr` is none and `to_addr` doesn't exist(in the ledger) try to create it from coins sent
-                (None, None) => {
-                    //TODO: Remove when stabilized
-                    debug!("Creating address {} from coins generated", to_addr);
-                    // We have enough to create the address and transfer the rest.
-                    if amount >= self.storage_costs_constants.ledger_entry_base_cost {
-                        changes.create_address(&to_addr);
-                        changes.set_balance(
-                            to_addr,
-                            amount
-                                .checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
-                                .ok_or_else(|| {
-                                    ExecutionError::RuntimeError(
-                                        format!("underflow in subtract ledger cost {} for new crediting address {}", to_addr, self.storage_costs_constants.ledger_entry_base_cost),
-                                    )
-                                })?,
-                        );
-                    } else {
-                        return Ok(());
-                    }
-                }
-            };
+            if let Some(old_balance) =
+                changes.get_balance_or_else(&to_addr, || self.get_balance(&to_addr))
+            {
+                // if `to_addr` exists we increase its balance
+                let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
+                    ExecutionError::RuntimeError(format!(
+                        "overflow in crediting address {} balance {} due to adding {}",
+                        to_addr, old_balance, amount
+                    ))
+                })?;
+                changes.set_balance(to_addr, new_balance);
+            } else if let Some(remaining_coins) =
+                amount.checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
+            {
+                // if `to_addr` doesn't exist and we have enough coins to credit it,
+                // we will try to create the address using part of the transferred coins
+                debug!("Creating address {} from coins", to_addr);
+                changes.create_address(&to_addr);
+                changes.set_balance(to_addr, remaining_coins);
+            } else {
+                // `to_addr` does not exist and we don't have the money to create it
+                return Err(ExecutionError::RuntimeError(format!(
+                    "insufficient amount {} to create credited address {}",
+                    amount, to_addr
+                )));
+            }
         }
 
         // apply the simulated changes to the speculative ledger
@@ -424,7 +396,7 @@ impl SpeculativeLedger {
 
                 // address ledger entry being updated
                 Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    let c_k = candidate_keys.get_or_insert_default();
+                    let c_k = candidate_keys.get_or_insert_with(Default::default);
                     for (ds_key, ds_update) in
                         entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
                     {
@@ -498,8 +470,34 @@ impl SpeculativeLedger {
         })
     }
 
-    fn get_storage_cost_datastore_value(&self, value: &Vec<u8>) -> Result<Amount, ExecutionError> {
-        self.storage_costs_constants
+    /// Compute the storage costs of a full datastore entry
+    fn get_storage_cost_datastore_entry(
+        &self,
+        key: &[u8],
+        value: &[u8],
+    ) -> Result<Amount, ExecutionError> {
+        // Base cost, charged for each datastore entry.
+        // This accounts for small entries that still take space in practice.
+        let base_cost = self
+            .storage_costs_constants
+            .ledger_entry_datastore_base_cost;
+
+        // key cost
+        let key_cost = self
+            .storage_costs_constants
+            .ledger_cost_per_byte
+            .checked_mul_u64(key.len().try_into().map_err(|_| {
+                ExecutionError::RuntimeError("key in datastore is too big".to_string())
+            })?)
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(
+                    "overflow when calculating storage cost for datastore key".to_string(),
+                )
+            })?;
+
+        // value cost
+        let value_cost = self
+            .storage_costs_constants
             .ledger_cost_per_byte
             .checked_mul_u64(value.len().try_into().map_err(|_| {
                 ExecutionError::RuntimeError("value in datastore is too big".to_string())
@@ -508,7 +506,67 @@ impl SpeculativeLedger {
                 ExecutionError::RuntimeError(
                     "overflow when calculating storage cost for datastore value".to_string(),
                 )
+            })?;
+
+        // total cost
+        base_cost
+            .checked_add(key_cost)
+            .and_then(|c| c.checked_add(value_cost))
+            .ok_or_else(|| {
+                ExecutionError::RuntimeError(
+                    "overflow when calculating storage cost for datastore key/value".to_string(),
+                )
             })
+    }
+
+    /// Charge the storage costs of a datastore entry change, if any.
+    fn charge_datastore_entry_change_storage(
+        &mut self,
+        caller_addr: &Address,
+        old_key_value: Option<(&[u8], &[u8])>,
+        new_key_value: Option<(&[u8], &[u8])>,
+    ) -> Result<(), ExecutionError> {
+        // compute the old storage cost of the entry
+        let old_storage_cost = old_key_value.map_or_else(
+            || Ok(Amount::zero()),
+            |(old_key, old_value)| self.get_storage_cost_datastore_entry(old_key, old_value),
+        )?;
+
+        // compute the new storage cost of the entry
+        let new_storage_cost = new_key_value.map_or_else(
+            || Ok(Amount::zero()),
+            |(new_key, new_value)| self.get_storage_cost_datastore_entry(new_key, new_value),
+        )?;
+
+        // charge the difference
+        match new_storage_cost.cmp(&old_storage_cost) {
+            Ordering::Greater => {
+                // more bytes are now occupied
+                self.transfer_coins(
+                    Some(*caller_addr),
+                    None,
+                    new_storage_cost.saturating_sub(old_storage_cost),
+                )
+            }
+            Ordering::Less => {
+                // some bytes have been freed
+                self.transfer_coins(
+                    None,
+                    Some(*caller_addr),
+                    old_storage_cost.saturating_sub(new_storage_cost),
+                )
+            }
+            Ordering::Equal => {
+                // no change
+                Ok(())
+            }
+        }
+        .map_err(|err| {
+            ExecutionError::RuntimeError(format!(
+                "failed to charge storage costs for datastore entry change: {}",
+                err
+            ))
+        })
     }
 
     /// Sets a data set entry for a given address in the ledger.
@@ -552,38 +610,13 @@ impl SpeculativeLedger {
             )));
         }
 
-        // Debit the cost of the key if it is a new one
-        // and the cost of value if new or if it change
-        if let Some(old_value) = self.get_data_entry(addr, &key) {
-            let diff_size_storage: i64 = (value.len() as i64) - (old_value.len() as i64);
-            let storage_cost_value = self
-                .storage_costs_constants
-                .ledger_cost_per_byte
-                .checked_mul_u64(diff_size_storage.unsigned_abs())
-                .ok_or_else(|| {
-                    ExecutionError::RuntimeError(
-                        "overflow on datastore delta storage costs computation".to_string(),
-                    )
-                })?;
-            match diff_size_storage.signum() {
-                1 => self.transfer_coins(Some(*caller_addr), None, storage_cost_value)?,
-                -1 => self.transfer_coins(None, Some(*caller_addr), storage_cost_value)?,
-                _ => {}
-            };
-        } else {
-            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
-            self.transfer_coins(
-                Some(*caller_addr),
-                None,
-                self.storage_costs_constants
-                    .ledger_entry_datastore_base_cost
-                    .checked_add(value_storage_cost)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow when calculating storage cost for datastore key/value"
-                                .to_string(),
-                        )
-                    })?,
+        // charge the storage costs of the entry change
+        {
+            let prev_value = self.get_data_entry(addr, &key);
+            self.charge_datastore_entry_change_storage(
+                caller_addr,
+                prev_value.as_ref().map(|v| (&key[..], &v[..])),
+                Some((&key, &value)),
             )?;
         }
 
@@ -608,20 +641,8 @@ impl SpeculativeLedger {
     ) -> Result<(), ExecutionError> {
         // check if the entry exists
         if let Some(value) = self.get_data_entry(addr, key) {
-            let value_storage_cost = self.get_storage_cost_datastore_value(&value)?;
-            self.transfer_coins(
-                None,
-                Some(*caller_addr),
-                self.storage_costs_constants
-                    .ledger_entry_datastore_base_cost
-                    .checked_add(value_storage_cost)
-                    .ok_or_else(|| {
-                        ExecutionError::RuntimeError(
-                            "overflow when calculating storage cost for datastore key/value"
-                                .to_string(),
-                        )
-                    })?,
-            )?;
+            // reimburse the storage costs of the entry
+            self.charge_datastore_entry_change_storage(caller_addr, Some((key, &value)), None)?;
         } else {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not delete data entry {:?} for address {}: entry or address does not exist",

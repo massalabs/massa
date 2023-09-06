@@ -7,8 +7,6 @@
 //! When no instance of `Storage` claims a reference to a given object anymore, that object is automatically removed from storage.
 
 #![warn(missing_docs)]
-#![feature(hash_extract_if)]
-#![feature(map_try_insert)]
 
 mod block_indexes;
 mod endorsement_indexes;
@@ -134,26 +132,17 @@ impl Storage {
     pub fn extend(&mut self, mut other: Storage) {
         // Take ownership ot `other`'s references.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
-        self.local_used_ops.extend(
-            &other
-                .local_used_ops
-                .extract_if(|id| !self.local_used_ops.contains(id))
-                .collect::<Vec<_>>(),
-        );
+        other
+            .local_used_ops
+            .retain(|id| !self.local_used_ops.insert(*id));
 
-        self.local_used_blocks.extend(
-            &other
-                .local_used_blocks
-                .extract_if(|id| !self.local_used_blocks.contains(id))
-                .collect::<Vec<_>>(),
-        );
+        other
+            .local_used_blocks
+            .retain(|id| !self.local_used_blocks.insert(*id));
 
-        self.local_used_endorsements.extend(
-            &other
-                .local_used_endorsements
-                .extract_if(|id| !self.local_used_endorsements.contains(id))
-                .collect::<Vec<_>>(),
-        );
+        other
+            .local_used_endorsements
+            .retain(|id| !self.local_used_endorsements.insert(*id));
     }
 
     /// Efficiently splits off a subset of the reference ownership into a new Storage object.
