@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::path::PathBuf;
+
 /// proof-of-stake final state configuration
 #[derive(Debug, Clone)]
 pub struct PoSConfig {
@@ -15,4 +17,6 @@ pub struct PoSConfig {
     pub max_production_stats_length: u64,
     /// maximum deferred credits length
     pub max_credit_length: u64,
+    /// initial deferred credits file path
+    pub initial_deferred_credits_path: Option<PathBuf>,
 }

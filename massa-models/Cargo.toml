@@ -1,6 +1,6 @@
 [package]
 name = "massa_models"
-version = "0.25.2"
+version = "0.26.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -9,25 +9,30 @@ sandbox = []
 testing = []
 
 [dependencies]
-displaydoc = {workspace = true}
-lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
-num_enum = {workspace = true}
-rust_decimal = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-serde_with = {workspace = true}
-thiserror = {workspace = true}
-num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
-directories = {workspace = true}
-config = {workspace = true}
-bs58 = {workspace = true, "features" = ["check"]}
-bitvec = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "=1.0", "features": ["serde"]} if problem
-nom = {workspace = true}
-massa-proto-rs = {workspace = true, "features" = ["tonic"]}
-massa_hash = {workspace = true}
-massa_serialization = {workspace = true}
-massa_signature = {workspace = true}
-massa_time = {workspace = true}
-transition = {workspace = true}
+displaydoc = { workspace = true }
+lazy_static = { workspace = true } # BOM UPGRADE     Revert to "1.4" if problem
+num_enum = { workspace = true }
+rust_decimal = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+serde_with = { workspace = true }
+thiserror = { workspace = true }
+num = { workspace = true, "features" = [
+    "serde",
+] } # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
+directories = { workspace = true }
+config = { workspace = true }
+bs58 = { workspace = true, "features" = ["check"] }
+bitvec = { workspace = true, "features" = [
+    "serde",
+] } # BOM UPGRADE     Revert to {"version": "=1.0", "features": ["serde"]} if problem
+nom = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+massa_hash = { workspace = true }
+massa_serialization = { workspace = true }
+massa_signature = { workspace = true }
+massa_time = { workspace = true }
+transition = { workspace = true }
+variant_count = { workspace = true }
 
 [dev-dependencies]
-serial_test = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
+serial_test = { workspace = true } # BOM UPGRADE     Revert to "1.0" if problem

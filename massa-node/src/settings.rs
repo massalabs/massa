@@ -28,7 +28,6 @@ pub struct ExecutionSettings {
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
     pub wasm_gas_costs_file: PathBuf,
-    pub initial_vesting_path: PathBuf,
     pub hd_cache_path: PathBuf,
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,
@@ -47,6 +46,7 @@ pub struct LedgerSettings {
     pub initial_ledger_path: PathBuf,
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
+    pub initial_deferred_credits_path: Option<PathBuf>,
 }
 
 /// Bootstrap configuration.
@@ -69,7 +69,7 @@ pub struct BootstrapSettings {
     pub max_simultaneous_bootstraps: u32,
     pub per_ip_min_interval: MassaTime,
     pub ip_list_max_size: usize,
-    pub max_bytes_read_write: u64,
+    pub rate_limit: u64,
     /// Allocated time with which to manage the bootstrap process
     pub bootstrap_timeout: MassaTime,
 }
@@ -267,6 +267,8 @@ pub struct ProtocolSettings {
     pub default_category_info: PeerCategoryInfo,
     /// Cooldown before testing again an old peer
     pub test_oldest_peer_cooldown: MassaTime,
+    /// Rate limitation to apply to the data stream (per second)
+    pub rate_limit: u64,
 }
 
 /// gRPC settings
@@ -333,10 +335,16 @@ pub struct GrpcSettings {
     pub max_block_ids_per_request: u32,
     /// max number of addresses that can be included in a single request
     pub max_addresses_per_request: u32,
+    /// max number of slot ranges that can be included in a single request
+    pub max_slot_ranges_per_request: u32,
     /// max number of endorsement ids that can be included in a single request
     pub max_endorsement_ids_per_request: u32,
     /// max number of operation ids that can be included in a single request
     pub max_operation_ids_per_request: u32,
+    /// max op datastore entries per request
+    pub max_datastore_entries_per_request: u64,
+    /// max number of filters that can be included in a single request
+    pub max_filters_per_request: u32,
     /// certificate authority root path
     pub certificate_authority_root_path: PathBuf,
     /// server certificate path

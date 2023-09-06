@@ -18,7 +18,17 @@ use massa_models::{
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
 };
 use massa_pos_exports::ProductionStats;
+use massa_storage::Storage;
 use std::collections::{BTreeMap, BTreeSet};
+
+/// Metadata needed to execute the block
+#[derive(Clone, Debug)]
+pub struct ExecutionBlockMetadata {
+    /// Address of the creator of the parent in the same thread
+    pub same_thread_parent_creator: Option<Address>,
+    /// Storage referencing the block and its contents
+    pub storage: Option<Storage>,
+}
 
 /// Request to atomically execute a batch of execution state queries
 pub struct ExecutionQueryRequest {

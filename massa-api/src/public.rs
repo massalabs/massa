@@ -608,7 +608,7 @@ impl MassaRpcServer for API<Public> {
 
             let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                 .into_iter()
-                .zip(involved_block_statuses.into_iter())
+                .zip(involved_block_statuses)
                 .collect();
             storage_info
                 .iter()

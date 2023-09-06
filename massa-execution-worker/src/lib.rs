@@ -78,12 +78,6 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(is_sorted)]
-#![feature(map_try_insert)]
-#![feature(let_chains)]
-#![feature(option_get_or_insert_default)]
-#![feature(btree_extract_if)]
-#![feature(extract_if)]
 
 mod active_history;
 mod context;
@@ -98,7 +92,6 @@ mod speculative_executed_ops;
 mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
-mod vesting_manager;
 mod worker;
 
 use massa_db_exports as _;

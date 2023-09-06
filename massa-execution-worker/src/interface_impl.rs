@@ -91,7 +91,6 @@ impl InterfaceImpl {
         use massa_versioning::versioning::{MipStatsConfig, MipStore};
         use parking_lot::RwLock;
 
-        let vesting_file = super::tests::get_initials_vesting(false);
         let config = ExecutionConfig::default();
         let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state(0).unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
@@ -103,17 +102,6 @@ impl InterfaceImpl {
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
         })));
-        let vesting_manager = Arc::new(
-            crate::vesting_manager::VestingManager::new(
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-                config.periods_per_cycle,
-                config.roll_price,
-                vesting_file.path().to_path_buf(),
-            )
-            .unwrap(),
-        );
 
         // create an empty default store
         let mip_stats_config = MipStatsConfig {
@@ -128,7 +116,6 @@ impl InterfaceImpl {
             final_state,
             Default::default(),
             module_cache,
-            vesting_manager,
             mip_store,
             massa_hash::Hash::zero(),
         );
@@ -703,11 +690,8 @@ impl Interface for InterfaceImpl {
     /// A list of keys (keys are byte arrays)
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_op_keys_wasmv1`
-    fn get_op_keys(&self) -> Result<Vec<Vec<u8>>> {
-        // TODO return BTreeSet<Vec<u8>>
-
-        // TODO add prefix
-        let prefix: &[u8] = &[];
+    fn get_op_keys(&self, prefix_opt: Option<&[u8]>) -> Result<Vec<Vec<u8>>> {
+        let prefix: &[u8] = prefix_opt.unwrap_or_default();
 
         // compute prefix range
         let prefix_range = get_prefix_bounds(prefix);
@@ -1492,9 +1476,9 @@ impl Interface for InterfaceImpl {
         let address = Address::from_str(address)?;
         match address {
             Address::User(UserAddress::UserAddressV0(_)) => Ok(0),
-            Address::User(UserAddress::UserAddressV1(_)) => Ok(1),
+            // Address::User(UserAddress::UserAddressV1(_)) => Ok(1),
             Address::SC(SCAddress::SCAddressV0(_)) => Ok(0),
-            Address::SC(SCAddress::SCAddressV1(_)) => Ok(1),
+            // Address::SC(SCAddress::SCAddressV1(_)) => Ok(1),
             #[allow(unreachable_patterns)]
             _ => bail!("Unknown address version"),
         }
@@ -1504,7 +1488,6 @@ impl Interface for InterfaceImpl {
         let pubkey = PublicKey::from_str(pubkey)?;
         match pubkey {
             PublicKey::PublicKeyV0(_) => Ok(0),
-            PublicKey::PublicKeyV1(_) => Ok(1),
             #[allow(unreachable_patterns)]
             _ => bail!("Unknown pubkey version"),
         }
@@ -1514,7 +1497,6 @@ impl Interface for InterfaceImpl {
         let signature = Signature::from_str(signature)?;
         match signature {
             Signature::SignatureV0(_) => Ok(0),
-            Signature::SignatureV1(_) => Ok(1),
             #[allow(unreachable_patterns)]
             _ => bail!("Unknown signature version"),
         }

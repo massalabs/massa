@@ -2,7 +2,7 @@ use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{Compiler, RuntimeModule};
 use schnellru::{ByLength, LruMap};
-use tracing::{debug, log::info, warn};
+use tracing::{debug, info, warn};
 
 use crate::{
     config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,

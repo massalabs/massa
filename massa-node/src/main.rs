@@ -3,7 +3,6 @@
 #![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(ip)]
 extern crate massa_logging;
 
 #[cfg(feature = "op_spammer")]
@@ -72,9 +71,9 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
-    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
-    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
+    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
 use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
@@ -209,14 +208,17 @@ async fn launch(
         max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
         max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
         max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+        initial_deferred_credits_path: SETTINGS.ledger.initial_deferred_credits_path.clone(),
     };
     let executed_ops_config = ExecutedOpsConfig {
         thread_count: THREAD_COUNT,
+        keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
     let executed_denunciations_config = ExecutedDenunciationsConfig {
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         thread_count: THREAD_COUNT,
         endorsement_count: ENDORSEMENT_COUNT,
+        keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
@@ -363,7 +365,7 @@ async fn launch(
         max_simultaneous_bootstraps: SETTINGS.bootstrap.max_simultaneous_bootstraps,
         per_ip_min_interval: SETTINGS.bootstrap.per_ip_min_interval,
         ip_list_max_size: SETTINGS.bootstrap.ip_list_max_size,
-        max_bytes_read_write: SETTINGS.bootstrap.max_bytes_read_write,
+        rate_limit: SETTINGS.bootstrap.rate_limit,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
         thread_count: THREAD_COUNT,
@@ -485,7 +487,6 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-        initial_vesting_path: SETTINGS.execution.initial_vesting_path.clone(),
         gas_costs: GasCosts::new(
             SETTINGS.execution.abi_gas_costs_file.clone(),
             SETTINGS.execution.wasm_gas_costs_file.clone(),
@@ -661,6 +662,7 @@ async fn launch(
         version: *VERSION,
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
         test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
+        rate_limit: SETTINGS.protocol.rate_limit,
     };
 
     let (protocol_controller, protocol_channels) =
@@ -1084,6 +1086,7 @@ fn configure_grpc(
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_datastore_entries_per_request: settings.max_datastore_entries_per_request,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
@@ -1098,9 +1101,11 @@ fn configure_grpc(
         last_start_period: final_state.read().last_start_period,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_addresses_per_request: settings.max_addresses_per_request,
+        max_slot_ranges_per_request: settings.max_slot_ranges_per_request,
         max_block_ids_per_request: settings.max_block_ids_per_request,
         max_endorsement_ids_per_request: settings.max_endorsement_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
+        max_filters_per_request: settings.max_filters_per_request,
         certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),

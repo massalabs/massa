@@ -1,4 +1,4 @@
-use std::{collections::hash_map, collections::HashMap};
+use std::{collections::btree_map, collections::hash_map, collections::BTreeMap, ops::RangeBounds};
 
 use massa_models::{
     address::Address,
@@ -19,7 +19,7 @@ pub struct BlockIndexes {
     /// Structure mapping creators with the created blocks
     index_by_creator: PreHashMap<Address, PreHashSet<BlockId>>,
     /// Structure mapping slot with their block id
-    index_by_slot: HashMap<Slot, PreHashSet<BlockId>>,
+    index_by_slot: BTreeMap<Slot, PreHashSet<BlockId>>,
     /// Structure mapping operation id with ids of blocks they are contained in
     index_by_op: PreHashMap<OperationId, PreHashSet<BlockId>>,
     /// Structure mapping endorsement id with ids of blocks they are contained in
@@ -32,30 +32,31 @@ impl BlockIndexes {
     /// - block: the block to insert
 
     pub(crate) fn insert(&mut self, block: SecureShareBlock) {
-        if let Ok(b) = self.blocks.try_insert(block.id, Box::new(block)) {
+        if let hash_map::Entry::Vacant(vac) = self.blocks.entry(block.id) {
+            let block = vac.insert(Box::new(block));
             // update creator index
             self.index_by_creator
-                .entry(b.content_creator_address)
+                .entry(block.content_creator_address)
                 .or_default()
-                .insert(b.id);
+                .insert(block.id);
 
             // update slot index
             self.index_by_slot
-                .entry(b.content.header.content.slot)
+                .entry(block.content.header.content.slot)
                 .or_default()
-                .insert(b.id);
+                .insert(block.id);
 
             // update index_by_op
-            for op in &b.content.operations {
-                self.index_by_op.entry(*op).or_default().insert(b.id);
+            for op in &block.content.operations {
+                self.index_by_op.entry(*op).or_default().insert(block.id);
             }
 
             // update index_by_endorsement
-            for ed in &b.content.header.content.endorsements {
+            for ed in &block.content.header.content.endorsements {
                 self.index_by_endorsement
                     .entry(ed.id)
                     .or_default()
-                    .insert(b.id);
+                    .insert(block.id);
             }
 
             massa_metrics::set_blocks_counter(self.blocks.len());
@@ -78,7 +79,7 @@ impl BlockIndexes {
             }
 
             // update slot index
-            if let hash_map::Entry::Occupied(mut occ) =
+            if let btree_map::Entry::Occupied(mut occ) =
                 self.index_by_slot.entry(b.content.header.content.slot)
             {
                 occ.get_mut().remove(&b.id);
@@ -145,6 +146,25 @@ impl BlockIndexes {
     /// - the block ids of the blocks at the slot if any, None otherwise
     pub fn get_blocks_by_slot(&self, slot: &Slot) -> Option<&PreHashSet<BlockId>> {
         self.index_by_slot.get(slot)
+    }
+
+    /// Aggregate block IDs by slot range.
+    /// Arguments:
+    /// - slot_range: the slot range of interest
+    ///
+    /// Returns:
+    /// - a copy of the block ids of the blocks within the slot range
+    pub fn aggregate_blocks_by_slot_range<R>(&self, slot_range: R) -> PreHashSet<BlockId>
+    where
+        R: RangeBounds<Slot>,
+    {
+        self.index_by_slot.range(slot_range).fold(
+            PreHashSet::default(),
+            |mut acc: PreHashSet<BlockId>, (_, v)| {
+                acc.extend(v);
+                acc
+            },
+        )
     }
 
     /// Get the block ids of the blocks containing a given operation.

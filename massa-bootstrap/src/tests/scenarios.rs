@@ -30,7 +30,8 @@ use massa_final_state::{
 use massa_ledger_exports::LedgerConfig;
 use massa_metrics::MassaMetrics;
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DEFERRED_CREDITS_LENGTH,
+    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, T0,
 };
 use massa_models::{
@@ -46,6 +47,7 @@ use massa_models::{
 
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
+    SelectorManager,
 };
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::MockProtocolController;
@@ -53,6 +55,8 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use mockall::Sequence;
 use parking_lot::RwLock;
+use serial_test::serial;
+use std::io::Read;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::vec;
@@ -66,7 +70,10 @@ lazy_static::lazy_static! {
     };
 }
 
-fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -> BootstrapManager {
+fn mock_bootstrap_manager(
+    addr: SocketAddr,
+    bootstrap_config: BootstrapConfig,
+) -> (BootstrapManager, Box<dyn SelectorManager>) {
     // TODO from config
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
     let thread_count = 2;
@@ -87,7 +94,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
     mocked1.expect_clone_box().return_once(move || mocked2);
 
     // start proof-of-stake selectors
-    let (_server_selector_manager, server_selector_controller) =
+    let (server_selector_manager, server_selector_controller) =
         start_selector_worker(selector_local_config.clone())
             .expect("could not start server selector controller");
 
@@ -97,7 +104,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
         max_new_elements: 100,
-        thread_count,
+        thread_count: 2,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -123,8 +130,12 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         },
-        executed_ops_config: ExecutedOpsConfig { thread_count },
+        executed_ops_config: ExecutedOpsConfig {
+            thread_count,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        },
         final_history_length: 100,
         initial_seed_string: "".into(),
         initial_rolls_path: "".into(),
@@ -134,6 +145,7 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             thread_count,
             endorsement_count: ENDORSEMENT_COUNT,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
         },
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: 1000,
@@ -171,39 +183,48 @@ fn mock_bootstrap_manager(addr: SocketAddr, bootstrap_config: BootstrapConfig) -
         .times(1)
         .returning(move || _listener.poll());
     listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
-    start_bootstrap_server(
-        listener,
-        listener_stopper,
-        stream_mock1,
-        mocked1,
-        final_state_server,
-        bootstrap_config.clone(),
-        keypair.clone(),
-        Version::from_str("TEST.1.10").unwrap(),
-        MassaMetrics::new(
-            false,
-            "0.0.0.0:31248".parse().unwrap(),
-            thread_count,
-            Duration::from_secs(5),
+    return (
+        start_bootstrap_server(
+            listener,
+            listener_stopper,
+            stream_mock1,
+            mocked1,
+            final_state_server,
+            bootstrap_config.clone(),
+            keypair.clone(),
+            Version::from_str("TEST.1.10").unwrap(),
+            MassaMetrics::new(
+                false,
+                "0.0.0.0:31248".parse().unwrap(),
+                thread_count,
+                Duration::from_secs(5),
+            )
+            .0,
         )
-        .0,
-    )
-    .unwrap()
+        .unwrap(),
+        server_selector_manager,
+    );
 }
 
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let _bs_manager = mock_bootstrap_manager(addr.clone(), config.clone());
+    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr.clone(), config.clone());
 
     let conn = TcpStream::connect(addr);
-    conn.unwrap();
+    let mut stream = conn.unwrap();
+    let mut buf = Vec::with_capacity(1);
+    stream.read(&mut buf).unwrap();
+    stream.shutdown(std::net::Shutdown::Both).unwrap();
+
+    bs_manager.stop().unwrap();
+    selector_manager.stop();
 }
 
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_server() {
     let thread_count = 2;
     let periods_per_cycle = 2;
@@ -253,12 +274,17 @@ fn test_bootstrap_server() {
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         },
-        executed_ops_config: ExecutedOpsConfig { thread_count },
+        executed_ops_config: ExecutedOpsConfig {
+            thread_count,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        },
         executed_denunciations_config: ExecutedDenunciationsConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             thread_count,
             endorsement_count: ENDORSEMENT_COUNT,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
         },
         final_history_length: 100,
         initial_seed_string: "".into(),
@@ -591,7 +617,7 @@ fn test_bootstrap_server() {
 
 // Regression test for Issue #3932
 #[test]
-#[cfg_attr(target_os = "macos", serial_test::serial)]
+#[serial]
 fn test_bootstrap_accept_err() {
     let thread_count = 2;
     let periods_per_cycle = 2;
@@ -631,12 +657,17 @@ fn test_bootstrap_accept_err() {
             max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: None,
         },
-        executed_ops_config: ExecutedOpsConfig { thread_count },
+        executed_ops_config: ExecutedOpsConfig {
+            thread_count,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        },
         executed_denunciations_config: ExecutedDenunciationsConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             thread_count,
             endorsement_count: ENDORSEMENT_COUNT,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
         },
         final_history_length: 100,
         initial_seed_string: "".into(),

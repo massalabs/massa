@@ -169,11 +169,6 @@ impl BlocksState {
         self.block_statuses.iter()
     }
 
-    /// Get a mutable iterator over all the blocks stored in the `BlocksState`
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&BlockId, &mut BlockStatus)> + '_ {
-        self.block_statuses.iter_mut()
-    }
-
     /// Get the number of blocks stored in the `BlocksState`
     pub fn len(&self) -> usize {
         self.block_statuses.len()
@@ -196,7 +191,9 @@ impl BlocksState {
             Some(block) => {
                 let old_state_id = BlockStatusId::from(&block);
                 self.update_indexes(block_id, Some(&old_state_id), None);
-                let Some(mut new_state) = callback(Some(block), &mut self.block_statuses) else { return; };
+                let Some(mut new_state) = callback(Some(block), &mut self.block_statuses) else {
+                    return;
+                };
                 let new_state_id = BlockStatusId::from(&new_state);
                 match (&old_state_id, &new_state_id) {
                     // From incoming status

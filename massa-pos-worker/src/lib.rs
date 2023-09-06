@@ -1,7 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-#![feature(let_chains)]
-
 mod controller;
 mod draw;
 mod worker;

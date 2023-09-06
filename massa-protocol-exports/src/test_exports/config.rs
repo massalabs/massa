@@ -95,6 +95,7 @@ impl Default for ProtocolConfig {
             version: "TEST.23.2".parse().unwrap(),
             try_connection_timer_same_peer: MassaTime::from_millis(1000),
             test_oldest_peer_cooldown: MassaTime::from_millis(720000),
+            rate_limit: 1024 * 1024 * 2,
         }
     }
 }

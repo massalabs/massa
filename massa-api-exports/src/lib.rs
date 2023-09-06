@@ -1,11 +1,9 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! All the structures that are used everywhere
 //!
+
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-#![feature(bound_map)]
-#![feature(int_roundings)]
-#![feature(iter_intersperse)]
 
 use crate::page::PageRequest;
 use massa_time::MassaTime;

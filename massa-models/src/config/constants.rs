@@ -59,14 +59,14 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1690894800000) // Tuesday, August 1, 2023 01:00:00 PM UTC
+        MassaTime::from_millis(1693994400000) // Wednesday, September 6, 2023 10:00:00 PM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(MassaTime::from_millis(1693486800000))  // Thursday, August 31, 2023 01:00:00 PM UTC
+        Some(MassaTime::from_millis(1696096800000))  // Saturday, September 30, 2023 06:00:00 PM UTC
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -76,9 +76,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.25.0"
+            "SAND.26.0"
         } else {
-            "TEST.25.2"
+            "TEST.26.0"
         }
         .parse()
         .unwrap()
@@ -104,11 +104,11 @@ pub const ROLL_PRICE: Amount = Amount::const_init(100, 0);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::const_init(102, 2);
 /// Cost to store one byte in the ledger
-pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 3);
+pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 4);
 /// Cost for a base entry default 0.01 MASSA
-pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(1, 2);
-/// Cost for a base entry datastore 10 bytes constant to avoid paying more for longer keys
-pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 10;
+pub const LEDGER_ENTRY_BASE_COST: Amount = Amount::const_init(1, 3);
+/// Base size of a empty datastore entry (not counting the key nor the value)
+pub const LEDGER_ENTRY_DATASTORE_BASE_SIZE: usize = 4;
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from_millis(16000);
 /// Proof of stake seed for the initial draw
@@ -129,10 +129,14 @@ pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
+/// Number of periods of executed operation and denunciation history to keep
+pub const KEEP_EXECUTED_HISTORY_EXTRA_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// cycle duration in periods
-pub const PERIODS_BETWEEN_BACKUPS: u64 = 128;
+/// Number of periods between two backups
+pub const PERIODS_BETWEEN_BACKUPS: u64 = 100 * PERIODS_PER_CYCLE;
+/// Maximum number of backups to keep. If reached, will delete the oldest ones.
+pub const MAX_BACKUPS_TO_KEEP: Option<usize> = Some(10);
 /// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap

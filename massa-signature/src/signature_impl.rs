@@ -24,23 +24,14 @@ use transition::Versioned;
 
 #[allow(missing_docs)]
 /// versioned KeyPair used for signature and decryption
-#[transition::versioned(versions("0", "1"))]
-pub struct KeyPair(ed25519_dalek::Keypair);
-
-impl Clone for KeyPair {
-    fn clone(&self) -> Self {
-        match self {
-            KeyPair::KeyPairV0(keypair) => KeyPair::KeyPairV0(keypair.clone()),
-            KeyPair::KeyPairV1(keypair) => KeyPair::KeyPairV1(keypair.clone()),
-        }
-    }
-}
+#[transition::versioned(versions("0"))]
+#[derive(Clone)]
+pub struct KeyPair(ed25519_dalek::SigningKey);
 
 impl std::fmt::Display for KeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             KeyPair::KeyPairV0(keypair) => keypair.fmt(f),
-            KeyPair::KeyPairV1(keypair) => keypair.fmt(f),
         }
     }
 }
@@ -93,7 +84,6 @@ impl KeyPair {
     pub fn get_version(&self) -> u64 {
         match self {
             KeyPair::KeyPairV0(keypair) => keypair.get_version(),
-            KeyPair::KeyPairV1(keypair) => keypair.get_version(),
         }
     }
 
@@ -112,7 +102,6 @@ impl KeyPair {
     pub fn generate(version: u64) -> Result<Self, MassaSignatureError> {
         match version {
             <KeyPair!["0"]>::VERSION => Ok(KeyPairVariant!["0"](<KeyPair!["0"]>::generate())),
-            <KeyPair!["1"]>::VERSION => Ok(KeyPairVariant!["1"](<KeyPair!["1"]>::generate())),
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "KeyPair version {} doesn't exist.",
                 version
@@ -134,7 +123,6 @@ impl KeyPair {
     pub fn sign(&self, hash: &Hash) -> Result<Signature, MassaSignatureError> {
         match self {
             KeyPair::KeyPairV0(keypair) => keypair.sign(hash).map(Signature::SignatureV0),
-            KeyPair::KeyPairV1(keypair) => keypair.sign(hash).map(Signature::SignatureV1),
         }
     }
 
@@ -142,7 +130,6 @@ impl KeyPair {
     pub fn get_ser_len(&self) -> usize {
         match self {
             KeyPair::KeyPairV0(keypair) => keypair.get_ser_len(),
-            KeyPair::KeyPairV1(keypair) => keypair.get_ser_len(),
         }
     }
 
@@ -157,7 +144,6 @@ impl KeyPair {
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             KeyPair::KeyPairV0(keypair) => keypair.to_bytes(),
-            KeyPair::KeyPairV1(keypair) => keypair.to_bytes(),
         }
     }
 
@@ -172,7 +158,6 @@ impl KeyPair {
     pub fn get_public_key(&self) -> PublicKey {
         match self {
             KeyPair::KeyPairV0(keypair) => PublicKey::PublicKeyV0(keypair.get_public_key()),
-            KeyPair::KeyPairV1(keypair) => PublicKey::PublicKeyV1(keypair.get_public_key()),
         }
     }
 
@@ -195,9 +180,6 @@ impl KeyPair {
             <KeyPair!["0"]>::VERSION => {
                 Ok(KeyPairVariant!["0"](<KeyPair!["0"]>::from_bytes(rest)?))
             }
-            <KeyPair!["1"]>::VERSION => {
-                Ok(KeyPairVariant!["1"](<KeyPair!["1"]>::from_bytes(rest)?))
-            }
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown keypair version: {}",
                 version
@@ -206,18 +188,7 @@ impl KeyPair {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
-impl Clone for KeyPair {
-    fn clone(&self) -> Self {
-        KeyPair(ed25519_dalek::Keypair {
-            // This will never error since self is a valid keypair
-            secret: ed25519_dalek::SecretKey::from_bytes(self.0.secret.as_bytes()).unwrap(),
-            public: self.0.public,
-        })
-    }
-}
-
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl std::fmt::Display for KeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -229,7 +200,7 @@ impl std::fmt::Display for KeyPair {
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("KeyPair"))]
+#[transition::impl_version(versions("0"), structures("KeyPair"))]
 impl KeyPair {
     pub const SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
 
@@ -258,12 +229,12 @@ impl KeyPair {
         version_serializer
             .serialize(&Self::VERSION, &mut bytes)
             .unwrap();
-        bytes.extend_from_slice(&self.0.secret.to_bytes());
+        bytes.extend_from_slice(&self.0.to_bytes());
         bytes
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("KeyPair", "Signature", "PublicKey"))]
+#[transition::impl_version(versions("0"), structures("KeyPair", "Signature", "PublicKey"))]
 impl KeyPair {
     /// Returns the Signature produced by signing
     /// data bytes with a `KeyPair`.
@@ -289,7 +260,7 @@ impl KeyPair {
     /// let public_key = keypair.get_public_key();
     /// ```
     pub fn get_public_key(&self) -> PublicKey {
-        PublicKey(self.0.public)
+        PublicKey(self.0.verifying_key())
     }
 
     /// Generate a new `KeyPair`
@@ -306,7 +277,7 @@ impl KeyPair {
     /// ```
     pub fn generate() -> Self {
         let mut rng = OsRng;
-        KeyPair(ed25519_dalek::Keypair::generate(&mut rng))
+        KeyPair(ed25519_dalek::SigningKey::generate(&mut rng))
     }
 
     /// Convert a byte array of size `SECRET_KEY_BYTES_SIZE` to a `KeyPair`.
@@ -326,14 +297,10 @@ impl KeyPair {
                 "keypair byte array is of invalid size".to_string(),
             ));
         }
-        let secret = ed25519_dalek::SecretKey::from_bytes(&data[..Self::SECRET_KEY_BYTES_SIZE])
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("keypair bytes parsing error: {}", err))
-            })?;
-        Ok(KeyPair(ed25519_dalek::Keypair {
-            public: ed25519_dalek::PublicKey::from(&secret),
-            secret,
-        }))
+
+        Ok(KeyPair(ed25519_dalek::SigningKey::from_bytes(
+            &data[..Self::SECRET_KEY_BYTES_SIZE].try_into().unwrap(),
+        )))
     }
 }
 
@@ -476,16 +443,15 @@ impl<'de> ::serde::Deserialize<'de> for KeyPair {
 /// Public key used to check if a message was encoded
 /// by the corresponding `PublicKey`.
 /// Generated from the `KeyPair` using `SignatureEngine`
-#[transition::versioned(versions("0", "1"))]
+#[transition::versioned(versions("0"))]
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct PublicKey(ed25519_dalek::PublicKey);
+pub struct PublicKey(ed25519_dalek::VerifyingKey);
 
 #[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for PublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             PublicKey::PublicKeyV0(pubkey) => pubkey.hash(state),
-            PublicKey::PublicKeyV1(pubkey) => pubkey.hash(state),
         }
     }
 }
@@ -503,29 +469,31 @@ impl Ord for PublicKey {
 }
 
 #[test]
+#[ignore]
 fn pubkey_ordering() {
+    // Note: keep the test code so when implementing PublicKeyV1 if will be easily re activated
+
     use std::collections::BTreeSet;
 
     let v0 = vec![
         PublicKey::from_str("P1wiuz54kR2kmvumCELcgxv1YVStCnPK8QQ6os2FNbGYwp188im").unwrap(),
         PublicKey::from_str("P12hzfgN14TCvAM3QgWvpPdHTKLUdqh2NzWqxkr2LAEG5hJmExr1").unwrap(),
     ];
-    let v1 = vec![
-        PublicKey::from_str("P33GgHz13gmyTPfd1ntSWEr8WyQE6CoYj76EqwesX9VaRQDSc2d").unwrap(),
-        PublicKey::from_str("P4PSBj9N2trF4Dp3hvQ4CUojAH5HkRMkEFH9BXHAswRvwXsTaGN").unwrap(),
-    ];
+    // let v1 = vec![
+    //    PublicKey::from_str("P33GgHz13gmyTPfd1ntSWEr8WyQE6CoYj76EqwesX9VaRQDSc2d").unwrap(),
+    //    PublicKey::from_str("P4PSBj9N2trF4Dp3hvQ4CUojAH5HkRMkEFH9BXHAswRvwXsTaGN").unwrap(),
+    //];
 
     let mut map = BTreeSet::new();
-    map.extend(v1);
+    // map.extend(v1);
     map.extend(v0.clone());
-    assert_eq!(map.first(), v0.first())
+    // assert_eq!(map.first(), v0.first())
 }
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             PublicKey::PublicKeyV0(pubkey) => pubkey.fmt(f),
-            PublicKey::PublicKeyV1(pubkey) => pubkey.fmt(f),
         }
     }
 }
@@ -584,12 +552,6 @@ impl PublicKey {
             (PublicKey::PublicKeyV0(pubkey), Signature::SignatureV0(signature)) => {
                 pubkey.verify_signature(hash, signature)
             }
-            (PublicKey::PublicKeyV1(pubkey), Signature::SignatureV1(signature)) => {
-                pubkey.verify_signature(hash, signature)
-            }
-            _ => Err(MassaSignatureError::InvalidVersionError(String::from(
-                "The PublicKey and Signature versions do not match",
-            ))),
         }
     }
 
@@ -606,7 +568,6 @@ impl PublicKey {
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             PublicKey::PublicKeyV0(pubkey) => pubkey.to_bytes(),
-            PublicKey::PublicKeyV1(pubkey) => pubkey.to_bytes(),
         }
     }
 
@@ -614,7 +575,6 @@ impl PublicKey {
     pub fn get_ser_len(&self) -> usize {
         match self {
             PublicKey::PublicKeyV0(pubkey) => pubkey.get_ser_len(),
-            PublicKey::PublicKeyV1(pubkey) => pubkey.get_ser_len(),
         }
     }
 
@@ -638,9 +598,6 @@ impl PublicKey {
             <PublicKey!["0"]>::VERSION => {
                 Ok(PublicKeyVariant!["0"](<PublicKey!["0"]>::from_bytes(rest)?))
             }
-            <PublicKey!["1"]>::VERSION => {
-                Ok(PublicKeyVariant!["1"](<PublicKey!["1"]>::from_bytes(rest)?))
-            }
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown PublicKey version: {}",
                 version
@@ -649,7 +606,7 @@ impl PublicKey {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 #[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for PublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -657,21 +614,21 @@ impl std::hash::Hash for PublicKey {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl PartialOrd for PublicKey {
     fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
         self.0.to_bytes().partial_cmp(&other.0.to_bytes())
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl Ord for PublicKey {
     fn cmp(&self, other: &PublicKey) -> Ordering {
         self.0.to_bytes().cmp(&other.0.to_bytes())
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -683,14 +640,14 @@ impl std::fmt::Display for PublicKey {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl std::fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("PublicKey", "Signature"))]
+#[transition::impl_version(versions("0"), structures("PublicKey", "Signature"))]
 impl PublicKey {
     /// Size of a public key
     pub const PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
@@ -750,9 +707,11 @@ impl PublicKey {
                 "public key byte array is of invalid size".to_string(),
             ));
         }
-        ed25519_dalek::PublicKey::from_bytes(&data[..Self::PUBLIC_KEY_SIZE_BYTES])
-            .map(Self)
-            .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
+        ed25519_dalek::VerifyingKey::from_bytes(
+            &data[..Self::PUBLIC_KEY_SIZE_BYTES].try_into().unwrap(),
+        )
+        .map(Self)
+        .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))
     }
 }
 
@@ -868,11 +827,11 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
 
 #[allow(missing_docs)]
 /// Signature generated from a message and a `KeyPair`.
-#[transition::versioned(versions("0", "1"))]
+#[transition::versioned(versions("0"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature(ed25519_dalek::Signature);
 
-#[transition::impl_version(versions("0", "1"), structures("Signature"))]
+#[transition::impl_version(versions("0"), structures("Signature"))]
 impl Signature {
     /// Size of a signature
     pub const SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
@@ -882,7 +841,6 @@ impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Signature::SignatureV0(signature) => signature.fmt(f),
-            Signature::SignatureV1(signature) => signature.fmt(f),
         }
     }
 }
@@ -929,7 +887,6 @@ impl Signature {
     pub fn to_bs58_check(&self) -> String {
         match self {
             Signature::SignatureV0(signature) => signature.to_bs58_check(),
-            Signature::SignatureV1(signature) => signature.to_bs58_check(),
         }
     }
 
@@ -964,7 +921,6 @@ impl Signature {
     pub fn get_ser_len(&self) -> usize {
         match self {
             Signature::SignatureV0(signature) => signature.get_ser_len(),
-            Signature::SignatureV1(signature) => signature.get_ser_len(),
         }
     }
 
@@ -984,7 +940,6 @@ impl Signature {
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             Signature::SignatureV0(signature) => signature.to_bytes(),
-            Signature::SignatureV1(signature) => signature.to_bytes(),
         }
     }
 
@@ -1011,9 +966,6 @@ impl Signature {
             <Signature!["0"]>::VERSION => {
                 Ok(SignatureVariant!["0"](<Signature!["0"]>::from_bytes(rest)?))
             }
-            <Signature!["1"]>::VERSION => {
-                Ok(SignatureVariant!["1"](<Signature!["1"]>::from_bytes(rest)?))
-            }
             _ => Err(MassaSignatureError::InvalidVersionError(format!(
                 "Unknown signature version: {}",
                 version
@@ -1022,14 +974,14 @@ impl Signature {
     }
 }
 
-#[transition::impl_version(versions("0", "1"))]
+#[transition::impl_version(versions("0"))]
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_bs58_check())
     }
 }
 
-#[transition::impl_version(versions("0", "1"), structures("Signature"))]
+#[transition::impl_version(versions("0"), structures("Signature"))]
 impl Signature {
     /// Serialize a `Signature` using `bs58` encoding with checksum.
     ///
@@ -1099,11 +1051,9 @@ impl Signature {
                 "signature byte array is of invalid size".to_string(),
             ));
         }
-        ed25519_dalek::Signature::from_bytes(&data[..Self::SIGNATURE_SIZE_BYTES])
-            .map(Self)
-            .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
-            })
+        Ok(Signature(ed25519_dalek::Signature::from_bytes(
+            &data[..Self::SIGNATURE_SIZE_BYTES].try_into().unwrap(),
+        )))
     }
 
     /// Deserialize a `Signature` using `bs58` encoding with checksum.
@@ -1300,12 +1250,6 @@ pub fn verify_signature_batch(
     for (hash, signature_, public_key_) in batch.iter() {
         let (signature, public_key) = match (signature_, public_key_) {
             (Signature::SignatureV0(s), PublicKey::PublicKeyV0(pk)) => (s.0, pk.0),
-            (Signature::SignatureV1(s), PublicKey::PublicKeyV1(pk)) => (s.0, pk.0),
-            _ => {
-                return Err(MassaSignatureError::InvalidVersionError(String::from(
-                    "Batch contains unsupported or incompatible versions",
-                )))
-            }
         };
 
         hashes.push(hash.to_bytes().as_slice());
@@ -1352,10 +1296,10 @@ mod tests {
 
         match (keypair, deserialized) {
             (KeyPair::KeyPairV0(keypair), KeyPair::KeyPairV0(deserialized)) => {
-                assert_eq!(keypair.0.public, deserialized.0.public);
-            }
-            _ => {
-                panic!("Wrong version provided");
+                assert_eq!(
+                    keypair.0.to_keypair_bytes(),
+                    deserialized.0.to_keypair_bytes()
+                );
             }
         }
     }

@@ -119,11 +119,8 @@ impl FinalState {
         };
 
         if reset_final_state {
-            // delete the execution trail hash
-            final_state
-                .db
-                .write()
-                .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
+            // reset the execution trail hash
+            final_state.init_execution_trail_hash();
             final_state.async_pool.reset();
             final_state.pos_state.reset();
             final_state.executed_ops.reset();

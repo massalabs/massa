@@ -6,6 +6,7 @@ use peernet::transports::TransportType;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tracing::log::info;
@@ -151,6 +152,8 @@ pub struct PeerDB {
     pub tested_addresses: HashMap<SocketAddr, MassaTime>,
     /// history of try connection to peers
     pub try_connect_history: HashMap<SocketAddr, ConnectionMetadata>,
+    /// peers currently tested
+    pub peers_in_test: HashSet<SocketAddr>,
 }
 
 pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
@@ -208,15 +211,23 @@ impl PeerDB {
     }
 
     /// Retrieve the peer with the oldest test date.
-    pub fn get_oldest_peer(&self, cooldown: Duration) -> Option<SocketAddr> {
+    pub fn get_oldest_peer(
+        &self,
+        cooldown: Duration,
+        in_test: &HashSet<SocketAddr>,
+    ) -> Option<SocketAddr> {
         match self
             .tested_addresses
             .iter()
             .min_by_key(|(_, timestamp)| *(*timestamp))
         {
             Some((addr, timestamp)) => {
-                if timestamp.estimate_instant().ok()?.elapsed() > cooldown {
-                    Some(*addr)
+                if !in_test.contains(addr) {
+                    if timestamp.estimate_instant().ok()?.elapsed() > cooldown {
+                        Some(*addr)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
