@@ -127,10 +127,18 @@ impl MassaRpcServer for API<Private> {
 
     async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
         let node_wallet = self.0.node_wallet.clone();
-        let mut w_wallet = node_wallet.write();
-        w_wallet
-            .remove_addresses(&addresses)
-            .map_err(|e| ApiError::WalletError(e).into())
+
+        let changed = {
+            node_wallet
+                .write()
+                .remove_addresses(&addresses)
+                .map_err(ApiError::WalletError)?
+        };
+
+        if changed {
+            node_wallet.read().save().map_err(ApiError::WalletError)?;
+        }
+        Ok(())
     }
 
     async fn get_staking_addresses(&self) -> RpcResult<PreHashSet<Address>> {
