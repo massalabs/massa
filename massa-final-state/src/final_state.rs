@@ -687,6 +687,15 @@ impl FinalState {
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
+
+        {
+            let db = self.db.read();
+            let slot = db.get_change_id().unwrap();
+            for (cf, data) in db.iterator_cf(STATE_CF, MassaIteratorMode::Start) {
+                println!("TESTNETDBG| {slot:?} - CF {cf:?}");
+                println!("TESTNETDBG| {slot:?} - DATA {data:?}");
+            }
+        }
     }
 
     /// After bootstrap or load from disk, recompute all the caches.
