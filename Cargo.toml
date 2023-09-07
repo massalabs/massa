@@ -42,6 +42,7 @@ members = [
   "massa-versioning",
   "massa-grpc",
   "massa-xtask",
+  "tools/debug_testnet"
 ]
 resolver = "2"
 
