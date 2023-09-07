@@ -810,6 +810,9 @@
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
 <a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -931,8 +934,11 @@
         };
 
         <span class="kw">if </span>reset_final_state {
-            <span class="comment">// reset the execution trail hash
-            </span>final_state.init_execution_trail_hash();
+            <span class="comment">// delete the execution trail hash
+            </span>final_state
+                .db
+                .write()
+                .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
             final_state.async_pool.reset();
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
