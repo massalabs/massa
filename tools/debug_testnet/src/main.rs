@@ -27,6 +27,7 @@ impl LogsInspector {
             filter_tags: vec![
                 "TESTNETDBG".to_string(),
                 "final_state hash".to_string(),
+                "TRAILHASH".to_string(),
             ],
         }
     }
@@ -146,6 +147,7 @@ impl LogsInspector {
         match case {
             0 => self.db_dump_debug(slot, line0, line1),
             1 => self.final_state_hash_debug(slot, line0, line1),
+            2 => self.trail_hash_inspect(slot, line0, line1),
             _ => unimplemented!(),
         }
     }
@@ -161,6 +163,14 @@ impl LogsInspector {
         let hash1 = l1.split(" ").last().unwrap();
         if hash0 != hash1 {
             println!("{slot:?} - hash {hash0} {hash1} - different");
+        }
+    }
+
+    fn trail_hash_inspect(&self, slot: (u64, u64), l0: String, l1: String) {
+        let hash0 = l0.split(" ").last().unwrap();
+        let hash1 = l1.split(" ").last().unwrap();
+        if hash0 != hash1 {
+            println!("{slot:?} - trail hash {hash0} {hash1} - different");
         }
     }
 }
