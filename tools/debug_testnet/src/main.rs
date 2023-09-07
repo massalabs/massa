@@ -1,14 +1,19 @@
-use std::{path::PathBuf, io::{BufReader, Lines}, fs::File, unreachable, unimplemented};
+use std::{
+    fs::File,
+    io::{BufReader, Lines},
+    path::PathBuf,
+    unimplemented, unreachable,
+};
 
 use clap::Parser;
 use std::io::BufRead;
 
 #[derive(Parser)]
 struct Args {
-    #[arg(short='0', long)]
+    #[arg(short = '0', long)]
     labnet0: PathBuf,
 
-    #[arg(short='1', long)]
+    #[arg(short = '1', long)]
     labnet1: PathBuf,
 }
 
@@ -20,7 +25,6 @@ pub struct LogsInspector {
 
 impl LogsInspector {
     pub fn new(l0: BufReader<File>, l1: BufReader<File>) -> LogsInspector {
-        // get_next_slot(lines_iter_0);
         LogsInspector {
             lines_0: l0.lines(),
             lines_1: l1.lines(),
@@ -36,7 +40,7 @@ impl LogsInspector {
         let mut res = String::new();
         let mut reached_digit = false;
         for c in line.chars() {
-            if c.is_digit(10) {
+            if c.is_ascii_digit() {
                 reached_digit = true;
                 res.push(c);
             } else if reached_digit {
@@ -47,14 +51,14 @@ impl LogsInspector {
         res
     }
 
-    fn try_get_slot(&self, line: &String) -> Option<(u64, u64)> {
+    fn try_get_slot(&self, line: &str) -> Option<(u64, u64)> {
         let contains_filter_tags = self.filter_tags.iter().any(|tag| line.contains(tag));
         if !line.contains("period:") || !line.contains("thread:") || !contains_filter_tags {
-            None           
+            None
         } else {
             let mut workline = line.split("period:").nth(1).unwrap().split(',');
-            let period : u64 = self.catch_number(workline.nth(0).unwrap()).parse().unwrap();
-            let thread : u64 = self.catch_number(workline.nth(0).unwrap()).parse().unwrap();
+            let period: u64 = self.catch_number(workline.next().unwrap()).parse().unwrap();
+            let thread: u64 = self.catch_number(workline.next().unwrap()).parse().unwrap();
             Some((period, thread))
         }
     }
@@ -62,7 +66,7 @@ impl LogsInspector {
     fn find_next_slot(&mut self, idx: usize) -> Option<(String, (u64, u64))> {
         loop {
             let reader = match idx {
-                0 => &mut self.lines_0,            
+                0 => &mut self.lines_0,
                 1 => &mut self.lines_1,
                 _ => unreachable!(),
             };
@@ -126,7 +130,6 @@ impl LogsInspector {
             };
 
             self.inspect_lines(slot, l0, l1);
-            // let slot = self.try_get_slot(l0)
         }
     }
 
@@ -152,23 +155,23 @@ impl LogsInspector {
         }
     }
 
-    fn db_dump_debug(&self, slot: (u64, u64), l0: String, l1: String) {
+    fn db_dump_debug(&self, _slot: (u64, u64), l0: String, l1: String) {
         if l0 != l1 {
             println!("Different line");
         }
     }
 
     fn final_state_hash_debug(&self, slot: (u64, u64), l0: String, l1: String) {
-        let hash0 = l0.split(" ").last().unwrap();
-        let hash1 = l1.split(" ").last().unwrap();
+        let hash0 = l0.split(' ').last().unwrap();
+        let hash1 = l1.split(' ').last().unwrap();
         if hash0 != hash1 {
             println!("{slot:?} - hash {hash0} {hash1} - different");
         }
     }
 
     fn trail_hash_inspect(&self, slot: (u64, u64), l0: String, l1: String) {
-        let hash0 = l0.split(" ").last().unwrap();
-        let hash1 = l1.split(" ").last().unwrap();
+        let hash0 = l0.split(' ').last().unwrap();
+        let hash1 = l1.split(' ').last().unwrap();
         if hash0 != hash1 {
             println!("{slot:?} - trail hash {hash0} {hash1} - different");
         }
