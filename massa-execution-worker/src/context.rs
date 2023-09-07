@@ -67,6 +67,8 @@ pub struct ExecutionContextSnapshot {
     /// speculative list of executed denunciations
     pub executed_denunciations: ExecutedDenunciationsChanges,
 
+    pub execution_trail_hash: Hash,
+
     /// speculative roll state changes caused so far in the context
     pub pos_changes: PoSChanges,
 
@@ -249,6 +251,7 @@ impl ExecutionContext {
             pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
             executed_denunciations: self.speculative_executed_denunciations.get_snapshot(),
+            execution_trail_hash: self.execution_trail_hash,
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
             created_message_index: self.created_message_index,
@@ -282,6 +285,7 @@ impl ExecutionContext {
         self.created_message_index = snapshot.created_message_index;
         self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;
+        self.execution_trail_hash = snapshot.execution_trail_hash;
 
         // For events, set snapshot delta to error events.
         // Start iterating from snapshot events length because we are dealing with a VecDeque.
