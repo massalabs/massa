@@ -2,7 +2,7 @@ use massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
     CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
-    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
+    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF, EXECUTION_TRAIL_HASH_PREFIX,
 };
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
@@ -475,6 +475,19 @@ where
         stream_changes: StreamBatch<ChangeID>,
         stream_changes_versioning: StreamBatch<ChangeID>,
     ) -> Result<(StreamingStep<Key>, StreamingStep<Key>), MassaDBError> {
+
+        for (key, value) in stream_changes.new_elements.iter() {
+            if key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
+                println!("BOOTSTRAP _ new_elements - WRITING NEW VALUE FOR EXECUTION_TRAIL_HASH: -> {:?}", value);
+            }
+        }
+
+        for (key, value) in stream_changes.updates_on_previous_elements.iter() {
+            if key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
+                println!("BOOTSTRAP _ updates_on_previous_elements - WRITING NEW VALUE FOR EXECUTION_TRAIL_HASH: -> {:?}", value);
+            }
+        }
+
         let mut changes = BTreeMap::new();
 
         let new_cursor: StreamingStep<Vec<u8>> = match stream_changes.new_elements.last_key_value()
@@ -668,6 +681,13 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
     /// Writes the batch to the DB
     fn write_batch(&mut self, batch: DBBatch, versioning_batch: DBBatch, change_id: Option<Slot>) {
+
+        for (key, value) in batch.iter() {
+            if key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
+                println!("STATE CHANGES _ batch - WRITING NEW VALUE FOR EXECUTION_TRAIL_HASH: -> {:?}", value);
+            }
+        }
+
         self.write_changes(batch, versioning_batch, change_id, false)
             .expect(CRUD_ERROR);
     }

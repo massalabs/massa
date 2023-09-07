@@ -419,6 +419,8 @@ async fn launch(
         Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
+    println!("Just after bootstrap, slot: {} - execution_trail_hash: {}", final_state.read().get_slot(), final_state.read().get_execution_trail_hash());
+
     if !final_state.read().is_db_valid() {
         // TODO: Bootstrap again instead of panicking
         panic!("critical: db is not valid after bootstrap");
