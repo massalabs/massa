@@ -811,8 +811,6 @@
 <a href="#811" id="811">811</a>
 <a href="#812" id="812">812</a>
 <a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -934,6 +932,7 @@
         };
 
         <span class="kw">if </span>reset_final_state {
+            final_state.db.read().set_initial_change_id(slot);
             <span class="comment">// delete the execution trail hash
             </span>final_state
                 .db
@@ -943,7 +942,6 @@
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
             final_state.executed_denunciations.reset();
-            final_state.db.read().set_initial_change_id(slot);
         }
 
         <span class="macro">info!</span>(
@@ -1619,13 +1617,11 @@
     </span>}
 
     <span class="doccomment">/// Initialize the execution trail hash to zero.
-    </span><span class="kw">pub fn </span>init_execution_trail_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>db_batch = DBBatch::new();
-        db_batch.insert(
+    </span><span class="kw">pub fn </span>init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+        batch.insert(
             EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
             <span class="prelude-val">Some</span>(massa_hash::Hash::zero().to_bytes().to_vec()),
         );
-        <span class="self">self</span>.db.write().write_batch(db_batch, DBBatch::new(), <span class="prelude-val">None</span>);
     }
 }
 </code></pre></div></section></main></body></html>

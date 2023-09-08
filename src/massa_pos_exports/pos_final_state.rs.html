@@ -2247,7 +2247,7 @@
     }
 
     <span class="doccomment">/// Try load initial deferred credits from file
-    </span><span class="kw">pub fn </span>load_initial_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt; {
+    </span><span class="kw">pub fn </span>load_initial_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch) -&gt; <span class="prelude-ty">Result</span>&lt;(), PosError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(initial_deferred_credits_path) = <span class="kw-2">&amp;</span><span class="self">self</span>.config.initial_deferred_credits_path <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         };
@@ -2277,13 +2277,11 @@
                 ))
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>db_batch = DBBatch::new();
         <span class="kw">for </span>(address, deferred_credits) <span class="kw">in </span>initial_deferred_credits {
             <span class="kw">for </span>AddressInitialDefferredCredits { slot, amount } <span class="kw">in </span>deferred_credits {
-                <span class="self">self</span>.put_deferred_credits_entry(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>amount, <span class="kw-2">&amp;mut </span>db_batch);
+                <span class="self">self</span>.put_deferred_credits_entry(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>amount, batch);
             }
         }
-        <span class="self">self</span>.db.write().write_batch(db_batch, DBBatch::new(), <span class="prelude-val">None</span>);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -3751,10 +3749,12 @@
             cycle_info_deserializer,
         };
 
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         <span class="comment">// load initial deferred credits
         </span>pos_state
-            .load_initial_deferred_credits()
+            .load_initial_deferred_credits(<span class="kw-2">&amp;mut </span>batch)
             .expect(<span class="string">&quot;error while loading initial deferred credits&quot;</span>);
+        db.write().write_batch(batch, DBBatch::new(), <span class="prelude-val">None</span>);
 
         <span class="kw">let </span>deferred_credits = pos_state.get_deferred_credits().credits;
 

@@ -1111,31 +1111,31 @@
                             err
                         ))
                     })<span class="question-mark">?</span>;
-
-                <span class="comment">// set initial execution trail hash
-                </span>final_state_guard.init_execution_trail_hash();
-
-                <span class="comment">// load initial deferred credits
-                </span>final_state_guard
-                    .pos_state
-                    .load_initial_deferred_credits()
-                    .map_err(|err| {
-                        BootstrapError::GeneralError(<span class="macro">format!</span>(
-                            <span class="string">&quot;could not load initial deferred credits: {}&quot;</span>,
-                            err
-                        ))
-                    })<span class="question-mark">?</span>;
             }
-
-            <span class="comment">// create the initial cycle of PoS cycle_history
-            </span><span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
-            <span class="kw">let </span><span class="kw-2">mut </span>db_versioning_batch = DBBatch::new();
-            final_state_guard.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
 
             <span class="kw">let </span>slot = Slot::new(
                 final_state_guard.last_start_period,
                 bootstrap_config.thread_count.saturating_sub(<span class="number">1</span>),
             );
+
+            <span class="comment">// create the initial cycle of PoS cycle_history
+            </span><span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
+            <span class="kw">let </span><span class="kw-2">mut </span>db_versioning_batch: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; = DBBatch::new();
+            final_state_guard.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
+
+            <span class="comment">// set initial execution trail hash
+            </span>final_state_guard.init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span>batch);
+
+            <span class="comment">// load initial deferred credits
+            </span>final_state_guard
+                .pos_state
+                .load_initial_deferred_credits(<span class="kw-2">&amp;mut </span>batch)
+                .map_err(|err| {
+                    BootstrapError::GeneralError(<span class="macro">format!</span>(
+                        <span class="string">&quot;could not load initial deferred credits: {}&quot;</span>,
+                        err
+                    ))
+                })<span class="question-mark">?</span>;
 
             <span class="comment">// Need to write MIP store to Db if we want to bootstrap it to others
             </span>final_state_guard
