@@ -431,31 +431,31 @@ pub fn get_state(
                             err
                         ))
                     })?;
-
-                // set initial execution trail hash
-                final_state_guard.init_execution_trail_hash();
-
-                // load initial deferred credits
-                final_state_guard
-                    .pos_state
-                    .load_initial_deferred_credits()
-                    .map_err(|err| {
-                        BootstrapError::GeneralError(format!(
-                            "could not load initial deferred credits: {}",
-                            err
-                        ))
-                    })?;
             }
-
-            // create the initial cycle of PoS cycle_history
-            let mut batch = DBBatch::new();
-            let mut db_versioning_batch = DBBatch::new();
-            final_state_guard.pos_state.create_initial_cycle(&mut batch);
 
             let slot = Slot::new(
                 final_state_guard.last_start_period,
                 bootstrap_config.thread_count.saturating_sub(1),
             );
+
+            // create the initial cycle of PoS cycle_history
+            let mut batch = DBBatch::new();
+            let mut db_versioning_batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
+            final_state_guard.pos_state.create_initial_cycle(&mut batch);
+
+            // set initial execution trail hash
+            final_state_guard.init_execution_trail_hash_to_batch(&mut batch);
+
+            // load initial deferred credits
+            final_state_guard
+                .pos_state
+                .load_initial_deferred_credits(&mut batch)
+                .map_err(|err| {
+                    BootstrapError::GeneralError(format!(
+                        "could not load initial deferred credits: {}",
+                        err
+                    ))
+                })?;
 
             // Need to write MIP store to Db if we want to bootstrap it to others
             final_state_guard

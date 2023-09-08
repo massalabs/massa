@@ -363,8 +363,12 @@ pub fn get_random_final_state_bootstrap(
         mip_store,
         db,
     );
-
-    final_state.init_execution_trail_hash();
+    let mut batch = DBBatch::new();
+    final_state.init_execution_trail_hash_to_batch(&mut batch);
+    final_state
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
     final_state
 }
 
