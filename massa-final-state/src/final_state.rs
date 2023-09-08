@@ -121,7 +121,8 @@ impl FinalState {
         if reset_final_state {
             final_state.db.read().set_initial_change_id(slot);
             // delete the execution trail hash
-            final_state.db
+            final_state
+                .db
                 .write()
                 .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
             final_state.async_pool.reset();
