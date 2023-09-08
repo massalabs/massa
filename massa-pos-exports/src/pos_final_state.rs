@@ -204,7 +204,7 @@ impl PoSFinalState {
     }
 
     /// Try load initial deferred credits from file
-    pub fn load_initial_deferred_credits(&mut self) -> Result<(), PosError> {
+    pub fn load_initial_deferred_credits(&mut self, batch: &mut DBBatch) -> Result<(), PosError> {
         let Some(initial_deferred_credits_path) = &self.config.initial_deferred_credits_path else {
             return Ok(());
         };
@@ -234,13 +234,11 @@ impl PoSFinalState {
                 ))
             })?;
 
-        let mut db_batch = DBBatch::new();
         for (address, deferred_credits) in initial_deferred_credits {
             for AddressInitialDefferredCredits { slot, amount } in deferred_credits {
-                self.put_deferred_credits_entry(&slot, &address, &amount, &mut db_batch);
+                self.put_deferred_credits_entry(&slot, &address, &amount, batch);
             }
         }
-        self.db.write().write_batch(db_batch, DBBatch::new(), None);
 
         Ok(())
     }
@@ -1708,10 +1706,12 @@ mod tests {
             cycle_info_deserializer,
         };
 
+        let mut batch = DBBatch::new();
         // load initial deferred credits
         pos_state
-            .load_initial_deferred_credits()
+            .load_initial_deferred_credits(&mut batch)
             .expect("error while loading initial deferred credits");
+        db.write().write_batch(batch, DBBatch::new(), None);
 
         let deferred_credits = pos_state.get_deferred_credits().credits;
 

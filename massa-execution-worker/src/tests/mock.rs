@@ -141,9 +141,10 @@ pub fn get_sample_state(
         )
         .unwrap()
     };
-    final_state.init_execution_trail_hash();
+
     let mut batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
     final_state.pos_state.create_initial_cycle(&mut batch);
+    final_state.init_execution_trail_hash_to_batch(&mut batch);
     final_state
         .db
         .write()

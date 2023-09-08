@@ -119,13 +119,16 @@ impl FinalState {
         };
 
         if reset_final_state {
-            // reset the execution trail hash
-            final_state.init_execution_trail_hash();
+            final_state.db.read().set_initial_change_id(slot);
+            // delete the execution trail hash
+            final_state
+                .db
+                .write()
+                .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
             final_state.async_pool.reset();
             final_state.pos_state.reset();
             final_state.executed_ops.reset();
             final_state.executed_denunciations.reset();
-            final_state.db.read().set_initial_change_id(slot);
         }
 
         info!(
@@ -801,12 +804,10 @@ impl FinalState {
     }
 
     /// Initialize the execution trail hash to zero.
-    pub fn init_execution_trail_hash(&mut self) {
-        let mut db_batch = DBBatch::new();
-        db_batch.insert(
+    pub fn init_execution_trail_hash_to_batch(&mut self, batch: &mut DBBatch) {
+        batch.insert(
             EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
             Some(massa_hash::Hash::zero().to_bytes().to_vec()),
         );
-        self.db.write().write_batch(db_batch, DBBatch::new(), None);
     }
 }

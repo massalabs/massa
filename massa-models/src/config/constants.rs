@@ -59,7 +59,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1693998000000) // Wednesday, September 6, 2023 11:00:00 PM UTC
+        MassaTime::from_millis(1694170800000) // Friday, September 8, 2023 11:00:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -76,9 +76,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.26.0"
+            "SAND.26.1"
         } else {
-            "TEST.26.0"
+            "TEST.26.1"
         }
         .parse()
         .unwrap()
