@@ -59,7 +59,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1694174400000) // Wednesday, September 8, 2023 12:00:00 PM UTC
+        MassaTime::from_millis(1694170800000) // Friday, September 8, 2023 11:00:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
