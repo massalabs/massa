@@ -462,6 +462,16 @@ impl ExecutionState {
                         true,
                         Slot::new(operation.content.expire_period, op_thread),
                     );
+
+                    let event = context.event_create(
+                        serde_json::json!({ "massa_execution_success": format!(
+                            "operation_id:{}, used gas:{}, type:{}",
+                            operation_id, op_gas, operation.content.op
+                        )})
+                        .to_string(),
+                        false,
+                    );
+                    context.event_emit(event);
                 }
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
