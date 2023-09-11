@@ -934,7 +934,6 @@ mod tests {
             ..Default::default()
         });
 
-        dbg!(&events);
         // match the events, check balance and call stack to make sure the executions were local
         assert!(events.len() == 10, "10 events were expected");
         assert_eq!(
@@ -2454,7 +2453,6 @@ mod tests {
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         // match the events
         println!("{:?}", events);
-        dbg!(&events);
         assert_eq!(events.len(), 5, "Got {} events, expected 4", events.len());
         let key_a: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
         let key_a_str: String = key_a
@@ -3015,7 +3013,6 @@ mod tests {
 
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         // match the events
-        dbg!(&events);
         assert_eq!(events.len(), 3);
         assert!(
             events[0].data.ends_with("true"),
