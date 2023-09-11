@@ -444,7 +444,7 @@
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::{collections::HashMap, net::IpAddr};
 <span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>tracing::{debug, warn};
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
 <span class="kw">use crate</span>::{
@@ -626,7 +626,7 @@
                             <span class="prelude-val">Ok</span>(ConnectivityCommand::Stop) =&gt; {
                                 <span class="macro">println!</span>(<span class="string">&quot;Stopping protocol&quot;</span>);
                                 drop(network_controller);
-                                <span class="macro">println!</span>(<span class="string">&quot;Stoppeed network controller&quot;</span>);
+                                <span class="macro">println!</span>(<span class="string">&quot;Stopped network controller&quot;</span>);
                                 operation_handler.stop();
                                 <span class="macro">println!</span>(<span class="string">&quot;Stopped operation handler&quot;</span>);
                                 endorsement_handler.stop();
@@ -833,7 +833,7 @@
     peer_db: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;PeerDB&gt;&gt;,
     config: <span class="kw-2">&amp;</span>ProtocolConfig,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-    <span class="macro">info!</span>(<span class="string">&quot;Trying to connect to addr {}&quot;</span>, addr);
+    <span class="macro">debug!</span>(<span class="string">&quot;Trying to connect to addr {}&quot;</span>, addr);
 
     <span class="kw">let </span>conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
     {
@@ -844,7 +844,7 @@
             .or_insert(ConnectionMetadata::default())
             .try_connect();
         <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw-2">ref </span>err) = conn_res {
-            <span class="macro">warn!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
+            <span class="macro">debug!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
             peer_db_write
                 .try_connect_history
                 .entry(addr)

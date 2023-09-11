@@ -485,8 +485,6 @@
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -507,7 +505,7 @@
     messages::MessagesHandler <span class="kw">as </span>PeerNetMessagesHandler,
     transports::TransportType,
 };
-<span class="kw">use </span>tracing::info;
+<span class="kw">use </span>tracing::debug;
 
 <span class="kw">use super</span>::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
@@ -743,7 +741,7 @@
             }
 
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = socket.shutdown(std::net::Shutdown::Both) {
-                <span class="macro">tracing::log::error!</span>(<span class="string">&quot;Failed to shutdown socket: {}&quot;</span>, e);
+                <span class="macro">tracing::log::error!</span>(<span class="string">&quot;Failed to shutdown socket for {} : {}&quot;</span>, addr, e);
             }
             res
         };
@@ -771,8 +769,6 @@
         default_target_out_connections: usize,
         massa_metrics: MassaMetrics,
     ) -&gt; <span class="self">Self </span>{
-        <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;running new tester&quot;</span>);
-
         <span class="kw">let </span>handle = std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-peer-handler-tester&quot;</span>.to_string())
         .spawn(<span class="kw">move </span>|| {
@@ -881,7 +877,7 @@
                                                     <span class="kw">continue </span><span class="lifetime">&#39;main_loop</span>;
                                                 }
                                             }
-                                            <span class="macro">info!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
+                                            <span class="macro">debug!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
 
                                             <span class="kw">let </span>res = Tester::tcp_handshake(
                                                 messages_handler.clone(),
@@ -947,9 +943,9 @@
                                 <span class="kw">continue</span>;
                             }
                         }
-                        <span class="macro">info!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
+                        <span class="macro">debug!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
 
-                        <span class="kw">let </span>res = Tester::tcp_handshake(
+                        <span class="kw">let _ </span>= Tester::tcp_handshake(
                             messages_handler.clone(),
                             db.clone(),
                             announcement_deser.clone(),
@@ -965,8 +961,8 @@
                         //     &amp;OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         // );
                         </span>db.write().peers_in_test.remove(<span class="kw-2">&amp;</span>listener);
-                        <span class="macro">tracing::log::debug!</span>(<span class="string">&quot;{:?}&quot;</span>, res);
-                    }
+                        <span class="comment">// debug!(&quot;{:?}&quot;, res);
+                    </span>}
                 }
             }
         }).expect(<span class="string">&quot;OS failed to start peer tester thread&quot;</span>);
