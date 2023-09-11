@@ -18,7 +18,7 @@ use peernet::{
     messages::MessagesHandler as PeerNetMessagesHandler,
     transports::TransportType,
 };
-use tracing::info;
+use tracing::debug;
 
 use super::{
     announcement::{AnnouncementDeserializer, AnnouncementDeserializerArgs},
@@ -254,7 +254,7 @@ impl Tester {
             }
 
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
-                tracing::log::error!("Failed to shutdown socket: {}", e);
+                tracing::log::error!("Failed to shutdown socket for {} : {}", addr, e);
             }
             res
         };
@@ -282,8 +282,6 @@ impl Tester {
         default_target_out_connections: usize,
         massa_metrics: MassaMetrics,
     ) -> Self {
-        tracing::log::debug!("running new tester");
-
         let handle = std::thread::Builder::new()
         .name("protocol-peer-handler-tester".to_string())
         .spawn(move || {
@@ -392,7 +390,7 @@ impl Tester {
                                                     continue 'main_loop;
                                                 }
                                             }
-                                            info!("testing peer {} listener addr: {}", &listener.0, &addr);
+                                            debug!("testing peer {} listener addr: {}", &listener.0, &addr);
 
                                             let res = Tester::tcp_handshake(
                                                 messages_handler.clone(),
@@ -458,9 +456,9 @@ impl Tester {
                                 continue;
                             }
                         }
-                        info!("testing listener addr: {}", &listener);
+                        debug!("testing listener addr: {}", &listener);
 
-                        let res = Tester::tcp_handshake(
+                        let _ = Tester::tcp_handshake(
                             messages_handler.clone(),
                             db.clone(),
                             announcement_deser.clone(),
@@ -476,7 +474,7 @@ impl Tester {
                         //     &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         // );
                         db.write().peers_in_test.remove(&listener);
-                        tracing::log::debug!("{:?}", res);
+                        // debug!("{:?}", res);
                     }
                 }
             }

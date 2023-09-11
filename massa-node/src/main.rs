@@ -130,7 +130,6 @@ async fn launch(
     MetricsStopper,
     MassaSurveyStopper,
 ) {
-    info!("Node version : {}", *VERSION);
     let now = MassaTime::now().expect("could not get now time");
     // Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
@@ -1314,6 +1313,8 @@ async fn run(args: Args) -> anyhow::Result<()> {
         default_panic(info);
         std::process::exit(1);
     }));
+
+    info!("Node version : {}", *VERSION);
 
     // load or create wallet, asking for password if necessary
     let node_wallet = load_wallet(

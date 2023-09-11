@@ -16,7 +16,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::{collections::HashMap, net::IpAddr};
 use std::{thread::JoinHandle, time::Duration};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
 use crate::{
@@ -198,7 +198,7 @@ pub(crate) fn start_connectivity_thread(
                             Ok(ConnectivityCommand::Stop) => {
                                 println!("Stopping protocol");
                                 drop(network_controller);
-                                println!("Stoppeed network controller");
+                                println!("Stopped network controller");
                                 operation_handler.stop();
                                 println!("Stopped operation handler");
                                 endorsement_handler.stop();
@@ -405,7 +405,7 @@ fn try_connect_peer(
     peer_db: &Arc<RwLock<PeerDB>>,
     config: &ProtocolConfig,
 ) -> Result<(), ProtocolError> {
-    info!("Trying to connect to addr {}", addr);
+    debug!("Trying to connect to addr {}", addr);
 
     let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
     {
@@ -416,7 +416,7 @@ fn try_connect_peer(
             .or_insert(ConnectionMetadata::default())
             .try_connect();
         if let Err(ref err) = conn_res {
-            warn!("Failed to connect to peer {:?}: {:?}", addr, err);
+            debug!("Failed to connect to peer {:?}: {:?}", addr, err);
             peer_db_write
                 .try_connect_history
                 .entry(addr)
