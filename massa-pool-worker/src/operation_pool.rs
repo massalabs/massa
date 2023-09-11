@@ -464,6 +464,7 @@ impl OperationPool {
         // init remaining number of operations
         let mut remaining_ops = self.config.max_operations_per_block;
 
+        let tstart = std::time::Instant::now();
         // iterate over pool operations in the right thread, from best to worst
         for op_info in &self.sorted_ops {
             // if we have reached the maximum number of operations, stop
@@ -503,6 +504,9 @@ impl OperationPool {
             // update remaining number of operations
             remaining_ops -= 1;
         }
+        debug!("TIM    0 {:?}", tstart.elapsed());
+        debug!("TIM    {} operations filtered", self.sorted_ops.len());
+
 
         // generate storage
         let mut res_storage = self.storage.clone_without_refs();
