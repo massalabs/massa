@@ -482,13 +482,18 @@ impl OperationPool {
             let tstart = std::time::Instant::now();
             let end = op_info.validity_period_range.end();
             println!("TIM    0    {:?}", tstart.elapsed());
+
+            let tstart = std::time::Instant::now();
             if &slot.period > end {
                 continue;
             }
             println!("TIM    1    {:?}", tstart.elapsed());
+
             let tstart = std::time::Instant::now();
             let start = op_info.validity_period_range.start();
             println!("TIM    2    {:?}", tstart.elapsed());
+
+            let tstart = std::time::Instant::now();
             if &slot.period < start {
                 continue;
             }
