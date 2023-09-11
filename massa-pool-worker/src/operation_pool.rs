@@ -493,6 +493,7 @@ impl OperationPool {
             }
         }).collect::<Vec<OperationId>>();
         log::debug!("TIM    0 {:?}", tstart.elapsed());
+        log::debug!("TIM    {} operations filtered", self.sorted_ops.len());
 
         // generate storage
         let mut res_storage = self.storage.clone_without_refs();
