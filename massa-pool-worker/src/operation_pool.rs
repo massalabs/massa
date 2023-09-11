@@ -15,6 +15,7 @@ use massa_wallet::Wallet;
 use parking_lot::RwLock;
 use std::{cmp::max, cmp::Ordering, cmp::PartialOrd, collections::BTreeSet, sync::Arc};
 use tracing::{debug, trace, warn};
+use tracing::log;
 
 use crate::types::OperationInfo;
 
@@ -464,6 +465,8 @@ impl OperationPool {
         // init remaining number of operations
         let mut remaining_ops = self.config.max_operations_per_block;
 
+        let forstart = std::time::Instant::now();
+        log::debug!("TIM    {} operations to get blocks", self.sorted_ops.len());
         // iterate over pool operations in the right thread, from best to worst
         for op_info in &self.sorted_ops {
             // if we have reached the maximum number of operations, stop
@@ -476,10 +479,12 @@ impl OperationPool {
                 continue;
             }
 
+            let start = std::time::Instant::now();
             // exclude ops for which the block slot is outside of their validity range
             if !op_info.validity_period_range.contains(&slot.period) {
                 continue;
             }
+            log::debug!("TIM    Validify perdio range contains took {:?}", start.elapsed());
 
             // exclude ops that are too large
             if op_info.size > remaining_space {
@@ -503,7 +508,9 @@ impl OperationPool {
             // update remaining number of operations
             remaining_ops -= 1;
         }
+        log::debug!("TIM    For loop took {:?}", forstart.elapsed());
 
+        let start = std::time::Instant::now();
         // generate storage
         let mut res_storage = self.storage.clone_without_refs();
         let claim_ops: PreHashSet<OperationId> = op_ids.iter().copied().collect();
@@ -511,6 +518,7 @@ impl OperationPool {
         if claimed_ops.len() != claim_ops.len() {
             panic!("could not claim all operations from storage");
         }
+        log::debug!("TIM    Generate storage  took {:?}", start.elapsed());
 
         (op_ids, res_storage)
     }
