@@ -455,9 +455,6 @@ impl OperationPool {
     /// - fit inside the block
     /// - is the most profitable for block producer
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
-        // init list of selected operation IDs
-        let mut op_ids = Vec::new();
-
         // init remaining space
         let mut remaining_space = self.config.max_block_size as usize;
         // init remaining gas
@@ -465,62 +462,37 @@ impl OperationPool {
         // init remaining number of operations
         let mut remaining_ops = self.config.max_operations_per_block;
 
-        // log::debug!("TIM    {} operations to get blocks", self.sorted_ops.len());
-        // iterate over pool operations in the right thread, from best to worst
-        for op_info in &self.sorted_ops {
+        let tstart = std::time::Instant::now();
+        let op_ids = self.sorted_ops.iter().filter_map(|op_info| {
             // if we have reached the maximum number of operations, stop
             if remaining_ops == 0 {
-                break;
+                return None;
             }
-
             // check thread
-            if op_info.thread != slot.thread {
-                continue;
+            else if op_info.thread != slot.thread {
+                return None;
             }
-
-            // exclude ops for which the block slot is outside of their validity range
-            let tstart = std::time::Instant::now();
-            let end = op_info.validity_period_range.end();
-            println!("TIM    0    {:?}", tstart.elapsed());
-
-            let tstart = std::time::Instant::now();
-            if &slot.period > end {
-                continue;
+            else if &slot.period < op_info.validity_period_range.start() {
+                return None;
             }
-            println!("TIM    1    {:?}", tstart.elapsed());
-
-            let tstart = std::time::Instant::now();
-            let start = op_info.validity_period_range.start();
-            println!("TIM    2    {:?}", tstart.elapsed());
-
-            let tstart = std::time::Instant::now();
-            if &slot.period < start {
-                continue;
+            else if &slot.period > op_info.validity_period_range.end() {
+                return None;
             }
-            println!("TIM    3    {:?}", tstart.elapsed());
-
             // exclude ops that are too large
-            if op_info.size > remaining_space {
-                continue;
+            else if op_info.size > remaining_space {
+                return None;
             }
-
             // exclude ops that require too much gas
-            if op_info.max_gas > remaining_gas {
-                continue;
+            else if op_info.max_gas > remaining_gas {
+                return None;
+            } else {
+                remaining_space -= op_info.size;
+                remaining_gas -= op_info.max_gas;
+                remaining_ops -= 1;
+                Some(op_info.id)
             }
-
-            // here we consider the operation as accepted
-            op_ids.push(op_info.id);
-
-            // update remaining block space
-            remaining_space -= op_info.size;
-
-            // update remaining block gas
-            remaining_gas -= op_info.max_gas;
-
-            // update remaining number of operations
-            remaining_ops -= 1;
-        }
+        }).collect::<Vec<OperationId>>();
+        log::debug!("TIM    0 {:?}", tstart.elapsed());
 
         // generate storage
         let mut res_storage = self.storage.clone_without_refs();
