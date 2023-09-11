@@ -481,7 +481,10 @@ impl OperationPool {
 
             let start = std::time::Instant::now();
             // exclude ops for which the block slot is outside of their validity range
-            if (slot.period < *op_info.validity_period_range.start()) || (slot.period > *op_info.validity_period_range.end()) {
+            if slot.period > *op_info.validity_period_range.end() {
+                continue;
+            }
+            if slot.period < *op_info.validity_period_range.start() {
                 continue;
             }
             log::debug!("TIM    Validify perdio range contains took {:?}", start.elapsed());
