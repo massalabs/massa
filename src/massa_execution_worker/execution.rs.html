@@ -1846,6 +1846,16 @@
 <a href="#1846" id="1846">1846</a>
 <a href="#1847" id="1847">1847</a>
 <a href="#1848" id="1848">1848</a>
+<a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
+<a href="#1852" id="1852">1852</a>
+<a href="#1853" id="1853">1853</a>
+<a href="#1854" id="1854">1854</a>
+<a href="#1855" id="1855">1855</a>
+<a href="#1856" id="1856">1856</a>
+<a href="#1857" id="1857">1857</a>
+<a href="#1858" id="1858">1858</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2310,6 +2320,16 @@
                         <span class="bool-val">true</span>,
                         Slot::new(operation.content.expire_period, op_thread),
                     );
+
+                    <span class="kw">let </span>event = context.event_create(
+                        <span class="macro">serde_json::json!</span>({ <span class="string">&quot;massa_execution_success&quot;</span>: <span class="macro">format!</span>(
+                            <span class="string">&quot;operation_id:{}, used gas:{}, type:{}&quot;</span>,
+                            operation_id, op_gas, operation.content.op
+                        )})
+                        .to_string(),
+                        <span class="bool-val">false</span>,
+                    );
+                    context.event_emit(event);
                 }
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="comment">// an error occurred: emit error event and reset context to snapshot
