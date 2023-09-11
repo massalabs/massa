@@ -416,6 +416,7 @@ mod tests {
         // Check that we always subtract gas through the execution (even in sub calls)
         let events_formatted = events
             .iter()
+            .take(events.len() - 1)
             .map(|event| event.data.parse::<u64>().unwrap())
             .collect::<Vec<_>>();
         let mut sorted_events = events_formatted.clone();
@@ -933,8 +934,9 @@ mod tests {
             ..Default::default()
         });
 
+        dbg!(&events);
         // match the events, check balance and call stack to make sure the executions were local
-        assert!(events.len() == 8, "8 events were expected");
+        assert!(events.len() == 10, "10 events were expected");
         assert_eq!(
             Amount::from_raw(events[1].data.parse().unwrap()),
             Amount::from_str("299990").unwrap() // start (300_000) - fee (1000)
@@ -945,14 +947,14 @@ mod tests {
             &Address::from_public_key(&keypair.get_public_key())
         );
         assert_eq!(events[2].data, "one local execution completed");
-        let amount = Amount::from_raw(events[5].data.parse().unwrap());
+        let amount = Amount::from_raw(events[6].data.parse().unwrap());
         assert_eq!(Amount::from_str("299979.6713").unwrap(), amount);
-        assert_eq!(events[5].context.call_stack.len(), 1);
+        assert_eq!(events[6].context.call_stack.len(), 1);
         assert_eq!(
             events[1].context.call_stack.back().unwrap(),
             &Address::from_public_key(&keypair.get_public_key())
         );
-        assert_eq!(events[6].data, "one local call completed");
+        assert_eq!(events[7].data, "one local call completed");
 
         // stop the execution controller
         manager.stop();
@@ -1061,15 +1063,16 @@ mod tests {
         });
 
         // match the events
-        if events.len() != 3 {
+        if events.len() != 4 {
             for (i, ev) in events.iter().enumerate() {
                 eprintln!("ev {}: {}", i, ev);
             }
-            panic!("3 events were expected");
+            panic!("4 events were expected");
         }
         assert_eq!(events[0].data, "sc created");
         assert_eq!(events[1].data, "constructor exists and will be called");
         assert_eq!(events[2].data, "constructor called by deployer");
+        assert!(events[3].data.contains("massa_execution_success"));
 
         // stop the execution controller
         manager.stop();
@@ -1189,7 +1192,7 @@ mod tests {
         });
 
         // match the events
-        assert_eq!(events.len(), 2, "2 events were expected");
+        assert_eq!(events.len(), 3, "3 events were expected");
         assert_eq!(events[0].data, "Triggered");
 
         // keypair associated to thread 1
@@ -1231,7 +1234,7 @@ mod tests {
         });
 
         // match the events
-        assert!(events.len() == 3, "3 events were expected");
+        assert!(events.len() == 5, "5 events were expected");
 
         // keypair associated to thread 2
         let keypair = KeyPair::from_str(TEST_SK_3).unwrap();
@@ -1272,7 +1275,7 @@ mod tests {
         });
 
         // match the events
-        assert!(events.len() == 4, "4 events were expected");
+        assert!(events.len() == 7, "7 events were expected");
 
         manager.stop();
     }
@@ -2253,10 +2256,11 @@ mod tests {
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
 
         // match the events
-        assert_eq!(events.len(), 3);
+        assert_eq!(events.len(), 4);
         assert_eq!(events[0].data, "keys: 9,65,66");
         assert_eq!(events[1].data, "has_key_1: true - has_key_2: false");
         assert_eq!(events[2].data, "data key 1: 255 - data key 3: 10,11");
+        assert!(events[3].data.contains("massa_execution_success"));
 
         // stop the execution controller
         manager.stop();
@@ -2450,7 +2454,8 @@ mod tests {
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         // match the events
         println!("{:?}", events);
-        assert_eq!(events.len(), 4, "Got {} events, expected 4", events.len());
+        dbg!(&events);
+        assert_eq!(events.len(), 5, "Got {} events, expected 4", events.len());
         let key_a: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
         let key_a_str: String = key_a
             .iter()
@@ -2609,7 +2614,7 @@ mod tests {
         );
         std::thread::sleep(Duration::from_millis(1000));
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
-        assert_eq!(events.len(), 1, "wrong event count");
+        assert_eq!(events.len(), 2, "wrong event count");
         assert_eq!(events[0].context.slot, Slot::new(1, 1), "Wrong event slot");
 
         // create blockclique block at slot (1,0)
@@ -2647,9 +2652,9 @@ mod tests {
         );
         std::thread::sleep(Duration::from_millis(1000));
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
-        assert_eq!(events.len(), 2, "wrong event count");
+        assert_eq!(events.len(), 4, "wrong event count");
         assert_eq!(events[0].context.slot, Slot::new(1, 0), "Wrong event slot");
-        assert_eq!(events[1].context.slot, Slot::new(1, 1), "Wrong event slot");
+        assert_eq!(events[2].context.slot, Slot::new(1, 1), "Wrong event slot");
 
         manager.stop();
     }
@@ -2902,7 +2907,6 @@ mod tests {
         assert!(events[0]
             .data
             .contains("runtime error when executing operation"));
-        dbg!(events[0].data.clone());
         assert!(events[0]
             .data
             .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
@@ -3011,7 +3015,8 @@ mod tests {
 
         let events = controller.get_filtered_sc_output_event(EventFilter::default());
         // match the events
-        assert_eq!(events.len(), 2);
+        dbg!(&events);
+        assert_eq!(events.len(), 3);
         assert!(
             events[0].data.ends_with("true"),
             "Expected 'true': {:?}",
