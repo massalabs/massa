@@ -152,7 +152,7 @@ num_enum = "0.7"
 paginate = "1.1.11"
 parking_lot = "0.12"
 paw = "1.0"
-pbkdf2 = "0.12"
+pbkdf2 = { version = "0.12", features = ["simple"] }
 prometheus = "0.13.3"
 rand = "0.8"
 rand_distr = "=0.4.3"
