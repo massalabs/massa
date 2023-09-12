@@ -128,7 +128,6 @@ ed25519-dalek = { version = "=2.0", features = ["rand_core", "zeroize"] }
 erased-serde = "0.3"
 futures = "0.3"
 futures-util = "0.3"
-generic-array = "0.14"
 h2 = "0.3"
 hex-literal = "0.4"
 http = "0.2"

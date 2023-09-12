@@ -2474,16 +2474,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lsmtree"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "316f66136f917f8cb04eac057855ec87dd56eb2c8e6ecd219ca8cbff4d9f2e03"
-dependencies = [
- "bytes",
- "digest 0.10.7",
-]
-
-[[package]]
 name = "lz4-sys"
 version = "1.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2856,7 +2846,6 @@ dependencies = [
 name = "massa_db_worker"
 version = "0.26.1"
 dependencies = [
- "lsmtree",
  "massa_db_exports",
  "massa_hash",
  "massa_models",
@@ -3067,8 +3056,6 @@ dependencies = [
  "blake3",
  "bs58",
  "displaydoc",
- "generic-array",
- "lsmtree",
  "massa_serialization",
  "nom",
  "serde",
