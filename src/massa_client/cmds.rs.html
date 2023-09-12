@@ -1465,6 +1465,9 @@
 <a href="#1465" id="1465">1465</a>
 <a href="#1466" id="1466">1466</a>
 <a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -2298,7 +2301,10 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">match </span>wallet.remove_addresses(<span class="kw-2">&amp;</span>addresses) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                    <span class="prelude-val">Ok</span>(changed) =&gt; {
+                        <span class="kw">if </span>changed {
+                            wallet.save()<span class="question-mark">?</span>;
+                        }
                         <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">&quot;Addresses removed from the wallet&quot;</span>);
                     }
                     <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {

@@ -475,6 +475,14 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -604,10 +612,18 @@
 
     <span class="kw">async fn </span>remove_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;()&gt; {
         <span class="kw">let </span>node_wallet = <span class="self">self</span>.<span class="number">0</span>.node_wallet.clone();
-        <span class="kw">let </span><span class="kw-2">mut </span>w_wallet = node_wallet.write();
-        w_wallet
-            .remove_addresses(<span class="kw-2">&amp;</span>addresses)
-            .map_err(|e| ApiError::WalletError(e).into())
+
+        <span class="kw">let </span>changed = {
+            node_wallet
+                .write()
+                .remove_addresses(<span class="kw-2">&amp;</span>addresses)
+                .map_err(ApiError::WalletError)<span class="question-mark">?
+        </span>};
+
+        <span class="kw">if </span>changed {
+            node_wallet.read().save().map_err(ApiError::WalletError)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">async fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;PreHashSet&lt;Address&gt;&gt; {
