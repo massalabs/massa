@@ -16,7 +16,6 @@ pub const CHANGE_ID_SER_ERROR: &str = "critical: change_id serialization failed"
 // Errors
 pub const CF_ERROR: &str = "critical: rocksdb column family operation failed";
 pub const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
-pub const LSMTREE_ERROR: &str = "critical: lsmtree insert / remove open operation failed";
 pub const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 pub const STATE_HASH_ERROR: &str = "critical: saved state hash is corrupted";
 
