@@ -454,6 +454,7 @@ impl OperationPool {
     /// - fit inside the block
     /// - is the most profitable for block producer
     pub fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage) {
+        let tstart = std::time::Instant::now();
         // init list of selected operation IDs
         let mut op_ids = Vec::new();
 
@@ -464,7 +465,6 @@ impl OperationPool {
         // init remaining number of operations
         let mut remaining_ops = self.config.max_operations_per_block;
 
-        let tstart = std::time::Instant::now();
         // iterate over pool operations in the right thread, from best to worst
         for op_info in &self.sorted_ops {
             // if we have reached the maximum number of operations, stop
@@ -505,7 +505,7 @@ impl OperationPool {
             remaining_ops -= 1;
         }
         debug!("TIM    0 {:?}", tstart.elapsed());
-        debug!("TIM    {} operations filtered", self.sorted_ops.len());
+        debug!("TIM    {} operations filtered to {}", self.sorted_ops.len(), op_ids.len());
 
 
         // generate storage
@@ -515,6 +515,8 @@ impl OperationPool {
         if claimed_ops.len() != claim_ops.len() {
             panic!("could not claim all operations from storage");
         }
+
+        debug!("TIM    1 {:?}", tstart.elapsed());
 
         (op_ids, res_storage)
     }
