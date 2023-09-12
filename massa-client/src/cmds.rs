@@ -831,7 +831,10 @@ impl Command {
                 let mut res = "".to_string();
                 let addresses = parse_vec::<Address>(parameters)?;
                 match wallet.remove_addresses(&addresses) {
-                    Ok(_) => {
+                    Ok(changed) => {
+                        if changed {
+                            wallet.save()?;
+                        }
                         let _ = writeln!(res, "Addresses removed from the wallet");
                     }
                     Err(_) => {
