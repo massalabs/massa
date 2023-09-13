@@ -95,9 +95,10 @@ pub(crate) async fn run(
         .auto_add_history(true)
         .completion_prompt_limit(100)
         .completion_type(CompletionType::List)
-        .max_history_size(10000)
+        .max_history_size(10000)?
         .build();
-    let mut rl: Editor<MyHelper> = Editor::with_config(config)?;
+
+    let mut rl = Editor::with_config(config)?;
     rl.set_helper(Some(h));
     if rl.load_history(&SETTINGS.history_file_path).is_err() {
         println!("No previous history.");
@@ -112,7 +113,12 @@ pub(crate) async fn run(
                 if line.is_empty() {
                     continue;
                 }
-                rl.add_history_entry(line.as_str());
+                if let Err(e) = rl.add_history_entry(line.as_str()) {
+                    println!("Failed to append commands history {}", e);
+                }
+                if let Err(e) = rl.append_history(&SETTINGS.history_file_path) {
+                    println!("Failed to append commands file history: {}", e);
+                }
                 let input: Vec<String> =
                     group_parameters(line.split_whitespace().map(|x| x.to_string()).collect());
                 let cmd: Result<Command, ParseError> = input[0].parse();
@@ -164,7 +170,6 @@ pub(crate) async fn run(
             }
         }
     }
-    rl.append_history(&SETTINGS.history_file_path).unwrap();
     Ok(())
 }
 

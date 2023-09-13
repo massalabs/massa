@@ -11,13 +11,12 @@ use massa_serialization::{DeserializeError, Deserializer};
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::pin::Pin;
-use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendEndorsements
 pub type SendEndorsementsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc_api::SendEndorsementsResponse, tonic::Status>>
+        dyn futures_util::Stream<Item = Result<grpc_api::SendEndorsementsResponse, tonic::Status>>
             + Send
             + 'static,
     >,

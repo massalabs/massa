@@ -8,7 +8,8 @@ use api_trait::MassaApiServer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::server::{AllowHosts, BatchRequestConfig, ServerBuilder, ServerHandle};
+use jsonrpsee::server::middleware::HostFilterLayer;
+use jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
 use massa_api_exports::{
     address::AddressInfo,
@@ -140,22 +141,10 @@ async fn serve<T>(
     url: &SocketAddr,
     api_config: &APIConfig,
 ) -> Result<StopHandle, JsonRpseeError> {
-    let allowed_hosts = if api_config.allow_hosts.is_empty() {
-        AllowHosts::Any
-    } else {
-        let hosts = api_config
-            .allow_hosts
-            .iter()
-            .map(|hostname| hostname.into())
-            .collect();
-        AllowHosts::Only(hosts)
-    };
-
     let mut server_builder = ServerBuilder::new()
         .max_request_body_size(api_config.max_request_body_size)
         .max_response_body_size(api_config.max_response_body_size)
         .max_connections(api_config.max_connections)
-        .set_host_filtering(allowed_hosts)
         .set_batch_request_config(if api_config.batch_request_limit > 0 {
             BatchRequestConfig::Limit(api_config.batch_request_limit)
         } else {
@@ -178,7 +167,21 @@ async fn serve<T>(
         .allow_origin(Any)
         .allow_headers([hyper::header::CONTENT_TYPE]);
 
-    let middleware = tower::ServiceBuilder::new().layer(cors);
+    let hosts = if api_config.allow_hosts.is_empty() {
+        vec!["*:*"]
+    } else {
+        api_config
+            .allow_hosts
+            .iter()
+            .map(|hostname| hostname.as_str())
+            .collect()
+    };
+
+    let allowed_hosts = HostFilterLayer::new(hosts).expect("failed to build allowed hosts filter");
+
+    let middleware = tower::ServiceBuilder::new()
+        .layer(cors)
+        .layer(allowed_hosts);
 
     let server = server_builder
         .set_middleware(middleware)
