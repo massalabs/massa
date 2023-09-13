@@ -168,13 +168,13 @@ async fn serve<T>(
         .allow_headers([hyper::header::CONTENT_TYPE]);
     
     let hosts = if api_config.allow_hosts.is_empty() {
-        api_config
-            .allow_hosts
-            .iter()
-            .map(|hostname| hostname.as_str())
-            .collect()
+        vec!["*:*"]
     } else {
-        vec!["*"]
+        api_config
+        .allow_hosts
+        .iter()
+        .map(|hostname| hostname.as_str())
+        .collect()
     };
 
     let middleware = tower::ServiceBuilder::new()
