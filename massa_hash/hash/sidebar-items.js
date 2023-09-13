@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Hash","HashDeserializer","HashSerializer","SmtHasher"]};
+window.SIDEBAR_ITEMS = {"struct":["Hash","HashDeserializer","HashSerializer"]};

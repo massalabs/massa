@@ -204,6 +204,11 @@
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ask_password;
@@ -301,9 +306,10 @@
         .auto_add_history(<span class="bool-val">true</span>)
         .completion_prompt_limit(<span class="number">100</span>)
         .completion_type(CompletionType::List)
-        .max_history_size(<span class="number">10000</span>)
-        .build();
-    <span class="kw">let </span><span class="kw-2">mut </span>rl: Editor&lt;MyHelper&gt; = Editor::with_config(config)<span class="question-mark">?</span>;
+        .max_history_size(<span class="number">10000</span>)<span class="question-mark">?
+        </span>.build();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>rl = Editor::with_config(config)<span class="question-mark">?</span>;
     rl.set_helper(<span class="prelude-val">Some</span>(h));
     <span class="kw">if </span>rl.load_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path).is_err() {
         <span class="macro">println!</span>(<span class="string">&quot;No previous history.&quot;</span>);
@@ -318,7 +324,12 @@
                 <span class="kw">if </span>line.is_empty() {
                     <span class="kw">continue</span>;
                 }
-                rl.add_history_entry(line.as_str());
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.add_history_entry(line.as_str()) {
+                    <span class="macro">println!</span>(<span class="string">&quot;Failed to append commands history {}&quot;</span>, e);
+                }
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.append_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path) {
+                    <span class="macro">println!</span>(<span class="string">&quot;Failed to append commands file history: {}&quot;</span>, e);
+                }
                 <span class="kw">let </span>input: Vec&lt;String&gt; =
                     group_parameters(line.split_whitespace().map(|x| x.to_string()).collect());
                 <span class="kw">let </span>cmd: <span class="prelude-ty">Result</span>&lt;Command, ParseError&gt; = input[<span class="number">0</span>].parse();
@@ -370,7 +381,6 @@
             }
         }
     }
-    rl.append_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path).unwrap();
     <span class="prelude-val">Ok</span>(())
 }
 

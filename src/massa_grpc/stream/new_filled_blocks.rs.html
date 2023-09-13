@@ -259,7 +259,6 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -278,14 +277,13 @@
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>tokio::select;
-<span class="kw">use </span>tonic::codegen::futures_core;
 <span class="kw">use </span>tonic::{Request, Streaming};
 <span class="kw">use </span>tracing::log::{error, warn};
 
 <span class="doccomment">/// Type declaration for NewFilledBlocks
 </span><span class="kw">pub type </span>NewFilledBlocksStreamType = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_core::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc_api::NewFilledBlocksResponse, tonic::Status&gt;&gt;
+        <span class="kw">dyn </span>futures_util::Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;grpc_api::NewFilledBlocksResponse, tonic::Status&gt;&gt;
             + Send
             + <span class="lifetime">&#39;static</span>,
     &gt;,

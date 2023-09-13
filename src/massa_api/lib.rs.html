@@ -385,6 +385,9 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -395,7 +398,8 @@
 <span class="kw">use </span>hyper::Method;
 <span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
-<span class="kw">use </span>jsonrpsee::server::{AllowHosts, BatchRequestConfig, ServerBuilder, ServerHandle};
+<span class="kw">use </span>jsonrpsee::server::middleware::HostFilterLayer;
+<span class="kw">use </span>jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 <span class="kw">use </span>jsonrpsee::RpcModule;
 <span class="kw">use </span>massa_api_exports::{
     address::AddressInfo,
@@ -527,22 +531,10 @@
     url: <span class="kw-2">&amp;</span>SocketAddr,
     api_config: <span class="kw-2">&amp;</span>APIConfig,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, JsonRpseeError&gt; {
-    <span class="kw">let </span>allowed_hosts = <span class="kw">if </span>api_config.allow_hosts.is_empty() {
-        AllowHosts::Any
-    } <span class="kw">else </span>{
-        <span class="kw">let </span>hosts = api_config
-            .allow_hosts
-            .iter()
-            .map(|hostname| hostname.into())
-            .collect();
-        AllowHosts::Only(hosts)
-    };
-
     <span class="kw">let </span><span class="kw-2">mut </span>server_builder = ServerBuilder::new()
         .max_request_body_size(api_config.max_request_body_size)
         .max_response_body_size(api_config.max_response_body_size)
         .max_connections(api_config.max_connections)
-        .set_host_filtering(allowed_hosts)
         .set_batch_request_config(<span class="kw">if </span>api_config.batch_request_limit &gt; <span class="number">0 </span>{
             BatchRequestConfig::Limit(api_config.batch_request_limit)
         } <span class="kw">else </span>{
@@ -565,7 +557,21 @@
         </span>.allow_origin(Any)
         .allow_headers([hyper::header::CONTENT_TYPE]);
 
-    <span class="kw">let </span>middleware = tower::ServiceBuilder::new().layer(cors);
+    <span class="kw">let </span>hosts = <span class="kw">if </span>api_config.allow_hosts.is_empty() {
+        <span class="macro">vec!</span>[<span class="string">&quot;*:*&quot;</span>]
+    } <span class="kw">else </span>{
+        api_config
+            .allow_hosts
+            .iter()
+            .map(|hostname| hostname.as_str())
+            .collect()
+    };
+
+    <span class="kw">let </span>allowed_hosts = HostFilterLayer::new(hosts).expect(<span class="string">&quot;failed to build allowed hosts filter&quot;</span>);
+
+    <span class="kw">let </span>middleware = tower::ServiceBuilder::new()
+        .layer(cors)
+        .layer(allowed_hosts);
 
     <span class="kw">let </span>server = server_builder
         .set_middleware(middleware)
