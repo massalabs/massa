@@ -3339,6 +3339,7 @@ dependencies = [
  "nom",
  "num",
  "thiserror",
+ "tracing",
  "unsigned-varint",
 ]
 

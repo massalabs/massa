@@ -194,10 +194,9 @@ pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COU
 //
 
 /// Max message size for bootstrap
-pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
+pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = u32::MAX; //1048576000;
 /// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
-pub const MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
-    u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
+pub const MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize = MAX_BOOTSTRAP_MESSAGE_SIZE.to_be_bytes().len();
 /// Max number of blocks we provide/ take into account while bootstrapping
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
 /// max bootstrapped cliques
@@ -213,7 +212,7 @@ pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 /// Max bytes in final states parts
 pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = 1_000_000_000;
 /// Max bytes in final states parts
-pub const MAX_BOOTSTRAPPED_NEW_ELEMENTS: u64 = 500;
+pub const MAX_BOOTSTRAPPED_NEW_ELEMENTS: u64 = 10;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import

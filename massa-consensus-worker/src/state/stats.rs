@@ -40,10 +40,10 @@ impl ConsensusState {
 
     /// Must be called each tick to update stats. Will detect if a desynchronization happened
     pub fn stats_tick(&mut self) -> Result<(), ConsensusError> {
-        #[cfg(not(feature = "sandbox"))]
-        {
-            self.check_desync()?;
-        }
+        // #[cfg(not(feature = "sandbox"))]
+        // {
+        //     self.check_desync()?;
+        // }
         // prune stats
         self.prune_stats()?;
         Ok(())
