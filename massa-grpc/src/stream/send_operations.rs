@@ -60,7 +60,7 @@ pub(crate) async fn send_operations(
                             report_error(
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
-                                "too many operations per message".to_owned(),
+                                "failed to get current time".to_owned(),
                             )
                             .await;
                             continue;
@@ -74,7 +74,7 @@ pub(crate) async fn send_operations(
                             report_error(
                                 tx.clone(),
                                 tonic::Code::InvalidArgument,
-                                "too many operations per message".to_owned(),
+                                "failed to get current period".to_owned(),
                             )
                             .await;
                             continue;
