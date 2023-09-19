@@ -74,6 +74,7 @@ async fn test_start_grpc_server() {
         send_compressed: None,
         max_decoding_message_size: 4194304,
         max_encoding_message_size: 4194304,
+        max_gas_per_block: u32::MAX as u64,
         concurrency_limit_per_connection: 0,
         timeout: Default::default(),
         initial_stream_window_size: None,
