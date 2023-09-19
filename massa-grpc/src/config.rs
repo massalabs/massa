@@ -87,6 +87,8 @@ pub struct GrpcConfig {
     pub max_parameter_size: u32,
     /// max operations per message in the network to avoid sending to big data packet
     pub max_operations_per_message: u32,
+    /// max gas per block
+    pub max_gas_per_block: u64,
     /// `genesis_timestamp`
     pub genesis_timestamp: MassaTime,
     /// t0

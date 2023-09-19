@@ -954,13 +954,13 @@ impl MassaRpcServer for API<Public> {
         let now = MassaTime::now().map_err(|e| {
             ApiError::InconsistencyError(format!("Unable to get current time: {}", e))
         })?;
-        let last_slot_result = get_latest_block_slot_at_timestamp(
+        let last_slot = get_latest_block_slot_at_timestamp(
             api_cfg.thread_count,
             api_cfg.t0,
             api_cfg.genesis_timestamp,
             now,
         )
-        .map_err(|err| ApiError::ModelsError(err))?;
+        .map_err(ApiError::ModelsError)?;
         let verified_ops = ops
             .into_iter()
             .map(|op_input| {
@@ -976,14 +976,14 @@ impl MassaRpcServer for API<Public> {
                 match op.content.op {
                     OperationType::CallSC { max_gas, .. } | OperationType::ExecuteSC { max_gas, .. } => {
                         if max_gas > api_cfg.max_gas_per_block {
-                            return Err(ApiError::BadRequest("Gas limit of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()).into());
+                            return Err(ApiError::InconsistencyError("Gas limit of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()).into());
                         }
                     },
                     _ => {}
                 };
-                if let Some(slot) = last_slot_result {
+                if let Some(slot) = last_slot {
                     if op.content.expire_period < slot.period {
-                        return Err(ApiError::BadRequest("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()).into());
+                        return Err(ApiError::InconsistencyError("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()).into());
                     }
                 }
                 if rest.is_empty() {
