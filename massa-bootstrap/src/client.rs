@@ -12,7 +12,7 @@ use rand::{
     prelude::{SliceRandom, StdRng},
     SeedableRng,
 };
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Instant};
 use std::{
     collections::HashSet,
     io,
@@ -206,6 +206,7 @@ fn bootstrap_from_server(
     global_bootstrap_state: &mut GlobalBootstrapState,
     our_version: Version,
 ) -> Result<(), BootstrapError> {
+    let tstart = Instant::now();
     massa_trace!("bootstrap.lib.bootstrap_from_server", {});
 
     // read error (if sent by the server)
@@ -288,7 +289,9 @@ fn bootstrap_from_server(
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
+    debug!("TIM    Enter loop: {:?}", tstart.elapsed());
     loop {
+        let loopstart = Instant::now();
         match next_bootstrap_message {
             BootstrapClientMessage::AskBootstrapPart { .. } => {
                 stream_final_state_and_consensus(
@@ -323,6 +326,11 @@ fn bootstrap_from_server(
                 panic!("The next message to send shouldn't be BootstrapError");
             }
         };
+        debug!(
+            "TIM    Loop took {:?} (bootstrap is taking {:?} since start)",
+            loopstart.elapsed(),
+            tstart.elapsed()
+        );
     }
     info!("Successful bootstrap");
     Ok(())

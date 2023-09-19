@@ -330,7 +330,7 @@ impl BootstrapServerMessageDeserializer {
             ),
             state_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
-                Included(args.max_new_elements),
+                Included(u64::MAX), // TODO    For Debug only, remove on clean PR
             ),
             state_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),

@@ -25,7 +25,7 @@ use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_db_exports::{MassaDBConfig, MassaDBController, DBBatch};
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
@@ -423,8 +423,14 @@ async fn launch(
     if !db_valid {
         let mut db_batch = DBBatch::new();
         // TODO: Bootstrap again instead of panicking
-        final_state.write().init_execution_trail_hash_to_batch(&mut db_batch);
-        final_state.write().db.write().write_batch(db_batch, DBBatch::new(), None);
+        final_state
+            .write()
+            .init_execution_trail_hash_to_batch(&mut db_batch);
+        final_state
+            .write()
+            .db
+            .write()
+            .write_batch(db_batch, DBBatch::new(), None);
     }
 
     if args.restart_from_snapshot_at_period.is_none() {
