@@ -91,6 +91,7 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{error::GrpcError, server::MassaPublicGrpc};
@@ -99,6 +100,7 @@
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>tokio::{select, time};
+<span class="kw">use </span>tonic::codegen::futures_core;
 <span class="kw">use </span>tracing::log::error;
 
 <span class="doccomment">/// default throughput interval in seconds
@@ -111,7 +113,7 @@
 <span class="doccomment">/// Type declaration for TransactionsThroughput
 </span><span class="kw">pub type </span>TransactionsThroughputStreamType = Pin&lt;
     Box&lt;
-        <span class="kw">dyn </span>futures_util::Stream&lt;
+        <span class="kw">dyn </span>futures_core::Stream&lt;
                 Item = <span class="prelude-ty">Result</span>&lt;grpc_api::TransactionsThroughputResponse, tonic::Status&gt;,
             &gt; + Send
             + <span class="lifetime">&#39;static</span>,

@@ -64,7 +64,7 @@
 /// Read `lib.rs` module documentation for more information.
 </span><span class="kw">pub fn </span>decrypt(password: <span class="kw-2">&amp;</span>str, data: CipherData) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, CipherError&gt; {
     <span class="comment">// get PBKDF2 salt
-    </span><span class="kw">let </span>salt = SaltString::encode_b64(<span class="kw-2">&amp;</span>data.salt)
+    </span><span class="kw">let </span>salt = SaltString::b64_encode(<span class="kw-2">&amp;</span>data.salt)
         .map_err(|e| CipherError::DecryptionError(e.to_string()))<span class="question-mark">?</span>;
 
     <span class="comment">// compute PBKDF2 password hash
