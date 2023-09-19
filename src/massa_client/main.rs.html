@@ -285,7 +285,7 @@
 <span class="doccomment">/// Ask for the wallet password
 /// If the wallet does not exist, it will require password confirmation
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ask_password(wallet_path: <span class="kw-2">&amp;</span>Path) -&gt; String {
-    <span class="kw">if </span>wallet_path.is_file() {
+    <span class="kw">if </span>wallet_path.is_dir() {
         Password::new()
             .with_prompt(<span class="string">&quot;Enter wallet password&quot;</span>)
             .interact()
