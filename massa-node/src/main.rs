@@ -419,8 +419,8 @@ async fn launch(
         Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
-    let db_valid = final_state.read().is_db_valid();
-    if !db_valid {
+    // let db_valid = final_state.read().is_db_valid();
+    // if !db_valid {
         let mut db_batch = DBBatch::new();
         // TODO: Bootstrap again instead of panicking
         final_state
@@ -431,7 +431,7 @@ async fn launch(
             .db
             .write()
             .write_batch(db_batch, DBBatch::new(), None);
-    }
+    // }
 
     if args.restart_from_snapshot_at_period.is_none() {
         final_state.write().recompute_caches();
