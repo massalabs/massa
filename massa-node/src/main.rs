@@ -1246,7 +1246,7 @@ struct Args {
 
 /// Load wallet, asking for passwords if necessary
 fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLock<Wallet>>> {
-    let password = if path.is_file() {
+    let password = if path.is_dir() {
         password.unwrap_or_else(|| {
             Password::new()
                 .with_prompt("Enter staking keys file password")

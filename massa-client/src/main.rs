@@ -72,7 +72,7 @@ struct JsonError {
 /// Ask for the wallet password
 /// If the wallet does not exist, it will require password confirmation
 pub(crate) fn ask_password(wallet_path: &Path) -> String {
-    if wallet_path.is_file() {
+    if wallet_path.is_dir() {
         Password::new()
             .with_prompt("Enter wallet password")
             .interact()
