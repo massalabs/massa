@@ -2681,7 +2681,7 @@
 
 <span class="doccomment">/// Load wallet, asking for passwords if necessary
 </span><span class="kw">fn </span>load_wallet(password: <span class="prelude-ty">Option</span>&lt;String&gt;, path: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;Arc&lt;RwLock&lt;Wallet&gt;&gt;&gt; {
-    <span class="kw">let </span>password = <span class="kw">if </span>path.is_dir() {
+    <span class="kw">let </span>password = <span class="kw">if </span>path.is_file() {
         password.unwrap_or_else(|| {
             Password::new()
                 .with_prompt(<span class="string">&quot;Enter staking keys file password&quot;</span>)
