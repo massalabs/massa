@@ -13,13 +13,12 @@ use massa_time::MassaTime;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::pin::Pin;
-use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendOperations
 pub type SendOperationsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc_api::SendOperationsResponse, tonic::Status>>
+        dyn futures_util::Stream<Item = Result<grpc_api::SendOperationsResponse, tonic::Status>>
             + Send
             + 'static,
     >,

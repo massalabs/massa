@@ -52,7 +52,7 @@ pub struct RawMassaDB<
     pub change_id_serializer: ChangeIDSerializer,
     /// A deserializer for the ChangeID type
     pub change_id_deserializer: ChangeIDDeserializer,
-    /// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
+    /// The current RocksDB batch of the database, in a Mutex to share it
     pub current_batch: Arc<Mutex<WriteBatch>>,
 }
 

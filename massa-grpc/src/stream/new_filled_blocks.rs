@@ -16,14 +16,13 @@ use std::io::ErrorKind;
 use std::pin::Pin;
 use std::str::FromStr;
 use tokio::select;
-use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewFilledBlocks
 pub type NewFilledBlocksStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc_api::NewFilledBlocksResponse, tonic::Status>>
+        dyn futures_util::Stream<Item = Result<grpc_api::NewFilledBlocksResponse, tonic::Status>>
             + Send
             + 'static,
     >,

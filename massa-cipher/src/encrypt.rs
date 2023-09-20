@@ -28,7 +28,7 @@ pub fn encrypt(password: &str, data: &[u8]) -> Result<CipherData, CipherError> {
     let mut rng = thread_rng();
     let mut raw_salt = [0u8; SALT_SIZE];
     rng.fill_bytes(&mut raw_salt);
-    let salt = SaltString::b64_encode(&raw_salt)
+    let salt = SaltString::encode_b64(&raw_salt)
         .map_err(|e| CipherError::EncryptionError(format!("Failed to encode salt: {e:?}")))?;
 
     // compute PBKDF2 password hash

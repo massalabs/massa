@@ -6,7 +6,6 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::{select, time};
-use tonic::codegen::futures_core;
 use tracing::log::error;
 
 /// default throughput interval in seconds
@@ -19,7 +18,7 @@ const DEFAULT_THROUGHPUT_INTERVAL: u64 = 10;
 /// Type declaration for TransactionsThroughput
 pub type TransactionsThroughputStreamType = Pin<
     Box<
-        dyn futures_core::Stream<
+        dyn futures_util::Stream<
                 Item = Result<grpc_api::TransactionsThroughputResponse, tonic::Status>,
             > + Send
             + 'static,

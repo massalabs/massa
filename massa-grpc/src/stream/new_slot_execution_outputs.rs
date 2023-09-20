@@ -13,14 +13,13 @@ use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
-use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewSlotExecutionOutputs
 pub type NewSlotExecutionOutputsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<
+        dyn futures_util::Stream<
                 Item = Result<grpc_api::NewSlotExecutionOutputsResponse, tonic::Status>,
             > + Send
             + 'static,
