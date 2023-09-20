@@ -289,7 +289,6 @@ fn bootstrap_from_server(
 
     let write_timeout: std::time::Duration = cfg.write_timeout.into();
     // Loop to ask data to the server depending on the last message we sent
-    debug!("TIM    Enter loop: {:?}", tstart.elapsed());
     loop {
         let loopstart = Instant::now();
         match next_bootstrap_message {
@@ -326,11 +325,6 @@ fn bootstrap_from_server(
                 panic!("The next message to send shouldn't be BootstrapError");
             }
         };
-        debug!(
-            "TIM    Loop took {:?} (bootstrap is taking {:?} since start)",
-            loopstart.elapsed(),
-            tstart.elapsed()
-        );
     }
     info!("Successful bootstrap");
     Ok(())
