@@ -1,7 +1,7 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use std::collections::{btree_map::Entry, BTreeMap};
-use tracing::{debug, info};
+use tracing::debug;
 
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::slot::Slot;
@@ -175,7 +175,7 @@ impl DenunciationPool {
         };
 
         if let Some(denunciation) = denunciation_ {
-            info!("Created a new denunciation : {:?}", denunciation);
+            debug!("Created a new denunciation : {:?}", denunciation);
         }
 
         // Because at the start of the function, we have already checked that DE precursor is not
