@@ -39,7 +39,7 @@ use massa_models::{
     node::NodeId,
     operation::OperationDeserializer,
     operation::OperationId,
-    operation::SecureShareOperation,
+    operation::{OperationType, SecureShareOperation},
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
@@ -951,6 +951,16 @@ impl MassaRpcServer for API<Public> {
             api_cfg.max_op_datastore_key_length,
             api_cfg.max_op_datastore_value_length,
         ));
+        let now = MassaTime::now().map_err(|e| {
+            ApiError::InconsistencyError(format!("Unable to get current time: {}", e))
+        })?;
+        let last_slot = get_latest_block_slot_at_timestamp(
+            api_cfg.thread_count,
+            api_cfg.t0,
+            api_cfg.genesis_timestamp,
+            now,
+        )
+        .map_err(ApiError::ModelsError)?;
         let verified_ops = ops
             .into_iter()
             .map(|op_input| {
@@ -963,6 +973,19 @@ impl MassaRpcServer for API<Public> {
                     .map_err(|err| {
                         ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
                     })?;
+                match op.content.op {
+                    OperationType::CallSC { max_gas, .. } | OperationType::ExecuteSC { max_gas, .. } => {
+                        if max_gas > api_cfg.max_gas_per_block {
+                            return Err(ApiError::InconsistencyError("Gas limit of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()).into());
+                        }
+                    },
+                    _ => {}
+                };
+                if let Some(slot) = last_slot {
+                    if op.content.expire_period < slot.period {
+                        return Err(ApiError::InconsistencyError("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()).into());
+                    }
+                }
                 if rest.is_empty() {
                     Ok(op)
                 } else {
