@@ -1014,8 +1014,8 @@ impl ExecutionState {
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
-            &message.handler,
-            &message.data,
+            &message.function,
+            &message.function_params,
             message.max_gas,
             self.config.gas_costs.clone(),
         );

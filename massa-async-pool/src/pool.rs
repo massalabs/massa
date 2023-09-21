@@ -211,7 +211,8 @@ impl AsyncPool {
             message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
             message_deserializer_db: AsyncMessageDeserializer::new(
                 config.thread_count,
-                config.max_async_message_data,
+                config.max_function_length,
+                config.max_function_params_length,
                 config.max_key_length,
                 true,
             ),
@@ -497,7 +498,7 @@ impl AsyncPool {
             DATA_IDENT => {
                 let Ok((rest, _value)) = self
                     .message_deserializer_db
-                    .data_deserializer
+                    .function_params_deserializer
                     .deserialize::<DeserializeError>(serialized_value)
                 else {
                     return false;
@@ -594,7 +595,8 @@ impl AsyncPoolDeserializer {
     pub fn new(
         thread_count: u8,
         max_async_pool_length: u64,
-        max_async_message_data: u64,
+        max_function_length: u16,
+        max_parameters_length: u64,
         max_key_length: u32,
     ) -> AsyncPoolDeserializer {
         AsyncPoolDeserializer {
@@ -605,7 +607,8 @@ impl AsyncPoolDeserializer {
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             async_message_deserializer_db: AsyncMessageDeserializer::new(
                 thread_count,
-                max_async_message_data,
+                max_function_length,
+                max_parameters_length,
                 max_key_length,
                 true,
             ),
@@ -703,16 +706,16 @@ impl AsyncPool {
             &serialized_destination,
         );
 
-        // Handler
-        let mut serialized_handler = Vec::new();
-        let handler_bytes = message.handler.as_bytes();
-        let handler_name_len: u8 = handler_bytes.len().try_into().expect(MESSAGE_SER_ERROR);
-        serialized_handler.extend([handler_name_len]);
-        serialized_handler.extend(handler_bytes);
+        // Function
+        let mut serialized_function = Vec::new();
+        self.message_serializer
+            .function_serializer
+            .serialize(&message.function, &mut serialized_function)
+            .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
             batch,
             handler_key!(serialized_message_id),
-            &serialized_handler,
+            &serialized_function,
         );
 
         // Max gas
@@ -767,13 +770,13 @@ impl AsyncPool {
             &serialized_validity_end,
         );
 
-        // Data
-        let mut serialized_data = Vec::new();
+        // Params
+        let mut serialized_params = Vec::new();
         self.message_serializer
-            .vec_u8_serializer
-            .serialize(&message.data, &mut serialized_data)
+            .function_params_serializer
+            .serialize(&message.function_params, &mut serialized_params)
             .expect(MESSAGE_SER_ERROR);
-        db.put_or_update_entry_value(batch, data_key!(serialized_message_id), &serialized_data);
+        db.put_or_update_entry_value(batch, data_key!(serialized_message_id), &serialized_params);
 
         // Trigger
         let mut serialized_trigger = Vec::new();
@@ -875,16 +878,16 @@ impl AsyncPool {
         }
 
         // Handler
-        if let SetOrKeep::Set(handler) = message_update.handler {
-            let mut serialized_handler = Vec::new();
-            let handler_bytes = handler.as_bytes();
-            let handler_name_len: u8 = handler_bytes.len().try_into().expect(MESSAGE_SER_ERROR);
-            serialized_handler.extend([handler_name_len]);
-            serialized_handler.extend(handler_bytes);
+        if let SetOrKeep::Set(function) = message_update.function {
+            let mut serialized_function = Vec::new();
+            self.message_serializer
+                .function_serializer
+                .serialize(&function, &mut serialized_function)
+                .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
                 batch,
                 handler_key!(serialized_message_id),
-                &serialized_handler,
+                &serialized_function,
             );
         }
 
@@ -955,11 +958,11 @@ impl AsyncPool {
         }
 
         // Data
-        if let SetOrKeep::Set(data) = message_update.data {
+        if let SetOrKeep::Set(params) = message_update.function_params {
             let mut serialized_data = Vec::new();
             self.message_serializer
-                .vec_u8_serializer
-                .serialize(&data, &mut serialized_data)
+                .function_params_serializer
+                .serialize(&params, &mut serialized_data)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(batch, data_key!(serialized_message_id), &serialized_data);
         }

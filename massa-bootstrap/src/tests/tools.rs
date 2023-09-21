@@ -24,8 +24,7 @@ use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
-    MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
-    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
+    MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_BOOTSTRAP_BLOCKS,
     MAX_BOOTSTRAP_ERROR_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
     MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
@@ -420,9 +419,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
         max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
-        max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-        max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
-        max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,

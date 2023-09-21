@@ -125,8 +125,6 @@ pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
-/// Maximum data size in async message
-pub const MAX_ASYNC_MESSAGE_DATA: u64 = 1_000_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// Number of periods of executed operation and denunciation history to keep
