@@ -14,8 +14,6 @@
 <a href="#14" id="14">14</a>
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a configuration structure containing all settings for the asynchronous message pool system
@@ -25,10 +23,8 @@
 </span><span class="kw">pub struct </span>AsyncPoolConfig {
     <span class="doccomment">/// max number of messages in the pool
     </span><span class="kw">pub </span>max_length: u64,
-    <span class="doccomment">/// max handler length
-    </span><span class="kw">pub </span>max_function_length: u16,
-    <span class="doccomment">/// max handler params length (for bootstrap limits)
-    </span><span class="kw">pub </span>max_function_params_length: u64,
+    <span class="doccomment">/// max async message data (for bootstrap limits)
+    </span><span class="kw">pub </span>max_async_message_data: u64,
     <span class="doccomment">/// thread count
     </span><span class="kw">pub </span>thread_count: u8,
     <span class="doccomment">/// max key length for message deserialization

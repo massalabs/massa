@@ -209,6 +209,18 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::block::BlockDeserializerArgs;
@@ -306,6 +318,12 @@
     </span><span class="kw">pub </span>max_op_datastore_key_length: u8,
     <span class="doccomment">/// max op datastore value length
     </span><span class="kw">pub </span>max_op_datastore_value_length: u64,
+    <span class="doccomment">/// max async pool changes
+    </span><span class="kw">pub </span>max_async_pool_changes: u64,
+    <span class="doccomment">/// max async pool length
+    </span><span class="kw">pub </span>max_async_pool_length: u64,
+    <span class="doccomment">/// max data async message
+    </span><span class="kw">pub </span>max_async_message_data: u64,
     <span class="doccomment">/// max function name length
     </span><span class="kw">pub </span>max_function_name_length: u16,
     <span class="doccomment">/// max parameters size
@@ -367,6 +385,9 @@
     <span class="kw">pub </span>max_datastore_entry_count: u64,
     <span class="kw">pub </span>max_datastore_key_length: u8,
     <span class="kw">pub </span>max_datastore_value_length: u64,
+    <span class="kw">pub </span>max_async_pool_changes: u64,
+    <span class="kw">pub </span>max_async_pool_length: u64,
+    <span class="kw">pub </span>max_async_message_data: u64,
     <span class="kw">pub </span>max_ledger_changes_count: u64,
     <span class="kw">pub </span>max_changes_slot_count: u64,
     <span class="kw">pub </span>max_rolls_length: u64,
@@ -391,6 +412,9 @@
     <span class="kw">pub </span>max_bootstrap_blocks_length: u32,
     <span class="kw">pub </span>max_operations_per_block: u32,
     <span class="kw">pub </span>max_new_elements: u64,
+    <span class="kw">pub </span>max_async_pool_changes: u64,
+    <span class="kw">pub </span>max_async_pool_length: u64,
+    <span class="kw">pub </span>max_async_message_data: u64,
     <span class="kw">pub </span>max_ledger_changes_count: u64,
     <span class="kw">pub </span>max_datastore_key_length: u8,
     <span class="kw">pub </span>max_datastore_value_length: u64,

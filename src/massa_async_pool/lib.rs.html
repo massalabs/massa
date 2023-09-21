@@ -138,7 +138,7 @@
 //!
 //! ## How to send a message during bytecode execution
 //!
-//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, fee, coins, data) -&gt; Result&lt;(), ABIReturnError&gt;`.
+//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, fee, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;`. Note that data has a configuration defined `max_async_message_data_size`.
 //! * when called, this ABI does this:
 //!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer
 //!   * it consumes `fee + coins` coins from the sender
