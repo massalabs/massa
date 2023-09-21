@@ -1019,6 +1019,9 @@
 <a href="#1019" id="1019">1019</a>
 <a href="#1020" id="1020">1020</a>
 <a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1232,7 +1235,8 @@
             message_id_deserializer: AsyncMessageIdDeserializer::new(config.thread_count),
             message_deserializer_db: AsyncMessageDeserializer::new(
                 config.thread_count,
-                config.max_async_message_data,
+                config.max_function_length,
+                config.max_function_params_length,
                 config.max_key_length,
                 <span class="bool-val">true</span>,
             ),
@@ -1518,7 +1522,7 @@
             DATA_IDENT =&gt; {
                 <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _value)) = <span class="self">self
                     </span>.message_deserializer_db
-                    .data_deserializer
+                    .function_params_deserializer
                     .deserialize::&lt;DeserializeError&gt;(serialized_value)
                 <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1615,7 +1619,8 @@
     </span><span class="kw">pub fn </span>new(
         thread_count: u8,
         max_async_pool_length: u64,
-        max_async_message_data: u64,
+        max_function_length: u16,
+        max_parameters_length: u64,
         max_key_length: u32,
     ) -&gt; AsyncPoolDeserializer {
         AsyncPoolDeserializer {
@@ -1626,7 +1631,8 @@
             async_message_id_deserializer: AsyncMessageIdDeserializer::new(thread_count),
             async_message_deserializer_db: AsyncMessageDeserializer::new(
                 thread_count,
-                max_async_message_data,
+                max_function_length,
+                max_parameters_length,
                 max_key_length,
                 <span class="bool-val">true</span>,
             ),
@@ -1724,16 +1730,16 @@
             <span class="kw-2">&amp;</span>serialized_destination,
         );
 
-        <span class="comment">// Handler
-        </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_handler = Vec::new();
-        <span class="kw">let </span>handler_bytes = message.handler.as_bytes();
-        <span class="kw">let </span>handler_name_len: u8 = handler_bytes.len().try_into().expect(MESSAGE_SER_ERROR);
-        serialized_handler.extend([handler_name_len]);
-        serialized_handler.extend(handler_bytes);
+        <span class="comment">// Function
+        </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_function = Vec::new();
+        <span class="self">self</span>.message_serializer
+            .function_serializer
+            .serialize(<span class="kw-2">&amp;</span>message.function, <span class="kw-2">&amp;mut </span>serialized_function)
+            .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
             batch,
             <span class="macro">handler_key!</span>(serialized_message_id),
-            <span class="kw-2">&amp;</span>serialized_handler,
+            <span class="kw-2">&amp;</span>serialized_function,
         );
 
         <span class="comment">// Max gas
@@ -1788,13 +1794,13 @@
             <span class="kw-2">&amp;</span>serialized_validity_end,
         );
 
-        <span class="comment">// Data
-        </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_data = Vec::new();
+        <span class="comment">// Params
+        </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_params = Vec::new();
         <span class="self">self</span>.message_serializer
-            .vec_u8_serializer
-            .serialize(<span class="kw-2">&amp;</span>message.data, <span class="kw-2">&amp;mut </span>serialized_data)
+            .function_params_serializer
+            .serialize(<span class="kw-2">&amp;</span>message.function_params, <span class="kw-2">&amp;mut </span>serialized_params)
             .expect(MESSAGE_SER_ERROR);
-        db.put_or_update_entry_value(batch, <span class="macro">data_key!</span>(serialized_message_id), <span class="kw-2">&amp;</span>serialized_data);
+        db.put_or_update_entry_value(batch, <span class="macro">data_key!</span>(serialized_message_id), <span class="kw-2">&amp;</span>serialized_params);
 
         <span class="comment">// Trigger
         </span><span class="kw">let </span><span class="kw-2">mut </span>serialized_trigger = Vec::new();
@@ -1896,16 +1902,16 @@
         }
 
         <span class="comment">// Handler
-        </span><span class="kw">if let </span>SetOrKeep::Set(handler) = message_update.handler {
-            <span class="kw">let </span><span class="kw-2">mut </span>serialized_handler = Vec::new();
-            <span class="kw">let </span>handler_bytes = handler.as_bytes();
-            <span class="kw">let </span>handler_name_len: u8 = handler_bytes.len().try_into().expect(MESSAGE_SER_ERROR);
-            serialized_handler.extend([handler_name_len]);
-            serialized_handler.extend(handler_bytes);
+        </span><span class="kw">if let </span>SetOrKeep::Set(function) = message_update.function {
+            <span class="kw">let </span><span class="kw-2">mut </span>serialized_function = Vec::new();
+            <span class="self">self</span>.message_serializer
+                .function_serializer
+                .serialize(<span class="kw-2">&amp;</span>function, <span class="kw-2">&amp;mut </span>serialized_function)
+                .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
                 batch,
                 <span class="macro">handler_key!</span>(serialized_message_id),
-                <span class="kw-2">&amp;</span>serialized_handler,
+                <span class="kw-2">&amp;</span>serialized_function,
             );
         }
 
@@ -1976,11 +1982,11 @@
         }
 
         <span class="comment">// Data
-        </span><span class="kw">if let </span>SetOrKeep::Set(data) = message_update.data {
+        </span><span class="kw">if let </span>SetOrKeep::Set(params) = message_update.function_params {
             <span class="kw">let </span><span class="kw-2">mut </span>serialized_data = Vec::new();
             <span class="self">self</span>.message_serializer
-                .vec_u8_serializer
-                .serialize(<span class="kw-2">&amp;</span>data, <span class="kw-2">&amp;mut </span>serialized_data)
+                .function_params_serializer
+                .serialize(<span class="kw-2">&amp;</span>params, <span class="kw-2">&amp;mut </span>serialized_data)
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(batch, <span class="macro">data_key!</span>(serialized_message_id), <span class="kw-2">&amp;</span>serialized_data);
         }

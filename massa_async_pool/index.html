@@ -19,7 +19,7 @@
 }
 </code></pre></div><h3 id="how-to-send-a-message-during-bytecode-execution"><a href="#how-to-send-a-message-during-bytecode-execution">How to send a message during bytecode execution</a></h3>
 <ul>
-<li>messages are sent using an ABI: <code>send_message(target_address, target_handler, validity_start, validity_end, max_gas, fee, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;</code>. Note that data has a configuration defined <code>max_async_message_data_size</code>.</li>
+<li>messages are sent using an ABI: <code>send_message(target_address, target_handler, validity_start, validity_end, max_gas, fee, coins, data) -&gt; Result&lt;(), ABIReturnError&gt;</code>.</li>
 <li>when called, this ABI does this:
 <ul>
 <li>it consumes <code>compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)</code> of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer</li>
