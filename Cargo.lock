@@ -77,9 +77,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f2135563fb5c609d2b2b87c1e8ce7bc41b0b45430fa9661f457981503dd5bf0"
+checksum = "ea5d730647d4fadd988536d06fecce94b7b4f2a7efdae548f1cf4b63205518ab"
 dependencies = [
  "memchr",
 ]
@@ -2587,7 +2587,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=b45cccca3fb09aa2bbee08aade080127521e39b8#b45cccca3fb09aa2bbee08aade080127521e39b8"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=173a5ce3f9b0a869bb5871383e2ca9db5e9d89c3#173a5ce3f9b0a869bb5871383e2ca9db5e9d89c3"
 dependencies = [
  "glob",
  "prost",
@@ -2600,7 +2600,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=4883fe075afca4dd4b7346ed7dff2d506323f9c7#4883fe075afca4dd4b7346ed7dff2d506323f9c7"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=912d9c85c11ea4fd76365e3f612a86e621945ab5#912d9c85c11ea4fd76365e3f612a86e621945ab5"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -4256,7 +4256,7 @@ checksum = "8bdf592881d821b83d471f8af290226c8d51402259e9bb5be7f9f8bdebbb11ac"
 dependencies = [
  "bytes",
  "heck 0.4.1",
- "itertools 0.11.0",
+ "itertools 0.10.5",
  "log",
  "multimap",
  "once_cell",
@@ -4277,7 +4277,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "265baba7fabd416cf5078179f7d2cbeca4ce7a9041111900675ea7c4cb8a4c32"
 dependencies = [
  "anyhow",
- "itertools 0.11.0",
+ "itertools 0.10.5",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "syn 2.0.37",

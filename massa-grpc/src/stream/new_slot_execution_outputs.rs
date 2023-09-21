@@ -29,7 +29,7 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
 //TODO implement remaining sub filters
 // Type declaration for NewSlotExecutionOutputsFilter
 #[derive(Clone, Debug, Default)]
-struct Filter {
+pub struct Filter {
     // Execution output status to filter
     status_filter: Option<HashSet<i32>>,
     // Slot range to filter
@@ -62,6 +62,7 @@ struct ExecutedDenounciationFilter {
 struct ExecutionEventFilter {
     // Do not return any message
     none: Option<()>,
+    emitter_address: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -186,7 +187,7 @@ pub(crate) async fn new_slot_execution_outputs(
 }
 
 // This function returns a filter from the request
-fn get_filter(
+pub(crate) fn get_filter(
     request: NewSlotExecutionOutputsRequest,
     grpc_config: &GrpcConfig,
 ) -> Result<Filter, GrpcError> {
@@ -270,12 +271,24 @@ fn get_filter(
                             grpc_api::execution_event_filter::Filter::None(_) => {
                                 execution_event_filter = Some(ExecutionEventFilter {
                                     none: Some(()),
+                                    emitter_address: None,
                                 });
                             },
-                            _ => {
-                                execution_event_filter = Some(ExecutionEventFilter {
-                                none: None,
-                            })
+                            data => {
+                                match data {
+                                    grpc_api::execution_event_filter::Filter::EmitterAddress(address) => {
+                                        execution_event_filter = Some(ExecutionEventFilter {
+                                            none: None,
+                                            emitter_address: Some(address),
+                                        });
+                                    },
+                                    _ => {
+                                        execution_event_filter = Some(ExecutionEventFilter {
+                                            none: None,
+                                            emitter_address: None,
+                                        });
+                                    }
+                                }
                         }
                 }
                 }},
@@ -325,7 +338,7 @@ fn get_filter(
 }
 
 /// Return if the slot execution outputs should be send to client
-fn filter_map(
+pub(crate) fn filter_map(
     slot_execution_output: SlotExecutionOutput,
     filters: &Filter,
     grpc_config: &GrpcConfig,
@@ -400,7 +413,16 @@ fn filter_map_exec_output(
     if let Some(execution_event_filter) = &filters.execution_event_filter {
         if execution_event_filter.none.is_some() {
             exec_output.events.clear();
+        } else if let Some(addr) = &execution_event_filter.emitter_address {
+            exec_output.events.0.retain(|event| {
+                event
+                    .context
+                    .call_stack
+                    .iter()
+                    .any(|address| address.to_string() == *addr)
+            });
         }
+        // TODO: implement other filters
     }
 
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {

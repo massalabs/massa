@@ -1,6 +1,8 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsRequest;
+use tonic::{Request, Response, Status};
 
 use crate::private::{
     add_staking_secret_keys, add_to_bootstrap_blacklist, add_to_bootstrap_whitelist,
@@ -23,6 +25,7 @@ use crate::stream::{
     new_filled_blocks::{new_filled_blocks, NewFilledBlocksStreamType},
     new_operations::{new_operations, NewOperationsStreamType},
     new_slot_execution_outputs::{new_slot_execution_outputs, NewSlotExecutionOutputsStreamType},
+    new_slot_execution_outputs_server::new_slot_execution_outputs_server,
     send_blocks::{send_blocks, SendBlocksStreamType},
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
@@ -215,6 +218,17 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     ) -> Result<tonic::Response<Self::NewSlotExecutionOutputsStream>, tonic::Status> {
         Ok(tonic::Response::new(
             new_slot_execution_outputs(self, request).await?,
+        ))
+    }
+
+    type NewSlotExecutionOutputsServerStream = NewSlotExecutionOutputsStreamType;
+
+    async fn new_slot_execution_outputs_server(
+        &self,
+        request: Request<NewSlotExecutionOutputsRequest>,
+    ) -> Result<Response<Self::NewSlotExecutionOutputsServerStream>, Status> {
+        Ok(tonic::Response::new(
+            new_slot_execution_outputs_server(self, request).await?,
         ))
     }
 

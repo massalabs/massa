@@ -10,6 +10,8 @@ pub mod new_filled_blocks;
 pub mod new_operations;
 /// subscribe new slot execution outputs
 pub mod new_slot_execution_outputs;
+
+pub mod new_slot_execution_outputs_server;
 /// send_blocks streaming
 pub mod send_blocks;
 /// send endorsements
