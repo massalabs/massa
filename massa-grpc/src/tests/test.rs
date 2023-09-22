@@ -6,6 +6,7 @@ use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
+use massa_models::block::BlockGraphStatus;
 use massa_models::{
     config::{
         ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
@@ -22,9 +23,12 @@ use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
-    GetOperationsRequest, GetStatusRequest, GetTransactionsThroughputRequest,
+    GetBlocksRequest, GetOperationsRequest, GetStatusRequest, GetTransactionsThroughputRequest,
 };
-use massa_protocol_exports::test_exports::tools::create_operation_with_expire_period;
+use massa_proto_rs::massa::model::v1::BlockStatus;
+use massa_protocol_exports::test_exports::tools::{
+    create_block, create_operation_with_expire_period,
+};
 use massa_protocol_exports::{MockProtocolController, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_versioning::{
@@ -36,8 +40,11 @@ use num::rational::Ratio;
 use std::time::Duration;
 use std::{net::SocketAddr, path::PathBuf};
 
-fn grpc_public_service() -> MassaPublicGrpc {
-    let consensus_controller = MockConsensusControllerImpl::new();
+const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
+
+fn grpc_public_service(consensus_ctrl: Option<MockConsensusControllerImpl>) -> MassaPublicGrpc {
+    let consensus_controller = consensus_ctrl.unwrap_or_else(|| MockConsensusControllerImpl::new());
+
     let execution_ctrl = MockExecutionController::new_with_receiver();
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
@@ -296,7 +303,7 @@ async fn test_start_grpc_server() {
 
 #[tokio::test]
 async fn get_status() {
-    let public_server = grpc_public_service();
+    let public_server = grpc_public_service(None);
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
@@ -312,7 +319,7 @@ async fn get_status() {
 
 #[tokio::test]
 async fn get_transactions_throughput() {
-    let public_server = grpc_public_service();
+    let public_server = grpc_public_service(None);
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
@@ -331,7 +338,7 @@ async fn get_transactions_throughput() {
 
 #[tokio::test]
 async fn get_operations() {
-    let mut public_server = grpc_public_service();
+    let mut public_server = grpc_public_service(None);
     let config = public_server.grpc_config.clone();
 
     // create an operation and store it in the storage
@@ -379,9 +386,34 @@ async fn get_operations() {
 
 #[tokio::test]
 async fn get_blocks() {
-    let mut public_server = grpc_public_service();
+    let mut consensus_controller = MockConsensusControllerImpl::new();
+    consensus_controller
+        .expect_get_block_statuses()
+        .returning(|_| vec![BlockGraphStatus::Final]);
+
+    let mut public_server = grpc_public_service(Some(consensus_controller));
+
     let config = public_server.grpc_config.clone();
+
+    let block = create_block(&KeyPair::generate(0).unwrap());
+    public_server.storage.store_block(block.clone());
 
     // start the server
     let stop_handle = public_server.serve(&config).await.unwrap();
+
+    // start grpc client and connect to the server
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let result = public_client
+        .get_blocks(GetBlocksRequest {
+            block_ids: vec![block.id.to_string()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    let s = result.wrapped_blocks.get(0).unwrap().clone().status;
+
+    assert_eq!(s, BlockStatus::Final as i32);
+    stop_handle.stop();
 }
