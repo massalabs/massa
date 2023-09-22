@@ -25,8 +25,8 @@ use massa_models::{
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
+use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
-use massa_proto_rs::massa::api::v1::stakers_filter::Filter;
 use massa_proto_rs::massa::api::v1::{
     GetBlocksRequest, GetOperationsRequest, GetStatusRequest, GetTransactionsThroughputRequest,
 };
@@ -494,7 +494,7 @@ async fn get_stakers() {
     let result = public_client
         .get_stakers(massa_proto_rs::massa::api::v1::GetStakersRequest {
             filters: vec![massa_proto_rs::massa::api::v1::StakersFilter {
-                filter: Some(Filter::MinRolls(20)),
+                filter: Some(massa_proto_rs::massa::api::v1::stakers_filter::Filter::MinRolls(20)),
             }],
         })
         .await
@@ -508,7 +508,7 @@ async fn get_stakers() {
     let result = public_client
         .get_stakers(massa_proto_rs::massa::api::v1::GetStakersRequest {
             filters: vec![massa_proto_rs::massa::api::v1::StakersFilter {
-                filter: Some(Filter::MaxRolls(20)),
+                filter: Some(massa_proto_rs::massa::api::v1::stakers_filter::Filter::MaxRolls(20)),
             }],
         })
         .await
@@ -524,7 +524,7 @@ async fn get_stakers() {
     let result = public_client
         .get_stakers(massa_proto_rs::massa::api::v1::GetStakersRequest {
             filters: vec![massa_proto_rs::massa::api::v1::StakersFilter {
-                filter: Some(Filter::Limit(2)),
+                filter: Some(massa_proto_rs::massa::api::v1::stakers_filter::Filter::Limit(2)),
             }],
         })
         .await
@@ -532,5 +532,46 @@ async fn get_stakers() {
         .into_inner();
 
     assert_eq!(result.stakers.len(), 2);
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn get_datastore_entries() {
+    let mut public_server = grpc_public_service();
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_get_final_and_active_data_entry()
+        .returning(|_| vec![(Some("toto".as_bytes().to_vec()), None)]);
+
+    public_server.execution_controller = Box::new(exec_ctrl);
+    let config = public_server.grpc_config.clone();
+
+    // start the server
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    // start grpc client and connect to the server
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let result = public_client
+        .get_datastore_entries(massa_proto_rs::massa::api::v1::GetDatastoreEntriesRequest {
+            filters: vec![massa_proto_rs::massa::api::v1::GetDatastoreEntryFilter {
+                filter: Some(Filter::AddressKey(
+                    massa_proto_rs::massa::model::v1::AddressKeyEntry {
+                        address: "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"
+                            .to_string(),
+                        key: vec![],
+                    },
+                )),
+            }],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    let data = result.datastore_entries.get(0).unwrap();
+    // TODO candidate value should be an option in the api
+    assert!(data.candidate_value.is_empty());
+    assert_eq!(data.final_value, "toto".as_bytes());
+
     stop_handle.stop();
 }
