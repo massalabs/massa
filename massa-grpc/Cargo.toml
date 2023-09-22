@@ -7,6 +7,9 @@ repository = "https://github.com/massalabs/massa/"
 homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
+[features]
+testing = []
+
 [dependencies]
 massa-proto-rs = { workspace = true, "features" = ["tonic"] }
 displaydoc = { workspace = true }
@@ -46,3 +49,4 @@ massa_sdk = { workspace = true }
 num = { workspace = true }
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
 massa_channel = { workspace = true }
+mockall = { workspace = true }

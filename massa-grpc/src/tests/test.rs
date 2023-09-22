@@ -1,12 +1,16 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use super::mock::MockExecutionCtrl;
 use crate::config::{GrpcConfig, ServiceName};
 use crate::server::MassaPublicGrpc;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
+use massa_models::address::Address;
 use massa_models::block::BlockGraphStatus;
+use massa_models::slot::Slot;
+use massa_models::stats::ExecutionStats;
 use massa_models::{
     config::{
         ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
@@ -22,6 +26,7 @@ use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
+use massa_proto_rs::massa::api::v1::stakers_filter::Filter;
 use massa_proto_rs::massa::api::v1::{
     GetBlocksRequest, GetOperationsRequest, GetStatusRequest, GetTransactionsThroughputRequest,
 };
@@ -31,21 +36,22 @@ use massa_protocol_exports::test_exports::tools::{
 };
 use massa_protocol_exports::{MockProtocolController, ProtocolConfig};
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use massa_versioning::{
     keypair_factory::KeyPairFactory,
     versioning::{MipStatsConfig, MipStore},
 };
 // use massa_wallet::test_exports::create_test_wallet;
 use num::rational::Ratio;
+use std::str::FromStr;
 use std::time::Duration;
 use std::{net::SocketAddr, path::PathBuf};
 
 const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
-fn grpc_public_service(consensus_ctrl: Option<MockConsensusControllerImpl>) -> MassaPublicGrpc {
-    let consensus_controller = consensus_ctrl.unwrap_or_else(|| MockConsensusControllerImpl::new());
+fn grpc_public_service() -> MassaPublicGrpc {
+    let consensus_controller = MockConsensusControllerImpl::new();
 
-    let execution_ctrl = MockExecutionController::new_with_receiver();
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
     let selector_ctrl = MockSelectorController::new_with_receiver();
     let pool_ctrl = MockPoolController::new_with_receiver();
@@ -53,7 +59,7 @@ fn grpc_public_service(consensus_ctrl: Option<MockConsensusControllerImpl>) -> M
         MassaChannel::new("consensus_event".to_string(), Some(1024));
 
     let consensus_channels = ConsensusChannels {
-        execution_controller: execution_ctrl.0.clone(),
+        execution_controller: Box::new(MockExecutionCtrl::new()),
         selector_controller: selector_ctrl.0.clone(),
         pool_controller: pool_ctrl.0.clone(),
         protocol_controller: Box::new(MockProtocolController::new()),
@@ -140,7 +146,7 @@ fn grpc_public_service(consensus_ctrl: Option<MockConsensusControllerImpl>) -> M
     MassaPublicGrpc {
         consensus_controller: Box::new(consensus_controller),
         consensus_channels,
-        execution_controller: execution_ctrl.0.clone(),
+        execution_controller: Box::new(MockExecutionCtrl::new()),
         execution_channels: ExecutionChannels {
             slot_execution_output_sender,
         },
@@ -148,7 +154,7 @@ fn grpc_public_service(consensus_ctrl: Option<MockConsensusControllerImpl>) -> M
             endorsement_sender,
             operation_sender,
             selector: selector_ctrl.0.clone(),
-            execution_controller: execution_ctrl.0.clone(),
+            execution_controller: Box::new(MockExecutionCtrl::new()),
         },
         pool_controller: pool_ctrl.0,
         protocol_controller: Box::new(MockProtocolController::new()),
@@ -299,11 +305,25 @@ async fn test_start_grpc_server() {
     let s = res.get_status(GetStatusRequest {}).await.unwrap();
     dbg!(s);
     stop_handle.stop();
+    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
 async fn get_status() {
-    let public_server = grpc_public_service(None);
+    let mut public_server = grpc_public_service();
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_query_state()
+        .returning(|_| massa_execution_exports::ExecutionQueryResponse {
+            responses: vec![],
+            candidate_cursor: massa_models::slot::Slot::new(0, 2),
+            final_cursor: Slot::new(0, 0),
+            final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+        });
+
+    public_server.execution_controller = Box::new(exec_ctrl);
+
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
@@ -315,11 +335,25 @@ async fn get_status() {
     assert_eq!(result.status.unwrap().version, *VERSION.to_string());
 
     stop_handle.stop();
+    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
 async fn get_transactions_throughput() {
-    let public_server = grpc_public_service(None);
+    let mut public_server = grpc_public_service();
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl.expect_get_stats().returning(|| ExecutionStats {
+        time_window_start: MassaTime::now().unwrap(),
+        time_window_end: MassaTime::now().unwrap(),
+        final_block_count: 0,
+        final_executed_operations_count: 0,
+        active_cursor: Slot::new(0, 0),
+        final_cursor: Slot::new(0, 0),
+    });
+
+    public_server.execution_controller = Box::new(exec_ctrl);
+
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
@@ -334,11 +368,12 @@ async fn get_transactions_throughput() {
 
     assert_eq!(response.throughput, 0);
     stop_handle.stop();
+    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
 async fn get_operations() {
-    let mut public_server = grpc_public_service(None);
+    let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
 
     // create an operation and store it in the storage
@@ -382,16 +417,18 @@ async fn get_operations() {
         _ => panic!("wrong operation type"),
     }
     stop_handle.stop();
+    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
 async fn get_blocks() {
-    let mut consensus_controller = MockConsensusControllerImpl::new();
-    consensus_controller
+    let mut public_server = grpc_public_service();
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl
         .expect_get_block_statuses()
         .returning(|_| vec![BlockGraphStatus::Final]);
 
-    let mut public_server = grpc_public_service(Some(consensus_controller));
+    public_server.consensus_controller = Box::new(consensus_ctrl);
 
     let config = public_server.grpc_config.clone();
 
@@ -415,5 +452,85 @@ async fn get_blocks() {
     let s = result.wrapped_blocks.get(0).unwrap().clone().status;
 
     assert_eq!(s, BlockStatus::Final as i32);
+    stop_handle.stop();
+    std::thread::sleep(Duration::from_millis(1000));
+}
+
+#[tokio::test]
+async fn get_stakers() {
+    let mut public_server = grpc_public_service();
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
+        let mut map = std::collections::BTreeMap::new();
+        map.insert(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            5 as u64,
+        );
+        map.insert(
+            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            10 as u64,
+        );
+        map.insert(
+            Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
+            20 as u64,
+        );
+        map.insert(
+            Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()),
+            30 as u64,
+        );
+
+        map
+    });
+
+    public_server.execution_controller = Box::new(exec_ctrl);
+    let config = public_server.grpc_config.clone();
+
+    // start the server
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    // start grpc client and connect to the server
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let result = public_client
+        .get_stakers(massa_proto_rs::massa::api::v1::GetStakersRequest {
+            filters: vec![massa_proto_rs::massa::api::v1::StakersFilter {
+                filter: Some(Filter::MinRolls(20)),
+            }],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    result.stakers.iter().for_each(|s| {
+        assert!(s.rolls >= 20);
+    });
+
+    let result = public_client
+        .get_stakers(massa_proto_rs::massa::api::v1::GetStakersRequest {
+            filters: vec![massa_proto_rs::massa::api::v1::StakersFilter {
+                filter: Some(Filter::MaxRolls(20)),
+            }],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    result.stakers.iter().for_each(|s| {
+        assert!(s.rolls <= 20);
+    });
+
+    assert_eq!(result.stakers.len(), 3);
+
+    let result = public_client
+        .get_stakers(massa_proto_rs::massa::api::v1::GetStakersRequest {
+            filters: vec![massa_proto_rs::massa::api::v1::StakersFilter {
+                filter: Some(Filter::Limit(2)),
+            }],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.stakers.len(), 2);
     stop_handle.stop();
 }
