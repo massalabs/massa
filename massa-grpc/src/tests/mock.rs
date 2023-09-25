@@ -6,10 +6,20 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_models::{
-    address::Address, amount::Amount, block_id::BlockId, denunciation::DenunciationIndex,
-    execution::EventFilter, operation::OperationId, output_event::SCOutputEvent,
-    prehash::PreHashMap, slot::Slot, stats::ExecutionStats,
+    address::Address,
+    amount::Amount,
+    block_id::BlockId,
+    denunciation::{Denunciation, DenunciationIndex, DenunciationPrecursor},
+    endorsement::EndorsementId,
+    execution::EventFilter,
+    operation::OperationId,
+    output_event::SCOutputEvent,
+    prehash::PreHashMap,
+    slot::Slot,
+    stats::ExecutionStats,
 };
+use massa_pool_exports::PoolController;
+use massa_storage::Storage;
 
 #[cfg(any(test, feature = "testing"))]
 mockall::mock! {
@@ -63,5 +73,65 @@ mockall::mock! {
     fn get_stats(&self) -> ExecutionStats;
 
     fn clone_box(&self) -> Box<dyn ExecutionController>;
+    }
+
+
+
+}
+
+#[cfg(any(test, feature = "testing"))]
+mockall::mock! {
+    pub PoolCtrl{}
+
+    impl PoolController for PoolCtrl {
+        /// Asynchronously add operations to pool. Simply print a warning on failure.
+        fn add_operations(&mut self, ops: Storage);
+
+        /// Asynchronously add endorsements to pool. Simply print a warning on failure.
+        fn add_endorsements(&mut self, endorsements: Storage);
+
+        /// Add denunciation precursor to pool
+        fn add_denunciation_precursor(&self, denunciation_precursor: DenunciationPrecursor);
+
+        /// Asynchronously notify of new consensus final periods. Simply print a warning on failure.
+        fn notify_final_cs_periods(&mut self, final_cs_periods: &[u64]);
+
+        /// Get operations for block creation.
+        fn get_block_operations(&self, slot: &Slot) -> (Vec<OperationId>, Storage);
+
+        /// Get endorsements for a block.
+        fn get_block_endorsements(
+            &self,
+            target_block: &BlockId,
+            slot: &Slot,
+        ) -> (Vec<Option<EndorsementId>>, Storage);
+
+        /// Get denunciations for a block header.
+        fn get_block_denunciations(&self, target_slot: &Slot) -> Vec<Denunciation>;
+
+        /// Get the number of endorsements in the pool
+        fn get_endorsement_count(&self) -> usize;
+
+        /// Get the number of operations in the pool
+        fn get_operation_count(&self) -> usize;
+
+        /// Check if the pool contains a list of endorsements. Returns one boolean per item.
+        fn contains_endorsements(&self, endorsements: &[EndorsementId]) -> Vec<bool>;
+
+        /// Check if the pool contains a list of operations. Returns one boolean per item.
+        fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
+
+        /// Check if the pool contains a denunciation. Returns a boolean
+        fn contains_denunciation(&self, denunciation: &Denunciation) -> bool;
+
+        /// Get the number of denunciations in the pool
+        fn get_denunciation_count(&self) -> usize;
+
+        /// Returns a boxed clone of self.
+        /// Useful to allow cloning `Box<dyn PoolController>`.
+        fn clone_box(&self) -> Box<dyn PoolController>;
+
+        /// Get final cs periods (updated regularly from consensus)
+        fn get_final_cs_periods(&self) -> &Vec<u64>;
     }
 }

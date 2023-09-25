@@ -29,13 +29,14 @@ use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
-    ExecuteReadOnlyCallRequest, GetBlocksRequest, GetOperationsRequest, GetStatusRequest,
-    GetTransactionsThroughputRequest,
+    ExecuteReadOnlyCallRequest, GetBlocksRequest, GetEndorsementsRequest, GetOperationsRequest,
+    GetStatusRequest, GetTransactionsThroughputRequest,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
 use massa_proto_rs::massa::model::v1::{BlockStatus, FunctionCall, ReadOnlyExecutionCall};
 use massa_protocol_exports::test_exports::tools::{
-    create_block, create_operation_with_expire_period,
+    create_block, create_block_with_endorsements, create_endorsement,
+    create_operation_with_expire_period,
 };
 use massa_protocol_exports::{MockProtocolController, ProtocolConfig};
 use massa_signature::KeyPair;
@@ -572,7 +573,7 @@ async fn get_datastore_entries() {
         .into_inner();
 
     let data = result.datastore_entries.get(0).unwrap();
-    // TODO candidate value should be an option in the api
+    // TODO candidate value should be an option in the api : issue #4427
     assert!(data.candidate_value.is_empty());
     assert_eq!(data.final_value, "toto".as_bytes());
 
@@ -691,7 +692,78 @@ async fn get_endorsements() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
 
+    let endorsement = create_endorsement();
+    let end_id = endorsement.id.clone();
+    public_server
+        .storage
+        .store_endorsements(vec![endorsement.clone()]);
+
+    let b = create_block_with_endorsements(
+        &KeyPair::generate(0).unwrap(),
+        Slot {
+            period: 10,
+            thread: 1,
+        },
+        vec![endorsement],
+    );
+
+    let block_id = b.id;
+
+    public_server.storage.store_block(b);
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl.expect_get_block_statuses().returning(|ids| {
+        ids.iter()
+            .map(|_| BlockGraphStatus::Final)
+            .collect::<Vec<BlockGraphStatus>>()
+    });
+
+    public_server.consensus_controller = Box::new(consensus_ctrl);
+
+    let mut pool_ctrl = crate::tests::mock::MockPoolCtrl::new();
+    pool_ctrl
+        .expect_contains_endorsements()
+        .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
+
+    public_server.pool_controller = Box::new(pool_ctrl);
+
     let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let result = public_client
+        .get_endorsements(GetEndorsementsRequest {
+            endorsement_ids: vec![],
+        })
+        .await;
+
+    assert!(result.is_err());
+
+    let result = public_client
+        .get_endorsements(GetEndorsementsRequest {
+            endorsement_ids: vec![
+                "AU1ncNv12XG7Ri2tsRm1qVWfYCs4RchwHpxZV1amJh8MEiLATtZN".to_string(),
+                "AU12TpJW3TsLsUVhg4aqSXLVMMLVU1YY5imJ4jNZWQWZvVygFxtJ".to_string(),
+            ],
+        })
+        .await;
+    assert!(result.is_err());
+
+    let result = public_client
+        .get_endorsements(GetEndorsementsRequest {
+            endorsement_ids: vec![
+                end_id.to_string(),
+                "E19dHCWcodoSppzEZbGccshMhNSxYDTFGthqo5LRa4QyaQbL8cw".to_string(),
+            ],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.wrapped_endorsements.len(), 1);
+    let endorsement = result.wrapped_endorsements.get(0).unwrap();
+    assert_eq!(endorsement.is_final, true);
+    assert!(endorsement.in_blocks.contains(&block_id.to_string()));
 
     stop_handle.stop();
 }
