@@ -31,11 +31,13 @@ use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
     ExecuteReadOnlyCallRequest, GetBlocksRequest, GetEndorsementsRequest,
-    GetNextBlockBestParentsRequest, GetOperationsRequest, GetStatusRequest,
-    GetTransactionsThroughputRequest,
+    GetNextBlockBestParentsRequest, GetOperationsRequest, GetScExecutionEventsRequest,
+    GetStatusRequest, GetTransactionsThroughputRequest,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
-use massa_proto_rs::massa::model::v1::{BlockStatus, FunctionCall, ReadOnlyExecutionCall};
+use massa_proto_rs::massa::model::v1::{
+    BlockStatus, FunctionCall, ReadOnlyExecutionCall, SlotRange,
+};
 use massa_protocol_exports::test_exports::tools::{
     create_block, create_block_with_endorsements, create_endorsement,
     create_operation_with_expire_period,
@@ -49,6 +51,7 @@ use massa_versioning::{
 };
 // use massa_wallet::test_exports::create_test_wallet;
 use num::rational::Ratio;
+use std::collections::VecDeque;
 use std::str::FromStr;
 use std::time::Duration;
 use std::{net::SocketAddr, path::PathBuf};
@@ -807,5 +810,77 @@ async fn get_next_block_best_parents() {
         "B1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC".to_string()
     );
     assert_eq!(parent.period, 1);
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn get_sc_execution_events() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_get_filtered_sc_output_event()
+        .returning(|_| {
+            vec![massa_models::output_event::SCOutputEvent {
+                context: massa_models::output_event::EventExecutionContext {
+                    slot: Slot {
+                        period: 1,
+                        thread: 10,
+                    },
+                    block: None,
+                    read_only: false,
+                    index_in_slot: 1,
+                    call_stack: VecDeque::new(),
+                    origin_operation_id: Some(
+                        massa_models::operation::OperationId::from_str(
+                            "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
+                        )
+                        .unwrap(),
+                    ),
+                    is_final: false,
+                    is_error: false,
+                },
+                data: "massa".to_string(),
+            }]
+        });
+
+    public_server.execution_controller = Box::new(exec_ctrl);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let filter = massa_proto_rs::massa::api::v1::ScExecutionEventsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::sc_execution_events_filter::Filter::OriginalOperationId(
+                "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC".to_string(),
+            ),
+        ),
+    };
+
+    let result = public_client
+        .get_sc_execution_events(GetScExecutionEventsRequest {
+            filters: vec![filter.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    let event = result.events.get(0).unwrap();
+    assert_eq!(event.data, "massa".as_bytes().to_vec());
+    assert!(event.context.is_some());
+    let context = event.context.as_ref().unwrap();
+    assert_eq!(context.origin_slot.as_ref().unwrap().period, 1);
+    assert_eq!(context.origin_slot.as_ref().unwrap().thread, 10);
+    assert_eq!(
+        context
+            .origin_operation_id
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .as_str(),
+        "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC"
+    );
+
     stop_handle.stop();
 }
