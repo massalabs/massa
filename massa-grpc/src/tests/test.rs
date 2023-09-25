@@ -35,9 +35,7 @@ use massa_proto_rs::massa::api::v1::{
     GetStatusRequest, GetTransactionsThroughputRequest,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
-use massa_proto_rs::massa::model::v1::{
-    BlockStatus, FunctionCall, ReadOnlyExecutionCall, SlotRange,
-};
+use massa_proto_rs::massa::model::v1::{BlockStatus, FunctionCall, ReadOnlyExecutionCall};
 use massa_protocol_exports::test_exports::tools::{
     create_block, create_block_with_endorsements, create_endorsement,
     create_operation_with_expire_period,
