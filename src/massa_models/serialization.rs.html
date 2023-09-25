@@ -759,8 +759,6 @@
 <a href="#759" id="759">759</a>
 <a href="#760" id="760">760</a>
 <a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -1247,8 +1245,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="doccomment">/// Serializer for `String` with generic serializer for the size of the string
+<span class="doccomment">/// Serializer for `String` with generic serializer for the size of the string
 </span><span class="kw">pub struct </span>StringSerializer&lt;SL, L&gt;
 <span class="kw">where
     </span>SL: Serializer&lt;L&gt;,
@@ -1293,7 +1290,6 @@
 }
 
 <span class="doccomment">/// Deserializer for `String` with generic deserializer for the size of the string
-</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>StringDeserializer&lt;DL, L&gt;
 <span class="kw">where
     </span>DL: Deserializer&lt;L&gt;,

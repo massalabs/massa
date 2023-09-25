@@ -1254,6 +1254,8 @@
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
 <a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1556,9 +1558,9 @@
     <span class="comment">// ask pool whether it carries the endorsements
     </span><span class="kw">let </span>in_pool = grpc.pool_controller.contains_endorsements(<span class="kw-2">&amp;</span>eds);
 
-    <span class="kw">let </span>consensus_controller = grpc.consensus_controller.clone();
+    <span class="comment">// let consensus_controller = grpc.consensus_controller.clone();
 
-    <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
+    // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
         <span class="kw">let </span>involved_blocks: Vec&lt;BlockId&gt; = storage_info
             .iter()
@@ -1567,7 +1569,9 @@
             .cloned()
             .collect();
 
-        <span class="kw">let </span>involved_block_statuses = consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
+        <span class="kw">let </span>involved_block_statuses = grpc
+            .consensus_controller
+            .get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
 
         <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
             .into_iter()
