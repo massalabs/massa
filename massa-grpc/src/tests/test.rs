@@ -636,15 +636,62 @@ async fn execute_read_only_call() {
     }));
 
     let call = public_client
-        .execute_read_only_call(ExecuteReadOnlyCallRequest { call: Some(param) })
+        .execute_read_only_call(ExecuteReadOnlyCallRequest {
+            call: Some(param.clone()),
+        })
         .await
         .unwrap()
         .into_inner();
 
-    dbg!(&call);
-
     assert_eq!(call.clone().output.unwrap().call_result, "toto".as_bytes());
     assert_eq!(call.output.unwrap().used_gas, 100);
+
+    param.target = Some(Target::BytecodeCall(
+        massa_proto_rs::massa::model::v1::BytecodeExecution {
+            bytecode: vec![],
+            operation_datastore: vec![],
+        },
+    ));
+
+    let call = public_client
+        .execute_read_only_call(ExecuteReadOnlyCallRequest {
+            call: Some(param.clone()),
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(call.clone().output.unwrap().call_result, "toto".as_bytes());
+
+    param.target = Some(Target::BytecodeCall(
+        massa_proto_rs::massa::model::v1::BytecodeExecution {
+            bytecode: vec![],
+            operation_datastore: "toto".as_bytes().to_vec(),
+        },
+    ));
+
+    let call = public_client
+        .execute_read_only_call(ExecuteReadOnlyCallRequest {
+            call: Some(param.clone()),
+        })
+        .await;
+    assert!(call.is_err());
+
+    param.target = None;
+    let call = public_client
+        .execute_read_only_call(ExecuteReadOnlyCallRequest { call: Some(param) })
+        .await;
+    assert!(call.is_err());
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn get_endorsements() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
 
     stop_handle.stop();
 }
