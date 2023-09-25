@@ -50,3 +50,4 @@ num = { workspace = true }
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
 massa_channel = { workspace = true }
 mockall = { workspace = true }
+massa_final_state = { workspace = true }

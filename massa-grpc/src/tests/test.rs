@@ -6,6 +6,7 @@ use crate::server::MassaPublicGrpc;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
+use massa_execution_exports::EventStore;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
 use massa_models::address::Address;
 use massa_models::block::BlockGraphStatus;
@@ -28,9 +29,11 @@ use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
-    GetBlocksRequest, GetOperationsRequest, GetStatusRequest, GetTransactionsThroughputRequest,
+    ExecuteReadOnlyCallRequest, GetBlocksRequest, GetOperationsRequest, GetStatusRequest,
+    GetTransactionsThroughputRequest,
 };
-use massa_proto_rs::massa::model::v1::BlockStatus;
+use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
+use massa_proto_rs::massa::model::v1::{BlockStatus, FunctionCall, ReadOnlyExecutionCall};
 use massa_protocol_exports::test_exports::tools::{
     create_block, create_operation_with_expire_period,
 };
@@ -572,6 +575,76 @@ async fn get_datastore_entries() {
     // TODO candidate value should be an option in the api
     assert!(data.candidate_value.is_empty());
     assert_eq!(data.final_value, "toto".as_bytes());
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn execute_read_only_call() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_execute_readonly_request()
+        .returning(|_req| {
+            Ok(massa_execution_exports::ReadOnlyExecutionOutput {
+                out: massa_execution_exports::ExecutionOutput {
+                    slot: Slot {
+                        period: 1,
+                        thread: 5,
+                    },
+                    block_info: None,
+                    state_changes: massa_final_state::StateChanges::default(),
+                    events: EventStore::default(),
+                },
+                gas_cost: 100,
+                call_result: "toto".as_bytes().to_vec(),
+            })
+        });
+
+    public_server.execution_controller = Box::new(exec_ctrl);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    // start grpc client and connect to the server
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let mut param = ReadOnlyExecutionCall {
+        max_gas: u64::MAX,
+        call_stack: vec![],
+        caller_address: None,
+        is_final: false,
+        target: Some(Target::FunctionCall(FunctionCall {
+            target_address: "toto".to_string(),
+            target_function: "function".to_string(),
+            parameter: vec![],
+        })),
+    };
+
+    let call = public_client
+        .execute_read_only_call(ExecuteReadOnlyCallRequest {
+            call: Some(param.clone()),
+        })
+        .await;
+
+    assert!(call.is_err());
+
+    param.target = Some(Target::FunctionCall(FunctionCall {
+        target_address: "AS12cx6BJHSrBPPSE86E6LYgYS44dvXoHW77cdPbTT8H41wm6xGN5".to_string(),
+        target_function: "function".to_string(),
+        parameter: vec![],
+    }));
+
+    let call = public_client
+        .execute_read_only_call(ExecuteReadOnlyCallRequest { call: Some(param) })
+        .await
+        .unwrap()
+        .into_inner();
+
+    dbg!(&call);
+
+    assert_eq!(call.clone().output.unwrap().call_result, "toto".as_bytes());
+    assert_eq!(call.output.unwrap().used_gas, 100);
 
     stop_handle.stop();
 }
