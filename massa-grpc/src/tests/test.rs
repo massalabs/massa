@@ -10,6 +10,7 @@ use massa_execution_exports::EventStore;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
 use massa_models::address::Address;
 use massa_models::block::BlockGraphStatus;
+use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
 use massa_models::{
@@ -29,8 +30,9 @@ use massa_pos_exports::test_exports::MockSelectorController;
 use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
-    ExecuteReadOnlyCallRequest, GetBlocksRequest, GetEndorsementsRequest, GetOperationsRequest,
-    GetStatusRequest, GetTransactionsThroughputRequest,
+    ExecuteReadOnlyCallRequest, GetBlocksRequest, GetEndorsementsRequest,
+    GetNextBlockBestParentsRequest, GetOperationsRequest, GetStatusRequest,
+    GetTransactionsThroughputRequest,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
 use massa_proto_rs::massa::model::v1::{BlockStatus, FunctionCall, ReadOnlyExecutionCall};
@@ -765,5 +767,45 @@ async fn get_endorsements() {
     assert_eq!(endorsement.is_final, true);
     assert!(endorsement.in_blocks.contains(&block_id.to_string()));
 
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn get_next_block_best_parents() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl.expect_get_best_parents().returning(|| {
+        vec![
+            (
+                BlockId::from_str("B1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC").unwrap(),
+                1,
+            ),
+            (
+                BlockId::from_str("B12VVLWiMVjBLW7eoZqiv5eVWmqEQokZL7pAjFCaHHuyUnSo9LPb").unwrap(),
+                2,
+            ),
+        ]
+    });
+
+    public_server.consensus_controller = Box::new(consensus_ctrl);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let result = public_client
+        .get_next_block_best_parents(GetNextBlockBestParentsRequest {})
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.block_parents.len(), 2);
+    let parent = result.block_parents.get(0).unwrap();
+    assert_eq!(
+        parent.block_id,
+        "B1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC".to_string()
+    );
+    assert_eq!(parent.period, 1);
     stop_handle.stop();
 }
