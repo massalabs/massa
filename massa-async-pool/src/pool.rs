@@ -32,13 +32,13 @@ const EMISSION_SLOT_IDENT: u8 = 0u8;
 const EMISSION_INDEX_IDENT: u8 = 1u8;
 const SENDER_IDENT: u8 = 2u8;
 const DESTINATION_IDENT: u8 = 3u8;
-const HANDLER_IDENT: u8 = 4u8;
+const FUNCTION_IDENT: u8 = 4u8;
 const MAX_GAS_IDENT: u8 = 5u8;
 const FEE_IDENT: u8 = 6u8;
 const COINS_IDENT: u8 = 7u8;
 const VALIDITY_START_IDENT: u8 = 8u8;
 const VALIDITY_END_IDENT: u8 = 9u8;
-const DATA_IDENT: u8 = 10u8;
+const FUNCTION_PARAMS_IDENT: u8 = 10u8;
 const TRIGGER_IDENT: u8 = 11u8;
 const CAN_BE_EXECUTED_IDENT: u8 = 12u8;
 
@@ -89,11 +89,11 @@ macro_rules! destination_key {
     };
 }
 
-/// Handler key formatting macro
+/// Function name key formatting macro
 #[macro_export]
-macro_rules! handler_key {
+macro_rules! function_key {
     ($id:expr) => {
-        [&ASYNC_POOL_PREFIX.as_bytes(), &$id[..], &[HANDLER_IDENT]].concat()
+        [&ASYNC_POOL_PREFIX.as_bytes(), &$id[..], &[FUNCTION_IDENT]].concat()
     };
 }
 
@@ -147,11 +147,16 @@ macro_rules! validity_end_key {
     };
 }
 
-/// Data key formatting macro
+/// Function params key formatting macro
 #[macro_export]
-macro_rules! data_key {
+macro_rules! function_params_key {
     ($id:expr) => {
-        [&ASYNC_POOL_PREFIX.as_bytes(), &$id[..], &[DATA_IDENT]].concat()
+        [
+            &ASYNC_POOL_PREFIX.as_bytes(),
+            &$id[..],
+            &[FUNCTION_PARAMS_IDENT],
+        ]
+        .concat()
     };
 }
 
@@ -422,7 +427,7 @@ impl AsyncPool {
                     return false;
                 }
             }
-            HANDLER_IDENT => {
+            FUNCTION_IDENT => {
                 let Some(len) = serialized_value.first() else {
                     return false;
                 };
@@ -495,7 +500,7 @@ impl AsyncPool {
                     return false;
                 }
             }
-            DATA_IDENT => {
+            FUNCTION_PARAMS_IDENT => {
                 let Ok((rest, _value)) = self
                     .message_deserializer_db
                     .function_params_deserializer
@@ -714,7 +719,7 @@ impl AsyncPool {
             .expect(MESSAGE_SER_ERROR);
         db.put_or_update_entry_value(
             batch,
-            handler_key!(serialized_message_id),
+            function_key!(serialized_message_id),
             &serialized_function,
         );
 
@@ -776,7 +781,11 @@ impl AsyncPool {
             .function_params_serializer
             .serialize(&message.function_params, &mut serialized_params)
             .expect(MESSAGE_SER_ERROR);
-        db.put_or_update_entry_value(batch, data_key!(serialized_message_id), &serialized_params);
+        db.put_or_update_entry_value(
+            batch,
+            function_params_key!(serialized_message_id),
+            &serialized_params,
+        );
 
         // Trigger
         let mut serialized_trigger = Vec::new();
@@ -877,7 +886,7 @@ impl AsyncPool {
             );
         }
 
-        // Handler
+        // Function name
         if let SetOrKeep::Set(function) = message_update.function {
             let mut serialized_function = Vec::new();
             self.message_serializer
@@ -886,7 +895,7 @@ impl AsyncPool {
                 .expect(MESSAGE_SER_ERROR);
             db.put_or_update_entry_value(
                 batch,
-                handler_key!(serialized_message_id),
+                function_key!(serialized_message_id),
                 &serialized_function,
             );
         }
@@ -957,14 +966,18 @@ impl AsyncPool {
             );
         }
 
-        // Data
+        // Params
         if let SetOrKeep::Set(params) = message_update.function_params {
-            let mut serialized_data = Vec::new();
+            let mut serialized_function_params = Vec::new();
             self.message_serializer
                 .function_params_serializer
-                .serialize(&params, &mut serialized_data)
+                .serialize(&params, &mut serialized_function_params)
                 .expect(MESSAGE_SER_ERROR);
-            db.put_or_update_entry_value(batch, data_key!(serialized_message_id), &serialized_data);
+            db.put_or_update_entry_value(
+                batch,
+                function_params_key!(serialized_message_id),
+                &serialized_function_params,
+            );
         }
 
         // Trigger
@@ -1011,13 +1024,13 @@ impl AsyncPool {
         db.delete_key(batch, emission_index_key!(serialized_message_id));
         db.delete_key(batch, sender_key!(serialized_message_id));
         db.delete_key(batch, destination_key!(serialized_message_id));
-        db.delete_key(batch, handler_key!(serialized_message_id));
+        db.delete_key(batch, function_key!(serialized_message_id));
         db.delete_key(batch, max_gas_key!(serialized_message_id));
         db.delete_key(batch, fee_key!(serialized_message_id));
         db.delete_key(batch, coins_key!(serialized_message_id));
         db.delete_key(batch, validity_start_key!(serialized_message_id));
         db.delete_key(batch, validity_end_key!(serialized_message_id));
-        db.delete_key(batch, data_key!(serialized_message_id));
+        db.delete_key(batch, function_params_key!(serialized_message_id));
         db.delete_key(batch, trigger_key!(serialized_message_id));
         db.delete_key(batch, can_be_executed_key!(serialized_message_id));
     }

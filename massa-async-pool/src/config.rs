@@ -9,7 +9,7 @@ pub struct AsyncPoolConfig {
     pub max_length: u64,
     /// max handler length
     pub max_function_length: u16,
-    /// max handler params length (for bootstrap limits)
+    /// max handler params length
     pub max_function_params_length: u64,
     /// thread count
     pub thread_count: u8,

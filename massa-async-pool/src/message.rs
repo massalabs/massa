@@ -97,7 +97,6 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 #[derive(Clone)]
 pub struct AsyncMessageIdDeserializer {
     slot_deserializer: SlotDeserializer,
-    // TODO: Denom should be separate because it can't be 0
     numerator_deserializer: U64VarIntDeserializer,
     denominator_deserializer: U64VarIntDeserializer,
     emission_index_deserializer: U64VarIntDeserializer,
