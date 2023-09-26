@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use massa_execution_exports::{
     ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionController, ExecutionError,

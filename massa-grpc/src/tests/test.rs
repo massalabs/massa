@@ -32,14 +32,15 @@ use massa_pos_exports::Selection;
 use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
-    AddressBalanceCandidate, ExecuteReadOnlyCallRequest, ExecutionQueryRequestItem,
-    GetBlocksRequest, GetEndorsementsRequest, GetNextBlockBestParentsRequest, GetOperationsRequest,
-    GetScExecutionEventsRequest, GetSelectorDrawsRequest, GetStatusRequest,
-    GetTransactionsThroughputRequest, QueryStateRequest, SelectorDrawsFilter,
+    search_blocks_filter, AddressBalanceCandidate, ExecuteReadOnlyCallRequest,
+    ExecutionQueryRequestItem, GetBlocksRequest, GetEndorsementsRequest,
+    GetNextBlockBestParentsRequest, GetOperationsRequest, GetScExecutionEventsRequest,
+    GetSelectorDrawsRequest, GetStatusRequest, GetTransactionsThroughputRequest, QueryStateRequest,
+    SearchBlocksFilter, SearchBlocksRequest, SelectorDrawsFilter,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
 use massa_proto_rs::massa::model::v1::{
-    Addresses, BlockStatus, FunctionCall, ReadOnlyExecutionCall, Slot as ProtoSlot,
+    Addresses, BlockStatus, FunctionCall, ReadOnlyExecutionCall, Slot as ProtoSlot, SlotRange,
 };
 use massa_protocol_exports::test_exports::tools::{
     create_block, create_block_with_endorsements, create_endorsement,
@@ -60,6 +61,17 @@ use std::time::Duration;
 use std::{net::SocketAddr, path::PathBuf};
 
 const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
+
+// #[tokio::test]
+// async fn default() {
+//     let mut public_server = grpc_public_service();
+//     let config = public_server.grpc_config.clone();
+
+//     let stop_handle = public_server.serve(&config).await.unwrap();
+//     let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+//     stop_handle.stop();
+// }
 
 fn grpc_public_service() -> MassaPublicGrpc {
     let consensus_controller = MockConsensusControllerImpl::new();
@@ -922,7 +934,12 @@ async fn get_selector_draws() {
                     thread: 11,
                 },
                 Selection {
-                    endorsements: vec![],
+                    endorsements: vec![
+                        Address::from_str("AU124cAajcCESGJ4egkULATXzkVZAA5WjbHHHuWcr3yeyTHstSuuA")
+                            .unwrap(),
+                        Address::from_str("AU1nHnddh6N4BybVGMKR9SWzoJKpabSaYVhezs96MwEp3NLD2DyW")
+                            .unwrap(),
+                    ],
                     producer: Address::from_str(
                         "AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H",
                     )
@@ -1038,7 +1055,7 @@ async fn get_selector_draws() {
 
     let result = public_client
         .get_selector_draws(GetSelectorDrawsRequest {
-            filters: vec![filter, filter2],
+            filters: vec![filter, filter2.clone()],
         })
         .await
         .unwrap()
@@ -1051,14 +1068,28 @@ async fn get_selector_draws() {
     filter = SelectorDrawsFilter {
         filter: Some(
             massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::Addresses(Addresses {
-                addresses: vec!["AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H".to_string()],
+                addresses: vec!["AU124cAajcCESGJ4egkULATXzkVZAA5WjbHHHuWcr3yeyTHstSuuA".to_string()],
             }),
+        ),
+    };
+
+    filter2 = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::SlotRange(
+                massa_proto_rs::massa::model::v1::SlotRange {
+                    start_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                        period: 1,
+                        thread: 1,
+                    }),
+                    end_slot: None,
+                },
+            ),
         ),
     };
 
     let result = public_client
         .get_selector_draws(GetSelectorDrawsRequest {
-            filters: vec![filter],
+            filters: vec![filter, filter2.clone()],
         })
         .await
         .unwrap()
@@ -1069,6 +1100,31 @@ async fn get_selector_draws() {
     let slot = slots.get(0).unwrap();
     assert_eq!(slot.slot.as_ref().unwrap().period, 1);
     assert_eq!(slot.slot.as_ref().unwrap().thread, 11);
+    assert_eq!(slot.endorsement_draws.len(), 1);
+    assert_eq!(
+        slot.endorsement_draws.get(0).unwrap().producer,
+        "AU124cAajcCESGJ4egkULATXzkVZAA5WjbHHHuWcr3yeyTHstSuuA".to_string()
+    );
+    assert!(slot.block_producer.is_some());
+
+    // unknow address
+    filter = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::Addresses(Addresses {
+                addresses: vec!["AU12Cyu2f7C7isA3ADAhoNuq9ZUFPKP24jmiGj3sh9D1pHoAWKDYY".to_string()],
+            }),
+        ),
+    };
+
+    let result = public_client
+        .get_selector_draws(GetSelectorDrawsRequest {
+            filters: vec![filter, filter2],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.draws.is_empty());
 
     stop_handle.stop();
 }
@@ -1116,6 +1172,50 @@ async fn query_state() {
         .into_inner();
 
     assert_eq!(result.responses.len(), 0);
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn search_blocks() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let mut filter = SearchBlocksFilter {
+        filter: Some(search_blocks_filter::Filter::SlotRange(SlotRange {
+            start_slot: None,
+            end_slot: None,
+        })),
+    };
+
+    let result = public_client
+        .search_blocks(SearchBlocksRequest {
+            filters: vec![filter],
+        })
+        .await;
+
+    assert!(result.is_err());
+
+    filter = SearchBlocksFilter {
+        filter: Some(search_blocks_filter::Filter::SlotRange(SlotRange {
+            start_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                period: 1,
+                thread: 1,
+            }),
+            end_slot: None,
+        })),
+    };
+
+    let result = public_client
+        .search_blocks(SearchBlocksRequest {
+            filters: vec![filter],
+        })
+        .await
+        .unwrap();
+    dbg!(&result);
 
     stop_handle.stop();
 }
