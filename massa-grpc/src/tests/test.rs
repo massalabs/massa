@@ -3,6 +3,7 @@
 use super::mock::MockExecutionCtrl;
 use crate::config::{GrpcConfig, ServiceName};
 use crate::server::MassaPublicGrpc;
+use crate::tests::mock::MockSelectorCtrl;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
@@ -27,15 +28,19 @@ use massa_models::{
 use massa_pool_exports::test_exports::MockPoolController;
 use massa_pool_exports::PoolChannels;
 use massa_pos_exports::test_exports::MockSelectorController;
+use massa_pos_exports::Selection;
 use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
-    ExecuteReadOnlyCallRequest, GetBlocksRequest, GetEndorsementsRequest,
-    GetNextBlockBestParentsRequest, GetOperationsRequest, GetScExecutionEventsRequest,
-    GetStatusRequest, GetTransactionsThroughputRequest,
+    AddressBalanceCandidate, ExecuteReadOnlyCallRequest, ExecutionQueryRequestItem,
+    GetBlocksRequest, GetEndorsementsRequest, GetNextBlockBestParentsRequest, GetOperationsRequest,
+    GetScExecutionEventsRequest, GetSelectorDrawsRequest, GetStatusRequest,
+    GetTransactionsThroughputRequest, QueryStateRequest, SelectorDrawsFilter,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
-use massa_proto_rs::massa::model::v1::{BlockStatus, FunctionCall, ReadOnlyExecutionCall};
+use massa_proto_rs::massa::model::v1::{
+    Addresses, BlockStatus, FunctionCall, ReadOnlyExecutionCall, Slot as ProtoSlot,
+};
 use massa_protocol_exports::test_exports::tools::{
     create_block, create_block_with_endorsements, create_endorsement,
     create_operation_with_expire_period,
@@ -49,7 +54,7 @@ use massa_versioning::{
 };
 // use massa_wallet::test_exports::create_test_wallet;
 use num::rational::Ratio;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::str::FromStr;
 use std::time::Duration;
 use std::{net::SocketAddr, path::PathBuf};
@@ -879,6 +884,238 @@ async fn get_sc_execution_events() {
             .as_str(),
         "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC"
     );
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn get_selector_draws() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let mut selector_ctrl = MockSelectorCtrl::new();
+
+    selector_ctrl
+        .expect_get_available_selections_in_range()
+        .returning(|_slot, _addr| {
+            let mut res = BTreeMap::new();
+            res.insert(
+                Slot {
+                    period: 1,
+                    thread: 10,
+                },
+                Selection {
+                    endorsements: vec![Address::from_str(
+                        "AU1nHnddh6N4BybVGMKR9SWzoJKpabSaYVhezs96MwEp3NLD2DyW",
+                    )
+                    .unwrap()],
+                    producer: Address::from_str(
+                        "AU12ZmAhr2pVwMM7iiMBb6A7mBi5VrCXVh8gM6Z889WmhcqNdNddk",
+                    )
+                    .unwrap(),
+                },
+            );
+
+            res.insert(
+                Slot {
+                    period: 1,
+                    thread: 11,
+                },
+                Selection {
+                    endorsements: vec![],
+                    producer: Address::from_str(
+                        "AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H",
+                    )
+                    .unwrap(),
+                },
+            );
+            Ok(res)
+        });
+
+    public_server.selector_controller = Box::new(selector_ctrl);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    // TEST slotRange
+
+    let mut filter = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::Addresses(Addresses {
+                addresses: vec![],
+            }),
+        ),
+    };
+
+    let mut filter2 = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::SlotRange(
+                massa_proto_rs::massa::model::v1::SlotRange {
+                    start_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                        period: 1,
+                        thread: 1,
+                    }),
+                    end_slot: None,
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .get_selector_draws(GetSelectorDrawsRequest {
+            filters: vec![filter.clone(), filter2],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.draws.len(), 2);
+
+    filter2 = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::SlotRange(
+                massa_proto_rs::massa::model::v1::SlotRange {
+                    start_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                        period: 1,
+                        thread: 1,
+                    }),
+                    end_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                        period: 1,
+                        thread: 8,
+                    }),
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .get_selector_draws(GetSelectorDrawsRequest {
+            filters: vec![filter.clone(), filter2],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.draws.is_empty());
+
+    filter2 = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::SlotRange(
+                massa_proto_rs::massa::model::v1::SlotRange {
+                    start_slot: None,
+                    end_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                        period: 1,
+                        thread: 8,
+                    }),
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .get_selector_draws(GetSelectorDrawsRequest {
+            filters: vec![filter.clone(), filter2],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.draws.is_empty());
+
+    filter2 = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::SlotRange(
+                massa_proto_rs::massa::model::v1::SlotRange {
+                    start_slot: None,
+                    end_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                        period: 1,
+                        thread: 15,
+                    }),
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .get_selector_draws(GetSelectorDrawsRequest {
+            filters: vec![filter, filter2],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.draws.len(), 2);
+
+    // Test Address
+
+    filter = SelectorDrawsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::Addresses(Addresses {
+                addresses: vec!["AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H".to_string()],
+            }),
+        ),
+    };
+
+    let result = public_client
+        .get_selector_draws(GetSelectorDrawsRequest {
+            filters: vec![filter],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.draws.len(), 1);
+    let slots: &Vec<massa_proto_rs::massa::model::v1::SlotDraw> = result.draws.as_ref();
+    let slot = slots.get(0).unwrap();
+    assert_eq!(slot.slot.as_ref().unwrap().period, 1);
+    assert_eq!(slot.slot.as_ref().unwrap().thread, 11);
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn query_state() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_query_state()
+        .returning(|_| massa_execution_exports::ExecutionQueryResponse {
+            responses: vec![],
+            candidate_cursor: massa_models::slot::Slot::new(1, 2),
+            final_cursor: Slot::new(1, 7),
+            final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+        });
+
+    public_server.execution_controller = Box::new(exec_ctrl);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let result = public_client
+        .query_state(QueryStateRequest { queries: vec![] })
+        .await
+        .unwrap()
+        .into_inner();
+
+    let slot = result.final_cursor.unwrap();
+    assert_eq!(slot.period, 1);
+    assert_eq!(slot.thread, 7);
+
+    let query = ExecutionQueryRequestItem {
+        request_item: Some(massa_proto_rs::massa::api::v1::execution_query_request_item::RequestItem::AddressBalanceCandidate(AddressBalanceCandidate {address: "AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H".to_string()})),
+    };
+
+    let result = public_client
+        .query_state(QueryStateRequest {
+            queries: vec![query],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.responses.len(), 0);
 
     stop_handle.stop();
 }

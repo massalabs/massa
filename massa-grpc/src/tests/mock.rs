@@ -14,11 +14,12 @@ use massa_models::{
     execution::EventFilter,
     operation::OperationId,
     output_event::SCOutputEvent,
-    prehash::PreHashMap,
+    prehash::{PreHashMap, PreHashSet},
     slot::Slot,
     stats::ExecutionStats,
 };
 use massa_pool_exports::PoolController;
+use massa_pos_exports::{PosResult, Selection, SelectorController};
 use massa_storage::Storage;
 
 #[cfg(any(test, feature = "testing"))]
@@ -134,4 +135,39 @@ mockall::mock! {
         /// Get final cs periods (updated regularly from consensus)
         fn get_final_cs_periods(&self) -> &Vec<u64>;
     }
+}
+
+#[cfg(any(test, feature = "testing"))]
+mockall::mock! {
+    pub SelectorCtrl {}
+
+    impl SelectorController for SelectorCtrl {
+        fn wait_for_draws(&self, cycle: u64) -> PosResult<u64>;
+
+        fn feed_cycle(
+            &self,
+            cycle: u64,
+            lookback_rolls: BTreeMap<Address, u64>,
+            lookback_seed: massa_hash::Hash,
+        ) -> PosResult<()>;
+
+        fn get_selection(&self, slot: Slot) -> PosResult<Selection>;
+
+        fn get_producer(&self, slot: Slot) -> PosResult<Address>;
+
+        #[allow(clippy::needless_lifetimes)] // lifetime elision conflicts with Mockall
+        fn get_available_selections_in_range<'a>(
+            &self,
+            slot_range: std::ops::RangeInclusive<Slot>,
+            restrict_to_addresses: Option<&'a PreHashSet<Address>>,
+        ) -> PosResult<BTreeMap<Slot, Selection>>;
+
+        fn clone_box(&self) -> Box<dyn SelectorController>;
+
+        #[cfg(feature = "testing")]
+        fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
+            unimplemented!("mock implementation only")
+        }
+    }
+
 }
