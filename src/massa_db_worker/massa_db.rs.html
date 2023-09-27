@@ -837,6 +837,13 @@
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -845,7 +852,7 @@
 };
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
-    config::MAX_BACKUPS_TO_KEEP,
+    config::{MAX_BACKUPS_TO_KEEP, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE},
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -996,6 +1003,7 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_state_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -1013,9 +1021,11 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
+                new_elements_size += serialized_value.len();
+                <span class="kw">if </span>new_elements_size &lt; MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE <span class="kw">as </span>usize {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
+                    <span class="macro">tracing::debug!</span>(<span class="string">&quot;TIM    Skipping a key because of max final state parts size&quot;</span>);
                     <span class="kw">break</span>;
                 }
             }
@@ -1106,6 +1116,7 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_versioning_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -1123,9 +1134,11 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
+                new_elements_size += serialized_value.len();
+                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_new_elements_size <span class="kw">as </span>usize {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
+                    <span class="macro">tracing::debug!</span>(<span class="string">&quot;TIM    Skipping a key because of max next elements size&quot;</span>);
                     <span class="kw">break</span>;
                 }
             }
@@ -1415,6 +1428,7 @@
     <span class="doccomment">/// Returns a new `MassaDB` instance
     </span><span class="kw">pub fn </span>new(config: MassaDBConfig) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
+        db_opts.set_max_open_files(<span class="number">820</span>);
         db_opts.create_if_missing(<span class="bool-val">true</span>);
         db_opts.create_missing_column_families(<span class="bool-val">true</span>);
 
