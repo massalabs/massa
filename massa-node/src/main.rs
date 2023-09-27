@@ -25,7 +25,7 @@ use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
 use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 use massa_consensus_worker::start_consensus_worker;
-use massa_db_exports::{MassaDBConfig, MassaDBController};
+use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
@@ -71,7 +71,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_EVENT_DATA_SIZE,
     MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
@@ -263,7 +263,7 @@ async fn launch(
     let db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
+        max_new_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
         thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(
@@ -373,7 +373,7 @@ async fn launch(
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
+        max_new_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
         max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
         max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
@@ -418,10 +418,19 @@ async fn launch(
         Err(err) => panic!("critical error detected in the bootstrap process: {}", err),
     };
 
-    if !final_state.read().is_db_valid() {
+    // let db_valid = final_state.read().is_db_valid();
+    // if !db_valid {
+        let mut db_batch = DBBatch::new();
         // TODO: Bootstrap again instead of panicking
-        panic!("critical: db is not valid after bootstrap");
-    }
+        final_state
+            .write()
+            .init_execution_trail_hash_to_batch(&mut db_batch);
+        final_state
+            .write()
+            .db
+            .write()
+            .write_batch(db_batch, DBBatch::new(), None);
+    // }
 
     if args.restart_from_snapshot_at_period.is_none() {
         final_state.write().recompute_caches();

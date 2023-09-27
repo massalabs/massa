@@ -10,3 +10,4 @@ massa_hash = {workspace = true}
 massa_models = {workspace = true}
 massa_serialization = {workspace = true}
 massa_db_exports = {workspace = true}
+tracing = { workspace = true }

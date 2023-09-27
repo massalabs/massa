@@ -2853,6 +2853,7 @@ dependencies = [
  "massa_serialization",
  "parking_lot",
  "rocksdb",
+ "tracing",
 ]
 
 [[package]]

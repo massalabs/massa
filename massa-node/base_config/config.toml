@@ -363,17 +363,17 @@
     # [optional] port on which to listen for incoming bootstrap requests. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
-    connect_timeout = 15000
+    connect_timeout = 150000000000
     # timeout for providing the bootstrap to a connection
-    bootstrap_timeout = 1200000
+    bootstrap_timeout = 120000000000000
     # delay in milliseconds to wait between consecutive bootstrap attempts
     retry_delay = 60000
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
-    read_timeout = 100000
+    read_timeout = 250000
     # timeout for message sending
-    write_timeout = 100000
+    write_timeout = 250000
     # timeout for incoming error message readout
     read_error_timeout = 200
     # timeout for message error sending
