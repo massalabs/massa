@@ -626,27 +626,19 @@ pub(crate) fn get_selector_draws(
             .unwrap_or_default()
             .into_iter()
             .map(|(v_slot, v_sel)| {
-                let block_producer: Option<String> = match restrict_to_addresses {
-                    Some(restrict_to_addrs) if !restrict_to_addrs.contains(&v_sel.producer) => None,
-                    _ => Some(v_sel.producer.to_string()),
-                };
-
                 let endorsement_producers: Vec<EndorsementDraw> = v_sel
                     .endorsements
                     .into_iter()
                     .enumerate()
-                    .filter_map(|(index, endo_sel)| match restrict_to_addresses {
-                        Some(restrict_to_addrs) if !restrict_to_addrs.contains(&endo_sel) => None,
-                        _ => Some(EndorsementDraw {
-                            index: index as u64,
-                            producer: endo_sel.to_string(),
-                        }),
+                    .map(|(index, endo_sel)| EndorsementDraw {
+                        index: index as u64,
+                        producer: endo_sel.to_string(),
                     })
                     .collect();
 
                 SlotDraw {
                     slot: Some(v_slot),
-                    block_producer,
+                    block_producer: Some(v_sel.producer.to_string()),
                     endorsement_draws: endorsement_producers,
                 }
             })
