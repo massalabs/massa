@@ -2,7 +2,6 @@
 
 use super::mock::MockExecutionCtrl;
 use crate::config::{GrpcConfig, ServiceName};
-use crate::public;
 use crate::server::MassaPublicGrpc;
 use crate::tests::mock::MockSelectorCtrl;
 use massa_channel::MassaChannel;
@@ -11,7 +10,7 @@ use massa_consensus_exports::ConsensusChannels;
 use massa_execution_exports::EventStore;
 use massa_execution_exports::{test_exports::MockExecutionController, ExecutionChannels};
 use massa_models::address::Address;
-use massa_models::block::{self, Block, BlockGraphStatus};
+use massa_models::block::BlockGraphStatus;
 use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
@@ -41,8 +40,7 @@ use massa_proto_rs::massa::api::v1::{
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
 use massa_proto_rs::massa::model::v1::{
-    Addresses, BlockIds, BlockStatus, FunctionCall, ReadOnlyExecutionCall, Slot as ProtoSlot,
-    SlotRange,
+    Addresses, BlockIds, BlockStatus, FunctionCall, ReadOnlyExecutionCall, SlotRange,
 };
 use massa_protocol_exports::test_exports::tools::{
     create_block, create_block_with_endorsements, create_block_with_operations, create_endorsement,
@@ -1184,15 +1182,19 @@ async fn search_blocks() {
     let config = public_server.grpc_config.clone();
 
     let op = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 4);
+    let keypair = &KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
 
-    let block_op = create_block_with_operations(
-        &KeyPair::generate(0).unwrap(),
+    let mut block_op = create_block_with_operations(
+        keypair,
         Slot {
             period: 2,
             thread: 4,
         },
         vec![op],
     );
+    block_op.content.header.content_creator_address = address.clone();
+    block_op.content_creator_pub_key = keypair.get_public_key();
 
     let mut block = create_block(&KeyPair::generate(0).unwrap());
     let block_id = block.id;
@@ -1202,7 +1204,7 @@ async fn search_blocks() {
     };
 
     public_server.storage.store_block(block);
-    public_server.storage.store_block(block_op);
+    public_server.storage.store_block(block_op.clone());
 
     let mut consensus_ctrl = MockConsensusControllerImpl::new();
     consensus_ctrl.expect_get_block_statuses().returning(|ids| {
@@ -1345,7 +1347,7 @@ async fn search_blocks() {
         })),
     };
 
-    let filter2 = SearchBlocksFilter {
+    let mut filter2 = SearchBlocksFilter {
         filter: Some(search_blocks_filter::Filter::SlotRange(SlotRange {
             start_slot: Some(massa_proto_rs::massa::model::v1::Slot {
                 period: 1,
@@ -1357,7 +1359,7 @@ async fn search_blocks() {
 
     let result = public_client
         .search_blocks(SearchBlocksRequest {
-            filters: vec![filter, filter2],
+            filters: vec![filter, filter2.clone()],
         })
         .await
         .unwrap()
@@ -1368,19 +1370,52 @@ async fn search_blocks() {
     // Test by creator
     filter = SearchBlocksFilter {
         filter: Some(search_blocks_filter::Filter::Addresses(Addresses {
-            addresses: vec!["AU12Cyu2f7C7isA3ADAhoNuq9ZUFPKP24jmiGj3sh9D1pHoAWKDYY".to_string()],
+            addresses: vec![address.to_string()],
         })),
     };
 
+    // search address
     let result = public_client
         .search_blocks(SearchBlocksRequest {
-            filters: vec![filter],
+            filters: vec![filter.clone()],
         })
         .await
         .unwrap()
         .into_inner();
 
-    dbg!(&result);
+    let block_result = result.block_infos.get(0).unwrap();
+    assert_eq!(block_result.block_id, block_op.id.to_string());
+
+    // search address + slot range
+    let result = public_client
+        .search_blocks(SearchBlocksRequest {
+            filters: vec![filter.clone(), filter2.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.block_infos.len(), 1);
+
+    filter2 = SearchBlocksFilter {
+        filter: Some(search_blocks_filter::Filter::SlotRange(SlotRange {
+            start_slot: Some(massa_proto_rs::massa::model::v1::Slot {
+                period: 2,
+                thread: 8,
+            }),
+            end_slot: None,
+        })),
+    };
+
+    let result = public_client
+        .search_blocks(SearchBlocksRequest {
+            filters: vec![filter.clone(), filter2.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.block_infos.is_empty());
 
     stop_handle.stop();
 }
