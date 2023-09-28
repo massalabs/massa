@@ -1078,8 +1078,6 @@ pub(crate) fn search_endorsements(
     // ask pool whether it carries the endorsements
     let in_pool = grpc.pool_controller.contains_endorsements(&e_ids);
 
-    let consensus_controller = grpc.consensus_controller.clone();
-
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     let is_final: Vec<bool> = {
         let involved_blocks: Vec<BlockId> = storage_info
@@ -1089,7 +1087,9 @@ pub(crate) fn search_endorsements(
             .cloned()
             .collect();
 
-        let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+        let involved_block_statuses = grpc
+            .consensus_controller
+            .get_block_statuses(&involved_blocks);
 
         let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
             .into_iter()

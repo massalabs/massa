@@ -3,7 +3,7 @@
 use super::mock::MockExecutionCtrl;
 use crate::config::{GrpcConfig, ServiceName};
 use crate::server::MassaPublicGrpc;
-use crate::tests::mock::MockSelectorCtrl;
+use crate::tests::mock::{MockPoolCtrl, MockSelectorCtrl};
 use massa_channel::MassaChannel;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_consensus_exports::ConsensusChannels;
@@ -36,11 +36,12 @@ use massa_proto_rs::massa::api::v1::{
     ExecutionQueryRequestItem, GetBlocksRequest, GetEndorsementsRequest,
     GetNextBlockBestParentsRequest, GetOperationsRequest, GetScExecutionEventsRequest,
     GetSelectorDrawsRequest, GetStatusRequest, GetTransactionsThroughputRequest, QueryStateRequest,
-    SearchBlocksFilter, SearchBlocksRequest, SelectorDrawsFilter,
+    SearchBlocksFilter, SearchBlocksRequest, SearchEndorsementsRequest, SelectorDrawsFilter,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
 use massa_proto_rs::massa::model::v1::{
-    Addresses, BlockIds, BlockStatus, FunctionCall, ReadOnlyExecutionCall, SlotRange,
+    Addresses, BlockIds, BlockStatus, EndorsementIds, FunctionCall, ReadOnlyExecutionCall,
+    SlotRange,
 };
 use massa_protocol_exports::test_exports::tools::{
     create_block, create_block_with_endorsements, create_block_with_operations, create_endorsement,
@@ -1416,6 +1417,207 @@ async fn search_blocks() {
         .into_inner();
 
     assert!(result.block_infos.is_empty());
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn search_endorsements() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let mut endorsement = create_endorsement();
+    let endorsement2 = create_endorsement();
+    let endorsement3 = create_endorsement();
+
+    let end1_id = endorsement.id.clone();
+    let end2_id = endorsement2.id.clone();
+    let end3_id = endorsement3.id.clone();
+
+    let keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+
+    endorsement.content_creator_address = address.clone();
+    endorsement.content_creator_pub_key = keypair.get_public_key();
+
+    public_server.storage.store_endorsements(vec![
+        endorsement.clone(),
+        endorsement2.clone(),
+        endorsement3.clone(),
+    ]);
+
+    let b = create_block_with_endorsements(
+        &keypair,
+        Slot {
+            period: 10,
+            thread: 1,
+        },
+        vec![endorsement, endorsement2],
+    );
+
+    let block_id = b.id;
+
+    public_server.storage.store_block(b);
+
+    let mut pool_ctrl = MockPoolCtrl::new();
+    pool_ctrl
+        .expect_contains_endorsements()
+        .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl.expect_get_block_statuses().returning(|ids| {
+        ids.iter()
+            .map(|_| BlockGraphStatus::Final)
+            .collect::<Vec<BlockGraphStatus>>()
+    });
+
+    public_server.pool_controller = Box::new(pool_ctrl);
+    public_server.consensus_controller = Box::new(consensus_ctrl);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let mut filter_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::EndorsementIds(
+                EndorsementIds {
+                    endorsement_ids: vec![],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_endorsements(SearchEndorsementsRequest {
+            filters: vec![filter_ids.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.endorsement_infos.is_empty());
+
+    filter_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::EndorsementIds(
+                EndorsementIds {
+                    endorsement_ids: vec![end1_id.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_endorsements(SearchEndorsementsRequest {
+            filters: vec![filter_ids],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.endorsement_infos.len() == 1);
+
+    filter_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::EndorsementIds(
+                EndorsementIds {
+                    endorsement_ids: vec![end1_id.to_string(), end2_id.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_endorsements(SearchEndorsementsRequest {
+            filters: vec![filter_ids],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+    assert_eq!(result.endorsement_infos.len(), 2);
+
+    // by blockids
+
+    let mut filter_block_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::BlockIds(
+                BlockIds {
+                    block_ids: vec![block_id.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_endorsements(SearchEndorsementsRequest {
+            filters: vec![filter_block_ids.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.endorsement_infos.len(), 2);
+
+    // this is not in any block
+    filter_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::EndorsementIds(
+                EndorsementIds {
+                    endorsement_ids: vec![end3_id.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_endorsements(SearchEndorsementsRequest {
+            filters: vec![filter_block_ids.clone(), filter_ids.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.endorsement_infos.is_empty());
+
+    // search by address
+
+    let mut filter_addr = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::Addresses(
+                Addresses { addresses: vec![] },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_endorsements(SearchEndorsementsRequest {
+            filters: vec![filter_addr.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.endorsement_infos.is_empty());
+
+    filter_addr = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::Addresses(
+                Addresses {
+                    addresses: vec![address.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_endorsements(SearchEndorsementsRequest {
+            filters: vec![filter_addr.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.endorsement_infos.len(), 1);
 
     stop_handle.stop();
 }
