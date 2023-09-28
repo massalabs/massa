@@ -36,7 +36,8 @@ use massa_proto_rs::massa::api::v1::{
     ExecutionQueryRequestItem, GetBlocksRequest, GetEndorsementsRequest,
     GetNextBlockBestParentsRequest, GetOperationsRequest, GetScExecutionEventsRequest,
     GetSelectorDrawsRequest, GetStatusRequest, GetTransactionsThroughputRequest, QueryStateRequest,
-    SearchBlocksFilter, SearchBlocksRequest, SearchEndorsementsRequest, SelectorDrawsFilter,
+    SearchBlocksFilter, SearchBlocksRequest, SearchEndorsementsRequest, SearchOperationsRequest,
+    SelectorDrawsFilter,
 };
 use massa_proto_rs::massa::model::v1::read_only_execution_call::Target;
 use massa_proto_rs::massa::model::v1::{
@@ -1538,7 +1539,7 @@ async fn search_endorsements() {
 
     // by blockids
 
-    let mut filter_block_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
+    let filter_block_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
         filter: Some(
             massa_proto_rs::massa::api::v1::search_endorsements_filter::Filter::BlockIds(
                 BlockIds {
@@ -1618,6 +1619,124 @@ async fn search_endorsements() {
         .into_inner();
 
     assert_eq!(result.endorsement_infos.len(), 1);
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+async fn search_operations() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+
+    // create an operation and store it in the storage
+    let op = create_operation_with_expire_period(&keypair, 0);
+    let op2 = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 0);
+    let op_id = op.id.clone();
+    public_server.storage.store_operations(vec![op, op2]);
+
+    std::thread::sleep(Duration::from_millis(1000));
+
+    // start the server
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let result = public_client
+        .search_operations(SearchOperationsRequest { filters: vec![] })
+        .await;
+
+    assert!(result.is_err());
+
+    let mut filter = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_operations_filter::Filter::OperationIds(
+                massa_proto_rs::massa::model::v1::OperationIds {
+                    operation_ids: vec![op_id.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_operations(SearchOperationsRequest {
+            filters: vec![filter],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.operation_infos.len(), 1);
+
+    filter = massa_proto_rs::massa::api::v1::SearchOperationsFilter { filter: None };
+
+    let result = public_client
+        .search_operations(SearchOperationsRequest {
+            filters: vec![filter.clone()],
+        })
+        .await;
+
+    assert!(result.is_err());
+
+    let mut filter_addr = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_operations_filter::Filter::Addresses(
+                massa_proto_rs::massa::model::v1::Addresses { addresses: vec![] },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_operations(SearchOperationsRequest {
+            filters: vec![filter_addr],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert!(result.operation_infos.is_empty());
+
+    filter_addr = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_operations_filter::Filter::Addresses(
+                massa_proto_rs::massa::model::v1::Addresses {
+                    addresses: vec![address.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_operations(SearchOperationsRequest {
+            filters: vec![filter_addr.clone()],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.operation_infos.len(), 1);
+
+    filter = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::search_operations_filter::Filter::OperationIds(
+                massa_proto_rs::massa::model::v1::OperationIds {
+                    operation_ids: vec![op_id.to_string()],
+                },
+            ),
+        ),
+    };
+
+    let result = public_client
+        .search_operations(SearchOperationsRequest {
+            filters: vec![filter_addr, filter],
+        })
+        .await
+        .unwrap()
+        .into_inner();
+
+    assert_eq!(result.operation_infos.len(), 1);
 
     stop_handle.stop();
 }
