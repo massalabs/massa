@@ -1435,15 +1435,6 @@
 <a href="#1435" id="1435">1435</a>
 <a href="#1436" id="1436">1436</a>
 <a href="#1437" id="1437">1437</a>
-<a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1471,7 +1462,7 @@
 <span class="kw">use </span>massa_consensus_exports::events::ConsensusEvent;
 <span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
-<span class="kw">use </span>massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
+<span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
 <span class="kw">use </span>massa_db_worker::MassaDB;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
@@ -1517,7 +1508,7 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_EVENT_DATA_SIZE,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
     MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
@@ -1709,7 +1700,7 @@
     <span class="kw">let </span>db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
-        max_new_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE <span class="kw">as </span>usize,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS <span class="kw">as </span>usize,
         thread_count: THREAD_COUNT,
     };
     <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -1819,7 +1810,7 @@
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_new_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
         max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
         max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
         max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
@@ -1864,21 +1855,12 @@
         <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err),
     };
 
-    <span class="comment">// let db_valid = final_state.read().is_db_valid();
-    // if !db_valid {
-        </span><span class="kw">let </span><span class="kw-2">mut </span>db_batch = DBBatch::new();
+    <span class="kw">if </span>!final_state.read().is_db_valid() {
         <span class="comment">// TODO: Bootstrap again instead of panicking
-        </span>final_state
-            .write()
-            .init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span>db_batch);
-        final_state
-            .write()
-            .db
-            .write()
-            .write_batch(db_batch, DBBatch::new(), <span class="prelude-val">None</span>);
-    <span class="comment">// }
+        </span><span class="macro">panic!</span>(<span class="string">&quot;critical: db is not valid after bootstrap&quot;</span>);
+    }
 
-    </span><span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
+    <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
         final_state.write().recompute_caches();
 
         <span class="comment">// give the controller to final state in order for it to feed the cycles

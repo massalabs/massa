@@ -1246,14 +1246,6 @@
 <a href="#1246" id="1246">1246</a>
 <a href="#1247" id="1247">1247</a>
 <a href="#1248" id="1248">1248</a>
-<a href="#1249" id="1249">1249</a>
-<a href="#1250" id="1250">1250</a>
-<a href="#1251" id="1251">1251</a>
-<a href="#1252" id="1252">1252</a>
-<a href="#1253" id="1253">1253</a>
-<a href="#1254" id="1254">1254</a>
-<a href="#1255" id="1255">1255</a>
-<a href="#1256" id="1256">1256</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1880,27 +1872,19 @@
             .unwrap_or_default()
             .into_iter()
             .map(|(v_slot, v_sel)| {
-                <span class="kw">let </span>block_producer: <span class="prelude-ty">Option</span>&lt;String&gt; = <span class="kw">match </span>restrict_to_addresses {
-                    <span class="prelude-val">Some</span>(restrict_to_addrs) <span class="kw">if </span>!restrict_to_addrs.contains(<span class="kw-2">&amp;</span>v_sel.producer) =&gt; <span class="prelude-val">None</span>,
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(v_sel.producer.to_string()),
-                };
-
                 <span class="kw">let </span>endorsement_producers: Vec&lt;EndorsementDraw&gt; = v_sel
                     .endorsements
                     .into_iter()
                     .enumerate()
-                    .filter_map(|(index, endo_sel)| <span class="kw">match </span>restrict_to_addresses {
-                        <span class="prelude-val">Some</span>(restrict_to_addrs) <span class="kw">if </span>!restrict_to_addrs.contains(<span class="kw-2">&amp;</span>endo_sel) =&gt; <span class="prelude-val">None</span>,
-                        <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(EndorsementDraw {
-                            index: index <span class="kw">as </span>u64,
-                            producer: endo_sel.to_string(),
-                        }),
+                    .map(|(index, endo_sel)| EndorsementDraw {
+                        index: index <span class="kw">as </span>u64,
+                        producer: endo_sel.to_string(),
                     })
                     .collect();
 
                 SlotDraw {
                     slot: <span class="prelude-val">Some</span>(v_slot),
-                    block_producer,
+                    block_producer: <span class="prelude-val">Some</span>(v_sel.producer.to_string()),
                     endorsement_draws: endorsement_producers,
                 }
             })
