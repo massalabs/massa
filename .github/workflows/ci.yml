@@ -96,6 +96,17 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: -- -A clippy::uninlined-format-args
 
+  security:
+    if: github.ref != 'refs/heads/staging'
+    needs: sanity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+      - uses: actions-rust-lang/audit@v1
+        name: Audit Rust Dependencies
 
   # Full cross-platform tests required by bors to merge on main branch
   full:
