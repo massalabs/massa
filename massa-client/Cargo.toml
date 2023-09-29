@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = {workspace = true}
-atty = {workspace = true}
+is-terminal = { workspace = true }
 console = {workspace = true}
 dialoguer = {workspace = true}
 rustyline = {workspace = true}

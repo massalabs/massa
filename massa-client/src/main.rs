@@ -4,10 +4,10 @@
 #![warn(unused_crate_dependencies)]
 use crate::settings::SETTINGS;
 use anyhow::Result;
-use atty::Stream;
 use cmds::Command;
 use console::style;
 use dialoguer::Password;
+use is_terminal::IsTerminal;
 use massa_sdk::{Client, ClientConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
@@ -161,7 +161,7 @@ async fn run(args: Args) -> Result<()> {
         &http_config,
     )
     .await?;
-    if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
+    if std::io::stdout().is_terminal() && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&mut client, &args.wallet, args.password).await?;
     } else {
