@@ -15,7 +15,8 @@ use std::env;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use structopt::StructOpt;
+// use structopt::StructOpt;
+use clap::{crate_version, Parser};
 
 mod cmds;
 mod display;
@@ -25,7 +26,8 @@ mod settings;
 #[cfg(test)]
 pub mod tests;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
+#[command(version = crate_version!())]
 struct Args {
     /// Port to listen on (Massa public API).
     #[structopt(long)]
@@ -49,17 +51,12 @@ struct Args {
     #[structopt(name = "PARAMETERS")]
     parameters: Vec<String>,
     /// Path of wallet folder
-    #[structopt(
-        short = "w",
-        long = "wallet",
-        parse(from_os_str),
-        default_value = "wallets/"
-    )]
+    #[structopt(short = 'w', long = "wallet", default_value = "wallets/")]
     wallet: PathBuf,
     /// Enable a mode where input/output are serialized as JSON
-    #[structopt(short = "j", long = "json")]
+    #[structopt(short = 'j', long = "json")]
     json: bool,
-    #[structopt(short = "p", long = "pwd")]
+    #[structopt(short = 'p', long = "pwd")]
     /// Wallet password
     password: Option<String>,
 }
@@ -86,8 +83,8 @@ pub(crate) fn ask_password(wallet_path: &Path) -> String {
     }
 }
 
-#[paw::main]
-fn main(args: Args) -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
     let tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name_fn(|| {
             static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);

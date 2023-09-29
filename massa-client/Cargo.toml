@@ -12,10 +12,9 @@ rustyline = {workspace = true}
 rustyline-derive = {workspace = true}
 erased-serde = {workspace = true}
 lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
-paw = {workspace = true}
 serde = {workspace = true, "features" = ["derive"]}
 serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
-structopt = {workspace = true, "features" = ["paw"]}
+clap = {workspace = true}
 strum = {workspace = true}
 strum_macros = {workspace = true}
 tokio = {workspace = true, "features" = ["full"]}
