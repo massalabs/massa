@@ -13,4 +13,3 @@ hyper = {workspace = true, "features" = ["server", "tcp", "http1"]}   # BOM UPGR
 tokio = {workspace = true, "features" = ["full"]}   # BOM UPGRADE     Revert to {"version": "1.28.0", "features": ["full"]} if problem
 lazy_static = {workspace = true}
 tracing = {workspace = true}
-massa_channel = {workspace = true}
