@@ -2,3 +2,4 @@
 
 pub(crate) mod mock;
 mod public;
+mod stream;
