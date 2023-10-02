@@ -4,6 +4,7 @@
 #![warn(unused_crate_dependencies)]
 use crate::settings::SETTINGS;
 use anyhow::Result;
+use clap::{crate_version, Parser};
 use cmds::Command;
 use console::style;
 use dialoguer::Password;
@@ -15,8 +16,6 @@ use std::env;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-// use structopt::StructOpt;
-use clap::{crate_version, Parser};
 
 mod cmds;
 mod display;
@@ -30,33 +29,33 @@ pub mod tests;
 #[command(version = crate_version!())]
 struct Args {
     /// Port to listen on (Massa public API).
-    #[structopt(long)]
+    #[arg(long)]
     public_port: Option<u16>,
     /// Port to listen on (Massa private API).
-    #[structopt(long)]
+    #[arg(long)]
     private_port: Option<u16>,
     /// Port to listen on (Massa GRPC Public API).
-    #[structopt(long)]
+    #[arg(long)]
     grpc_public_port: Option<u16>,
     /// Port to listen on (Massa GRPC Private API).
-    #[structopt(long)]
+    #[arg(long)]
     grpc_private_port: Option<u16>,
     /// Address to listen on
-    #[structopt(long)]
+    #[arg(long)]
     ip: Option<IpAddr>,
     /// Command that client would execute (non-interactive mode)
-    #[structopt(name = "COMMAND", default_value = "help")]
+    #[arg(name = "COMMAND", default_value = "help")]
     command: Command,
     /// Optional command parameter (as a JSON string)
-    #[structopt(name = "PARAMETERS")]
+    #[arg(name = "PARAMETERS")]
     parameters: Vec<String>,
     /// Path of wallet folder
-    #[structopt(short = 'w', long = "wallet", default_value = "wallets/")]
+    #[arg(short = 'w', long = "wallet", default_value = "wallets/")]
     wallet: PathBuf,
     /// Enable a mode where input/output are serialized as JSON
-    #[structopt(short = 'j', long = "json")]
+    #[arg(short = 'j', long = "json")]
     json: bool,
-    #[structopt(short = 'p', long = "pwd")]
+    #[arg(short = 'p', long = "pwd")]
     /// Wallet password
     password: Option<String>,
 }
