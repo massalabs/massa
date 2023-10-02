@@ -172,7 +172,7 @@ sha3 = "=0.10"
 socket2 = "0.5"
 stream_limiter = "3.2"
 structopt = "0.3"
-clap = { version = "4.4.6", features = ["derive", "cargo"] }
+clap = { version = "4.4", features = ["derive", "cargo"] }
 strum = "0.25"
 strum_macros = "0.25"
 tempfile = "3.5"
