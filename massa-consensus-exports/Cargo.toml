@@ -25,3 +25,7 @@ massa_storage = {workspace = true}
 massa_serialization = {workspace = true}
 massa_time = {workspace = true}
 massa_signature = {workspace = true}
+
+[dev-dependencies]
+massa_hash = {workspace = true}
+massa_serialization = {workspace = true}
