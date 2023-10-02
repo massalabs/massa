@@ -9,4 +9,3 @@ thiserror = {workspace = true}
 aes-gcm = {workspace = true}
 pbkdf2 = {workspace = true}
 rand = {workspace = true}
-massa_serialization = {workspace = true}
