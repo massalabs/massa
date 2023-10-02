@@ -928,7 +928,7 @@ impl BootstrapServerMessage {
                 let consensus_part = BootstrapableGraph { final_blocks, };
                 let last_start_period = rng.gen();
                 let last_slot_before_downtime = if rng.gen_bool(0.5) {
-                    Some(Some(Slot { period: rng.gen(), thread: rng.gen() }))
+                    Some(Some(gen_random_slot(rng)))
                 } else {
                     None
                 };
@@ -989,7 +989,7 @@ fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
     let slot = gen_random_slot(rng);
     let parents: Vec<BlockId> = (0..32).map(|_| gen_random_block_id(rng)).collect();
     let mut endorsements = vec![];
-    for index in 0..1 { //rng.gen_range(1..ENDORSEMENT_COUNT) {
+    for index in 0..rng.gen_range(1..ENDORSEMENT_COUNT) {
         let endorsement = Endorsement {
             index,
             slot,
