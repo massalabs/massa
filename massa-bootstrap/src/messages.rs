@@ -958,12 +958,14 @@ impl BootstrapServerMessage {
                 let state_equal = stream_batch_equal(state1, state2);
                 let versionning_equal = stream_batch_equal(v1, v2);
                 let mut consensus_equal = true;
-                for active_block1 in c1.final_blocks.iter() {
-                    for active_block2 in c2.final_blocks.iter() {
-                        consensus_equal &= active_block1.parents == active_block2.parents;
-                        consensus_equal &= active_block1.is_final == active_block2.is_final;
-                        consensus_equal &= active_block1.block.serialized_data == active_block2.block.serialized_data;
-                    }
+                if c1.final_blocks.len() != c2.final_blocks.len() {
+                    return false;
+                }
+                for (n, active_block1) in c1.final_blocks.iter().enumerate() {
+                    let active_block2 = c2.final_blocks.get(n).unwrap();
+                    consensus_equal &= active_block1.parents == active_block2.parents;
+                    consensus_equal &= active_block1.is_final == active_block2.is_final;
+                    consensus_equal &= active_block1.block.serialized_data == active_block2.block.serialized_data;
                 }
                 (s1 == s2) && state_equal && versionning_equal && consensus_equal && (co1 == co2) && (lp1 == lp2) && (ls1 == ls2)
             },
