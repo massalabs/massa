@@ -87,6 +87,7 @@ if __name__ == "__main__":
     elif args.package:
         coverage_for_pkg(args.package)
     elif args.clean:
-        subprocess.run("cargo llvm-cov clean --workspace")
+        # find . -name "*.profraw" -delete
+        subprocess.run("cargo llvm-cov clean --workspace", shell=True, check=True)
     else:
         print("Need --package or --all as argument, ex: --package massa-async-pool")
