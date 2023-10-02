@@ -30,3 +30,4 @@ extract_massa_unit_tests_src_*
 massa-client/wallets/*
 # coverage
 *.profraw
+coverage
