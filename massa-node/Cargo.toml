@@ -23,9 +23,8 @@ tokio = {workspace = true, "features" = ["full"]}
 num = {workspace = true}
 tracing = {workspace = true, "features" = ["max_level_debug", "release_max_level_debug"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["max_level_debug", "release_max_level_debug"]} if problem
 tracing-subscriber = {workspace = true}
-paw = {workspace = true}
 rand = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.8.5", "optional": true} if problem
-structopt = {workspace = true, "features" = ["paw"]}
+clap = { workspace = true }
 dialoguer = {workspace = true}
 ctrlc = {workspace = true}
 massa_api_exports = {workspace = true}

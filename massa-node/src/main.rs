@@ -10,6 +10,7 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 use crate::survey::MassaSurvey;
 
+use clap::{crate_version, Parser};
 use crossbeam_channel::TryRecvError;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -98,7 +99,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
-use structopt::StructOpt;
+
 use survey::MassaSurveyStopper;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
@@ -1212,24 +1213,26 @@ async fn stop(
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
+#[command(version = crate_version!())]
 struct Args {
-    #[structopt(long = "keep-ledger")]
+    #[arg(long = "keep-ledger")]
     keep_ledger: bool,
     /// Wallet password
-    #[structopt(short = "p", long = "pwd")]
+    // #[arg(short = "p", long = "pwd")]
+    #[arg(short = 'p', long = "pwd")]
     password: Option<String>,
 
     /// restart_from_snapshot_at_period
-    #[structopt(long = "restart-from-snapshot-at-period")]
+    #[arg(long = "restart-from-snapshot-at-period")]
     restart_from_snapshot_at_period: Option<u64>,
 
     #[cfg(feature = "op_spammer")]
     /// number of operations
-    #[structopt(
+    #[arg(
         name = "number of operations",
-        about = "Define the number of operations the node can spam.",
-        short = "nb-op",
+        long_help = "Define the number of operations the node can spam.",
+        short = 'n',
         long = "number-operations"
     )]
     nb_op: u64,
@@ -1238,8 +1241,8 @@ struct Args {
     /// Deadlocks detector
     #[structopt(
         name = "deadlocks interval",
-        about = "Define the interval of launching a deadlocks checking.",
-        short = "i",
+        long_help = "Define the interval of launching a deadlocks checking.",
+        short = 'i',
         long = "dli",
         default_value = "10"
     )]
@@ -1270,8 +1273,9 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     )?)))
 }
 
-#[paw::main]
-fn main(args: Args) -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
     let tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name_fn(|| {
             static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);

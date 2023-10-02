@@ -42,7 +42,7 @@ use strum_macros::{Display, EnumIter, EnumString};
 /// Use props(pwd_not_needed = "true") if the command does not need an access to the wallet, to avoid unnecessary
 /// prompting of the user.
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
     #[strum(
         ascii_case_insensitive,
