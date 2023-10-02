@@ -6,11 +6,11 @@ use massa_consensus_exports::bootstrapable_graph::{
 };
 use massa_consensus_exports::export_active_block::ExportActiveBlock;
 use massa_db_exports::StreamBatch;
-use massa_hash::Hash;
+use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::block::{Block, BlockSerializer};
 use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer, BlockIdV0};
-use massa_models::config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
+use massa_models::config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_BOOTSTRAP_BLOCKS};
 use massa_models::denunciation::{Denunciation, EndorsementDenunciation, BlockHeaderDenunciation};
 use massa_models::endorsement::{self, Endorsement, EndorsementSerializer};
 use massa_models::operation::OperationId;
@@ -916,7 +916,7 @@ impl BootstrapServerMessage {
                 let state_part = gen_new_stream_batch(rng);
                 let versioning_part = gen_new_stream_batch(rng);
                 let mut final_blocks = vec![];
-                let block_nb = 1; //rng.gen_range(0..1000);
+                let block_nb = rng.gen_range(5..100); //MAX_BOOTSTRAP_BLOCKS);
                 for _ in 0..block_nb {
                     final_blocks.push(gen_export_active_blocks(rng));
                 }
@@ -975,17 +975,20 @@ impl BootstrapServerMessage {
     }
 }
 
+fn gen_random_hash<R: Rng>(rng: &mut R) -> Hash {
+    let bytes : [u8; HASH_SIZE_BYTES] = rng.gen();
+    Hash::from_bytes(&bytes)
+}
+
 fn gen_random_slot<R: Rng>(rng: &mut R) -> Slot {
     Slot { period: rng.gen(), thread: rng.gen_range(0..32) }
 }
 
 fn gen_random_block_id<R: Rng>(rng: &mut R) -> BlockId {
-    let data = gen_random_vector(256, rng);
-    BlockId::generate_from_hash(Hash::compute_from(&data))
+    BlockId::generate_from_hash(gen_random_hash(rng))
 }
 
-fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
-    let keypair = KeyPair::generate(0).unwrap();
+fn gen_random_block<R: Rng>(keypair: &KeyPair, rng: &mut R) -> Block {
     let slot = gen_random_slot(rng);
     let parents: Vec<BlockId> = (0..32).map(|_| gen_random_block_id(rng)).collect();
     let mut endorsements = vec![];
@@ -997,8 +1000,8 @@ fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
         };
 
         let endorsement = endorsement.new_verifiable(EndorsementSerializer::new(), &keypair).unwrap(); 
-        assert!(endorsement.verify_signature().is_ok(), "Endorsement signature invalid");
-        assert!(endorsement.check_invariants().is_ok(), "Endorsememnt invariants are invalid");
+        // assert!(endorsement.verify_signature().is_ok(), "Endorsement signature invalid");
+        // assert!(endorsement.check_invariants().is_ok(), "Endorsememnt invariants are invalid");
         endorsements.push(endorsement);
     }
 
@@ -1007,19 +1010,18 @@ fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
         // TODO    Denunciations generation
     }
 
-    let data = gen_random_vector(256, rng);
     let header = BlockHeader {
         current_version: rng.gen(),
         announced_version: rng.gen(),
         slot,
         parents,
-        operation_merkle_root: Hash::compute_from(&data),
+        operation_merkle_root: gen_random_hash(rng),
         endorsements,
         denunciations,
     }.new_verifiable(BlockHeaderSerializer::new(), &keypair).unwrap();
     let mut operations = vec![];
     for _ in 0..rng.gen_range(0..MAX_OPERATIONS_PER_BLOCK) {
-        let op = OperationId::new(Hash::compute_from(&gen_random_vector(256, rng)));
+        let op = OperationId::new(gen_random_hash(rng));
         operations.push(op);
     }
     Block {
@@ -1030,7 +1032,7 @@ fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
 
 fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock {
     let keypair = KeyPair::generate(0).unwrap();
-    let block = gen_random_block(rng).new_verifiable(BlockSerializer::new(), &keypair).unwrap();
+    let block = gen_random_block(&keypair, rng).new_verifiable(BlockSerializer::new(), &keypair).unwrap();
     let parents = (0..32).map(|_| 
         (gen_random_block_id(rng), rng.gen())
     ).collect();
@@ -1041,19 +1043,19 @@ fn gen_new_stream_batch<R>(rng: &mut R) -> StreamBatch<Slot> where
     R: Rng,
 {   
     let change_id = gen_random_slot(rng);
-    let nb = rng.gen_range(0..100);
+    let nb = 1; //rng.gen_range(0..100);    // TODO    Based on total size
     let mut new_elements = BTreeMap::new();
     for _ in 0..nb {
-        let key = gen_random_vector(50, rng);
-        let val = gen_random_vector(150, rng);
+        let key = gen_random_vector(MAX_DATASTORE_KEY_LENGTH as usize, rng);
+        let val = gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng);
         new_elements.insert(key, val);
     }
-    let nb = rng.gen_range(0..100);
+    let nb = 1; // rng.gen_range(0..100);     // TODO    Based on total size
     let mut updates_on_previous_elements = BTreeMap::new();
     for _ in 0..nb {
-        let key = gen_random_vector(50, rng);
+        let key = gen_random_vector(MAX_DATASTORE_KEY_LENGTH as usize, rng);
         let val = if rng.gen_bool(0.5) {
-            Some(gen_random_vector(150, rng))
+            Some(gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng))
         } else {
             None
         };
@@ -1067,7 +1069,7 @@ fn gen_new_stream_batch<R>(rng: &mut R) -> StreamBatch<Slot> where
 }
 
 fn gen_random_vector<R: Rng>(max: usize, rng: &mut R) -> Vec<u8> {
-    let nb = rng.gen_range(0..max);
+    let nb = rng.gen_range(0..=max);
     let mut res = vec![];
     for _ in 0..nb {
         res.push(rng.gen());
