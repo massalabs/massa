@@ -207,17 +207,20 @@
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 <span class="kw">use </span>anyhow::Result;
-<span class="kw">use </span>clap::{crate_version, Parser};
+<span class="kw">use </span>atty::Stream;
 <span class="kw">use </span>cmds::Command;
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>dialoguer::Password;
-<span class="kw">use </span>is_terminal::IsTerminal;
 <span class="kw">use </span>massa_sdk::{Client, ClientConfig, HttpConfig};
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>serde::Serialize;
@@ -225,6 +228,7 @@
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::path::{Path, PathBuf};
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
+<span class="kw">use </span>structopt::StructOpt;
 
 <span class="kw">mod </span>cmds;
 <span class="kw">mod </span>display;
@@ -234,37 +238,41 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>tests;
 
-<span class="attr">#[derive(Parser)]
-#[command(version = <span class="macro">crate_version!</span>())]
+<span class="attr">#[derive(StructOpt)]
 </span><span class="kw">struct </span>Args {
     <span class="doccomment">/// Port to listen on (Massa public API).
-    </span><span class="attr">#[arg(long)]
+    </span><span class="attr">#[structopt(long)]
     </span>public_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
     <span class="doccomment">/// Port to listen on (Massa private API).
-    </span><span class="attr">#[arg(long)]
+    </span><span class="attr">#[structopt(long)]
     </span>private_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
     <span class="doccomment">/// Port to listen on (Massa GRPC Public API).
-    </span><span class="attr">#[arg(long)]
+    </span><span class="attr">#[structopt(long)]
     </span>grpc_public_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
     <span class="doccomment">/// Port to listen on (Massa GRPC Private API).
-    </span><span class="attr">#[arg(long)]
+    </span><span class="attr">#[structopt(long)]
     </span>grpc_private_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
     <span class="doccomment">/// Address to listen on
-    </span><span class="attr">#[arg(long)]
+    </span><span class="attr">#[structopt(long)]
     </span>ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
     <span class="doccomment">/// Command that client would execute (non-interactive mode)
-    </span><span class="attr">#[arg(name = <span class="string">&quot;COMMAND&quot;</span>, default_value = <span class="string">&quot;help&quot;</span>)]
+    </span><span class="attr">#[structopt(name = <span class="string">&quot;COMMAND&quot;</span>, default_value = <span class="string">&quot;help&quot;</span>)]
     </span>command: Command,
     <span class="doccomment">/// Optional command parameter (as a JSON string)
-    </span><span class="attr">#[arg(name = <span class="string">&quot;PARAMETERS&quot;</span>)]
+    </span><span class="attr">#[structopt(name = <span class="string">&quot;PARAMETERS&quot;</span>)]
     </span>parameters: Vec&lt;String&gt;,
     <span class="doccomment">/// Path of wallet folder
-    </span><span class="attr">#[arg(short = <span class="string">&#39;w&#39;</span>, long = <span class="string">&quot;wallet&quot;</span>, default_value = <span class="string">&quot;wallets/&quot;</span>)]
+    </span><span class="attr">#[structopt(
+        short = <span class="string">&quot;w&quot;</span>,
+        long = <span class="string">&quot;wallet&quot;</span>,
+        parse(from_os_str),
+        default_value = <span class="string">&quot;wallets/&quot;
+    </span>)]
     </span>wallet: PathBuf,
     <span class="doccomment">/// Enable a mode where input/output are serialized as JSON
-    </span><span class="attr">#[arg(short = <span class="string">&#39;j&#39;</span>, long = <span class="string">&quot;json&quot;</span>)]
+    </span><span class="attr">#[structopt(short = <span class="string">&quot;j&quot;</span>, long = <span class="string">&quot;json&quot;</span>)]
     </span>json: bool,
-    <span class="attr">#[arg(short = <span class="string">&#39;p&#39;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
+    <span class="attr">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
     </span><span class="doccomment">/// Wallet password
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
@@ -291,8 +299,8 @@
     }
 }
 
-<span class="kw">fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
-    <span class="kw">let </span>args = Args::parse();
+<span class="attr">#[paw::main]
+</span><span class="kw">fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">let </span>tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name_fn(|| {
             <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
@@ -366,7 +374,7 @@
         <span class="kw-2">&amp;</span>http_config,
     )
     .<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">if </span>std::io::stdout().is_terminal() &amp;&amp; args.command == Command::help &amp;&amp; !args.json {
+    <span class="kw">if </span>atty::is(Stream::Stdout) &amp;&amp; args.command == Command::help &amp;&amp; !args.json {
         <span class="comment">// Interactive mode
         </span>repl::run(<span class="kw-2">&amp;mut </span>client, <span class="kw-2">&amp;</span>args.wallet, args.password).<span class="kw">await</span><span class="question-mark">?</span>;
     } <span class="kw">else </span>{
