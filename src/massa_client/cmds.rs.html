@@ -1512,7 +1512,7 @@
 /// Use props(pwd_not_needed = &quot;true&quot;) if the command does not need an access to the wallet, to avoid unnecessary
 /// prompting of the user.
 </span><span class="attr">#[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 </span><span class="kw">pub enum </span>Command {
     <span class="attr">#[strum(
         ascii_case_insensitive,
