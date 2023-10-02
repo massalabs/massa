@@ -244,6 +244,7 @@ impl Serializer<BlockHeader> for BlockHeaderSerializer {
         )?;
 
         for endorsement in value.endorsements.iter() {
+            let buff_start = buffer.len();
             self.endorsement_serializer.serialize_with(
                 &self.endorsement_content_serializer,
                 endorsement,

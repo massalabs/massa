@@ -54,7 +54,7 @@ pub trait Id {
 /// Trait that define a structure that can be signed for secure sharing.
 pub trait SecureShareContent
 where
-    Self: Sized + Display,
+    Self: Sized + Display + std::fmt::Debug,
 {
     /// Sign the SecureShare given the content
     fn sign(&self, keypair: &KeyPair, content_hash: &Hash) -> Result<Signature, ModelsError> {
@@ -164,7 +164,6 @@ where
         };
         let creator_address = Address::from_public_key(&creator_public_key);
         let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key);
-
         Ok((
             rest,
             SecureShare {
@@ -197,7 +196,7 @@ where
 impl<T, ID> SecureShare<T, ID>
 where
     T: Display + SecureShareContent,
-    ID: Id,
+    ID: Id + std::fmt::Debug,
 {
     /// Sign the SecureShare given the content
     pub fn sign(

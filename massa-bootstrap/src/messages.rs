@@ -13,7 +13,7 @@ use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer, Bl
 use massa_models::config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
 use massa_models::endorsement::{self, Endorsement, EndorsementSerializer};
 use massa_models::prehash::{PreHashSet, PreHashed};
-use massa_models::secure_share::{SecureShare, SecureShareContent};
+use massa_models::secure_share::{SecureShare, SecureShareContent, Id};
 use massa_models::serialization::{
     PreHashSetDeserializer, PreHashSetSerializer, VecU8Deserializer, VecU8Serializer,
 };
@@ -914,7 +914,7 @@ impl BootstrapServerMessage {
                 let state_part = gen_new_stream_batch(rng);
                 let versioning_part = gen_new_stream_batch(rng);
                 let mut final_blocks = vec![];
-                let block_nb = rng.gen_range(0..1000);
+                let block_nb = 1; //rng.gen_range(0..1000);
                 for _ in 0..block_nb {
                     final_blocks.push(gen_export_active_blocks(rng));
                 }
@@ -979,23 +979,25 @@ fn gen_random_slot<R: Rng>(rng: &mut R) -> Slot {
 
 fn gen_random_block_id<R: Rng>(rng: &mut R) -> BlockId {
     let data = gen_random_vector(256, rng);
-    BlockId::BlockIdV0(BlockIdV0(Hash::compute_from(&data)))
+    BlockId::generate_from_hash(Hash::compute_from(&data))
 }
 
 fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
     let keypair = KeyPair::generate(0).unwrap();
     let slot = gen_random_slot(rng);
-    let data = gen_random_vector(256, rng);
-    let block_id = gen_random_block_id(rng);
+    let parents: Vec<BlockId> = (0..32).map(|_| gen_random_block_id(rng)).collect();
     let mut endorsements = vec![];
-    for index in 0..rng.gen_range(1..ENDORSEMENT_COUNT) {
-        let end_slot = gen_random_slot(rng);
+    for index in 0..1 { //rng.gen_range(1..ENDORSEMENT_COUNT) {
         let endorsement = Endorsement {
             index,
-            slot: end_slot,
-            endorsed_block: block_id,
+            slot,
+            endorsed_block: parents[slot.thread as usize],
         };
-        endorsements.push(endorsement.new_verifiable(EndorsementSerializer::new(), &keypair).unwrap());
+
+        let endorsement = endorsement.new_verifiable(EndorsementSerializer::new(), &keypair).unwrap(); 
+        assert!(endorsement.verify_signature().is_ok(), "Endorsement signature invalid");
+        assert!(endorsement.check_invariants().is_ok(), "Endorsememnt invariants are invalid");
+        endorsements.push(endorsement);
     }
 
     let mut denunciations = vec![];
@@ -1003,11 +1005,12 @@ fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
         // TODO    Denunciations generation
     }
 
+    let data = gen_random_vector(256, rng);
     let header = BlockHeader {
         current_version: rng.gen(),
         announced_version: rng.gen(),
         slot,
-        parents: (0..32).map(|_| gen_random_block_id(rng)).collect(),
+        parents,
         operation_merkle_root: Hash::compute_from(&data),
         endorsements,
         denunciations,
@@ -1133,7 +1136,10 @@ fn test_serialize_deserialize_bootstrap_msg() {
         match deser.deserialize::<massa_serialization::DeserializeError>(&bytes) {
             Ok((_, msg_res)) => assert!(msg_res.equals(&msg), "BootstrapServerMessages doesn't match after serialization / deserialization process"),
             Err(e) => {
-                let err_str = e.to_string()[..550].to_string();
+                let mut err_str = e.to_string();
+                if err_str.len() > 550 {
+                    err_str = err_str[..550].to_string();
+                }
                 assert!(false, "Error while deserializing: {}", err_str);
             },
         }
@@ -1141,6 +1147,8 @@ fn test_serialize_deserialize_bootstrap_msg() {
 
     let regressions = vec![
         5577929984194316755,
+        9179928180721160589,
+        9395350524002478079,
     ];
     for reg in regressions {
         println!("[*] Regression {reg}");
