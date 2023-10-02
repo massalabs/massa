@@ -1435,10 +1435,6 @@
 <a href="#1435" id="1435">1435</a>
 <a href="#1436" id="1436">1436</a>
 <a href="#1437" id="1437">1437</a>
-<a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1451,7 +1447,6 @@
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 <span class="kw">use </span><span class="kw">crate</span>::survey::MassaSurvey;
 
-<span class="kw">use </span>clap::{crate_version, Parser};
 <span class="kw">use </span>crossbeam_channel::TryRecvError;
 <span class="kw">use </span>dialoguer::Password;
 <span class="kw">use </span>massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -1540,7 +1535,7 @@
 <span class="kw">use </span>std::sync::{Condvar, Mutex};
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
-
+<span class="kw">use </span>structopt::StructOpt;
 <span class="kw">use </span>survey::MassaSurveyStopper;
 <span class="kw">use </span>tokio::sync::broadcast;
 <span class="kw">use </span>tracing::{debug, error, info, warn};
@@ -2654,26 +2649,24 @@
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 </span>}
 
-<span class="attr">#[derive(Parser)]
-#[command(version = <span class="macro">crate_version!</span>())]
+<span class="attr">#[derive(StructOpt)]
 </span><span class="kw">struct </span>Args {
-    <span class="attr">#[arg(long = <span class="string">&quot;keep-ledger&quot;</span>)]
+    <span class="attr">#[structopt(long = <span class="string">&quot;keep-ledger&quot;</span>)]
     </span>keep_ledger: bool,
     <span class="doccomment">/// Wallet password
-    </span><span class="comment">// #[arg(short = &quot;p&quot;, long = &quot;pwd&quot;)]
-    </span><span class="attr">#[arg(short = <span class="string">&#39;p&#39;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
+    </span><span class="attr">#[structopt(short = <span class="string">&quot;p&quot;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
     <span class="doccomment">/// restart_from_snapshot_at_period
-    </span><span class="attr">#[arg(long = <span class="string">&quot;restart-from-snapshot-at-period&quot;</span>)]
+    </span><span class="attr">#[structopt(long = <span class="string">&quot;restart-from-snapshot-at-period&quot;</span>)]
     </span>restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
     </span><span class="doccomment">/// number of operations
-    </span><span class="attr">#[arg(
+    </span><span class="attr">#[structopt(
         name = <span class="string">&quot;number of operations&quot;</span>,
-        long_help = <span class="string">&quot;Define the number of operations the node can spam.&quot;</span>,
-        short = <span class="string">&#39;n&#39;</span>,
+        about = <span class="string">&quot;Define the number of operations the node can spam.&quot;</span>,
+        short = <span class="string">&quot;nb-op&quot;</span>,
         long = <span class="string">&quot;number-operations&quot;
     </span>)]
     </span>nb_op: u64,
@@ -2682,8 +2675,8 @@
     </span><span class="doccomment">/// Deadlocks detector
     </span><span class="attr">#[structopt(
         name = <span class="string">&quot;deadlocks interval&quot;</span>,
-        long_help = <span class="string">&quot;Define the interval of launching a deadlocks checking.&quot;</span>,
-        short = <span class="string">&#39;i&#39;</span>,
+        about = <span class="string">&quot;Define the interval of launching a deadlocks checking.&quot;</span>,
+        short = <span class="string">&quot;i&quot;</span>,
         long = <span class="string">&quot;dli&quot;</span>,
         default_value = <span class="string">&quot;10&quot;
     </span>)]
@@ -2714,9 +2707,8 @@
     )<span class="question-mark">?</span>)))
 }
 
-<span class="kw">fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
-    <span class="kw">let </span>args = Args::parse();
-
+<span class="attr">#[paw::main]
+</span><span class="kw">fn </span>main(args: Args) -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">let </span>tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name_fn(|| {
             <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
