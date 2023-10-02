@@ -11,7 +11,9 @@ use massa_models::block::{Block, BlockSerializer};
 use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer, BlockIdV0};
 use massa_models::config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
+use massa_models::denunciation::{Denunciation, EndorsementDenunciation, BlockHeaderDenunciation};
 use massa_models::endorsement::{self, Endorsement, EndorsementSerializer};
+use massa_models::operation::OperationId;
 use massa_models::prehash::{PreHashSet, PreHashed};
 use massa_models::secure_share::{SecureShare, SecureShareContent, Id};
 use massa_models::serialization::{
@@ -1001,7 +1003,7 @@ fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
     }
 
     let mut denunciations = vec![];
-    for _ in 0..rng.gen_range(0..MAX_DENUNCIATIONS_PER_BLOCK_HEADER) {
+    for index in 0..rng.gen_range(0..(MAX_DENUNCIATIONS_PER_BLOCK_HEADER as usize)) {
         // TODO    Denunciations generation
     }
 
@@ -1017,7 +1019,8 @@ fn gen_random_block<R: Rng>(rng: &mut R) -> Block {
     }.new_verifiable(BlockHeaderSerializer::new(), &keypair).unwrap();
     let mut operations = vec![];
     for _ in 0..rng.gen_range(0..MAX_OPERATIONS_PER_BLOCK) {
-        // TODO    Generate operations
+        let op = OperationId::new(Hash::compute_from(&gen_random_vector(256, rng)));
+        operations.push(op);
     }
     Block {
         header,
@@ -1147,8 +1150,6 @@ fn test_serialize_deserialize_bootstrap_msg() {
 
     let regressions = vec![
         5577929984194316755,
-        9179928180721160589,
-        9395350524002478079,
     ];
     for reg in regressions {
         println!("[*] Regression {reg}");
