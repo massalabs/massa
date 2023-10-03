@@ -10,7 +10,7 @@ use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_models::block::{Block, BlockSerializer};
 use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer, BlockIdV0};
-use massa_models::config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_BOOTSTRAP_BLOCKS};
+use massa_models::config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_ERROR_LENGTH};
 use massa_models::denunciation::{Denunciation, EndorsementDenunciation, BlockHeaderDenunciation};
 use massa_models::endorsement::{self, Endorsement, EndorsementSerializer};
 use massa_models::operation::OperationId;
@@ -920,7 +920,7 @@ impl BootstrapServerMessage {
                 for _ in 0..block_nb {
                     final_blocks.push(gen_export_active_blocks(rng));
                 }
-                let nb = rng.gen_range(0..1000);
+                let nb = rng.gen_range(0..100);
                 let mut consensus_outdated_ids = PreHashSet::default();
                 for _ in 0..nb {
                     consensus_outdated_ids.insert(gen_random_block_id(rng));
@@ -937,14 +937,7 @@ impl BootstrapServerMessage {
             },
             3 => BootstrapServerMessage::BootstrapFinished,
             4 => BootstrapServerMessage::SlotTooOld,
-            5 => {
-                let mut c = vec![];
-                let n = rng.gen_range(0..250);
-                for _ in 0..n {
-                    c.push(rng.gen::<char>());
-                }
-                BootstrapServerMessage::BootstrapError { error: c.into_iter().collect() }
-            }
+            5 => BootstrapServerMessage::BootstrapError { error: gen_random_string(MAX_BOOTSTRAP_ERROR_LENGTH as usize, rng) },
             _ => unreachable!(),
         }
     }
@@ -1045,22 +1038,35 @@ fn gen_new_stream_batch<R>(rng: &mut R) -> StreamBatch<Slot> where
     R: Rng,
 {   
     let change_id = gen_random_slot(rng);
-    let nb = 1; //rng.gen_range(0..100);    // TODO    Based on total size
+    let batch_size = rng.gen_range(0..MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE);
+    let new_elements_size = rng.gen_range(0..batch_size);
     let mut new_elements = BTreeMap::new();
-    for _ in 0..nb {
+    let mut size = 0;
+    loop {
         let key = gen_random_vector(MAX_DATASTORE_KEY_LENGTH as usize, rng);
         let val = gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng);
+        if size + (key.len() as u64) + (val.len() as u64) > new_elements_size {
+            break;
+        }
+        size += key.len() as u64;
+        size += val.len() as u64;
         new_elements.insert(key, val);
     }
-    let nb = 1; // rng.gen_range(0..100);     // TODO    Based on total size
     let mut updates_on_previous_elements = BTreeMap::new();
-    for _ in 0..nb {
+    loop {
         let key = gen_random_vector(MAX_DATASTORE_KEY_LENGTH as usize, rng);
+        let mut s = key.len();
         let val = if rng.gen_bool(0.5) {
-            Some(gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng))
+            let v = gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng);
+            s += v.len();
+            Some(v)
         } else {
             None
         };
+        if (size + (s as u64)) > batch_size {
+            break;
+        }
+        size += s as u64;
         updates_on_previous_elements.insert(key, val);
     }
     StreamBatch {
@@ -1070,12 +1076,15 @@ fn gen_new_stream_batch<R>(rng: &mut R) -> StreamBatch<Slot> where
     }
 }
 
+fn gen_random_string<R: Rng>(max: usize, rng: &mut R) -> String {
+    let res = gen_random_vector(max, rng);
+    res.into_iter().map(|c| char::from_u32(((c as u32) % (122-65)) + 65).unwrap()).collect()
+}
+
 fn gen_random_vector<R: Rng>(max: usize, rng: &mut R) -> Vec<u8> {
     let nb = rng.gen_range(0..=max);
-    let mut res = vec![];
-    for _ in 0..nb {
-        res.push(rng.gen());
-    }
+    let mut res = vec![0; nb];
+    rng.fill_bytes(&mut res);
     res
 }
 
@@ -1138,6 +1147,7 @@ fn test_serialize_deserialize_bootstrap_msg() {
         let mut bytes = Vec::new();
         let ser_res = BootstrapServerMessageSerializer::new().serialize(&msg, &mut bytes);
         assert!(ser_res.is_ok(), "Serialization of bootstrap server message failed");
+        assert!(bytes.len() < MAX_BOOTSTRAP_MESSAGE_SIZE as usize);
 
         let deser = BootstrapServerMessageDeserializer::new((&config).into());
         match deser.deserialize::<massa_serialization::DeserializeError>(&bytes) {
@@ -1159,7 +1169,7 @@ fn test_serialize_deserialize_bootstrap_msg() {
         println!("[*] Regression {reg}");
         let mut rng = SmallRng::seed_from_u64(reg);
         perform_test(&mut rng);
-        std::thread::sleep(Duration::from_millis(50));
+        // std::thread::sleep(Duration::from_millis(50));
     }
 
     let mut seeder = SmallRng::from_entropy();
@@ -1168,6 +1178,6 @@ fn test_serialize_deserialize_bootstrap_msg() {
         println!("[{n}] Seed {new_seed}");
         let mut rng = SmallRng::seed_from_u64(new_seed);
         perform_test(&mut rng);
-        std::thread::sleep(Duration::from_millis(50));
+        // std::thread::sleep(Duration::from_millis(50));
     }
 }
