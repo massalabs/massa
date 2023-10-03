@@ -1226,24 +1226,24 @@ pub(crate) fn search_operations(
         let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
             .into_iter()
             .filter_map(|ope_id| {
-                read_ops_lock.get(&ope_id).map(|secureshare_| {
+                read_ops_lock.get(&ope_id).map(|secureshare| {
                     let block_ids = read_blocks_lock
                         .get_blocks_by_operation(&ope_id)
                         .map(|hashset| hashset.iter().cloned().collect::<HashSet<BlockId>>())
                         .unwrap_or_default();
 
-                    (secureshare_, block_ids)
+                    (secureshare, block_ids)
                 })
             })
             .collect();
 
         storage_info
             .into_iter()
-            .map(|secureshare_| {
-                let (secureshare_, block_ids) = secureshare_;
+            .map(|secureshare| {
+                let (secureshare_operation, block_ids) = secureshare;
                 grpc_model::OperationInfo {
-                    id: secureshare_.id.to_string(),
-                    thread: secureshare_
+                    id: secureshare_operation.id.to_string(),
+                    thread: secureshare_operation
                         .content_creator_address
                         .get_thread(grpc.grpc_config.thread_count)
                         as u32,
