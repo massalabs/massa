@@ -20,18 +20,18 @@
 //!     "slot": {"period": 123455, "thread": 11},  // slot at which the message was emitted
 //!     "emission_index": 212,  // index of the message emitted in this slot
 //!     "destination": "xxxx",  // target address
-//!     "handler": "handle_message",  // name of the handler function to call in the target SC
+//!     "function": "handle_message",  // name of the function to call in the target SC
 //!     "validity_start": {"period": 123456, "thread": 12},  // the message can be handled starting from the validity_start slot (included)
 //!     "validity_end": {"period": 123457, "thread": 16},  // the message can be handled until the validity_end slot (excluded)
 //!     "max_gas": 12334,  // max gas available when the handler is called
 //!     "coins": "1111.11",  // amount of coins to transfer to the destination address when calling its handler
-//!     "data": { ... any object ... }  // data payload of the message, passed as the sole parameter of the destination handler when called
+//!     "function_params": { ... any object ... }  // parameters to call the function
 //! }
 //! ```
 //!
 //! ## How to send a message during bytecode execution
 //!
-//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, fee, coins, data: JSON string) -> Result<(), ABIReturnError>`. Note that data has a configuration defined `max_async_message_data_size`.
+//! * messages are sent using an ABI: `send_message(target_address, function, validity_start, validity_end, max_gas, fee, coins, function_params) -> Result<(), ABIReturnError>`.
 //! * when called, this ABI does this:
 //!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer
 //!   * it consumes `fee + coins` coins from the sender
@@ -62,7 +62,7 @@
 //!
 //! ## How to receive a message (inside the smart contract)
 //!
-//! * define a public exported handler function taking 1 parameter (the message data)
+//! * define a public exported handler function taking 1 parameter
 //! * this function will be called when a message is processed with the right `destination` and `handler`
 //! ```
 //!

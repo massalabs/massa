@@ -484,6 +484,7 @@ where
     }
 }
 
+#[derive(Clone)]
 /// Serializer for `String` with generic serializer for the size of the string
 pub struct StringSerializer<SL, L>
 where
@@ -529,6 +530,7 @@ where
 }
 
 /// Deserializer for `String` with generic deserializer for the size of the string
+#[derive(Clone)]
 pub struct StringDeserializer<DL, L>
 where
     DL: Deserializer<L>,

@@ -17,9 +17,9 @@ use massa_models::amount::Amount;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP,
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_FUNCTION_NAME_LENGTH,
+    MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
 };
 use massa_models::{config::MAX_DATASTORE_VALUE_LENGTH, slot::Slot};
 use massa_pos_exports::{PoSConfig, SelectorConfig};
@@ -58,7 +58,8 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         async_pool_config: AsyncPoolConfig {
             thread_count,
             max_length: MAX_ASYNC_POOL_LENGTH,
-            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            max_function_length: MAX_FUNCTION_NAME_LENGTH,
+            max_function_params_length: MAX_PARAMETERS_SIZE as u64,
             max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {
