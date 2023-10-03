@@ -319,8 +319,6 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -477,8 +475,7 @@
     </span><span class="kw">pub fn </span>new(
         thread_count: u8,
         max_async_pool_changes: u64,
-        max_function_length: u16,
-        max_function_params_length: u64,
+        max_async_message_data: u64,
         max_ledger_changes_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -500,8 +497,7 @@
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
-                max_function_length,
-                max_function_params_length,
+                max_async_message_data,
                 max_datastore_key_length <span class="kw">as </span>u32,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
@@ -574,7 +570,7 @@
     /// state_changes.ledger_changes = ledger_changes;
     /// let mut serialized = Vec::new();
     /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 32, 1000).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
+    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 32, 1000).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
     /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);
