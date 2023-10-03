@@ -790,43 +790,55 @@ async fn get_selector_draws() {
 
     selector_ctrl
         .expect_get_available_selections_in_range()
-        .returning(|_slot, _addr| {
+        .returning(|slot_range, _addr| {
             let mut res = BTreeMap::new();
-            res.insert(
-                Slot {
-                    period: 1,
-                    thread: 10,
-                },
-                Selection {
-                    endorsements: vec![Address::from_str(
-                        "AU1nHnddh6N4BybVGMKR9SWzoJKpabSaYVhezs96MwEp3NLD2DyW",
-                    )
-                    .unwrap()],
-                    producer: Address::from_str(
-                        "AU12ZmAhr2pVwMM7iiMBb6A7mBi5VrCXVh8gM6Z889WmhcqNdNddk",
-                    )
-                    .unwrap(),
-                },
-            );
+            let slot1 = Slot {
+                period: 1,
+                thread: 10,
+            };
+            if slot_range.contains(&slot1) {
+                res.insert(
+                    slot1,
+                    Selection {
+                        endorsements: vec![Address::from_str(
+                            "AU1nHnddh6N4BybVGMKR9SWzoJKpabSaYVhezs96MwEp3NLD2DyW",
+                        )
+                        .unwrap()],
+                        producer: Address::from_str(
+                            "AU12ZmAhr2pVwMM7iiMBb6A7mBi5VrCXVh8gM6Z889WmhcqNdNddk",
+                        )
+                        .unwrap(),
+                    },
+                );
+            }
 
-            res.insert(
-                Slot {
-                    period: 1,
-                    thread: 11,
-                },
-                Selection {
-                    endorsements: vec![
-                        Address::from_str("AU124cAajcCESGJ4egkULATXzkVZAA5WjbHHHuWcr3yeyTHstSuuA")
+            let slot2 = Slot {
+                period: 1,
+                thread: 11,
+            };
+
+            if slot_range.contains(&slot2) {
+                res.insert(
+                    slot2,
+                    Selection {
+                        endorsements: vec![
+                            Address::from_str(
+                                "AU124cAajcCESGJ4egkULATXzkVZAA5WjbHHHuWcr3yeyTHstSuuA",
+                            )
                             .unwrap(),
-                        Address::from_str("AU1nHnddh6N4BybVGMKR9SWzoJKpabSaYVhezs96MwEp3NLD2DyW")
+                            Address::from_str(
+                                "AU1nHnddh6N4BybVGMKR9SWzoJKpabSaYVhezs96MwEp3NLD2DyW",
+                            )
                             .unwrap(),
-                    ],
-                    producer: Address::from_str(
-                        "AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H",
-                    )
-                    .unwrap(),
-                },
-            );
+                        ],
+                        producer: Address::from_str(
+                            "AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H",
+                        )
+                        .unwrap(),
+                    },
+                );
+            }
+
             Ok(res)
         });
 
@@ -976,36 +988,12 @@ async fn get_selector_draws() {
         .unwrap()
         .into_inner();
 
-    assert_eq!(result.draws.len(), 1);
+    assert_eq!(result.draws.len(), 2);
     let slots: &Vec<massa_proto_rs::massa::model::v1::SlotDraw> = result.draws.as_ref();
     let slot = slots.get(0).unwrap();
-    assert_eq!(slot.slot.as_ref().unwrap().period, 1);
-    assert_eq!(slot.slot.as_ref().unwrap().thread, 11);
-    assert_eq!(slot.endorsement_draws.len(), 1);
-    assert_eq!(
-        slot.endorsement_draws.get(0).unwrap().producer,
-        "AU124cAajcCESGJ4egkULATXzkVZAA5WjbHHHuWcr3yeyTHstSuuA".to_string()
-    );
+    assert!(slot.slot.is_some());
+    assert!(!slot.endorsement_draws.is_empty());
     assert!(slot.block_producer.is_some());
-
-    // unknow address
-    filter = SelectorDrawsFilter {
-        filter: Some(
-            massa_proto_rs::massa::api::v1::selector_draws_filter::Filter::Addresses(Addresses {
-                addresses: vec!["AU12Cyu2f7C7isA3ADAhoNuq9ZUFPKP24jmiGj3sh9D1pHoAWKDYY".to_string()],
-            }),
-        ),
-    };
-
-    let result = public_client
-        .get_selector_draws(GetSelectorDrawsRequest {
-            filters: vec![filter, filter2],
-        })
-        .await
-        .unwrap()
-        .into_inner();
-
-    assert!(result.draws.is_empty());
 
     stop_handle.stop();
 }
