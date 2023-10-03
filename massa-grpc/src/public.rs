@@ -689,7 +689,7 @@ pub(crate) fn get_status(
     let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
     //TODO to be enhanced
     let empty_request = ExecutionQueryRequest { requests: vec![] };
-    let state = grpc.execution_controller.query_state(empty_request)?;
+    let state = grpc.execution_controller.query_state(empty_request);
 
     let status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
@@ -743,7 +743,7 @@ pub(crate) fn query_state(
 
     let response = grpc
         .execution_controller
-        .query_state(ExecutionQueryRequest { requests: queries })?;
+        .query_state(ExecutionQueryRequest { requests: queries });
 
     Ok(grpc_api::QueryStateResponse {
         final_cursor: Some(response.final_cursor.into()),

@@ -280,7 +280,7 @@ pub(crate) fn get_node_status(
     };
     let next_cycle_time = current_cycle_time.checked_add(cycle_duration)?;
     let empty_request = ExecutionQueryRequest { requests: vec![] };
-    let state = grpc.execution_controller.query_state(empty_request)?;
+    let state = grpc.execution_controller.query_state(empty_request);
     let node_ip = grpc
         .protocol_config
         .routable_ip

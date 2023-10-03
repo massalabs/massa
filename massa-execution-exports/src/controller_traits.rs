@@ -5,8 +5,8 @@
 use crate::types::{
     ExecutionBlockMetadata, ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest,
 };
+use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
-use crate::{ExecutionError, ExecutionQueryError};
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::block_id::BlockId;
@@ -37,10 +37,7 @@ pub trait ExecutionController: Send + Sync {
     );
 
     /// Atomically query the execution state with multiple requests
-    fn query_state(
-        &self,
-        req: ExecutionQueryRequest,
-    ) -> Result<ExecutionQueryResponse, ExecutionQueryError>;
+    fn query_state(&self, req: ExecutionQueryRequest) -> ExecutionQueryResponse;
 
     /// Get execution events optionally filtered by:
     /// * start slot
