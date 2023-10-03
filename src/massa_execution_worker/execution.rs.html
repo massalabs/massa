@@ -2862,8 +2862,8 @@
         <span class="kw">let </span>response = massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
-            <span class="kw-2">&amp;</span>message.handler,
-            <span class="kw-2">&amp;</span>message.data,
+            <span class="kw-2">&amp;</span>message.function,
+            <span class="kw-2">&amp;</span>message.function_params,
             message.max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
         );
