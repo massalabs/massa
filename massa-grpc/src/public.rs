@@ -160,19 +160,21 @@ pub(crate) fn get_blocks(
         })
         .collect::<Result<_, _>>()?;
 
-    let read_blocks = grpc.storage.read_blocks();
-    let blocks = block_ids
-        .into_iter()
-        .filter_map(|id| {
-            let content = if let Some(wrapped_block) = read_blocks.get(&id) {
-                wrapped_block.content.clone()
-            } else {
-                return None;
-            };
+    let blocks = {
+        let read_blocks = grpc.storage.read_blocks();
+        block_ids
+            .into_iter()
+            .filter_map(|id| {
+                let content = if let Some(wrapped_block) = read_blocks.get(&id) {
+                    wrapped_block.content.clone()
+                } else {
+                    return None;
+                };
 
-            Some(content)
-        })
-        .collect::<Vec<Block>>();
+                Some(content)
+            })
+            .collect::<Vec<Block>>()
+    };
 
     let block_ids = blocks
         .iter()
