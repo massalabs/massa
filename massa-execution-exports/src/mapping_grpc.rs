@@ -349,6 +349,11 @@ impl From<ExecutionQueryError> for grpc_model::Error {
                 code: 404,
                 message: error,
             },
+            ExecutionQueryError::TooManyRequests(error) => grpc_model::Error {
+                //TODO to be defined
+                code: 429,
+                message: error,
+            },
         }
     }
 }

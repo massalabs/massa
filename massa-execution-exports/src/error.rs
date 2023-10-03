@@ -74,4 +74,7 @@ pub enum ExecutionError {
 pub enum ExecutionQueryError {
     /// Not found: {0}
     NotFound(String),
+
+    /// Too many requests: {0}
+    TooManyRequests(String),
 }

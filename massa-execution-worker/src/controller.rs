@@ -130,204 +130,212 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Atomically query the execution state with multiple requests
-    fn query_state(&self, req: ExecutionQueryRequest) -> ExecutionQueryResponse {
-        let execution_lock = self.execution_state.read();
-        let mut resp: ExecutionQueryResponse = ExecutionQueryResponse {
-            responses: Vec::with_capacity(req.requests.len()),
-            candidate_cursor: execution_lock.active_cursor,
-            final_cursor: execution_lock.final_cursor,
-            final_state_fingerprint: execution_lock.get_final_state_fingerprint(),
-        };
-        for req_item in req.requests {
-            let resp_item = match req_item {
-                ExecutionQueryRequestItem::AddressExistsCandidate(addr) => {
-                    Ok(ExecutionQueryResponseItem::Boolean(
-                        execution_lock
-                            .get_final_and_candidate_balance(&addr)
-                            .1
-                            .is_some(),
-                    ))
-                }
-                ExecutionQueryRequestItem::AddressExistsFinal(addr) => {
-                    Ok(ExecutionQueryResponseItem::Boolean(
-                        execution_lock
-                            .get_final_and_candidate_balance(&addr)
-                            .0
-                            .is_some(),
-                    ))
-                }
-                ExecutionQueryRequestItem::AddressBalanceCandidate(addr) => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_candidate_balance(&addr);
-                    match speculative_v {
-                        Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBalanceFinal(addr) => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_candidate_balance(&addr);
-                    match final_v {
-                        Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_active_bytecode(&addr);
-                    match speculative_v {
-                        Some(bytecode) => Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressBytecodeFinal(addr) => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_active_bytecode(&addr);
-                    match final_v {
-                        Some(bytecode) => Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
-                    match speculative_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
-                    match final_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
-                        None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_active_data_entry(&addr, &key);
-                    match speculative_v {
-                        Some(value) => Ok(ExecutionQueryResponseItem::DatastoreValue(value)),
-                        None => Err(ExecutionQueryError::NotFound(format!(
-                            "Account {} datastore entry {:?}",
-                            addr, key
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_active_data_entry(&addr, &key);
-                    match final_v {
-                        Some(value) => Ok(ExecutionQueryResponseItem::DatastoreValue(value)),
-                        None => Err(ExecutionQueryError::NotFound(format!(
-                            "Account {} datastore entry {:?}",
-                            addr, key
-                        ))),
-                    }
-                }
-                ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) => {
-                    let (speculative_v, _final_v) = execution_lock
-                        .get_ops_exec_status(&[id])
-                        .get(0)
-                        .map(|(s_v, f_v)| (*s_v, *f_v))
-                        .expect("expected one return value");
-                    match speculative_v {
-                        Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-                        )),
-                        None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::OpExecutionStatusFinal(id) => {
-                    let (_speculative_v, final_v) = execution_lock
-                        .get_ops_exec_status(&[id])
-                        .get(0)
-                        .map(|(s_v, f_v)| (*s_v, *f_v))
-                        .expect("expected one return value");
-                    match final_v {
-                        Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
-                        )),
-                        None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) => {
-                    let (speculative_v, _final_v) =
-                        execution_lock.get_denunciation_execution_status(&id);
-                    match speculative_v {
-                        true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) => {
-                    let (_speculative_v, final_v) =
-                        execution_lock.get_denunciation_execution_status(&id);
-                    match final_v {
-                        true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
-                        )),
-                        false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
-                            ExecutionQueryExecutionStatus::ExecutableOrExpired,
-                        )),
-                    }
-                }
-                ExecutionQueryRequestItem::AddressRollsCandidate(addr) => {
-                    let (_final_rolls, candidate_rolls) =
-                        execution_lock.get_final_and_candidate_rolls(&addr);
-                    Ok(ExecutionQueryResponseItem::RollCount(candidate_rolls))
-                }
-                ExecutionQueryRequestItem::AddressRollsFinal(addr) => {
-                    let (final_rolls, _candidate_rolls) =
-                        execution_lock.get_final_and_candidate_rolls(&addr);
-                    Ok(ExecutionQueryResponseItem::RollCount(final_rolls))
-                }
-                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) => {
-                    let (candidate_v, _final_v) =
-                        execution_lock.get_address_deferred_credits(&addr);
-                    Ok(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
-                }
-                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) => {
-                    let (_candidate_v, final_v) =
-                        execution_lock.get_address_deferred_credits(&addr);
-                    Ok(ExecutionQueryResponseItem::DeferredCredits(final_v))
-                }
-                ExecutionQueryRequestItem::CycleInfos {
-                    cycle,
-                    restrict_to_addresses,
-                } => {
-                    let cycle_infos =
-                        execution_lock.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
-                    match cycle_infos {
-                        Some(cycle_infos) => {
-                            Ok(ExecutionQueryResponseItem::CycleInfos(cycle_infos))
-                        }
-                        None => Err(ExecutionQueryError::NotFound(format!("Cycle {}", cycle))),
-                    }
-                }
-                ExecutionQueryRequestItem::Events(filter) => {
-                    Ok(ExecutionQueryResponseItem::Events(
-                        execution_lock.get_filtered_sc_output_event(filter),
-                    ))
-                }
+    fn query_state(
+        &self,
+        req: ExecutionQueryRequest,
+    ) -> Result<ExecutionQueryResponse, ExecutionQueryError> {
+        if let Some(execution_lock) = self.execution_state.try_read() {
+            let mut resp: ExecutionQueryResponse = ExecutionQueryResponse {
+                responses: Vec::with_capacity(req.requests.len()),
+                candidate_cursor: execution_lock.active_cursor,
+                final_cursor: execution_lock.final_cursor,
+                final_state_fingerprint: execution_lock.get_final_state_fingerprint(),
             };
-            resp.responses.push(resp_item);
+            for req_item in req.requests {
+                let resp_item = match req_item {
+                    ExecutionQueryRequestItem::AddressExistsCandidate(addr) => {
+                        Ok(ExecutionQueryResponseItem::Boolean(
+                            execution_lock
+                                .get_final_and_candidate_balance(&addr)
+                                .1
+                                .is_some(),
+                        ))
+                    }
+                    ExecutionQueryRequestItem::AddressExistsFinal(addr) => {
+                        Ok(ExecutionQueryResponseItem::Boolean(
+                            execution_lock
+                                .get_final_and_candidate_balance(&addr)
+                                .0
+                                .is_some(),
+                        ))
+                    }
+                    ExecutionQueryRequestItem::AddressBalanceCandidate(addr) => {
+                        let (_final_v, speculative_v) =
+                            execution_lock.get_final_and_candidate_balance(&addr);
+                        match speculative_v {
+                            Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
+                            None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressBalanceFinal(addr) => {
+                        let (final_v, _speculative_v) =
+                            execution_lock.get_final_and_candidate_balance(&addr);
+                        match final_v {
+                            Some(balance) => Ok(ExecutionQueryResponseItem::Amount(balance)),
+                            None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressBytecodeCandidate(addr) => {
+                        let (_final_v, speculative_v) =
+                            execution_lock.get_final_and_active_bytecode(&addr);
+                        match speculative_v {
+                            Some(bytecode) => Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
+                            None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressBytecodeFinal(addr) => {
+                        let (final_v, _speculative_v) =
+                            execution_lock.get_final_and_active_bytecode(&addr);
+                        match final_v {
+                            Some(bytecode) => Ok(ExecutionQueryResponseItem::Bytecode(bytecode)),
+                            None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } => {
+                        let (_final_v, speculative_v) =
+                            execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
+                        match speculative_v {
+                            Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
+                            None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } => {
+                        let (final_v, _speculative_v) =
+                            execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
+                        match final_v {
+                            Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
+                            None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } => {
+                        let (_final_v, speculative_v) =
+                            execution_lock.get_final_and_active_data_entry(&addr, &key);
+                        match speculative_v {
+                            Some(value) => Ok(ExecutionQueryResponseItem::DatastoreValue(value)),
+                            None => Err(ExecutionQueryError::NotFound(format!(
+                                "Account {} datastore entry {:?}",
+                                addr, key
+                            ))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressDatastoreValueFinal { addr, key } => {
+                        let (final_v, _speculative_v) =
+                            execution_lock.get_final_and_active_data_entry(&addr, &key);
+                        match final_v {
+                            Some(value) => Ok(ExecutionQueryResponseItem::DatastoreValue(value)),
+                            None => Err(ExecutionQueryError::NotFound(format!(
+                                "Account {} datastore entry {:?}",
+                                addr, key
+                            ))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) => {
+                        let (speculative_v, _final_v) = execution_lock
+                            .get_ops_exec_status(&[id])
+                            .get(0)
+                            .map(|(s_v, f_v)| (*s_v, *f_v))
+                            .expect("expected one return value");
+                        match speculative_v {
+                            Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                            )),
+                            Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+                            )),
+                            None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                            )),
+                        }
+                    }
+                    ExecutionQueryRequestItem::OpExecutionStatusFinal(id) => {
+                        let (_speculative_v, final_v) = execution_lock
+                            .get_ops_exec_status(&[id])
+                            .get(0)
+                            .map(|(s_v, f_v)| (*s_v, *f_v))
+                            .expect("expected one return value");
+                        match final_v {
+                            Some(true) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                            )),
+                            Some(false) => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::AlreadyExecutedWithFailure,
+                            )),
+                            None => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                            )),
+                        }
+                    }
+                    ExecutionQueryRequestItem::DenunciationExecutionStatusCandidate(id) => {
+                        let (speculative_v, _final_v) =
+                            execution_lock.get_denunciation_execution_status(&id);
+                        match speculative_v {
+                            true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                            )),
+                            false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                            )),
+                        }
+                    }
+                    ExecutionQueryRequestItem::DenunciationExecutionStatusFinal(id) => {
+                        let (_speculative_v, final_v) =
+                            execution_lock.get_denunciation_execution_status(&id);
+                        match final_v {
+                            true => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::AlreadyExecutedWithSuccess,
+                            )),
+                            false => Ok(ExecutionQueryResponseItem::ExecutionStatus(
+                                ExecutionQueryExecutionStatus::ExecutableOrExpired,
+                            )),
+                        }
+                    }
+                    ExecutionQueryRequestItem::AddressRollsCandidate(addr) => {
+                        let (_final_rolls, candidate_rolls) =
+                            execution_lock.get_final_and_candidate_rolls(&addr);
+                        Ok(ExecutionQueryResponseItem::RollCount(candidate_rolls))
+                    }
+                    ExecutionQueryRequestItem::AddressRollsFinal(addr) => {
+                        let (final_rolls, _candidate_rolls) =
+                            execution_lock.get_final_and_candidate_rolls(&addr);
+                        Ok(ExecutionQueryResponseItem::RollCount(final_rolls))
+                    }
+                    ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr) => {
+                        let (candidate_v, _final_v) =
+                            execution_lock.get_address_deferred_credits(&addr);
+                        Ok(ExecutionQueryResponseItem::DeferredCredits(candidate_v))
+                    }
+                    ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr) => {
+                        let (_candidate_v, final_v) =
+                            execution_lock.get_address_deferred_credits(&addr);
+                        Ok(ExecutionQueryResponseItem::DeferredCredits(final_v))
+                    }
+                    ExecutionQueryRequestItem::CycleInfos {
+                        cycle,
+                        restrict_to_addresses,
+                    } => {
+                        let cycle_infos =
+                            execution_lock.get_cycle_infos(cycle, restrict_to_addresses.as_ref());
+                        match cycle_infos {
+                            Some(cycle_infos) => {
+                                Ok(ExecutionQueryResponseItem::CycleInfos(cycle_infos))
+                            }
+                            None => Err(ExecutionQueryError::NotFound(format!("Cycle {}", cycle))),
+                        }
+                    }
+                    ExecutionQueryRequestItem::Events(filter) => {
+                        Ok(ExecutionQueryResponseItem::Events(
+                            execution_lock.get_filtered_sc_output_event(filter),
+                        ))
+                    }
+                };
+                resp.responses.push(resp_item);
+            }
+            Ok(resp)
+        } else {
+            Err(ExecutionQueryError::TooManyRequests(
+                "error, execution state is locked".into(),
+            ))
         }
-        resp
     }
 
     /// Get the generated execution events, optionally filtered by:

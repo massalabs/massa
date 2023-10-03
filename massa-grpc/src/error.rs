@@ -6,6 +6,7 @@ use displaydoc::Display;
 
 use massa_consensus_exports::error::ConsensusError;
 use massa_execution_exports::ExecutionError;
+use massa_execution_exports::ExecutionQueryError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
 use massa_protocol_exports::ProtocolError;
@@ -45,6 +46,8 @@ pub enum GrpcError {
     InvalidArgument(String),
     /// Not implemented error: {0}
     Unimplemented(String),
+    /// Execution query error: {0}
+    ExecutionQueryError(#[from] ExecutionQueryError),
 }
 
 impl From<GrpcError> for tonic::Status {
@@ -64,6 +67,7 @@ impl From<GrpcError> for tonic::Status {
             GrpcError::ReflectionError(e) => tonic::Status::internal(e.to_string()),
             GrpcError::InvalidArgument(e) => tonic::Status::invalid_argument(e),
             GrpcError::Unimplemented(e) => tonic::Status::unimplemented(e),
+            GrpcError::ExecutionQueryError(e) => tonic::Status::internal(e.to_string()),
         }
     }
 }
