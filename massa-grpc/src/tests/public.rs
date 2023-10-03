@@ -1521,18 +1521,12 @@ async fn search_operations() {
     let op_id = op.id.clone();
     public_server.storage.store_operations(vec![op, op2]);
 
-    std::thread::sleep(Duration::from_millis(1000));
+    tokio::time::sleep(Duration::from_millis(100)).await;
 
     // start the server
     let stop_handle = public_server.serve(&config).await.unwrap();
 
     let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
-
-    let result = public_client
-        .search_operations(SearchOperationsRequest { filters: vec![] })
-        .await;
-
-    assert!(result.is_err());
 
     let mut filter = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
         filter: Some(
@@ -1621,6 +1615,12 @@ async fn search_operations() {
         .into_inner();
 
     assert_eq!(result.operation_infos.len(), 1);
+
+    let result = public_client
+        .search_operations(SearchOperationsRequest { filters: vec![] })
+        .await;
+
+    assert!(result.is_err());
 
     stop_handle.stop();
 }
