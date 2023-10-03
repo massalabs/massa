@@ -1,21 +1,26 @@
 use std::{ops::Add, time::Duration};
 
 use crate::tests::mock::{grpc_public_service, MockExecutionCtrl};
-use massa_models::{address::Address, stats::ExecutionStats};
+use massa_models::{address::Address, slot::Slot, stats::ExecutionStats};
 use massa_proto_rs::massa::{
     api::v1::{
-        public_service_client::PublicServiceClient, NewOperationsRequest,
+        public_service_client::PublicServiceClient, NewBlocksRequest, NewOperationsRequest,
         TransactionsThroughputRequest,
     },
-    model::v1::{operation_type, Transaction},
+    model::v1::{Slot as ProtoSlot, SlotRange},
 };
-use massa_protocol_exports::test_exports::tools::create_operation_with_expire_period;
+use massa_protocol_exports::test_exports::tools::{
+    create_block_with_operations, create_operation_with_expire_period,
+};
+use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use serial_test::serial;
 use tokio_stream::StreamExt;
 
 const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
 #[tokio::test]
+#[serial]
 async fn transactions_throughput_stream() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -129,6 +134,7 @@ async fn transactions_throughput_stream() {
 }
 
 #[tokio::test]
+#[serial]
 async fn new_operations() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -341,6 +347,134 @@ async fn new_operations() {
         received.signed_operation.unwrap().content_creator_pub_key,
         keypair.get_public_key().to_string()
     );
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+#[serial]
+async fn new_blocks() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+    let (block_tx, _block_rx) = tokio::sync::broadcast::channel(10);
+
+    public_server.consensus_channels.block_sender = block_tx.clone();
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let keypair = KeyPair::generate(0).unwrap();
+    let op = create_operation_with_expire_period(&keypair, 4);
+    // let address = Address::from_public_key(&keypair.get_public_key());
+
+    let block_op = create_block_with_operations(
+        &keypair,
+        Slot {
+            period: 1,
+            thread: 4,
+        },
+        vec![op.clone()],
+    );
+
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let (tx_request, rx) = tokio::sync::mpsc::channel(10);
+    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    let mut resp_stream = public_client
+        .new_blocks(request_stream)
+        .await
+        .unwrap()
+        .into_inner();
+
+    let mut filter_slot = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::SlotRange(SlotRange {
+                start_slot: Some(ProtoSlot {
+                    period: 1,
+                    thread: 1,
+                }),
+                end_slot: None,
+            }),
+        ),
+    };
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_slot.clone()],
+        })
+        .await
+        .unwrap();
+
+    // send block
+    block_tx.send(block_op.clone()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    assert!(result.signed_block.is_some());
+
+    filter_slot = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::SlotRange(SlotRange {
+                start_slot: Some(ProtoSlot {
+                    period: 1,
+                    thread: 15,
+                }),
+                end_slot: None,
+            }),
+        ),
+    };
+
+    // update filter
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_slot],
+        })
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // send block
+    block_tx.send(block_op.clone()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // elapsed
+    assert!(result.is_err());
+
+    filter_slot = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::SlotRange(SlotRange {
+                start_slot: None,
+                end_slot: Some(ProtoSlot {
+                    period: 1,
+                    thread: 15,
+                }),
+            }),
+        ),
+    };
+
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_slot],
+        })
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // send block
+    block_tx.send(block_op.clone()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    assert!(result.signed_block.is_some());
 
     stop_handle.stop();
 }

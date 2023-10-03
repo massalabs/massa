@@ -52,3 +52,4 @@ massa_channel = { workspace = true }
 mockall = { workspace = true }
 massa_final_state = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }
+serial_test = { workspace = true }

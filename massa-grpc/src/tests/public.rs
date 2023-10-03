@@ -57,6 +57,7 @@ use massa_versioning::{
 };
 // use massa_wallet::test_exports::create_test_wallet;
 use num::rational::Ratio;
+use serial_test::serial;
 use std::collections::{BTreeMap, VecDeque};
 use std::str::FromStr;
 use std::time::Duration;
@@ -65,6 +66,7 @@ use std::{net::SocketAddr, path::PathBuf};
 const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
 // #[tokio::test]
+#[serial]
 // async fn default() {
 //     let mut public_server = grpc_public_service();
 //     let config = public_server.grpc_config.clone();
@@ -74,8 +76,8 @@ const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
 //     stop_handle.stop();
 // }
-
 #[tokio::test]
+#[serial]
 async fn test_start_grpc_server() {
     let consensus_controller = MockConsensusControllerImpl::new();
     let execution_ctrl = MockExecutionController::new_with_receiver();
@@ -214,6 +216,7 @@ async fn test_start_grpc_server() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_status() {
     let mut public_server = grpc_public_service();
 
@@ -244,6 +247,7 @@ async fn get_status() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_transactions_throughput() {
     let mut public_server = grpc_public_service();
 
@@ -277,6 +281,7 @@ async fn get_transactions_throughput() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_operations() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -326,6 +331,7 @@ async fn get_operations() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_blocks() {
     let mut public_server = grpc_public_service();
     let mut consensus_ctrl = MockConsensusControllerImpl::new();
@@ -362,6 +368,7 @@ async fn get_blocks() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_stakers() {
     let mut public_server = grpc_public_service();
 
@@ -441,6 +448,7 @@ async fn get_stakers() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_datastore_entries() {
     let mut public_server = grpc_public_service();
 
@@ -482,6 +490,7 @@ async fn get_datastore_entries() {
 }
 
 #[tokio::test]
+#[serial]
 async fn execute_read_only_call() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -589,6 +598,7 @@ async fn execute_read_only_call() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_endorsements() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -670,6 +680,7 @@ async fn get_endorsements() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_next_block_best_parents() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -710,6 +721,7 @@ async fn get_next_block_best_parents() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_sc_execution_events() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -782,6 +794,7 @@ async fn get_sc_execution_events() {
 }
 
 #[tokio::test]
+#[serial]
 async fn get_selector_draws() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -999,6 +1012,7 @@ async fn get_selector_draws() {
 }
 
 #[tokio::test]
+#[serial]
 async fn query_state() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -1046,6 +1060,7 @@ async fn query_state() {
 }
 
 #[tokio::test]
+#[serial]
 async fn search_blocks() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -1290,6 +1305,7 @@ async fn search_blocks() {
 }
 
 #[tokio::test]
+#[serial]
 async fn search_endorsements() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();
@@ -1491,6 +1507,7 @@ async fn search_endorsements() {
 }
 
 #[tokio::test]
+#[serial]
 async fn search_operations() {
     let mut public_server = grpc_public_service();
     let config = public_server.grpc_config.clone();

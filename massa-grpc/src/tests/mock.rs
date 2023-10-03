@@ -194,7 +194,7 @@ mockall::mock! {
         fn clone_box(&self) -> Box<dyn SelectorController>;
 
         #[cfg(feature = "testing")]
-        fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
+        fn get_entire_selection(&self) -> std::collections::VecDeque<(u64,HashMap<Slot,Selection>)> {
             unimplemented!("mock implementation only")
         }
     }

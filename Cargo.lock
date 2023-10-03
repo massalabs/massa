@@ -2991,6 +2991,7 @@ dependencies = [
  "num",
  "parking_lot",
  "serde",
+ "serial_test",
  "thiserror",
  "tokio",
  "tokio-stream",
