@@ -7,7 +7,7 @@ use massa_proto_rs::massa::{
         public_service_client::PublicServiceClient, NewBlocksRequest, NewOperationsRequest,
         TransactionsThroughputRequest,
     },
-    model::v1::{Slot as ProtoSlot, SlotRange},
+    model::v1::{Addresses, Slot as ProtoSlot, SlotRange},
 };
 use massa_protocol_exports::test_exports::tools::{
     create_block_with_operations, create_operation_with_expire_period,
@@ -363,6 +363,7 @@ async fn new_blocks() {
     let stop_handle = public_server.serve(&config).await.unwrap();
 
     let keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
     let op = create_operation_with_expire_period(&keypair, 4);
     // let address = Address::from_public_key(&keypair.get_public_key());
 
@@ -475,6 +476,140 @@ async fn new_blocks() {
         .unwrap();
 
     assert!(result.signed_block.is_some());
+
+    let mut filter_addr = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::Addresses(Addresses {
+                addresses: vec!["AU12BTfZ7k1z6PsLEUZeHYNirz6WJ3NdrWto9H4TkVpkV9xE2TJg2".to_string()],
+            }),
+        ),
+    };
+
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_addr],
+        })
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // send block
+    block_tx.send(block_op.clone()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // elapsed
+    assert!(result.is_err());
+
+    filter_addr = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::Addresses(Addresses {
+                addresses: vec![address.to_string()],
+            }),
+        ),
+    };
+
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_addr.clone()],
+        })
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // send block
+    block_tx.send(block_op.clone()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    assert!(result.signed_block.is_some());
+
+    let mut filter_ids = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::BlockIds(
+                massa_proto_rs::massa::model::v1::BlockIds {
+                    block_ids: vec![
+                        "B1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC".to_string()
+                    ],
+                },
+            ),
+        ),
+    };
+
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_ids],
+        })
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // send block
+    block_tx.send(block_op.clone()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // elapsed
+    assert!(result.is_err());
+
+    filter_ids = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::BlockIds(
+                massa_proto_rs::massa::model::v1::BlockIds {
+                    block_ids: vec![block_op.id.to_string()],
+                },
+            ),
+        ),
+    };
+
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_ids],
+        })
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // send block
+    block_tx.send(block_op.clone()).unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    assert!(result.signed_block.is_some());
+
+    filter_addr = massa_proto_rs::massa::api::v1::NewBlocksFilter {
+        filter: Some(
+            massa_proto_rs::massa::api::v1::new_blocks_filter::Filter::Addresses(Addresses {
+                addresses: vec!["massa".to_string()],
+            }),
+        ),
+    };
+
+    tx_request
+        .send(NewBlocksRequest {
+            filters: vec![filter_addr],
+        })
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    let result = tokio::time::timeout(Duration::from_secs(3), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(result.unwrap_err().message(), "invalid address: massa");
 
     stop_handle.stop();
 }
