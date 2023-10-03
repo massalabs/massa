@@ -24,6 +24,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt::Display;
 use std::sync::Arc;
 use tracing::info;
+use tracing::log::error;
 
 /// structure used to communicate with execution thread
 pub(crate) struct ExecutionInputData {
@@ -332,6 +333,7 @@ impl ExecutionController for ExecutionControllerImpl {
             }
             Ok(resp)
         } else {
+            error!("execution state is locked");
             Err(ExecutionQueryError::TooManyRequests(
                 "error, execution state is locked".into(),
             ))
