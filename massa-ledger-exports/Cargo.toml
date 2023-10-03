@@ -16,7 +16,9 @@ thiserror = {workspace = true}
 nom = {workspace = true}
 num_enum = {workspace = true}   # BOM UPGRADE     Revert to "0.5.10" if problem
 massa-proto-rs = {workspace = true, "features" = ["tonic"]}
-massa_hash = {workspace = true}
 massa_models = {workspace = true}
 massa_serialization = {workspace = true}
 massa_db_exports = {workspace = true}
+
+[dev-dependencies]
+massa_hash = {workspace = true}
