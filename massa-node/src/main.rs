@@ -1108,6 +1108,7 @@ fn configure_grpc(
         max_endorsement_ids_per_request: settings.max_endorsement_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
         max_filters_per_request: settings.max_filters_per_request,
+        max_query_items_per_request: settings.max_query_items_per_request,
         certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),

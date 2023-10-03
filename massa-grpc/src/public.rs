@@ -484,33 +484,34 @@ pub(crate) fn get_operations(
         })
         .collect::<Result<_, _>>()?;
 
-    let read_blocks = grpc.storage.read_blocks();
-    let read_ops = grpc.storage.read_operations();
-
-    // Get the operations and the list of blocks that contain them from storage
-    let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
-        .into_iter()
-        .filter_map(|ope_id| {
-            read_ops.get(&ope_id).map(|secure_share| {
-                let block_ids = read_blocks
-                    .get_blocks_by_operation(&ope_id)
-                    .map(|hashset| hashset.iter().cloned().collect::<HashSet<BlockId>>())
-                    .unwrap_or_default();
-
-                (secure_share, block_ids)
+    let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
+        let read_blocks = grpc.storage.read_blocks();
+        let read_ops = grpc.storage.read_operations();
+        operation_ids
+            .iter()
+            .filter_map(|id| {
+                read_ops.get(id).cloned().map(|op| {
+                    (
+                        op,
+                        read_blocks
+                            .get_blocks_by_operation(id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
+                })
             })
-        })
-        .collect();
+            .collect()
+    };
 
     let operations: Vec<grpc_model::OperationWrapper> = storage_info
         .into_iter()
         .map(|secure_share| {
-            let (secure_share, block_ids) = secure_share;
+            let (secure_share_operation, block_ids) = secure_share;
             grpc_model::OperationWrapper {
-                thread: secure_share
+                thread: secure_share_operation
                     .content_creator_address
                     .get_thread(grpc.grpc_config.thread_count) as u32,
-                operation: Some((*secure_share).clone().into()),
+                operation: Some(secure_share_operation.into()),
                 block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
             }
         })
@@ -740,6 +741,16 @@ pub(crate) fn query_state(
         .into_iter()
         .map(to_querystate_filter)
         .collect::<Result<Vec<_>, _>>()?;
+
+    if queries.is_empty() {
+        return Err(GrpcError::InvalidArgument(
+            "no query items specified".to_string(),
+        ));
+    }
+
+    if queries.len() as u32 > grpc.grpc_config.max_query_items_per_request {
+        return Err(GrpcError::InvalidArgument(format!("too many query items received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
+    }
 
     let response = grpc
         .execution_controller
@@ -1215,24 +1226,24 @@ pub(crate) fn search_operations(
         let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
             .into_iter()
             .filter_map(|ope_id| {
-                read_ops_lock.get(&ope_id).map(|secure_share| {
+                read_ops_lock.get(&ope_id).map(|secureshare_| {
                     let block_ids = read_blocks_lock
                         .get_blocks_by_operation(&ope_id)
                         .map(|hashset| hashset.iter().cloned().collect::<HashSet<BlockId>>())
                         .unwrap_or_default();
 
-                    (secure_share, block_ids)
+                    (secureshare_, block_ids)
                 })
             })
             .collect();
 
         storage_info
             .into_iter()
-            .map(|secure_share| {
-                let (secure_share, block_ids) = secure_share;
+            .map(|secureshare_| {
+                let (secureshare_, block_ids) = secureshare_;
                 grpc_model::OperationInfo {
-                    id: secure_share.id.to_string(),
-                    thread: secure_share
+                    id: secureshare_.id.to_string(),
+                    thread: secureshare_
                         .content_creator_address
                         .get_thread(grpc.grpc_config.thread_count)
                         as u32,
