@@ -127,18 +127,18 @@
 //!     &quot;slot&quot;: {&quot;period&quot;: 123455, &quot;thread&quot;: 11},  // slot at which the message was emitted
 //!     &quot;emission_index&quot;: 212,  // index of the message emitted in this slot
 //!     &quot;destination&quot;: &quot;xxxx&quot;,  // target address
-//!     &quot;handler&quot;: &quot;handle_message&quot;,  // name of the handler function to call in the target SC
+//!     &quot;function&quot;: &quot;handle_message&quot;,  // name of the function to call in the target SC
 //!     &quot;validity_start&quot;: {&quot;period&quot;: 123456, &quot;thread&quot;: 12},  // the message can be handled starting from the validity_start slot (included)
 //!     &quot;validity_end&quot;: {&quot;period&quot;: 123457, &quot;thread&quot;: 16},  // the message can be handled until the validity_end slot (excluded)
 //!     &quot;max_gas&quot;: 12334,  // max gas available when the handler is called
 //!     &quot;coins&quot;: &quot;1111.11&quot;,  // amount of coins to transfer to the destination address when calling its handler
-//!     &quot;data&quot;: { ... any object ... }  // data payload of the message, passed as the sole parameter of the destination handler when called
+//!     &quot;function_params&quot;: { ... any object ... }  // parameters to call the function
 //! }
 //! ```
 //!
 //! ## How to send a message during bytecode execution
 //!
-//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, fee, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;`. Note that data has a configuration defined `max_async_message_data_size`.
+//! * messages are sent using an ABI: `send_message(target_address, function, validity_start, validity_end, max_gas, fee, coins, function_params) -&gt; Result&lt;(), ABIReturnError&gt;`.
 //! * when called, this ABI does this:
 //!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer
 //!   * it consumes `fee + coins` coins from the sender
@@ -169,7 +169,7 @@
 //!
 //! ## How to receive a message (inside the smart contract)
 //!
-//! * define a public exported handler function taking 1 parameter (the message data)
+//! * define a public exported handler function taking 1 parameter
 //! * this function will be called when a message is processed with the right `destination` and `handler`
 //! ```
 //!

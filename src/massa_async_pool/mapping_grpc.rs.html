@@ -192,13 +192,13 @@
             emission_index: value.emission_index,
             sender: value.sender.to_string(),
             destination: value.destination.to_string(),
-            handler: value.handler.to_string(),
+            handler: value.function.to_string(),
             max_gas: value.max_gas,
             fee: <span class="prelude-val">Some</span>(value.fee.into()),
             coins: <span class="prelude-val">Some</span>(value.coins.into()),
             validity_start: <span class="prelude-val">Some</span>(value.validity_start.into()),
             validity_end: <span class="prelude-val">Some</span>(value.validity_start.into()),
-            data: value.data,
+            data: value.function_params,
             trigger: value.trigger.map(|trigger| trigger.into()),
             can_be_executed: value.can_be_executed,
         }
@@ -253,7 +253,7 @@
                     )),
                 }),
             },
-            handler: <span class="kw">match </span>value.handler {
+            handler: <span class="kw">match </span>value.function {
                 SetOrKeep::Set(value) =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepString {
                     change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_string::Change::Set(value)),
                 }),
@@ -315,7 +315,7 @@
                     )),
                 }),
             },
-            data: <span class="kw">match </span>value.data {
+            data: <span class="kw">match </span>value.function_params {
                 SetOrKeep::Set(value) =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepBytes {
                     change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_bytes::Change::Set(value)),
                 }),
