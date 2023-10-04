@@ -578,38 +578,49 @@ impl MassaRpcServer for API<Public> {
     }
 
     /// get endorsements
-    async fn get_endorsements(&self, eds: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>> {
-        // get the endorsements and the list of blocks that contain them from storage
+    async fn get_endorsements(
+        &self,
+        mut endorsement_ids: Vec<EndorsementId>,
+    ) -> RpcResult<Vec<EndorsementInfo>> {
+        if endorsement_ids.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
+        let mut secure_share_endorsements: Vec<SecureShareEndorsement> =
+            Vec::with_capacity(endorsement_ids.len());
+        {
+            let endorsement_storage_lock = self.0.storage.read_endorsements();
+            endorsement_ids.retain(|id| {
+                if let Some(wrapped_endorsement) = endorsement_storage_lock.get(id) {
+                    secure_share_endorsements.push(wrapped_endorsement.clone());
+                    return true;
+                };
+                false
+            });
+        }
+
         let storage_info: Vec<(SecureShareEndorsement, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
-            let read_endos = self.0.storage.read_endorsements();
-            eds.iter()
-                .filter_map(|id| {
-                    read_endos.get(id).cloned().map(|ed| {
-                        (
-                            ed,
-                            read_blocks
-                                .get_blocks_by_endorsement(id)
-                                .cloned()
-                                .unwrap_or_default(),
-                        )
-                    })
+            secure_share_endorsements
+                .into_iter()
+                .map(|secure_share_operation| {
+                    let ed_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_endorsement(&ed_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
                 .collect()
         };
 
-        // keep only the ops found in storage
-        let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
-
         // ask pool whether it carries the operations
-        let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
-
-        let consensus_controller = self.0.consensus_controller.clone();
-        let api_cfg = self.0.api_settings.clone();
-
-        if eds.len() as u64 > api_cfg.max_arguments {
-            return Err(ApiError::BadRequest("too many arguments".into()).into());
-        }
+        let in_pool = self
+            .0
+            .pool_command_sender
+            .contains_endorsements(&endorsement_ids);
 
         // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
         let is_final: Vec<bool> = {
@@ -620,7 +631,10 @@ impl MassaRpcServer for API<Public> {
                 .cloned()
                 .collect();
 
-            let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+            let involved_block_statuses = self
+                .0
+                .consensus_controller
+                .get_block_statuses(&involved_blocks);
 
             let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                 .into_iter()
@@ -636,9 +650,9 @@ impl MassaRpcServer for API<Public> {
         };
 
         // gather all values into a vector of EndorsementInfo instances
-        let mut res: Vec<EndorsementInfo> = Vec::with_capacity(eds.len());
+        let mut res: Vec<EndorsementInfo> = Vec::with_capacity(endorsement_ids.len());
         let zipped_iterator = izip!(
-            eds.into_iter(),
+            endorsement_ids.into_iter(),
             storage_info.into_iter(),
             in_pool.into_iter(),
             is_final.into_iter()
