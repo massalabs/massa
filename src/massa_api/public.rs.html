@@ -1112,6 +1112,20 @@
 <a href="#1112" id="1112">1112</a>
 <a href="#1113" id="1113">1113</a>
 <a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1692,38 +1706,49 @@
     }
 
     <span class="doccomment">/// get endorsements
-    </span><span class="kw">async fn </span>get_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, eds: Vec&lt;EndorsementId&gt;) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
-        <span class="comment">// get the endorsements and the list of blocks that contain them from storage
-        </span><span class="kw">let </span>storage_info: Vec&lt;(SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = {
+    </span><span class="kw">async fn </span>get_endorsements(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut </span>endorsement_ids: Vec&lt;EndorsementId&gt;,
+    ) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
+        <span class="kw">if </span>endorsement_ids.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>secure_share_endorsements: Vec&lt;SecureShareEndorsement&gt; =
+            Vec::with_capacity(endorsement_ids.len());
+        {
+            <span class="kw">let </span>endorsement_storage_lock = <span class="self">self</span>.<span class="number">0</span>.storage.read_endorsements();
+            endorsement_ids.retain(|id| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_endorsement) = endorsement_storage_lock.get(id) {
+                    secure_share_endorsements.push(wrapped_endorsement.clone());
+                    <span class="kw">return </span><span class="bool-val">true</span>;
+                };
+                <span class="bool-val">false
+            </span>});
+        }
+
+        <span class="kw">let </span>storage_info: Vec&lt;(SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = {
             <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
-            <span class="kw">let </span>read_endos = <span class="self">self</span>.<span class="number">0</span>.storage.read_endorsements();
-            eds.iter()
-                .filter_map(|id| {
-                    read_endos.get(id).cloned().map(|ed| {
-                        (
-                            ed,
-                            read_blocks
-                                .get_blocks_by_endorsement(id)
-                                .cloned()
-                                .unwrap_or_default(),
-                        )
-                    })
+            secure_share_endorsements
+                .into_iter()
+                .map(|secure_share_operation| {
+                    <span class="kw">let </span>ed_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_endorsement(<span class="kw-2">&amp;</span>ed_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
                 .collect()
         };
 
-        <span class="comment">// keep only the ops found in storage
-        </span><span class="kw">let </span>eds: Vec&lt;EndorsementId&gt; = storage_info.iter().map(|(ed, <span class="kw">_</span>)| ed.id).collect();
-
         <span class="comment">// ask pool whether it carries the operations
-        </span><span class="kw">let </span>in_pool = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.contains_endorsements(<span class="kw-2">&amp;</span>eds);
-
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
-        <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-
-        <span class="kw">if </span>eds.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
-        }
+        </span><span class="kw">let </span>in_pool = <span class="self">self
+            </span>.<span class="number">0
+            </span>.pool_command_sender
+            .contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids);
 
         <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
         </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
@@ -1734,7 +1759,10 @@
                 .cloned()
                 .collect();
 
-            <span class="kw">let </span>involved_block_statuses = consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
+            <span class="kw">let </span>involved_block_statuses = <span class="self">self
+                </span>.<span class="number">0
+                </span>.consensus_controller
+                .get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
 
             <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
                 .into_iter()
@@ -1750,9 +1778,9 @@
         };
 
         <span class="comment">// gather all values into a vector of EndorsementInfo instances
-        </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;EndorsementInfo&gt; = Vec::with_capacity(eds.len());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;EndorsementInfo&gt; = Vec::with_capacity(endorsement_ids.len());
         <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
-            eds.into_iter(),
+            endorsement_ids.into_iter(),
             storage_info.into_iter(),
             in_pool.into_iter(),
             is_final.into_iter()
