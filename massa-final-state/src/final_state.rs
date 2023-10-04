@@ -5,6 +5,8 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
+use std::str::FromStr;
+
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use massa_async_pool::AsyncPool;
@@ -16,10 +18,13 @@ use massa_db_exports::{
 };
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
+use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
 use massa_ledger_exports::SetOrKeep;
+use massa_models::address::Address;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_proto_rs::massa::model::v1::KeyPair;
 use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
 
@@ -662,6 +667,10 @@ impl FinalState {
 
         // compute the final state hash
         info!("final_state hash at slot {}: {}", slot, final_state_hash);
+        // let addr = Address::from_str("AU12hnuosRCREmeu6nQGvsG2EhHiEW9tzzwkpDabWwZHug1uFn2YS").unwrap();
+        let val = self.db.read().get_cf(STATE_CF, "TIM PROBLEMATIC KEY".as_bytes().to_vec()).unwrap().unwrap();
+        let hval = Hash::compute_from(&val);
+        info!("TIM    Value hash: {} (length {})", hval, val.len());
 
         // Backup DB if needed
         #[cfg(feature = "bootstrap_server")]
