@@ -667,13 +667,13 @@ impl FinalState {
 
         // compute the final state hash
         info!("final_state hash at slot {}: {}", slot, final_state_hash);
-        let addr = Address::from_str("AU12hnuosRCREmeu6nQGvsG2EhHiEW9tzzwkpDabWwZHug1uFn2YS").unwrap();
-        let val = self.ledger.get_data_entry(&addr, "TIM PROBLEMATIC KEY".as_bytes()).unwrap();
-        let bcd = self.ledger.get_bytecode(&addr).unwrap();
-        let hval = Hash::compute_from(&val);
-        let hbcd = Hash::compute_from(&bcd.0);
-        info!("TIM    Value hash: {} (length {})", hval, val.len());
-        info!("TIM    Bytecode hash: {} (length {})", hbcd, bcd.0.len());
+        // let addr = Address::from_str("AU12hnuosRCREmeu6nQGvsG2EhHiEW9tzzwkpDabWwZHug1uFn2YS").unwrap();
+        // let val = self.ledger.get_data_entry(&addr, "TIM PROBLEMATIC KEY".as_bytes()).unwrap();
+        // let bcd = self.ledger.get_bytecode(&addr).unwrap();
+        // let hval = Hash::compute_from(&val);
+        // let hbcd = Hash::compute_from(&bcd.0);
+        // info!("TIM    Value hash: {} (length {})", hval, val.len());
+        // info!("TIM    Bytecode hash: {} (length {})", hbcd, bcd.0.len());
 
         // Backup DB if needed
         #[cfg(feature = "bootstrap_server")]
