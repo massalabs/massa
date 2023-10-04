@@ -1101,6 +1101,16 @@
 <a href="#1101" id="1101">1101</a>
 <a href="#1102" id="1102">1102</a>
 <a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1588,22 +1598,32 @@
         <span class="prelude-val">Ok</span>(paged_vec)
     }
 
-    <span class="kw">async fn </span>get_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, ops: Vec&lt;OperationId&gt;) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
+    <span class="kw">async fn </span>get_operations(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        operations_ids: Vec&lt;OperationId&gt;,
+    ) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
         <span class="comment">// get the operations and the list of blocks that contain them from storage
-        </span><span class="kw">let </span>storage_info: Vec&lt;(SecureShareOperation, PreHashSet&lt;BlockId&gt;)&gt; = {
-            <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
+        </span><span class="kw">let </span>secure_share_operations: Vec&lt;SecureShareOperation&gt; = {
             <span class="kw">let </span>read_ops = <span class="self">self</span>.<span class="number">0</span>.storage.read_operations();
-            ops.iter()
-                .filter_map(|id| {
-                    read_ops.get(id).cloned().map(|op| {
-                        (
-                            op,
-                            read_blocks
-                                .get_blocks_by_operation(id)
-                                .cloned()
-                                .unwrap_or_default(),
-                        )
-                    })
+            operations_ids
+                .iter()
+                .filter_map(|id| read_ops.get(id).cloned())
+                .collect()
+        };
+
+        <span class="kw">let </span>storage_info: Vec&lt;(SecureShareOperation, PreHashSet&lt;BlockId&gt;)&gt; = {
+            <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
+            secure_share_operations
+                .into_iter()
+                .map(|secure_share_operation| {
+                    <span class="kw">let </span>op_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_operation(<span class="kw-2">&amp;</span>op_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
                 .collect()
         };

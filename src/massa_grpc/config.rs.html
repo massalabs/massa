@@ -148,6 +148,8 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::KeyPair;
@@ -267,6 +269,8 @@
     </span><span class="kw">pub </span>max_operation_ids_per_request: u32,
     <span class="doccomment">/// max number of filters that can be included in a single request
     </span><span class="kw">pub </span>max_filters_per_request: u32,
+    <span class="doccomment">/// max number of query items that can be included in a single request
+    </span><span class="kw">pub </span>max_query_items_per_request: u32,
     <span class="doccomment">/// certificate authority root path
     </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path

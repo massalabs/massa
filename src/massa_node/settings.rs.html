@@ -379,6 +379,8 @@
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -726,6 +728,8 @@
     </span><span class="kw">pub </span>max_datastore_entries_per_request: u64,
     <span class="doccomment">/// max number of filters that can be included in a single request
     </span><span class="kw">pub </span>max_filters_per_request: u32,
+    <span class="doccomment">/// max number of query items that can be included in a single request
+    </span><span class="kw">pub </span>max_query_items_per_request: u32,
     <span class="doccomment">/// certificate authority root path
     </span><span class="kw">pub </span>certificate_authority_root_path: PathBuf,
     <span class="doccomment">/// server certificate path
