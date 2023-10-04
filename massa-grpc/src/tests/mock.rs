@@ -265,7 +265,7 @@ pub(crate) fn grpc_public_service() -> MassaPublicGrpc {
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
-        max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+        max_operations_per_message: 2,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,

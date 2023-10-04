@@ -1,19 +1,27 @@
 use std::{ops::Add, time::Duration};
 
-use crate::tests::mock::{grpc_public_service, MockExecutionCtrl};
+use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl};
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
-use massa_models::{address::Address, block::FilledBlock, slot::Slot, stats::ExecutionStats};
+use massa_models::{
+    address::Address, block::FilledBlock, operation::OperationSerializer,
+    secure_share::SecureShareSerializer, slot::Slot, stats::ExecutionStats,
+};
 use massa_proto_rs::massa::{
     api::v1::{
         public_service_client::PublicServiceClient, NewBlocksRequest, NewFilledBlocksRequest,
-        NewOperationsRequest, NewSlotExecutionOutputsRequest, TransactionsThroughputRequest,
+        NewOperationsRequest, NewSlotExecutionOutputsRequest, SendOperationsRequest,
+        TransactionsThroughputRequest,
     },
     model::v1::{Addresses, Slot as ProtoSlot, SlotRange},
 };
-use massa_protocol_exports::test_exports::tools::{
-    create_block, create_block_with_operations, create_endorsement,
-    create_operation_with_expire_period,
+use massa_protocol_exports::{
+    test_exports::tools::{
+        create_block, create_block_with_operations, create_endorsement,
+        create_operation_with_expire_period,
+    },
+    MockProtocolController,
 };
+use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -1169,6 +1177,153 @@ async fn new_slot_execution_outputs() {
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
     dbg!(&result);
     assert!(result.is_err()); */
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+#[serial]
+async fn send_operations() {
+    let mut public_server = grpc_public_service();
+
+    let mut pool_ctrl = MockPoolCtrl::new();
+    pool_ctrl.expect_clone_box().returning(|| {
+        let mut ctrl = MockPoolCtrl::new();
+
+        ctrl.expect_add_operations().returning(|_| ());
+
+        Box::new(ctrl)
+    });
+
+    let mut protocol_ctrl = MockProtocolController::new();
+    protocol_ctrl.expect_clone_box().returning(|| {
+        let mut ctrl = MockProtocolController::new();
+
+        ctrl.expect_propagate_operations().returning(|_| Ok(()));
+
+        Box::new(ctrl)
+    });
+
+    public_server.pool_controller = Box::new(pool_ctrl);
+    public_server.protocol_controller = Box::new(protocol_ctrl);
+
+    let config = public_server.grpc_config.clone();
+
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let mut resp_stream = public_client
+        .send_operations(request_stream)
+        .await
+        .unwrap()
+        .into_inner();
+
+    let keypair = KeyPair::generate(0).unwrap();
+    let op = create_operation_with_expire_period(&keypair, 4);
+
+    tx.send(SendOperationsRequest {
+        operations: vec![op.clone().serialized_data],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    match result.result.unwrap() {
+        massa_proto_rs::massa::api::v1::send_operations_response::Result::OperationIds(_) => {
+            panic!("should be error");
+        }
+        massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(err) => {
+            assert!(err.message.contains("invalid operation"));
+        }
+    }
+
+    let mut buffer: Vec<u8> = Vec::new();
+    SecureShareSerializer::new()
+        .serialize(&op, &mut buffer)
+        .unwrap();
+
+    tx.send(SendOperationsRequest {
+        operations: vec![buffer],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    match result.result.unwrap() {
+        massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(err) => {
+            assert!(err
+                .message
+                .contains("Operation expire_period is lower than the current period of this node"));
+        }
+        _ => {
+            panic!("should be error");
+        }
+    }
+
+    let op2 = create_operation_with_expire_period(&keypair, 150000);
+    let mut buffer: Vec<u8> = Vec::new();
+    SecureShareSerializer::new()
+        .serialize(&op2, &mut buffer)
+        .unwrap();
+
+    tx.send(SendOperationsRequest {
+        operations: vec![buffer.clone()],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap()
+        .result
+        .unwrap();
+
+    match result {
+        massa_proto_rs::massa::api::v1::send_operations_response::Result::OperationIds(ope_id) => {
+            assert_eq!(ope_id.operation_ids.len(), 1);
+            assert_eq!(ope_id.operation_ids[0], op2.id.to_string());
+        }
+        massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(_) => {
+            panic!("should be ok")
+        }
+    }
+
+    tx.send(SendOperationsRequest {
+        operations: vec![buffer.clone(), buffer.clone(), buffer.clone()],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    match result.result.unwrap() {
+        massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(err) => {
+            assert_eq!(err.message, "too many operations per message");
+        }
+        _ => {
+            panic!("should be error");
+        }
+    }
 
     stop_handle.stop();
 }
