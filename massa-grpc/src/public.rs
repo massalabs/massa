@@ -136,22 +136,22 @@ pub(crate) fn get_blocks(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetBlocksRequest>,
 ) -> Result<grpc_api::GetBlocksResponse, GrpcError> {
-    let block_ids = request.into_inner().block_ids;
+    let ids = request.into_inner().block_ids;
 
-    if block_ids.is_empty() {
+    if ids.is_empty() {
         return Err(GrpcError::InvalidArgument(
             "no block id provided".to_string(),
         ));
     }
 
-    if block_ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
+    if ids.len() as u32 > grpc.grpc_config.max_operation_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many block ids received. Only a maximum of {} block ids are accepted per request",
             grpc.grpc_config.max_block_ids_per_request
         )));
     }
 
-    let block_ids: Vec<BlockId> = block_ids
+    let mut block_ids: Vec<BlockId> = ids
         .into_iter()
         .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|id| {
@@ -160,34 +160,25 @@ pub(crate) fn get_blocks(
         })
         .collect::<Result<_, _>>()?;
 
-    let blocks = {
-        let read_blocks = grpc.storage.read_blocks();
-        block_ids
-            .into_iter()
-            .filter_map(|id| {
-                let content = if let Some(wrapped_block) = read_blocks.get(&id) {
-                    wrapped_block.content.clone()
-                } else {
-                    return None;
-                };
+    let mut blocks: Vec<Block> = Vec::with_capacity(block_ids.len());
+    {
+        let block_storage_lock = grpc.storage.read_blocks();
+        block_ids.retain(|id| {
+            if let Some(wrapped_block) = block_storage_lock.get(id) {
+                blocks.push(wrapped_block.content.clone());
+                return true;
+            };
+            false
+        });
+    }
 
-                Some(content)
-            })
-            .collect::<Vec<Block>>()
-    };
-
-    let block_ids = blocks
-        .iter()
-        .map(|block| block.header.id)
-        .collect::<Vec<BlockId>>();
-
-    let blocks_status = grpc.consensus_controller.get_block_statuses(&block_ids);
+    let block_statuses = grpc.consensus_controller.get_block_statuses(&block_ids);
 
     let result = blocks
-        .iter()
-        .zip(blocks_status)
+        .into_iter()
+        .zip(block_statuses)
         .map(|(block, block_graph_status)| grpc_model::BlockWrapper {
-            block: Some(block.clone().into()),
+            block: Some(block.into()),
             status: block_graph_status.into(),
         })
         .collect();
