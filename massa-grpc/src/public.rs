@@ -34,12 +34,10 @@ pub(crate) fn execute_read_only_call(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::ExecuteReadOnlyCallRequest>,
 ) -> Result<grpc_api::ExecuteReadOnlyCallResponse, GrpcError> {
-    let inner_req = request.into_inner();
-    let call: grpc_model::ReadOnlyExecutionCall = inner_req
+    let call: grpc_model::ReadOnlyExecutionCall = request
+        .into_inner()
         .call
         .ok_or_else(|| GrpcError::InvalidArgument("no call provided".to_string()))?;
-
-    let mut call_stack = Vec::new();
 
     let caller_address = match call.caller_address {
         Some(addr) => Address::from_str(&addr)?,
@@ -49,6 +47,8 @@ pub(crate) fn execute_read_only_call(
             Address::from_public_key(&keypair.get_public_key())
         }
     };
+
+    let mut call_stack = Vec::new();
 
     let target = if let Some(call_target) = call.target {
         match call_target {
@@ -244,22 +244,22 @@ pub(crate) fn get_endorsements(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetEndorsementsRequest>,
 ) -> Result<grpc_api::GetEndorsementsResponse, GrpcError> {
-    let endorsement_ids = request.into_inner().endorsement_ids;
+    let ids = request.into_inner().endorsement_ids;
 
-    if endorsement_ids.is_empty() {
+    if ids.is_empty() {
         return Err(GrpcError::InvalidArgument(
             "no endorsement id provided".to_string(),
         ));
     }
 
-    if endorsement_ids.len() as u32 > grpc.grpc_config.max_endorsement_ids_per_request {
+    if ids.len() as u32 > grpc.grpc_config.max_endorsement_ids_per_request {
         return Err(GrpcError::InvalidArgument(format!(
             "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
             grpc.grpc_config.max_endorsements_per_message
         )));
     }
 
-    let endorsement_ids: Vec<EndorsementId> = endorsement_ids
+    let mut endorsement_ids: Vec<EndorsementId> = ids
         .into_iter()
         .take(grpc.grpc_config.max_operation_ids_per_request as usize + 1)
         .map(|id| {
@@ -268,32 +268,38 @@ pub(crate) fn get_endorsements(
         })
         .collect::<Result<_, _>>()?;
 
+    let mut secure_share_endorsements: Vec<SecureShareEndorsement> =
+        Vec::with_capacity(endorsement_ids.len());
+    {
+        let endorsement_storage_lock = grpc.storage.read_endorsements();
+        endorsement_ids.retain(|id| {
+            if let Some(wrapped_endorsement) = endorsement_storage_lock.get(id) {
+                secure_share_endorsements.push(wrapped_endorsement.clone());
+                return true;
+            };
+            false
+        });
+    }
+
     let storage_info: Vec<(SecureShareEndorsement, PreHashSet<BlockId>)> = {
         let read_blocks = grpc.storage.read_blocks();
-        let read_endos = grpc.storage.read_endorsements();
-        endorsement_ids
-            .iter()
-            .filter_map(|id| {
-                read_endos.get(id).cloned().map(|ed| {
-                    (
-                        ed,
-                        read_blocks
-                            .get_blocks_by_endorsement(id)
-                            .cloned()
-                            .unwrap_or_default(),
-                    )
-                })
+        secure_share_endorsements
+            .into_iter()
+            .map(|secure_share_operation| {
+                let ed_id = secure_share_operation.id;
+                (
+                    secure_share_operation,
+                    read_blocks
+                        .get_blocks_by_endorsement(&ed_id)
+                        .cloned()
+                        .unwrap_or_default(),
+                )
             })
             .collect()
     };
 
-    // keep only the endorsements found in storage
-    let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
-
     // ask pool whether it carries the endorsements
-    let in_pool = grpc.pool_controller.contains_endorsements(&eds);
-
-    let consensus_controller = grpc.consensus_controller.clone();
+    let in_pool = grpc.pool_controller.contains_endorsements(&endorsement_ids);
 
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     let is_final: Vec<bool> = {
@@ -304,12 +310,15 @@ pub(crate) fn get_endorsements(
             .cloned()
             .collect();
 
-        let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+        let involved_block_statuses = grpc
+            .consensus_controller
+            .get_block_statuses(&involved_blocks);
 
         let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
             .into_iter()
             .zip(involved_block_statuses)
             .collect();
+
         storage_info
             .iter()
             .map(|(_ed, bs)| {
@@ -320,14 +329,15 @@ pub(crate) fn get_endorsements(
     };
 
     // gather all values into a vector of EndorsementInfo instances
-    let mut res: Vec<grpc_model::EndorsementWrapper> = Vec::with_capacity(eds.len());
+    let mut result: Vec<grpc_model::EndorsementWrapper> = Vec::with_capacity(endorsement_ids.len());
     let zipped_iterator = izip!(
         storage_info.into_iter(),
         in_pool.into_iter(),
         is_final.into_iter()
     );
+
     for ((endorsement, in_blocks), in_pool, is_final) in zipped_iterator {
-        res.push(grpc_model::EndorsementWrapper {
+        result.push(grpc_model::EndorsementWrapper {
             in_pool,
             is_final,
             in_blocks: in_blocks
@@ -339,7 +349,7 @@ pub(crate) fn get_endorsements(
     }
 
     Ok(grpc_api::GetEndorsementsResponse {
-        wrapped_endorsements: res,
+        wrapped_endorsements: result,
     })
 }
 
