@@ -1111,6 +1111,7 @@
 <a href="#1111" id="1111">1111</a>
 <a href="#1112" id="1112">1112</a>
 <a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1327,7 +1328,8 @@
         </span><span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">async fn </span>execute_read_only_call(
+    <span class="doccomment">/// execute read-only calls
+    </span><span class="kw">async fn </span>execute_read_only_call(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         reqs: Vec&lt;ReadOnlyCall&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;ExecuteReadOnlyResponse&gt;&gt; {
@@ -1439,7 +1441,8 @@
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
+    <span class="doccomment">/// get status
+    </span><span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
         <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
         <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.<span class="number">0</span>.version;
@@ -1552,12 +1555,14 @@
         })
     }
 
-    <span class="kw">async fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
+    <span class="doccomment">/// get cliques
+    </span><span class="kw">async fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
         <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="prelude-val">Ok</span>(consensus_controller.get_cliques())
     }
 
-    <span class="kw">async fn </span>get_stakers(
+    <span class="doccomment">/// get stakers
+    </span><span class="kw">async fn </span>get_stakers(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         page_request: <span class="prelude-ty">Option</span>&lt;PageRequest&gt;,
     ) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt; {
@@ -1598,7 +1603,8 @@
         <span class="prelude-val">Ok</span>(paged_vec)
     }
 
-    <span class="kw">async fn </span>get_operations(
+    <span class="doccomment">/// get operations
+    </span><span class="kw">async fn </span>get_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operations_ids: Vec&lt;OperationId&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt; {
@@ -1685,7 +1691,8 @@
         </span><span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">async fn </span>get_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, eds: Vec&lt;EndorsementId&gt;) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
+    <span class="doccomment">/// get endorsements
+    </span><span class="kw">async fn </span>get_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, eds: Vec&lt;EndorsementId&gt;) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
         <span class="comment">// get the endorsements and the list of blocks that contain them from storage
         </span><span class="kw">let </span>storage_info: Vec&lt;(SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = {
             <span class="kw">let </span>read_blocks = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
@@ -1764,47 +1771,38 @@
         </span><span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="doccomment">/// gets a block(s). Returns nothing if not found
-    /// only active blocks are returned
-    </span><span class="kw">async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt; {
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
-        <span class="kw">let </span>blocks = ids
-            .into_iter()
-            .filter_map(|id| {
-                <span class="kw">let </span>content = <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks().get(<span class="kw-2">&amp;</span>id) {
-                    wrapped_block.content.clone()
-                } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">None</span>;
+    <span class="doccomment">/// get blocks
+    /// Returns only active blocks are returned
+    </span><span class="kw">async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>ids: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>blocks: Vec&lt;Block&gt; = Vec::with_capacity(ids.len());
+        {
+            <span class="kw">let </span>block_storage_lock = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
+            ids.retain(|id| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = block_storage_lock.get(id) {
+                    blocks.push(wrapped_block.content.clone());
+                    <span class="kw">return </span><span class="bool-val">true</span>;
                 };
-
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(graph_status) = consensus_controller
-                    .get_block_statuses(<span class="kw-2">&amp;</span>[id])
-                    .into_iter()
-                    .next()
-                {
-                    <span class="kw">let </span>is_final = graph_status == BlockGraphStatus::Final;
-                    <span class="kw">let </span>is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-                    <span class="kw">let </span>is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-                    <span class="kw">let </span>is_discarded = graph_status == BlockGraphStatus::Discarded;
-
-                    <span class="kw">return </span><span class="prelude-val">Some</span>(BlockInfo {
-                        id,
-                        content: <span class="prelude-val">Some</span>(BlockInfoContent {
-                            is_final,
-                            is_in_blockclique,
-                            is_candidate,
-                            is_discarded,
-                            block: content,
-                        }),
-                    });
-                }
-
-                <span class="prelude-val">None
-            </span>})
-            .collect::&lt;Vec&lt;BlockInfo&gt;&gt;();
-
-        <span class="prelude-val">Ok</span>(blocks)
+                <span class="bool-val">false
+            </span>});
+        }
+        <span class="kw">let </span>block_statuses = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>ids);
+        <span class="kw">let </span>res = ids
+            .into_iter()
+            .zip(blocks)
+            .zip(block_statuses)
+            .map(|((id, content), graph_status)| BlockInfo {
+                id,
+                content: <span class="prelude-val">Some</span>(BlockInfoContent {
+                    is_final: graph_status == BlockGraphStatus::Final,
+                    is_in_blockclique: graph_status == BlockGraphStatus::ActiveInBlockclique,
+                    is_candidate: graph_status == BlockGraphStatus::ActiveInBlockclique
+                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques,
+                    is_discarded: graph_status == BlockGraphStatus::Discarded,
+                    block: content,
+                }),
+            })
+            .collect();
+        <span class="prelude-val">Ok</span>(res)
     }
 
     <span class="kw">async fn </span>get_blockclique_block_by_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; RpcResult&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;&gt; {
@@ -1883,7 +1881,8 @@
         <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">async fn </span>get_datastore_entries(
+    <span class="doccomment">/// get datastore entries
+    </span><span class="kw">async fn </span>get_datastore_entries(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         entries: Vec&lt;DatastoreEntryInput&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DatastoreEntryOutput&gt;&gt; {
@@ -1903,7 +1902,8 @@
             .collect())
     }
 
-    <span class="kw">async fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;Vec&lt;AddressInfo&gt;&gt; {
+    <span class="doccomment">/// get addresses
+    </span><span class="kw">async fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: Vec&lt;Address&gt;) -&gt; RpcResult&lt;Vec&lt;AddressInfo&gt;&gt; {
         <span class="comment">// get info from storage about which blocks the addresses have created
         </span><span class="kw">let </span>created_blocks: Vec&lt;PreHashSet&lt;BlockId&gt;&gt; = {
             <span class="kw">let </span>lck = <span class="self">self</span>.<span class="number">0</span>.storage.read_blocks();
@@ -2057,7 +2057,8 @@
         <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="kw">async fn </span>send_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, ops: Vec&lt;OperationInput&gt;) -&gt; RpcResult&lt;Vec&lt;OperationId&gt;&gt; {
+    <span class="doccomment">/// send operations
+    </span><span class="kw">async fn </span>send_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, ops: Vec&lt;OperationInput&gt;) -&gt; RpcResult&lt;Vec&lt;OperationId&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>cmd_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span>protocol_sender = <span class="self">self</span>.<span class="number">0</span>.protocol_controller.clone();
         <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
@@ -2201,7 +2202,8 @@
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="kw">async fn </span>get_openrpc_spec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Value&gt; {
+    <span class="doccomment">/// Get the OpenRPC specification of the node
+    </span><span class="kw">async fn </span>get_openrpc_spec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Value&gt; {
         <span class="kw">let </span>openrpc_spec_path = <span class="self">self</span>.<span class="number">0</span>.api_settings.openrpc_spec_path.clone();
         <span class="kw">let </span>openrpc: RpcResult&lt;Value&gt; = std::fs::read_to_string(openrpc_spec_path)
             .map_err(|e| {
