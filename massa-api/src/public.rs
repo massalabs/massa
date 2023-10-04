@@ -485,22 +485,32 @@ impl MassaRpcServer for API<Public> {
         Ok(paged_vec)
     }
 
-    async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
+    async fn get_operations(
+        &self,
+        operations_ids: Vec<OperationId>,
+    ) -> RpcResult<Vec<OperationInfo>> {
         // get the operations and the list of blocks that contain them from storage
+        let secure_share_operations: Vec<SecureShareOperation> = {
+            let read_ops = self.0.storage.read_operations();
+            operations_ids
+                .iter()
+                .filter_map(|id| read_ops.get(id).cloned())
+                .collect()
+        };
+
         let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
-            let read_ops = self.0.storage.read_operations();
-            ops.iter()
-                .filter_map(|id| {
-                    read_ops.get(id).cloned().map(|op| {
-                        (
-                            op,
-                            read_blocks
-                                .get_blocks_by_operation(id)
-                                .cloned()
-                                .unwrap_or_default(),
-                        )
-                    })
+            secure_share_operations
+                .into_iter()
+                .map(|secure_share_operation| {
+                    let op_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_operation(&op_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
                 .collect()
         };

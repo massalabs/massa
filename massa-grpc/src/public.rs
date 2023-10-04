@@ -484,21 +484,27 @@ pub(crate) fn get_operations(
         })
         .collect::<Result<_, _>>()?;
 
-    let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
-        let read_blocks = grpc.storage.read_blocks();
+    let secure_share_operations: Vec<SecureShareOperation> = {
         let read_ops = grpc.storage.read_operations();
         operation_ids
             .iter()
-            .filter_map(|id| {
-                read_ops.get(id).cloned().map(|op| {
-                    (
-                        op,
-                        read_blocks
-                            .get_blocks_by_operation(id)
-                            .cloned()
-                            .unwrap_or_default(),
-                    )
-                })
+            .filter_map(|id| read_ops.get(id).cloned())
+            .collect()
+    };
+
+    let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
+        let read_blocks = grpc.storage.read_blocks();
+        secure_share_operations
+            .into_iter()
+            .map(|secure_share_operation| {
+                let op_id = secure_share_operation.id;
+                (
+                    secure_share_operation,
+                    read_blocks
+                        .get_blocks_by_operation(&op_id)
+                        .cloned()
+                        .unwrap_or_default(),
+                )
             })
             .collect()
     };
