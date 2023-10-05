@@ -580,7 +580,7 @@ impl FinalState {
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        return self._finalize(slot, changes).unwrap();
+        self._finalize(slot, changes).unwrap()
     }
 
     fn _finalize(&mut self, slot: Slot, changes: StateChanges) -> AnyResult<()> {
@@ -698,7 +698,7 @@ impl FinalState {
 
     /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
     pub fn is_db_valid(&self) -> bool {
-        return self._is_db_valid().is_ok();
+        self._is_db_valid().is_ok()
     }
 
     /// Internal function called by is_db_valid
@@ -818,7 +818,7 @@ impl FinalState {
             }
         }
 
-        return Ok(());
+        Ok(())
     }
 
     /// Initialize the execution trail hash to zero.
