@@ -17,6 +17,7 @@ use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
     DB,
 };
+use std::path::PathBuf;
 use std::{
     collections::BTreeMap,
     format,
@@ -575,10 +576,19 @@ where
 impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Returns a new `MassaDB` instance
     pub fn new(config: MassaDBConfig) -> Self {
+        let db_opts = Self::default_db_opts();
+        Self::new_with_options(config, db_opts).expect(OPEN_ERROR)
+    }
+
+    pub fn default_db_opts() -> Options {
         let mut db_opts = Options::default();
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
+        db_opts
+    }
 
+    /// Returns a new `MassaDB` instance given a config and RocksDB options
+    fn new_with_options(config: MassaDBConfig, db_opts: Options) -> Result<Self, rocksdb::Error> {
         let db = DB::open_cf_descriptors(
             &db_opts,
             &config.path,
@@ -587,8 +597,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
                 ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
             ],
-        )
-        .expect(OPEN_ERROR);
+        )?;
 
         let db = Arc::new(db);
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
@@ -615,13 +624,13 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             });
         }
 
-        massa_db
+        Ok(massa_db)
     }
 }
 
 impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
-    fn backup_db(&self, slot: Slot) {
+    fn backup_db(&self, slot: Slot) -> PathBuf {
         let db = &self.db;
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
 
@@ -660,10 +669,14 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             }
         }
 
+        let backup_path = db.path().join(subpath);
+        println!("backup_path: {:?}", backup_path);
         Checkpoint::new(db)
             .expect("Cannot init checkpoint")
-            .create_checkpoint(db.path().join(subpath))
+            .create_checkpoint(backup_path.clone())
             .expect("Failed to create checkpoint");
+
+        backup_path
     }
 
     /// Writes the batch to the DB
@@ -835,5 +848,432 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// To be called just after bootstrap
     fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
         self.recompute_db_hash()
+    }
+
+    fn get_db(&self) -> Arc<DB> {
+        self.db.clone()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::BTreeMap;
+
+    use assert_matches::assert_matches;
+    use massa_db_exports::MassaDBError::TimeError;
+    use parking_lot::RwLock;
+    use tempfile::tempdir;
+
+    use massa_hash::Hash;
+    use massa_models::config::THREAD_COUNT;
+    use massa_models::streaming_step::StreamingStep;
+
+    use super::*;
+
+    // fn dump_column(db: Arc<DB>, column: &str) -> Vec<(Vec<u8>, Vec<u8>)> {
+    fn dump_column(db: Arc<DB>, column: &str) -> BTreeMap<Vec<u8>, Vec<u8>> {
+        let cf = db.cf_handle(column).unwrap();
+        // let res: Vec<(Box<[u8]>, Box<[u8]>)> =
+        let res = db
+            .iterator_cf(cf, IteratorMode::Start)
+            .flatten()
+            // Need to map to vec otherwise type is Box<[u8]>
+            .map(|(k, v)| (k.to_vec(), v.to_vec()))
+            .collect();
+        res
+    }
+
+    fn dump_column_opt(db: Arc<DB>, column: &str) -> BTreeMap<Vec<u8>, Option<Vec<u8>>> {
+        let cf = db.cf_handle(column).unwrap();
+        // let res: Vec<(Box<[u8]>, Box<[u8]>)> =
+        let res = db
+            .iterator_cf(cf, IteratorMode::Start)
+            .flatten()
+            // Need to map to vec otherwise type is Box<[u8]>
+            .map(|(k, v)| (k.to_vec(), Some(v.to_vec())))
+            .collect();
+        res
+    }
+
+    fn initial_hash() -> Hash {
+        Hash::compute_from(STATE_HASH_INITIAL_BYTES)
+    }
+
+    #[test]
+    fn test_init() {
+        // Test we cannot double init a Db
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config.clone(), db_opts.clone()).unwrap();
+
+        // Check not allowed to init a second instance
+        let db2 = MassaDB::new_with_options(db_config, db_opts.clone());
+        assert!(db2.is_err());
+        assert!(db2
+            .err()
+            .unwrap()
+            .into_string()
+            .contains("IO error: lock hold by current process"));
+    }
+
+    #[test]
+    fn test_basics_1() {
+        // 1- Init a db + check initial hash
+        // 2- Add some data
+        // 3- Read it
+        // 4- Remove data
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        assert_eq!(
+            Hash::compute_from(db.read().get_xof_db_hash().to_bytes()),
+            initial_hash()
+        );
+
+        let db_ = db.read().get_db();
+        // let db_ = db.read().get_db();
+
+        // Checks up
+        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or(vec![]);
+        let cf_exists_1 = cfs.iter().find(|cf| cf == &"state").is_some();
+        let cf_exists_2 = cfs.iter().find(|cf| cf == &"metadata").is_some();
+        let cf_exists_3 = cfs.iter().find(|cf| cf == &"versioning").is_some();
+        println!("cfs: {:?}", cfs);
+        assert_eq!(cf_exists_1, true);
+        assert_eq!(cf_exists_2, true);
+        assert_eq!(cf_exists_3, true);
+        for col in cfs {
+            if col == "metadata" {
+                continue;
+            }
+            assert!(dump_column(db_.clone(), col.as_str()).is_empty());
+        }
+
+        // Add data
+
+        let mut batch = DBBatch::new();
+        let b_key1 = vec![1, 2, 3];
+        let b_value1 = vec![4, 5, 6];
+        batch.insert(b_key1.clone(), Some(b_value1.clone()));
+        let mut versioning_batch = BTreeMap::default();
+        let vb_key1 = vec![10, 20, 30];
+        let vb_value1 = vec![40, 50, 60];
+        versioning_batch.insert(vb_key1.clone(), Some(vb_value1.clone()));
+
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), None);
+        drop(guard);
+
+        assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
+        assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+
+        // Remove data
+
+        let mut batch_2 = DBBatch::new();
+        batch_2.insert(b_key1.clone(), None);
+        let mut versioning_batch_2 = BTreeMap::default();
+        versioning_batch_2.insert(vb_key1.clone(), None);
+        let mut guard = db.write();
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), None);
+        drop(guard);
+
+        assert!(dump_column(db_.clone(), "state").is_empty());
+        assert!(dump_column(db_.clone(), "versioning").is_empty());
+    }
+
+    #[test]
+    fn test_backup() {
+        // 1- Init a db + add data
+        // 2- Backup (slot 1)
+        // 3- Add more data + backup (slot 2)
+        // 4- Init from backup 1 + checks
+        // 5- Init from backup 2 + checks
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data
+        let batch = DBBatch::from([(vec![1, 2, 3], Some(vec![4, 5, 6]))]);
+        let versioning_batch = DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_1));
+        drop(guard);
+
+        let hash_1 = db.read().get_xof_db_hash();
+
+        // Backup db
+        let guard = db.read();
+        let backup_1 = guard.backup_db(slot_1);
+        drop(guard);
+
+        // Add data
+        let batch = DBBatch::from([(vec![11, 22, 33], Some(vec![44, 55, 66]))]);
+        let versioning_batch = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_2));
+        drop(guard);
+
+        let hash_2 = db.read().get_xof_db_hash();
+
+        // Backup db
+        let guard = db.read();
+        let backup_2 = guard.backup_db(slot_2);
+        drop(guard);
+
+        {
+            let db_backup_1_config = MassaDBConfig {
+                path: backup_1,
+                max_history_length: 100,
+                max_new_elements: 100,
+                thread_count: THREAD_COUNT,
+            };
+            let mut db_backup_1_opts = MassaDB::default_db_opts();
+            db_backup_1_opts.create_if_missing(false);
+            let db_backup_1 = Arc::new(RwLock::new(Box::new(
+                MassaDB::new_with_options(db_backup_1_config, db_backup_1_opts.clone()).unwrap(),
+            )
+                as Box<(dyn MassaDBController + 'static)>));
+
+            assert_eq!(db_backup_1.read().get_xof_db_hash(), hash_1);
+            assert_ne!(db_backup_1.read().get_xof_db_hash(), hash_2);
+            assert_ne!(
+                Hash::compute_from(db_backup_1.read().get_xof_db_hash().to_bytes()),
+                initial_hash()
+            );
+        }
+
+        {
+            let db_backup_2_config = MassaDBConfig {
+                path: backup_2,
+                max_history_length: 100,
+                max_new_elements: 100,
+                thread_count: THREAD_COUNT,
+            };
+            let mut db_backup_2_opts = MassaDB::default_db_opts();
+            db_backup_2_opts.create_if_missing(false);
+            let db_backup_2 = Arc::new(RwLock::new(Box::new(
+                MassaDB::new_with_options(db_backup_2_config, db_backup_2_opts.clone()).unwrap(),
+            )
+                as Box<(dyn MassaDBController + 'static)>));
+
+            assert_eq!(db_backup_2.read().get_xof_db_hash(), hash_2);
+            assert_ne!(db_backup_2.read().get_xof_db_hash(), hash_1);
+            assert_ne!(
+                Hash::compute_from(db_backup_2.read().get_xof_db_hash().to_bytes()),
+                initial_hash()
+            );
+        }
+    }
+
+    #[test]
+    fn test_backup_rotation() {
+        // 1- Init a db
+        // 2- Loop (add data, backup) until a rotation occurs
+        // 3- Init from backups + checks
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let db = Arc::new(RwLock::new(Box::new(
+            MassaDB::new_with_options(db_config.clone(), db_opts.clone()).unwrap(),
+        )
+            as Box<(dyn MassaDBController + 'static)>));
+
+        let mut backups = BTreeMap::default();
+
+        for i in 0..(MAX_BACKUPS_TO_KEEP.unwrap() + 1) {
+            let slot = Slot::new(i as u64, 0);
+            let i_ = i as u8;
+            let batch = DBBatch::from([(vec![i_], Some(vec![i_ + 10]))]);
+            let versioning_batch = DBBatch::from([(vec![i_ + 1], Some(vec![i_ + 20]))]);
+
+            let mut guard = db.write();
+            guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot));
+            drop(guard);
+
+            let xof = db.read().get_xof_db_hash();
+            let backup = db.read().backup_db(slot);
+
+            backups.insert(slot, (xof, backup));
+        }
+
+        let mut db_opts_no_create = db_opts.clone();
+        db_opts_no_create.create_if_missing(false);
+
+        for i in 0..(MAX_BACKUPS_TO_KEEP.unwrap() + 1) {
+            let slot = Slot::new(i as u64, 0);
+            let (backup_xof, backup_path) = backups.get(&slot).unwrap();
+
+            println!(
+                "Checking backup_path: {:?} -> exists: {}",
+                backup_path,
+                backup_path.exists()
+            );
+            let db_backup_config = MassaDBConfig {
+                path: backup_path.clone(),
+                max_history_length: 100,
+                max_new_elements: 100,
+                thread_count: THREAD_COUNT,
+            };
+            // let db_backup_2_opts = MassaDB::default_db_opts();
+
+            let db_backup_2 = match i {
+                0 => {
+                    let _db = MassaDB::new_with_options(
+                        db_backup_config.clone(),
+                        db_opts_no_create.clone(),
+                    );
+                    // backup (index 0) has been removed because we exceed MAX_BACKUPS_TO_KEEP
+                    assert!(_db.is_err());
+                    continue;
+                }
+                _ => {
+                    let _db = MassaDB::new_with_options(
+                        db_backup_config.clone(),
+                        db_opts_no_create.clone(),
+                    );
+                    Arc::new(RwLock::new(
+                        Box::new(_db.unwrap()) as Box<(dyn MassaDBController + 'static)>
+                    ))
+                }
+            };
+
+            assert_eq!(db_backup_2.read().get_xof_db_hash(), *backup_xof);
+            assert_ne!(
+                Hash::compute_from(db_backup_2.read().get_xof_db_hash().to_bytes()),
+                initial_hash()
+            );
+        }
+    }
+
+    #[test]
+    fn test_db_stream() {
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        let db_ = db.read().get_db();
+
+        // Add data
+        let batch = DBBatch::from([(vec![1, 2, 3], Some(vec![4, 5, 6]))]);
+        let versioning_batch = DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_1));
+        drop(guard);
+
+        // Add data
+        let batch = DBBatch::from([(vec![11, 22, 33], Some(vec![44, 55, 66]))]);
+        let versioning_batch = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_2));
+        drop(guard);
+
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch = db.read().get_batch_to_stream(&last_state_step, None);
+        assert_eq!(
+            stream_batch.unwrap().new_elements,
+            dump_column(db_.clone(), "state")
+        );
+
+        // Same as previous but starting from slot_1
+        /*
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing;
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        println!("stream_batch: {:?}", stream_batch);
+        */
+
+        /*
+        assert_eq!(
+            stream_batch.unwrap().new_elements,
+            dump_column(db_.clone(), "state")
+        );
+        */
+
+        // Edge cases
+
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&StreamingStep::Ongoing(vec![]), Some(Slot::new(5, 0)));
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_matches!(stream_batch, Err(TimeError(..)));
+        assert!(stream_batch.err().unwrap().to_string().contains("future"));
+
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&StreamingStep::Finished(None), None);
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_matches!(stream_batch, Err(TimeError(..)));
     }
 }
