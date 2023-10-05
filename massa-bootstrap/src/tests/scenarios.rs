@@ -40,7 +40,8 @@ use massa_models::{
 };
 use massa_models::{
     config::{
-        MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, POS_SAVED_CYCLES,
+        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        MAX_PARAMETERS_SIZE, POS_SAVED_CYCLES,
     },
     prehash::PreHashSet,
 };
@@ -120,7 +121,8 @@ fn mock_bootstrap_manager(
         async_pool_config: AsyncPoolConfig {
             thread_count,
             max_length: MAX_ASYNC_POOL_LENGTH,
-            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            max_function_length: MAX_FUNCTION_NAME_LENGTH,
+            max_function_params_length: MAX_PARAMETERS_SIZE as u64,
             max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {
@@ -264,7 +266,8 @@ fn test_bootstrap_server() {
         async_pool_config: AsyncPoolConfig {
             thread_count,
             max_length: MAX_ASYNC_POOL_LENGTH,
-            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            max_function_length: MAX_FUNCTION_NAME_LENGTH,
+            max_function_params_length: MAX_PARAMETERS_SIZE as u64,
             max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {
@@ -647,7 +650,8 @@ fn test_bootstrap_accept_err() {
         async_pool_config: AsyncPoolConfig {
             thread_count,
             max_length: MAX_ASYNC_POOL_LENGTH,
-            max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+            max_function_length: MAX_FUNCTION_NAME_LENGTH,
+            max_function_params_length: MAX_PARAMETERS_SIZE as u64,
             max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
         },
         pos_config: PoSConfig {

@@ -153,7 +153,8 @@ impl AsyncPoolChangesDeserializer {
     pub fn new(
         thread_count: u8,
         max_async_pool_changes: u64,
-        max_async_message_data: u64,
+        max_function_length: u16,
+        max_function_params_length: u64,
         max_key_length: u32,
     ) -> Self {
         Self {
@@ -165,13 +166,15 @@ impl AsyncPoolChangesDeserializer {
             set_update_or_delete_message_deserializer: SetUpdateOrDeleteDeserializer::new(
                 AsyncMessageDeserializer::new(
                     thread_count,
-                    max_async_message_data,
+                    max_function_length,
+                    max_function_params_length,
                     max_key_length,
                     false,
                 ),
                 AsyncMessageUpdateDeserializer::new(
                     thread_count,
-                    max_async_message_data,
+                    max_function_length,
+                    max_function_params_length,
                     max_key_length,
                     false,
                 ),
@@ -217,7 +220,7 @@ impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
     ///    .insert(message.compute_id(), SetUpdateOrDelete::Delete);
     /// let mut serialized = Vec::new();
     /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 100000, 100000, 100000);
+    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 10000, 10000, 100000, 100000);
     /// serializer.serialize(&changes, &mut serialized).unwrap();
     /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());

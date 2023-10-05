@@ -214,6 +214,7 @@ impl MassaRpcServer for API<Public> {
         Ok(res)
     }
 
+    /// execute read-only calls
     async fn execute_read_only_call(
         &self,
         reqs: Vec<ReadOnlyCall>,
@@ -326,6 +327,7 @@ impl MassaRpcServer for API<Public> {
         crate::wrong_api::<()>()
     }
 
+    /// get status
     async fn get_status(&self) -> RpcResult<NodeStatus> {
         let execution_controller = self.0.execution_controller.clone();
         let consensus_controller = self.0.consensus_controller.clone();
@@ -439,11 +441,13 @@ impl MassaRpcServer for API<Public> {
         })
     }
 
+    /// get cliques
     async fn get_cliques(&self) -> RpcResult<Vec<Clique>> {
         let consensus_controller = self.0.consensus_controller.clone();
         Ok(consensus_controller.get_cliques())
     }
 
+    /// get stakers
     async fn get_stakers(
         &self,
         page_request: Option<PageRequest>,
@@ -485,22 +489,33 @@ impl MassaRpcServer for API<Public> {
         Ok(paged_vec)
     }
 
-    async fn get_operations(&self, ops: Vec<OperationId>) -> RpcResult<Vec<OperationInfo>> {
+    /// get operations
+    async fn get_operations(
+        &self,
+        operations_ids: Vec<OperationId>,
+    ) -> RpcResult<Vec<OperationInfo>> {
         // get the operations and the list of blocks that contain them from storage
+        let secure_share_operations: Vec<SecureShareOperation> = {
+            let read_ops = self.0.storage.read_operations();
+            operations_ids
+                .iter()
+                .filter_map(|id| read_ops.get(id).cloned())
+                .collect()
+        };
+
         let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
-            let read_ops = self.0.storage.read_operations();
-            ops.iter()
-                .filter_map(|id| {
-                    read_ops.get(id).cloned().map(|op| {
-                        (
-                            op,
-                            read_blocks
-                                .get_blocks_by_operation(id)
-                                .cloned()
-                                .unwrap_or_default(),
-                        )
-                    })
+            secure_share_operations
+                .into_iter()
+                .map(|secure_share_operation| {
+                    let op_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_operation(&op_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
                 .collect()
         };
@@ -562,38 +577,50 @@ impl MassaRpcServer for API<Public> {
         Ok(res)
     }
 
-    async fn get_endorsements(&self, eds: Vec<EndorsementId>) -> RpcResult<Vec<EndorsementInfo>> {
-        // get the endorsements and the list of blocks that contain them from storage
+    /// get endorsements
+    async fn get_endorsements(
+        &self,
+        mut endorsement_ids: Vec<EndorsementId>,
+    ) -> RpcResult<Vec<EndorsementInfo>> {
+        if endorsement_ids.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
+        let mut secure_share_endorsements: Vec<SecureShareEndorsement> =
+            Vec::with_capacity(endorsement_ids.len());
+        {
+            let endorsement_storage_lock = self.0.storage.read_endorsements();
+            endorsement_ids.retain(|id| {
+                if let Some(wrapped_endorsement) = endorsement_storage_lock.get(id) {
+                    secure_share_endorsements.push(wrapped_endorsement.clone());
+                    return true;
+                };
+                false
+            });
+        }
+
         let storage_info: Vec<(SecureShareEndorsement, PreHashSet<BlockId>)> = {
             let read_blocks = self.0.storage.read_blocks();
-            let read_endos = self.0.storage.read_endorsements();
-            eds.iter()
-                .filter_map(|id| {
-                    read_endos.get(id).cloned().map(|ed| {
-                        (
-                            ed,
-                            read_blocks
-                                .get_blocks_by_endorsement(id)
-                                .cloned()
-                                .unwrap_or_default(),
-                        )
-                    })
+            secure_share_endorsements
+                .into_iter()
+                .map(|secure_share_operation| {
+                    let ed_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_endorsement(&ed_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
                 .collect()
         };
 
-        // keep only the ops found in storage
-        let eds: Vec<EndorsementId> = storage_info.iter().map(|(ed, _)| ed.id).collect();
-
         // ask pool whether it carries the operations
-        let in_pool = self.0.pool_command_sender.contains_endorsements(&eds);
-
-        let consensus_controller = self.0.consensus_controller.clone();
-        let api_cfg = self.0.api_settings.clone();
-
-        if eds.len() as u64 > api_cfg.max_arguments {
-            return Err(ApiError::BadRequest("too many arguments".into()).into());
-        }
+        let in_pool = self
+            .0
+            .pool_command_sender
+            .contains_endorsements(&endorsement_ids);
 
         // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
         let is_final: Vec<bool> = {
@@ -604,7 +631,10 @@ impl MassaRpcServer for API<Public> {
                 .cloned()
                 .collect();
 
-            let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+            let involved_block_statuses = self
+                .0
+                .consensus_controller
+                .get_block_statuses(&involved_blocks);
 
             let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
                 .into_iter()
@@ -620,9 +650,9 @@ impl MassaRpcServer for API<Public> {
         };
 
         // gather all values into a vector of EndorsementInfo instances
-        let mut res: Vec<EndorsementInfo> = Vec::with_capacity(eds.len());
+        let mut res: Vec<EndorsementInfo> = Vec::with_capacity(endorsement_ids.len());
         let zipped_iterator = izip!(
-            eds.into_iter(),
+            endorsement_ids.into_iter(),
             storage_info.into_iter(),
             in_pool.into_iter(),
             is_final.into_iter()
@@ -641,47 +671,38 @@ impl MassaRpcServer for API<Public> {
         Ok(res)
     }
 
-    /// gets a block(s). Returns nothing if not found
-    /// only active blocks are returned
-    async fn get_blocks(&self, ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
-        let consensus_controller = self.0.consensus_controller.clone();
-        let blocks = ids
-            .into_iter()
-            .filter_map(|id| {
-                let content = if let Some(wrapped_block) = self.0.storage.read_blocks().get(&id) {
-                    wrapped_block.content.clone()
-                } else {
-                    return None;
+    /// get blocks
+    /// Returns only active blocks are returned
+    async fn get_blocks(&self, mut ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
+        let mut blocks: Vec<Block> = Vec::with_capacity(ids.len());
+        {
+            let block_storage_lock = self.0.storage.read_blocks();
+            ids.retain(|id| {
+                if let Some(wrapped_block) = block_storage_lock.get(id) {
+                    blocks.push(wrapped_block.content.clone());
+                    return true;
                 };
-
-                if let Some(graph_status) = consensus_controller
-                    .get_block_statuses(&[id])
-                    .into_iter()
-                    .next()
-                {
-                    let is_final = graph_status == BlockGraphStatus::Final;
-                    let is_in_blockclique = graph_status == BlockGraphStatus::ActiveInBlockclique;
-                    let is_candidate = graph_status == BlockGraphStatus::ActiveInBlockclique
-                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques;
-                    let is_discarded = graph_status == BlockGraphStatus::Discarded;
-
-                    return Some(BlockInfo {
-                        id,
-                        content: Some(BlockInfoContent {
-                            is_final,
-                            is_in_blockclique,
-                            is_candidate,
-                            is_discarded,
-                            block: content,
-                        }),
-                    });
-                }
-
-                None
+                false
+            });
+        }
+        let block_statuses = self.0.consensus_controller.get_block_statuses(&ids);
+        let res = ids
+            .into_iter()
+            .zip(blocks)
+            .zip(block_statuses)
+            .map(|((id, content), graph_status)| BlockInfo {
+                id,
+                content: Some(BlockInfoContent {
+                    is_final: graph_status == BlockGraphStatus::Final,
+                    is_in_blockclique: graph_status == BlockGraphStatus::ActiveInBlockclique,
+                    is_candidate: graph_status == BlockGraphStatus::ActiveInBlockclique
+                        || graph_status == BlockGraphStatus::ActiveInAlternativeCliques,
+                    is_discarded: graph_status == BlockGraphStatus::Discarded,
+                    block: content,
+                }),
             })
-            .collect::<Vec<BlockInfo>>();
-
-        Ok(blocks)
+            .collect();
+        Ok(res)
     }
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
@@ -760,6 +781,7 @@ impl MassaRpcServer for API<Public> {
         Ok(res)
     }
 
+    /// get datastore entries
     async fn get_datastore_entries(
         &self,
         entries: Vec<DatastoreEntryInput>,
@@ -780,6 +802,7 @@ impl MassaRpcServer for API<Public> {
             .collect())
     }
 
+    /// get addresses
     async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         // get info from storage about which blocks the addresses have created
         let created_blocks: Vec<PreHashSet<BlockId>> = {
@@ -934,6 +957,7 @@ impl MassaRpcServer for API<Public> {
         Ok(res)
     }
 
+    /// send operations
     async fn send_operations(&self, ops: Vec<OperationInput>) -> RpcResult<Vec<OperationId>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let protocol_sender = self.0.protocol_controller.clone();
@@ -1078,6 +1102,7 @@ impl MassaRpcServer for API<Public> {
         crate::wrong_api::<()>()
     }
 
+    /// Get the OpenRPC specification of the node
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {
         let openrpc_spec_path = self.0.api_settings.openrpc_spec_path.clone();
         let openrpc: RpcResult<Value> = std::fs::read_to_string(openrpc_spec_path)

@@ -98,6 +98,8 @@
         max_datastore_entries_per_request = 128
         # max number of filters that can be included in a single request
         max_filters_per_request = 32
+        # max number of query items that can be included in a single request
+        max_query_items_per_request = 128
         # certificate authority root path
         certificate_authority_root_path = "config/tls_public_ca.pem"
         # server certificate path
@@ -169,6 +171,8 @@
         max_datastore_entries_per_request = 128
         # max number of filters that can be included in a single request
         max_filters_per_request = 32
+        # max number of query items that can be included in a single request
+        max_query_items_per_request = 128
         # certificate authority root path
         certificate_authority_root_path = "config/tls_private_ca.pem"
         # server certificate path
