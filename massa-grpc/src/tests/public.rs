@@ -66,7 +66,7 @@ use std::{net::SocketAddr, path::PathBuf};
 const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
 // #[tokio::test]
-#[serial]
+// #[serial]
 // async fn default() {
 //     let mut public_server = grpc_public_service();
 //     let config = public_server.grpc_config.clone();

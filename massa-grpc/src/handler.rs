@@ -23,7 +23,7 @@ use crate::stream::{
     new_filled_blocks::{new_filled_blocks, NewFilledBlocksStreamType},
     new_operations::{new_operations, NewOperationsStreamType},
     new_slot_execution_outputs::{new_slot_execution_outputs, NewSlotExecutionOutputsStreamType},
-    send_blocks::{send_blocks, SendBlocksStreamType},
+    send_blocks::SendBlocksStreamType,
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
     tx_throughput::{transactions_throughput, TransactionsThroughputStreamType},
@@ -223,7 +223,7 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     /// handler for send_blocks_stream
     async fn send_blocks(
         &self,
-        request: tonic::Request<tonic::Streaming<grpc_api::SendBlocksRequest>>,
+        _request: tonic::Request<tonic::Streaming<grpc_api::SendBlocksRequest>>,
     ) -> Result<tonic::Response<Self::SendBlocksStream>, tonic::Status> {
         Err(tonic::Status::unavailable("not available"))
         // Ok(tonic::Response::new(send_blocks(self, request).await?))

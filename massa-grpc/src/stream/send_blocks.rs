@@ -26,6 +26,7 @@ pub type SendBlocksStreamType = Pin<
 /// This function takes a streaming request of block messages,
 /// verifies, saves and propagates the block received in each message, and sends back a stream of
 /// block id messages
+#[allow(dead_code)]
 pub(crate) async fn send_blocks(
     grpc: &MassaPublicGrpc,
     request: Request<tonic::Streaming<grpc_api::SendBlocksRequest>>,

@@ -1,16 +1,17 @@
 use std::{ops::Add, time::Duration};
 
 use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl};
+use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::{
-    address::Address, block::FilledBlock, operation::OperationSerializer,
-    secure_share::SecureShareSerializer, slot::Slot, stats::ExecutionStats,
+    address::Address, block::FilledBlock, secure_share::SecureShareSerializer, slot::Slot,
+    stats::ExecutionStats,
 };
 use massa_proto_rs::massa::{
     api::v1::{
         public_service_client::PublicServiceClient, NewBlocksRequest, NewFilledBlocksRequest,
-        NewOperationsRequest, NewSlotExecutionOutputsRequest, SendOperationsRequest,
-        TransactionsThroughputRequest,
+        NewOperationsRequest, NewSlotExecutionOutputsRequest, SendEndorsementsRequest,
+        SendOperationsRequest, TransactionsThroughputRequest,
     },
     model::v1::{Addresses, Slot as ProtoSlot, SlotRange},
 };
@@ -1036,7 +1037,7 @@ async fn new_slot_execution_outputs() {
     let (tx_request, rx) = tokio::sync::mpsc::channel(10);
     let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     let keypair = KeyPair::generate(0).unwrap();
-    let address = Address::from_public_key(&keypair.get_public_key());
+    let _address = Address::from_public_key(&keypair.get_public_key());
 
     let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
 
@@ -1324,6 +1325,203 @@ async fn send_operations() {
             panic!("should be error");
         }
     }
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+#[serial]
+async fn send_endorsements() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+
+    let mut protocol_ctrl = MockProtocolController::new();
+    protocol_ctrl.expect_clone_box().returning(|| {
+        let mut ctrl = MockProtocolController::new();
+
+        ctrl.expect_propagate_endorsements().returning(|_| Ok(()));
+
+        Box::new(ctrl)
+    });
+
+    let mut pool_ctrl = MockPoolCtrl::new();
+    pool_ctrl.expect_clone_box().returning(|| {
+        let mut ctrl = MockPoolCtrl::new();
+
+        ctrl.expect_add_endorsements().returning(|_| ());
+
+        Box::new(ctrl)
+    });
+
+    public_server.pool_controller = Box::new(pool_ctrl);
+    public_server.protocol_controller = Box::new(protocol_ctrl);
+
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let mut resp_stream = public_client
+        .send_endorsements(request_stream)
+        .await
+        .unwrap()
+        .into_inner();
+
+    let endorsement = create_endorsement();
+    // serialize endorsement
+    let mut buffer: Vec<u8> = Vec::new();
+    SecureShareSerializer::new()
+        .serialize(&endorsement, &mut buffer)
+        .unwrap();
+
+    tx.send(SendEndorsementsRequest {
+        endorsements: vec![buffer],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    assert!(result.result.is_some());
+
+    // cause fail deserialize endorsement
+    tx.send(SendEndorsementsRequest {
+        endorsements: vec![endorsement.serialized_data],
+    })
+    .await
+    .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+
+    match result.result.unwrap() {
+        massa_proto_rs::massa::api::v1::send_endorsements_response::Result::Error(err) => {
+            assert!(err.message.contains("failed to deserialize endorsement"))
+        }
+        _ => panic!("should be error"),
+    }
+
+    stop_handle.stop();
+}
+
+#[tokio::test]
+#[serial]
+async fn send_blocks() {
+    let mut public_server = grpc_public_service();
+    let config = public_server.grpc_config.clone();
+    // let keypair = KeyPair::generate(0).unwrap();
+    let mut protocol_ctrl = MockProtocolController::new();
+    protocol_ctrl.expect_clone_box().returning(|| {
+        let ctrl = MockProtocolController::new();
+
+        Box::new(ctrl)
+    });
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl.expect_clone_box().returning(|| {
+        let ctrl = MockConsensusControllerImpl::new();
+
+        Box::new(ctrl)
+    });
+
+    public_server.protocol_controller = Box::new(protocol_ctrl);
+    public_server.consensus_controller = Box::new(consensus_ctrl);
+
+    let (_tx, rx) = tokio::sync::mpsc::channel(10);
+    let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+
+    let stop_handle = public_server.serve(&config).await.unwrap();
+
+    // let secured_block: SecureShareBlock = block
+    //     .new_verifiable(BlockSerializer::new(), &keypair)
+    //     .unwrap();
+
+    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+
+    let resp_stream = public_client.send_blocks(request_stream).await;
+    assert!(resp_stream.unwrap_err().message().contains("not available"));
+
+    // tx.send(SendBlocksRequest {
+    //     block: secured_block.serialized_data.clone(),
+    // })
+    // .await
+    // .unwrap();
+
+    // let result = tokio::time::timeout(Duration::from_secs(5), resp_stream.next())
+    //     .await
+    //     .unwrap()
+    //     .unwrap()
+    //     .unwrap();
+
+    // match result.result.unwrap() {
+    //     massa_proto_rs::massa::api::v1::send_blocks_response::Result::Error(err) => {
+    //         assert!(err.message.contains("not available"))
+    //     }
+    //     _ => panic!("should be error"),
+    // }
+
+    // let endo1 = Endorsement::new_verifiable(
+    //     Endorsement {
+    //         slot: Slot::new(1, 0),
+    //         index: 0,
+    //         endorsed_block: BlockId::generate_from_hash(
+    //             Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf").unwrap(),
+    //         ),
+    //     },
+    //     EndorsementSerializer::new(),
+    //     &keypair,
+    // )
+    // .unwrap();
+    // let endo2 = Endorsement::new_verifiable(
+    //     Endorsement {
+    //         slot: Slot::new(1, 0),
+    //         index: ENDORSEMENT_COUNT - 1,
+    //         endorsed_block: BlockId::generate_from_hash(
+    //             Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf").unwrap(),
+    //         ),
+    //     },
+    //     EndorsementSerializer::new(),
+    //     &keypair,
+    // )
+    // .unwrap();
+
+    // create block header
+    // let orig_header = BlockHeader::new_verifiable(
+    //     BlockHeader {
+    //         current_version: 0,
+    //         announced_version: None,
+    //         slot: Slot::new(1, 0),
+    //         parents,
+    //         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+    //         endorsements: vec![],
+    //         denunciations: Vec::new(), // FIXME
+    //     },
+    //     BlockHeaderSerializer::new(),
+    //     &keypair,
+    // )
+    // .unwrap();
+
+    // // create block
+    // let orig_block = Block {
+    //     header: orig_header,
+    //     operations: Default::default(),
+    // };
+
+    // let secured_block: SecureShareBlock =
+    //     Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+
+    // secured_block.content.header.verify_signature().unwrap();
+
+    // secured_block.verify_signature().unwrap();
 
     stop_handle.stop();
 }
