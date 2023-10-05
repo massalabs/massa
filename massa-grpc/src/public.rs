@@ -1227,22 +1227,30 @@ pub(crate) fn search_operations(
     }
 
     let operations: Vec<grpc_model::OperationInfo> = if let Some(operation_ids) = ops_ids {
-        // Get the operations and the list of blocks that contain them from storage
-        let read_ops_lock = grpc.storage.read_operations();
-        let read_blocks_lock = grpc.storage.read_blocks();
-        let storage_info: Vec<(&SecureShareOperation, HashSet<BlockId>)> = operation_ids
-            .into_iter()
-            .filter_map(|ope_id| {
-                read_ops_lock.get(&ope_id).map(|secureshare| {
-                    let block_ids = read_blocks_lock
-                        .get_blocks_by_operation(&ope_id)
-                        .map(|hashset| hashset.iter().cloned().collect::<HashSet<BlockId>>())
-                        .unwrap_or_default();
+        let secure_share_operations: Vec<SecureShareOperation> = {
+            let read_ops = grpc.storage.read_operations();
+            operation_ids
+                .iter()
+                .filter_map(|id| read_ops.get(id).cloned())
+                .collect()
+        };
 
-                    (secureshare, block_ids)
+        let storage_info: Vec<(SecureShareOperation, PreHashSet<BlockId>)> = {
+            let read_blocks = grpc.storage.read_blocks();
+            secure_share_operations
+                .into_iter()
+                .map(|secure_share_operation| {
+                    let op_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_operation(&op_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
-            })
-            .collect();
+                .collect()
+        };
 
         storage_info
             .into_iter()
