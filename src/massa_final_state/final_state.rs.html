@@ -1868,7 +1868,7 @@
     ///
     /// Panics if the new slot is not the one coming just after the current one.
     </span><span class="kw">pub fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) {
-        <span class="kw">return </span><span class="self">self</span>._finalize(slot, changes).unwrap();
+        <span class="self">self</span>._finalize(slot, changes).unwrap()
     }
 
     <span class="kw">fn </span>_finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) -&gt; AnyResult&lt;()&gt; {
@@ -1986,7 +1986,7 @@
 
     <span class="doccomment">/// Deserialize the entire DB and check the data. Useful to check after bootstrap.
     </span><span class="kw">pub fn </span>is_db_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">return </span><span class="self">self</span>._is_db_valid().is_ok();
+        <span class="self">self</span>._is_db_valid().is_ok()
     }
 
     <span class="doccomment">/// Internal function called by is_db_valid
@@ -2106,7 +2106,7 @@
             </span>}
         }
 
-        <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Initialize the execution trail hash to zero.
