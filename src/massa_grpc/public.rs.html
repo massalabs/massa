@@ -1246,6 +1246,34 @@
 <a href="#1246" id="1246">1246</a>
 <a href="#1247" id="1247">1247</a>
 <a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1282,12 +1310,10 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::ExecuteReadOnlyCallRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::ExecuteReadOnlyCallResponse, GrpcError&gt; {
-    <span class="kw">let </span>inner_req = request.into_inner();
-    <span class="kw">let </span>call: grpc_model::ReadOnlyExecutionCall = inner_req
+    <span class="kw">let </span>call: grpc_model::ReadOnlyExecutionCall = request
+        .into_inner()
         .call
         .ok_or_else(|| GrpcError::InvalidArgument(<span class="string">&quot;no call provided&quot;</span>.to_string()))<span class="question-mark">?</span>;
-
-    <span class="kw">let </span><span class="kw-2">mut </span>call_stack = Vec::new();
 
     <span class="kw">let </span>caller_address = <span class="kw">match </span>call.caller_address {
         <span class="prelude-val">Some</span>(addr) =&gt; Address::from_str(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>,
@@ -1297,6 +1323,8 @@
             Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
         }
     };
+
+    <span class="kw">let </span><span class="kw-2">mut </span>call_stack = Vec::new();
 
     <span class="kw">let </span>target = <span class="kw">if let </span><span class="prelude-val">Some</span>(call_target) = call.target {
         <span class="kw">match </span>call_target {
@@ -1384,22 +1412,22 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::GetBlocksRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetBlocksResponse, GrpcError&gt; {
-    <span class="kw">let </span>block_ids = request.into_inner().block_ids;
+    <span class="kw">let </span>ids = request.into_inner().block_ids;
 
-    <span class="kw">if </span>block_ids.is_empty() {
+    <span class="kw">if </span>ids.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
             <span class="string">&quot;no block id provided&quot;</span>.to_string(),
         ));
     }
 
-    <span class="kw">if </span>block_ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_operation_ids_per_request {
+    <span class="kw">if </span>ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_operation_ids_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
             <span class="string">&quot;too many block ids received. Only a maximum of {} block ids are accepted per request&quot;</span>,
             grpc.grpc_config.max_block_ids_per_request
         )));
     }
 
-    <span class="kw">let </span>block_ids: Vec&lt;BlockId&gt; = block_ids
+    <span class="kw">let </span><span class="kw-2">mut </span>block_ids: Vec&lt;BlockId&gt; = ids
         .into_iter()
         .take(grpc.grpc_config.max_operation_ids_per_request <span class="kw">as </span>usize + <span class="number">1</span>)
         .map(|id| {
@@ -1408,32 +1436,25 @@
         })
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
-    <span class="kw">let </span>blocks = block_ids
-        .into_iter()
-        .filter_map(|id| {
-            <span class="kw">let </span>content = <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = read_blocks.get(<span class="kw-2">&amp;</span>id) {
-                wrapped_block.content.clone()
-            } <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>blocks: Vec&lt;Block&gt; = Vec::with_capacity(block_ids.len());
+    {
+        <span class="kw">let </span>block_storage_lock = grpc.storage.read_blocks();
+        block_ids.retain(|id| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_block) = block_storage_lock.get(id) {
+                blocks.push(wrapped_block.content.clone());
+                <span class="kw">return </span><span class="bool-val">true</span>;
             };
+            <span class="bool-val">false
+        </span>});
+    }
 
-            <span class="prelude-val">Some</span>(content)
-        })
-        .collect::&lt;Vec&lt;Block&gt;&gt;();
-
-    <span class="kw">let </span>block_ids = blocks
-        .iter()
-        .map(|block| block.header.id)
-        .collect::&lt;Vec&lt;BlockId&gt;&gt;();
-
-    <span class="kw">let </span>blocks_status = grpc.consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>block_ids);
+    <span class="kw">let </span>block_statuses = grpc.consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>block_ids);
 
     <span class="kw">let </span>result = blocks
-        .iter()
-        .zip(blocks_status)
+        .into_iter()
+        .zip(block_statuses)
         .map(|(block, block_graph_status)| grpc_model::BlockWrapper {
-            block: <span class="prelude-val">Some</span>(block.clone().into()),
+            block: <span class="prelude-val">Some</span>(block.into()),
             status: block_graph_status.into(),
         })
         .collect();
@@ -1499,22 +1520,22 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::GetEndorsementsRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetEndorsementsResponse, GrpcError&gt; {
-    <span class="kw">let </span>endorsement_ids = request.into_inner().endorsement_ids;
+    <span class="kw">let </span>ids = request.into_inner().endorsement_ids;
 
-    <span class="kw">if </span>endorsement_ids.is_empty() {
+    <span class="kw">if </span>ids.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
             <span class="string">&quot;no endorsement id provided&quot;</span>.to_string(),
         ));
     }
 
-    <span class="kw">if </span>endorsement_ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_endorsement_ids_per_request {
+    <span class="kw">if </span>ids.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_endorsement_ids_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
             <span class="string">&quot;too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request&quot;</span>,
             grpc.grpc_config.max_endorsements_per_message
         )));
     }
 
-    <span class="kw">let </span>endorsement_ids: Vec&lt;EndorsementId&gt; = endorsement_ids
+    <span class="kw">let </span><span class="kw-2">mut </span>endorsement_ids: Vec&lt;EndorsementId&gt; = ids
         .into_iter()
         .take(grpc.grpc_config.max_operation_ids_per_request <span class="kw">as </span>usize + <span class="number">1</span>)
         .map(|id| {
@@ -1523,32 +1544,38 @@
         })
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
+    <span class="kw">let </span><span class="kw-2">mut </span>secure_share_endorsements: Vec&lt;SecureShareEndorsement&gt; =
+        Vec::with_capacity(endorsement_ids.len());
+    {
+        <span class="kw">let </span>endorsement_storage_lock = grpc.storage.read_endorsements();
+        endorsement_ids.retain(|id| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(wrapped_endorsement) = endorsement_storage_lock.get(id) {
+                secure_share_endorsements.push(wrapped_endorsement.clone());
+                <span class="kw">return </span><span class="bool-val">true</span>;
+            };
+            <span class="bool-val">false
+        </span>});
+    }
+
     <span class="kw">let </span>storage_info: Vec&lt;(SecureShareEndorsement, PreHashSet&lt;BlockId&gt;)&gt; = {
         <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
-        <span class="kw">let </span>read_endos = grpc.storage.read_endorsements();
-        endorsement_ids
-            .iter()
-            .filter_map(|id| {
-                read_endos.get(id).cloned().map(|ed| {
-                    (
-                        ed,
-                        read_blocks
-                            .get_blocks_by_endorsement(id)
-                            .cloned()
-                            .unwrap_or_default(),
-                    )
-                })
+        secure_share_endorsements
+            .into_iter()
+            .map(|secure_share_operation| {
+                <span class="kw">let </span>ed_id = secure_share_operation.id;
+                (
+                    secure_share_operation,
+                    read_blocks
+                        .get_blocks_by_endorsement(<span class="kw-2">&amp;</span>ed_id)
+                        .cloned()
+                        .unwrap_or_default(),
+                )
             })
             .collect()
     };
 
-    <span class="comment">// keep only the endorsements found in storage
-    </span><span class="kw">let </span>eds: Vec&lt;EndorsementId&gt; = storage_info.iter().map(|(ed, <span class="kw">_</span>)| ed.id).collect();
-
     <span class="comment">// ask pool whether it carries the endorsements
-    </span><span class="kw">let </span>in_pool = grpc.pool_controller.contains_endorsements(<span class="kw-2">&amp;</span>eds);
-
-    <span class="kw">let </span>consensus_controller = grpc.consensus_controller.clone();
+    </span><span class="kw">let </span>in_pool = grpc.pool_controller.contains_endorsements(<span class="kw-2">&amp;</span>endorsement_ids);
 
     <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
@@ -1559,12 +1586,15 @@
             .cloned()
             .collect();
 
-        <span class="kw">let </span>involved_block_statuses = consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
+        <span class="kw">let </span>involved_block_statuses = grpc
+            .consensus_controller
+            .get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
 
         <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
             .into_iter()
             .zip(involved_block_statuses)
             .collect();
+
         storage_info
             .iter()
             .map(|(_ed, bs)| {
@@ -1575,14 +1605,15 @@
     };
 
     <span class="comment">// gather all values into a vector of EndorsementInfo instances
-    </span><span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;grpc_model::EndorsementWrapper&gt; = Vec::with_capacity(eds.len());
+    </span><span class="kw">let </span><span class="kw-2">mut </span>result: Vec&lt;grpc_model::EndorsementWrapper&gt; = Vec::with_capacity(endorsement_ids.len());
     <span class="kw">let </span>zipped_iterator = <span class="macro">izip!</span>(
         storage_info.into_iter(),
         in_pool.into_iter(),
         is_final.into_iter()
     );
+
     <span class="kw">for </span>((endorsement, in_blocks), in_pool, is_final) <span class="kw">in </span>zipped_iterator {
-        res.push(grpc_model::EndorsementWrapper {
+        result.push(grpc_model::EndorsementWrapper {
             in_pool,
             is_final,
             in_blocks: in_blocks
@@ -1594,7 +1625,7 @@
     }
 
     <span class="prelude-val">Ok</span>(grpc_api::GetEndorsementsResponse {
-        wrapped_endorsements: res,
+        wrapped_endorsements: result,
     })
 }
 
@@ -1730,33 +1761,40 @@
         })
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
-    <span class="kw">let </span>read_ops = grpc.storage.read_operations();
+    <span class="kw">let </span>secure_share_operations: Vec&lt;SecureShareOperation&gt; = {
+        <span class="kw">let </span>read_ops = grpc.storage.read_operations();
+        operation_ids
+            .iter()
+            .filter_map(|id| read_ops.get(id).cloned())
+            .collect()
+    };
 
-    <span class="comment">// Get the operations and the list of blocks that contain them from storage
-    </span><span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = operation_ids
-        .into_iter()
-        .filter_map(|ope_id| {
-            read_ops.get(<span class="kw-2">&amp;</span>ope_id).map(|secure_share| {
-                <span class="kw">let </span>block_ids = read_blocks
-                    .get_blocks_by_operation(<span class="kw-2">&amp;</span>ope_id)
-                    .map(|hashset| hashset.iter().cloned().collect::&lt;HashSet&lt;BlockId&gt;&gt;())
-                    .unwrap_or_default();
-
-                (secure_share, block_ids)
+    <span class="kw">let </span>storage_info: Vec&lt;(SecureShareOperation, PreHashSet&lt;BlockId&gt;)&gt; = {
+        <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
+        secure_share_operations
+            .into_iter()
+            .map(|secure_share_operation| {
+                <span class="kw">let </span>op_id = secure_share_operation.id;
+                (
+                    secure_share_operation,
+                    read_blocks
+                        .get_blocks_by_operation(<span class="kw-2">&amp;</span>op_id)
+                        .cloned()
+                        .unwrap_or_default(),
+                )
             })
-        })
-        .collect();
+            .collect()
+    };
 
     <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationWrapper&gt; = storage_info
         .into_iter()
         .map(|secure_share| {
-            <span class="kw">let </span>(secure_share, block_ids) = secure_share;
+            <span class="kw">let </span>(secure_share_operation, block_ids) = secure_share;
             grpc_model::OperationWrapper {
-                thread: secure_share
+                thread: secure_share_operation
                     .content_creator_address
                     .get_thread(grpc.grpc_config.thread_count) <span class="kw">as </span>u32,
-                operation: <span class="prelude-val">Some</span>((<span class="kw-2">*</span>secure_share).clone().into()),
+                operation: <span class="prelude-val">Some</span>(secure_share_operation.into()),
                 block_ids: block_ids.into_iter().map(|id| id.to_string()).collect(),
             }
         })
@@ -1986,6 +2024,16 @@
         .into_iter()
         .map(to_querystate_filter)
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+
+    <span class="kw">if </span>queries.is_empty() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+            <span class="string">&quot;no query items specified&quot;</span>.to_string(),
+        ));
+    }
+
+    <span class="kw">if </span>queries.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_query_items_per_request {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">&quot;too many query items received. Only a maximum of {} operations are accepted per request&quot;</span>, grpc.grpc_config.max_operation_ids_per_request)));
+    }
 
     <span class="kw">let </span>response = grpc
         .execution_controller
@@ -2455,30 +2503,38 @@
     }
 
     <span class="kw">let </span>operations: Vec&lt;grpc_model::OperationInfo&gt; = <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_ids) = ops_ids {
-        <span class="comment">// Get the operations and the list of blocks that contain them from storage
-        </span><span class="kw">let </span>read_ops_lock = grpc.storage.read_operations();
-        <span class="kw">let </span>read_blocks_lock = grpc.storage.read_blocks();
-        <span class="kw">let </span>storage_info: Vec&lt;(<span class="kw-2">&amp;</span>SecureShareOperation, HashSet&lt;BlockId&gt;)&gt; = operation_ids
-            .into_iter()
-            .filter_map(|ope_id| {
-                read_ops_lock.get(<span class="kw-2">&amp;</span>ope_id).map(|secure_share| {
-                    <span class="kw">let </span>block_ids = read_blocks_lock
-                        .get_blocks_by_operation(<span class="kw-2">&amp;</span>ope_id)
-                        .map(|hashset| hashset.iter().cloned().collect::&lt;HashSet&lt;BlockId&gt;&gt;())
-                        .unwrap_or_default();
+        <span class="kw">let </span>secure_share_operations: Vec&lt;SecureShareOperation&gt; = {
+            <span class="kw">let </span>read_ops = grpc.storage.read_operations();
+            operation_ids
+                .iter()
+                .filter_map(|id| read_ops.get(id).cloned())
+                .collect()
+        };
 
-                    (secure_share, block_ids)
+        <span class="kw">let </span>storage_info: Vec&lt;(SecureShareOperation, PreHashSet&lt;BlockId&gt;)&gt; = {
+            <span class="kw">let </span>read_blocks = grpc.storage.read_blocks();
+            secure_share_operations
+                .into_iter()
+                .map(|secure_share_operation| {
+                    <span class="kw">let </span>op_id = secure_share_operation.id;
+                    (
+                        secure_share_operation,
+                        read_blocks
+                            .get_blocks_by_operation(<span class="kw-2">&amp;</span>op_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 })
-            })
-            .collect();
+                .collect()
+        };
 
         storage_info
             .into_iter()
-            .map(|secure_share| {
-                <span class="kw">let </span>(secure_share, block_ids) = secure_share;
+            .map(|secureshare| {
+                <span class="kw">let </span>(secureshare_operation, block_ids) = secureshare;
                 grpc_model::OperationInfo {
-                    id: secure_share.id.to_string(),
-                    thread: secure_share
+                    id: secureshare_operation.id.to_string(),
+                    thread: secureshare_operation
                         .content_creator_address
                         .get_thread(grpc.grpc_config.thread_count)
                         <span class="kw">as </span>u32,
