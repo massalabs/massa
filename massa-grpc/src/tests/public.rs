@@ -163,6 +163,7 @@ async fn test_start_grpc_server() {
         client_certificate_authority_root_path: PathBuf::default(),
         client_certificate_path: PathBuf::default(),
         client_private_key_path: PathBuf::default(),
+        max_query_items_per_request: 50,
     };
 
     let mip_stats_config = MipStatsConfig {

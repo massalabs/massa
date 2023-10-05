@@ -286,6 +286,7 @@ pub(crate) fn grpc_public_service() -> MassaPublicGrpc {
         client_certificate_authority_root_path: PathBuf::default(),
         client_certificate_path: PathBuf::default(),
         client_private_key_path: PathBuf::default(),
+        max_query_items_per_request: 50,
     };
 
     let mip_stats_config = MipStatsConfig {
