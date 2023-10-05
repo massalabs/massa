@@ -225,7 +225,8 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         &self,
         request: tonic::Request<tonic::Streaming<grpc_api::SendBlocksRequest>>,
     ) -> Result<tonic::Response<Self::SendBlocksStream>, tonic::Status> {
-        Ok(tonic::Response::new(send_blocks(self, request).await?))
+        Err(tonic::Status::unavailable("not available"))
+        // Ok(tonic::Response::new(send_blocks(self, request).await?))
     }
 
     type SendEndorsementsStream = SendEndorsementsStreamType;
