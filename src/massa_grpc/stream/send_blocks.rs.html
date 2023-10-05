@@ -200,6 +200,7 @@
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -228,6 +229,7 @@
 <span class="doccomment">/// This function takes a streaming request of block messages,
 /// verifies, saves and propagates the block received in each message, and sends back a stream of
 /// block id messages
+</span><span class="attr">#[allow(dead_code)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>send_blocks(
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: Request&lt;tonic::Streaming&lt;grpc_api::SendBlocksRequest&gt;&gt;,

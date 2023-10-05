@@ -313,11 +313,11 @@
     <span class="comment">// Subscribe to the new blocks channel
     </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.consensus_channels.block_sender.subscribe();
     <span class="comment">// Clone grpc to be able to use it in the spawned task
-    </span><span class="kw">let </span>grpc = grpc.clone();
+    </span><span class="kw">let </span>grpc_config = grpc.grpc_config.clone();
 
     tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>filters = <span class="kw">match </span>get_filter(request, <span class="kw-2">&amp;</span>grpc.grpc_config) {
+            <span class="kw">let </span><span class="kw-2">mut </span>filters = <span class="kw">match </span>get_filter(request, <span class="kw-2">&amp;</span>grpc_config) {
                 <span class="prelude-val">Ok</span>(filter) =&gt; filter,
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;failed to get filter: {}&quot;</span>, err);
@@ -336,7 +336,7 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(massa_block) =&gt; {
                                 <span class="comment">// Check if the block should be sent
-                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>massa_block, <span class="kw-2">&amp;</span>filters, <span class="kw-2">&amp;</span>grpc.grpc_config) {
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>massa_block, <span class="kw-2">&amp;</span>filters, <span class="kw-2">&amp;</span>grpc_config) {
                                     <span class="kw">continue</span>;
                                 }
                                 <span class="comment">// Send the new block through the channel
@@ -356,7 +356,7 @@
                                 <span class="kw">match </span>res {
                                     <span class="prelude-val">Ok</span>(message) =&gt; {
                                         <span class="comment">// Update current filter
-                                        </span>filters = <span class="kw">match </span>get_filter(message, <span class="kw-2">&amp;</span>grpc.grpc_config) {
+                                        </span>filters = <span class="kw">match </span>get_filter(message, <span class="kw-2">&amp;</span>grpc_config) {
                                             <span class="prelude-val">Ok</span>(filter) =&gt; filter,
                                             <span class="prelude-val">Err</span>(err) =&gt; {
                                                 <span class="macro">error!</span>(<span class="string">&quot;failed to get filter: {}&quot;</span>, err);
