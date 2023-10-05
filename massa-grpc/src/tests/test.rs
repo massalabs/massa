@@ -113,6 +113,7 @@ async fn test_start_grpc_server() {
         max_endorsement_ids_per_request: 100,
         max_operation_ids_per_request: 250,
         max_filters_per_request: 32,
+        max_query_items_per_request: 128,
         server_certificate_path: PathBuf::default(),
         server_private_key_path: PathBuf::default(),
         certificate_authority_root_path: PathBuf::default(),
