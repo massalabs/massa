@@ -186,6 +186,8 @@ impl MassaRpcServer for API<Public> {
                     operation_datastore: op_datastore,
                 }],
                 is_final,
+                coins: None,
+                fee: None,
             };
 
             // run
@@ -231,6 +233,8 @@ impl MassaRpcServer for API<Public> {
             parameter,
             caller_address,
             is_final,
+            coins,
+            fee,
         } in reqs
         {
             let caller_address = if let Some(addr) = caller_address {
@@ -275,6 +279,8 @@ impl MassaRpcServer for API<Public> {
                     },
                 ],
                 is_final,
+                coins,
+                fee,
             };
 
             // run

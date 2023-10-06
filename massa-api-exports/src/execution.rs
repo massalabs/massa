@@ -81,6 +81,10 @@ pub struct ReadOnlyCall {
     pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
+
+    pub coins: Option<u64>,
+
+    pub fee: Option<u64>,
     /// whether to start execution from final or active state. Default false
     #[serde(default)]
     pub is_final: bool,

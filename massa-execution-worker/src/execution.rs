@@ -1454,6 +1454,36 @@ impl ExecutionState {
                 // set the execution context
                 *context_guard!(self) = execution_context;
 
+                if req.fee.is_some() || req.coins.is_some() {
+                    let mut context = context_guard!(self);
+                    let call_stack_addr = context.get_call_stack();
+                    if let Some(fee) = req.fee {
+                        // Transfer fee from sender to none
+                        if let Some(addr) = call_stack_addr.get(0) {
+                            context.transfer_coins(
+                                Some(addr.clone()),
+                                None,
+                                Amount::from_raw(fee),
+                                false,
+                            )?;
+                        }
+                    }
+
+                    if let Some(coins) = req.coins {
+                        // Transfer coins from sender to called address
+                        if let Some(from) = call_stack_addr.get(0) {
+                            if let Some(to) = call_stack_addr.get(1) {
+                                context.transfer_coins(
+                                    Some(from.clone()),
+                                    Some(to.clone()),
+                                    Amount::from_raw(coins),
+                                    false,
+                                )?;
+                            }
+                        }
+                    }
+                }
+
                 // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
                 let module = self
@@ -1486,6 +1516,7 @@ impl ExecutionState {
 
         // return the execution output
         let execution_output = context_guard!(self).settle_slot(None);
+        dbg!(&execution_output);
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
             gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),

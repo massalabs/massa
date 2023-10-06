@@ -1186,6 +1186,9 @@ impl Command {
                         parameter,
                         max_gas,
                         is_final,
+                        // todo add coins and fee
+                        coins: None,
+                        fee: None,
                     })
                     .await
                 {

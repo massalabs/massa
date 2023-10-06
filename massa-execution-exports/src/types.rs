@@ -257,6 +257,10 @@ pub struct ReadOnlyExecutionRequest {
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target of the request
     pub target: ReadOnlyExecutionTarget,
+
+    pub coins: Option<u64>,
+
+    pub fee: Option<u64>,
     /// execution start state
     ///
     /// Whether to start execution from final or active state

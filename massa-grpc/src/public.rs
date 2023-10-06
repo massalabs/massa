@@ -114,6 +114,9 @@ pub(crate) fn execute_read_only_call(
         call_stack,
         target,
         is_final: call.is_final,
+        // todo add fee and coins to proto file
+        coins: None,
+        fee: None,
     };
 
     let output = grpc
