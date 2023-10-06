@@ -1132,7 +1132,7 @@
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
                 new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_new_elements_size <span class="kw">as </span>usize {
+                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_new_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;

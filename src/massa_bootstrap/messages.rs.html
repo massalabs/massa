@@ -1602,7 +1602,7 @@
     <span class="doccomment">/// Creates a new `BootstrapClientMessageDeserializer`
     </span><span class="kw">pub fn </span>new(
         thread_count: u8,
-        max_datastore_value_length: u8,
+        max_datastore_key_length: u8,
         max_consensus_block_ids: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -1614,7 +1614,7 @@
             ),
             state_step_deserializer: StreamingStepDeserializer::new(VecU8Deserializer::new(
                 Included(<span class="number">0</span>),
-                Included(max_datastore_value_length <span class="kw">as </span>u64),
+                Included(max_datastore_key_length <span class="kw">as </span>u64),
             )),
             block_ids_step_deserializer: StreamingStepDeserializer::new(
                 PreHashSetDeserializer::new(
