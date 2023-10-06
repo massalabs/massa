@@ -51,7 +51,7 @@ impl BootstrapClientBinder {
             thread_count: THREAD_COUNT,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-            max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
+            max_new_elements_size: MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE,
             max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,

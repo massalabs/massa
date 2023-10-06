@@ -32,7 +32,7 @@ use massa_models::config::{
     MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-    PERIODS_PER_CYCLE, THREAD_COUNT,
+    PERIODS_PER_CYCLE, THREAD_COUNT, MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
@@ -418,7 +418,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
+        max_new_elements_size: MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
