@@ -1274,6 +1274,9 @@
 <a href="#1274" id="1274">1274</a>
 <a href="#1275" id="1275">1275</a>
 <a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1390,6 +1393,9 @@
         call_stack,
         target,
         is_final: call.is_final,
+        <span class="comment">// todo add fee and coins to proto file
+        </span>coins: <span class="prelude-val">None</span>,
+        fee: <span class="prelude-val">None</span>,
     };
 
     <span class="kw">let </span>output = grpc
