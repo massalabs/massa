@@ -1420,15 +1420,16 @@ impl ExecutionState {
         // run the interpreter according to the target type
         let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
-                // set the execution context
-                let mut context = context_guard!(self);
-                *context = execution_context;
+                {
+                    let mut context = context_guard!(self);
+                    *context = execution_context;
 
-                let call_stack_addr = context.get_call_stack();
+                    let call_stack_addr = context.get_call_stack();
 
-                // transfer fee
-                if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
-                    context.transfer_coins(Some(*addr), None, fee, false)?;
+                    // transfer fee
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                        context.transfer_coins(Some(*addr), None, fee, false)?;
+                    }
                 }
 
                 // load the tmp module
@@ -1459,22 +1460,23 @@ impl ExecutionState {
                     .unwrap_or_default()
                     .0;
 
-                // set the execution context
-                let mut context = context_guard!(self);
-                *context = execution_context;
-
-                let call_stack_addr = context.get_call_stack();
-
-                // transfer fee
-                if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
-                    context.transfer_coins(Some(*addr), None, fee, false)?;
-                }
-
-                // transfer coins
-                if let (Some(coins), Some(from), Some(to)) =
-                    (req.coins, call_stack_addr.get(0), call_stack_addr.get(1))
                 {
-                    context.transfer_coins(Some(*from), Some(*to), coins, false)?;
+                    let mut context = context_guard!(self);
+                    *context = execution_context;
+
+                    let call_stack_addr = context.get_call_stack();
+
+                    // transfer fee
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                        context.transfer_coins(Some(*addr), None, fee, false)?;
+                    }
+
+                    // transfer coins
+                    if let (Some(coins), Some(from), Some(to)) =
+                        (req.coins, call_stack_addr.get(0), call_stack_addr.get(1))
+                    {
+                        context.transfer_coins(Some(*from), Some(*to), coins, false)?;
+                    }
                 }
 
                 // load and execute the compiled module
