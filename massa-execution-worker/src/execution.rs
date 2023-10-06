@@ -1511,7 +1511,6 @@ impl ExecutionState {
 
         // return the execution output
         let execution_output = context_guard!(self).settle_slot(None);
-        dbg!(&execution_output);
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
             gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),

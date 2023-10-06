@@ -257,9 +257,9 @@ pub struct ReadOnlyExecutionRequest {
     pub call_stack: Vec<ExecutionStackElement>,
     /// Target of the request
     pub target: ReadOnlyExecutionTarget,
-
+    /// Coins transferred to the target address during the call
     pub coins: Option<Amount>,
-
+    /// Fee
     pub fee: Option<Amount>,
     /// execution start state
     ///
