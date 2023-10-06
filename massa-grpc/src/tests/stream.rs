@@ -1316,7 +1316,7 @@ async fn send_operations() {
         }
     }
 
-    let op2 = create_operation_with_expire_period(&keypair, 150000);
+    let op2 = create_operation_with_expire_period(&keypair, 550000);
     let mut buffer: Vec<u8> = Vec::new();
     SecureShareSerializer::new()
         .serialize(&op2, &mut buffer)
