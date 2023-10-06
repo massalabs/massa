@@ -732,7 +732,7 @@ impl BootstrapClientMessageDeserializer {
     /// Creates a new `BootstrapClientMessageDeserializer`
     pub fn new(
         thread_count: u8,
-        max_datastore_value_length: u8,
+        max_datastore_key_length: u8,
         max_consensus_block_ids: u64,
     ) -> Self {
         Self {
@@ -744,7 +744,7 @@ impl BootstrapClientMessageDeserializer {
             ),
             state_step_deserializer: StreamingStepDeserializer::new(VecU8Deserializer::new(
                 Included(0),
-                Included(max_datastore_value_length as u64),
+                Included(max_datastore_key_length as u64),
             )),
             block_ids_step_deserializer: StreamingStepDeserializer::new(
                 PreHashSetDeserializer::new(
