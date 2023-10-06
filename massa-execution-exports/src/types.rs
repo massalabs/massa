@@ -258,9 +258,9 @@ pub struct ReadOnlyExecutionRequest {
     /// Target of the request
     pub target: ReadOnlyExecutionTarget,
 
-    pub coins: Option<u64>,
+    pub coins: Option<Amount>,
 
-    pub fee: Option<u64>,
+    pub fee: Option<Amount>,
     /// execution start state
     ///
     /// Whether to start execution from final or active state

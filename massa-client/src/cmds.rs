@@ -1151,6 +1151,7 @@ impl Command {
                         address,
                         operation_datastore: None, // TODO - #3072
                         is_final,
+                        fee: None,
                     })
                     .await
                 {

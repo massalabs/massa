@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_final_state::StateChanges;
-use massa_models::{address::Address, output_event::SCOutputEvent, slot::Slot};
+use massa_models::{address::Address, amount::Amount, output_event::SCOutputEvent, slot::Slot};
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt::Display};
 
@@ -63,6 +63,8 @@ pub struct ReadOnlyBytecodeExecution {
     pub address: Option<Address>,
     /// Operation datastore, optional
     pub operation_datastore: Option<Vec<u8>>,
+    /// fee
+    pub fee: Option<Amount>,
     /// whether to start execution from final or active state. Default false
     #[serde(default)]
     pub is_final: bool,
@@ -81,10 +83,10 @@ pub struct ReadOnlyCall {
     pub parameter: Vec<u8>,
     /// caller's address, optional
     pub caller_address: Option<Address>,
-
-    pub coins: Option<u64>,
-
-    pub fee: Option<u64>,
+    /// coins
+    pub coins: Option<Amount>,
+    /// fee
+    pub fee: Option<Amount>,
     /// whether to start execution from final or active state. Default false
     #[serde(default)]
     pub is_final: bool,

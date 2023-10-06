@@ -133,6 +133,7 @@ impl MassaRpcServer for API<Public> {
             bytecode,
             operation_datastore,
             is_final,
+            fee,
         } in reqs
         {
             let address = if let Some(addr) = address {
@@ -187,7 +188,7 @@ impl MassaRpcServer for API<Public> {
                 }],
                 is_final,
                 coins: None,
-                fee: None,
+                fee,
             };
 
             // run
