@@ -63,7 +63,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{net::SocketAddr, path::PathBuf};
 
-const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
+// const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
 // #[tokio::test]
 // #[serial]
@@ -219,7 +219,8 @@ async fn test_start_grpc_server() {
 #[tokio::test]
 #[serial]
 async fn get_status() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4001".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl
@@ -236,9 +237,12 @@ async fn get_status() {
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
-    let mut public_client = PublicServiceClient::connect("grpc://localhost:8888")
-        .await
-        .unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
     let response = public_client.get_status(GetStatusRequest {}).await.unwrap();
     let result = response.into_inner();
     assert_eq!(result.status.unwrap().version, *VERSION.to_string());
@@ -250,7 +254,8 @@ async fn get_status() {
 #[tokio::test]
 #[serial]
 async fn get_transactions_throughput() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4002".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl.expect_get_stats().returning(|| ExecutionStats {
@@ -267,9 +272,12 @@ async fn get_transactions_throughput() {
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
-    let mut public_client = PublicServiceClient::connect("grpc://localhost:8888")
-        .await
-        .unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
     let response = public_client
         .get_transactions_throughput(GetTransactionsThroughputRequest {})
         .await
@@ -284,7 +292,8 @@ async fn get_transactions_throughput() {
 #[tokio::test]
 #[serial]
 async fn get_operations() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4003".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     // create an operation and store it in the storage
@@ -298,9 +307,12 @@ async fn get_operations() {
     let stop_handle = public_server.serve(&config).await.unwrap();
 
     // start grpc client and connect to the server
-    let mut public_client = PublicServiceClient::connect("grpc://localhost:8888")
-        .await
-        .unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let response = public_client
         .get_operations(GetOperationsRequest {
@@ -334,7 +346,8 @@ async fn get_operations() {
 #[tokio::test]
 #[serial]
 async fn get_blocks() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4004".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let mut consensus_ctrl = MockConsensusControllerImpl::new();
     consensus_ctrl
         .expect_get_block_statuses()
@@ -351,7 +364,12 @@ async fn get_blocks() {
     let stop_handle = public_server.serve(&config).await.unwrap();
 
     // start grpc client and connect to the server
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let result = public_client
         .get_blocks(GetBlocksRequest {
@@ -371,7 +389,8 @@ async fn get_blocks() {
 #[tokio::test]
 #[serial]
 async fn get_stakers() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4005".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
@@ -402,7 +421,12 @@ async fn get_stakers() {
     // start the server
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let result = public_client
         .get_stakers(massa_proto_rs::massa::api::v1::GetStakersRequest {
@@ -451,7 +475,8 @@ async fn get_stakers() {
 #[tokio::test]
 #[serial]
 async fn get_datastore_entries() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4006".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl
@@ -464,7 +489,12 @@ async fn get_datastore_entries() {
     // start the server
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let result = public_client
         .get_datastore_entries(massa_proto_rs::massa::api::v1::GetDatastoreEntriesRequest {
@@ -493,7 +523,8 @@ async fn get_datastore_entries() {
 #[tokio::test]
 #[serial]
 async fn execute_read_only_call() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4007".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut exec_ctrl = MockExecutionCtrl::new();
@@ -519,7 +550,12 @@ async fn execute_read_only_call() {
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let mut param = ReadOnlyExecutionCall {
         max_gas: u64::MAX,
@@ -601,7 +637,8 @@ async fn execute_read_only_call() {
 #[tokio::test]
 #[serial]
 async fn get_endorsements() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4008".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let endorsement = create_endorsement();
@@ -641,7 +678,12 @@ async fn get_endorsements() {
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let result = public_client
         .get_endorsements(GetEndorsementsRequest {
@@ -683,7 +725,8 @@ async fn get_endorsements() {
 #[tokio::test]
 #[serial]
 async fn get_next_block_best_parents() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4009".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut consensus_ctrl = MockConsensusControllerImpl::new();
@@ -703,7 +746,12 @@ async fn get_next_block_best_parents() {
     public_server.consensus_controller = Box::new(consensus_ctrl);
 
     let stop_handle = public_server.serve(&config).await.unwrap();
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let result = public_client
         .get_next_block_best_parents(GetNextBlockBestParentsRequest {})
@@ -724,7 +772,8 @@ async fn get_next_block_best_parents() {
 #[tokio::test]
 #[serial]
 async fn get_sc_execution_events() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4010".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut exec_ctrl = MockExecutionCtrl::new();
@@ -757,7 +806,12 @@ async fn get_sc_execution_events() {
     public_server.execution_controller = Box::new(exec_ctrl);
 
     let stop_handle = public_server.serve(&config).await.unwrap();
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let filter = massa_proto_rs::massa::api::v1::ScExecutionEventsFilter {
         filter: Some(
@@ -797,7 +851,8 @@ async fn get_sc_execution_events() {
 #[tokio::test]
 #[serial]
 async fn get_selector_draws() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4011".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut selector_ctrl = MockSelectorCtrl::new();
@@ -859,7 +914,12 @@ async fn get_selector_draws() {
     public_server.selector_controller = Box::new(selector_ctrl);
 
     let stop_handle = public_server.serve(&config).await.unwrap();
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     // TEST slotRange
 
@@ -1015,7 +1075,8 @@ async fn get_selector_draws() {
 #[tokio::test]
 #[serial]
 async fn query_state() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4012".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut exec_ctrl = MockExecutionCtrl::new();
@@ -1031,7 +1092,12 @@ async fn query_state() {
     public_server.execution_controller = Box::new(exec_ctrl);
 
     let stop_handle = public_server.serve(&config).await.unwrap();
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let result = public_client
         .query_state(QueryStateRequest { queries: vec![] })
@@ -1059,7 +1125,8 @@ async fn query_state() {
 #[tokio::test]
 #[serial]
 async fn search_blocks() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4013".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let op = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 4);
@@ -1097,7 +1164,12 @@ async fn search_blocks() {
     public_server.consensus_controller = Box::new(consensus_ctrl);
 
     let stop_handle = public_server.serve(&config).await.unwrap();
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     // test slot range
 
@@ -1304,7 +1376,8 @@ async fn search_blocks() {
 #[tokio::test]
 #[serial]
 async fn search_endorsements() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4014".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut endorsement = create_endorsement();
@@ -1356,7 +1429,12 @@ async fn search_endorsements() {
     public_server.consensus_controller = Box::new(consensus_ctrl);
 
     let stop_handle = public_server.serve(&config).await.unwrap();
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let mut filter_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
         filter: Some(
@@ -1506,7 +1584,8 @@ async fn search_endorsements() {
 #[tokio::test]
 #[serial]
 async fn search_operations() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4016".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let keypair = KeyPair::generate(0).unwrap();
@@ -1523,7 +1602,12 @@ async fn search_operations() {
     // start the server
     let stop_handle = public_server.serve(&config).await.unwrap();
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let mut filter = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
         filter: Some(

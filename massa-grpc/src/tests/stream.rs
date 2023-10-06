@@ -1,4 +1,4 @@
-use std::{ops::Add, time::Duration};
+use std::{net::SocketAddr, ops::Add, time::Duration};
 
 use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl};
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
@@ -28,12 +28,13 @@ use massa_time::MassaTime;
 use serial_test::serial;
 use tokio_stream::StreamExt;
 
-const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
+// const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
 #[tokio::test]
 #[serial]
 async fn transactions_throughput_stream() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4017".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut exec_ctrl = MockExecutionCtrl::new();
@@ -96,7 +97,12 @@ async fn transactions_throughput_stream() {
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     // channel for bi-directional streaming
     let (tx, rx) = tokio::sync::mpsc::channel(10);
@@ -147,7 +153,8 @@ async fn transactions_throughput_stream() {
 #[tokio::test]
 #[serial]
 async fn new_operations() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4018".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
     let (op_tx, _op_rx) = tokio::sync::broadcast::channel(10);
     let keypair = massa_signature::KeyPair::generate(0).unwrap();
@@ -155,8 +162,12 @@ async fn new_operations() {
     public_server.pool_channels.operation_sender = op_tx.clone();
 
     let stop_handle = public_server.serve(&config).await.unwrap();
-
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
     let op = create_operation_with_expire_period(&keypair, 10);
     let (op_send_signal, mut rx_op_send) = tokio::sync::mpsc::channel(10);
 
@@ -365,7 +376,8 @@ async fn new_operations() {
 #[tokio::test]
 #[serial]
 async fn new_blocks() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4019".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
     let (block_tx, _block_rx) = tokio::sync::broadcast::channel(10);
 
@@ -387,7 +399,12 @@ async fn new_blocks() {
         vec![op.clone()],
     );
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let (tx_request, rx) = tokio::sync::mpsc::channel(10);
     let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
@@ -628,7 +645,8 @@ async fn new_blocks() {
 #[tokio::test]
 #[serial]
 async fn new_endorsements() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4020".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let (endorsement_tx, _endorsement_rx) = tokio::sync::broadcast::channel(10);
@@ -637,7 +655,12 @@ async fn new_endorsements() {
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let endorsement = create_endorsement();
 
@@ -821,7 +844,8 @@ async fn new_endorsements() {
 #[tokio::test]
 #[serial]
 async fn new_filled_blocks() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4021".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let (filled_block_tx, _filled_block_rx) = tokio::sync::broadcast::channel(10);
@@ -841,7 +865,12 @@ async fn new_filled_blocks() {
         operations: vec![],
     };
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let mut resp_stream = public_client
         .new_filled_blocks(request_stream)
@@ -1016,7 +1045,8 @@ async fn new_filled_blocks() {
 #[tokio::test]
 #[serial]
 async fn new_slot_execution_outputs() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4022".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let (slot_tx, _slot_rx) = tokio::sync::broadcast::channel(10);
@@ -1039,7 +1069,12 @@ async fn new_slot_execution_outputs() {
     let keypair = KeyPair::generate(0).unwrap();
     let _address = Address::from_public_key(&keypair.get_public_key());
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let mut resp_stream = public_client
         .new_slot_execution_outputs(request_stream)
@@ -1185,7 +1220,8 @@ async fn new_slot_execution_outputs() {
 #[tokio::test]
 #[serial]
 async fn send_operations() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4023".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
 
     let mut pool_ctrl = MockPoolCtrl::new();
     pool_ctrl.expect_clone_box().returning(|| {
@@ -1215,7 +1251,12 @@ async fn send_operations() {
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let mut resp_stream = public_client
         .send_operations(request_stream)
@@ -1332,7 +1373,8 @@ async fn send_operations() {
 #[tokio::test]
 #[serial]
 async fn send_endorsements() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4024".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
     let mut protocol_ctrl = MockProtocolController::new();
@@ -1361,7 +1403,12 @@ async fn send_endorsements() {
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let mut resp_stream = public_client
         .send_endorsements(request_stream)
@@ -1416,7 +1463,8 @@ async fn send_endorsements() {
 #[tokio::test]
 #[serial]
 async fn send_blocks() {
-    let mut public_server = grpc_public_service();
+    let addr: SocketAddr = "[::]:4025".parse().unwrap();
+    let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
     // let keypair = KeyPair::generate(0).unwrap();
     let mut protocol_ctrl = MockProtocolController::new();
@@ -1445,7 +1493,12 @@ async fn send_blocks() {
     //     .new_verifiable(BlockSerializer::new(), &keypair)
     //     .unwrap();
 
-    let mut public_client = PublicServiceClient::connect(GRPC_SERVER_URL).await.unwrap();
+    let mut public_client = PublicServiceClient::connect(format!(
+        "grpc://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .await
+    .unwrap();
 
     let resp_stream = public_client.send_blocks(request_stream).await;
     assert!(resp_stream.unwrap_err().message().contains("not available"));
