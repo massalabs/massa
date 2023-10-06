@@ -849,10 +849,6 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
         self.recompute_db_hash()
     }
-
-    fn get_db(&self) -> Arc<DB> {
-        self.db.clone()
-    }
 }
 
 #[cfg(test)]
@@ -870,38 +866,35 @@ mod test {
 
     use super::*;
 
-    // fn dump_column(db: Arc<DB>, column: &str) -> Vec<(Vec<u8>, Vec<u8>)> {
-    fn dump_column(db: Arc<DB>, column: &str) -> BTreeMap<Vec<u8>, Vec<u8>> {
-        let cf = db.cf_handle(column).unwrap();
-        // let res: Vec<(Box<[u8]>, Box<[u8]>)> =
-        let res = db
-            .iterator_cf(cf, IteratorMode::Start)
-            .flatten()
-            // Need to map to vec otherwise type is Box<[u8]>
-            .map(|(k, v)| (k.to_vec(), v.to_vec()))
-            .collect();
-        res
+    fn dump_column(
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        column: &str,
+    ) -> BTreeMap<Vec<u8>, Vec<u8>> {
+        db.read()
+            .iterator_cf(column, MassaIteratorMode::Start)
+            // .collect::<BTreeMap<Vec<u8>, Vec<u8>>>()
+            .collect()
     }
 
-    fn dump_column_opt(db: Arc<DB>, column: &str) -> BTreeMap<Vec<u8>, Option<Vec<u8>>> {
-        let cf = db.cf_handle(column).unwrap();
-        // let res: Vec<(Box<[u8]>, Box<[u8]>)> =
-        let res = db
-            .iterator_cf(cf, IteratorMode::Start)
-            .flatten()
-            // Need to map to vec otherwise type is Box<[u8]>
-            .map(|(k, v)| (k.to_vec(), Some(v.to_vec())))
-            .collect();
-        res
+    fn dump_column_opt(
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        column: &str,
+    ) -> BTreeMap<Vec<u8>, Option<Vec<u8>>> {
+        db.read()
+            .iterator_cf(column, MassaIteratorMode::Start)
+            .map(|(k, v)| (k, Some(v)))
+            // .collect::<BTreeMap<Vec<u8>, Option<Vec<u8>>>>()
+            .collect()
     }
 
     fn initial_hash() -> Hash {
+        // Initial hash in the db / final state
         Hash::compute_from(STATE_HASH_INITIAL_BYTES)
     }
 
     #[test]
     fn test_init() {
-        // Test we cannot double init a Db
+        // Test we cannot double init a Db object
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
@@ -936,7 +929,7 @@ mod test {
 
         // Init
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
-        println!("temp_dir_db: {:?}", temp_dir_db);
+        // println!("temp_dir_db: {:?}", temp_dir_db);
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
@@ -957,9 +950,6 @@ mod test {
             initial_hash()
         );
 
-        let db_ = db.read().get_db();
-        // let db_ = db.read().get_db();
-
         // Checks up
         let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or(vec![]);
         let cf_exists_1 = cfs.iter().find(|cf| cf == &"state").is_some();
@@ -973,7 +963,7 @@ mod test {
             if col == "metadata" {
                 continue;
             }
-            assert!(dump_column(db_.clone(), col.as_str()).is_empty());
+            assert!(dump_column(db.clone(), col.as_str()).is_empty());
         }
 
         // Add data
@@ -991,8 +981,10 @@ mod test {
         guard.write_batch(batch.clone(), versioning_batch.clone(), None);
         drop(guard);
 
-        assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
-        assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+        // assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
+        assert_eq!(dump_column_opt(db.clone(), "state"), batch);
+        // assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+        assert_eq!(dump_column_opt(db.clone(), "versioning"), versioning_batch);
 
         // Remove data
 
@@ -1004,8 +996,92 @@ mod test {
         guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), None);
         drop(guard);
 
-        assert!(dump_column(db_.clone(), "state").is_empty());
-        assert!(dump_column(db_.clone(), "versioning").is_empty());
+        // assert!(dump_column(db_.clone(), "state").is_empty());
+        assert!(dump_column(db.clone(), "state").is_empty());
+        // assert!(dump_column(db_.clone(), "versioning").is_empty());
+        assert!(dump_column(db.clone(), "versioning").is_empty());
+    }
+
+    #[test]
+    fn test_basics_2() {
+        // 1- Init a db + check initial hash
+        // 2- Add some data
+        // 3- Read it
+        // 4- Remove data
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        assert_eq!(
+            Hash::compute_from(db.read().get_xof_db_hash().to_bytes()),
+            initial_hash()
+        );
+
+        // Add data
+
+        let b_key1 = vec![1, 2, 3];
+        let b_value1 = vec![4, 5, 6];
+        let mut batch = DBBatch::new();
+        db.read()
+            .put_or_update_entry_value(&mut batch, b_key1.clone(), &b_value1);
+        let versioning_batch = BTreeMap::default();
+
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), None);
+        drop(guard);
+
+        // assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
+        assert_eq!(dump_column_opt(db.clone(), "state"), batch);
+        // assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+        assert_eq!(dump_column_opt(db.clone(), "versioning"), versioning_batch);
+
+        // Remove data
+
+        let mut batch_2 = DBBatch::new();
+        // batch_2.insert(b_key1.clone(), None);
+        db.read().delete_key(&mut batch_2, b_key1.clone());
+        let versioning_batch_2 = BTreeMap::default();
+        let mut guard = db.write();
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), None);
+        drop(guard);
+
+        // assert!(dump_column(db_.clone(), "state").is_empty());
+        assert!(dump_column(db.clone(), "state").is_empty());
+        // assert!(dump_column(db_.clone(), "versioning").is_empty());
+        assert!(dump_column(db.clone(), "versioning").is_empty());
+
+        // Add some datas then remove using prefix
+        batch.clear();
+        db.read()
+            .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &vec![1]);
+        db.read()
+            .put_or_update_entry_value(&mut batch, vec![97, 98, 2], &vec![2]);
+        let v3 = vec![200, 101, 1];
+        let k3 = vec![101];
+        db.read()
+            .put_or_update_entry_value(&mut batch, v3.clone(), &k3);
+
+        db.write()
+            .write_batch(batch.clone(), versioning_batch.clone(), None);
+
+        // "ab".as_bytes == [97, 98]
+        db.write().delete_prefix(&"ab", "state", None);
+        assert_eq!(dump_column(db.clone(), "state"), BTreeMap::from([(v3, k3)]))
     }
 
     #[test]
@@ -1018,7 +1094,7 @@ mod test {
 
         // Init
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
-        println!("temp_dir_db: {:?}", temp_dir_db);
+        // println!("temp_dir_db: {:?}", temp_dir_db);
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
@@ -1042,6 +1118,7 @@ mod test {
         guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_1));
         drop(guard);
 
+        // Keep hash so we can compare with db backup
         let hash_1 = db.read().get_xof_db_hash();
 
         // Backup db
@@ -1059,7 +1136,7 @@ mod test {
 
         let hash_2 = db.read().get_xof_db_hash();
 
-        // Backup db
+        // Backup db (again)
         let guard = db.read();
         let backup_2 = guard.backup_db(slot_2);
         drop(guard);
@@ -1117,7 +1194,7 @@ mod test {
 
         // Init
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
-        println!("temp_dir_db: {:?}", temp_dir_db);
+        // println!("temp_dir_db: {:?}", temp_dir_db);
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
@@ -1158,11 +1235,11 @@ mod test {
             let slot = Slot::new(i as u64, 0);
             let (backup_xof, backup_path) = backups.get(&slot).unwrap();
 
-            println!(
-                "Checking backup_path: {:?} -> exists: {}",
-                backup_path,
-                backup_path.exists()
-            );
+            // println!(
+            //     "Checking backup_path: {:?} -> exists: {}",
+            //     backup_path,
+            //     backup_path.exists()
+            // );
             let db_backup_config = MassaDBConfig {
                 path: backup_path.clone(),
                 max_history_length: 100,
@@ -1202,13 +1279,19 @@ mod test {
 
     #[test]
     fn test_db_stream() {
-        // Init
+        // Init db + add data
+        // Stream Started
+        // Stream Ongoing
+        // Stream Finished
+        // Stream edge cases
+
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
-        println!("temp_dir_db: {:?}", temp_dir_db);
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let max_new_elements = 100;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1220,49 +1303,61 @@ mod test {
             Box::new(_db) as Box<(dyn MassaDBController + 'static)>
         ));
 
-        let db_ = db.read().get_db();
-
-        // Add data
-        let batch = DBBatch::from([(vec![1, 2, 3], Some(vec![4, 5, 6]))]);
+        // Add data (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
         let versioning_batch = DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
         let slot_1 = Slot::new(1, 0);
         let mut guard = db.write();
         guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_1));
         drop(guard);
 
-        // Add data
-        let batch = DBBatch::from([(vec![11, 22, 33], Some(vec![44, 55, 66]))]);
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
         let versioning_batch = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
         let slot_2 = Slot::new(2, 0);
         let mut guard = db.write();
         guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_2));
         drop(guard);
 
+        // Stream using StreamingStep::Started
         let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
-        let stream_batch = db.read().get_batch_to_stream(&last_state_step, None);
-        assert_eq!(
-            stream_batch.unwrap().new_elements,
-            dump_column(db_.clone(), "state")
-        );
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        // Here we retrieved the whole db content (see config.max_new_elements)
+        // assert_eq!(stream_batch.new_elements, dump_column(db_.clone(), "state"));
+        assert_eq!(stream_batch.new_elements, dump_column(db.clone(), "state"));
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
 
-        // Same as previous but starting from slot_1
-        /*
-        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing;
+        // Same using StreamingStep::Ongoing, starting from batch_key_1
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_key_1);
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        let stream_batch = stream_batch_.unwrap();
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_key_2, batch_value_2)])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
+
+        // StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Finished(None);
         let stream_batch = db
             .read()
             .get_batch_to_stream(&last_state_step, Some(slot_2));
-        println!("stream_batch: {:?}", stream_batch);
-        */
 
-        /*
-        assert_eq!(
-            stream_batch.unwrap().new_elements,
-            dump_column(db_.clone(), "state")
-        );
-        */
+        assert_eq!(stream_batch.unwrap().new_elements, BTreeMap::new());
 
         // Edge cases
 
+        // Stream from the future
         let stream_batch = db
             .read()
             .get_batch_to_stream(&StreamingStep::Ongoing(vec![]), Some(Slot::new(5, 0)));
@@ -1270,10 +1365,288 @@ mod test {
         assert_matches!(stream_batch, Err(TimeError(..)));
         assert!(stream_batch.err().unwrap().to_string().contains("future"));
 
+        //
         let stream_batch = db
             .read()
             .get_batch_to_stream(&StreamingStep::Finished(None), None);
         // println!("stream_batch: {:?}", stream_batch);
         assert_matches!(stream_batch, Err(TimeError(..)));
+    }
+
+    #[test]
+    fn test_db_stream_versioning() {
+        // Same as test_db_stream but for versioning
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let max_new_elements = 100;
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // let db_ = db.read().get_db();
+
+        // Add data
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let batch_v_key_1 = vec![10, 20, 30];
+        let batch_v_value_1 = vec![127, 128, 254, 255];
+        let versioning_batch_1 =
+            DBBatch::from([(batch_v_key_1.clone(), Some(batch_v_value_1.clone()))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_1.clone(), versioning_batch_1.clone(), Some(slot_1));
+        drop(guard);
+
+        // Add data
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let batch_v_key_2 = vec![12, 23, 34];
+        let batch_v_value_2 = vec![255, 254, 253];
+        let versioning_batch_2 =
+            DBBatch::from([(batch_v_key_2.clone(), Some(batch_v_value_2.clone()))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), Some(slot_2));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db
+            .read()
+            .get_versioning_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        // Here we retrieved the whole db content (see config.max_new_elements )
+        assert_eq!(
+            stream_batch.new_elements,
+            dump_column(db.clone(), "versioning")
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
+
+        // Same using StreamingStep::Ongoing, starting from batch_key_1
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_v_key_1);
+        let stream_batch_ = db
+            .read()
+            .get_versioning_batch_to_stream(&last_state_step, Some(slot_2));
+        let stream_batch = stream_batch_.unwrap();
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_v_key_2, batch_v_value_2)])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
+
+        // StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Finished(None);
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+
+        assert_eq!(stream_batch.unwrap().new_elements, BTreeMap::new());
+    }
+
+    #[test]
+    fn test_db_stream_2() {
+        // Init db + add data
+        // Stream (Ongoing) with previous data updated
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        println!("temp_dir_db: {:?}", temp_dir_db);
+        let max_new_elements = 1;
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data 1 (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let versioning_batch_1 =
+            DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_1.clone(), versioning_batch_1.clone(), Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch_2 = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), Some(slot_1));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_key_1.clone(), batch_value_1.clone())])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_1);
+
+        // Update data 1 (at slot 2)
+        let batch_value_1b = vec![94, 95, 96];
+        let batch_1b = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1b.clone()))]);
+        let versioning_batch_1b = DBBatch::new();
+        let mut guard = db.write();
+        guard.write_batch(batch_1b.clone(), versioning_batch_1b.clone(), Some(slot_2));
+        drop(guard);
+
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_key_1.clone());
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_1));
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_key_2, batch_value_2)])
+        );
+        assert_eq!(
+            stream_batch.updates_on_previous_elements,
+            BTreeMap::from([(batch_key_1, Some(batch_value_1b))])
+        );
+        assert_eq!(stream_batch.change_id, slot_2);
+    }
+
+    #[test]
+    fn test_db_stream_3() {
+        // Init db + add data
+        // Stream until finished
+        // Add + Update some values
+        // Stream Finished
+        // Note: This happens in the bootstrap process where the state is streamed then
+        //       the consensus is streamed, but during that, updates to the state must be
+        //       streamed as well
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let max_new_elements = 2;
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data 1 (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let versioning_batch_1 =
+            DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_1.clone(), versioning_batch_1.clone(), Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch_2 = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), Some(slot_1));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([
+                (batch_key_1.clone(), batch_value_1.clone()),
+                (batch_key_2.clone(), batch_value_2.clone())
+            ])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_1);
+
+        // Now updates some value (at slot 2)
+        let batch_value_2b = vec![94, 95, 96];
+        let batch_2b = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2b.clone()))]);
+        let versioning_batch_2b = DBBatch::new();
+        let mut guard = db.write();
+        guard.write_batch(batch_2b.clone(), versioning_batch_2b.clone(), Some(slot_2));
+        drop(guard);
+
+        // Add data (at slot 3)
+        let batch_key_3 = vec![61, 62, 63];
+        let batch_value_3 = vec![4, 5, 6, 7];
+        let batch_3 = DBBatch::from([(batch_key_3.clone(), Some(batch_value_3.clone()))]);
+        let versioning_batch_3 = DBBatch::new();
+        let slot_3 = Slot::new(3, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_3.clone(), versioning_batch_3.clone(), Some(slot_3));
+        drop(guard);
+
+        // Stream using StreamingStep::Finished
+
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_1));
+        let stream_batch = stream_batch_.unwrap();
+
+        // FIXME?: new_elements is empty, everything is on updates_on_previous_elements
+        assert!(stream_batch.new_elements.is_empty());
+        assert_eq!(
+            stream_batch.updates_on_previous_elements,
+            BTreeMap::from([
+                (batch_key_2, Some(batch_value_2b)),
+                (batch_key_3.clone(), Some(batch_value_3))
+            ])
+        );
+
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Finished(Some(batch_key_3));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_3));
+        let stream_batch = stream_batch_.unwrap();
+
+        // No more updates and new elements -> all empty
+        assert!(stream_batch.new_elements.is_empty());
+        assert!(stream_batch.updates_on_previous_elements.is_empty());
     }
 }

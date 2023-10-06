@@ -12,5 +12,5 @@ massa_serialization = {workspace = true}
 massa_db_exports = {workspace = true}
 
 [dev-dependencies]
-tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+tempfile = {workspace = true}
 assert_matches = {workspace = true}
