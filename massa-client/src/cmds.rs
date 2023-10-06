@@ -1143,12 +1143,10 @@ impl Command {
                 } else {
                     false
                 };
-
-                let fee = if let Some(fee) = parameters.get(4) {
-                    Some(Amount::from_str(fee)?)
-                } else {
-                    None
-                };
+                let fee = parameters
+                    .get(7)
+                    .map(|fee| Amount::from_str(fee))
+                    .transpose()?;
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
                     .public
@@ -1185,16 +1183,11 @@ impl Command {
                 } else {
                     false
                 };
-                let coins: Option<Amount> = if let Some(coins) = parameters.get(6) {
-                    Some(Amount::from_str(coins)?)
-                } else {
-                    None
-                };
-                let fee = if let Some(fee) = parameters.get(7) {
-                    Some(Amount::from_str(fee)?)
-                } else {
-                    None
-                };
+                let coins = parameters.get(6).map(|c| Amount::from_str(c)).transpose()?;
+                let fee = parameters
+                    .get(7)
+                    .map(|fee| Amount::from_str(fee))
+                    .transpose()?;
                 match client
                     .public
                     .execute_read_only_call(ReadOnlyCall {
