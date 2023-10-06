@@ -1035,13 +1035,9 @@ async fn query_state() {
 
     let result = public_client
         .query_state(QueryStateRequest { queries: vec![] })
-        .await
-        .unwrap()
-        .into_inner();
+        .await;
 
-    let slot = result.final_cursor.unwrap();
-    assert_eq!(slot.period, 1);
-    assert_eq!(slot.thread, 7);
+    assert!(result.is_err());
 
     let query = ExecutionQueryRequestItem {
         request_item: Some(massa_proto_rs::massa::api::v1::execution_query_request_item::RequestItem::AddressBalanceCandidate(AddressBalanceCandidate {address: "AU1wDuhMhWStMYCEVrNocpsbJF4C4SXfBRLohs9bik5Np5m4dY7H".to_string()})),
