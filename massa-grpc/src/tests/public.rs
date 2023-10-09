@@ -68,7 +68,6 @@ async fn get_status() {
     assert_eq!(result.status.unwrap().version, *VERSION.to_string());
 
     stop_handle.stop();
-    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
@@ -105,7 +104,6 @@ async fn get_transactions_throughput() {
 
     assert_eq!(response.throughput, 0);
     stop_handle.stop();
-    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
@@ -118,8 +116,6 @@ async fn get_operations() {
     let op = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 0);
     let op_id = op.id.clone();
     public_server.storage.store_operations(vec![op]);
-
-    std::thread::sleep(Duration::from_millis(1000));
 
     // start the server
     let stop_handle = public_server.serve(&config).await.unwrap();
@@ -158,7 +154,6 @@ async fn get_operations() {
         _ => panic!("wrong operation type"),
     }
     stop_handle.stop();
-    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
@@ -200,7 +195,6 @@ async fn get_blocks() {
 
     assert_eq!(s, BlockStatus::Final as i32);
     stop_handle.stop();
-    std::thread::sleep(Duration::from_millis(1000));
 }
 
 #[tokio::test]
