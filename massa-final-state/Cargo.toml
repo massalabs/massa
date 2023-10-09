@@ -17,6 +17,7 @@ bs58 = {workspace = true, "features" = ["check"]}   # BOM UPGRADE     Revert to 
 thiserror = {workspace = true}
 tracing = {workspace = true}
 num = {workspace = true}
+anyhow = {workspace = true}
 massa_ledger_exports = {workspace = true}
 massa_ledger_worker = {workspace = true, "optional" = true}
 massa_executed_ops = {workspace = true}
@@ -38,3 +39,4 @@ massa_pos_exports = {workspace = true, "features" = ["testing"]}
 massa_db_worker = {workspace = true}
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+crossbeam-channel = {workspace = true}

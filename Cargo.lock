@@ -2935,7 +2935,9 @@ dependencies = [
 name = "massa_final_state"
 version = "0.26.1"
 dependencies = [
+ "anyhow",
  "bs58",
+ "crossbeam-channel",
  "displaydoc",
  "massa-proto-rs",
  "massa_async_pool",
