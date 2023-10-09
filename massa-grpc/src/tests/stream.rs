@@ -28,8 +28,6 @@ use massa_time::MassaTime;
 use std::{net::SocketAddr, ops::Add, time::Duration};
 use tokio_stream::StreamExt;
 
-// const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
-
 #[tokio::test]
 async fn transactions_throughput_stream() {
     let addr: SocketAddr = "[::]:4017".parse().unwrap();
@@ -385,7 +383,6 @@ async fn new_blocks() {
     let keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
     let op = create_operation_with_expire_period(&keypair, 4);
-    // let address = Address::from_public_key(&keypair.get_public_key());
 
     let block_op = create_block_with_operations(
         &keypair,
