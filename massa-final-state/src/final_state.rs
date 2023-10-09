@@ -1045,6 +1045,7 @@ mod test {
 
         assert_eq!(fstate.get_slot(), initial_slot);
 
+        // This should also fail because there is no initial cycle (required by POS state)
         let res = fstate._finalize(ok_next_slot, changes.clone());
 
         assert!(res.is_err());
