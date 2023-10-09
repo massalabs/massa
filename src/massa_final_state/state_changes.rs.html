@@ -321,6 +321,10 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -395,55 +399,7 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;StateChanges&gt; <span class="kw">for </span>StateChangesSerializer {
-    <span class="doccomment">/// ## Example
-    /// ```
-    /// use massa_serialization::Serializer;
-    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, slot::Slot};
-    /// use massa_final_state::{StateChanges, StateChangesSerializer};
-    /// use std::str::FromStr;
-    /// use std::collections::BTreeMap;
-    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
-    ///
-    /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new(
-    ///     Slot::new(1, 0),
-    ///     0,
-    ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     Address::from_str(&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     String::from(&quot;test&quot;),
-    ///     10000000,
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Slot::new(2, 0),
-    ///     Slot::new(3, 0),
-    ///     vec![1, 2, 3, 4],
-    ///     None,
-    ///     None,
-    /// );
-    /// let mut async_pool_changes = AsyncPoolChanges::default();
-    /// async_pool_changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
-    /// state_changes.async_pool_changes = async_pool_changes;
-    ///
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
-    /// let bytecode = Bytecode(vec![1, 2, 3]);
-    /// let ledger_entry = LedgerEntryUpdate {
-    ///    balance: SetOrKeep::Set(amount),
-    ///    bytecode: SetOrKeep::Set(bytecode),
-    ///    datastore: BTreeMap::default(),
-    /// };
-    /// let mut ledger_changes = LedgerChanges::default();
-    /// ledger_changes.0.insert(
-    ///    Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///    SetUpdateOrDelete::Update(ledger_entry),
-    /// );
-    /// state_changes.ledger_changes = ledger_changes;
-    /// let mut serialized = Vec::new();
-    /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
-    /// ```
-    </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>StateChanges, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>StateChanges, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="self">self</span>.ledger_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.ledger_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.async_pool_changes_serializer
@@ -527,59 +483,7 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;StateChanges&gt; <span class="kw">for </span>StateChangesDeserializer {
-    <span class="doccomment">/// ## Example
-    /// ```
-    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, prehash::PreHashMap, slot::Slot};
-    /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
-    /// use std::str::FromStr;
-    /// use std::collections::BTreeMap;
-    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
-    ///
-    /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new(
-    ///     Slot::new(1, 0),
-    ///     0,
-    ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     Address::from_str(&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     String::from(&quot;test&quot;),
-    ///     10000000,
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Slot::new(2, 0),
-    ///     Slot::new(3, 0),
-    ///     vec![1, 2, 3, 4],
-    ///     None,
-    ///     None
-    /// );
-    /// let mut async_pool_changes = AsyncPoolChanges::default();
-    /// async_pool_changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
-    /// state_changes.async_pool_changes = async_pool_changes;
-    ///
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
-    /// let bytecode = Bytecode(vec![1, 2, 3]);
-    /// let ledger_entry = LedgerEntryUpdate {
-    ///    balance: SetOrKeep::Set(amount),
-    ///    bytecode: SetOrKeep::Set(bytecode),
-    ///    datastore: BTreeMap::default(),
-    /// };
-    /// let mut ledger_changes = LedgerChanges::default();
-    /// ledger_changes.0.insert(
-    ///    Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///    SetUpdateOrDelete::Update(ledger_entry),
-    /// );
-    /// state_changes.ledger_changes = ledger_changes;
-    /// let mut serialized = Vec::new();
-    /// StateChangesSerializer::new().serialize(&amp;state_changes, &amp;mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 32, 1000).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
-    /// assert!(rest.is_empty());
-    /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
-    /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);
-    /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], StateChanges, E&gt; {
@@ -642,6 +546,110 @@
             .extend(changes.executed_ops_changes);
         <span class="self">self</span>.execution_trail_hash_change
             .apply(changes.execution_trail_hash_change);
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+    <span class="kw">use </span>std::collections::BTreeMap;
+    <span class="kw">use </span>std::str::FromStr;
+
+    <span class="kw">use </span>massa_async_pool::AsyncMessage;
+    <span class="kw">use </span>massa_ledger_exports::{LedgerEntryUpdate, SetUpdateOrDelete};
+    <span class="kw">use </span>massa_models::address::Address;
+    <span class="kw">use </span>massa_models::amount::Amount;
+    <span class="kw">use </span>massa_models::bytecode::Bytecode;
+    <span class="kw">use </span>massa_models::slot::Slot;
+    <span class="kw">use </span>massa_serialization::DeserializeError;
+
+    <span class="kw">use </span>massa_models::config::{
+        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_DATASTORE_ENTRY_COUNT,
+        MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+        MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        MAX_LEDGER_CHANGES_COUNT, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+        MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
+    };
+
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">impl </span>PartialEq&lt;StateChanges&gt; <span class="kw">for </span>StateChanges {
+        <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>StateChanges) -&gt; bool {
+            <span class="self">self</span>.ledger_changes == other.ledger_changes &amp;&amp;
+                <span class="self">self</span>.async_pool_changes == other.async_pool_changes &amp;&amp;
+                <span class="comment">// pos_changes
+                </span><span class="self">self</span>.pos_changes.seed_bits == <span class="self">self</span>.pos_changes.seed_bits &amp;&amp;
+                <span class="self">self</span>.pos_changes.roll_changes == <span class="self">self</span>.pos_changes.roll_changes &amp;&amp;
+                <span class="self">self</span>.pos_changes.production_stats == <span class="self">self</span>.pos_changes.production_stats &amp;&amp;
+                <span class="self">self</span>.pos_changes.deferred_credits.credits == <span class="self">self</span>.pos_changes.deferred_credits.credits &amp;&amp;
+                <span class="self">self</span>.executed_ops_changes == other.executed_ops_changes &amp;&amp;
+                <span class="self">self</span>.executed_denunciations_changes == other.executed_denunciations_changes &amp;&amp;
+                <span class="self">self</span>.execution_trail_hash_change == other.execution_trail_hash_change
+        }
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_state_changes_ser_der() {
+        <span class="kw">let </span><span class="kw-2">mut </span>state_changes = StateChanges::default();
+        <span class="kw">let </span>message = AsyncMessage::new(
+            Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+            <span class="number">0</span>,
+            Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
+            Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
+            String::from(<span class="string">&quot;test&quot;</span>),
+            <span class="number">10000000</span>,
+            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
+            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
+            Slot::new(<span class="number">2</span>, <span class="number">0</span>),
+            Slot::new(<span class="number">3</span>, <span class="number">0</span>),
+            <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
+            <span class="prelude-val">None</span>,
+            <span class="prelude-val">None</span>,
+        );
+        <span class="kw">let </span><span class="kw-2">mut </span>async_pool_changes = AsyncPoolChanges::default();
+        async_pool_changes.<span class="number">0</span>.insert(
+            message.compute_id(),
+            SetUpdateOrDelete::Set(message.clone()),
+        );
+        state_changes.async_pool_changes = async_pool_changes;
+
+        <span class="kw">let </span>amount = Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap();
+        <span class="kw">let </span>bytecode = Bytecode(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+        <span class="kw">let </span>ledger_entry = LedgerEntryUpdate {
+            balance: SetOrKeep::Set(amount),
+            bytecode: SetOrKeep::Set(bytecode),
+            datastore: BTreeMap::default(),
+        };
+        <span class="kw">let </span><span class="kw-2">mut </span>ledger_changes = LedgerChanges::default();
+        ledger_changes.<span class="number">0</span>.insert(
+            Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
+            SetUpdateOrDelete::Update(ledger_entry),
+        );
+        state_changes.ledger_changes = ledger_changes;
+        <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
+        StateChangesSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>state_changes, <span class="kw-2">&amp;mut </span>serialized)
+            .unwrap();
+
+        <span class="kw">let </span>(rest, state_changes_deser) = StateChangesDeserializer::new(
+            THREAD_COUNT,
+            MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE <span class="kw">as </span>u64,
+            MAX_LEDGER_CHANGES_COUNT,
+            MAX_DATASTORE_KEY_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_DATASTORE_ENTRY_COUNT,
+            MAX_ROLLS_COUNT_LENGTH,
+            MAX_PRODUCTION_STATS_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH,
+            MAX_EXECUTED_OPS_CHANGES_LENGTH,
+            ENDORSEMENT_COUNT,
+            MAX_DENUNCIATION_CHANGES_LENGTH,
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
+        .unwrap();
+        <span class="macro">assert!</span>(rest.is_empty());
+        <span class="macro">assert_eq!</span>(state_changes, state_changes_deser);
     }
 }
 </code></pre></div></section></main></body></html>
