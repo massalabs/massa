@@ -1,9 +1,9 @@
 use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
+
 use crate::{
     bindings::{BootstrapClientBinder, BootstrapServerBinder},
     tests::tools::get_bootstrap_config,
-    BootstrapPeers,
 };
 use crate::{BootstrapConfig, BootstrapError};
 use massa_models::config::{
@@ -19,15 +19,20 @@ use massa_models::config::{
 };
 use massa_models::node::NodeId;
 use massa_models::version::Version;
-use massa_protocol_exports::{PeerId, TransportType};
+
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
+
+use rand::Rng;
 use serial_test::serial;
-use std::collections::HashMap;
+
 use std::io::Write;
 use std::net::TcpStream;
 use std::str::FromStr;
+use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
+
+use super::tools::parametric_test;
 
 lazy_static::lazy_static! {
     pub static ref BOOTSTRAP_CONFIG_KEYPAIR: (BootstrapConfig, KeyPair) = {
@@ -71,377 +76,210 @@ impl BootstrapClientBinder {
     }
 }
 
+fn assert_server_got_msg(
+    timeout: Duration,
+    server: &mut BootstrapServerBinder,
+    msg: BootstrapClientMessage,
+) {
+    let message = server.next_timeout(Some(timeout)).unwrap();
+    let eq = message.equals(&msg);
+    if !eq {
+        println!("Got {message:?}");
+        println!("Expected {msg:?}");
+    }
+    assert!(eq, "Received BootstrapClientMessage isn't the same");
+}
+
+fn assert_client_got_msg(
+    timeout: Duration,
+    client: &mut BootstrapClientBinder,
+    msg: BootstrapServerMessage,
+) {
+    let message = client.next_timeout(Some(timeout)).unwrap();
+    let eq = message.equals(&msg);
+    if !eq {
+        println!("Got {message:?}");
+        println!("Expected {msg:?}");
+    }
+    assert!(eq, "Received BootstrapServerMessage isn't the same");
+}
+
+fn init_server_client_pair() -> (BootstrapServerBinder, BootstrapClientBinder) {
+    let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
+    let server = std::net::TcpListener::bind("localhost:0").unwrap();
+    let addr = server.local_addr().unwrap();
+    let client = std::net::TcpStream::connect(addr).unwrap();
+    let server = server.accept().unwrap();
+    let version = || Version::from_str("TEST.1.10").unwrap();
+
+    let mut server = BootstrapServerBinder::new(
+        server.0,
+        server_keypair.clone(),
+        BootstrapSrvBindCfg {
+            rate_limit: std::u64::MAX,
+            thread_count: THREAD_COUNT,
+            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
+            write_error_timeout: MassaTime::from_millis(1000),
+        },
+        Some(u64::MAX),
+    );
+    let mut client = BootstrapClientBinder::test_default(
+        client,
+        bootstrap_config.bootstrap_list[0].1.get_public_key(),
+    );
+    client.handshake(version()).unwrap();
+    server.handshake_timeout(version(), None).unwrap();
+
+    (server, client)
+}
+
 /// The server and the client will handshake and then send message in both ways in order
 #[test]
-fn test_binders() {
-    let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let server = std::net::TcpListener::bind("localhost:0").unwrap();
-    let addr = server.local_addr().unwrap();
-    let client = std::net::TcpStream::connect(addr).unwrap();
-    let server = server.accept().unwrap();
-    let version = || Version::from_str("TEST.1.10").unwrap();
+fn test_binders_simple() {
+    type Data = (BootstrapServerMessage, BootstrapClientMessage);
+    let timeout = Duration::from_secs(30);
+    let (mut server, mut client) = init_server_client_pair();
 
-    let mut server = BootstrapServerBinder::new(
-        server.0,
-        server_keypair.clone(),
-        BootstrapSrvBindCfg {
-            rate_limit: std::u64::MAX,
-            thread_count: THREAD_COUNT,
-            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
-            write_error_timeout: MassaTime::from_millis(1000),
-        },
-        Some(u64::MAX),
-    );
-    let mut client = BootstrapClientBinder::test_default(
-        client,
-        bootstrap_config.bootstrap_list[0].1.get_public_key(),
-    );
-    let err_str = ['A'; 100_000].iter().collect::<String>();
-    let srv_err_str = err_str.clone();
-
-    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
-    let peer_id2 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
-    let peer_id3 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
-    let peer_id4 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let (srv_send, srv_recv) = channel::<Data>();
+    let (cli_send, cli_recv) = channel::<Data>();
+    let (srv_ready_flag, srv_ready) = channel();
+    let (cli_ready_flag, cli_ready) = channel();
 
     let server_thread = std::thread::Builder::new()
-        .name("test_binders::server_thread".to_string())
-        .spawn({
-            let peer_id1 = peer_id1;
-            let peer_id2 = peer_id2;
-            let peer_id3 = peer_id3;
-            let peer_id4 = peer_id4;
-            move || {
-                // Test message 1
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1, listeners)];
-                let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers),
-                };
-
-                server.handshake_timeout(version(), None).unwrap();
-
-                server.send_timeout(test_peers_message, None).unwrap();
-
-                let message = server.next_timeout(None).unwrap();
-                match message {
-                    BootstrapClientMessage::BootstrapError { error } => {
-                        assert_eq!(error, srv_err_str);
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
-                }
-
-                // Test message 3
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![
-                    (peer_id2, listeners.clone()),
-                    (peer_id3, listeners.clone()),
-                    (peer_id4, listeners.clone()),
-                ];
-                let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers),
-                };
-
-                server.send_timeout(test_peers_message, None).unwrap();
-            }
+        .name("test_binders_remake::server_thread".to_string())
+        .spawn(move || loop {
+            srv_ready_flag.send(true).unwrap();
+            let (srv_send_msg, cli_recv_msg) = srv_recv.recv_timeout(timeout).unwrap();
+            server.send_timeout(srv_send_msg, Some(timeout)).unwrap();
+            assert_server_got_msg(timeout, &mut server, cli_recv_msg);
         })
         .unwrap();
 
     let client_thread = std::thread::Builder::new()
-        .name("test_binders::server_thread".to_string())
-        .spawn({
-            let peer_id1 = peer_id1;
-            let peer_id2 = peer_id2;
-            let peer_id3 = peer_id3;
-            let peer_id4 = peer_id4;
-            move || {
-                // Test message 1
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1, listeners)];
-
-                client.handshake(version()).unwrap();
-                let message = client.next_timeout(None).unwrap();
-                match message {
-                    BootstrapServerMessage::BootstrapPeers { peers } => {
-                        assert_eq!(vector_peers, peers.0);
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
-                }
-
-                client
-                    .send_timeout(
-                        &BootstrapClientMessage::BootstrapError {
-                            error: err_str.clone(),
-                        },
-                        None,
-                    )
-                    .unwrap();
-
-                // Test message 3
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![
-                    (peer_id2, listeners.clone()),
-                    (peer_id3, listeners.clone()),
-                    (peer_id4, listeners.clone()),
-                ];
-                let message = client.next_timeout(None).unwrap();
-                match message {
-                    BootstrapServerMessage::BootstrapPeers { peers } => {
-                        assert_eq!(vector_peers, peers.0);
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
-                }
-            }
+        .name("test_binders_remake::client_thread".to_string())
+        .spawn(move || loop {
+            cli_ready_flag.send(true).unwrap();
+            let (srv_recv_msg, cli_send_msg) = cli_recv
+                .recv_timeout(timeout)
+                .expect("Unable to receive next message");
+            assert_client_got_msg(timeout, &mut client, srv_recv_msg);
+            client.send_timeout(&cli_send_msg, Some(timeout)).unwrap();
         })
         .unwrap();
 
-    server_thread.join().unwrap();
-    client_thread.join().unwrap();
+    assert_eq!(
+        srv_ready.recv_timeout(timeout * 2),
+        Ok(true),
+        "Error while init server"
+    );
+    assert_eq!(
+        cli_ready.recv_timeout(timeout * 2),
+        Ok(true),
+        "Error while init client"
+    );
+    parametric_test(
+        Duration::from_secs(30),
+        (),
+        vec![11687948547956751531, 6417627360786923628],
+        move |_, rng| {
+            let server_message = BootstrapServerMessage::generate(rng);
+            let client_message = BootstrapClientMessage::generate(rng);
+            srv_send
+                .send((server_message.clone(), client_message.clone()))
+                .unwrap();
+            cli_send.send((server_message, client_message)).unwrap();
+            assert_eq!(cli_ready.recv_timeout(timeout * 2), Ok(true));
+            assert_eq!(srv_ready.recv_timeout(timeout * 2), Ok(true));
+        },
+    );
+    let _ = server_thread.join();
+    let _ = client_thread.join();
 }
 
-/// The server and the client will handshake and then send message only from server to client
 #[test]
-fn test_binders_double_send_server_works() {
-    let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-
-    let server = std::net::TcpListener::bind("localhost:0").unwrap();
-    let client = std::net::TcpStream::connect(server.local_addr().unwrap()).unwrap();
-    let server = server.accept().unwrap();
-    let version = || Version::from_str("TEST.1.10").unwrap();
-
-    let mut server = BootstrapServerBinder::new(
-        server.0,
-        server_keypair.clone(),
-        BootstrapSrvBindCfg {
-            rate_limit: std::u64::MAX,
-            thread_count: THREAD_COUNT,
-            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
-            write_error_timeout: MassaTime::from_millis(1000),
-        },
-        Some(u64::MAX),
+fn test_binders_multiple_send() {
+    type Data = (
+        bool,
+        Vec<BootstrapServerMessage>,
+        Vec<BootstrapClientMessage>,
     );
-    let mut client = BootstrapClientBinder::test_default(
-        client,
-        bootstrap_config.bootstrap_list[0].1.get_public_key(),
-    );
+    let timeout = Duration::from_secs(10);
+    let (mut server, mut client) = init_server_client_pair();
 
-    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
-    let peer_id2 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
-    let peer_id3 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
-    let peer_id4 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+    let (srv_send, srv_recv) = channel::<Data>();
+    let (cli_send, cli_recv) = channel::<Data>();
+    let (srv_ready_flag, srv_ready) = channel();
+    let (cli_ready_flag, cli_ready) = channel();
 
     let server_thread = std::thread::Builder::new()
-        .name("test_buinders_double_send_server_works::server_thread".to_string())
-        .spawn({
-            let peer_id1 = peer_id1;
-            let peer_id2 = peer_id2;
-            let peer_id3 = peer_id3;
-            let peer_id4 = peer_id4;
-            move || {
-                // Test message 1
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1, listeners.clone())];
-                let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers),
-                };
-
-                server.handshake_timeout(version(), None).unwrap();
-                server.send_timeout(test_peers_message, None).unwrap();
-
-                // Test message 2
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![
-                    (peer_id2, listeners.clone()),
-                    (peer_id3, listeners.clone()),
-                    (peer_id4, listeners.clone()),
-                ];
-                let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers),
-                };
-
-                server.send_timeout(test_peers_message, None).unwrap();
+        .name("test_binders_remake::server_thread".to_string())
+        .spawn(move || loop {
+            srv_ready_flag.send(true).unwrap();
+            let data = srv_recv.recv().expect("Test ended");
+            if data.0 {
+                for msg in data.1 {
+                    server.send_timeout(msg, Some(timeout)).unwrap();
+                }
+                for msg in data.2 {
+                    assert_server_got_msg(timeout, &mut server, msg);
+                }
+            } else {
+                for msg in data.2 {
+                    assert_server_got_msg(timeout, &mut server, msg);
+                }
+                for msg in data.1 {
+                    server.send_timeout(msg, Some(timeout)).unwrap();
+                }
             }
         })
         .unwrap();
 
     let client_thread = std::thread::Builder::new()
-        .name("test_buinders_double_send_server_works::client_thread".to_string())
-        .spawn({
-            let peer_id1 = peer_id1;
-            let peer_id2 = peer_id2;
-            let peer_id3 = peer_id3;
-            let peer_id4 = peer_id4;
-            move || {
-                // Test message 1
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1, listeners.clone())];
-
-                client.handshake(version()).unwrap();
-                let message = client.next_timeout(None).unwrap();
-                match message {
-                    BootstrapServerMessage::BootstrapPeers { peers } => {
-                        assert_eq!(vector_peers, peers.0);
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
+        .name("test_binders_remake::client_thread".to_string())
+        .spawn(move || loop {
+            cli_ready_flag.send(true).unwrap();
+            let data = cli_recv.recv().expect("Test ended");
+            if data.0 {
+                for msg in data.1 {
+                    assert_client_got_msg(timeout, &mut client, msg);
                 }
-
-                // Test message 2
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![
-                    (peer_id2, listeners.clone()),
-                    (peer_id3, listeners.clone()),
-                    (peer_id4, listeners.clone()),
-                ];
-                let message = client.next_timeout(None).unwrap();
-                match message {
-                    BootstrapServerMessage::BootstrapPeers { peers } => {
-                        assert_eq!(vector_peers, peers.0);
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
+                for msg in data.2 {
+                    client.send_timeout(&msg, Some(timeout)).unwrap();
+                }
+            } else {
+                for msg in data.2 {
+                    client.send_timeout(&msg, Some(timeout)).unwrap();
+                }
+                for msg in data.1 {
+                    assert_client_got_msg(timeout, &mut client, msg);
                 }
             }
         })
         .unwrap();
 
-    server_thread.join().unwrap();
-    client_thread.join().unwrap();
-}
-
-/// The server and the client will handshake and then send message in both ways but the client will try to send two messages without answer
-#[test]
-fn test_binders_try_double_send_client_works() {
-    let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-
-    let server = std::net::TcpListener::bind("localhost:0").unwrap();
-    let addr = server.local_addr().unwrap();
-    let client = std::net::TcpStream::connect(addr).unwrap();
-    let server = server.accept().unwrap();
-    let mut server = BootstrapServerBinder::new(
-        server.0,
-        server_keypair.clone(),
-        BootstrapSrvBindCfg {
-            rate_limit: std::u64::MAX,
-            thread_count: THREAD_COUNT,
-            max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-            randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
-            consensus_bootstrap_part_size: CONSENSUS_BOOTSTRAP_PART_SIZE,
-            write_error_timeout: MassaTime::from_millis(1000),
-        },
-        Some(u64::MAX),
-    );
-    let mut client = BootstrapClientBinder::test_default(
-        client,
-        bootstrap_config.bootstrap_list[0].1.get_public_key(),
-    );
-    let version = || Version::from_str("TEST.1.10").unwrap();
-
-    let peer_id1 = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
-
-    let server_thread = std::thread::Builder::new()
-        .name("test_buinders_double_send_client_works::server_thread".to_string())
-        .spawn({
-            let peer_id1 = peer_id1;
-            move || {
-                // Test message 1
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1, listeners.clone())];
-                let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers),
-                };
-
-                server.handshake_timeout(version(), None).unwrap();
-                server
-                    .send_timeout(test_peers_message.clone(), None)
-                    .unwrap();
-
-                let message = server.next_timeout(None).unwrap();
-                match message {
-                    BootstrapClientMessage::BootstrapError { error } => {
-                        assert_eq!(error, "test error");
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
-                }
-
-                let message = server.next_timeout(None).unwrap();
-                match message {
-                    BootstrapClientMessage::BootstrapError { error } => {
-                        assert_eq!(error, "test error");
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
-                }
-
-                server.send_timeout(test_peers_message, None).unwrap();
-            }
-        })
-        .unwrap();
-
-    let client_thread = std::thread::Builder::new()
-        .name("test_buinders_double_send_client_works::client_thread".to_string())
-        .spawn({
-            let peer_id1 = peer_id1;
-            move || {
-                // Test message 1
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1, listeners.clone())];
-
-                client.handshake(version()).unwrap();
-                let message = client.next_timeout(None).unwrap();
-                match message {
-                    BootstrapServerMessage::BootstrapPeers { peers } => {
-                        assert_eq!(vector_peers, peers.0);
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
-                }
-
-                client
-                    .send_timeout(
-                        &BootstrapClientMessage::BootstrapError {
-                            error: "test error".to_string(),
-                        },
-                        None,
-                    )
-                    .unwrap();
-
-                // Test message 3
-                client
-                    .send_timeout(
-                        &BootstrapClientMessage::BootstrapError {
-                            error: "test error".to_string(),
-                        },
-                        None,
-                    )
-                    .unwrap();
-
-                let mut listeners = HashMap::default();
-                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1, listeners.clone())];
-                let message = client.next_timeout(None).unwrap();
-                match message {
-                    BootstrapServerMessage::BootstrapPeers { peers } => {
-                        assert_eq!(vector_peers, peers.0);
-                    }
-                    _ => panic!("Bad message receive: Expected a peers list message"),
-                }
-            }
-        })
-        .unwrap();
-
-    server_thread.join().unwrap();
-    client_thread.join().unwrap();
+    assert_eq!(srv_ready.recv(), Ok(true), "Error while init server");
+    assert_eq!(cli_ready.recv(), Ok(true), "Error while init client");
+    parametric_test(Duration::from_secs(30), (), vec![], move |_, rng| {
+        let direction = rng.gen_bool(0.5);
+        let server_messages: Vec<BootstrapServerMessage> = (0..rng.gen_range(0..10))
+            .map(|_| BootstrapServerMessage::generate(rng))
+            .collect();
+        let client_messages: Vec<BootstrapClientMessage> = (0..rng.gen_range(0..10))
+            .map(|_| BootstrapClientMessage::generate(rng))
+            .collect();
+        srv_send
+            .send((direction, server_messages.clone(), client_messages.clone()))
+            .unwrap();
+        cli_send
+            .send((direction, server_messages, client_messages))
+            .unwrap();
+        assert_eq!(cli_ready.recv_timeout(timeout * 2), Ok(true));
+        assert_eq!(srv_ready.recv_timeout(timeout * 2), Ok(true));
+    });
+    let _ = server_thread.join();
+    let _ = client_thread.join();
 }
 
 #[test]
