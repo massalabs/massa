@@ -444,7 +444,7 @@ fn filter_map_exec_output(
             exec_output.events.clear();
         }
     }
-
+    //TODO to be implemented
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {
         if async_pool_changes_filter.none.is_some() {
             exec_output.state_changes.async_pool_changes.0.clear();
@@ -461,11 +461,22 @@ fn filter_map_exec_output(
     if let Some(executed_ops_changes_filter) = &filters.executed_ops_changes_filter {
         if executed_ops_changes_filter.none.is_some() {
             exec_output.state_changes.executed_ops_changes.clear();
+        } else if let Some(op_id) = executed_ops_changes_filter.operation_id {
+            exec_output
+                .state_changes
+                .executed_ops_changes
+                .retain(|operation_id, _| operation_id == &op_id);
         }
     }
     if let Some(ledger_changes_filter) = &filters.ledger_changes_filter {
         if ledger_changes_filter.none.is_some() {
             exec_output.state_changes.ledger_changes.0.clear();
+        } else if let Some(addr) = ledger_changes_filter.address {
+            exec_output
+                .state_changes
+                .ledger_changes
+                .0
+                .retain(|address, _| address == &addr);
         }
     }
 
