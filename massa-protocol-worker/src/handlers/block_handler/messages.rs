@@ -355,3 +355,102 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
         .parse(buffer)
     }
 }
+
+#[cfg(all(test, feature = "testing"))]
+mod tests {
+    use std::str::FromStr;
+
+    use massa_models::{block_id::BlockId, operation::OperationId};
+    use massa_serialization::{Serializer, Deserializer, DeserializeError};
+
+    #[test]
+    fn test_lower_limit_message() {
+        let message = super::BlockMessage::DataRequest { block_id: BlockId::from_str("B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg").unwrap(), block_info: super::AskForBlockInfo::Operations(vec![]) };
+        let mut buffer = Vec::new();
+        let serializer = super::BlockMessageSerializer::new();
+        serializer.serialize(&message, &mut buffer).unwrap();
+        let deserializer = super::BlockMessageDeserializer::new(super::BlockMessageDeserializerArgs {
+            thread_count: 1,
+            endorsement_count: 1,
+            max_operations_per_block: 1,
+            max_datastore_value_length: 1,
+            max_function_name_length: 1,
+            max_parameters_size: 1,
+            max_op_datastore_entry_count: 1,
+            max_op_datastore_key_length: 1,
+            max_op_datastore_value_length: 1,
+            max_denunciations_in_block_header: 1,
+            last_start_period: None,
+        });
+        let (rest, deserialized_message) = deserializer.deserialize::<DeserializeError>(&buffer).unwrap();
+        assert_eq!(rest.len(), 0);
+        match (deserialized_message, message) {
+            (super::BlockMessage::DataRequest { block_id: block_id1, block_info: block_info1 }, super::BlockMessage::DataRequest { block_id: block_id2, block_info: block_info2 }) => {
+                assert_eq!(block_id1, block_id2);
+                assert_eq!(block_info1, block_info2);
+            }
+            _ => panic!("Wrong message type"),
+        }
+        let message2 = super::BlockMessage::DataResponse { block_id: BlockId::from_str("B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg").unwrap(), block_info: super::BlockInfoReply::Operations(vec![]) };
+        let mut buffer2 = Vec::new();
+        serializer.serialize(&message2, &mut buffer2).unwrap();
+        let (rest2, deserialized_message2) = deserializer.deserialize::<DeserializeError>(&buffer2).unwrap();
+        assert_eq!(rest2.len(), 0);
+        match (deserialized_message2, message2) {
+            (super::BlockMessage::DataResponse { block_id: block_id1, block_info: block_info1 }, super::BlockMessage::DataResponse { block_id: block_id2, block_info: block_info2 }) => {
+                assert_eq!(block_id1, block_id2);
+                match (block_info1, block_info2) {
+                    (super::BlockInfoReply::Operations(operations1), super::BlockInfoReply::Operations(operations2)) => {
+                        assert_eq!(operations1.len(), operations2.len());
+                    }
+                    _ => panic!("Wrong block info type"),
+                }
+            }
+            _ => panic!("Wrong message type"),
+        }
+    }
+
+    #[test]
+    fn test_high_limit_message() {
+        let message = super::BlockMessage::DataRequest { block_id: BlockId::from_str("B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg").unwrap(), block_info: super::AskForBlockInfo::Operations(vec![OperationId::from_str("O1yrsTtyyhDJtPD7jZHkodstNCjUSsfGbVZ5xdG6bVZWABeze8y").unwrap(), OperationId::from_str("O1yrsTtyyhDJtPD7jZHkodstNCjUSsfGbVZ5xdG6bVZWABeze8y").unwrap()]) };
+        let mut buffer = Vec::new();
+        let serializer = super::BlockMessageSerializer::new();
+        serializer.serialize(&message, &mut buffer).unwrap();
+        let deserializer = super::BlockMessageDeserializer::new(super::BlockMessageDeserializerArgs {
+            thread_count: 1,
+            endorsement_count: 1,
+            max_operations_per_block: 1,
+            max_datastore_value_length: 1,
+            max_function_name_length: 1,
+            max_parameters_size: 1,
+            max_op_datastore_entry_count: 1,
+            max_op_datastore_key_length: 1,
+            max_op_datastore_value_length: 1,
+            max_denunciations_in_block_header: 1,
+            last_start_period: None,
+        });
+        deserializer.deserialize::<DeserializeError>(&buffer).expect_err("Should raise error because there is two op and only 1 allow");
+        let deserializer = super::BlockMessageDeserializer::new(super::BlockMessageDeserializerArgs {
+            thread_count: 1,
+            endorsement_count: 1,
+            max_operations_per_block: 2,
+            max_datastore_value_length: 1,
+            max_function_name_length: 1,
+            max_parameters_size: 1,
+            max_op_datastore_entry_count: 1,
+            max_op_datastore_key_length: 1,
+            max_op_datastore_value_length: 1,
+            max_denunciations_in_block_header: 1,
+            last_start_period: None,
+        });
+        let (rest, deserialized_message) = deserializer.deserialize::<DeserializeError>(&buffer).unwrap();
+        assert_eq!(rest.len(), 0);
+        match (deserialized_message, message) {
+            (super::BlockMessage::DataRequest { block_id: block_id1, block_info: block_info1 }, super::BlockMessage::DataRequest { block_id: block_id2, block_info: block_info2 }) => {
+                assert_eq!(block_id1, block_id2);
+                assert_eq!(block_info1, block_info2);
+            }
+            _ => panic!("Wrong message type"),
+        }
+    }
+}

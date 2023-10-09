@@ -267,14 +267,12 @@ pub struct MassaHandshake {
     peer_mngt_msg_serializer: MessagesSerializer,
     peer_id_serializer: PeerIdSerializer,
     peer_id_deserializer: PeerIdDeserializer,
-    message_handlers: MessagesHandler,
 }
 
 impl MassaHandshake {
     pub fn new(
         peer_db: SharedPeerDB,
         config: ProtocolConfig,
-        message_handlers: MessagesHandler,
     ) -> Self {
         Self {
             peer_db,
@@ -291,7 +289,6 @@ impl MassaHandshake {
             peer_id_deserializer: PeerIdDeserializer::new(),
             peer_mngt_msg_serializer: MessagesSerializer::new()
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
-            message_handlers,
         }
     }
 
@@ -498,7 +495,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                     Ok((peer_id.clone(), Some(announcement)))
                 }
                 1 => {
-                    self.message_handlers.handle(
+                    messages_handler.handle(
                         received.get(1..).ok_or(
                             PeerNetError::HandshakeError
                                 .error("Massa Handshake", Some("Failed to get data".to_string())),
@@ -628,5 +625,41 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             endpoint.shutdown();
         });
         Ok(())
+    }
+}
+
+#[cfg(all(test, feature = "testing"))]
+mod tests {
+    use std::{sync::Arc, collections::HashMap};
+
+    use massa_channel::{sender::MassaSender, MassaChannel};
+    use massa_protocol_exports::ProtocolConfig;
+    use massa_serialization::{U64VarIntSerializer, U64VarIntDeserializer};
+    use massa_signature::KeyPair;
+    use parking_lot::RwLock;
+    use peernet::{peer::InitConnectionHandler, transports::{endpoint::Endpoint, TcpEndpoint, TcpConnectionConfig}};
+
+    use crate::{messages::MessagesHandler, context::Context};
+
+    use super::models::PeerDB;
+
+    #[test]
+    fn test_handshake_working_behaviour() {
+        let (sender_blocks, receiver_blocks) = MassaChannel::new(String::from("test_blocks"), None);
+        let (sender_endorsements, receiver_endorsements) = MassaChannel::new(String::from("test_endorsements"), None);
+        let (sender_operations, receiver_operations) = MassaChannel::new(String::from("test_operations"), None);
+        let (sender_peers, receiver_peers) = MassaChannel::new(String::from("test_peers"), None);
+        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        let handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default(), );
+        let our_keypair = KeyPair::generate(0).unwrap();
+        let messages_handlers = MessagesHandler {
+            id_deserializer: U64VarIntDeserializer::new(std::ops::Bound::Included(0), std::ops::Bound::Included(1)),
+            sender_blocks,
+            sender_endorsements,
+            sender_operations,
+            sender_peers
+        };
+        // Need to make a endpoint mock on peernet. Can't do it here because perform_handshake takes a endpoint type from peernet and not a trait
+        let res = handshake.perform_handshake(&Context {our_keypair}, ), &HashMap::default(), messages_handlers);
     }
 }
