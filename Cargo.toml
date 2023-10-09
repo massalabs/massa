@@ -104,9 +104,8 @@ peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
 transition = { git = "https://github.com/massalabs/transition.git", "rev" = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
-unsigned-varint = { version = "=0.7", "git" = "https://github.com/cyphar/unsigned-varint.git", "branch" = "nom6-errors" }
-substruct = { git = "https://github.com/sydhds/substruct", branch = "main" }
-machine = { git = "https://github.com/antifuchs/machine", "branch" = "fix-workspace-build" }
+substruct = { git = "https://github.com/massalabs/substruct", "rev" = "2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"}
+machine = { git = "https://github.com/massalabs/machine", "rev" = "1736a01400aac54f69a81002862f8555b08caa9b" }
 aes-gcm = "0.10"
 anyhow = "1.0"
 assert_matches = "1.5"
@@ -188,5 +187,6 @@ tower = "0.4.13"
 tower-http = "0.4.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+unsigned-varint = "0.7"
 variant_count = "1.1"
 walkdir = "2.3"
