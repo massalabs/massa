@@ -47,12 +47,14 @@ pub(crate) async fn new_operations(
     // Subscribe to the new operations channel
     let mut subscriber = grpc.pool_channels.operation_sender.subscribe();
     // Clone grpc to be able to use it in the spawned task
-    let grpc = grpc.clone();
+    // let grpc = grpc.clone();
+
+    let config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
             // Spawn a new task for sending new operations
-            let mut filters = match get_filter(request, &grpc.grpc_config) {
+            let mut filters = match get_filter(request, &config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -91,7 +93,7 @@ pub(crate) async fn new_operations(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter(message, &grpc.grpc_config) {
+                                        filters = match get_filter(message, &config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);

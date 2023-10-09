@@ -2976,6 +2976,7 @@ dependencies = [
  "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",
+ "massa_final_state",
  "massa_hash",
  "massa_models",
  "massa_pool_exports",
@@ -2988,6 +2989,7 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "massa_wallet",
+ "mockall",
  "num",
  "parking_lot",
  "serde",
@@ -4192,7 +4194,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "265baba7fabd416cf5078179f7d2cbeca4ce7a9041111900675ea7c4cb8a4c32"
 dependencies = [
  "anyhow",
- "itertools 0.11.0",
+ "itertools 0.10.5",
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "syn 2.0.37",
