@@ -9,9 +9,20 @@ beta = []
 resync_check = []
 deadlock_detection = []
 op_spammer = ["rand"]
-bootstrap_server = ["massa_consensus_worker/bootstrap_server", "massa_final_state/bootstrap_server"]
-sandbox = ["massa_bootstrap/sandbox", "massa_consensus_worker/sandbox", "massa_execution_worker/sandbox", "massa_factory_worker/sandbox", "massa_final_state/sandbox", "massa_models/sandbox", "massa_metrics/sandbox"]
-testing = ["massa_metrics/testing"]
+bootstrap_server = [
+    "massa_consensus_worker/bootstrap_server",
+    "massa_final_state/bootstrap_server",
+]
+sandbox = [
+    "massa_bootstrap/sandbox",
+    "massa_consensus_worker/sandbox",
+    "massa_execution_worker/sandbox",
+    "massa_factory_worker/sandbox",
+    "massa_final_state/sandbox",
+    "massa_models/sandbox",
+    "massa_metrics/sandbox",
+]
+testing = ["massa_metrics/testing", "massa_grpc/testing"]
 
 [dependencies]
 crossbeam-channel = {workspace = true}   # BOM UPGRADE     Revert to "0.5.6" if problem

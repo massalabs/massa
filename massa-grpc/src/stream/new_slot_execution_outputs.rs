@@ -90,11 +90,11 @@ pub(crate) async fn new_slot_execution_outputs(
         .execution_channels
         .slot_execution_output_sender
         .subscribe();
-    let grpc = grpc.clone();
+    let grpc_config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters: Filter = match get_filter(request.clone(), &grpc.grpc_config) {
+            let mut filters: Filter = match get_filter(request.clone(), &grpc_config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -112,7 +112,7 @@ pub(crate) async fn new_slot_execution_outputs(
                     event = subscriber.recv() => {
                         match event {
                             Ok(massa_slot_execution_output) => {
-                                let slot_execution_output = filter_map(massa_slot_execution_output, &filters, &grpc.grpc_config);
+                                let slot_execution_output = filter_map(massa_slot_execution_output, &filters, &grpc_config);
                                 // Check if the slot execution output should be sent
                                 if let Some(slot_execution_output) = slot_execution_output {
                                     // Send the new slot execution output through the channel
@@ -135,7 +135,7 @@ pub(crate) async fn new_slot_execution_outputs(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter(message.clone(), &grpc.grpc_config) {
+                                        filters = match get_filter(message.clone(), &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);

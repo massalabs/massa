@@ -51,11 +51,11 @@ pub(crate) async fn new_filled_blocks(
     // Subscribe to the new filled blocks channel
     let mut subscriber = grpc.consensus_channels.filled_block_sender.subscribe();
     // Clone grpc to be able to use it in the spawned task
-    let grpc = grpc.clone();
+    let grpc_config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters = match get_filter(request, &grpc.grpc_config) {
+            let mut filters = match get_filter(request, &grpc_config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -74,7 +74,7 @@ pub(crate) async fn new_filled_blocks(
                         match event {
                             Ok(massa_filled_block) => {
                                 // Check if the block should be sent
-                                if !should_send(&massa_filled_block.header, &filters, &grpc.grpc_config) {
+                                if !should_send(&massa_filled_block.header, &filters, &grpc_config) {
                                     continue;
                                 }
                                 // Send the new filled block through the channel
@@ -95,7 +95,7 @@ pub(crate) async fn new_filled_blocks(
                             match res {
                                 Ok(message) => {
                                     // Update current filter
-                                    filters = match get_filter(message, &grpc.grpc_config) {
+                                    filters = match get_filter(message, &grpc_config) {
                                         Ok(filter) => filter,
                                         Err(err) => {
                                             error!("failed to get filter: {}", err);

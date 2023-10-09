@@ -150,8 +150,12 @@ impl ExecutionController for MockExecutionController {
     }
 
     fn query_state(&self, _req: ExecutionQueryRequest) -> ExecutionQueryResponse {
-        unimplemented!("mocked execution controller does not support query_state for now");
-        //TODO
+        ExecutionQueryResponse {
+            responses: vec![],
+            candidate_cursor: Slot::new(0, 2),
+            final_cursor: Slot::new(0, 0),
+            final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+        }
     }
 
     fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
