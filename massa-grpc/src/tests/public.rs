@@ -248,6 +248,7 @@ async fn get_stakers() {
         .unwrap()
         .into_inner();
 
+    // assert that all stakers have at least 20 rolls
     result.stakers.iter().for_each(|s| {
         assert!(s.rolls >= 20);
     });
@@ -262,6 +263,7 @@ async fn get_stakers() {
         .unwrap()
         .into_inner();
 
+    // assert that all stakers have at most 20 rolls
     result.stakers.iter().for_each(|s| {
         assert!(s.rolls <= 20);
     });
@@ -278,6 +280,7 @@ async fn get_stakers() {
         .unwrap()
         .into_inner();
 
+    // check the limit
     assert_eq!(result.stakers.len(), 2);
     stop_handle.stop();
 }
@@ -383,6 +386,7 @@ async fn execute_read_only_call() {
         })
         .await;
 
+    // error with target address
     assert!(call.is_err());
 
     param.target = Some(Target::FunctionCall(FunctionCall {
@@ -988,6 +992,7 @@ async fn search_blocks() {
         })
         .await;
 
+    // error with slot range
     assert!(result.is_err());
 
     filter = SearchBlocksFilter {
@@ -1007,6 +1012,8 @@ async fn search_blocks() {
         .await
         .unwrap()
         .into_inner();
+
+    // should return 2 blocks
     assert_eq!(result.block_infos.len(), 2);
 
     filter = SearchBlocksFilter {
@@ -1027,6 +1034,7 @@ async fn search_blocks() {
         .unwrap()
         .into_inner();
 
+    // should return 1 block
     assert_eq!(result.block_infos.len(), 1);
 
     filter = SearchBlocksFilter {
@@ -1255,6 +1263,7 @@ async fn search_endorsements() {
         .unwrap()
         .into_inner();
 
+    // filter is empty
     assert!(result.endorsement_infos.is_empty());
 
     filter_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
@@ -1275,6 +1284,7 @@ async fn search_endorsements() {
         .unwrap()
         .into_inner();
 
+    // filter with one id
     assert!(result.endorsement_infos.len() == 1);
 
     filter_ids = massa_proto_rs::massa::api::v1::SearchEndorsementsFilter {
@@ -1294,6 +1304,8 @@ async fn search_endorsements() {
         .await
         .unwrap()
         .into_inner();
+
+    // filter with two ids
     assert_eq!(result.endorsement_infos.len(), 2);
 
     // by blockids
@@ -1316,6 +1328,7 @@ async fn search_endorsements() {
         .unwrap()
         .into_inner();
 
+    // Two endorsements in the block (endorsement and endorsement2)
     assert_eq!(result.endorsement_infos.len(), 2);
 
     // this is not in any block
@@ -1337,6 +1350,7 @@ async fn search_endorsements() {
         .unwrap()
         .into_inner();
 
+    // filter with block id and endorsement id (witch is not in any block)
     assert!(result.endorsement_infos.is_empty());
 
     // search by address
@@ -1437,6 +1451,7 @@ async fn search_operations() {
         })
         .await;
 
+    // filter none should return an error
     assert!(result.is_err());
 
     let mut filter_addr = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
@@ -1474,7 +1489,7 @@ async fn search_operations() {
         .await
         .unwrap()
         .into_inner();
-
+    // filter by address should return 1 operation
     assert_eq!(result.operation_infos.len(), 1);
 
     filter = massa_proto_rs::massa::api::v1::SearchOperationsFilter {
@@ -1495,12 +1510,14 @@ async fn search_operations() {
         .unwrap()
         .into_inner();
 
+    // filter by address and operation id should return 1 operation
     assert_eq!(result.operation_infos.len(), 1);
 
     let result = public_client
         .search_operations(SearchOperationsRequest { filters: vec![] })
         .await;
 
+    // filter empty should return an error
     assert!(result.is_err());
 
     stop_handle.stop();

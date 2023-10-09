@@ -106,9 +106,6 @@ mockall::mock! {
 
     fn clone_box(&self) -> Box<dyn ExecutionController>;
     }
-
-
-
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -200,9 +197,13 @@ mockall::mock! {
             unimplemented!("mock implementation only")
         }
     }
-
 }
 
+/// generate a grpc public service
+/// # Arguments
+/// * `addr` - the address to bind to
+/// # Returns
+/// * `MassaPublicGrpc` - the grpc public service
 pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
     let consensus_controller = MockConsensusControllerImpl::new();
 

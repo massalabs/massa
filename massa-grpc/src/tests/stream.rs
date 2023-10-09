@@ -126,17 +126,22 @@ async fn transactions_throughput_stream() {
         let time_to_get_msg = now.elapsed().as_secs_f64().round();
 
         if count < 2 {
+            // firsts messages should be received in less than 1.5 seconds
             assert!(time_to_get_msg < 1.5);
         } else if count >= 2 && count < 4 {
+            // next 2 messages should be received in less than 3.5 seconds and more than 2.5 seconds (filter interval is 3 seconds)
             assert!(time_to_get_msg < 3.5 && time_to_get_msg > 2.5);
         } else {
+            // end of test
             break;
         }
 
         now = std::time::Instant::now();
 
+        // increment count of received messages
         count += 1;
         if count == 2 {
+            // when 2 messages received, update interval to 3 seconds
             // update interval to 3 seconds
             tx.send(TransactionsThroughputRequest { interval: Some(3) })
                 .await
@@ -242,6 +247,7 @@ async fn new_operations() {
         .unwrap()
         .unwrap();
     let received = result.unwrap();
+    // check if received op is the same as the one sent
     assert_eq!(
         received.signed_operation.unwrap().content_creator_pub_key,
         keypair.get_public_key().to_string()
@@ -293,6 +299,7 @@ async fn new_operations() {
         .unwrap()
         .unwrap();
     let received = result.unwrap();
+    // assert ok
     assert_eq!(
         received.signed_operation.unwrap().content_creator_pub_key,
         keypair.get_public_key().to_string()
@@ -337,6 +344,7 @@ async fn new_operations() {
     op_send_signal.send(()).await.unwrap();
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // unknown address
     assert!(result.is_err());
 
     filter_addr = massa_proto_rs::massa::api::v1::NewOperationsFilter {
@@ -436,6 +444,7 @@ async fn new_blocks() {
         .unwrap()
         .unwrap();
 
+    // assert block is received
     assert!(result.signed_block.is_some());
 
     filter_slot = massa_proto_rs::massa::api::v1::NewBlocksFilter {
@@ -464,7 +473,7 @@ async fn new_blocks() {
     block_tx.send(block_op.clone()).unwrap();
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
-    // elapsed
+    // elapsed, start slot is after block slot
     assert!(result.is_err());
 
     filter_slot = massa_proto_rs::massa::api::v1::NewBlocksFilter {
@@ -496,7 +505,7 @@ async fn new_blocks() {
         .unwrap()
         .unwrap()
         .unwrap();
-
+    // assert block is received
     assert!(result.signed_block.is_some());
 
     let mut filter_addr = massa_proto_rs::massa::api::v1::NewBlocksFilter {
@@ -745,6 +754,7 @@ async fn new_endorsements() {
     endorsement_tx.send(endorsement.clone()).unwrap();
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // unknown address
     assert!(result.is_err());
 
     filter_addr = massa_proto_rs::massa::api::v1::NewEndorsementsFilter {
@@ -925,6 +935,7 @@ async fn new_filled_blocks() {
     filled_block_tx.send(filled_block.clone()).unwrap();
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // stat slot is after block slot
     assert!(result.is_err());
 
     filter = massa_proto_rs::massa::api::v1::NewBlocksFilter {
@@ -951,6 +962,7 @@ async fn new_filled_blocks() {
     filled_block_tx.send(filled_block.clone()).unwrap();
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // unknown block id
     assert!(result.is_err());
 
     filter = massa_proto_rs::massa::api::v1::NewBlocksFilter {
@@ -1002,6 +1014,7 @@ async fn new_filled_blocks() {
     filled_block_tx.send(filled_block.clone()).unwrap();
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // unknown address
     assert!(result.is_err());
 
     filter = massa_proto_rs::massa::api::v1::NewBlocksFilter {
@@ -1141,7 +1154,7 @@ async fn new_slot_execution_outputs() {
         .unwrap()
         .unwrap()
         .unwrap();
-
+    // start slot and end slot are in range
     assert!(result.output.is_some());
 
     filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
@@ -1171,6 +1184,7 @@ async fn new_slot_execution_outputs() {
         .unwrap();
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // start slot is after block slot
     assert!(result.is_err());
 
     // TODO add test when filter is updated
