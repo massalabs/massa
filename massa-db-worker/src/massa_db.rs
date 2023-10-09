@@ -93,6 +93,8 @@ where
             _ => Unbounded,
         };
 
+        // Updates == "everything that changed since the last change_id streamed, up to a certain key".
+        // This definition also applies to keys that were not in the DB beforehand.
         let updates_on_previous_elements = match (&last_state_step, last_change_id) {
             (StreamingStep::Started, _) => {
                 // Stream No changes, new elements from start
@@ -1005,9 +1007,9 @@ mod test {
     #[test]
     fn test_basics_2() {
         // 1- Init a db + check initial hash
-        // 2- Add some data
+        // 2- Add some data (using  put_or_update_entry_value)
         // 3- Read it
-        // 4- Remove data
+        // 4- Remove data (using delete_prefix)
 
         // Init
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
@@ -1313,7 +1315,7 @@ mod test {
         guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot_1));
         drop(guard);
 
-        // Add data 2 (at slot 1)
+        // Add data 2 (at slot 2)
         let batch_key_2 = vec![11, 22, 33];
         let batch_value_2 = vec![44, 55, 66];
         let batch = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
