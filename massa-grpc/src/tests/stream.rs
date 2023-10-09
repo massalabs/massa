@@ -25,13 +25,11 @@ use massa_protocol_exports::{
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use serial_test::serial;
 use tokio_stream::StreamExt;
 
 // const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
 
 #[tokio::test]
-#[serial]
 async fn transactions_throughput_stream() {
     let addr: SocketAddr = "[::]:4017".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -151,7 +149,6 @@ async fn transactions_throughput_stream() {
 }
 
 #[tokio::test]
-#[serial]
 async fn new_operations() {
     let addr: SocketAddr = "[::]:4018".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -374,7 +371,6 @@ async fn new_operations() {
 }
 
 #[tokio::test]
-#[serial]
 async fn new_blocks() {
     let addr: SocketAddr = "[::]:4019".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -643,7 +639,6 @@ async fn new_blocks() {
 }
 
 #[tokio::test]
-#[serial]
 async fn new_endorsements() {
     let addr: SocketAddr = "[::]:4020".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -842,7 +837,6 @@ async fn new_endorsements() {
 }
 
 #[tokio::test]
-#[serial]
 async fn new_filled_blocks() {
     let addr: SocketAddr = "[::]:4021".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1043,7 +1037,6 @@ async fn new_filled_blocks() {
 }
 
 #[tokio::test]
-#[serial]
 async fn new_slot_execution_outputs() {
     let addr: SocketAddr = "[::]:4022".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1218,7 +1211,6 @@ async fn new_slot_execution_outputs() {
 }
 
 #[tokio::test]
-#[serial]
 async fn send_operations() {
     let addr: SocketAddr = "[::]:4023".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1371,7 +1363,6 @@ async fn send_operations() {
 }
 
 #[tokio::test]
-#[serial]
 async fn send_endorsements() {
     let addr: SocketAddr = "[::]:4024".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1461,7 +1452,6 @@ async fn send_endorsements() {
 }
 
 #[tokio::test]
-#[serial]
 async fn send_blocks() {
     let addr: SocketAddr = "[::]:4025".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);

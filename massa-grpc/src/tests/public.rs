@@ -57,7 +57,6 @@ use massa_versioning::{
 };
 // use massa_wallet::test_exports::create_test_wallet;
 use num::rational::Ratio;
-use serial_test::serial;
 use std::collections::{BTreeMap, VecDeque};
 use std::str::FromStr;
 use std::time::Duration;
@@ -77,7 +76,6 @@ use std::{net::SocketAddr, path::PathBuf};
 //     stop_handle.stop();
 // }
 #[tokio::test]
-#[serial]
 async fn test_start_grpc_server() {
     let consensus_controller = MockConsensusControllerImpl::new();
     let execution_ctrl = MockExecutionController::new_with_receiver();
@@ -217,7 +215,6 @@ async fn test_start_grpc_server() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_status() {
     let addr: SocketAddr = "[::]:4001".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -252,7 +249,6 @@ async fn get_status() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_transactions_throughput() {
     let addr: SocketAddr = "[::]:4002".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -290,7 +286,6 @@ async fn get_transactions_throughput() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_operations() {
     let addr: SocketAddr = "[::]:4003".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -344,7 +339,6 @@ async fn get_operations() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_blocks() {
     let addr: SocketAddr = "[::]:4004".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -387,7 +381,6 @@ async fn get_blocks() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_stakers() {
     let addr: SocketAddr = "[::]:4005".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -473,7 +466,6 @@ async fn get_stakers() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_datastore_entries() {
     let addr: SocketAddr = "[::]:4006".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -521,7 +513,6 @@ async fn get_datastore_entries() {
 }
 
 #[tokio::test]
-#[serial]
 async fn execute_read_only_call() {
     let addr: SocketAddr = "[::]:4007".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -635,7 +626,6 @@ async fn execute_read_only_call() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_endorsements() {
     let addr: SocketAddr = "[::]:4008".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -723,7 +713,6 @@ async fn get_endorsements() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_next_block_best_parents() {
     let addr: SocketAddr = "[::]:4009".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -770,7 +759,6 @@ async fn get_next_block_best_parents() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_sc_execution_events() {
     let addr: SocketAddr = "[::]:4010".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -849,7 +837,6 @@ async fn get_sc_execution_events() {
 }
 
 #[tokio::test]
-#[serial]
 async fn get_selector_draws() {
     let addr: SocketAddr = "[::]:4011".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1073,7 +1060,6 @@ async fn get_selector_draws() {
 }
 
 #[tokio::test]
-#[serial]
 async fn query_state() {
     let addr: SocketAddr = "[::]:4012".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1123,7 +1109,6 @@ async fn query_state() {
 }
 
 #[tokio::test]
-#[serial]
 async fn search_blocks() {
     let addr: SocketAddr = "[::]:4013".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1374,7 +1359,6 @@ async fn search_blocks() {
 }
 
 #[tokio::test]
-#[serial]
 async fn search_endorsements() {
     let addr: SocketAddr = "[::]:4014".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
@@ -1582,7 +1566,6 @@ async fn search_endorsements() {
 }
 
 #[tokio::test]
-#[serial]
 async fn search_operations() {
     let addr: SocketAddr = "[::]:4016".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
