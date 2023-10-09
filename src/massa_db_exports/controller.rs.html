@@ -99,10 +99,12 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
 <span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::{fmt::Debug, sync::Arc};
 
 <span class="kw">pub type </span>ShareableMassaDBController = Arc&lt;RwLock&lt;Box&lt;<span class="kw">dyn </span>MassaDBController&gt;&gt;&gt;;
@@ -110,7 +112,7 @@
 <span class="doccomment">/// Controller trait for the MassaDB
 </span><span class="kw">pub trait </span>MassaDBController: Send + Sync + Debug {
     <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
-    </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot);
+    </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PathBuf;
 
     <span class="doccomment">/// Get the current change_id attached to the database.
     </span><span class="kw">fn </span>get_change_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Slot, ModelsError&gt;;
