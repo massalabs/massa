@@ -1,3 +1,4 @@
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
 use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
 

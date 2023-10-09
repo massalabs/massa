@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, ops::Add, time::Duration};
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl};
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
@@ -25,6 +25,7 @@ use massa_protocol_exports::{
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use std::{net::SocketAddr, ops::Add, time::Duration};
 use tokio_stream::StreamExt;
 
 // const GRPC_SERVER_URL: &str = "grpc://localhost:8888";
