@@ -2364,6 +2364,8 @@
     <span class="comment">// ask pool whether it carries the endorsements
     </span><span class="kw">let </span>in_pool = grpc.pool_controller.contains_endorsements(<span class="kw-2">&amp;</span>e_ids);
 
+    <span class="kw">let </span>consensus_controller = grpc.consensus_controller.clone();
+
     <span class="comment">// check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     </span><span class="kw">let </span>is_final: Vec&lt;bool&gt; = {
         <span class="kw">let </span>involved_blocks: Vec&lt;BlockId&gt; = storage_info
@@ -2373,9 +2375,7 @@
             .cloned()
             .collect();
 
-        <span class="kw">let </span>involved_block_statuses = grpc
-            .consensus_controller
-            .get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
+        <span class="kw">let </span>involved_block_statuses = consensus_controller.get_block_statuses(<span class="kw-2">&amp;</span>involved_blocks);
 
         <span class="kw">let </span>block_statuses: PreHashMap&lt;BlockId, BlockGraphStatus&gt; = involved_blocks
             .into_iter()
