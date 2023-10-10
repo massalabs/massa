@@ -438,6 +438,47 @@ fn filter_map_exec_output(
     if let Some(execution_event_filter) = &filters.execution_event_filter {
         if execution_event_filter.none.is_some() {
             exec_output.events.clear();
+        } else {
+            exec_output.events.0.retain(|event| {
+                if let Some(is_failure) = execution_event_filter.is_failure {
+                    if event.context.is_error != is_failure {
+                        return false;
+                    }
+                }
+
+                if let (Some(original_operation_ids), Some(origin_operation_id)) = (
+                    execution_event_filter.original_operation_ids.clone(),
+                    event.context.origin_operation_id,
+                ) {
+                    if !original_operation_ids.contains(&origin_operation_id) {
+                        return false;
+                    }
+                }
+
+                if let Some(caller_addresses) = execution_event_filter.caller_addresses.clone() {
+                    if !caller_addresses
+                        .into_iter()
+                        .any(|caller_address| event.context.call_stack.contains(&caller_address))
+                    {
+                        return false;
+                    };
+                }
+                //TODO to be confirmed
+                if let Some(emitter_addresses) = execution_event_filter.emitter_addresses.clone() {
+                    if !emitter_addresses
+                        .into_iter()
+                        .any(|emitter_address| event.context.call_stack.contains(&emitter_address))
+                    {
+                        return false;
+                    };
+                }
+
+                true
+            });
+
+            if exec_output.events.0.is_empty() {
+                return None;
+            }
         }
     }
     //TODO to be implemented
@@ -446,6 +487,7 @@ fn filter_map_exec_output(
             exec_output.state_changes.async_pool_changes.0.clear();
         }
     }
+
     if let Some(executed_denounciation_filter) = &filters.executed_denounciation_filter {
         if executed_denounciation_filter.none.is_some() {
             exec_output
@@ -462,6 +504,10 @@ fn filter_map_exec_output(
                 .state_changes
                 .executed_ops_changes
                 .retain(|operation_id, _| operation_ids.contains(operation_id));
+
+            if exec_output.state_changes.executed_ops_changes.is_empty() {
+                return None;
+            }
         }
     }
     if let Some(ledger_changes_filter) = &filters.ledger_changes_filter {
@@ -473,6 +519,10 @@ fn filter_map_exec_output(
                 .ledger_changes
                 .0
                 .retain(|address, _| addresses.contains(address));
+
+            if exec_output.state_changes.ledger_changes.0.is_empty() {
+                return None;
+            }
         }
     }
 
