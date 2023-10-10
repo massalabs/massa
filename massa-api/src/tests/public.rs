@@ -1,9 +1,17 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 //!
 
-use std::{collections::HashMap, net::SocketAddr, str::FromStr};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+};
 
-use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder, rpc_params};
+use jsonrpsee::{
+    core::{client::ClientT, Error},
+    http_client::HttpClientBuilder,
+    rpc_params,
+};
 use massa_api_exports::operation::OperationInfo;
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 
@@ -11,6 +19,7 @@ use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl};
 use massa_models::{
     address::Address,
     clique::Clique,
+    node::NodeId,
     operation::OperationId,
     slot::Slot,
     stats::{ConsensusStats, ExecutionStats, NetworkStats},
@@ -167,6 +176,237 @@ async fn get_operations() {
     let response: Vec<OperationInfo> = client.request("get_operations", params).await.unwrap();
 
     assert_eq!(response.len(), 1);
+
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn wrong_api() {
+    let addr: SocketAddr = "[::]:5004".parse().unwrap();
+    let (api_public, config) = start_public_api(addr).await;
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![];
+    let response: Result<(), Error> = client.request("stop_node", params.clone()).await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_sign_message", rpc_params![Vec::<u8>::new()])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "remove_staking_addresses",
+            rpc_params![Vec::<Address>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("get_staking_addresses", params.clone())
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_ban_by_ip", rpc_params![Vec::<IpAddr>::new()])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_ban_by_id", rpc_params![Vec::<NodeId>::new()])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_unban_by_ip", rpc_params![Vec::<IpAddr>::new()])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_unban_by_id", rpc_params![Vec::<NodeId>::new()])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client.request("node_peers_whitelist", params.clone()).await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_add_to_peers_whitelist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_remove_from_peers_whitelist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_bootstrap_whitelist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_bootstrap_whitelist_allow_all", rpc_params![])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_add_to_bootstrap_whitelist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_remove_from_peers_whitelist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_bootstrap_whitelist", rpc_params![])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_bootstrap_whitelist_allow_all", rpc_params![])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_add_to_bootstrap_whitelist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_remove_from_bootstrap_whitelist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("node_bootstrap_blacklist", rpc_params![])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_add_to_bootstrap_blacklist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request(
+            "node_remove_from_bootstrap_blacklist",
+            rpc_params![Vec::<IpAddr>::new()],
+        )
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
+
+    let response: Result<(), Error> = client
+        .request("add_staking_secret_keys", rpc_params![Vec::<String>::new()])
+        .await;
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("The wrong API (either Public or Private) was called"));
 
     api_public_handle.stop().await;
 }
