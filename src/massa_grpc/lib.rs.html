@@ -162,8 +162,8 @@
 <span class="doccomment">/// business code for stream methods
 </span><span class="kw">pub mod </span>stream;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
-</span><span class="kw">pub mod </span>tests;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
 <span class="doccomment">/// Slot range type
 </span><span class="attr">#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
