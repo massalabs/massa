@@ -447,7 +447,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         page_request: Option<PageRequest>,
     ) -> RpcResult<PagedVec<(Address, u64)>> {
-        let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
         let now = match MassaTime::now() {
@@ -471,7 +470,9 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let mut staker_vec = execution_controller
+        let mut staker_vec = self
+            .0
+            .execution_controller
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();
