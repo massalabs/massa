@@ -1121,11 +1121,6 @@
 <a href="#1121" id="1121">1121</a>
 <a href="#1122" id="1122">1122</a>
 <a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1457,13 +1452,9 @@
 
     <span class="doccomment">/// get status
     </span><span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
-        <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.<span class="number">0</span>.version;
         <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">let </span>protocol_controller = <span class="self">self</span>.<span class="number">0</span>.protocol_controller.clone();
         <span class="kw">let </span>protocol_config = <span class="self">self</span>.<span class="number">0</span>.protocol_config.clone();
-        <span class="kw">let </span>pool_command_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
         <span class="kw">let </span>config = CompactConfig::default();
         <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
@@ -1482,21 +1473,21 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
-        <span class="kw">let </span>execution_stats = execution_controller.get_stats();
-        <span class="kw">let </span>consensus_stats_result = consensus_controller.get_stats();
+        <span class="kw">let </span>execution_stats = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_stats();
+        <span class="kw">let </span>consensus_stats_result = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.get_stats();
         <span class="kw">let </span>consensus_stats = <span class="kw">match </span>consensus_stats_result {
             <span class="prelude-val">Ok</span>(consensus_stats) =&gt; consensus_stats,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
-        <span class="kw">let </span>(network_stats, peers) = <span class="kw">match </span>protocol_controller.get_stats() {
+        <span class="kw">let </span>(network_stats, peers) = <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.protocol_controller.get_stats() {
             <span class="prelude-val">Ok</span>((stats, peers)) =&gt; (stats, peers),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ProtocolError(e).into()),
         };
 
         <span class="kw">let </span>pool_stats = (
-            pool_command_sender.get_operation_count(),
-            pool_command_sender.get_endorsement_count(),
+            <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.get_operation_count(),
+            <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.get_endorsement_count(),
         );
 
         <span class="kw">let </span>next_slot_result = last_slot
@@ -1571,8 +1562,7 @@
 
     <span class="doccomment">/// get cliques
     </span><span class="kw">async fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
-        <span class="prelude-val">Ok</span>(consensus_controller.get_cliques())
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="number">0</span>.consensus_controller.get_cliques())
     }
 
     <span class="doccomment">/// get stakers
