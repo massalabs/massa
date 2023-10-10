@@ -6,6 +6,7 @@ use crate::server::MassaPublicGrpc;
 use crate::SlotRange;
 use futures_util::StreamExt;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
+use massa_ledger_exports::SetUpdateOrDelete;
 use massa_models::address::Address;
 use massa_models::operation::OperationId;
 use massa_models::slot::Slot;
@@ -481,10 +482,124 @@ fn filter_map_exec_output(
             }
         }
     }
-    //TODO to be implemented
+
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {
         if async_pool_changes_filter.none.is_some() {
             exec_output.state_changes.async_pool_changes.0.clear();
+        } else {
+            exec_output
+                .state_changes
+                .async_pool_changes
+                .0
+                .retain(|_, change| {
+                    match change {
+                        SetUpdateOrDelete::Set(value) => {
+                            if let Some(change_types) = &async_pool_changes_filter.change_types {
+                                if !change_types
+                                    .contains(&(grpc_model::AsyncPoolChangeType::Set as i32))
+                                {
+                                    return false;
+                                }
+                            }
+                            //TODO to be confirmed
+                            if let Some(handlers) = &async_pool_changes_filter.handlers {
+                                if !handlers.contains(&value.function) {
+                                    return false;
+                                }
+                            }
+                            if let Some(destination_addresses) =
+                                &async_pool_changes_filter.destination_addresses
+                            {
+                                if !destination_addresses.contains(&value.destination) {
+                                    return false;
+                                }
+                            }
+
+                            if let Some(emitter_addresses) =
+                                &async_pool_changes_filter.emitter_addresses
+                            {
+                                if !emitter_addresses.contains(&value.sender) {
+                                    return false;
+                                }
+                            }
+
+                            if let Some(can_be_executed) = async_pool_changes_filter.can_be_executed
+                            {
+                                if value.can_be_executed != can_be_executed {
+                                    return false;
+                                }
+                            }
+                        }
+                        SetUpdateOrDelete::Update(value) => {
+                            if let Some(change_types) = &async_pool_changes_filter.change_types {
+                                if !change_types
+                                    .contains(&(grpc_model::AsyncPoolChangeType::Set as i32))
+                                {
+                                    return false;
+                                }
+                            }
+                            //TODO to be confirmed
+                            if let Some(handlers) = &async_pool_changes_filter.handlers {
+                                match value.function.clone() {
+                                    massa_ledger_exports::SetOrKeep::Set(function_name) => {
+                                        if !handlers.contains(&function_name) {
+                                            return false;
+                                        }
+                                    }
+                                    //TODO to be confirmed
+                                    massa_ledger_exports::SetOrKeep::Keep => {
+                                        return false;
+                                    }
+                                }
+                            }
+
+                            if let Some(destination_addresses) =
+                                &async_pool_changes_filter.destination_addresses
+                            {
+                                match value.destination {
+                                    massa_ledger_exports::SetOrKeep::Set(addr) => {
+                                        if !destination_addresses.contains(&addr) {
+                                            return false;
+                                        }
+                                    }
+                                    massa_ledger_exports::SetOrKeep::Keep => {}
+                                }
+                            }
+
+                            if let Some(emitter_addresses) =
+                                &async_pool_changes_filter.emitter_addresses
+                            {
+                                match value.sender {
+                                    massa_ledger_exports::SetOrKeep::Set(addr) => {
+                                        if !emitter_addresses.contains(&addr) {
+                                            return false;
+                                        }
+                                    }
+                                    massa_ledger_exports::SetOrKeep::Keep => {}
+                                }
+                            }
+
+                            if let Some(can_be_executed) = async_pool_changes_filter.can_be_executed
+                            {
+                                match value.can_be_executed {
+                                    massa_ledger_exports::SetOrKeep::Set(can_be_ex) => {
+                                        if can_be_executed != can_be_ex {
+                                            return false;
+                                        }
+                                    }
+                                    massa_ledger_exports::SetOrKeep::Keep => {}
+                                }
+                            }
+                        }
+                        SetUpdateOrDelete::Delete => {}
+                    }
+
+                    true
+                });
+
+            if exec_output.state_changes.async_pool_changes.0.is_empty() {
+                return None;
+            }
         }
     }
 

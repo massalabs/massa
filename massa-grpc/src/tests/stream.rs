@@ -1190,7 +1190,7 @@ async fn new_slot_execution_outputs() {
 
     // TODO add test when filter is updated
 
-    /*     filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
+    filter = massa_proto_rs::massa::api::v1::NewSlotExecutionOutputsFilter {
         filter: Some(
             massa_proto_rs::massa::api::v1::new_slot_execution_outputs_filter::Filter::EventFilter(
                 massa_proto_rs::massa::api::v1::ExecutionEventFilter {
@@ -1218,7 +1218,7 @@ async fn new_slot_execution_outputs() {
 
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
     dbg!(&result);
-    assert!(result.is_err()); */
+    assert!(result.is_err());
 
     stop_handle.stop();
 }

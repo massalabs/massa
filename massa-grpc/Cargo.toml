@@ -11,44 +11,51 @@ documentation = "https://docs.massa.net/"
 testing = []
 
 [dependencies]
-massa-proto-rs = { workspace = true, "features" = ["tonic"] }
-displaydoc = { workspace = true }
-thiserror = { workspace = true }
-tonic = { workspace = true, "features" = ["gzip", "tls"] }
-tonic-web = { workspace = true }
-tonic-reflection = { workspace = true }
-tonic-health = { workspace = true }
-tower-http = { workspace = true, "features" = ["cors"] }
-hyper = { workspace = true }
-futures-util = { workspace = true }
-serde = { workspace = true, "features" = ["derive"] }
-tokio = { workspace = true, "features" = ["rt-multi-thread", "macros"] }
-tokio-stream = { workspace = true }                                      # BOM UPGRADE     Revert to "0.1.12" if problem
-tracing = { workspace = true }
-parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
-h2 = { workspace = true }
-itertools = { workspace = true }
-# test
-
+# Internal packages
+massa_bootstrap = { workspace = true }
 massa_consensus_exports = { workspace = true }
-massa_hash = { workspace = true }
-massa_models = { workspace = true }
-massa_pos_exports = { workspace = true }
-massa_pool_exports = { workspace = true }
-massa_protocol_exports = { workspace = true }
 massa_execution_exports = { workspace = true }
+massa_hash = { workspace = true }
+massa_ledger_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_pool_exports = { workspace = true }
+massa_pos_exports = { workspace = true }
+massa_protocol_exports = { workspace = true }
+massa_sdk = { workspace = true }
+massa_serialization = { workspace = true }
+massa_signature = { workspace = true }
 massa_storage = { workspace = true }
 massa_time = { workspace = true }
-massa_wallet = { workspace = true }
-massa_serialization = { workspace = true }
 massa_versioning = { workspace = true }
-massa_signature = { workspace = true }
-massa_bootstrap = { workspace = true }
-massa_sdk = { workspace = true }
+massa_wallet = { workspace = true }
+
+# Massa projects dependencies
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+
+# Common dependencies
+displaydoc = { workspace = true }
+futures-util = { workspace = true }
+h2 = { workspace = true }
+hyper = { workspace = true }
+itertools = { workspace = true }
+
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+serde = { workspace = true, "features" = ["derive"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, "features" = ["rt-multi-thread", "macros"] }
+tokio-stream = { workspace = true }                                      # BOM UPGRADE     Revert to "0.1.12" if problem
+tonic = { workspace = true, "features" = ["gzip", "tls"] }
+tonic-health = { workspace = true }
+tonic-reflection = { workspace = true }
+tonic-web = { workspace = true }
+tower-http = { workspace = true, "features" = ["cors"] }
+tracing = { workspace = true }
 
 [dev-dependencies]
+massa_channel = { workspace = true }
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
-massa_protocol_exports = { workspace = true, "features" = ["testing"] }
 massa_final_state = { workspace = true }
+mockall = { workspace = true }
+num = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }
 num = {workspace = true}
