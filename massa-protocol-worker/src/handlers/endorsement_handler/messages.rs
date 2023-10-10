@@ -141,8 +141,13 @@ impl Deserializer<EndorsementMessage> for EndorsementMessageDeserializer {
 mod tests {
     use std::str::FromStr;
 
-    use massa_models::{endorsement::{Endorsement, EndorsementSerializer}, slot::Slot, block_id::BlockId, secure_share::SecureShareContent};
-    use massa_serialization::{Deserializer, DeserializeError, Serializer};
+    use massa_models::{
+        block_id::BlockId,
+        endorsement::{Endorsement, EndorsementSerializer},
+        secure_share::SecureShareContent,
+        slot::Slot,
+    };
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
     use massa_signature::KeyPair;
 
     #[test]
@@ -153,15 +158,15 @@ mod tests {
         serializer
             .serialize(&message, &mut buffer)
             .expect("Failed to serialize message");
-        let deserializer = super::EndorsementMessageDeserializer::new(
-            super::EndorsementMessageDeserializerArgs {
+        let deserializer =
+            super::EndorsementMessageDeserializer::new(super::EndorsementMessageDeserializerArgs {
                 thread_count: 1,
                 max_length_endorsements: 0,
                 endorsement_count: 1,
-            },
-        );
-        let (rest, deserialized_message) =
-            deserializer.deserialize::<DeserializeError>(&buffer).expect("Failed to deserialize message");
+            });
+        let (rest, deserialized_message) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .expect("Failed to deserialize message");
         assert_eq!(rest.len(), 0);
         assert_eq!(deserialized_message, message);
     }
@@ -171,32 +176,41 @@ mod tests {
         let endorsement = Endorsement {
             slot: Slot::new(u64::MAX, 31),
             index: 15,
-            endorsed_block: BlockId::from_str("B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg").unwrap()
+            endorsed_block: BlockId::from_str(
+                "B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg",
+            )
+            .unwrap(),
         };
-        let secure_share_endo = endorsement.new_verifiable(EndorsementSerializer::new(), &KeyPair::generate(0).unwrap()).unwrap();
-        let message = super::EndorsementMessage::Endorsements(vec![secure_share_endo.clone(), secure_share_endo.clone()]);
+        let secure_share_endo = endorsement
+            .new_verifiable(EndorsementSerializer::new(), &KeyPair::generate(0).unwrap())
+            .unwrap();
+        let message = super::EndorsementMessage::Endorsements(vec![
+            secure_share_endo.clone(),
+            secure_share_endo.clone(),
+        ]);
         let mut buffer = Vec::new();
         let serializer = super::EndorsementMessageSerializer::new();
         serializer
             .serialize(&message, &mut buffer)
             .expect("Failed to serialize message");
-        let deserializer = super::EndorsementMessageDeserializer::new(
-            super::EndorsementMessageDeserializerArgs {
+        let deserializer =
+            super::EndorsementMessageDeserializer::new(super::EndorsementMessageDeserializerArgs {
                 thread_count: 32,
                 max_length_endorsements: 1,
                 endorsement_count: 16,
-            },
-        );
-        deserializer.deserialize::<DeserializeError>(&buffer).expect_err("Should fail because there is two element and the limit is one");
+            });
+        deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .expect_err("Should fail because there is two element and the limit is one");
         let message2 = super::EndorsementMessage::Endorsements(vec![secure_share_endo.clone()]);
         let mut buffer2 = Vec::new();
         serializer
             .serialize(&message2, &mut buffer2)
             .expect("Failed to serialize message");
-        let (rest, deserialized_message) =
-            deserializer.deserialize::<DeserializeError>(&buffer2).expect("Failed to deserialize message");
+        let (rest, deserialized_message) = deserializer
+            .deserialize::<DeserializeError>(&buffer2)
+            .expect("Failed to deserialize message");
         assert_eq!(rest.len(), 0);
         assert_eq!(deserialized_message, message2);
-
     }
 }
