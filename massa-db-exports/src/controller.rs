@@ -82,9 +82,6 @@ pub trait MassaDBController: Send + Sync + Debug {
         last_versioning_step: &StreamingStep<Vec<u8>>,
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
-
-    /// To be called just after bootstrap
-    fn recompute_db_hash(&mut self) -> Result<(), MassaDBError>;
 }
 
 /// Similar to RocksDB's IteratorMode

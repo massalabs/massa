@@ -32,7 +32,7 @@ pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
 /// A generic wrapped RocksDB database.
 ///
 /// The added features are:
-/// - Hash tracking with Lsm-tree, a Sparse Merkle Tree implementation
+/// - Hash tracking with Xor
 /// - Streaming the database while it is being actively updated
 #[derive()]
 pub struct RawMassaDB<
@@ -516,44 +516,6 @@ where
         Ok((new_cursor, new_cursor_versioning))
     }
 
-    /// To be called just after bootstrap
-    pub fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
-        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        let mut current_xor_hash = self.get_xof_db_hash();
-        *self.current_batch.lock() = WriteBatch::default();
-
-        // Iterate over the whole db and compute the hash
-        for (key, value) in self
-            .db
-            .iterator_cf(handle_state, IteratorMode::Start)
-            .flatten()
-        {
-            // Compute the XOR in all cases
-            let new_hash =
-                HashXof::compute_from_tuple(&[key.to_vec().as_slice(), value.to_vec().as_slice()]);
-            current_xor_hash ^= new_hash;
-        }
-
-        // Update the hash entry
-        self.current_batch
-            .lock()
-            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
-
-        {
-            let mut current_batch_guard = self.current_batch.lock();
-            let batch = WriteBatch::from_data(current_batch_guard.data());
-            current_batch_guard.clear();
-
-            self.db.write(batch).map_err(|e| {
-                MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
-            })?;
-        }
-
-        Ok(())
-    }
-
     /// Get the current XOF state hash of the database
     pub fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
         self.get_xof_db_hash_opt()
@@ -830,10 +792,5 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
-    }
-
-    /// To be called just after bootstrap
-    fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
-        self.recompute_db_hash()
     }
 }
