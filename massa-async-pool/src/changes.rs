@@ -228,7 +228,6 @@ impl AsyncPoolChanges {
 
 #[cfg(test)]
 mod tests {
-
     use std::str::FromStr;
 
     use massa_ledger_exports::SetUpdateOrDelete;
@@ -237,12 +236,11 @@ mod tests {
 
     use crate::message::AsyncMessageTrigger;
 
+    use assert_matches::assert_matches;
+
     use super::*;
 
-    #[test]
-    fn test_changes_ser_deser() {
-        // use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
-
+    fn get_message() -> AsyncMessage {
         let message = AsyncMessage::new(
             Slot::new(1, 0),
             0,
@@ -262,6 +260,14 @@ mod tests {
             }),
             None,
         );
+        return message;
+    }
+
+    #[test]
+    fn test_changes_ser_deser() {
+        // Async pool changes serialization && deserialization
+
+        let message = get_message();
         let mut changes = AsyncPoolChanges::default();
         changes.0.insert(
             message.compute_id(),
@@ -298,5 +304,42 @@ mod tests {
             .unwrap();
         assert!(rest.is_empty());
         assert_eq!(changes, changes_deser);
+    }
+
+    #[test]
+    fn test_pool_changes_push() {
+        // AsyncPoolChanges, push_add/push_delete/push_activate
+
+        let message = get_message();
+        assert_eq!(message.can_be_executed, false);
+
+        let mut changes = AsyncPoolChanges::default();
+
+        changes.push_add(message.compute_id(), message.clone());
+        assert_eq!(changes.0.len(), 1);
+        assert_matches!(
+            changes.0.get(&message.compute_id()),
+            Some(&SetUpdateOrDelete::Set(..))
+        );
+
+        changes.push_activate(message.compute_id());
+        assert_eq!(changes.0.len(), 1);
+        let value = changes.0.get(&message.compute_id()).unwrap();
+        match value {
+            SetUpdateOrDelete::Set(msg) => {
+                assert_eq!(msg.can_be_executed, true);
+            }
+            _ => {
+                panic!("Unexpect value");
+            }
+        }
+
+        changes.push_delete(message.compute_id());
+        // Len is still 1, but value has changed
+        assert_eq!(changes.0.len(), 1);
+        assert_eq!(
+            changes.0.get(&message.compute_id()),
+            Some(&SetUpdateOrDelete::Delete)
+        );
     }
 }

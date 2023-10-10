@@ -2652,6 +2652,7 @@ dependencies = [
 name = "massa_async_pool"
 version = "0.26.1"
 dependencies = [
+ "assert_matches",
  "massa-proto-rs",
  "massa_db_exports",
  "massa_ledger_exports",
