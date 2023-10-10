@@ -8,7 +8,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [features]
-testing = []
+testing = ["mockall", "num", "massa_channel"]
 
 [dependencies]
 massa-proto-rs = { workspace = true, "features" = ["tonic"] }
@@ -28,6 +28,10 @@ tracing = { workspace = true }
 parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
 h2 = { workspace = true }
 itertools = { workspace = true }
+# test
+mockall = { workspace = true, optional = true }
+num = { workspace = true, optional = true }
+massa_channel = { workspace = true, optional = true }
 
 massa_consensus_exports = { workspace = true }
 massa_hash = { workspace = true }
@@ -46,9 +50,7 @@ massa_bootstrap = { workspace = true }
 massa_sdk = { workspace = true }
 
 [dev-dependencies]
-num = { workspace = true }
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
-massa_channel = { workspace = true }
-mockall = { workspace = true }
+massa_protocol_exports = { workspace = true, "features" = ["testing"] }
 massa_final_state = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }

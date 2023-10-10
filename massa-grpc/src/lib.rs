@@ -38,8 +38,8 @@ pub mod server;
 /// business code for stream methods
 pub mod stream;
 
-#[cfg(test)]
-mod tests;
+#[cfg(feature = "testing")]
+pub mod tests;
 
 /// Slot range type
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]

@@ -329,13 +329,9 @@ impl MassaRpcServer for API<Public> {
 
     /// get status
     async fn get_status(&self) -> RpcResult<NodeStatus> {
-        let execution_controller = self.0.execution_controller.clone();
-        let consensus_controller = self.0.consensus_controller.clone();
         let version = self.0.version;
         let api_settings = self.0.api_settings.clone();
-        let protocol_controller = self.0.protocol_controller.clone();
         let protocol_config = self.0.protocol_config.clone();
-        let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
         let now = match MassaTime::now() {
@@ -354,21 +350,21 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let execution_stats = execution_controller.get_stats();
-        let consensus_stats_result = consensus_controller.get_stats();
+        let execution_stats = self.0.execution_controller.get_stats();
+        let consensus_stats_result = self.0.consensus_controller.get_stats();
         let consensus_stats = match consensus_stats_result {
             Ok(consensus_stats) => consensus_stats,
             Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };
 
-        let (network_stats, peers) = match protocol_controller.get_stats() {
+        let (network_stats, peers) = match self.0.protocol_controller.get_stats() {
             Ok((stats, peers)) => (stats, peers),
             Err(e) => return Err(ApiError::ProtocolError(e).into()),
         };
 
         let pool_stats = (
-            pool_command_sender.get_operation_count(),
-            pool_command_sender.get_endorsement_count(),
+            self.0.pool_command_sender.get_operation_count(),
+            self.0.pool_command_sender.get_endorsement_count(),
         );
 
         let next_slot_result = last_slot

@@ -1,4 +1,5 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
+
 use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
 
@@ -53,7 +54,6 @@ use massa_pool_exports::PoolController;
 use massa_pos_exports::{PosResult, SelectorController};
 use massa_storage::Storage;
 
-#[cfg(any(test, feature = "testing"))]
 mockall::mock! {
 
     pub ExecutionCtrl {}
@@ -108,7 +108,6 @@ mockall::mock! {
     }
 }
 
-#[cfg(any(test, feature = "testing"))]
 mockall::mock! {
     pub PoolCtrl{}
 
@@ -165,7 +164,6 @@ mockall::mock! {
     }
 }
 
-#[cfg(any(test, feature = "testing"))]
 mockall::mock! {
     pub SelectorCtrl {}
 
