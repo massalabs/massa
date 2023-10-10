@@ -2458,7 +2458,7 @@ dependencies = [
 [[package]]
 name = "machine"
 version = "0.3.0"
-source = "git+https://github.com/antifuchs/machine?branch=fix-workspace-build#1736a01400aac54f69a81002862f8555b08caa9b"
+source = "git+https://github.com/massalabs/machine?rev=1736a01400aac54f69a81002862f8555b08caa9b#1736a01400aac54f69a81002862f8555b08caa9b"
 dependencies = [
  "case",
  "log",
@@ -3274,7 +3274,7 @@ dependencies = [
  "nom",
  "num",
  "thiserror",
- "unsigned-varint",
+ "unsigned-varint 0.7.2",
 ]
 
 [[package]]
@@ -5139,7 +5139,7 @@ dependencies = [
 [[package]]
 name = "substruct"
 version = "0.1.0"
-source = "git+https://github.com/sydhds/substruct?branch=main#2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"
+source = "git+https://github.com/massalabs/substruct?rev=2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1#2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"
 dependencies = [
  "quote 1.0.33",
  "syn 1.0.109",
@@ -5658,7 +5658,7 @@ dependencies = [
  "proc-macro2 1.0.67",
  "quote 1.0.33",
  "syn 1.0.109",
- "unsigned-varint",
+ "unsigned-varint 0.7.1",
 ]
 
 [[package]]
@@ -5744,6 +5744,15 @@ checksum = "f28467d3e1d3c6586d8f25fa243f544f5800fec42d97032474e17222c2b75cfa"
 name = "unsigned-varint"
 version = "0.7.1"
 source = "git+https://github.com/cyphar/unsigned-varint.git?branch=nom6-errors#ad577035fc09d2b8351efa14f5812920b9216a9d"
+dependencies = [
+ "nom",
+]
+
+[[package]]
+name = "unsigned-varint"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6889a77d49f1f013504cec6bf97a2c730394adedaeb1deb5ea08949a50541105"
 dependencies = [
  "nom",
 ]
