@@ -904,7 +904,7 @@
         <span class="kw">let </span>(rest, deserialized_message) = deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
             .unwrap();
-        <span class="macro">assert_eq!</span>(rest.len(), <span class="number">0</span>);
+        <span class="macro">assert!</span>(rest.is_empty());
         <span class="kw">match </span>(deserialized_message, message) {
             (
                 <span class="kw">super</span>::BlockMessage::DataRequest {
