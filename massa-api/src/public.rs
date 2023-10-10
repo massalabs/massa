@@ -439,8 +439,7 @@ impl MassaRpcServer for API<Public> {
 
     /// get cliques
     async fn get_cliques(&self) -> RpcResult<Vec<Clique>> {
-        let consensus_controller = self.0.consensus_controller.clone();
-        Ok(consensus_controller.get_cliques())
+        Ok(self.0.consensus_controller.get_cliques())
     }
 
     /// get stakers

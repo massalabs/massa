@@ -8,6 +8,7 @@ use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 
 use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl};
 use massa_models::{
+    clique::Clique,
     slot::Slot,
     stats::{ConsensusStats, ExecutionStats, NetworkStats},
 };
@@ -84,6 +85,38 @@ async fn get_status() {
     assert_eq!(response.network_stats.in_connection_count, 10);
     assert_eq!(response.network_stats.out_connection_count, 5);
     assert_eq!(response.config.thread_count, 32);
+
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_cliques() {
+    let addr: SocketAddr = "[::]:5002".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl
+        .expect_get_cliques()
+        .returning(|| vec![Clique::default()]);
+
+    api_public.0.consensus_controller = Box::new(consensus_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+    let params = rpc_params![];
+    let response: Vec<massa_models::clique::Clique> =
+        client.request("get_cliques", params).await.unwrap();
+
+    assert_eq!(response.len(), 1);
 
     api_public_handle.stop().await;
 }
