@@ -429,55 +429,6 @@
 <a href="#429" id="429">429</a>
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
@@ -486,15 +437,12 @@
 <span class="kw">use </span><span class="kw">crate</span>::SlotRange;
 <span class="kw">use </span>futures_util::StreamExt;
 <span class="kw">use </span>massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
-<span class="kw">use </span>massa_models::address::Address;
-<span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api, NewSlotExecutionOutputsRequest};
 <span class="kw">use </span>massa_proto_rs::massa::model::v1::{<span class="self">self </span><span class="kw">as </span>grpc_model};
 <span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
-<span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>tokio::select;
 <span class="kw">use </span>tonic::{Request, Streaming};
 <span class="kw">use </span>tracing::log::{error, warn};
@@ -509,7 +457,8 @@
     &gt;,
 &gt;;
 
-<span class="comment">// Type declaration for NewSlotExecutionOutputsFilter
+<span class="comment">//TODO implement remaining sub filters
+// Type declaration for NewSlotExecutionOutputsFilter
 </span><span class="attr">#[derive(Clone, Debug, Default)]
 </span><span class="kw">struct </span>Filter {
     <span class="comment">// Execution output status to filter
@@ -532,17 +481,6 @@
 </span><span class="kw">struct </span>AsyncPoolChangesFilter {
     <span class="comment">// Do not return any message
     </span>none: <span class="prelude-ty">Option</span>&lt;()&gt;,
-    <span class="comment">// The types of the change
-    </span>change_types: <span class="prelude-ty">Option</span>&lt;HashSet&lt;i32&gt;&gt;,
-    <span class="comment">// The handlers functions names within the destination address bytecode
-    </span>handlers: <span class="prelude-ty">Option</span>&lt;HashSet&lt;String&gt;&gt;,
-    <span class="comment">// The addresses towards which the message is being sent
-    </span>destination_addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
-    <span class="comment">// The addresses that sent the message
-    </span>emitter_addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
-    <span class="comment">// Boolean that determine if the message can be executed. For messages without filter this boolean is always true.
-    // For messages with filter, this boolean is true if the filter has been matched between `validity_start` and current slot.
-    </span>can_be_executed: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="attr">#[derive(Clone, Debug, Default)]
@@ -555,30 +493,18 @@
 </span><span class="kw">struct </span>ExecutionEventFilter {
     <span class="comment">// Do not return any message
     </span>none: <span class="prelude-ty">Option</span>&lt;()&gt;,
-    <span class="comment">// Caller addresses
-    </span>caller_addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
-    <span class="comment">// Emitter addresses
-    </span>emitter_addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
-    <span class="comment">// Original operation ids
-    </span>original_operation_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;OperationId&gt;&gt;,
-    <span class="comment">// Whether the event is a failure
-    </span>is_failure: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
 <span class="attr">#[derive(Clone, Debug, Default)]
 </span><span class="kw">struct </span>ExecutedOpsChangesFilter {
     <span class="comment">// Do not return any message
     </span>none: <span class="prelude-ty">Option</span>&lt;()&gt;,
-    <span class="comment">// Operation ids
-    </span>operation_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;OperationId&gt;&gt;,
 }
 
 <span class="attr">#[derive(Clone, Debug, Default)]
 </span><span class="kw">struct </span>LedgerChangesFilter {
     <span class="comment">// Do not return any message
     </span>none: <span class="prelude-ty">Option</span>&lt;()&gt;,
-    <span class="comment">// Addresses for which we have ledger changes
-    </span>addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
 }
 
 <span class="doccomment">/// Creates a new stream of new produced and received slot execution outputs
@@ -745,88 +671,75 @@
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter.filter {
-                        <span class="kw">let </span>nested_filter = async_pool_changes_filter.get_or_insert(AsyncPoolChangesFilter::default());
                         <span class="kw">match </span>filter {
                             grpc_api::async_pool_changes_filter::Filter::None(<span class="kw">_</span>) =&gt; {
-                                nested_filter.none = <span class="prelude-val">Some</span>(());
+                                async_pool_changes_filter = <span class="prelude-val">Some</span>(AsyncPoolChangesFilter {
+                                    none: <span class="prelude-val">Some</span>(()),
+                                });
                             },
-                            grpc_api::async_pool_changes_filter::Filter::Type(change_type) =&gt; {
-                                nested_filter.change_types.get_or_insert_with(HashSet::new).insert(change_type);
-                            },
-                            grpc_api::async_pool_changes_filter::Filter::Handler(function) =&gt; {
-                                nested_filter.handlers.get_or_insert_with(HashSet::new).insert(function);
-                            },
-                            grpc_api::async_pool_changes_filter::Filter::DestinationAddress(addr) =&gt; {
-                                nested_filter.destination_addresses.get_or_insert_with(HashSet::new).insert(Address::from_str(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>);
-                            },
-                            grpc_api::async_pool_changes_filter::Filter::EmitterAddress(addr) =&gt; {
-                                nested_filter.emitter_addresses.get_or_insert_with(HashSet::new).insert(Address::from_str(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>);
-                            },
-                            grpc_api::async_pool_changes_filter::Filter::CanBeExecuted(can_be_executed) =&gt; {
-                                nested_filter.can_be_executed = <span class="prelude-val">Some</span>(can_be_executed);
-                            },
-                        };
+                            <span class="kw">_ </span>=&gt; {
+                                async_pool_changes_filter = <span class="prelude-val">Some</span>(AsyncPoolChangesFilter {
+                                none: <span class="prelude-val">None</span>,
+                            })
+                        }
                     }
-                },
+                }
+            },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter.filter {
-                        <span class="kw">let </span><span class="kw-2">mut </span>nested_filter = ExecutedDenounciationFilter::default();
                         <span class="kw">match </span>filter {
                             grpc_api::executed_denounciation_filter::Filter::None(<span class="kw">_</span>) =&gt; {
-                                nested_filter.none = <span class="prelude-val">Some</span>(());
+                                executed_denounciation_filter = <span class="prelude-val">Some</span>(ExecutedDenounciationFilter {
+                                    none: <span class="prelude-val">Some</span>(()),
+                                });
                             },
-                        }
-                        executed_denounciation_filter = <span class="prelude-val">Some</span>(nested_filter);
                     }
-                },
+                }},
                 grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter.filter {
-                        <span class="kw">let </span>nested_filter = execution_event_filter.get_or_insert(ExecutionEventFilter::default());
                         <span class="kw">match </span>filter {
                             grpc_api::execution_event_filter::Filter::None(<span class="kw">_</span>) =&gt; {
-                                nested_filter.none = <span class="prelude-val">Some</span>(());
+                                execution_event_filter = <span class="prelude-val">Some</span>(ExecutionEventFilter {
+                                    none: <span class="prelude-val">Some</span>(()),
+                                });
                             },
-                            grpc_api::execution_event_filter::Filter::CallerAddress(addr) =&gt; {
-                                nested_filter.caller_addresses.get_or_insert_with(HashSet::new).insert(Address::from_str(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>);
-                            },
-                            grpc_api::execution_event_filter::Filter::EmitterAddress(addr) =&gt; {
-                                nested_filter.emitter_addresses.get_or_insert_with(HashSet::new).insert(Address::from_str(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>);
-                            },
-                            grpc_api::execution_event_filter::Filter::OriginalOperationId(op_id) =&gt; {
-                                nested_filter.original_operation_ids.get_or_insert_with(HashSet::new).insert(OperationId::from_str(<span class="kw-2">&amp;</span>op_id)<span class="question-mark">?</span>);
-                            },
-                            grpc_api::execution_event_filter::Filter::IsFailure(is_failure) =&gt; {
-                                nested_filter.is_failure = <span class="prelude-val">Some</span>(is_failure);
-                            },
-                        };
-                    }
-                },
+                            <span class="kw">_ </span>=&gt; {
+                                execution_event_filter = <span class="prelude-val">Some</span>(ExecutionEventFilter {
+                                none: <span class="prelude-val">None</span>,
+                            })
+                        }
+                }
+                }},
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter.filter {
-                        <span class="kw">let </span>nested_filter = executed_ops_changes_filter.get_or_insert(ExecutedOpsChangesFilter::default());
                         <span class="kw">match </span>filter {
                             grpc_api::executed_ops_changes_filter::Filter::None(<span class="kw">_</span>) =&gt; {
-                                nested_filter.none = <span class="prelude-val">Some</span>(());
+                                executed_ops_changes_filter = <span class="prelude-val">Some</span>(ExecutedOpsChangesFilter {
+                                    none: <span class="prelude-val">Some</span>(()),
+                                });
                             },
-                            grpc_api::executed_ops_changes_filter::Filter::OperationId(op_id) =&gt; {
-                                nested_filter.operation_ids.get_or_insert_with(HashSet::new).insert(OperationId::from_str(<span class="kw-2">&amp;</span>op_id)<span class="question-mark">?</span>);
-                            },
+                            <span class="kw">_ </span>=&gt; {
+                                executed_ops_changes_filter = <span class="prelude-val">Some</span>(ExecutedOpsChangesFilter {
+                                none: <span class="prelude-val">None</span>,
+                            })
                         }
-                    }
-                },
+                }
+                }},
                 grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = filter.filter {
-                        <span class="kw">let </span>nested_filter = ledger_changes_filter.get_or_insert(LedgerChangesFilter::default());
                         <span class="kw">match </span>filter {
                             grpc_api::ledger_changes_filter::Filter::None(<span class="kw">_</span>) =&gt; {
-                                nested_filter.none = <span class="prelude-val">Some</span>(());
+                                ledger_changes_filter = <span class="prelude-val">Some</span>(LedgerChangesFilter {
+                                    none: <span class="prelude-val">Some</span>(()),
+                                });
                             },
-                            grpc_api::ledger_changes_filter::Filter::Address(addr) =&gt; {
-                                nested_filter.addresses.get_or_insert_with(HashSet::new).insert(Address::from_str(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>);
-                            },
+                            <span class="kw">_ </span>=&gt; {
+                                ledger_changes_filter = <span class="prelude-val">Some</span>(LedgerChangesFilter {
+                                none: <span class="prelude-val">None</span>,
+                            })
                         }
-                    }
-                },
+                }
+                }},
             }
         }
     }
@@ -920,8 +833,8 @@
             exec_output.events.clear();
         }
     }
-    <span class="comment">//TODO to be implemented
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(async_pool_changes_filter) = <span class="kw-2">&amp;</span>filters.async_pool_changes_filter {
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(async_pool_changes_filter) = <span class="kw-2">&amp;</span>filters.async_pool_changes_filter {
         <span class="kw">if </span>async_pool_changes_filter.none.is_some() {
             exec_output.state_changes.async_pool_changes.<span class="number">0</span>.clear();
         }
@@ -937,22 +850,11 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>(executed_ops_changes_filter) = <span class="kw-2">&amp;</span>filters.executed_ops_changes_filter {
         <span class="kw">if </span>executed_ops_changes_filter.none.is_some() {
             exec_output.state_changes.executed_ops_changes.clear();
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(operation_ids) = executed_ops_changes_filter.operation_ids.clone() {
-            exec_output
-                .state_changes
-                .executed_ops_changes
-                .retain(|operation_id, <span class="kw">_</span>| operation_ids.contains(operation_id));
         }
     }
     <span class="kw">if let </span><span class="prelude-val">Some</span>(ledger_changes_filter) = <span class="kw-2">&amp;</span>filters.ledger_changes_filter {
         <span class="kw">if </span>ledger_changes_filter.none.is_some() {
             exec_output.state_changes.ledger_changes.<span class="number">0</span>.clear();
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(addresses) = ledger_changes_filter.addresses.clone() {
-            exec_output
-                .state_changes
-                .ledger_changes
-                .<span class="number">0
-                </span>.retain(|address, <span class="kw">_</span>| addresses.contains(address));
         }
     }
 
