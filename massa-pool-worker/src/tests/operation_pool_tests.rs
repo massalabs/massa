@@ -19,8 +19,9 @@
 //!
 use crate::tests::tools::OpGenerator;
 
-use super::tools::{create_some_operations, operation_pool_test, PoolTestBoilerPlate};
-use massa_execution_exports::MockExecutionController;
+use super::tools::{
+    create_some_operations, default_mock_execution_controller, pool_test, PoolTestBoilerPlate,
+};
 use massa_models::{amount::Amount, config::ENDORSEMENT_COUNT, operation::OperationId, slot::Slot};
 use massa_pool_exports::PoolConfig;
 use massa_pos_exports::{MockSelectorController, Selection};
@@ -28,30 +29,7 @@ use std::{collections::BTreeMap, time::Duration};
 
 #[test]
 fn test_add_operation() {
-    let execution_controller = {
-        let mut res = Box::new(MockExecutionController::new());
-        res.expect_clone_box().returning(|| {
-            let mut story = MockExecutionController::new();
-            story
-                .expect_get_ops_exec_status()
-                .returning(|ops| vec![(None, None); ops.len()]);
-            story
-                .expect_get_final_and_candidate_balance()
-                .returning(|addrs| {
-                    vec![
-                        (
-                            // Operations need to be paid for
-                            Some(Amount::const_init(1_000_000_000, 0)),
-                            Some(Amount::const_init(1_000_000_000, 0)),
-                        );
-                        addrs.len()
-                    ]
-                });
-
-            Box::new(story)
-        });
-        res
-    };
+    let execution_controller = default_mock_execution_controller();
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
@@ -86,10 +64,11 @@ fn test_add_operation() {
         });
         res
     };
-    operation_pool_test(
+    pool_test(
         PoolConfig::default(),
         execution_controller,
         selector_controller,
+        None,
         |mut operation_pool, mut storage| {
             let op_gen = OpGenerator::default().expirery(2);
             storage.store_operations(create_some_operations(10, &op_gen));
@@ -107,30 +86,7 @@ fn test_add_operation() {
 fn test_add_irrelevant_operation() {
     let pool_config = PoolConfig::default();
     let thread_count = pool_config.thread_count;
-    let execution_controller = {
-        let mut res = Box::new(MockExecutionController::new());
-        res.expect_clone_box().returning(|| {
-            let mut story = MockExecutionController::new();
-            story
-                .expect_get_ops_exec_status()
-                .returning(|ops| vec![(None, None); ops.len()]);
-            story
-                .expect_get_final_and_candidate_balance()
-                .returning(|addrs| {
-                    vec![
-                        (
-                            // Operations need to be paid for
-                            Some(Amount::const_init(1_000_000_000, 0)),
-                            Some(Amount::const_init(1_000_000_000, 0)),
-                        );
-                        addrs.len()
-                    ]
-                });
-
-            Box::new(story)
-        });
-        res
-    };
+    let execution_controller = default_mock_execution_controller();
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
@@ -165,10 +121,11 @@ fn test_add_irrelevant_operation() {
         });
         res
     };
-    operation_pool_test(
+    pool_test(
         PoolConfig::default(),
         execution_controller,
         selector_controller,
+        None,
         |mut operation_pool, mut storage| {
             let op_gen = OpGenerator::default().expirery(2);
             storage.store_operations(create_some_operations(10, &op_gen));
@@ -186,31 +143,7 @@ fn test_add_irrelevant_operation() {
 fn test_pool() {
     let mut pool_config = PoolConfig::default();
     pool_config.max_operations_per_block = 10;
-    let execution_controller = {
-        let mut res = Box::new(MockExecutionController::new());
-        res.expect_clone_box().returning(|| {
-            let mut story = MockExecutionController::new();
-            story
-                .expect_get_ops_exec_status()
-                .returning(|ops| vec![(None, None); ops.len()]);
-            story
-                .expect_get_final_and_candidate_balance()
-                .returning(|addrs| {
-                    vec![
-                        (
-                            // Operations need to be paid for
-                            Some(Amount::const_init(1_000_000_000, 0)),
-                            Some(Amount::const_init(1_000_000_000, 0)),
-                        );
-                        addrs.len()
-                    ]
-                });
-
-            Box::new(story)
-        });
-        res
-    };
-
+    let execution_controller = default_mock_execution_controller();
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
