@@ -14,6 +14,7 @@ use jsonrpsee::{
 };
 use massa_api_exports::{
     block::{BlockInfo, BlockSummary},
+    datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     operation::OperationInfo,
     TimeInterval,
@@ -429,6 +430,58 @@ async fn get_graph_interval() {
         .await
         .unwrap();
     assert!(response.len() == 2);
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_datastore_entries() {
+    let addr: SocketAddr = "[::]:5009".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_get_final_and_active_data_entry()
+        .returning(|_a| {
+            vec![(
+                Some("massa".as_bytes().to_vec()),
+                Some("blockchain".as_bytes().to_vec()),
+            )]
+        });
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![vec![DatastoreEntryInput {
+        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+            .unwrap(),
+        key: "massa".as_bytes().to_vec()
+    }]];
+    let response: Vec<DatastoreEntryOutput> = client
+        .request("get_datastore_entries", params.clone())
+        .await
+        .unwrap();
+
+    let entry = response.get(0).unwrap();
+
+    assert_eq!(
+        entry.candidate_value.as_ref().unwrap(),
+        &"blockchain".as_bytes().to_vec()
+    );
+    assert_eq!(
+        entry.final_value.as_ref().unwrap(),
+        &"massa".as_bytes().to_vec()
+    );
     api_public_handle.stop().await;
 }
 

@@ -787,8 +787,9 @@ impl MassaRpcServer for API<Public> {
         &self,
         entries: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
-        let execution_controller = self.0.execution_controller.clone();
-        Ok(execution_controller
+        Ok(self
+            .0
+            .execution_controller
             .get_final_and_active_data_entry(
                 entries
                     .into_iter()
