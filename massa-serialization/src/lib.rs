@@ -482,70 +482,77 @@ where
 
 #[cfg(test)]
 mod tests {
-    use num::rational::Ratio;
-
     use crate::{DeserializeError, Deserializer, Serializer};
+    use num::rational::Ratio;
+    use paste::paste;
 
-    #[test]
-    fn test_u64_serializer_deserializer_works() {
-        let u64_serializer = super::U64VarIntSerializer::new();
-        let number = 3u64;
-        let mut buffer = Vec::new();
-        u64_serializer
-            .serialize(&number, &mut buffer)
-            .expect("Failed to serialize 3");
-        assert_eq!(buffer, vec![3]);
-        let u64_deserializer = super::U64VarIntDeserializer::new(
-            std::ops::Bound::Included(0),
-            std::ops::Bound::Included(number),
-        );
-        let result = u64_deserializer.deserialize::<DeserializeError>(&buffer);
-        assert!(result.is_ok());
-        let (rest, value) = result.unwrap();
-        assert!(rest.is_empty());
-        assert_eq!(value, number);
+    macro_rules! gen_test_varint {
+        ($($type:ident, $bs:ident, $ds:ident);*) => {
+            $(
+                paste! {
+                    #[test]
+                    fn [<test_ $type _serializer_deserializer_works>]() {
+                        let [< $type _serializer >] = super::$bs::new();
+                        let number = [<3 $type >];
+                        let mut buffer = Vec::new();
+                        [< $type _serializer >].serialize(&number, &mut buffer).expect(concat!("Failed to serialize ", stringify!($type), " 3"));
+                        assert_eq!(buffer, vec![3]);
+                        let [< $type _deserializer >] = super::$ds::new(std::ops::Bound::Included([<0 $type >]), std::ops::Bound::Included(number));
+                        let result = [< $type _deserializer >].deserialize::<DeserializeError>(&buffer);
+                        assert!(result.is_ok());
+                        let (rest, value) = result.unwrap();
+                        assert!(rest.is_empty());
+                        assert_eq!(value, number);
+                    }
+
+                    #[test]
+                    fn [<test $type _serializer_deserializer_works_big_number>]() {
+                        let [< $type _serializer >] = super::$bs::new();
+                        let number = [<60_500 $type>];
+                        let mut buffer = Vec::new();
+                        [< $type _serializer >].serialize(&number, &mut buffer).expect(concat!("Failed to serialize ", stringify!($type), " 10_000_000"));
+                        assert_eq!(buffer, vec![212, 216, 3]);
+                        let [< $type _deserializer >] = super::$ds::new(std::ops::Bound::Included([<0 $type >]), std::ops::Bound::Included(number));
+                        let result = [< $type _deserializer >].deserialize::<DeserializeError>(&buffer);
+                        assert!(result.is_ok());
+                        let (rest, value) = result.unwrap();
+                        assert!(rest.is_empty());
+                        assert_eq!(value, number);
+                    }
+
+                    #[test]
+                    fn [<test_ $type _serializer_deserializer_bad_limits>]() {
+                        let [< $type _serializer >] = super::$bs::new();
+                        let number = [<3 $type >];
+                        let mut buffer = Vec::new();
+                        [< $type _serializer >].serialize(&number, &mut buffer).expect(concat!("Failed to serialize ", stringify!($type), " 3"));
+                        assert_eq!(buffer, vec![3]);
+                        let [< $type _deserializer >] = super::$ds::new(std::ops::Bound::Included([<0 $type >]), std::ops::Bound::Excluded(number));
+                        let result = [< $type _deserializer >].deserialize::<DeserializeError>(&buffer);
+                        assert!(result.is_err());
+                        let err = result.unwrap_err();
+                        assert_eq!(format!("{}", err), concat!("Parsing Error: Failed ", stringify!($type), " deserialization / Fail / Input: [3]\n"));
+                    }
+
+                    #[test]
+                    fn [<test_ $type _serializer_deserializer_empty_vec>]() {
+                        let buffer = vec![];
+                        let [< $type _deserializer >] = super::$ds::new(std::ops::Bound::Included([<0 $type >]), std::ops::Bound::Included($type::MAX));
+                        let result = [< $type _deserializer >].deserialize::<DeserializeError>(&buffer);
+                        assert!(result.is_err());
+                        let err = result.unwrap_err();
+                        assert_eq!(format!("{}", err), concat!("Parsing Error: Failed ", stringify!($type), " deserialization / Fail / Input: []\n"));
+                    }
+                }
+            )*
+        };
     }
 
-    #[test]
-    fn test_u64_serializer_deserializer_works_big_number() {
-        let u64_serializer = super::U64VarIntSerializer::default();
-        let number = 10_000_000u64;
-        let mut buffer = Vec::new();
-        u64_serializer
-            .serialize(&number, &mut buffer)
-            .expect("Failed to serialize 10_000_000");
-        assert_eq!(buffer, vec![128, 173, 226, 4]);
-        let u64_deserializer = super::U64VarIntDeserializer::new(
-            std::ops::Bound::Included(0),
-            std::ops::Bound::Included(number),
-        );
-        let result = u64_deserializer.deserialize::<DeserializeError>(&buffer);
-        assert!(result.is_ok());
-        let (rest, value) = result.unwrap();
-        assert!(rest.is_empty());
-        assert_eq!(value, number);
-    }
-
-    #[test]
-    fn test_u64_serializer_deserializer_bad_limit() {
-        let u64_serializer = super::U64VarIntSerializer::new();
-        let mut buffer = Vec::new();
-        u64_serializer
-            .serialize(&3u64, &mut buffer)
-            .expect("Failed to serialize 3");
-        assert_eq!(buffer, vec![3]);
-        let u64_deserializer = super::U64VarIntDeserializer::new(
-            std::ops::Bound::Included(0),
-            std::ops::Bound::Excluded(3),
-        );
-        let result = u64_deserializer.deserialize::<DeserializeError>(&buffer);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(
-            format!("{}", err),
-            "Parsing Error: Failed u64 deserialization / Fail / Input: [3]\n"
-        );
-    }
+    gen_test_varint!(
+        u16, U16VarIntSerializer, U16VarIntDeserializer;
+        u32, U32VarIntSerializer, U32VarIntDeserializer;
+        u64, U64VarIntSerializer, U64VarIntDeserializer
+    );
 
     #[test]
     fn test_u64_empty_vec() {
