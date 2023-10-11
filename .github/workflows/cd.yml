@@ -100,7 +100,7 @@ jobs:
           for file in massa/*.{gz,zip}; do
             if [ -f "$file" ]; then
               checksum=$(sha256sum "$file" | cut -d ' ' -f 1)
-              checksums="$checksums\n$checksum  $(basename $file)"
+              checksums="$checksums\n$checksum $(basename $file)"
             fi
           done
           echo -e "$checksums" > checksums.txt
