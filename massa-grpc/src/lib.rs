@@ -38,7 +38,7 @@ pub mod server;
 /// business code for stream methods
 pub mod stream;
 
-#[cfg(feature = "testing")]
+#[cfg(any(test, feature = "testing"))]
 /// gRPC tests
 pub mod tests;
 
