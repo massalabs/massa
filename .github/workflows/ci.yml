@@ -203,7 +203,6 @@ jobs:
         with:
           command: test
           args: --features testing --doc
-
       - uses: taiki-e/install-action@cargo-llvm-cov
       - uses: taiki-e/install-action@nextest
       - uses: actions-rs/cargo@v1
@@ -213,7 +212,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clean
-          args: --workspace
       - uses: actions-rs/cargo@v1
         with:
           command: test
