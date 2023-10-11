@@ -479,3 +479,234 @@ where
         .parse(buffer)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use num::rational::Ratio;
+
+    use crate::{DeserializeError, Deserializer, Serializer};
+
+    #[test]
+    fn test_u64_serializer_deserializer_works() {
+        let u64_serializer = super::U64VarIntSerializer::new();
+        let number = 3u64;
+        let mut buffer = Vec::new();
+        u64_serializer
+            .serialize(&number, &mut buffer)
+            .expect("Failed to serialize 3");
+        assert_eq!(buffer, vec![3]);
+        let u64_deserializer = super::U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Included(number),
+        );
+        let result = u64_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_ok());
+        let (rest, value) = result.unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, number);
+    }
+
+    #[test]
+    fn test_u64_serializer_deserializer_works_big_number() {
+        let u64_serializer = super::U64VarIntSerializer::default();
+        let number = 10_000_000u64;
+        let mut buffer = Vec::new();
+        u64_serializer
+            .serialize(&number, &mut buffer)
+            .expect("Failed to serialize 10_000_000");
+        assert_eq!(buffer, vec![128, 173, 226, 4]);
+        let u64_deserializer = super::U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Included(number),
+        );
+        let result = u64_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_ok());
+        let (rest, value) = result.unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, number);
+    }
+
+    #[test]
+    fn test_u64_serializer_deserializer_bad_limit() {
+        let u64_serializer = super::U64VarIntSerializer::new();
+        let mut buffer = Vec::new();
+        u64_serializer
+            .serialize(&3u64, &mut buffer)
+            .expect("Failed to serialize 3");
+        assert_eq!(buffer, vec![3]);
+        let u64_deserializer = super::U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Excluded(3),
+        );
+        let result = u64_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(
+            format!("{}", err),
+            "Parsing Error: Failed u64 deserialization / Fail / Input: [3]\n"
+        );
+    }
+
+    #[test]
+    fn test_u64_empty_vec() {
+        let buffer = vec![];
+        let u64_deserializer = super::U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Included(3),
+        );
+        let result = u64_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(
+            format!("{}", err),
+            "Parsing Error: Failed u64 deserialization / Fail / Input: []\n"
+        );
+    }
+
+    #[test]
+    fn test_option_serializer_value_works() {
+        let option_serializer = super::OptionSerializer::new(super::U64VarIntSerializer::new());
+        let mut buffer = Vec::new();
+        option_serializer
+            .serialize(&Some(3u64), &mut buffer)
+            .expect("Failed to serialize Some(3)");
+        assert_eq!(buffer, vec![b'1', 3]);
+        let option_deserializer =
+            super::OptionDeserializer::new(super::U64VarIntDeserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(3),
+            ));
+        let result = option_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_ok());
+        let (rest, value) = result.unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, Some(3u64));
+    }
+
+    #[test]
+    fn test_option_serializer_none_works() {
+        let option_serializer = super::OptionSerializer::new(super::U64VarIntSerializer::new());
+        let mut buffer = Vec::new();
+        option_serializer
+            .serialize(&None, &mut buffer)
+            .expect("Failed to serialize None");
+        assert_eq!(buffer, vec![b'0']);
+        let option_deserializer =
+            super::OptionDeserializer::new(super::U64VarIntDeserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(3),
+            ));
+        let result = option_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_ok());
+        let (rest, value) = result.unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn test_option_bad_serialized_vec() {
+        let buffer = vec![2];
+        let option_deserializer =
+            super::OptionDeserializer::new(super::U64VarIntDeserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(3),
+            ));
+        let result = option_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(format!("{}", err), "Parsing Error: Option<_> deserializer failed / Alternative / Some(_) / Tag / Input: [2]\n");
+    }
+
+    #[test]
+    fn test_option_empty_vec() {
+        let buffer = vec![];
+        let option_deserializer =
+            super::OptionDeserializer::new(super::U64VarIntDeserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(3),
+            ));
+        let result = option_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(format!("{}", err), "Parsing Error: Option<_> deserializer failed / Alternative / Some(_) / Tag / Input: []\n");
+    }
+
+    #[test]
+    fn test_bool_serializer_deserializer_works() {
+        let bool_serializer = super::BoolSerializer::new();
+        let mut buffer = Vec::new();
+        bool_serializer
+            .serialize(&true, &mut buffer)
+            .expect("Failed to serialize true");
+        assert_eq!(buffer, vec![1]);
+        let bool_deserializer = super::BoolDeserializer::new();
+        let result = bool_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_ok());
+        let (rest, value) = result.unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, true);
+    }
+
+    #[test]
+    fn test_bool_bad_serialized_vec() {
+        let buffer = vec![2];
+        let bool_deserializer = super::BoolDeserializer::new();
+        let result = bool_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(
+            format!("{}", err),
+            "Parsing Error: Failed bool deserialization / Fail / Input: [2]\n"
+        );
+    }
+
+    #[test]
+    fn test_bool_empty_vec() {
+        let buffer = vec![];
+        let bool_deserializer = super::BoolDeserializer::new();
+        let result = bool_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(
+            format!("{}", err),
+            "Parsing Error: Failed bool deserialization / Fail / Input: []\n"
+        );
+    }
+
+    #[test]
+    fn test_ratio_serializer_deserializer_works() {
+        let ratio_serializer = super::RatioSerializer::new(super::U64VarIntSerializer::new());
+        let mut buffer = Vec::new();
+        ratio_serializer
+            .serialize(&Ratio::new(3u64, 4u64), &mut buffer)
+            .expect("Failed to serialize Ratio(3, 4)");
+        assert_eq!(buffer, vec![3, 4]);
+        let ratio_deserializer = super::RatioDeserializer::new(super::U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Included(4),
+        ));
+        let result = ratio_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_ok());
+        let (rest, value) = result.unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(value, Ratio::new(3u64, 4u64));
+    }
+
+    #[test]
+    fn test_ratio_serializer_deserializer_bad_limits() {
+        let ratio_serializer = super::RatioSerializer::new(super::U64VarIntSerializer::new());
+        let mut buffer = Vec::new();
+        ratio_serializer
+            .serialize(&Ratio::new(3u64, 4u64), &mut buffer)
+            .expect("Failed to serialize Ratio(3, 4)");
+        assert_eq!(buffer, vec![3, 4]);
+        let ratio_deserializer = super::RatioDeserializer::new(super::U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Included(3),
+        ));
+        let result = ratio_deserializer.deserialize::<DeserializeError>(&buffer);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(format!("{}", err), "Parsing Error: Ratio<_> deserializer failed / denom deser failed / Failed u64 deserialization / Fail / Input: [4]\n");
+    }
+}
