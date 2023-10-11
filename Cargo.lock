@@ -2604,6 +2604,7 @@ dependencies = [
  "massa_api_exports",
  "massa_consensus_exports",
  "massa_execution_exports",
+ "massa_final_state",
  "massa_grpc",
  "massa_hash",
  "massa_models",

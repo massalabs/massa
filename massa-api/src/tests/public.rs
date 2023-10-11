@@ -17,6 +17,7 @@ use massa_api_exports::{
     block::{BlockInfo, BlockSummary},
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
     operation::OperationInfo,
     TimeInterval,
 };
@@ -25,7 +26,7 @@ use massa_consensus_exports::{
     test_exports::MockConsensusControllerImpl,
 };
 
-use massa_execution_exports::ExecutionAddressInfo;
+use massa_execution_exports::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl, MockSelectorCtrl};
 use massa_models::{
     address::Address,
@@ -437,6 +438,148 @@ async fn get_graph_interval() {
 }
 
 #[tokio::test]
+async fn execute_read_only_bytecode() {
+    let addr: SocketAddr = "[::]:5012".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_execute_readonly_request()
+        .returning(|_req| {
+            Ok(ReadOnlyExecutionOutput {
+                out: massa_execution_exports::ExecutionOutput {
+                    slot: Slot {
+                        period: 1,
+                        thread: 5,
+                    },
+                    block_info: None,
+                    state_changes: massa_final_state::StateChanges::default(),
+                    events: massa_execution_exports::EventStore::default(),
+                },
+                gas_cost: 100,
+                call_result: "toto".as_bytes().to_vec(),
+            })
+        });
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![vec![ReadOnlyBytecodeExecution {
+        max_gas: 100000,
+        bytecode: "hi".as_bytes().to_vec(),
+        address: Some(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()
+        ),
+        operation_datastore: None,
+        is_final: false
+    }]];
+    let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
+        .request("execute_read_only_bytecode", params.clone())
+        .await;
+
+    assert!(response.unwrap().len() == 1);
+
+    let params = rpc_params![vec![ReadOnlyBytecodeExecution {
+        max_gas: 100000,
+        bytecode: "hi".as_bytes().to_vec(),
+        address: None,
+        operation_datastore: None,
+        is_final: false
+    }]];
+    let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
+        .request("execute_read_only_bytecode", params.clone())
+        .await;
+
+    assert!(response.unwrap().len() == 1);
+
+    let params = rpc_params![vec![ReadOnlyBytecodeExecution {
+        max_gas: 100000,
+        bytecode: "hi".as_bytes().to_vec(),
+        address: None,
+        operation_datastore: Some("hi".as_bytes().to_vec()),
+        is_final: false
+    }]];
+    let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
+        .request("execute_read_only_bytecode", params.clone())
+        .await;
+
+    assert!(response.is_err());
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn execute_read_only_call() {
+    let addr: SocketAddr = "[::]:5011".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_execute_readonly_request()
+        .returning(|_req| {
+            Ok(ReadOnlyExecutionOutput {
+                out: massa_execution_exports::ExecutionOutput {
+                    slot: Slot {
+                        period: 1,
+                        thread: 5,
+                    },
+                    block_info: None,
+                    state_changes: massa_final_state::StateChanges::default(),
+                    events: massa_execution_exports::EventStore::default(),
+                },
+                gas_cost: 100,
+                call_result: "toto".as_bytes().to_vec(),
+            })
+        });
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![];
+    let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
+        .request("execute_read_only_call", params.clone())
+        .await;
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+
+    let params = rpc_params![vec![ReadOnlyCall {
+        max_gas: 1000000,
+        target_address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+            .unwrap(),
+        target_function: "hello".to_string(),
+        parameter: vec![],
+        caller_address: None,
+        is_final: false
+    }]];
+    let response: Vec<ExecuteReadOnlyResponse> = client
+        .request("execute_read_only_call", params.clone())
+        .await
+        .unwrap();
+
+    assert_eq!(response.len(), 1);
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
 async fn get_addresses() {
     let addr: SocketAddr = "[::]:5010".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr).await;
@@ -486,10 +629,12 @@ async fn get_addresses() {
         "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"
     )
     .unwrap()]];
-    let response: Result<Vec<AddressInfo>, Error> =
-        client.request("get_addresses", params.clone()).await;
+    let response: Vec<AddressInfo> = client
+        .request("get_addresses", params.clone())
+        .await
+        .unwrap();
 
-    dbg!(&response);
+    assert!(response.len() == 1);
 
     api_public_handle.stop().await;
 }
