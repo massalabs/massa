@@ -12,20 +12,23 @@ use jsonrpsee::{
     http_client::HttpClientBuilder,
     rpc_params,
 };
-use massa_api_exports::operation::OperationInfo;
+use massa_api_exports::{endorsement::EndorsementInfo, operation::OperationInfo};
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 
 use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl};
 use massa_models::{
     address::Address,
+    block::BlockGraphStatus,
     clique::Clique,
+    endorsement::EndorsementId,
     node::NodeId,
     operation::OperationId,
     slot::Slot,
     stats::{ConsensusStats, ExecutionStats, NetworkStats},
 };
 use massa_protocol_exports::{
-    test_exports::tools::create_operation_with_expire_period, MockProtocolController,
+    test_exports::tools::{create_endorsement, create_operation_with_expire_period},
+    MockProtocolController,
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -176,6 +179,65 @@ async fn get_operations() {
     let response: Vec<OperationInfo> = client.request("get_operations", params).await.unwrap();
 
     assert_eq!(response.len(), 1);
+
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_endorsements() {
+    let addr: SocketAddr = "[::]:5005".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let end = create_endorsement();
+    api_public.0.storage.store_endorsements(vec![end.clone()]);
+
+    let mut pool_ctrl = MockPoolCtrl::new();
+    pool_ctrl
+        .expect_contains_endorsements()
+        .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl
+        .expect_get_block_statuses()
+        .returning(|param| param.iter().map(|_| BlockGraphStatus::Final).collect());
+
+    api_public.0.consensus_controller = Box::new(consensus_ctrl);
+    api_public.0.pool_command_sender = Box::new(pool_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![];
+    let response: Result<Vec<EndorsementInfo>, Error> =
+        client.request("get_endorsements", params.clone()).await;
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+
+    let response: Vec<EndorsementInfo> = client
+        .request(
+            "get_endorsements",
+            rpc_params![vec![EndorsementId::from_str(
+                "E19dHCWcodoSppzEZbGccshMhNSxYDTFGthqo5LRa4QyaQbL8cw"
+            )
+            .unwrap()]],
+        )
+        .await
+        .unwrap();
+    assert!(response.is_empty());
+
+    let response: Vec<EndorsementInfo> = client
+        .request("get_endorsements", rpc_params![vec![end.id]])
+        .await
+        .unwrap();
+    assert!(response.len() == 1);
 
     api_public_handle.stop().await;
 }
