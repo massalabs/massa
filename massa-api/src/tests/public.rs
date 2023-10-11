@@ -12,7 +12,7 @@ use jsonrpsee::{
     http_client::HttpClientBuilder,
     rpc_params,
 };
-use massa_api_exports::{endorsement::EndorsementInfo, operation::OperationInfo};
+use massa_api_exports::{block::BlockInfo, endorsement::EndorsementInfo, operation::OperationInfo};
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 
 use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl};
@@ -27,7 +27,7 @@ use massa_models::{
     stats::{ConsensusStats, ExecutionStats, NetworkStats},
 };
 use massa_protocol_exports::{
-    test_exports::tools::{create_endorsement, create_operation_with_expire_period},
+    test_exports::tools::{create_block, create_endorsement, create_operation_with_expire_period},
     MockProtocolController,
 };
 use massa_signature::KeyPair;
@@ -238,6 +238,49 @@ async fn get_endorsements() {
         .await
         .unwrap();
     assert!(response.len() == 1);
+
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_blocks() {
+    let addr: SocketAddr = "[::]:5005".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+    let keypair = KeyPair::generate(0).unwrap();
+    let block = create_block(&keypair);
+
+    api_public.0.storage.store_block(block.clone());
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl
+        .expect_get_block_statuses()
+        .returning(|param| param.iter().map(|_| BlockGraphStatus::Final).collect());
+
+    api_public.0.consensus_controller = Box::new(consensus_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![];
+    let response: Result<Vec<BlockInfo>, Error> =
+        client.request("get_blocks", params.clone()).await;
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+
+    let response: Vec<BlockInfo> = client
+        .request("get_blocks", rpc_params![vec![block.id]])
+        .await
+        .unwrap();
+
+    assert_eq!(response[0].id, block.id);
 
     api_public_handle.stop().await;
 }
