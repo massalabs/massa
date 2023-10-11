@@ -1,5 +1,6 @@
 #![cfg(test)]
 mod tests {
+    use crate::constants::{HASH_PARAMS, NONCE_SIZE, SALT_SIZE};
     use crate::decrypt::decrypt;
     use crate::encrypt::encrypt;
 
@@ -12,9 +13,9 @@ mod tests {
         assert!(result.is_ok());
 
         let cipher_data = result.unwrap();
-        assert_eq!(cipher_data.encrypted_bytes.len(), 20);
-        assert_eq!(cipher_data.salt.len(), 16);
-        assert_eq!(cipher_data.nonce.len(), 12);
+        assert_eq!(cipher_data.encrypted_bytes.len(), HASH_PARAMS.output_length - NONCE_SIZE);
+        assert_eq!(cipher_data.salt.len(), SALT_SIZE);
+        assert_eq!(cipher_data.nonce.len(), NONCE_SIZE);
     }
 
     #[test]
