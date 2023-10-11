@@ -22,5 +22,7 @@ massa-proto-rs = {workspace = true, "features" = ["tonic"]}
 
 [dev-dependencies]
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-massa_ledger_worker = {workspace = true}
+parking_lot = {workspace = true}
 assert_matches = { workspace = true }
+massa_ledger_worker = {workspace = true}
+massa_db_worker = {workspace = true}
