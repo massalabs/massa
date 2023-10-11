@@ -2,7 +2,7 @@
 //!
 
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     net::{IpAddr, SocketAddr},
     str::FromStr,
 };
@@ -13,6 +13,7 @@ use jsonrpsee::{
     rpc_params,
 };
 use massa_api_exports::{
+    address::AddressInfo,
     block::{BlockInfo, BlockSummary},
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
@@ -24,9 +25,11 @@ use massa_consensus_exports::{
     test_exports::MockConsensusControllerImpl,
 };
 
-use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl};
+use massa_execution_exports::ExecutionAddressInfo;
+use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl, MockSelectorCtrl};
 use massa_models::{
     address::Address,
+    amount::Amount,
     block::{Block, BlockGraphStatus},
     clique::Clique,
     endorsement::EndorsementId,
@@ -430,6 +433,64 @@ async fn get_graph_interval() {
         .await
         .unwrap();
     assert!(response.len() == 2);
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_addresses() {
+    let addr: SocketAddr = "[::]:5010".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl.expect_get_addresses_infos().returning(|a| {
+        a.iter()
+            .map(|_addr| ExecutionAddressInfo {
+                candidate_balance: Amount::from_str("100000").unwrap(),
+                final_balance: Amount::from_str("80000").unwrap(),
+                final_roll_count: 55,
+                final_datastore_keys: std::collections::BTreeSet::new(),
+                candidate_roll_count: 12,
+                candidate_datastore_keys: std::collections::BTreeSet::new(),
+                future_deferred_credits: BTreeMap::new(),
+                cycle_infos: vec![],
+            })
+            .collect()
+    });
+
+    let mut selector_ctrl = MockSelectorCtrl::new();
+    selector_ctrl
+        .expect_get_available_selections_in_range()
+        .returning(|_range, _addrs| Ok(BTreeMap::new()));
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+    api_public.0.selector_controller = Box::new(selector_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![];
+    let response: Result<Vec<AddressInfo>, Error> =
+        client.request("get_addresses", params.clone()).await;
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+
+    let params = rpc_params![vec![Address::from_str(
+        "AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"
+    )
+    .unwrap()]];
+    let response: Result<Vec<AddressInfo>, Error> =
+        client.request("get_addresses", params.clone()).await;
+
+    dbg!(&response);
+
     api_public_handle.stop().await;
 }
 
