@@ -2616,7 +2616,6 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "massa_wallet",
- "mockall",
  "num",
  "parking_lot",
  "serde",

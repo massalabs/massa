@@ -202,6 +202,7 @@ mockall::mock! {
 /// * `addr` - the address to bind to
 /// # Returns
 /// * `MassaPublicGrpc` - the grpc public service
+#[allow(dead_code)]
 pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
     let consensus_controller = MockConsensusControllerImpl::new();
 

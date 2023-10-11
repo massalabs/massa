@@ -4,7 +4,7 @@ version = "0.26.1"
 edition = "2021"
 
 [features]
-testing = ["massa_grpc/testing"]
+testing = ["massa_grpc/testing", "massa_grpc"]
 
 [dependencies]
 jsonrpsee = { workspace = true, "features" = ["server", "macros"] }
@@ -34,11 +34,10 @@ massa_time = { workspace = true }
 massa_versioning = { workspace = true }
 massa_hash = { workspace = true }
 massa_wallet = { workspace = true }
+massa_grpc = { workspace = true, optional = true }
 
 
 [dev-dependencies]
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
-massa_grpc = { workspace = true, "features" = ["testing"] }
 tempfile = { workspace = true }
 num = { workspace = true }
-mockall = { workspace = true }

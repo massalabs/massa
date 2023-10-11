@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
-/// todo doc
+/// mock for testing
+#[cfg(any(test, feature = "testing"))]
 pub mod mock;
 
 #[cfg(test)]

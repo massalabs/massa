@@ -39,6 +39,7 @@ pub mod server;
 pub mod stream;
 
 #[cfg(feature = "testing")]
+/// gRPC tests
 pub mod tests;
 
 /// Slot range type

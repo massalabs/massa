@@ -702,8 +702,10 @@ impl MassaRpcServer for API<Public> {
     }
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
-        let consensus_controller = self.0.consensus_controller.clone();
-        let block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
+        let block_id_option = self
+            .0
+            .consensus_controller
+            .get_blockclique_block_at_slot(slot);
 
         let block_id = match block_id_option {
             Some(id) => id,
@@ -722,7 +724,6 @@ impl MassaRpcServer for API<Public> {
     /// gets an interval of the block graph from consensus, with time filtering
     /// time filtering is done consensus-side to prevent communication overhead
     async fn get_graph_interval(&self, time: TimeInterval) -> RpcResult<Vec<BlockSummary>> {
-        let consensus_controller = self.0.consensus_controller.clone();
         let api_settings = self.0.api_settings.clone();
 
         // filter blocks from graph_export
@@ -739,7 +740,11 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let graph = match consensus_controller.get_block_graph_status(start_slot, end_slot) {
+        let graph = match self
+            .0
+            .consensus_controller
+            .get_block_graph_status(start_slot, end_slot)
+        {
             Ok(graph) => graph,
             Err(e) => return Err(ApiError::ConsensusError(e).into()),
         };

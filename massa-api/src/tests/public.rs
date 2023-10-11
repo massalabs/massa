@@ -12,17 +12,26 @@ use jsonrpsee::{
     http_client::HttpClientBuilder,
     rpc_params,
 };
-use massa_api_exports::{block::BlockInfo, endorsement::EndorsementInfo, operation::OperationInfo};
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
+use massa_api_exports::{
+    block::{BlockInfo, BlockSummary},
+    endorsement::EndorsementInfo,
+    operation::OperationInfo,
+    TimeInterval,
+};
+use massa_consensus_exports::{
+    block_graph_export::BlockGraphExport, block_status::ExportCompiledBlock,
+    test_exports::MockConsensusControllerImpl,
+};
 
 use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl};
 use massa_models::{
     address::Address,
-    block::BlockGraphStatus,
+    block::{Block, BlockGraphStatus},
     clique::Clique,
     endorsement::EndorsementId,
     node::NodeId,
     operation::OperationId,
+    prehash::{CapacityAllocator, PreHashMap},
     slot::Slot,
     stats::{ConsensusStats, ExecutionStats, NetworkStats},
 };
@@ -32,6 +41,7 @@ use massa_protocol_exports::{
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+// use serde_json::Value;
 
 use crate::{tests::mock::start_public_api, RpcServer};
 
@@ -244,7 +254,7 @@ async fn get_endorsements() {
 
 #[tokio::test]
 async fn get_blocks() {
-    let addr: SocketAddr = "[::]:5005".parse().unwrap();
+    let addr: SocketAddr = "[::]:5006".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr).await;
     let keypair = KeyPair::generate(0).unwrap();
     let block = create_block(&keypair);
@@ -282,6 +292,143 @@ async fn get_blocks() {
 
     assert_eq!(response[0].id, block.id);
 
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_blockclique_block_by_slot() {
+    let addr: SocketAddr = "[::]:5007".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let block = create_block(&KeyPair::generate(0).unwrap());
+    let id = block.id.clone();
+
+    api_public.0.storage.store_block(block.clone());
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl
+        .expect_get_blockclique_block_at_slot()
+        .returning(move |_s| Some(id));
+
+    api_public.0.consensus_controller = Box::new(consensus_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![];
+    let response: Result<Option<Block>, Error> = client
+        .request("get_blockclique_block_by_slot", params.clone())
+        .await;
+
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+    let response: Option<Block> = client
+        .request(
+            "get_blockclique_block_by_slot",
+            rpc_params![Slot {
+                period: 1,
+                thread: 0
+            }],
+        )
+        .await
+        .unwrap();
+
+    assert!(response.is_some());
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_graph_interval() {
+    let addr: SocketAddr = "[::]:5008".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    consensus_ctrl
+        .expect_get_block_graph_status()
+        .returning(|_start, _end| {
+            let block = create_block(&KeyPair::generate(0).unwrap());
+            let id = block.id.clone();
+
+            let mut active = PreHashMap::with_capacity(1);
+            active.insert(
+                id,
+                ExportCompiledBlock {
+                    header: block.content.header.clone(),
+                    children: vec![],
+                    is_final: false,
+                },
+            );
+
+            let mut discarded = PreHashMap::with_capacity(1);
+            discarded.insert(
+                id,
+                (
+                    massa_consensus_exports::block_status::DiscardReason::Invalid(
+                        "invalid".to_string(),
+                    ),
+                    (
+                        Slot::new(0, 0),
+                        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                            .unwrap(),
+                        vec![],
+                    ),
+                ),
+            );
+
+            discarded.insert(
+                id,
+                (
+                    massa_consensus_exports::block_status::DiscardReason::Stale,
+                    (
+                        Slot::new(0, 0),
+                        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                            .unwrap(),
+                        vec![],
+                    ),
+                ),
+            );
+            Ok(BlockGraphExport {
+                genesis_blocks: vec![],
+                active_blocks: active,
+                discarded_blocks: discarded,
+                best_parents: vec![],
+                latest_final_blocks_periods: vec![],
+                gi_head: PreHashMap::with_capacity(1),
+                max_cliques: vec![Clique::default()],
+            })
+        });
+
+    api_public.0.consensus_controller = Box::new(consensus_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![TimeInterval {
+        start: Some(MassaTime::now().unwrap()),
+        end: Some(MassaTime::now().unwrap())
+    }];
+    let response: Vec<BlockSummary> = client
+        .request("get_graph_interval", params.clone())
+        .await
+        .unwrap();
+    assert!(response.len() == 2);
     api_public_handle.stop().await;
 }
 
