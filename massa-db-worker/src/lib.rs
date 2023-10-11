@@ -13,7 +13,7 @@
 //! It supports both point lookups and range scans.
 //!
 //! For MassaDB, we use 3 rocksdb column:
-//! * state: all data used to compute the db hash (or final state hash)
+//! * state: all data for (async pool, executed ops/de, ledger ...) and used to compute the db hash
 //! * versioning: partial MIP store data see Versioning doc section: "MipStore and Final state hash"
 //! * metadata: final state hash + slot
 //!
@@ -22,10 +22,24 @@
 //! * key: LEDGER_PREFIX+Address+[...] (serialized as bytes)
 //! * value: Amount (serialized as bytes)
 //!
+//! Note: prefixes are used to separate data between sub systems of final state
+//! (async pool, executed ops/de, ledger...)
+//!
 //! # DB hash
 //!
-//! Whenever something is stored on the column 'state', the db hash is updating using Xor
-//! (For more detail: HashXof).
+//! Whenever something is stored on the column 'state', the db hash is updating using Xor.
+//! This allows for fast hash updates when adding or deleting an item in the db.
+//!
+//! if we have item a = 0b0011 et item b = Ob1011:
+//! * hash will be: 0011 ^ 1011 == 1011 ^ 0011 == 1000 (insert order independent)
+//! * if we want to delete item a: 1000 ^ 0011 == 1011 (== item b)
+//! * if we want to delete item b: 1000 ^ 1011 == 0011 (== item a)
+//!
+//! Note that this does not provides "Proof of present" nor "Proof of Absence"
+//! (operations avail with Merkle trees)
+//!
+//! For more details here: https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
+//!
 //! This hash is often referred as 'final state hash'.
 //!
 //! # Caches
