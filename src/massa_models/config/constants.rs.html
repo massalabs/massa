@@ -519,8 +519,8 @@
 //
 
 </span><span class="doccomment">/// Max message size for bootstrap
-</span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = u32::MAX; <span class="comment">//1048576000;
-</span><span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = <span class="number">1048576000</span>;
+<span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
     u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
 <span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping
@@ -538,7 +538,7 @@
 <span class="doccomment">/// Max bytes in final states parts
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u64 = <span class="number">1_000_000_000</span>;
 <span class="doccomment">/// Max bytes in final states parts
-</span><span class="kw">pub const </span>MAX_BOOTSTRAPPED_NEW_ELEMENTS_SIZE: u64 = <span class="number">100_000_000</span>;
+</span><span class="kw">pub const </span>MAX_BOOTSTRAPPED_NEW_ELEMENTS: u64 = <span class="number">500</span>;
 <span class="doccomment">/// Max size of the IP list
 </span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
 <span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
