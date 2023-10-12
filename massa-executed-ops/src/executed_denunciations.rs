@@ -11,20 +11,10 @@ use massa_db_exports::{
 use massa_models::denunciation::Denunciation;
 use massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
-    slot::{Slot, SlotDeserializer, SlotSerializer},
+    slot::Slot,
 };
-use massa_serialization::{
-    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
-};
-use nom::{
-    error::{context, ContextError, ParseError},
-    multi::length_count,
-    sequence::tuple,
-    IResult, Parser,
-};
+use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use std::collections::{BTreeMap, HashSet};
-use std::ops::Bound::{Excluded, Included};
 
 /// Denunciation index key formatting macro
 #[macro_export]
@@ -227,126 +217,91 @@ impl ExecutedDenunciations {
     }
 }
 
-/// `ExecutedDenunciations` Serializer
-pub struct ExecutedDenunciationsSerializer {
-    slot_serializer: SlotSerializer,
-    de_idx_serializer: DenunciationIndexSerializer,
-    u64_serializer: U64VarIntSerializer,
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_worker::MassaDB;
+    use massa_models::config::{
+        DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        THREAD_COUNT,
+    };
+    use parking_lot::RwLock;
+    use std::sync::Arc;
+    use tempfile::tempdir;
 
-impl Default for ExecutedDenunciationsSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+    #[test]
+    fn test_exec_de_cache() {
+        // Check executed denunciations cache grow / reset / recompute
 
-impl ExecutedDenunciationsSerializer {
-    /// Create a new `ExecutedDenunciations` Serializer
-    pub fn new() -> Self {
-        Self {
-            slot_serializer: SlotSerializer::new(),
-            de_idx_serializer: DenunciationIndexSerializer::new(),
-            u64_serializer: U64VarIntSerializer::new(),
-        }
-    }
-}
+        let config = ExecutedDenunciationsConfig {
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            thread_count: THREAD_COUNT,
+            endorsement_count: ENDORSEMENT_COUNT,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        };
+        // Db init
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        // println!("Using temp dir: {:?}", temp_dir.path());
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config.clone())) as Box<(dyn MassaDBController + 'static)>
+        ));
 
-impl Serializer<BTreeMap<Slot, HashSet<DenunciationIndex>>> for ExecutedDenunciationsSerializer {
-    fn serialize(
-        &self,
-        value: &BTreeMap<Slot, HashSet<DenunciationIndex>>,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        // exec denunciations length
-        self.u64_serializer
-            .serialize(&(value.len() as u64), buffer)?;
-        // executed ops
-        for (slot, ids) in value {
-            // slot
-            self.slot_serializer.serialize(slot, buffer)?;
-            // slot ids length
-            self.u64_serializer.serialize(&(ids.len() as u64), buffer)?;
-            // slots ids
-            for de_idx in ids {
-                self.de_idx_serializer.serialize(de_idx, buffer)?;
-            }
-        }
-        Ok(())
-    }
-}
+        let mut exec_de = ExecutedDenunciations::new(config.clone(), db);
 
-/// Deserializer for `ExecutedDenunciations`
-pub struct ExecutedDenunciationsDeserializer {
-    de_idx_deserializer: DenunciationIndexDeserializer,
-    slot_deserializer: SlotDeserializer,
-    ops_length_deserializer: U64VarIntDeserializer,
-    slot_ops_length_deserializer: U64VarIntDeserializer,
-}
+        let slot_1 = Slot::new(1, 0);
+        let de_idx_1 = DenunciationIndex::Endorsement {
+            slot: slot_1,
+            index: ENDORSEMENT_COUNT - 4,
+        };
+        let slot_2 = Slot::new(
+            DENUNCIATION_EXPIRE_PERIODS + KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + 2,
+            3,
+        );
+        let de_idx_2 = DenunciationIndex::Endorsement {
+            slot: slot_2,
+            index: ENDORSEMENT_COUNT - 1,
+        };
+        let mut changes = ExecutedDenunciationsChanges::new();
+        changes.insert(de_idx_1.clone());
+        changes.insert(de_idx_2.clone());
+        let mut batch = DBBatch::new();
+        exec_de.apply_changes_to_batch(changes, slot_2, &mut batch);
+        exec_de
+            .db
+            .write()
+            .write_batch(batch.clone(), DBBatch::new(), Some(slot_2));
 
-impl ExecutedDenunciationsDeserializer {
-    /// Create a new deserializer for `ExecutedDenunciations`
-    pub fn new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_executed_de_length: u64,
-        max_denunciations_per_block_header: u64,
-    ) -> Self {
-        Self {
-            de_idx_deserializer: DenunciationIndexDeserializer::new(
-                thread_count,
-                endorsement_count,
-            ),
-            slot_deserializer: SlotDeserializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
-            ),
-            ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_executed_de_length),
-            ),
-            slot_ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_denunciations_per_block_header),
-            ),
-        }
-    }
-}
+        assert_eq!(exec_de.sorted_denunciations.len(), 1);
+        assert_eq!(
+            exec_de.sorted_denunciations.get(&slot_2),
+            Some(&HashSet::from([de_idx_2]))
+        );
+        assert!(!exec_de.contains(&de_idx_1));
+        assert!(exec_de.contains(&de_idx_2));
 
-impl Deserializer<BTreeMap<Slot, HashSet<DenunciationIndex>>>
-    for ExecutedDenunciationsDeserializer
-{
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], BTreeMap<Slot, HashSet<DenunciationIndex>>, E> {
-        context(
-            "ExecutedDenunciations",
-            length_count(
-                context("length", |input| {
-                    self.ops_length_deserializer.deserialize(input)
-                }),
-                context(
-                    "slot de_idx",
-                    tuple((
-                        context("slot", |input| self.slot_deserializer.deserialize(input)),
-                        length_count(
-                            context("slot denunciations length", |input| {
-                                self.slot_ops_length_deserializer.deserialize(input)
-                            }),
-                            context("denunciation index", |input| {
-                                self.de_idx_deserializer.deserialize(input)
-                            }),
-                        ),
-                    )),
-                ),
-            ),
-        )
-        .map(|operations| {
-            operations
-                .into_iter()
-                .map(|(slot, ids)| (slot, ids.into_iter().collect()))
-                .collect()
-        })
-        .parse(buffer)
+        let sorted_deunciations_1 = exec_de.sorted_denunciations.clone();
+
+        drop(exec_de);
+
+        // Init an exec de from disk
+        let db2 = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        let mut exec_de2 = ExecutedDenunciations::new(config, db2);
+        exec_de2.recompute_sorted_denunciations();
+
+        assert_eq!(exec_de2.sorted_denunciations, sorted_deunciations_1);
+
+        // Reset cache
+        exec_de2.reset();
+        assert_eq!(exec_de2.sorted_denunciations.len(), 0);
     }
 }

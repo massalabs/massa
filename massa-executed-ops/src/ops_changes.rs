@@ -122,3 +122,40 @@ impl Deserializer<ExecutedOpsChanges> for ExecutedOpsChangesDeserializer {
         .parse(buffer)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use massa_hash::Hash;
+    use massa_models::config::{KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, THREAD_COUNT};
+    use massa_models::secure_share::Id;
+    use massa_serialization::DeserializeError;
+
+    #[test]
+    fn test_exec_ops_changes_ser_deser() {
+        let mut changes = PreHashMap::default();
+
+        let slot_1 = Slot::new(1, 0);
+        let op_id_1 = OperationId::new(Hash::compute_from(&[0]));
+        changes.insert(op_id_1.clone(), (true, slot_1));
+        let slot_2 = Slot::new(KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + 2, 3);
+        let op_id_2 = OperationId::new(Hash::compute_from(&[1]));
+        changes.insert(op_id_2, (true, slot_2));
+
+        let mut buf = Vec::new();
+        let serializer = ExecutedOpsChangesSerializer::new();
+        let deserializer_1 = ExecutedOpsChangesDeserializer::new(THREAD_COUNT, 1);
+        let deserializer_2 = ExecutedOpsChangesDeserializer::new(THREAD_COUNT, 2);
+
+        serializer.serialize(&changes, &mut buf).unwrap();
+        // Only 1 changes allowed, should fail
+        let res = deserializer_1.deserialize::<DeserializeError>(&buf);
+        assert!(res.is_err());
+
+        let (rem, changes_der) = deserializer_2
+            .deserialize::<DeserializeError>(&buf)
+            .unwrap();
+        assert!(rem.is_empty());
+        assert_eq!(changes_der, changes);
+    }
+}
