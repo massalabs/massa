@@ -1,11 +1,21 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::tests::mock::grpc_public_service;
-use massa_consensus_exports::MockConsensusController;
-use massa_execution_exports::{ExecutionOutput, MockExecutionController, SlotExecutionOutput};
+use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl};
+use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
+use massa_executed_ops::ExecutedDenunciationsChanges;
+use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
+use massa_final_state::StateChanges;
+use massa_ledger_exports::SetUpdateOrDelete;
 use massa_models::{
-    address::Address, block::FilledBlock, secure_share::SecureShareSerializer, slot::Slot,
+    address::Address,
+    amount::Amount,
+    block::FilledBlock,
+    denunciation::{Denunciation, DenunciationIndex},
+    secure_share::SecureShareSerializer,
+    slot::Slot,
     stats::ExecutionStats,
+    test_exports::{gen_block_headers_for_denunciation, gen_endorsements_for_denunciation},
 };
 use massa_pool_exports::MockPoolController;
 use massa_proto_rs::massa::{
@@ -26,7 +36,7 @@ use massa_protocol_exports::{
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::{net::SocketAddr, ops::Add, time::Duration};
+use std::{collections::HashSet, net::SocketAddr, ops::Add, str::FromStr, time::Duration};
 use tokio_stream::StreamExt;
 
 #[tokio::test]
@@ -1062,10 +1072,49 @@ async fn new_slot_execution_outputs() {
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
+    // Given
+    let mut state_changes = StateChanges::default();
+
+    // Create async pool changes
+    let message = AsyncMessage::new(
+        Slot::new(1, 0),
+        0,
+        Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+        Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+        String::from("test"),
+        10000000,
+        Amount::from_str("1").unwrap(),
+        Amount::from_str("1").unwrap(),
+        Slot::new(2, 0),
+        Slot::new(3, 0),
+        vec![1, 2, 3, 4],
+        None,
+        None,
+    );
+    let mut async_pool_changes = AsyncPoolChanges::default();
+    async_pool_changes
+        .0
+        .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
+    state_changes.async_pool_changes = async_pool_changes;
+
+    // Create executed denunciations changes
+    let (_, _, s_block_header_1, s_block_header_2, _) =
+        gen_block_headers_for_denunciation(None, None);
+    let denunciation_1: Denunciation = (&s_block_header_1, &s_block_header_2).try_into().unwrap();
+    let denunciation_index_1 = DenunciationIndex::from(&denunciation_1);
+
+    let (_, _, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(None, None);
+    let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+    let denunciation_index_2 = DenunciationIndex::from(&denunciation_2);
+
+    let p_de_changes: ExecutedDenunciationsChanges =
+        HashSet::from([(denunciation_index_1), (denunciation_index_2)]);
+    state_changes.executed_denunciations_changes = p_de_changes;
+
     let exec_output_1 = ExecutionOutput {
         slot: Slot::new(1, 5),
         block_info: None,
-        state_changes: massa_final_state::StateChanges::default(),
+        state_changes,
         events: Default::default(),
     };
 
