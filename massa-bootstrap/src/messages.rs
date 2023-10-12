@@ -204,13 +204,13 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.slot_serializer.serialize(slot, buffer)?;
                 // state
                 self.u64_serializer
-                    .serialize(&(state_part.new_elements.len() as u64), buffer)?;
+                    .serialize(&(state_part.new_elements.len().try_into().expect("Overflow of new_elements len")), buffer)?;
                 for (key, value) in state_part.new_elements.iter() {
                     self.vec_u8_serializer.serialize(key, buffer)?;
                     self.vec_u8_serializer.serialize(value, buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &(state_part.updates_on_previous_elements.len() as u64),
+                    &(state_part.updates_on_previous_elements.len().try_into().expect("Overflow of updates_on_previous_elements len")),
                     buffer,
                 )?;
                 for (key, value) in state_part.updates_on_previous_elements.iter() {
@@ -221,13 +221,13 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(&state_part.change_id, buffer)?;
                 // versioning
                 self.u64_serializer
-                    .serialize(&(versioning_part.new_elements.len() as u64), buffer)?;
+                    .serialize(&(versioning_part.new_elements.len().try_into().expect("Overflow of new_elements (versioning) len")), buffer)?;
                 for (key, value) in versioning_part.new_elements.iter() {
                     self.vec_u8_serializer.serialize(key, buffer)?;
                     self.vec_u8_serializer.serialize(value, buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &(versioning_part.updates_on_previous_elements.len() as u64),
+                    &(versioning_part.updates_on_previous_elements.len().try_into().expect("Overflow of updates_on_previous_elements (versioning) len")),
                     buffer,
                 )?;
                 for (key, value) in versioning_part.updates_on_previous_elements.iter() {
@@ -322,7 +322,7 @@ impl BootstrapServerMessageDeserializer {
             block_id_set_deserializer: PreHashSetDeserializer::new(
                 BlockIdDeserializer::new(),
                 Included(0),
-                Included(args.max_bootstrap_blocks_length as u64),
+                Included(args.max_bootstrap_blocks_length.into()),
             ),
             length_bootstrap_error: U64VarIntDeserializer::new(
                 Included(0),
@@ -330,7 +330,7 @@ impl BootstrapServerMessageDeserializer {
             ),
             state_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
-                Included(args.max_versioning_elements_size),
+                Included(args.max_versioning_elements_size.into()),
             ),
             state_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
@@ -368,7 +368,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     thread_count: 32, endorsement_count: 16,
     ///     max_listeners_per_peer: 1000,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
-    ///     max_operations_per_block: 1000, max_new_elements: 1000,
+    ///     max_operations_per_block: 1000, max_new_elements_size: 1000,
     ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
     ///     max_datastore_value_length: 1000,
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
@@ -744,7 +744,7 @@ impl BootstrapClientMessageDeserializer {
             ),
             state_step_deserializer: StreamingStepDeserializer::new(VecU8Deserializer::new(
                 Included(0),
-                Included(max_datastore_key_length as u64),
+                Included(max_datastore_key_length.into()),
             )),
             block_ids_step_deserializer: StreamingStepDeserializer::new(
                 PreHashSetDeserializer::new(
