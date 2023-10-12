@@ -18,7 +18,7 @@ use massa_api_exports::{
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
-    operation::OperationInfo,
+    operation::{OperationInfo, OperationInput},
     TimeInterval,
 };
 use massa_consensus_exports::{
@@ -34,8 +34,10 @@ use massa_models::{
     block::{Block, BlockGraphStatus},
     clique::Clique,
     endorsement::EndorsementId,
+    execution::EventFilter,
     node::NodeId,
     operation::OperationId,
+    output_event::SCOutputEvent,
     prehash::{CapacityAllocator, PreHashMap},
     slot::Slot,
     stats::{ConsensusStats, ExecutionStats, NetworkStats},
@@ -46,6 +48,7 @@ use massa_protocol_exports::{
 };
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
+use serde_json::Value;
 // use serde_json::Value;
 
 use crate::{tests::mock::start_public_api, RpcServer};
@@ -434,6 +437,128 @@ async fn get_graph_interval() {
         .await
         .unwrap();
     assert!(response.len() == 2);
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn send_operations() {
+    let addr: SocketAddr = "[::]:5014".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut pool_ctrl = MockPoolCtrl::new();
+    pool_ctrl.expect_clone_box().returning(|| {
+        let mut pool_ctrl = MockPoolCtrl::new();
+        pool_ctrl.expect_add_operations().returning(|_a| ());
+        Box::new(pool_ctrl)
+    });
+
+    let mut protocol_ctrl = MockProtocolController::new();
+    protocol_ctrl.expect_clone_box().returning(|| {
+        let mut protocol_ctrl = MockProtocolController::new();
+        protocol_ctrl
+            .expect_propagate_operations()
+            .returning(|_a| Ok(()));
+        Box::new(protocol_ctrl)
+    });
+
+    api_public.0.protocol_controller = Box::new(protocol_ctrl);
+    api_public.0.pool_command_sender = Box::new(pool_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
+    let operation = create_operation_with_expire_period(&keypair, 500000);
+
+    let input: OperationInput = OperationInput {
+        creator_public_key: keypair.get_public_key(),
+        signature: operation.signature,
+        serialized_content: operation.serialized_data,
+    };
+
+    let response: Vec<OperationId> = client
+        .request("send_operations", rpc_params![vec![input]])
+        .await
+        .unwrap();
+
+    assert_eq!(response.len(), 1);
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_filtered_sc_output_event() {
+    let addr: SocketAddr = "[::]:5013".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
+
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl
+        .expect_get_filtered_sc_output_event()
+        .returning(|_a| {
+            vec![SCOutputEvent {
+                context: massa_models::output_event::EventExecutionContext {
+                    slot: Slot {
+                        period: 1,
+                        thread: 10,
+                    },
+                    block: None,
+                    read_only: false,
+                    index_in_slot: 1,
+                    call_stack: std::collections::VecDeque::new(),
+                    origin_operation_id: Some(
+                        massa_models::operation::OperationId::from_str(
+                            "O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC",
+                        )
+                        .unwrap(),
+                    ),
+                    is_final: false,
+                    is_error: false,
+                },
+                data: "massa".to_string(),
+            }]
+        });
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let response: Result<Vec<SCOutputEvent>, Error> = client
+        .request("get_filtered_sc_output_event", rpc_params![])
+        .await;
+
+    // assert invalid params
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+
+    let response: Result<Vec<SCOutputEvent>, Error> = client
+        .request(
+            "get_filtered_sc_output_event",
+            rpc_params![EventFilter {
+                start: Some(Slot {
+                    period: 1,
+                    thread: 1
+                }),
+                ..Default::default()
+            }],
+        )
+        .await;
+
+    assert_eq!(response.unwrap().len(), 1);
     api_public_handle.stop().await;
 }
 
@@ -922,53 +1047,55 @@ async fn wrong_api() {
     api_public_handle.stop().await;
 }
 
-// #[tokio::test]
-// async fn get_stakers() {
-//     let addr: SocketAddr = "[::]:5004".parse().unwrap();
-//     let (mut api_public, config) = start_public_api(addr).await;
+#[tokio::test]
+async fn get_stakers() {
+    let addr: SocketAddr = "[::]:5015".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr).await;
 
-//     let mut exec_ctrl = MockExecutionCtrl::new();
-//     exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
-//         let mut map = std::collections::BTreeMap::new();
-//         map.insert(
-//             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-//             5 as u64,
-//         );
-//         map.insert(
-//             Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-//             10 as u64,
-//         );
-//         map.insert(
-//             Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
-//             20 as u64,
-//         );
-//         map.insert(
-//             Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()),
-//             30 as u64,
-//         );
+    let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
+        let mut map = std::collections::BTreeMap::new();
+        map.insert(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            5 as u64,
+        );
+        map.insert(
+            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            10 as u64,
+        );
+        map.insert(
+            Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
+            20 as u64,
+        );
+        map.insert(
+            Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()),
+            30 as u64,
+        );
 
-//         map
-//     });
+        map
+    });
 
-//     api_public.0.execution_controller = Box::new(exec_ctrl);
+    api_public.0.execution_controller = Box::new(exec_ctrl);
 
-//     let api_public_handle = api_public
-//         .serve(&addr, &config)
-//         .await
-//         .expect("failed to start PUBLIC API");
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
 
-//     let client = HttpClientBuilder::default()
-//         .build(format!(
-//             "http://localhost:{}",
-//             addr.to_string().split(':').into_iter().last().unwrap()
-//         ))
-//         .unwrap();
-//     let params = rpc_params![];
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+    let params = rpc_params![];
 
-//     let response: massa_api_exports::page::PagedVec<(Address, u64)> =
-//         client.request("get_stakers", params).await.unwrap();
+    let response: Value = client.request("get_stakers", params).await.unwrap();
 
-//     // dbg!(response);
+    response.as_array().unwrap().iter().for_each(|v| {
+        let staker: (Address, u64) = serde_json::from_value(v.clone()).unwrap();
+        assert!(staker.1 > 4);
+    });
 
-//     api_public_handle.stop().await;
-// }
+    api_public_handle.stop().await;
+}
