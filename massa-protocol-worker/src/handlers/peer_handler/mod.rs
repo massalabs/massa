@@ -700,4 +700,88 @@ mod tests {
         assert!(res.is_ok());
         thread.join().unwrap();
     }
+
+    #[test]
+    fn test_handshake_wrong_data_received() {
+        let (sender_blocks, _) = MassaChannel::new(String::from("test_blocks"), None);
+        let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
+        let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
+        let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
+        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
+        let our_keypair = KeyPair::generate(0).unwrap();
+        let messages_handlers = MessagesHandler {
+            id_deserializer: U64VarIntDeserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(u64::MAX),
+            ),
+            sender_blocks,
+            sender_endorsements,
+            sender_operations,
+            sender_peers,
+        };
+        let (local_sender, _) =
+            MassaChannel::new(String::from("Test_transport_local_to_remote"), None);
+        let (remote_sender, local_receiver) =
+            MassaChannel::new(String::from("Test_transport_remote_to_local"), None);
+        let mut endpoint = Endpoint::MockEndpoint((
+            (*local_sender.deref()).clone(),
+            (*local_receiver.deref()).clone(),
+            "127.0.0.1:0".parse().unwrap(),
+        ));
+        let context = Context { our_keypair };
+        let thread = std::thread::spawn({
+            let remote_sender = remote_sender.clone();
+            move || {
+                remote_sender.send(vec![0; 33]).unwrap();
+            }
+        });
+        let res = handshake.perform_handshake(
+            &context,
+            &mut endpoint,
+            &HashMap::default(),
+            messages_handlers,
+        );
+        assert!(res.is_err());
+        thread.join().unwrap();
+    }
+
+    #[test]
+    fn test_handshake_connection_closed() {
+        let (sender_blocks, _) = MassaChannel::new(String::from("test_blocks"), None);
+        let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
+        let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
+        let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
+        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
+        let our_keypair = KeyPair::generate(0).unwrap();
+        let messages_handlers = MessagesHandler {
+            id_deserializer: U64VarIntDeserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(u64::MAX),
+            ),
+            sender_blocks,
+            sender_endorsements,
+            sender_operations,
+            sender_peers,
+        };
+        let (local_sender, _) =
+            MassaChannel::new(String::from("Test_transport_local_to_remote"), None);
+        let (remote_sender, local_receiver) =
+            MassaChannel::new(String::from("Test_transport_remote_to_local"), None);
+        let mut endpoint = Endpoint::MockEndpoint((
+            (*local_sender.deref()).clone(),
+            (*local_receiver.deref()).clone(),
+            "127.0.0.1:0".parse().unwrap(),
+        ));
+        let context = Context { our_keypair };
+        drop(remote_sender);
+        let res = handshake.perform_handshake(
+            &context,
+            &mut endpoint,
+            &HashMap::default(),
+            messages_handlers,
+        );
+        assert!(res.is_err());
+    }
 }
