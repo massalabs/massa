@@ -486,6 +486,12 @@ mod tests {
     use num::rational::Ratio;
     use paste::paste;
 
+    // This macro creates a suite of tests for all types of numbers declared as parameters. Ths list of the
+    // tests for each type :
+    // - Test with a normal case that everything works
+    // - Test with a normal case but a more bigger number that everything works
+    // - Test with a number that is out of the range of the deserializer
+    // - Test to give an empty buffer to the deserializer
     macro_rules! gen_test_varint {
         ($($type:ident, $bs:ident, $ds:ident);*) => {
             $(
