@@ -49,6 +49,7 @@ use massa_protocol_exports::{
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serde_json::Value;
+use tempfile::NamedTempFile;
 // use serde_json::Value;
 
 use crate::{tests::mock::start_public_api, RpcServer};
@@ -56,7 +57,7 @@ use crate::{tests::mock::start_public_api, RpcServer};
 #[tokio::test]
 async fn get_status() {
     let addr: SocketAddr = "[::]:5001".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
 
@@ -128,7 +129,7 @@ async fn get_status() {
 #[tokio::test]
 async fn get_cliques() {
     let addr: SocketAddr = "[::]:5002".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut consensus_ctrl = MockConsensusControllerImpl::new();
     consensus_ctrl
@@ -160,7 +161,7 @@ async fn get_cliques() {
 #[tokio::test]
 async fn get_operations() {
     let addr: SocketAddr = "[::]:5003".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
     let keypair = KeyPair::generate(0).unwrap();
     let op = create_operation_with_expire_period(&keypair, 500000);
 
@@ -204,7 +205,7 @@ async fn get_operations() {
 #[tokio::test]
 async fn get_endorsements() {
     let addr: SocketAddr = "[::]:5005".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let end = create_endorsement();
     api_public.0.storage.store_endorsements(vec![end.clone()]);
@@ -263,7 +264,7 @@ async fn get_endorsements() {
 #[tokio::test]
 async fn get_blocks() {
     let addr: SocketAddr = "[::]:5006".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
     let keypair = KeyPair::generate(0).unwrap();
     let block = create_block(&keypair);
 
@@ -306,7 +307,7 @@ async fn get_blocks() {
 #[tokio::test]
 async fn get_blockclique_block_by_slot() {
     let addr: SocketAddr = "[::]:5007".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let block = create_block(&KeyPair::generate(0).unwrap());
     let id = block.id.clone();
@@ -356,7 +357,7 @@ async fn get_blockclique_block_by_slot() {
 #[tokio::test]
 async fn get_graph_interval() {
     let addr: SocketAddr = "[::]:5008".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut consensus_ctrl = MockConsensusControllerImpl::new();
     consensus_ctrl
@@ -443,7 +444,7 @@ async fn get_graph_interval() {
 #[tokio::test]
 async fn send_operations() {
     let addr: SocketAddr = "[::]:5014".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut pool_ctrl = MockPoolCtrl::new();
     pool_ctrl.expect_clone_box().returning(|| {
@@ -496,7 +497,7 @@ async fn send_operations() {
 #[tokio::test]
 async fn get_filtered_sc_output_event() {
     let addr: SocketAddr = "[::]:5013".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl
@@ -565,7 +566,7 @@ async fn get_filtered_sc_output_event() {
 #[tokio::test]
 async fn execute_read_only_bytecode() {
     let addr: SocketAddr = "[::]:5012".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl
@@ -645,7 +646,7 @@ async fn execute_read_only_bytecode() {
 #[tokio::test]
 async fn execute_read_only_call() {
     let addr: SocketAddr = "[::]:5011".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl
@@ -707,7 +708,7 @@ async fn execute_read_only_call() {
 #[tokio::test]
 async fn get_addresses() {
     let addr: SocketAddr = "[::]:5010".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl.expect_get_addresses_infos().returning(|a| {
@@ -767,7 +768,7 @@ async fn get_addresses() {
 #[tokio::test]
 async fn get_datastore_entries() {
     let addr: SocketAddr = "[::]:5009".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl
@@ -819,7 +820,7 @@ async fn get_datastore_entries() {
 #[tokio::test]
 async fn wrong_api() {
     let addr: SocketAddr = "[::]:5004".parse().unwrap();
-    let (api_public, config) = start_public_api(addr).await;
+    let (api_public, config) = start_public_api(addr);
 
     let api_public_handle = api_public
         .serve(&addr, &config)
@@ -1048,9 +1049,74 @@ async fn wrong_api() {
 }
 
 #[tokio::test]
+async fn get_openrpc_spec() {
+    let addr: SocketAddr = "[::]:5016".parse().unwrap();
+    let (mut api_public, mut config) = start_public_api(addr);
+
+    let open_rpc_file = NamedTempFile::new().unwrap();
+
+    let s = "{
+        \"title\": \"Sample Pet Store App\",
+        \"version\": \"1.0.1\"
+      }";
+
+    serde_json::to_writer_pretty(open_rpc_file.as_file(), s).expect("unable to write ledger file");
+
+    config.openrpc_spec_path = open_rpc_file.path().to_path_buf();
+    api_public.0.api_settings.openrpc_spec_path = open_rpc_file.path().to_path_buf();
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+    let params = rpc_params![];
+
+    let response: Value = client.request("rpc.discover", params).await.unwrap();
+    assert!(response.as_str().unwrap().contains("Sample Pet Store App"));
+
+    api_public_handle.stop().await;
+
+    let addr: SocketAddr = "[::]:5017".parse().unwrap();
+    let (mut api_public, mut config) = start_public_api(addr);
+
+    let open_rpc_file = NamedTempFile::new().unwrap();
+
+    config.openrpc_spec_path = open_rpc_file.path().to_path_buf();
+    api_public.0.api_settings.openrpc_spec_path = open_rpc_file.path().to_path_buf();
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+    let params = rpc_params![];
+
+    let response: Result<Value, Error> = client.request("rpc.discover", params).await;
+
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("failed to parse OpenRPC specification"));
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
 async fn get_stakers() {
     let addr: SocketAddr = "[::]:5015".parse().unwrap();
-    let (mut api_public, config) = start_public_api(addr).await;
+    let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionCtrl::new();
     exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {

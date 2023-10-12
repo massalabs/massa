@@ -2602,6 +2602,7 @@ dependencies = [
  "itertools 0.11.0",
  "jsonrpsee",
  "massa_api_exports",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_final_state",

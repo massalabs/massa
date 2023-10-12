@@ -5,7 +5,8 @@
 use std::{collections::HashMap, net::SocketAddr};
 
 use massa_api_exports::config::APIConfig;
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
+use massa_channel::MassaChannel;
+use massa_consensus_exports::{test_exports::MockConsensusControllerImpl, ConsensusChannels};
 use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl, MockSelectorCtrl};
 use massa_models::{
     config::{
@@ -17,16 +18,99 @@ use massa_models::{
     },
     node::NodeId,
 };
+use massa_pool_exports::PoolChannels;
 use massa_protocol_exports::{MockProtocolController, PeerCategoryInfo, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use num::rational::Ratio;
 use tempfile::NamedTempFile;
+use tokio::sync::broadcast;
 
-use crate::{Public, API};
+use crate::{ApiV2, Public, API};
 
-pub(crate) async fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
+pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
+    let keypair = KeyPair::generate(0).unwrap();
+    let api_config: APIConfig = APIConfig {
+        bind_private: "[::]:0".parse().unwrap(),
+        bind_public: "[::]:0".parse().unwrap(),
+        bind_api: addr.clone(),
+        draw_lookahead_period_count: 10,
+        max_arguments: 128,
+        openrpc_spec_path: "base_config/openrpc.json".parse().unwrap(),
+        bootstrap_whitelist_path: "base_config/bootstrap_whitelist.json".parse().unwrap(),
+        bootstrap_blacklist_path: "base_config/bootstrap_blacklist.json".parse().unwrap(),
+        max_request_body_size: 52428800,
+        max_response_body_size: 52428800,
+        max_connections: 100,
+        max_subscriptions_per_connection: 1024,
+        max_log_length: 4096,
+        allow_hosts: vec![],
+        batch_request_limit: 16,
+        ping_interval: MassaTime::from_millis(60000),
+        enable_http: true,
+        enable_ws: true,
+        max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
+        max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+        max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameter_size: MAX_PARAMETERS_SIZE,
+        thread_count: THREAD_COUNT,
+        keypair: keypair.clone(),
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        t0: T0,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        last_start_period: 0,
+    };
+
+    // let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
+
+    // let mip_stats_config = MipStatsConfig {
+    //     block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+    //     warn_announced_version_ratio: Ratio::new_raw(30, 100),
+    // };
+
+    // let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+
+    let consensus_ctrl = MockConsensusControllerImpl::new();
+    let exec_ctrl = MockExecutionCtrl::new();
+    // let pool_ctrl = MockPoolCtrl::new();
+    // let protocol_controller = MockProtocolController::new();
+    let selector_ctrl = MockSelectorCtrl::new();
+
+    let pool_channels = PoolChannels {
+        endorsement_sender: broadcast::channel(100).0,
+        operation_sender: broadcast::channel(100).0,
+        selector: Box::new(selector_ctrl),
+        execution_controller: Box::new(MockExecutionCtrl::new()),
+    };
+
+    let consensus_channels = ConsensusChannels {
+        execution_controller: Box::new(MockExecutionCtrl::new()),
+        selector_controller: Box::new(MockSelectorCtrl::new()),
+        pool_controller: Box::new(MockPoolCtrl::new()),
+        controller_event_tx: MassaChannel::new("test".to_string(), None).0,
+        protocol_controller: Box::new(MockProtocolController::new()),
+        block_header_sender: broadcast::channel(100).0,
+        block_sender: broadcast::channel(100).0,
+        filled_block_sender: broadcast::channel(100).0,
+    };
+
+    let api = API::<ApiV2>::new(
+        Box::new(consensus_ctrl),
+        consensus_channels,
+        Box::new(exec_ctrl),
+        pool_channels,
+        api_config.clone(),
+        *VERSION,
+    );
+
+    (api, api_config)
+}
+
+pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
     let keypair = KeyPair::generate(0).unwrap();
     let api_config: APIConfig = APIConfig {
         bind_private: "[::]:0".parse().unwrap(),
