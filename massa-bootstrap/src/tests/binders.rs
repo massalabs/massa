@@ -114,10 +114,7 @@ fn test_binders() {
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners)];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                     peers: BootstrapPeers(vector_peers),
@@ -125,9 +122,7 @@ fn test_binders() {
 
                 server.handshake_timeout(version(), None).unwrap();
 
-                server
-                    .send_timeout(test_peers_message, None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
 
                 let message = server.next_timeout(None).unwrap();
                 match message {
@@ -139,10 +134,7 @@ fn test_binders() {
 
                 // Test message 3
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![
                     (peer_id2, listeners.clone()),
                     (peer_id3, listeners.clone()),
@@ -152,9 +144,7 @@ fn test_binders() {
                     peers: BootstrapPeers(vector_peers),
                 };
 
-                server
-                    .send_timeout(test_peers_message, None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
             }
         })
         .unwrap();
@@ -169,10 +159,7 @@ fn test_binders() {
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners)];
 
                 client.handshake(version()).unwrap();
@@ -195,10 +182,7 @@ fn test_binders() {
 
                 // Test message 3
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![
                     (peer_id2, listeners.clone()),
                     (peer_id3, listeners.clone()),
@@ -262,26 +246,18 @@ fn test_binders_double_send_server_works() {
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners.clone())];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                     peers: BootstrapPeers(vector_peers),
                 };
 
                 server.handshake_timeout(version(), None).unwrap();
-                server
-                    .send_timeout(test_peers_message, None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
 
                 // Test message 2
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![
                     (peer_id2, listeners.clone()),
                     (peer_id3, listeners.clone()),
@@ -291,9 +267,7 @@ fn test_binders_double_send_server_works() {
                     peers: BootstrapPeers(vector_peers),
                 };
 
-                server
-                    .send_timeout(test_peers_message, None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
             }
         })
         .unwrap();
@@ -308,10 +282,7 @@ fn test_binders_double_send_server_works() {
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners.clone())];
 
                 client.handshake(version()).unwrap();
@@ -325,10 +296,7 @@ fn test_binders_double_send_server_works() {
 
                 // Test message 2
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![
                     (peer_id2, listeners.clone()),
                     (peer_id3, listeners.clone()),
@@ -386,10 +354,7 @@ fn test_binders_try_double_send_client_works() {
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners.clone())];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
                     peers: BootstrapPeers(vector_peers),
@@ -416,9 +381,7 @@ fn test_binders_try_double_send_client_works() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
 
-                server
-                    .send_timeout(test_peers_message, None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
             }
         })
         .unwrap();
@@ -430,10 +393,7 @@ fn test_binders_try_double_send_client_works() {
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1.clone(), listeners.clone())];
 
                 client.handshake(version()).unwrap();
@@ -465,10 +425,7 @@ fn test_binders_try_double_send_client_works() {
                     .unwrap();
 
                 let mut listeners = HashMap::default();
-                listeners.insert(
-                    bootstrap_config.bootstrap_list[0].0,
-                    TransportType::Tcp,
-                );
+                listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners.clone())];
                 let message = client.next_timeout(None).unwrap();
                 match message {
