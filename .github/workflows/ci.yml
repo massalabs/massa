@@ -117,7 +117,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macOS-latest
+          # - macOS-latest
           # - windows-latest
     steps:
       - name: Free Disk Space (Ubuntu)
