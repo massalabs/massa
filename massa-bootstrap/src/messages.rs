@@ -368,7 +368,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     thread_count: 32, endorsement_count: 16,
     ///     max_listeners_per_peer: 1000,
     ///     max_advertise_length: 1000, max_bootstrap_blocks_length: 1000,
-    ///     max_operations_per_block: 1000, max_new_elements_size: 1000,
+    ///     max_operations_per_block: 1000, max_versioning_elements_size: 1000,
     ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
     ///     max_datastore_value_length: 1000,
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
