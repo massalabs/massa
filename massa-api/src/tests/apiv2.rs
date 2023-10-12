@@ -1,14 +1,17 @@
-use std::{collections::BTreeMap, net::SocketAddr, str::FromStr};
+use std::{collections::BTreeMap, net::SocketAddr, str::FromStr, time::Duration};
 
 use jsonrpsee::{
     async_client::ClientBuilder,
     client_transport::ws::{Url, WsTransportClientBuilder},
-    core::client::ClientT,
+    core::client::{ClientT, Subscription, SubscriptionClientT},
     rpc_params,
+    ws_client::WsClientBuilder,
 };
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_grpc::tests::mock::MockExecutionCtrl;
-use massa_models::{address::Address, block_id::BlockId, config::VERSION};
+use massa_models::{address::Address, block::SecureShareBlock, block_id::BlockId, config::VERSION};
+use massa_protocol_exports::test_exports::tools::create_block;
+use massa_signature::KeyPair;
 use serde_json::Value;
 
 use crate::{tests::mock::get_apiv2_server, ApiServer};
@@ -126,5 +129,49 @@ async fn get_largest_stakers() {
 
     assert_eq!(response["total_count"], 1);
 
+    api_handle.stop().await;
+}
+
+#[tokio::test]
+async fn subscribe_new_blocks() {
+    let addr: SocketAddr = "[::]:5033".parse().unwrap();
+    let (mut api_server, api_config) = get_apiv2_server(&addr);
+
+    let (tx, _rx) = tokio::sync::broadcast::channel::<SecureShareBlock>(10);
+
+    api_server.0.consensus_channels.block_sender = tx.clone();
+
+    let block = create_block(&KeyPair::generate(0).unwrap());
+
+    let api_handle = api_server
+        .serve(&addr, &api_config)
+        .await
+        .expect("failed to start MASSA API V2");
+
+    let uri = Url::parse(&format!(
+        "ws://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .unwrap();
+
+    let client1 = WsClientBuilder::default().build(&uri).await.unwrap();
+    let mut sub1: Subscription<Value> = client1
+        .subscribe("subscribe_new_blocks", rpc_params![], "unsubscribe_hello")
+        .await
+        .unwrap();
+
+    let to_send = block.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        let _ = tx.send(to_send).unwrap();
+    });
+
+    let result = tokio::time::timeout(Duration::from_secs(4), sub1.next())
+        .await
+        .unwrap();
+
+    assert!(result.is_some());
+    let value = result.unwrap().unwrap().clone();
+    assert_eq!(value["id"].as_str().unwrap(), &block.id.to_string());
     api_handle.stop().await;
 }
