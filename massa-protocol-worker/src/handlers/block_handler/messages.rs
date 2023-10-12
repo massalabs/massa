@@ -417,7 +417,7 @@ mod tests {
         let (rest2, deserialized_message2) = deserializer
             .deserialize::<DeserializeError>(&buffer2)
             .unwrap();
-        assert_eq!(rest2.len(), 0);
+        assert!(rest2.is_empty());
         match (deserialized_message2, message2) {
             (
                 super::BlockMessage::DataResponse {
@@ -493,7 +493,7 @@ mod tests {
         let (rest, deserialized_message) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();
-        assert_eq!(rest.len(), 0);
+        assert!(rest.is_empty());
         match (deserialized_message, message) {
             (
                 super::BlockMessage::DataRequest {

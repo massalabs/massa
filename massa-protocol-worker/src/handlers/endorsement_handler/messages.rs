@@ -167,7 +167,7 @@ mod tests {
         let (rest, deserialized_message) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .expect("Failed to deserialize message");
-        assert_eq!(rest.len(), 0);
+        assert!(rest.is_empty());
         assert_eq!(deserialized_message, message);
     }
 
@@ -210,7 +210,7 @@ mod tests {
         let (rest, deserialized_message) = deserializer
             .deserialize::<DeserializeError>(&buffer2)
             .expect("Failed to deserialize message");
-        assert_eq!(rest.len(), 0);
+        assert!(rest.is_empty());
         assert_eq!(deserialized_message, message2);
     }
 }
