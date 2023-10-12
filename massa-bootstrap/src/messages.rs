@@ -203,14 +203,24 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 // slot
                 self.slot_serializer.serialize(slot, buffer)?;
                 // state
-                self.u64_serializer
-                    .serialize(&(state_part.new_elements.len().try_into().expect("Overflow of new_elements len")), buffer)?;
+                self.u64_serializer.serialize(
+                    &(state_part
+                        .new_elements
+                        .len()
+                        .try_into()
+                        .expect("Overflow of new_elements len")),
+                    buffer,
+                )?;
                 for (key, value) in state_part.new_elements.iter() {
                     self.vec_u8_serializer.serialize(key, buffer)?;
                     self.vec_u8_serializer.serialize(value, buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &(state_part.updates_on_previous_elements.len().try_into().expect("Overflow of updates_on_previous_elements len")),
+                    &(state_part
+                        .updates_on_previous_elements
+                        .len()
+                        .try_into()
+                        .expect("Overflow of updates_on_previous_elements len")),
                     buffer,
                 )?;
                 for (key, value) in state_part.updates_on_previous_elements.iter() {
@@ -220,14 +230,24 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 self.slot_serializer
                     .serialize(&state_part.change_id, buffer)?;
                 // versioning
-                self.u64_serializer
-                    .serialize(&(versioning_part.new_elements.len().try_into().expect("Overflow of new_elements (versioning) len")), buffer)?;
+                self.u64_serializer.serialize(
+                    &(versioning_part
+                        .new_elements
+                        .len()
+                        .try_into()
+                        .expect("Overflow of new_elements (versioning) len")),
+                    buffer,
+                )?;
                 for (key, value) in versioning_part.new_elements.iter() {
                     self.vec_u8_serializer.serialize(key, buffer)?;
                     self.vec_u8_serializer.serialize(value, buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &(versioning_part.updates_on_previous_elements.len().try_into().expect("Overflow of updates_on_previous_elements (versioning) len")),
+                    &(versioning_part
+                        .updates_on_previous_elements
+                        .len()
+                        .try_into()
+                        .expect("Overflow of updates_on_previous_elements (versioning) len")),
                     buffer,
                 )?;
                 for (key, value) in versioning_part.updates_on_previous_elements.iter() {
