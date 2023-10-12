@@ -191,6 +191,8 @@ jobs:
           profile: minimal
           toolchain: 1.72.1
           override: true
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: taiki-e/install-action@nextest
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
