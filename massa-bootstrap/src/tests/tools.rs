@@ -225,7 +225,7 @@ pub fn get_random_executed_ops(
     config: ExecutedOpsConfig,
     db: ShareableMassaDBController,
 ) -> ExecutedOps {
-    let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
+    let mut executed_ops = ExecutedOps::new(config, db.clone());
     let mut batch = DBBatch::new();
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
     db.write().write_batch(batch, Default::default(), None);

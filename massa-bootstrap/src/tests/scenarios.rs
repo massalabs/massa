@@ -96,7 +96,7 @@ fn mock_bootstrap_manager(
 
     // start proof-of-stake selectors
     let (server_selector_manager, server_selector_controller) =
-        start_selector_worker(selector_local_config.clone())
+        start_selector_worker(selector_local_config)
             .expect("could not start server selector controller");
 
     // setup final state local config
@@ -165,7 +165,7 @@ fn mock_bootstrap_manager(
             db.clone(),
         )
         .unwrap(),
-        final_state_local_config.clone(),
+        final_state_local_config,
         db.clone(),
     )));
     let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
@@ -185,14 +185,14 @@ fn mock_bootstrap_manager(
         .times(1)
         .returning(move || _listener.poll());
     listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
-    return (
+    (
         start_bootstrap_server(
             listener,
             listener_stopper,
             stream_mock1,
             mocked1,
             final_state_server,
-            bootstrap_config.clone(),
+            bootstrap_config,
             keypair.clone(),
             Version::from_str("TEST.1.10").unwrap(),
             MassaMetrics::new(
@@ -205,7 +205,7 @@ fn mock_bootstrap_manager(
         )
         .unwrap(),
         server_selector_manager,
-    );
+    )
 }
 
 #[test]
@@ -213,7 +213,7 @@ fn mock_bootstrap_manager(
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr.clone(), config.clone());
+    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr, config.clone());
 
     let conn = TcpStream::connect(addr);
     let mut stream = conn.unwrap();
@@ -379,7 +379,7 @@ fn test_bootstrap_server() {
             .write_batch(batch, Default::default(), Some(next));
 
         let final_state_hash = final_write.db.read().get_xof_db_hash();
-        let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
+        let cycle = next.get_cycle(final_state_local_config.periods_per_cycle);
         final_write
             .pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
@@ -485,7 +485,7 @@ fn test_bootstrap_server() {
 
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
-    let list_changes_clone = list_changes.clone();
+    let list_changes_clone = list_changes;
     let mod_thread = std::thread::Builder::new()
         .name("modifier thread".to_string())
         .spawn(move || {
@@ -534,7 +534,7 @@ fn test_bootstrap_server() {
                     .write_batch(batch, Default::default(), Some(next));
 
                 let final_state_hash = final_write.db.read().get_xof_db_hash();
-                let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
+                let cycle = next.get_cycle(final_state_local_config.periods_per_cycle);
                 final_write
                     .pos_state
                     .feed_cycle_state_hash(cycle, final_state_hash);
@@ -591,7 +591,7 @@ fn test_bootstrap_server() {
 
     // check peers
     assert_eq!(
-        get_peers(&keypair).0,
+        get_peers(keypair).0,
         bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );
@@ -694,7 +694,7 @@ fn test_bootstrap_accept_err() {
     };
 
     // start proof-of-stake selectors
-    let (_, server_selector_controller) = start_selector_worker(selector_local_config.clone())
+    let (_, server_selector_controller) = start_selector_worker(selector_local_config)
         .expect("could not start server selector controller");
 
     let pos_server = PoSFinalState::new(
@@ -708,7 +708,7 @@ fn test_bootstrap_accept_err() {
     // setup final states
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
         pos_server.unwrap(),
-        final_state_local_config.clone(),
+        final_state_local_config,
         db_server.clone(),
     )));
 
