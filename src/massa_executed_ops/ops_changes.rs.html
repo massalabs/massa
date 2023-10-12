@@ -122,43 +122,6 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -281,43 +244,6 @@
                 .collect()
         })
         .parse(buffer)
-    }
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>massa_hash::Hash;
-    <span class="kw">use </span>massa_models::config::{KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, THREAD_COUNT};
-    <span class="kw">use </span>massa_models::secure_share::Id;
-    <span class="kw">use </span>massa_serialization::DeserializeError;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_exec_ops_changes_ser_deser() {
-        <span class="kw">let </span><span class="kw-2">mut </span>changes = PreHashMap::default();
-
-        <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
-        <span class="kw">let </span>op_id_1 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">0</span>]));
-        changes.insert(op_id_1.clone(), (<span class="bool-val">true</span>, slot_1));
-        <span class="kw">let </span>slot_2 = Slot::new(KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + <span class="number">2</span>, <span class="number">3</span>);
-        <span class="kw">let </span>op_id_2 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>]));
-        changes.insert(op_id_2, (<span class="bool-val">true</span>, slot_2));
-
-        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
-        <span class="kw">let </span>serializer = ExecutedOpsChangesSerializer::new();
-        <span class="kw">let </span>deserializer_1 = ExecutedOpsChangesDeserializer::new(THREAD_COUNT, <span class="number">1</span>);
-        <span class="kw">let </span>deserializer_2 = ExecutedOpsChangesDeserializer::new(THREAD_COUNT, <span class="number">2</span>);
-
-        serializer.serialize(<span class="kw-2">&amp;</span>changes, <span class="kw-2">&amp;mut </span>buf).unwrap();
-        <span class="comment">// Only 1 changes allowed, should fail
-        </span><span class="kw">let </span>res = deserializer_1.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf);
-        <span class="macro">assert!</span>(res.is_err());
-
-        <span class="kw">let </span>(rem, changes_der) = deserializer_2
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf)
-            .unwrap();
-        <span class="macro">assert!</span>(rem.is_empty());
-        <span class="macro">assert_eq!</span>(changes_der, changes);
     }
 }
 </code></pre></div></section></main></body></html>
