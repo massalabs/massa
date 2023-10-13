@@ -30,13 +30,6 @@
 <a href="#30" id="30">30</a>
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::block::{FilledBlock, SecureShareBlock};
@@ -62,13 +55,6 @@
     </span><span class="kw">pub </span>protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
     <span class="doccomment">/// Channel used by the consensus to send events to the node globally
     </span><span class="kw">pub </span>controller_event_tx: MassaSender&lt;ConsensusEvent&gt;,
-    <span class="doccomment">/// Structure used by consensus to broadcast all the information about the blocks
-    </span><span class="kw">pub </span>broadcasts: ConsensusBroadcasts,
-}
-
-<span class="doccomment">/// Structure used to broadcast all the information about the blocks
-</span><span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>ConsensusBroadcasts {
     <span class="doccomment">/// Channel used for Websocket broadcast (if enabled) of new blocks being integrated in the graph
     </span><span class="kw">pub </span>block_sender: tokio::sync::broadcast::Sender&lt;SecureShareBlock&gt;,
     <span class="doccomment">/// Channel used for Websocket broadcast (if enabled) of new block headers being integrated in the graph
