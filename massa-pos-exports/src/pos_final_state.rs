@@ -211,13 +211,13 @@ impl PoSFinalState {
 
         use serde::Deserialize;
         #[derive(Deserialize)]
-        struct AddressInitialDefferredCredits {
+        struct AddressInitialDeferredCredits {
             slot: Slot,
             amount: Amount,
         }
 
         let initial_deferred_credits =
-            serde_json::from_str::<PreHashMap<Address, Vec<AddressInitialDefferredCredits>>>(
+            serde_json::from_str::<PreHashMap<Address, Vec<AddressInitialDeferredCredits>>>(
                 &std::fs::read_to_string(initial_deferred_credits_path).map_err(|err| {
                     PosError::DeferredCreditsFileLoadingError(format!(
                         "error while deserializing initial deferred credits file {}: {}",
@@ -235,7 +235,7 @@ impl PoSFinalState {
             })?;
 
         for (address, deferred_credits) in initial_deferred_credits {
-            for AddressInitialDefferredCredits { slot, amount } in deferred_credits {
+            for AddressInitialDeferredCredits { slot, amount } in deferred_credits {
                 self.put_deferred_credits_entry(&slot, &address, &amount, batch);
             }
         }
