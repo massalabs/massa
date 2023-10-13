@@ -1066,7 +1066,7 @@ mod tests {
             .collect()
     }
 
-    fn get_message() -> AsyncMessage {
+    fn create_message() -> AsyncMessage {
         let message = AsyncMessage::new(
             Slot::new(1, 0),
             0,
@@ -1154,7 +1154,7 @@ mod tests {
             MAX_DATASTORE_KEY_LENGTH as u32,
         );
 
-        let message = get_message();
+        let message = create_message();
         let message_id = message.compute_id();
         let mut message2 = message.clone();
         message2.emission_index += 1; // update AsyncMessageId
@@ -1214,7 +1214,7 @@ mod tests {
             MAX_DATASTORE_KEY_LENGTH as u32,
         );
 
-        let message = get_message();
+        let message = create_message();
         let message_id = message.compute_id();
         let mut message2 = message.clone();
         message2.emission_index += 1; // update AsyncMessageId
@@ -1259,7 +1259,7 @@ mod tests {
         ));
         let pool = AsyncPool::new(config, db);
 
-        let message = get_message();
+        let message = create_message();
         let message_id = message.compute_id();
         let mut message2 = message.clone();
         message2.emission_index += 1; // update AsyncMessageId
@@ -1314,7 +1314,7 @@ mod tests {
 
         assert!(pool.message_info_cache.is_empty());
 
-        let message = get_message();
+        let message = create_message();
         let message_id = message.compute_id();
 
         let mut changes = AsyncPoolChanges::default();
@@ -1363,7 +1363,7 @@ mod tests {
 
         assert!(pool.message_info_cache.is_empty());
 
-        let message = get_message();
+        let message = create_message();
         let message_id = message.compute_id();
 
         let mut changes = AsyncPoolChanges::default();
