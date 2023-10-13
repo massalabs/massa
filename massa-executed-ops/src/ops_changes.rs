@@ -133,6 +133,8 @@ mod test {
 
     #[test]
     fn test_exec_ops_changes_ser_deser() {
+        // ExecutedOpsChanges serialization and deserialization
+
         let mut changes = PreHashMap::default();
 
         let slot_1 = Slot::new(1, 0);

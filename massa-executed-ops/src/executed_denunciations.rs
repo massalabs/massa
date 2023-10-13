@@ -255,6 +255,7 @@ mod test {
 
         let mut exec_de = ExecutedDenunciations::new(config.clone(), db);
 
+        // Add some data to exec_de
         let slot_1 = Slot::new(1, 0);
         let de_idx_1 = DenunciationIndex::Endorsement {
             slot: slot_1,
@@ -287,7 +288,6 @@ mod test {
         assert!(exec_de.contains(&de_idx_2));
 
         let sorted_deunciations_1 = exec_de.sorted_denunciations.clone();
-
         drop(exec_de);
 
         // Init an exec de from disk
@@ -296,8 +296,9 @@ mod test {
         ));
 
         let mut exec_de2 = ExecutedDenunciations::new(config, db2);
-        exec_de2.recompute_sorted_denunciations();
 
+        // After init from disk, the cache is empty, so recompute it and check against saved cache
+        exec_de2.recompute_sorted_denunciations();
         assert_eq!(exec_de2.sorted_denunciations, sorted_deunciations_1);
 
         // Reset cache

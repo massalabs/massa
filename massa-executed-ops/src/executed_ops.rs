@@ -268,127 +268,6 @@ impl ExecutedOps {
         true
     }
 }
-
-/*
-/// `ExecutedOps` Serializer
-pub struct ExecutedOpsSerializer {
-    slot_serializer: SlotSerializer,
-    u64_serializer: U64VarIntSerializer,
-    op_id_serializer: OperationIdSerializer,
-}
-
-impl Default for ExecutedOpsSerializer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ExecutedOpsSerializer {
-    /// Create a new `ExecutedOps` Serializer
-    pub fn new() -> ExecutedOpsSerializer {
-        ExecutedOpsSerializer {
-            slot_serializer: SlotSerializer::new(),
-            u64_serializer: U64VarIntSerializer::new(),
-            op_id_serializer: OperationIdSerializer::new(),
-        }
-    }
-}
-
-impl Serializer<BTreeMap<Slot, PreHashSet<OperationId>>> for ExecutedOpsSerializer {
-    fn serialize(
-        &self,
-        value: &BTreeMap<Slot, PreHashSet<OperationId>>,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
-        // executed ops length
-        self.u64_serializer
-            .serialize(&(value.len() as u64), buffer)?;
-        // executed ops
-        for (slot, ids) in value {
-            // slot
-            self.slot_serializer.serialize(slot, buffer)?;
-            // slot ids length
-            self.u64_serializer.serialize(&(ids.len() as u64), buffer)?;
-            // slots ids
-            for op_id in ids {
-                self.op_id_serializer.serialize(op_id, buffer)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-/// Deserializer for `ExecutedOps`
-pub struct ExecutedOpsDeserializer {
-    operation_id_deserializer: OperationIdDeserializer,
-    slot_deserializer: SlotDeserializer,
-    ops_length_deserializer: U64VarIntDeserializer,
-    slot_ops_length_deserializer: U64VarIntDeserializer,
-}
-
-impl ExecutedOpsDeserializer {
-    /// Create a new deserializer for `ExecutedOps`
-    pub fn new(
-        thread_count: u8,
-        max_executed_ops_length: u64,
-        max_operations_per_block: u64,
-    ) -> ExecutedOpsDeserializer {
-        ExecutedOpsDeserializer {
-            operation_id_deserializer: OperationIdDeserializer::new(),
-            slot_deserializer: SlotDeserializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(0), Excluded(thread_count)),
-            ),
-            ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_executed_ops_length),
-            ),
-            slot_ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_operations_per_block),
-            ),
-        }
-    }
-}
-
-impl Deserializer<BTreeMap<Slot, PreHashSet<OperationId>>> for ExecutedOpsDeserializer {
-    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
-        &self,
-        buffer: &'a [u8],
-    ) -> IResult<&'a [u8], BTreeMap<Slot, PreHashSet<OperationId>>, E> {
-        context(
-            "ExecutedOps",
-            length_count(
-                context("ExecutedOps length", |input| {
-                    self.ops_length_deserializer.deserialize(input)
-                }),
-                context(
-                    "slot operations",
-                    tuple((
-                        context("slot", |input| self.slot_deserializer.deserialize(input)),
-                        length_count(
-                            context("slot operations length", |input| {
-                                self.slot_ops_length_deserializer.deserialize(input)
-                            }),
-                            context("operation id", |input| {
-                                self.operation_id_deserializer.deserialize(input)
-                            }),
-                        ),
-                    )),
-                ),
-            ),
-        )
-        .map(|operations| {
-            operations
-                .into_iter()
-                .map(|(slot, ids)| (slot, ids.into_iter().collect()))
-                .collect()
-        })
-        .parse(buffer)
-    }
-}
-*/
-
 #[cfg(test)]
 mod test {
     use std::sync::Arc;
@@ -441,6 +320,7 @@ mod test {
         exec_ops.apply_changes_to_batch(changes, slot_2, &mut batch);
         db.write().write_batch(batch, Default::default(), None);
 
+        // cache len expected is 1, expect op_id_1 to be discarded (as it is tool old)
         assert_eq!(exec_ops.sorted_ops.len(), 1);
         assert!(!exec_ops.contains(&op_id_1));
         assert!(exec_ops.contains(&op_id_2));
@@ -453,9 +333,9 @@ mod test {
             Box::new(MassaDB::new(db_config.clone())) as Box<(dyn MassaDBController + 'static)>
         ));
 
+        // After an init from disk, cache is empty, so recompute it and compare with original
         let mut exec_ops2 = ExecutedOps::new(config.clone(), db2.clone());
         exec_ops2.recompute_sorted_ops_and_op_exec_status();
-
         assert_eq!(exec_ops2.sorted_ops, sorted_ops_1);
 
         // Reset cache
