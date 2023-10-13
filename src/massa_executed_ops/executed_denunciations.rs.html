@@ -306,50 +306,6 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
@@ -363,20 +319,10 @@
 <span class="kw">use </span>massa_models::denunciation::Denunciation;
 <span class="kw">use </span>massa_models::{
     denunciation::{DenunciationIndex, DenunciationIndexDeserializer, DenunciationIndexSerializer},
-    slot::{Slot, SlotDeserializer, SlotSerializer},
+    slot::Slot,
 };
-<span class="kw">use </span>massa_serialization::{
-    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
-    U64VarIntSerializer,
-};
-<span class="kw">use </span>nom::{
-    error::{context, ContextError, ParseError},
-    multi::length_count,
-    sequence::tuple,
-    IResult, Parser,
-};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>std::collections::{BTreeMap, HashSet};
-<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
 <span class="doccomment">/// Denunciation index key formatting macro
 </span><span class="attr">#[macro_export]
@@ -579,127 +525,93 @@
     </span>}
 }
 
-<span class="doccomment">/// `ExecutedDenunciations` Serializer
-</span><span class="kw">pub struct </span>ExecutedDenunciationsSerializer {
-    slot_serializer: SlotSerializer,
-    de_idx_serializer: DenunciationIndexSerializer,
-    u64_serializer: U64VarIntSerializer,
-}
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
+    <span class="kw">use </span>massa_db_worker::MassaDB;
+    <span class="kw">use </span>massa_models::config::{
+        DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        THREAD_COUNT,
+    };
+    <span class="kw">use </span>parking_lot::RwLock;
+    <span class="kw">use </span>std::sync::Arc;
+    <span class="kw">use </span>tempfile::tempdir;
 
-<span class="kw">impl </span>Default <span class="kw">for </span>ExecutedDenunciationsSerializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_exec_de_cache() {
+        <span class="comment">// Check executed denunciations cache grow / reset / recompute
 
-<span class="kw">impl </span>ExecutedDenunciationsSerializer {
-    <span class="doccomment">/// Create a new `ExecutedDenunciations` Serializer
-    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            slot_serializer: SlotSerializer::new(),
-            de_idx_serializer: DenunciationIndexSerializer::new(),
-            u64_serializer: U64VarIntSerializer::new(),
-        }
-    }
-}
+        </span><span class="kw">let </span>config = ExecutedDenunciationsConfig {
+            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
+            thread_count: THREAD_COUNT,
+            endorsement_count: ENDORSEMENT_COUNT,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        };
+        <span class="comment">// Db init
+        </span><span class="kw">let </span>temp_dir = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
+        <span class="comment">// println!(&quot;Using temp dir: {:?}&quot;, temp_dir.path());
+        </span><span class="kw">let </span>db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
+            thread_count: THREAD_COUNT,
+        };
+        <span class="kw">let </span>db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config.clone())) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
 
-<span class="kw">impl </span>Serializer&lt;BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;&gt; <span class="kw">for </span>ExecutedDenunciationsSerializer {
-    <span class="kw">fn </span>serialize(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        value: <span class="kw-2">&amp;</span>BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;,
-        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="comment">// exec denunciations length
-        </span><span class="self">self</span>.u64_serializer
-            .serialize(<span class="kw-2">&amp;</span>(value.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-        <span class="comment">// executed ops
-        </span><span class="kw">for </span>(slot, ids) <span class="kw">in </span>value {
-            <span class="comment">// slot
-            </span><span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
-            <span class="comment">// slot ids length
-            </span><span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>(ids.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-            <span class="comment">// slots ids
-            </span><span class="kw">for </span>de_idx <span class="kw">in </span>ids {
-                <span class="self">self</span>.de_idx_serializer.serialize(de_idx, buffer)<span class="question-mark">?</span>;
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-}
+        <span class="kw">let </span><span class="kw-2">mut </span>exec_de = ExecutedDenunciations::new(config.clone(), db);
 
-<span class="doccomment">/// Deserializer for `ExecutedDenunciations`
-</span><span class="kw">pub struct </span>ExecutedDenunciationsDeserializer {
-    de_idx_deserializer: DenunciationIndexDeserializer,
-    slot_deserializer: SlotDeserializer,
-    ops_length_deserializer: U64VarIntDeserializer,
-    slot_ops_length_deserializer: U64VarIntDeserializer,
-}
+        <span class="comment">// Add some data to exec_de
+        </span><span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
+        <span class="kw">let </span>de_idx_1 = DenunciationIndex::Endorsement {
+            slot: slot_1,
+            index: ENDORSEMENT_COUNT - <span class="number">4</span>,
+        };
+        <span class="kw">let </span>slot_2 = Slot::new(
+            DENUNCIATION_EXPIRE_PERIODS + KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + <span class="number">2</span>,
+            <span class="number">3</span>,
+        );
+        <span class="kw">let </span>de_idx_2 = DenunciationIndex::Endorsement {
+            slot: slot_2,
+            index: ENDORSEMENT_COUNT - <span class="number">1</span>,
+        };
+        <span class="kw">let </span><span class="kw-2">mut </span>changes = ExecutedDenunciationsChanges::new();
+        changes.insert(de_idx_1.clone());
+        changes.insert(de_idx_2.clone());
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
+        exec_de.apply_changes_to_batch(changes, slot_2, <span class="kw-2">&amp;mut </span>batch);
+        exec_de
+            .db
+            .write()
+            .write_batch(batch.clone(), DBBatch::new(), <span class="prelude-val">Some</span>(slot_2));
 
-<span class="kw">impl </span>ExecutedDenunciationsDeserializer {
-    <span class="doccomment">/// Create a new deserializer for `ExecutedDenunciations`
-    </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
-        endorsement_count: u32,
-        max_executed_de_length: u64,
-        max_denunciations_per_block_header: u64,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            de_idx_deserializer: DenunciationIndexDeserializer::new(
-                thread_count,
-                endorsement_count,
-            ),
-            slot_deserializer: SlotDeserializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
-            ),
-            ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_executed_de_length),
-            ),
-            slot_ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_denunciations_per_block_header),
-            ),
-        }
-    }
-}
+        <span class="macro">assert_eq!</span>(exec_de.sorted_denunciations.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(
+            exec_de.sorted_denunciations.get(<span class="kw-2">&amp;</span>slot_2),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>HashSet::from([de_idx_2]))
+        );
+        <span class="macro">assert!</span>(!exec_de.contains(<span class="kw-2">&amp;</span>de_idx_1));
+        <span class="macro">assert!</span>(exec_de.contains(<span class="kw-2">&amp;</span>de_idx_2));
 
-<span class="kw">impl </span>Deserializer&lt;BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;&gt;
-    <span class="kw">for </span>ExecutedDenunciationsDeserializer
-{
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BTreeMap&lt;Slot, HashSet&lt;DenunciationIndex&gt;&gt;, E&gt; {
-        context(
-            <span class="string">&quot;ExecutedDenunciations&quot;</span>,
-            length_count(
-                context(<span class="string">&quot;length&quot;</span>, |input| {
-                    <span class="self">self</span>.ops_length_deserializer.deserialize(input)
-                }),
-                context(
-                    <span class="string">&quot;slot de_idx&quot;</span>,
-                    tuple((
-                        context(<span class="string">&quot;slot&quot;</span>, |input| <span class="self">self</span>.slot_deserializer.deserialize(input)),
-                        length_count(
-                            context(<span class="string">&quot;slot denunciations length&quot;</span>, |input| {
-                                <span class="self">self</span>.slot_ops_length_deserializer.deserialize(input)
-                            }),
-                            context(<span class="string">&quot;denunciation index&quot;</span>, |input| {
-                                <span class="self">self</span>.de_idx_deserializer.deserialize(input)
-                            }),
-                        ),
-                    )),
-                ),
-            ),
-        )
-        .map(|operations| {
-            operations
-                .into_iter()
-                .map(|(slot, ids)| (slot, ids.into_iter().collect()))
-                .collect()
-        })
-        .parse(buffer)
+        <span class="kw">let </span>sorted_deunciations_1 = exec_de.sorted_denunciations.clone();
+        drop(exec_de);
+
+        <span class="comment">// Init an exec de from disk
+        </span><span class="kw">let </span>db2 = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
+
+        <span class="kw">let </span><span class="kw-2">mut </span>exec_de2 = ExecutedDenunciations::new(config, db2);
+
+        <span class="comment">// After init from disk, the cache is empty, so recompute it and check against saved cache
+        </span>exec_de2.recompute_sorted_denunciations();
+        <span class="macro">assert_eq!</span>(exec_de2.sorted_denunciations, sorted_deunciations_1);
+
+        <span class="comment">// Reset cache
+        </span>exec_de2.reset();
+        <span class="macro">assert_eq!</span>(exec_de2.sorted_denunciations.len(), <span class="number">0</span>);
     }
 }
 </code></pre></div></section></main></body></html>
