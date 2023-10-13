@@ -1126,6 +1126,8 @@
 <a href="#1126" id="1126">1126</a>
 <a href="#1127" id="1127">1127</a>
 <a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1457,13 +1459,9 @@
 
     <span class="doccomment">/// get status
     </span><span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
-        <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>version = <span class="self">self</span>.<span class="number">0</span>.version;
         <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
-        <span class="kw">let </span>protocol_controller = <span class="self">self</span>.<span class="number">0</span>.protocol_controller.clone();
         <span class="kw">let </span>protocol_config = <span class="self">self</span>.<span class="number">0</span>.protocol_config.clone();
-        <span class="kw">let </span>pool_command_sender = <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
         <span class="kw">let </span>config = CompactConfig::default();
         <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
@@ -1482,21 +1480,21 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
-        <span class="kw">let </span>execution_stats = execution_controller.get_stats();
-        <span class="kw">let </span>consensus_stats_result = consensus_controller.get_stats();
+        <span class="kw">let </span>execution_stats = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_stats();
+        <span class="kw">let </span>consensus_stats_result = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.get_stats();
         <span class="kw">let </span>consensus_stats = <span class="kw">match </span>consensus_stats_result {
             <span class="prelude-val">Ok</span>(consensus_stats) =&gt; consensus_stats,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
-        <span class="kw">let </span>(network_stats, peers) = <span class="kw">match </span>protocol_controller.get_stats() {
+        <span class="kw">let </span>(network_stats, peers) = <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.protocol_controller.get_stats() {
             <span class="prelude-val">Ok</span>((stats, peers)) =&gt; (stats, peers),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ProtocolError(e).into()),
         };
 
         <span class="kw">let </span>pool_stats = (
-            pool_command_sender.get_operation_count(),
-            pool_command_sender.get_endorsement_count(),
+            <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.get_operation_count(),
+            <span class="self">self</span>.<span class="number">0</span>.pool_command_sender.get_endorsement_count(),
         );
 
         <span class="kw">let </span>next_slot_result = last_slot
@@ -1571,8 +1569,7 @@
 
     <span class="doccomment">/// get cliques
     </span><span class="kw">async fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt; {
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
-        <span class="prelude-val">Ok</span>(consensus_controller.get_cliques())
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="number">0</span>.consensus_controller.get_cliques())
     }
 
     <span class="doccomment">/// get stakers
@@ -1580,7 +1577,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         page_request: <span class="prelude-ty">Option</span>&lt;PageRequest&gt;,
     ) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt; {
-        <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
         <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
 
         <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
@@ -1604,7 +1600,9 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = execution_controller
+        <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = <span class="self">self
+            </span>.<span class="number">0
+            </span>.execution_controller
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::&lt;Vec&lt;(Address, u64)&gt;&gt;();
@@ -1834,8 +1832,10 @@
     }
 
     <span class="kw">async fn </span>get_blockclique_block_by_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; RpcResult&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;&gt; {
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
-        <span class="kw">let </span>block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
+        <span class="kw">let </span>block_id_option = <span class="self">self
+            </span>.<span class="number">0
+            </span>.consensus_controller
+            .get_blockclique_block_at_slot(slot);
 
         <span class="kw">let </span>block_id = <span class="kw">match </span>block_id_option {
             <span class="prelude-val">Some</span>(id) =&gt; id,
@@ -1854,7 +1854,6 @@
     <span class="doccomment">/// gets an interval of the block graph from consensus, with time filtering
     /// time filtering is done consensus-side to prevent communication overhead
     </span><span class="kw">async fn </span>get_graph_interval(<span class="kw-2">&amp;</span><span class="self">self</span>, time: TimeInterval) -&gt; RpcResult&lt;Vec&lt;BlockSummary&gt;&gt; {
-        <span class="kw">let </span>consensus_controller = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.clone();
         <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
 
         <span class="comment">// filter blocks from graph_export
@@ -1871,7 +1870,11 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
-        <span class="kw">let </span>graph = <span class="kw">match </span>consensus_controller.get_block_graph_status(start_slot, end_slot) {
+        <span class="kw">let </span>graph = <span class="kw">match </span><span class="self">self
+            </span>.<span class="number">0
+            </span>.consensus_controller
+            .get_block_graph_status(start_slot, end_slot)
+        {
             <span class="prelude-val">Ok</span>(graph) =&gt; graph,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
@@ -1914,8 +1917,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         entries: Vec&lt;DatastoreEntryInput&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DatastoreEntryOutput&gt;&gt; {
-        <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
-        <span class="prelude-val">Ok</span>(execution_controller
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.<span class="number">0
+            </span>.execution_controller
             .get_final_and_active_data_entry(
                 entries
                     .into_iter()
