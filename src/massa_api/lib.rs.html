@@ -388,9 +388,6 @@
 <a href="#388" id="388">388</a>
 <a href="#389" id="389">389</a>
 <a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -417,7 +414,7 @@
     page::{PageRequest, PagedVec},
     TimeInterval,
 };
-<span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
+<span class="kw">use </span>massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::clique::Clique;
 <span class="kw">use </span>massa_models::composite::PubkeySig;
@@ -429,7 +426,7 @@
     address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
     execution::EventFilter, slot::Slot, version::Version,
 };
-<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
+<span class="kw">use </span>massa_pool_exports::{PoolBroadcasts, PoolController};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_protocol_exports::{ProtocolConfig, ProtocolController};
 <span class="kw">use </span>massa_storage::Storage;
@@ -446,9 +443,6 @@
 <span class="kw">mod </span>api_trait;
 <span class="kw">mod </span>private;
 <span class="kw">mod </span>public;
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests;
 
 <span class="doccomment">/// Public API component
 </span><span class="kw">pub struct </span>Public {
@@ -495,12 +489,12 @@
 </span><span class="kw">pub struct </span>ApiV2 {
     <span class="doccomment">/// link to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    <span class="doccomment">/// link(channels) to the consensus component
-    </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
+    <span class="doccomment">/// channels with informations broadcasted by the consensus
+    </span><span class="kw">pub </span>consensus_broadcasts: ConsensusBroadcasts,
     <span class="doccomment">/// link to the execution component
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
-    <span class="doccomment">/// link(channels) to the pool component
-    </span><span class="kw">pub </span>pool_channels: PoolChannels,
+    <span class="doccomment">/// channels with informations broadcasted by the pool
+    </span><span class="kw">pub </span>pool_broadcasts: PoolBroadcasts,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,
     <span class="doccomment">/// node version

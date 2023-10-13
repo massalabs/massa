@@ -187,7 +187,6 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="kw">use </span>std::net::SocketAddr;
@@ -203,14 +202,14 @@
 <span class="kw">use </span>massa_api_exports::error::ApiError;
 <span class="kw">use </span>massa_api_exports::page::{PageRequest, PagedVec, PagedVecV2};
 <span class="kw">use </span>massa_api_exports::ApiRequest;
-<span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
+<span class="kw">use </span>massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_latest_block_slot_at_timestamp;
 <span class="kw">use </span>massa_models::version::Version;
-<span class="kw">use </span>massa_pool_exports::PoolChannels;
+<span class="kw">use </span>massa_pool_exports::PoolBroadcasts;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>tokio_stream::wrappers::BroadcastStream;
@@ -219,17 +218,17 @@
     <span class="doccomment">/// generate a new massa API
     </span><span class="kw">pub fn </span>new(
         consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-        consensus_channels: ConsensusChannels,
+        consensus_broadcasts: ConsensusBroadcasts,
         execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
-        pool_channels: PoolChannels,
+        pool_broadcasts: PoolBroadcasts,
         api_settings: APIConfig,
         version: Version,
     ) -&gt; <span class="self">Self </span>{
         API(ApiV2 {
             consensus_controller,
-            consensus_channels,
+            consensus_broadcasts,
             execution_controller,
-            pool_channels,
+            pool_broadcasts,
             api_settings,
             version,
         })
@@ -254,6 +253,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         api_request: <span class="prelude-ty">Option</span>&lt;ApiRequest&gt;,
     ) -&gt; RpcResult&lt;PagedVecV2&lt;(Address, u64)&gt;&gt; {
+        <span class="kw">let </span>execution_controller = <span class="self">self</span>.<span class="number">0</span>.execution_controller.clone();
         <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
 
         <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
@@ -277,9 +277,7 @@
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ModelsError(e).into()),
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = <span class="self">self
-            </span>.<span class="number">0
-            </span>.execution_controller
+        <span class="kw">let </span><span class="kw-2">mut </span>staker_vec = execution_controller
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::&lt;Vec&lt;(Address, u64)&gt;&gt;();
@@ -311,7 +309,7 @@
     }
 
     <span class="kw">async fn </span>subscribe_new_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, pending: PendingSubscriptionSink) -&gt; SubscriptionResult {
-        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.consensus_channels.block_sender.clone(), pending).<span class="kw">await
+        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.consensus_broadcasts.block_sender.clone(), pending).<span class="kw">await
     </span>}
 
     <span class="kw">async fn </span>subscribe_new_blocks_headers(
@@ -319,7 +317,7 @@
         pending: PendingSubscriptionSink,
     ) -&gt; SubscriptionResult {
         broadcast_via_ws(
-            <span class="self">self</span>.<span class="number">0</span>.consensus_channels.block_header_sender.clone(),
+            <span class="self">self</span>.<span class="number">0</span>.consensus_broadcasts.block_header_sender.clone(),
             pending,
         )
         .<span class="kw">await
@@ -330,7 +328,7 @@
         pending: PendingSubscriptionSink,
     ) -&gt; SubscriptionResult {
         broadcast_via_ws(
-            <span class="self">self</span>.<span class="number">0</span>.consensus_channels.filled_block_sender.clone(),
+            <span class="self">self</span>.<span class="number">0</span>.consensus_broadcasts.filled_block_sender.clone(),
             pending,
         )
         .<span class="kw">await
@@ -340,7 +338,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         pending: PendingSubscriptionSink,
     ) -&gt; SubscriptionResult {
-        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.pool_channels.operation_sender.clone(), pending).<span class="kw">await
+        broadcast_via_ws(<span class="self">self</span>.<span class="number">0</span>.pool_broadcasts.operation_sender.clone(), pending).<span class="kw">await
     </span>}
 }
 
