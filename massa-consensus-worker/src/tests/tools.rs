@@ -1,10 +1,9 @@
 use std::{time::Duration, vec};
 
 use crate::start_consensus_worker;
-use massa_channel::{receiver::MassaReceiver, MassaChannel};
+use massa_channel::MassaChannel;
 use massa_consensus_exports::{
-    events::ConsensusEvent, ConsensusBroadcasts, ConsensusChannels, ConsensusConfig,
-    ConsensusController,
+    ConsensusBroadcasts, ConsensusChannels, ConsensusConfig, ConsensusController,
 };
 use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
@@ -18,28 +17,23 @@ use massa_models::{
     slot::Slot,
 };
 use massa_pool_exports::MockPoolController;
-use massa_pos_exports::{MockSelectorController, SelectorController};
-use massa_protocol_exports::{MockProtocolController, ProtocolController};
+use massa_pos_exports::MockSelectorController;
+use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 
-pub fn consensus_without_pool_test<F>(cfg: ConsensusConfig, test: F)
-where
-    F: FnOnce(
-        MockProtocolController,
-        Box<dyn ConsensusController>,
-        MassaReceiver<ConsensusEvent>,
-        Box<dyn SelectorController>,
-    ) -> (
-        MockProtocolController,
-        Box<dyn ConsensusController>,
-        MassaReceiver<ConsensusEvent>,
-        Box<dyn SelectorController>,
-    ),
+pub fn consensus_test<F>(
+    cfg: ConsensusConfig,
+    defined_execution_controller: Box<MockExecutionController>,
+    pool_controller: Box<MockPoolController>,
+    defined_selector_controller: Box<MockSelectorController>,
+    test: F,
+) where
+    F: FnOnce(Box<dyn ConsensusController>),
 {
     let storage: Storage = Storage::create_root();
     // mock protocol & pool
-    let mut protocol_controller = MockProtocolController::default();
+    let mut protocol_controller = Box::new(MockProtocolController::new());
     let mut protocol_controller_2 = MockProtocolController::default();
     let mut protocol_controller_3 = MockProtocolController::default();
     //TODO: Test better here for example number of times
@@ -55,13 +49,16 @@ where
     protocol_controller
         .expect_clone_box()
         .return_once(move || Box::new(protocol_controller_2));
-    let pool_controller = Box::new(MockPoolController::new());
-    let selector_controller = Box::new(MockSelectorController::new());
-    // for now, execution_rx is ignored: clique updates to Execution pile up and are discarded
-    let execution_controller = Box::new(MockExecutionController::new());
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller
+        .expect_clone_box()
+        .return_once(move || defined_execution_controller);
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .return_once(move || defined_selector_controller);
     // launch consensus controller
-    let (consensus_event_sender, consensus_event_receiver) =
-        MassaChannel::new(String::from("consensus_event"), Some(10));
+    let (consensus_event_sender, _) = MassaChannel::new(String::from("consensus_event"), Some(10));
 
     // All API channels
     let (block_sender, _block_receiver) = tokio::sync::broadcast::channel(10);
@@ -77,9 +74,9 @@ where
             },
             controller_event_tx: consensus_event_sender,
             execution_controller,
-            protocol_controller: protocol_controller.clone_box(),
+            protocol_controller,
             pool_controller,
-            selector_controller: selector_controller.clone_box(),
+            selector_controller,
         },
         None,
         storage.clone(),
@@ -93,20 +90,8 @@ where
     );
 
     // Call test func.
-    let (
-        _protocol_controller,
-        consensus_controller,
-        _consensus_event_receiver,
-        _selector_controller,
-    ) = test(
-        protocol_controller,
-        consensus_controller,
-        consensus_event_receiver,
-        selector_controller,
-    );
-
+    test(consensus_controller);
     // stop controller while ignoring all commands
-    drop(consensus_controller);
     consensus_manager.stop();
 }
 
@@ -199,32 +184,19 @@ pub fn create_block_with_merkle_root(
 //     }
 // }
 
-// pub fn register_block(
-//     consensus_controller: &Box<dyn ConsensusController>,
-//     selector_receiver: &Receiver<MockSelectorControllerMessage>,
-//     block: SecureShareBlock,
-//     mut storage: Storage,
-// ) {
-//     storage.store_block(block.clone());
-//     consensus_controller.register_block(
-//         block.id,
-//         block.content.header.content.slot,
-//         storage.clone(),
-//         false,
-//     );
-//     match selector_receiver
-//         .recv_timeout(Duration::from_millis(1000))
-//         .unwrap()
-//     {
-//         MockSelectorControllerMessage::GetProducer {
-//             slot: _,
-//             response_tx,
-//         } => {
-//             response_tx.send(Ok(block.content_creator_address)).unwrap();
-//         }
-//         _ => panic!("unexpected message"),
-//     }
-// }
+pub fn register_block(
+    consensus_controller: &Box<dyn ConsensusController>,
+    block: SecureShareBlock,
+    mut storage: Storage,
+) {
+    storage.store_block(block.clone());
+    consensus_controller.register_block(
+        block.id,
+        block.content.header.content.slot,
+        storage.clone(),
+        false,
+    );
+}
 
 // // DRY.
 // pub struct TestController {
