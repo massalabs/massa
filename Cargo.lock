@@ -2799,12 +2799,14 @@ dependencies = [
 name = "massa_db_worker"
 version = "0.26.1"
 dependencies = [
+ "assert_matches",
  "massa_db_exports",
  "massa_hash",
  "massa_models",
  "massa_serialization",
  "parking_lot",
  "rocksdb",
+ "tempfile",
 ]
 
 [[package]]
