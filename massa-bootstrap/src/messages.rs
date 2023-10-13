@@ -300,6 +300,7 @@ pub struct BootstrapServerMessageDeserializer {
     version_deserializer: VersionDeserializer,
     peers_deserializer: BootstrapPeersDeserializer,
     state_new_elements_length_deserializer: U64VarIntDeserializer,
+    versioning_part_new_elements_length_deserializer: U64VarIntDeserializer,
     state_updates_length_deserializer: U64VarIntDeserializer,
     vec_u8_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
@@ -314,7 +315,6 @@ pub struct BootstrapServerMessageDeserializer {
 
 impl BootstrapServerMessageDeserializer {
     /// Creates a new `BootstrapServerMessageDeserializer`
-    #[allow(clippy::too_many_arguments)]
     pub fn new(args: BootstrapServerMessageDeserializerArgs) -> Self {
         Self {
             message_id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
@@ -348,9 +348,13 @@ impl BootstrapServerMessageDeserializer {
                 Included(0),
                 Included(args.max_bootstrap_error_length),
             ),
-            state_new_elements_length_deserializer: U64VarIntDeserializer::new(
+            versioning_part_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
                 Included(args.max_versioning_elements_size.into()),
+            ),
+            state_new_elements_length_deserializer: U64VarIntDeserializer::new(
+                Included(0),
+                Included(args.max_final_state_elements_size.into()),
             ),
             state_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
@@ -391,6 +395,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
     ///     max_operations_per_block: 1000, max_versioning_elements_size: 1000,
     ///     max_ledger_changes_count: 1000, max_datastore_key_length: 255,
     ///     max_datastore_value_length: 1000,
+    ///     max_final_state_elements_size: 1000,
     ///     max_datastore_entry_count: 1000, max_bootstrap_error_length: 1000, max_changes_slot_count: 1000,
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
@@ -498,7 +503,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 "Failed new_elements deserialization",
                                 length_count(
                                     context("Failed length deserialization", |input| {
-                                        self.state_new_elements_length_deserializer
+                                        self.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
                                     tuple((
