@@ -1490,6 +1490,26 @@
 <a href="#1490" id="1490">1490</a>
 <a href="#1491" id="1491">1491</a>
 <a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the structure representing an asynchronous message
@@ -2519,7 +2539,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>no_apply_update_message() {
-        <span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
+        <span class="comment">// Init an AsyncMessage, try to apply an update (with no modifications at all)
+        // Original async message and &#39;updated&#39; async message should be ==
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
             sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
@@ -2559,7 +2582,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>apply_update_message() {
-        <span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
+        <span class="comment">// Init an AsyncMessage, try to apply an update (with modifications for all fields)
+        // Original async message and &#39;updated&#39; async message should be !=
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
             sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
@@ -2637,7 +2663,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>apply_update_on_update_message() {
-        <span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
+        <span class="comment">// Apply AsyncMessageUpdate on a AsyncMessageUpdate then apply to an AsyncMessage
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
             sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
@@ -2732,7 +2760,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>lower_limit_ser_deser_id() {
-        <span class="kw">let </span>id: AsyncMessageId = (std::cmp::Reverse(Ratio::new(<span class="number">0</span>, <span class="number">1</span>)), Slot::new(<span class="number">0</span>, <span class="number">0</span>), <span class="number">0</span>);
+        <span class="comment">// Serialize then Deserialize an AsyncMessageId (with lowest values)
+
+        </span><span class="kw">let </span>id: AsyncMessageId = (std::cmp::Reverse(Ratio::new(<span class="number">0</span>, <span class="number">1</span>)), Slot::new(<span class="number">0</span>, <span class="number">0</span>), <span class="number">0</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         <span class="kw">let </span>serializer = AsyncMessageIdSerializer::new();
@@ -2747,7 +2777,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>higher_limit_ser_deser_id() {
-        <span class="kw">let </span>id: AsyncMessageId = (
+        <span class="comment">// Serialize then Deserialize an AsyncMessageId (with highest values)
+
+        </span><span class="kw">let </span>id: AsyncMessageId = (
             std::cmp::Reverse(Ratio::new(u64::MAX, u64::MAX)),
             Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             u64::MAX,
@@ -2767,7 +2799,8 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>wrong_denom_ser_deser_id() {
         <span class="kw">let </span>id: AsyncMessageId = (
-            std::cmp::Reverse(Ratio::new_raw(u64::MAX, <span class="number">0</span>)),
+            <span class="comment">// Ratio with 0 as a denominator -&gt; will fail to deserialize
+            </span>std::cmp::Reverse(Ratio::new_raw(u64::MAX, <span class="number">0</span>)),
             Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             u64::MAX,
         );
@@ -2783,7 +2816,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>lower_limit_ser_deser_message() {
-        <span class="kw">let </span>msg = AsyncMessage {
+        <span class="comment">// Serialize then Deserialize an AsyncMessage (with lowest values)
+
+        </span><span class="kw">let </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
             sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
@@ -2820,7 +2855,9 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>higher_limit_ser_deser_message() {
-        <span class="kw">let </span>msg = AsyncMessage {
+        <span class="comment">// Serialize then Deserialize an AsyncMessage (with max values in most of its fields)
+
+        </span><span class="kw">let </span>msg = AsyncMessage {
             emission_slot: Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             emission_index: u64::MAX,
             sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
@@ -2944,8 +2981,10 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>bad_serialization_version_message() {
-        <span class="kw">let </span>message = AsyncMessage::new(
+    </span><span class="kw">fn </span>bad_serialization_message() {
+        <span class="comment">// Serialize an AsyncMessage, write some crap in the result and try to deserialize it
+
+        </span><span class="kw">let </span>message = AsyncMessage::new(
             Slot::new(<span class="number">1</span>, <span class="number">2</span>),
             <span class="number">0</span>,
             Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
@@ -2976,7 +3015,8 @@
             MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
             <span class="bool-val">false</span>,
         );
-        serialized[<span class="number">1</span>] = <span class="number">50</span>;
+        <span class="comment">// Will break the deserialization
+        </span>serialized[<span class="number">1</span>] = <span class="number">50</span>;
         message_deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
             .unwrap_err();
