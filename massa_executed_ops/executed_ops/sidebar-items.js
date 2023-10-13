@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ExecutedOps"]};
+window.SIDEBAR_ITEMS = {"struct":["ExecutedOps","ExecutedOpsDeserializer","ExecutedOpsSerializer"]};
