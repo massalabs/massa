@@ -1085,40 +1085,20 @@ mod test {
         let db_2 = fstate.db.clone();
         let config_2 = fstate.config.clone();
         let ledger_2 = FinalLedger::new(fstate.config.ledger_config.clone(), db_2.clone());
-        let selector_controller = Box::new(MockSelectorController::new());
+        let mut selector_controller = Box::new(MockSelectorController::new());
+        // TODO: more checks
+        selector_controller
+            .expect_feed_cycle()
+            .returning(|_, _, _| Ok(()));
+        selector_controller
+            .expect_wait_for_draws()
+            .returning(|_| Ok(1));
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
         let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
             .expect("Cannot create an empty MIP store");
-
-        // TODO: Readd with mockall
-        // let handle = thread::spawn(move || {
-        //     // let i = 0;
-        //     loop {
-        //         match selector_receiver.recv() {
-        //             Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
-        //                 println!("Received FeedCycle msg, cycle: {}", cycle);
-        //             }
-        //             Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
-        //                 println!("Received WaitForDraws msg, cycle: {}", cycle);
-        //                 let to_send = Ok(1);
-        //                 response_tx
-        //                     .send(to_send)
-        //                     .expect("Cannot send response to WaitForDraws msg");
-        //                 break;
-        //             }
-        //             Ok(m) => {
-        //                 println!("Received unhandled msg: {:?}", m);
-        //             }
-        //             Err(e) => {
-        //                 println!("Received an error: {}", e);
-        //             }
-        //         }
-        //     }
-        //     // println!("Exiting thread...");
-        // });
 
         let last_start_period_2 = 2;
         let fstate2_ = FinalState::new_derived_from_snapshot(
@@ -1165,45 +1145,20 @@ mod test {
         let db_2 = fstate.db.clone();
         let config_2 = fstate.config.clone();
         let ledger_2 = FinalLedger::new(fstate.config.ledger_config.clone(), db_2.clone());
-        let selector_controller = Box::new(MockSelectorController::new());
+        let mut selector_controller = Box::new(MockSelectorController::new());
+        selector_controller
+            .expect_feed_cycle()
+            .times(4)
+            .returning(|_, _, _| Ok(()));
+        selector_controller
+            .expect_wait_for_draws()
+            .returning(|_| Ok(1));
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
         let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
             .expect("Cannot create an empty MIP store");
-
-        //TODO readd with mockall
-        // let handle = thread::spawn(move || {
-        //     const CYCLE_MSG_COUNT_EXPECTED: i32 = 3;
-        //     let mut i = 0;
-        //     loop {
-        //         match selector_receiver.recv() {
-        //             Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
-        //                 println!("Received FeedCycle msg, cycle: {}", cycle);
-        //                 if i == CYCLE_MSG_COUNT_EXPECTED {
-        //                     // println!("Exiting after {} FeedCycle msg", cycle_msg_count_expected);
-        //                     break;
-        //                 }
-        //                 i += 1;
-        //             }
-        //             Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
-        //                 println!("Received WaitForDraws msg, cycle: {}", cycle);
-        //                 let to_send = Ok(1);
-        //                 response_tx
-        //                     .send(to_send)
-        //                     .expect("Cannot send response to WaitForDraws msg");
-        //             }
-        //             Ok(m) => {
-        //                 println!("Received unhandled msg: {:?}", m);
-        //             }
-        //             Err(e) => {
-        //                 println!("Received an error: {}", e);
-        //             }
-        //         }
-        //     }
-        //     // println!("Exiting thread...");
-        // });
 
         let last_start_period_2 = 2 + (PERIODS_PER_CYCLE * 2);
         let fstate2_ = FinalState::new_derived_from_snapshot(

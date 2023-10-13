@@ -139,72 +139,31 @@ pub fn start_protocol_controller_with_mock_network(
     Ok((network_controller, controller, Box::new(manager)))
 }
 
-pub fn protocol_test<F>(protocol_config: &ProtocolConfig, test: F)
-where
-    F: FnOnce(
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-    ) -> (
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-    ),
+pub fn protocol_test<F>(
+    protocol_config: &ProtocolConfig,
+    defined_consensus_controller: Box<MockConsensusController>,
+    pool_controller: Box<MockPoolController>,
+    test: F,
+) where
+    F: FnOnce(Box<MockNetworkController>, Storage, Box<dyn ProtocolController>),
 {
-    let pool_controller = Box::new(MockPoolController::new());
-    let consensus_controller = Box::new(MockConsensusController::new());
-    let selector_controller = Box::new(MockSelectorController::new());
-    // start protocol controller
-    let (network_controller, protocol_controller, protocol_manager) =
-        start_protocol_controller_with_mock_network(
-            protocol_config.clone(),
-            selector_controller,
-            consensus_controller,
-            pool_controller,
-            Storage::create_root(),
-        )
-        .expect("could not start protocol controller");
-
-    let (_network_controller, _protocol_controller, mut protocol_manager) =
-        test(network_controller, protocol_controller, protocol_manager);
-
-    protocol_manager.stop()
-}
-
-pub fn protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
-where
-    F: FnOnce(
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-        Storage,
-    ) -> (
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-    ),
-{
-    let pool_controller = Box::new(MockPoolController::new());
-    let consensus_controller = Box::new(MockConsensusController::new());
-    let selector_controller = Box::new(MockSelectorController::new());
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     let storage = Storage::create_root();
     // start protocol controller
-    let (network_controller, protocol_controller, protocol_manager) =
+    let (network_controller, protocol_controller, mut protocol_manager) =
         start_protocol_controller_with_mock_network(
             protocol_config.clone(),
             selector_controller,
-            consensus_controller,
+            defined_consensus_controller,
             pool_controller,
             storage.clone_without_refs(),
         )
         .expect("could not start protocol controller");
 
-    let (_protocol_controller, _network_controller, mut protocol_manager) = test(
-        network_controller,
-        protocol_controller,
-        protocol_manager,
-        storage,
-    );
+    test(network_controller, storage, protocol_controller);
 
     protocol_manager.stop()
 }
