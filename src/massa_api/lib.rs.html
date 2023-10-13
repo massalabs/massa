@@ -388,6 +388,9 @@
 <a href="#388" id="388">388</a>
 <a href="#389" id="389">389</a>
 <a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -443,6 +446,9 @@
 <span class="kw">mod </span>api_trait;
 <span class="kw">mod </span>private;
 <span class="kw">mod </span>public;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
 <span class="doccomment">/// Public API component
 </span><span class="kw">pub struct </span>Public {
