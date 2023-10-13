@@ -4,4 +4,3 @@
 mod apiv2;
 mod mock;
 mod public;
-// mod server;

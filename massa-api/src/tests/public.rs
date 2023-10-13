@@ -26,6 +26,7 @@ use massa_consensus_exports::{
     test_exports::MockConsensusControllerImpl,
 };
 
+use crate::{tests::mock::start_public_api, RpcServer};
 use massa_execution_exports::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl, MockSelectorCtrl};
 use massa_models::{
@@ -50,9 +51,6 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serde_json::Value;
 use tempfile::NamedTempFile;
-// use serde_json::Value;
-
-use crate::{tests::mock::start_public_api, RpcServer};
 
 #[tokio::test]
 async fn get_status() {
