@@ -3662,7 +3662,7 @@
     <span class="comment">// This test checks that the initial deferred credits are loaded correctly
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_initial_deferred_credits_loading() {
-        <span class="kw">use </span><span class="kw">crate</span>::MockSelectorController;
+        <span class="kw">use </span><span class="kw">crate</span>::test_exports::MockSelectorController;
         <span class="kw">use </span><span class="kw">crate</span>::PoSFinalState;
         <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
         <span class="kw">use </span>massa_db_worker::MassaDB;
@@ -3717,13 +3717,13 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
         ));
-        <span class="kw">let </span>selector_controller = Box::new(MockSelectorController::new());
+        <span class="kw">let </span>(selector_controller, <span class="kw">_</span>) = MockSelectorController::new_with_receiver();
         <span class="kw">let </span>init_seed = Hash::compute_from(<span class="string">b&quot;&quot;</span>);
         <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
 
@@ -3801,7 +3801,7 @@
     // If this is not handled properly, the node hangs as explained here: https://github.com/massalabs/massa/issues/4101
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_pos_cache_recomputation() {
-        <span class="kw">use </span><span class="kw">crate</span>::MockSelectorController;
+        <span class="kw">use </span><span class="kw">crate</span>::test_exports::MockSelectorController;
         <span class="kw">use </span><span class="kw">crate</span>::PoSFinalState;
         <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
         <span class="kw">use </span>massa_db_worker::MassaDB;
@@ -3828,13 +3828,13 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
         ));
-        <span class="kw">let </span>selector_controller = Box::new(MockSelectorController::new());
+        <span class="kw">let </span>(selector_controller, <span class="kw">_</span>) = MockSelectorController::new_with_receiver();
         <span class="kw">let </span>init_seed = Hash::compute_from(<span class="string">b&quot;&quot;</span>);
         <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
 
@@ -3911,8 +3911,8 @@
     <span class="comment">// This test aims to check that the basic workflow of apply changes to the PoS state works.
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_pos_final_state_hash_computation() {
+        <span class="kw">use </span><span class="kw">crate</span>::test_exports::MockSelectorController;
         <span class="kw">use </span><span class="kw">crate</span>::DeferredCredits;
-        <span class="kw">use </span><span class="kw">crate</span>::MockSelectorController;
         <span class="kw">use </span><span class="kw">crate</span>::PoSFinalState;
         <span class="kw">use </span>bitvec::prelude::<span class="kw-2">*</span>;
         <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
@@ -3941,13 +3941,13 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
         ));
-        <span class="kw">let </span>selector_controller = Box::new(MockSelectorController::new());
+        <span class="kw">let </span>(selector_controller, <span class="kw">_</span>) = MockSelectorController::new_with_receiver();
         <span class="kw">let </span>init_seed = Hash::compute_from(<span class="string">b&quot;&quot;</span>);
         <span class="kw">let </span>initial_seeds = <span class="macro">vec!</span>[Hash::compute_from(init_seed.to_bytes()), init_seed];
 
