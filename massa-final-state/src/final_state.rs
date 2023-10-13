@@ -836,9 +836,7 @@ mod test {
     use std::path::PathBuf;
     use std::str::FromStr;
     use std::sync::Arc;
-    use std::thread;
 
-    use crossbeam_channel::Receiver;
     use num::rational::Ratio;
     use parking_lot::RwLock;
     use tempfile::tempdir;
@@ -863,7 +861,7 @@ mod test {
         PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
     };
     use massa_models::prehash::PreHashMap;
-    use massa_pos_exports::test_exports::{MockSelectorController, MockSelectorControllerMessage};
+    use massa_pos_exports::MockSelectorController;
     use massa_pos_exports::{PoSChanges, PoSConfig, PosError};
     use massa_time::MassaTime;
     use massa_versioning::versioning::MipStatsConfig;
@@ -934,7 +932,7 @@ mod test {
         return (final_state_config, ledger_config);
     }
 
-    fn get_final_state() -> (FinalState, Receiver<MockSelectorControllerMessage>) {
+    fn get_final_state() -> FinalState {
         let (final_state_config, ledger_config) = get_final_state_config();
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
@@ -957,7 +955,7 @@ mod test {
         let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
             .expect("Cannot create an empty MIP store");
 
-        let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
+        let selector_controller = Box::new(MockSelectorController::new());
         let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
         let fstate = FinalState::new(
@@ -970,7 +968,7 @@ mod test {
         )
         .expect("Cannot init final state");
 
-        return (fstate, selector_receiver);
+        return fstate;
     }
 
     fn get_state_changes() -> StateChanges {
@@ -1028,7 +1026,7 @@ mod test {
         // 1- Attempt to finalize it with KO data
         // 2- Attempt to finalize it with OK data
 
-        let (mut fstate, _selector_receiver) = get_final_state();
+        let mut fstate = get_final_state();
         let initial_slot = Slot::new(0, 0);
         assert_eq!(fstate.get_slot(), initial_slot);
 
@@ -1075,7 +1073,7 @@ mod test {
         // 1- Try to create another final state from snapshot
         //    Restart with slot in the same cycle
 
-        let (mut fstate, _selector_receiver) = get_final_state();
+        let mut fstate = get_final_state();
         let ok_next_slot = Slot::new(0, 1);
         let changes = get_state_changes();
         let mut batch = DBBatch::new();
@@ -1087,7 +1085,7 @@ mod test {
         let db_2 = fstate.db.clone();
         let config_2 = fstate.config.clone();
         let ledger_2 = FinalLedger::new(fstate.config.ledger_config.clone(), db_2.clone());
-        let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
+        let selector_controller = Box::new(MockSelectorController::new());
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
@@ -1095,42 +1093,42 @@ mod test {
         let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
             .expect("Cannot create an empty MIP store");
 
-        let handle = thread::spawn(move || {
-            // let i = 0;
-            loop {
-                match selector_receiver.recv() {
-                    Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
-                        println!("Received FeedCycle msg, cycle: {}", cycle);
-                    }
-                    Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
-                        println!("Received WaitForDraws msg, cycle: {}", cycle);
-                        let to_send = Ok(1);
-                        response_tx
-                            .send(to_send)
-                            .expect("Cannot send response to WaitForDraws msg");
-                        break;
-                    }
-                    Ok(m) => {
-                        println!("Received unhandled msg: {:?}", m);
-                    }
-                    Err(e) => {
-                        println!("Received an error: {}", e);
-                    }
-                }
-            }
-            // println!("Exiting thread...");
-        });
+        // TODO: Readd with mockall
+        // let handle = thread::spawn(move || {
+        //     // let i = 0;
+        //     loop {
+        //         match selector_receiver.recv() {
+        //             Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
+        //                 println!("Received FeedCycle msg, cycle: {}", cycle);
+        //             }
+        //             Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
+        //                 println!("Received WaitForDraws msg, cycle: {}", cycle);
+        //                 let to_send = Ok(1);
+        //                 response_tx
+        //                     .send(to_send)
+        //                     .expect("Cannot send response to WaitForDraws msg");
+        //                 break;
+        //             }
+        //             Ok(m) => {
+        //                 println!("Received unhandled msg: {:?}", m);
+        //             }
+        //             Err(e) => {
+        //                 println!("Received an error: {}", e);
+        //             }
+        //         }
+        //     }
+        //     // println!("Exiting thread...");
+        // });
 
         let last_start_period_2 = 2;
         let fstate2_ = FinalState::new_derived_from_snapshot(
             db_2,
             config_2,
             Box::new(ledger_2),
-            selector_controller.clone(),
+            selector_controller,
             mip_store.clone(),
             last_start_period_2,
         );
-        let _ = handle.join().unwrap();
 
         assert!(fstate2_.is_ok());
         let mut fstate2 = fstate2_.unwrap();
@@ -1155,7 +1153,7 @@ mod test {
         // 1- Try to create another final state from snapshot
         //    Restart with slot with + 2 cycles
 
-        let (mut fstate, _selector_receiver) = get_final_state();
+        let mut fstate = get_final_state();
         let ok_next_slot = Slot::new(0, 1);
         let changes = get_state_changes();
         let mut batch = DBBatch::new();
@@ -1167,7 +1165,7 @@ mod test {
         let db_2 = fstate.db.clone();
         let config_2 = fstate.config.clone();
         let ledger_2 = FinalLedger::new(fstate.config.ledger_config.clone(), db_2.clone());
-        let (selector_controller, selector_receiver) = MockSelectorController::new_with_receiver();
+        let selector_controller = Box::new(MockSelectorController::new());
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
@@ -1175,47 +1173,47 @@ mod test {
         let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
             .expect("Cannot create an empty MIP store");
 
-        let handle = thread::spawn(move || {
-            const CYCLE_MSG_COUNT_EXPECTED: i32 = 3;
-            let mut i = 0;
-            loop {
-                match selector_receiver.recv() {
-                    Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
-                        println!("Received FeedCycle msg, cycle: {}", cycle);
-                        if i == CYCLE_MSG_COUNT_EXPECTED {
-                            // println!("Exiting after {} FeedCycle msg", cycle_msg_count_expected);
-                            break;
-                        }
-                        i += 1;
-                    }
-                    Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
-                        println!("Received WaitForDraws msg, cycle: {}", cycle);
-                        let to_send = Ok(1);
-                        response_tx
-                            .send(to_send)
-                            .expect("Cannot send response to WaitForDraws msg");
-                    }
-                    Ok(m) => {
-                        println!("Received unhandled msg: {:?}", m);
-                    }
-                    Err(e) => {
-                        println!("Received an error: {}", e);
-                    }
-                }
-            }
-            // println!("Exiting thread...");
-        });
+        //TODO readd with mockall
+        // let handle = thread::spawn(move || {
+        //     const CYCLE_MSG_COUNT_EXPECTED: i32 = 3;
+        //     let mut i = 0;
+        //     loop {
+        //         match selector_receiver.recv() {
+        //             Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
+        //                 println!("Received FeedCycle msg, cycle: {}", cycle);
+        //                 if i == CYCLE_MSG_COUNT_EXPECTED {
+        //                     // println!("Exiting after {} FeedCycle msg", cycle_msg_count_expected);
+        //                     break;
+        //                 }
+        //                 i += 1;
+        //             }
+        //             Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
+        //                 println!("Received WaitForDraws msg, cycle: {}", cycle);
+        //                 let to_send = Ok(1);
+        //                 response_tx
+        //                     .send(to_send)
+        //                     .expect("Cannot send response to WaitForDraws msg");
+        //             }
+        //             Ok(m) => {
+        //                 println!("Received unhandled msg: {:?}", m);
+        //             }
+        //             Err(e) => {
+        //                 println!("Received an error: {}", e);
+        //             }
+        //         }
+        //     }
+        //     // println!("Exiting thread...");
+        // });
 
         let last_start_period_2 = 2 + (PERIODS_PER_CYCLE * 2);
         let fstate2_ = FinalState::new_derived_from_snapshot(
             db_2,
             config_2,
             Box::new(ledger_2),
-            selector_controller.clone(),
+            selector_controller,
             mip_store.clone(),
             last_start_period_2,
         );
-        let _ = handle.join().unwrap();
 
         assert!(fstate2_.is_ok());
         let mut fstate2 = fstate2_.unwrap();
@@ -1243,7 +1241,7 @@ mod test {
         // 4- Reset final state
         // 5- Check valid, fingerprint
 
-        let (mut fstate, _) = get_final_state();
+        let mut fstate = get_final_state();
 
         let db_valid = fstate._is_db_valid();
         assert!(db_valid.is_err());

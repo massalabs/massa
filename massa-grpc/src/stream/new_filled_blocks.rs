@@ -49,7 +49,7 @@ pub(crate) async fn new_filled_blocks(
     // Get the inner stream from the request
     let mut in_stream = request.into_inner();
     // Subscribe to the new filled blocks channel
-    let mut subscriber = grpc.consensus_channels.filled_block_sender.subscribe();
+    let mut subscriber = grpc.consensus_broadcasts.filled_block_sender.subscribe();
     // Clone grpc to be able to use it in the spawned task
     let grpc_config = grpc.grpc_config.clone();
 

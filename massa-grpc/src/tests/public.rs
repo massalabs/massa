@@ -1,16 +1,16 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use super::mock::MockExecutionCtrl;
-use crate::tests::mock::{grpc_public_service, MockPoolCtrl, MockSelectorCtrl};
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
-use massa_execution_exports::EventStore;
+use crate::tests::mock::grpc_public_service;
+use massa_consensus_exports::MockConsensusController;
+use massa_execution_exports::{EventStore, MockExecutionController};
 use massa_models::address::Address;
 use massa_models::block::BlockGraphStatus;
 use massa_models::block_id::BlockId;
 use massa_models::config::VERSION;
 use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
-use massa_pos_exports::Selection;
+use massa_pool_exports::MockPoolController;
+use massa_pos_exports::{MockSelectorController, Selection};
 use massa_proto_rs::massa::api::v1::get_datastore_entry_filter::Filter;
 use massa_proto_rs::massa::api::v1::public_service_client::PublicServiceClient;
 use massa_proto_rs::massa::api::v1::{
@@ -42,7 +42,7 @@ async fn get_status() {
     let addr: SocketAddr = "[::]:4001".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl
         .expect_query_state()
         .returning(|_| massa_execution_exports::ExecutionQueryResponse {
@@ -52,7 +52,7 @@ async fn get_status() {
             final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
         });
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
 
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
@@ -75,7 +75,7 @@ async fn get_transactions_throughput() {
     let addr: SocketAddr = "[::]:4002".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl.expect_get_stats().returning(|| ExecutionStats {
         time_window_start: MassaTime::now().unwrap(),
         time_window_end: MassaTime::now().unwrap(),
@@ -85,7 +85,7 @@ async fn get_transactions_throughput() {
         final_cursor: Slot::new(0, 0),
     });
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
 
     let config = public_server.grpc_config.clone();
     let stop_handle = public_server.serve(&config).await.unwrap();
@@ -160,12 +160,12 @@ async fn get_operations() {
 async fn get_blocks() {
     let addr: SocketAddr = "[::]:4004".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = Box::new(MockConsensusController::new());
     consensus_ctrl
         .expect_get_block_statuses()
         .returning(|_| vec![BlockGraphStatus::Final]);
 
-    public_server.consensus_controller = Box::new(consensus_ctrl);
+    public_server.consensus_controller = consensus_ctrl;
 
     let config = public_server.grpc_config.clone();
 
@@ -202,7 +202,7 @@ async fn get_stakers() {
     let addr: SocketAddr = "[::]:4005".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
         let mut map = std::collections::BTreeMap::new();
         map.insert(
@@ -225,7 +225,7 @@ async fn get_stakers() {
         map
     });
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
     let config = public_server.grpc_config.clone();
 
     // start the server
@@ -290,12 +290,12 @@ async fn get_datastore_entries() {
     let addr: SocketAddr = "[::]:4006".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl
         .expect_get_final_and_active_data_entry()
         .returning(|_| vec![(Some("toto".as_bytes().to_vec()), None)]);
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
     let config = public_server.grpc_config.clone();
 
     // start the server
@@ -338,7 +338,7 @@ async fn execute_read_only_call() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl
         .expect_execute_readonly_request()
         .returning(|_req| {
@@ -357,7 +357,7 @@ async fn execute_read_only_call() {
             })
         });
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     // start grpc client and connect to the server
@@ -471,21 +471,21 @@ async fn get_endorsements() {
 
     public_server.storage.store_block(b);
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = Box::new(MockConsensusController::new());
     consensus_ctrl.expect_get_block_statuses().returning(|ids| {
         ids.iter()
             .map(|_| BlockGraphStatus::Final)
             .collect::<Vec<BlockGraphStatus>>()
     });
 
-    public_server.consensus_controller = Box::new(consensus_ctrl);
+    public_server.consensus_controller = consensus_ctrl;
 
-    let mut pool_ctrl = crate::tests::mock::MockPoolCtrl::new();
+    let mut pool_ctrl = Box::new(MockPoolController::new());
     pool_ctrl
         .expect_contains_endorsements()
         .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
 
-    public_server.pool_controller = Box::new(pool_ctrl);
+    public_server.pool_controller = pool_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
@@ -539,7 +539,7 @@ async fn get_next_block_best_parents() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = Box::new(MockConsensusController::new());
     consensus_ctrl.expect_get_best_parents().returning(|| {
         vec![
             (
@@ -553,7 +553,7 @@ async fn get_next_block_best_parents() {
         ]
     });
 
-    public_server.consensus_controller = Box::new(consensus_ctrl);
+    public_server.consensus_controller = consensus_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
@@ -585,7 +585,7 @@ async fn get_sc_execution_events() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl
         .expect_get_filtered_sc_output_event()
         .returning(|_| {
@@ -612,7 +612,7 @@ async fn get_sc_execution_events() {
             }]
         });
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
@@ -663,7 +663,7 @@ async fn get_selector_draws() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
-    let mut selector_ctrl = MockSelectorCtrl::new();
+    let mut selector_ctrl = Box::new(MockSelectorController::new());
 
     selector_ctrl
         .expect_get_available_selections_in_range()
@@ -719,7 +719,7 @@ async fn get_selector_draws() {
             Ok(res)
         });
 
-    public_server.selector_controller = Box::new(selector_ctrl);
+    public_server.selector_controller = selector_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
@@ -886,7 +886,7 @@ async fn query_state() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl
         .expect_query_state()
         .returning(|_| massa_execution_exports::ExecutionQueryResponse {
@@ -896,7 +896,7 @@ async fn query_state() {
             final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
         });
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
@@ -960,14 +960,14 @@ async fn search_blocks() {
     public_server.storage.store_block(block);
     public_server.storage.store_block(block_op.clone());
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = Box::new(MockConsensusController::new());
     consensus_ctrl.expect_get_block_statuses().returning(|ids| {
         ids.iter()
             .map(|_| BlockGraphStatus::Final)
             .collect::<Vec<BlockGraphStatus>>()
     });
 
-    public_server.consensus_controller = Box::new(consensus_ctrl);
+    public_server.consensus_controller = consensus_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
@@ -1222,20 +1222,20 @@ async fn search_endorsements() {
 
     public_server.storage.store_block(b);
 
-    let mut pool_ctrl = MockPoolCtrl::new();
+    let mut pool_ctrl = Box::new(MockPoolController::new());
     pool_ctrl
         .expect_contains_endorsements()
         .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = Box::new(MockConsensusController::new());
     consensus_ctrl.expect_get_block_statuses().returning(|ids| {
         ids.iter()
             .map(|_| BlockGraphStatus::Final)
             .collect::<Vec<BlockGraphStatus>>()
     });
 
-    public_server.pool_controller = Box::new(pool_ctrl);
-    public_server.consensus_controller = Box::new(consensus_ctrl);
+    public_server.pool_controller = pool_ctrl;
+    public_server.consensus_controller = consensus_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(

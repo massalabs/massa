@@ -1,12 +1,13 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl};
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
-use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
+use crate::tests::mock::grpc_public_service;
+use massa_consensus_exports::MockConsensusController;
+use massa_execution_exports::{ExecutionOutput, MockExecutionController, SlotExecutionOutput};
 use massa_models::{
     address::Address, block::FilledBlock, secure_share::SecureShareSerializer, slot::Slot,
     stats::ExecutionStats,
 };
+use massa_pool_exports::MockPoolController;
 use massa_proto_rs::massa::{
     api::v1::{
         public_service_client::PublicServiceClient, NewBlocksRequest, NewFilledBlocksRequest,
@@ -34,10 +35,10 @@ async fn transactions_throughput_stream() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = Box::new(MockExecutionController::new());
 
-    exec_ctrl.expect_clone().returning(|| {
-        let mut exec_ctrl = MockExecutionCtrl::new();
+    exec_ctrl.expect_clone_box().returning(|| {
+        let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now().unwrap();
             let futur = MassaTime::from_millis(
@@ -64,7 +65,7 @@ async fn transactions_throughput_stream() {
     });
 
     exec_ctrl.expect_clone_box().returning(|| {
-        let mut exec_ctrl = MockExecutionCtrl::new();
+        let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now().unwrap();
             let futur = MassaTime::from_millis(
@@ -87,10 +88,10 @@ async fn transactions_throughput_stream() {
                 },
             }
         });
-        Box::new(exec_ctrl)
+        exec_ctrl
     });
 
-    public_server.execution_controller = Box::new(exec_ctrl);
+    public_server.execution_controller = exec_ctrl;
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
@@ -160,7 +161,7 @@ async fn new_operations() {
     let (op_tx, _op_rx) = tokio::sync::broadcast::channel(10);
     let keypair = massa_signature::KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
-    public_server.pool_channels.operation_sender = op_tx.clone();
+    public_server.pool_broadcasts.operation_sender = op_tx.clone();
 
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
@@ -384,7 +385,7 @@ async fn new_blocks() {
     let config = public_server.grpc_config.clone();
     let (block_tx, _block_rx) = tokio::sync::broadcast::channel(10);
 
-    public_server.consensus_channels.block_sender = block_tx.clone();
+    public_server.consensus_broadcasts.block_sender = block_tx.clone();
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
@@ -653,7 +654,7 @@ async fn new_endorsements() {
 
     let (endorsement_tx, _endorsement_rx) = tokio::sync::broadcast::channel(10);
 
-    public_server.pool_channels.endorsement_sender = endorsement_tx.clone();
+    public_server.pool_broadcasts.endorsement_sender = endorsement_tx.clone();
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
@@ -852,7 +853,7 @@ async fn new_filled_blocks() {
 
     let (filled_block_tx, _filled_block_rx) = tokio::sync::broadcast::channel(10);
 
-    public_server.consensus_channels.filled_block_sender = filled_block_tx.clone();
+    public_server.consensus_broadcasts.filled_block_sender = filled_block_tx.clone();
 
     let stop_handle = public_server.serve(&config).await.unwrap();
 
@@ -1227,26 +1228,26 @@ async fn send_operations() {
     let addr: SocketAddr = "[::]:4023".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
 
-    let mut pool_ctrl = MockPoolCtrl::new();
+    let mut pool_ctrl = Box::new(MockPoolController::new());
     pool_ctrl.expect_clone_box().returning(|| {
-        let mut ctrl = MockPoolCtrl::new();
+        let mut pool_ctrl = Box::new(MockPoolController::new());
 
-        ctrl.expect_add_operations().returning(|_| ());
+        pool_ctrl.expect_add_operations().returning(|_| ());
 
-        Box::new(ctrl)
+        pool_ctrl
     });
 
-    let mut protocol_ctrl = MockProtocolController::new();
+    let mut protocol_ctrl = Box::new(MockProtocolController::new());
     protocol_ctrl.expect_clone_box().returning(|| {
-        let mut ctrl = MockProtocolController::new();
+        let mut ctrl = Box::new(MockProtocolController::new());
 
         ctrl.expect_propagate_operations().returning(|_| Ok(()));
 
-        Box::new(ctrl)
+        ctrl
     });
 
-    public_server.pool_controller = Box::new(pool_ctrl);
-    public_server.protocol_controller = Box::new(protocol_ctrl);
+    public_server.pool_controller = pool_ctrl;
+    public_server.protocol_controller = protocol_ctrl;
 
     let config = public_server.grpc_config.clone();
 
@@ -1380,26 +1381,26 @@ async fn send_endorsements() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
 
-    let mut protocol_ctrl = MockProtocolController::new();
+    let mut protocol_ctrl = Box::new(MockProtocolController::new());
     protocol_ctrl.expect_clone_box().returning(|| {
-        let mut ctrl = MockProtocolController::new();
+        let mut ctrl = Box::new(MockProtocolController::new());
 
         ctrl.expect_propagate_endorsements().returning(|_| Ok(()));
 
-        Box::new(ctrl)
+        ctrl
     });
 
-    let mut pool_ctrl = MockPoolCtrl::new();
+    let mut pool_ctrl = Box::new(MockPoolController::new());
     pool_ctrl.expect_clone_box().returning(|| {
-        let mut ctrl = MockPoolCtrl::new();
+        let mut ctrl = Box::new(MockPoolController::new());
 
         ctrl.expect_add_endorsements().returning(|_| ());
 
-        Box::new(ctrl)
+        ctrl
     });
 
-    public_server.pool_controller = Box::new(pool_ctrl);
-    public_server.protocol_controller = Box::new(protocol_ctrl);
+    public_server.pool_controller = pool_ctrl;
+    public_server.protocol_controller = protocol_ctrl;
 
     let (tx, rx) = tokio::sync::mpsc::channel(10);
     let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
@@ -1469,22 +1470,18 @@ async fn send_blocks() {
     let mut public_server = grpc_public_service(&addr);
     let config = public_server.grpc_config.clone();
     // let keypair = KeyPair::generate(0).unwrap();
-    let mut protocol_ctrl = MockProtocolController::new();
-    protocol_ctrl.expect_clone_box().returning(|| {
-        let ctrl = MockProtocolController::new();
+    let mut protocol_ctrl = Box::new(MockProtocolController::new());
+    protocol_ctrl
+        .expect_clone_box()
+        .returning(|| Box::new(MockProtocolController::new()));
 
-        Box::new(ctrl)
-    });
+    let mut consensus_ctrl = Box::new(MockConsensusController::new());
+    consensus_ctrl
+        .expect_clone_box()
+        .returning(|| Box::new(MockConsensusController::new()));
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
-    consensus_ctrl.expect_clone_box().returning(|| {
-        let ctrl = MockConsensusControllerImpl::new();
-
-        Box::new(ctrl)
-    });
-
-    public_server.protocol_controller = Box::new(protocol_ctrl);
-    public_server.consensus_controller = Box::new(consensus_ctrl);
+    public_server.protocol_controller = protocol_ctrl;
+    public_server.consensus_controller = consensus_ctrl;
 
     let (_tx, rx) = tokio::sync::mpsc::channel(10);
     let request_stream = tokio_stream::wrappers::ReceiverStream::new(rx);

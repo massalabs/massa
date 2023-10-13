@@ -48,7 +48,5 @@ massa_sdk = { workspace = true }
 [dev-dependencies]
 num = { workspace = true }
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
-massa_channel = { workspace = true }
-mockall = { workspace = true }
 massa_final_state = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }

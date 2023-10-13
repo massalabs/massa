@@ -2831,7 +2831,6 @@ dependencies = [
  "massa-sc-runtime",
  "massa_final_state",
  "massa_hash",
- "massa_ledger_exports",
  "massa_models",
  "massa_module_cache",
  "massa_pos_exports",
@@ -2840,7 +2839,6 @@ dependencies = [
  "massa_versioning",
  "mockall",
  "num",
- "parking_lot",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2937,7 +2935,6 @@ version = "0.26.1"
 dependencies = [
  "anyhow",
  "bs58",
- "crossbeam-channel",
  "displaydoc",
  "massa-proto-rs",
  "massa_async_pool",
@@ -2973,7 +2970,6 @@ dependencies = [
  "itertools 0.11.0",
  "massa-proto-rs",
  "massa_bootstrap",
- "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_final_state",
@@ -2989,7 +2985,6 @@ dependencies = [
  "massa_time",
  "massa_versioning",
  "massa_wallet",
- "mockall",
  "num",
  "parking_lot",
  "serde",
@@ -3124,12 +3119,12 @@ dependencies = [
 name = "massa_pool_exports"
 version = "0.26.1"
 dependencies = [
- "crossbeam-channel",
  "massa_execution_exports",
  "massa_models",
  "massa_pos_exports",
  "massa_storage",
  "massa_time",
+ "mockall",
  "serde",
  "tokio",
 ]

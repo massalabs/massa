@@ -16,7 +16,7 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_pool_exports::{PoolChannels, PoolConfig, PoolController, PoolManager};
+use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolController, PoolManager};
 use massa_pos_exports::MockSelectorController as AutoMockSelectorController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -117,8 +117,10 @@ impl PoolTestBoilerPlate {
             &storage,
             PoolChannels {
                 execution_controller: execution_story,
-                endorsement_sender,
-                operation_sender,
+                broadcasts: PoolBroadcasts {
+                    endorsement_sender,
+                    operation_sender,
+                },
                 selector: selector_story,
             },
             wallet,
@@ -157,8 +159,10 @@ pub fn pool_test<F>(
         &storage,
         PoolChannels {
             execution_controller,
-            endorsement_sender,
-            operation_sender,
+            broadcasts: PoolBroadcasts {
+                endorsement_sender,
+                operation_sender,
+            },
             selector,
         },
         wallet,

@@ -23,6 +23,13 @@ pub struct ConsensusChannels {
     pub protocol_controller: Box<dyn ProtocolController>,
     /// Channel used by the consensus to send events to the node globally
     pub controller_event_tx: MassaSender<ConsensusEvent>,
+    /// Structure used by consensus to broadcast all the information about the blocks
+    pub broadcasts: ConsensusBroadcasts,
+}
+
+/// Structure used to broadcast all the information about the blocks
+#[derive(Clone)]
+pub struct ConsensusBroadcasts {
     /// Channel used for Websocket broadcast (if enabled) of new blocks being integrated in the graph
     pub block_sender: tokio::sync::broadcast::Sender<SecureShareBlock>,
     /// Channel used for Websocket broadcast (if enabled) of new block headers being integrated in the graph
