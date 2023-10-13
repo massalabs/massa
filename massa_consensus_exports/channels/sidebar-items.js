@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ConsensusBroadcasts","ConsensusChannels"]};
+window.SIDEBAR_ITEMS = {"struct":["ConsensusChannels"]};
