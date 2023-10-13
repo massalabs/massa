@@ -2254,13 +2254,13 @@
 
         <span class="kw">use </span>serde::Deserialize;
         <span class="attr">#[derive(Deserialize)]
-        </span><span class="kw">struct </span>AddressInitialDefferredCredits {
+        </span><span class="kw">struct </span>AddressInitialDeferredCredits {
             slot: Slot,
             amount: Amount,
         }
 
         <span class="kw">let </span>initial_deferred_credits =
-            serde_json::from_str::&lt;PreHashMap&lt;Address, Vec&lt;AddressInitialDefferredCredits&gt;&gt;&gt;(
+            serde_json::from_str::&lt;PreHashMap&lt;Address, Vec&lt;AddressInitialDeferredCredits&gt;&gt;&gt;(
                 <span class="kw-2">&amp;</span>std::fs::read_to_string(initial_deferred_credits_path).map_err(|err| {
                     PosError::DeferredCreditsFileLoadingError(<span class="macro">format!</span>(
                         <span class="string">&quot;error while deserializing initial deferred credits file {}: {}&quot;</span>,
@@ -2278,7 +2278,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">for </span>(address, deferred_credits) <span class="kw">in </span>initial_deferred_credits {
-            <span class="kw">for </span>AddressInitialDefferredCredits { slot, amount } <span class="kw">in </span>deferred_credits {
+            <span class="kw">for </span>AddressInitialDeferredCredits { slot, amount } <span class="kw">in </span>deferred_credits {
                 <span class="self">self</span>.put_deferred_credits_entry(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>amount, batch);
             }
         }
