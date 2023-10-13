@@ -15,9 +15,12 @@ use massa_models::{
     block_header::BlockHeader,
     block_id::BlockId,
     config::VERSION,
+    operation::SecureShareOperation,
     secure_share::SecureShare,
 };
-use massa_protocol_exports::test_exports::tools::create_block;
+use massa_protocol_exports::test_exports::tools::{
+    create_block, create_operation_with_expire_period,
+};
 use massa_signature::KeyPair;
 use serde_json::Value;
 
@@ -280,6 +283,53 @@ async fn subscribe_new_filled_blocks() {
         value["header"]["id"].as_str().unwrap(),
         &block.id.to_string()
     );
+
+    api_handle.stop().await;
+}
+
+#[tokio::test]
+async fn subscribe_new_operations() {
+    let addr: SocketAddr = "[::]:5036".parse().unwrap();
+    let (mut api_server, api_config) = get_apiv2_server(&addr);
+
+    let uri = Url::parse(&format!(
+        "ws://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    ))
+    .unwrap();
+    let (tx, _rx) = tokio::sync::broadcast::channel::<SecureShareOperation>(10);
+
+    let operation = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 500000);
+
+    api_server.0.pool_channels.operation_sender = tx.clone();
+
+    let api_handle = api_server
+        .serve(&addr, &api_config)
+        .await
+        .expect("failed to start MASSA API V2");
+
+    let client1 = WsClientBuilder::default().build(&uri).await.unwrap();
+    let mut sub1: Subscription<Value> = client1
+        .subscribe(
+            "subscribe_new_operations",
+            rpc_params![],
+            "unsubscribe_hello",
+        )
+        .await
+        .unwrap();
+
+    let to_send = operation.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        let _ = tx.send(to_send).unwrap();
+    });
+
+    let result = tokio::time::timeout(Duration::from_secs(4), sub1.next())
+        .await
+        .unwrap();
+
+    let obj = result.unwrap().unwrap();
+    assert_eq!(obj["id"].as_str().unwrap(), &operation.id.to_string());
 
     api_handle.stop().await;
 }
