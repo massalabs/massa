@@ -1609,11 +1609,6 @@
 <a href="#1609" id="1609">1609</a>
 <a href="#1610" id="1610">1610</a>
 <a href="#1611" id="1611">1611</a>
-<a href="#1612" id="1612">1612</a>
-<a href="#1613" id="1613">1613</a>
-<a href="#1614" id="1614">1614</a>
-<a href="#1615" id="1615">1615</a>
-<a href="#1616" id="1616">1616</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1622,7 +1617,7 @@
 };
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
-    config::{MAX_BACKUPS_TO_KEEP, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE},
+    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -1776,7 +1771,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_state_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -1794,8 +1788,7 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE <span class="kw">as </span>usize {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -1888,7 +1881,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_versioning_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -1906,8 +1898,7 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_versioning_elements_size {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -2166,7 +2157,6 @@
 
     <span class="kw">pub fn </span>default_db_opts() -&gt; Options {
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
-        db_opts.set_max_open_files(<span class="number">820</span>);
         db_opts.create_if_missing(<span class="bool-val">true</span>);
         db_opts.create_missing_column_families(<span class="bool-val">true</span>);
         db_opts

@@ -448,66 +448,6 @@
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
 <a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -524,14 +464,7 @@
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 <span class="kw">use </span>massa_serialization::{
-    BoolDeserializer, BoolSerializer, DeserializeError, Deserializer, SerializeError, Serializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
-};
-<span class="kw">use </span>nom::{
-    error::{context, ContextError, ParseError},
-    multi::length_count,
-    sequence::tuple,
-    IResult, Parser,
+    BoolDeserializer, BoolSerializer, DeserializeError, Deserializer, Serializer,
 };
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -785,237 +718,184 @@
         <span class="bool-val">true
     </span>}
 }
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+    <span class="kw">use </span>std::sync::Arc;
 
-<span class="attr">#[test]
-</span><span class="kw">fn </span>test_executed_ops_hash_computing() {
+    <span class="kw">use </span>parking_lot::RwLock;
+    <span class="kw">use </span>tempfile::{tempdir, TempDir};
+
     <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     <span class="kw">use </span>massa_db_worker::MassaDB;
-    <span class="kw">use </span>massa_hash::Hash;
-    <span class="kw">use </span>massa_hash::HashXof;
+    <span class="kw">use </span>massa_hash::{Hash, HashXof};
+    <span class="kw">use </span>massa_models::config::{KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, THREAD_COUNT};
     <span class="kw">use </span>massa_models::prehash::PreHashMap;
     <span class="kw">use </span>massa_models::secure_share::Id;
-    <span class="kw">use </span>parking_lot::RwLock;
-    <span class="kw">use </span>std::sync::Arc;
-    <span class="kw">use </span>tempfile::TempDir;
 
-    <span class="comment">// initialize the executed ops config
-    </span><span class="kw">let </span>thread_count = <span class="number">2</span>;
-    <span class="kw">let </span>config = ExecutedOpsConfig {
-        thread_count,
-        keep_executed_history_extra_periods: <span class="number">2</span>,
-    };
-    <span class="kw">let </span>tempdir_a = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
-    <span class="kw">let </span>tempdir_c = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
-    <span class="kw">let </span>db_a_config = MassaDBConfig {
-        path: tempdir_a.path().to_path_buf(),
-        max_history_length: <span class="number">10</span>,
-        max_versioning_elements_size: <span class="number">100_000</span>,
-        thread_count,
-    };
-    <span class="kw">let </span>db_c_config = MassaDBConfig {
-        path: tempdir_c.path().to_path_buf(),
-        max_history_length: <span class="number">10</span>,
-        max_versioning_elements_size: <span class="number">100_000</span>,
-        thread_count,
-    };
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">let </span>db_a = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_a_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
-    ));
-    <span class="kw">let </span>db_c = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_c_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
-    ));
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_executed_ops_cache() {
+        <span class="comment">// initialize the executed ops config
+        // let thread_count = 2;
+        </span><span class="kw">let </span>config = ExecutedOpsConfig {
+            thread_count: THREAD_COUNT,
+            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+        };
 
-    <span class="comment">// initialize the executed ops and executed ops changes
-    </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone(), db_a.clone());
-    <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config.clone(), db_c.clone());
-    <span class="kw">let </span><span class="kw-2">mut </span>change_a = PreHashMap::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>change_b = PreHashMap::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>change_c = PreHashMap::default();
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0u8</span>..<span class="number">20 </span>{
-        <span class="kw">let </span>expiration_slot = Slot {
-            period: (i <span class="kw">as </span>u64).saturating_sub(config.keep_executed_history_extra_periods),
+        <span class="comment">// Db init
+        </span><span class="kw">let </span>temp_dir = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
+        <span class="kw">let </span>db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
+            thread_count: THREAD_COUNT,
+        };
+        <span class="kw">let </span>db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config.clone())) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
+
+        <span class="kw">let </span><span class="kw-2">mut </span>exec_ops = ExecutedOps::new(config.clone(), db.clone());
+
+        <span class="kw">let </span><span class="kw-2">mut </span>changes = PreHashMap::default();
+
+        <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
+        <span class="kw">let </span>op_id_1 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">0</span>]));
+        changes.insert(op_id_1.clone(), (<span class="bool-val">true</span>, slot_1));
+        <span class="kw">let </span>slot_2 = Slot::new(KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + <span class="number">2</span>, <span class="number">3</span>);
+        <span class="kw">let </span>op_id_2 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>]));
+        changes.insert(op_id_2, (<span class="bool-val">true</span>, slot_2));
+
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
+        exec_ops.apply_changes_to_batch(changes, slot_2, <span class="kw-2">&amp;mut </span>batch);
+        db.write().write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
+
+        <span class="comment">// cache len expected is 1, expect op_id_1 to be discarded (as it is tool old)
+        </span><span class="macro">assert_eq!</span>(exec_ops.sorted_ops.len(), <span class="number">1</span>);
+        <span class="macro">assert!</span>(!exec_ops.contains(<span class="kw-2">&amp;</span>op_id_1));
+        <span class="macro">assert!</span>(exec_ops.contains(<span class="kw-2">&amp;</span>op_id_2));
+
+        <span class="kw">let </span>sorted_ops_1 = exec_ops.sorted_ops.clone();
+        drop(db);
+        drop(exec_ops);
+
+        <span class="kw">let </span>db2 = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config.clone())) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
+
+        <span class="comment">// After an init from disk, cache is empty, so recompute it and compare with original
+        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_ops2 = ExecutedOps::new(config.clone(), db2.clone());
+        exec_ops2.recompute_sorted_ops_and_op_exec_status();
+        <span class="macro">assert_eq!</span>(exec_ops2.sorted_ops, sorted_ops_1);
+
+        <span class="comment">// Reset cache
+        </span>exec_ops2.reset();
+        <span class="macro">assert_eq!</span>(exec_ops2.sorted_ops.len(), <span class="number">0</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_executed_ops_hash_computing() {
+        <span class="comment">// initialize the executed ops config
+        </span><span class="kw">let </span>thread_count = <span class="number">2</span>;
+        <span class="kw">let </span>config = ExecutedOpsConfig {
+            thread_count,
+            keep_executed_history_extra_periods: <span class="number">2</span>,
+        };
+        <span class="kw">let </span>tempdir_a = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
+        <span class="kw">let </span>tempdir_c = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
+        <span class="kw">let </span>db_a_config = MassaDBConfig {
+            path: tempdir_a.path().to_path_buf(),
+            max_history_length: <span class="number">10</span>,
+            max_new_elements: <span class="number">100</span>,
+            thread_count,
+        };
+        <span class="kw">let </span>db_c_config = MassaDBConfig {
+            path: tempdir_c.path().to_path_buf(),
+            max_history_length: <span class="number">10</span>,
+            max_new_elements: <span class="number">100</span>,
+            thread_count,
+        };
+
+        <span class="kw">let </span>db_a = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_a_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
+        <span class="kw">let </span>db_c = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_c_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        ));
+
+        <span class="comment">// initialize the executed ops and executed ops changes
+        </span><span class="kw">let </span><span class="kw-2">mut </span>a = ExecutedOps::new(config.clone(), db_a.clone());
+        <span class="kw">let </span><span class="kw-2">mut </span>c = ExecutedOps::new(config.clone(), db_c.clone());
+        <span class="kw">let </span><span class="kw-2">mut </span>change_a = PreHashMap::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>change_b = PreHashMap::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>change_c = PreHashMap::default();
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0u8</span>..<span class="number">20 </span>{
+            <span class="kw">let </span>expiration_slot = Slot {
+                period: (i <span class="kw">as </span>u64).saturating_sub(config.keep_executed_history_extra_periods),
+                thread: <span class="number">0</span>,
+            };
+            <span class="kw">if </span>i &lt; <span class="number">12 </span>{
+                change_a.insert(
+                    OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[i])),
+                    (<span class="bool-val">true</span>, expiration_slot),
+                );
+            }
+            <span class="kw">if </span>i &gt; <span class="number">8 </span>{
+                change_b.insert(
+                    OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[i])),
+                    (<span class="bool-val">true</span>, expiration_slot),
+                );
+            }
+            change_c.insert(
+                OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[i])),
+                (<span class="bool-val">true</span>, expiration_slot),
+            );
+        }
+
+        <span class="comment">// apply change_b to a which performs a.hash ^ $(change_b)
+        </span><span class="kw">let </span>apply_slot = Slot {
+            period: <span class="number">0</span>,
             thread: <span class="number">0</span>,
         };
-        <span class="kw">if </span>i &lt; <span class="number">12 </span>{
-            change_a.insert(
-                OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[i])),
-                (<span class="bool-val">true</span>, expiration_slot),
-            );
-        }
-        <span class="kw">if </span>i &gt; <span class="number">8 </span>{
-            change_b.insert(
-                OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[i])),
-                (<span class="bool-val">true</span>, expiration_slot),
-            );
-        }
-        change_c.insert(
-            OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[i])),
-            (<span class="bool-val">true</span>, expiration_slot),
+
+        <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new();
+        a.apply_changes_to_batch(change_a, apply_slot, <span class="kw-2">&amp;mut </span>batch_a);
+        db_a.write().write_batch(batch_a, Default::default(), <span class="prelude-val">None</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>batch_b = DBBatch::new();
+        a.apply_changes_to_batch(change_b, apply_slot, <span class="kw-2">&amp;mut </span>batch_b);
+        db_a.write().write_batch(batch_b, Default::default(), <span class="prelude-val">None</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>batch_c = DBBatch::new();
+        c.apply_changes_to_batch(change_c, apply_slot, <span class="kw-2">&amp;mut </span>batch_c);
+        db_c.write().write_batch(batch_c, Default::default(), <span class="prelude-val">None</span>);
+
+        <span class="comment">// check that a.hash ^ $(change_b) = c.hash
+        </span><span class="macro">assert_ne!</span>(
+            db_a.read().get_xof_db_hash(),
+            HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES)
         );
-    }
+        <span class="macro">assert_eq!</span>(
+            db_a.read().get_xof_db_hash(),
+            db_c.read().get_xof_db_hash(),
+            <span class="string">&quot;&#39;a&#39; and &#39;c&#39; hashes are not equal&quot;
+        </span>);
 
-    <span class="comment">// apply change_b to a which performs a.hash ^ $(change_b)
-    </span><span class="kw">let </span>apply_slot = Slot {
-        period: <span class="number">0</span>,
-        thread: <span class="number">0</span>,
-    };
+        <span class="comment">// prune every element
+        </span><span class="kw">let </span>prune_slot = Slot {
+            period: <span class="number">20</span>,
+            thread: <span class="number">0</span>,
+        };
+        <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new();
+        a.prune_to_batch(prune_slot, <span class="kw-2">&amp;mut </span>batch_a);
+        db_a.write().write_batch(batch_a, Default::default(), <span class="prelude-val">None</span>);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new();
-    a.apply_changes_to_batch(change_a, apply_slot, <span class="kw-2">&amp;mut </span>batch_a);
-    db_a.write().write_batch(batch_a, Default::default(), <span class="prelude-val">None</span>);
-
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_b = DBBatch::new();
-    a.apply_changes_to_batch(change_b, apply_slot, <span class="kw-2">&amp;mut </span>batch_b);
-    db_a.write().write_batch(batch_b, Default::default(), <span class="prelude-val">None</span>);
-
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_c = DBBatch::new();
-    c.apply_changes_to_batch(change_c, apply_slot, <span class="kw-2">&amp;mut </span>batch_c);
-    db_c.write().write_batch(batch_c, Default::default(), <span class="prelude-val">None</span>);
-
-    <span class="comment">// check that a.hash ^ $(change_b) = c.hash
-    </span><span class="macro">assert_ne!</span>(
-        db_a.read().get_xof_db_hash(),
-        HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES)
-    );
-    <span class="macro">assert_eq!</span>(
-        db_a.read().get_xof_db_hash(),
-        db_c.read().get_xof_db_hash(),
-        <span class="string">&quot;&#39;a&#39; and &#39;c&#39; hashes are not equal&quot;
-    </span>);
-
-    <span class="comment">// prune every element
-    </span><span class="kw">let </span>prune_slot = Slot {
-        period: <span class="number">20</span>,
-        thread: <span class="number">0</span>,
-    };
-    <span class="kw">let </span><span class="kw-2">mut </span>batch_a = DBBatch::new();
-    a.prune_to_batch(prune_slot, <span class="kw-2">&amp;mut </span>batch_a);
-    db_a.write().write_batch(batch_a, Default::default(), <span class="prelude-val">None</span>);
-
-    <span class="comment">// at this point the hash should have been reset to its original value
-    </span><span class="macro">assert_eq!</span>(
-        db_a.read().get_xof_db_hash(),
-        HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES),
-        <span class="string">&quot;&#39;a&#39; was not reset to its initial value&quot;
-    </span>);
-}
-
-<span class="doccomment">/// `ExecutedOps` Serializer
-</span><span class="kw">pub struct </span>ExecutedOpsSerializer {
-    slot_serializer: SlotSerializer,
-    u64_serializer: U64VarIntSerializer,
-    op_id_serializer: OperationIdSerializer,
-}
-
-<span class="kw">impl </span>Default <span class="kw">for </span>ExecutedOpsSerializer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new()
-    }
-}
-
-<span class="kw">impl </span>ExecutedOpsSerializer {
-    <span class="doccomment">/// Create a new `ExecutedOps` Serializer
-    </span><span class="kw">pub fn </span>new() -&gt; ExecutedOpsSerializer {
-        ExecutedOpsSerializer {
-            slot_serializer: SlotSerializer::new(),
-            u64_serializer: U64VarIntSerializer::new(),
-            op_id_serializer: OperationIdSerializer::new(),
-        }
-    }
-}
-
-<span class="kw">impl </span>Serializer&lt;BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;&gt; <span class="kw">for </span>ExecutedOpsSerializer {
-    <span class="kw">fn </span>serialize(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        value: <span class="kw-2">&amp;</span>BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;,
-        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
-        <span class="comment">// executed ops length
-        </span><span class="self">self</span>.u64_serializer
-            .serialize(<span class="kw-2">&amp;</span>(value.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-        <span class="comment">// executed ops
-        </span><span class="kw">for </span>(slot, ids) <span class="kw">in </span>value {
-            <span class="comment">// slot
-            </span><span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
-            <span class="comment">// slot ids length
-            </span><span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>(ids.len() <span class="kw">as </span>u64), buffer)<span class="question-mark">?</span>;
-            <span class="comment">// slots ids
-            </span><span class="kw">for </span>op_id <span class="kw">in </span>ids {
-                <span class="self">self</span>.op_id_serializer.serialize(op_id, buffer)<span class="question-mark">?</span>;
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="doccomment">/// Deserializer for `ExecutedOps`
-</span><span class="kw">pub struct </span>ExecutedOpsDeserializer {
-    operation_id_deserializer: OperationIdDeserializer,
-    slot_deserializer: SlotDeserializer,
-    ops_length_deserializer: U64VarIntDeserializer,
-    slot_ops_length_deserializer: U64VarIntDeserializer,
-}
-
-<span class="kw">impl </span>ExecutedOpsDeserializer {
-    <span class="doccomment">/// Create a new deserializer for `ExecutedOps`
-    </span><span class="kw">pub fn </span>new(
-        thread_count: u8,
-        max_executed_ops_length: u64,
-        max_operations_per_block: u64,
-    ) -&gt; ExecutedOpsDeserializer {
-        ExecutedOpsDeserializer {
-            operation_id_deserializer: OperationIdDeserializer::new(),
-            slot_deserializer: SlotDeserializer::new(
-                (Included(u64::MIN), Included(u64::MAX)),
-                (Included(<span class="number">0</span>), Excluded(thread_count)),
-            ),
-            ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_executed_ops_length),
-            ),
-            slot_ops_length_deserializer: U64VarIntDeserializer::new(
-                Included(u64::MIN),
-                Included(max_operations_per_block),
-            ),
-        }
-    }
-}
-
-<span class="kw">impl </span>Deserializer&lt;BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;&gt; <span class="kw">for </span>ExecutedOpsDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BTreeMap&lt;Slot, PreHashSet&lt;OperationId&gt;&gt;, E&gt; {
-        context(
-            <span class="string">&quot;ExecutedOps&quot;</span>,
-            length_count(
-                context(<span class="string">&quot;ExecutedOps length&quot;</span>, |input| {
-                    <span class="self">self</span>.ops_length_deserializer.deserialize(input)
-                }),
-                context(
-                    <span class="string">&quot;slot operations&quot;</span>,
-                    tuple((
-                        context(<span class="string">&quot;slot&quot;</span>, |input| <span class="self">self</span>.slot_deserializer.deserialize(input)),
-                        length_count(
-                            context(<span class="string">&quot;slot operations length&quot;</span>, |input| {
-                                <span class="self">self</span>.slot_ops_length_deserializer.deserialize(input)
-                            }),
-                            context(<span class="string">&quot;operation id&quot;</span>, |input| {
-                                <span class="self">self</span>.operation_id_deserializer.deserialize(input)
-                            }),
-                        ),
-                    )),
-                ),
-            ),
-        )
-        .map(|operations| {
-            operations
-                .into_iter()
-                .map(|(slot, ids)| (slot, ids.into_iter().collect()))
-                .collect()
-        })
-        .parse(buffer)
+        <span class="comment">// at this point the hash should have been reset to its original value
+        </span><span class="macro">assert_eq!</span>(
+            db_a.read().get_xof_db_hash(),
+            HashXof(<span class="kw-2">*</span>STATE_HASH_INITIAL_BYTES),
+            <span class="string">&quot;&#39;a&#39; was not reset to its initial value&quot;
+        </span>);
     }
 }
 </code></pre></div></section></main></body></html>
