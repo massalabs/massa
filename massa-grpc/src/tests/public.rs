@@ -3,7 +3,6 @@
 use crate::tests::mock::grpc_public_service;
 use massa_consensus_exports::MockConsensusController;
 use massa_execution_exports::{EventStore, MockExecutionController};
-use massa_execution_exports::EventStore;
 use massa_models::address::Address;
 use massa_models::block::BlockGraphStatus;
 use massa_models::block_id::BlockId;
@@ -37,8 +36,6 @@ use std::collections::{BTreeMap, VecDeque};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
-
-use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl, MockSelectorCtrl};
 
 #[tokio::test]
 async fn get_status() {

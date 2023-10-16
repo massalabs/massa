@@ -1336,6 +1336,7 @@ fn test_tts_parent_registered_later() {
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
+            std::thread::sleep(Duration::from_millis(t0_millis));
             // Period 1, thread 0.
             let block_1_0 =
                 create_block(Slot::new(1, 0), vec![genesis[0], genesis[1]], &staking_key);

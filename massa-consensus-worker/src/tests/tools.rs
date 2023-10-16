@@ -44,6 +44,9 @@ pub fn consensus_test<F>(
         .expect_integrated_block()
         .returning(|_, _| Ok(()));
     protocol_controller_2
+        .expect_send_wishlist_delta()
+        .returning(|_, _| Ok(()));
+    protocol_controller_2
         .expect_notify_block_attack()
         .returning(|_| Ok(()));
     protocol_controller_3

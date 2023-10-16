@@ -7,8 +7,8 @@ use jsonrpsee::{
     rpc_params,
     ws_client::WsClientBuilder,
 };
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
-use massa_grpc::tests::mock::MockExecutionCtrl;
+use massa_consensus_exports::MockConsensusController;
+use massa_execution_exports::MockExecutionController;
 use massa_models::{
     address::Address,
     block::{FilledBlock, SecureShareBlock},
@@ -59,7 +59,7 @@ async fn get_next_block_best_parents() {
     let addr: SocketAddr = "[::]:5031".parse().unwrap();
     let (mut api_server, api_config) = get_apiv2_server(&addr);
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl.expect_get_best_parents().returning(|| {
         vec![(
             massa_models::block_id::BlockId::from_str(
@@ -104,7 +104,7 @@ async fn get_largest_stakers() {
     let addr: SocketAddr = "[::]:5032".parse().unwrap();
     let (mut api_server, api_config) = get_apiv2_server(&addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
         let mut map = BTreeMap::new();
         map.insert(
@@ -149,7 +149,7 @@ async fn subscribe_new_blocks() {
 
     let (tx, _rx) = tokio::sync::broadcast::channel::<SecureShareBlock>(10);
 
-    api_server.0.consensus_channels.block_sender = tx.clone();
+    api_server.0.consensus_broadcasts.block_sender = tx.clone();
 
     let block = create_block(&KeyPair::generate(0).unwrap());
 
@@ -198,7 +198,7 @@ async fn subscribe_new_blocks_headers() {
     .unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel::<SecureShare<BlockHeader, BlockId>>(10);
 
-    api_server.0.consensus_channels.block_header_sender = tx.clone();
+    api_server.0.consensus_broadcasts.block_header_sender = tx.clone();
 
     let api_handle = api_server
         .serve(&addr, &api_config)
@@ -245,7 +245,7 @@ async fn subscribe_new_filled_blocks() {
     .unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel::<FilledBlock>(10);
 
-    api_server.0.consensus_channels.filled_block_sender = tx.clone();
+    api_server.0.consensus_broadcasts.filled_block_sender = tx.clone();
 
     let api_handle = api_server
         .serve(&addr, &api_config)
@@ -301,7 +301,7 @@ async fn subscribe_new_operations() {
 
     let operation = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 500000);
 
-    api_server.0.pool_channels.operation_sender = tx.clone();
+    api_server.0.pool_broadcasts.operation_sender = tx.clone();
 
     let api_handle = api_server
         .serve(&addr, &api_config)
