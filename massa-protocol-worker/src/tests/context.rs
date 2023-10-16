@@ -141,7 +141,7 @@ pub fn start_protocol_controller_with_mock_network(
 
 pub fn protocol_test<F>(
     protocol_config: &ProtocolConfig,
-    defined_consensus_controller: Box<MockConsensusController>,
+    consensus_controller: Box<MockConsensusController>,
     pool_controller: Box<MockPoolController>,
     test: F,
 ) where
@@ -157,7 +157,7 @@ pub fn protocol_test<F>(
         start_protocol_controller_with_mock_network(
             protocol_config.clone(),
             selector_controller,
-            defined_consensus_controller,
+            consensus_controller,
             pool_controller,
             storage.clone_without_refs(),
         )
