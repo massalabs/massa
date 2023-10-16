@@ -1468,6 +1468,19 @@
 <a href="#1468" id="1468">1468</a>
 <a href="#1469" id="1469">1469</a>
 <a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1503,6 +1516,7 @@
 <span class="kw">use </span>std::fmt::{Debug, Display};
 <span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 <span class="kw">use </span>strum_macros::{Display, EnumIter, EnumString};
 
@@ -1750,20 +1764,20 @@
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">&quot;PathToBytecode MaxGas Address IsFinal&quot;</span>,
+            args = <span class="string">&quot;PathToBytecode MaxGas Address IsFinal Fee&quot;</span>,
             pwd_not_needed = <span class="string">&quot;true&quot;
         </span>),
-        message = <span class="string">&quot;execute byte code, address is optional, is_final is optional. Nothing is really executed on chain&quot;
+        message = <span class="string">&quot;execute byte code, address is optional, is_final is optional, fee is optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_execute_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal&quot;</span>,
+            args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal Coins Fee&quot;</span>,
             pwd_not_needed = <span class="string">&quot;true&quot;
         </span>),
-        message = <span class="string">&quot;call a smart contract function, sender address is optional, is_final is optional. Nothing is really executed on chain&quot;
+        message = <span class="string">&quot;call a smart contract function, sender address, is_final, coins and fee are optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_call,
 
@@ -2612,6 +2626,10 @@
                 </span>} <span class="kw">else </span>{
                     <span class="bool-val">false
                 </span>};
+                <span class="kw">let </span>fee = parameters
+                    .get(<span class="number">7</span>)
+                    .map(|fee| Amount::from_str(fee))
+                    .transpose()<span class="question-mark">?</span>;
                 <span class="kw">let </span>bytecode = get_file_as_byte_vec(<span class="kw-2">&amp;</span>path).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="kw">match </span>client
                     .public
@@ -2621,6 +2639,7 @@
                         address,
                         operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// TODO - #3072
                         </span>is_final,
+                        fee,
                     })
                     .<span class="kw">await
                 </span>{
@@ -2647,6 +2666,11 @@
                 </span>} <span class="kw">else </span>{
                     <span class="bool-val">false
                 </span>};
+                <span class="kw">let </span>coins = parameters.get(<span class="number">6</span>).map(|c| Amount::from_str(c)).transpose()<span class="question-mark">?</span>;
+                <span class="kw">let </span>fee = parameters
+                    .get(<span class="number">7</span>)
+                    .map(|fee| Amount::from_str(fee))
+                    .transpose()<span class="question-mark">?</span>;
                 <span class="kw">match </span>client
                     .public
                     .execute_read_only_call(ReadOnlyCall {
@@ -2656,6 +2680,8 @@
                         parameter,
                         max_gas,
                         is_final,
+                        coins,
+                        fee,
                     })
                     .<span class="kw">await
                 </span>{
