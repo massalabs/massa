@@ -98,13 +98,13 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = {git = "https://github.com/massalabs/massa-proto-rs", "rev" = "b45cccca3fb09aa2bbee08aade080127521e39b8"}
-massa-sc-runtime = {git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "4883fe075afca4dd4b7346ed7dff2d506323f9c7"}
-peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "1d10f55ea883e685691ff527c2466f733ba3e1b2" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "7a5674743033b803af6e022738e3aa0ab7e39e33" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "24defd4e319bbba72b4a3cf47078ac8695976c38" }
+peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
 transition = { git = "https://github.com/massalabs/transition.git", "rev" = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
-substruct = { git = "https://github.com/massalabs/substruct", "rev" = "2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1"}
+substruct = { git = "https://github.com/massalabs/substruct", "rev" = "2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1" }
 machine = { git = "https://github.com/massalabs/machine", "rev" = "1736a01400aac54f69a81002862f8555b08caa9b" }
 aes-gcm = "0.10"
 anyhow = "1.0"

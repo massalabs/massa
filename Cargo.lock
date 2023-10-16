@@ -2536,7 +2536,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=b45cccca3fb09aa2bbee08aade080127521e39b8#b45cccca3fb09aa2bbee08aade080127521e39b8"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=7a5674743033b803af6e022738e3aa0ab7e39e33#7a5674743033b803af6e022738e3aa0ab7e39e33"
 dependencies = [
  "glob",
  "prost",
@@ -2549,7 +2549,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=4883fe075afca4dd4b7346ed7dff2d506323f9c7#4883fe075afca4dd4b7346ed7dff2d506323f9c7"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=24defd4e319bbba72b4a3cf47078ac8695976c38#24defd4e319bbba72b4a3cf47078ac8695976c38"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3845,7 +3845,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?rev=1d10f55ea883e685691ff527c2466f733ba3e1b2#1d10f55ea883e685691ff527c2466f733ba3e1b2"
+source = "git+https://github.com/massalabs/PeerNet?branch=main#1d10f55ea883e685691ff527c2466f733ba3e1b2"
 dependencies = [
  "crossbeam",
  "enum_delegate",
