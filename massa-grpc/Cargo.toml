@@ -8,7 +8,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [features]
-testing = []
+testing = ["dep:mockall", "dep:num", "dep:massa_channel"]
 
 [dependencies]
 # Internal packages
@@ -52,11 +52,8 @@ tower-http = { workspace = true, "features" = ["cors"] }
 tracing = { workspace = true }
 
 [dev-dependencies]
-massa_async_pool = { workspace = true }
-massa_bootstrap = { workspace = true , "features" = ["testing"]}
-massa_channel = { workspace = true }
+massa_bootstrap = { workspace = true, "features" = ["testing"] }
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
-massa_executed_ops = { workspace = true }
 massa_final_state = { workspace = true }
 mockall = { workspace = true }
 num = { workspace = true }

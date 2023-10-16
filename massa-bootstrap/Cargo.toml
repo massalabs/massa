@@ -5,7 +5,9 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["massa_final_state/testing", "massa_ledger_worker/testing", "massa_consensus_exports/testing", "massa_async_pool/testing"]
+testing = ["massa_final_state/testing", "massa_ledger_worker/testing", "massa_consensus_exports/testing", "massa_async_pool/testing", 
+           "dep:bitvec", "dep:massa_async_pool", "dep:massa_executed_ops", "dep:massa_ledger_exports", "dep:massa_ledger_worker", "dep:num" ]
+
 sandbox = ["massa_async_pool/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
 
 [dependencies]
@@ -38,6 +40,13 @@ massa_time = {workspace = true}
 massa_db_exports = {workspace = true}
 massa_versioning = {workspace = true}
 massa_metrics = {workspace = true}
+
+bitvec = {workspace = true, "features" = ["serde"], optional = true}
+massa_async_pool = {workspace = true, optional = true}
+massa_executed_ops = {workspace = true, optional = true}
+massa_ledger_exports = {workspace = true, optional = true}
+massa_ledger_worker = {workspace = true, optional = true}
+num = {workspace = true, optional = true}
 
 [dev-dependencies]
 mockall = {workspace = true}

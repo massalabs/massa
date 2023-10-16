@@ -1,18 +1,14 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+// Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use super::tools::{
-    get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
-};
 use crate::listener::PollEvent;
-use crate::tests::tools::{
-    assert_eq_bootstrap_graph, get_random_async_pool_changes, get_random_executed_de_changes,
-    get_random_executed_ops_changes, get_random_execution_trail_hash_change,
-    get_random_pos_changes,
+use crate::test_exports::{
+    assert_eq_bootstrap_graph, get_boot_state, get_bootstrap_config, get_peers,
+    get_random_async_pool_changes, get_random_executed_de_changes, get_random_executed_ops_changes,
+    get_random_execution_trail_hash_change, get_random_final_state_bootstrap,
+    get_random_ledger_changes, get_random_pos_changes,
 };
 use crate::BootstrapError;
-use crate::{
-    client::MockBSConnector, get_state, start_bootstrap_server, tests::tools::get_bootstrap_config,
-};
+use crate::{client::MockBSConnector, get_state, start_bootstrap_server};
 use crate::{
     listener::MockBootstrapTcpListener, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
 };

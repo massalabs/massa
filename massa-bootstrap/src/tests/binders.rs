@@ -2,7 +2,7 @@ use crate::messages::{BootstrapClientMessage, BootstrapServerMessage};
 use crate::settings::{BootstrapClientConfig, BootstrapSrvBindCfg};
 use crate::{
     bindings::{BootstrapClientBinder, BootstrapServerBinder},
-    tests::tools::get_bootstrap_config,
+    test_exports::get_bootstrap_config,
     BootstrapPeers,
 };
 use crate::{BootstrapConfig, BootstrapError};

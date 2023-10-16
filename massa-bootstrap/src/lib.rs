@@ -44,6 +44,10 @@ pub use settings::{BootstrapConfig, BootstrapServerMessageDeserializerArgs};
 #[cfg(test)]
 pub(crate) mod tests;
 
+#[cfg(any(test, feature = "testing"))]
+/// Export the test toolkit
+pub mod test_exports;
+
 /// a collection of the bootstrap state snapshots of all relevant modules
 pub struct GlobalBootstrapState {
     /// state of the final state
