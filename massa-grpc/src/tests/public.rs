@@ -3,9 +3,6 @@
 use crate::tests::mock::grpc_public_service;
 use massa_consensus_exports::MockConsensusController;
 use massa_execution_exports::{EventStore, MockExecutionController};
-// use super::mock::MockExecutionCtrl;
-// use crate::tests::mock::{grpc_public_service, MockPoolCtrl, MockSelectorCtrl};
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
 use massa_execution_exports::EventStore;
 use massa_models::address::Address;
 use massa_models::block::BlockGraphStatus;
