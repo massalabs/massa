@@ -25,48 +25,51 @@ sandbox = [
 testing = ["massa_metrics/testing", "massa_grpc/testing"]
 
 [dependencies]
-crossbeam-channel = {workspace = true}   # BOM UPGRADE     Revert to "0.5.6" if problem
-anyhow = {workspace = true}
-lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
-serde = {workspace = true, "features" = ["derive"]}
-tokio = {workspace = true, "features" = ["full"]}
-num = {workspace = true}
-tracing = {workspace = true, "features" = ["max_level_debug", "release_max_level_debug"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["max_level_debug", "release_max_level_debug"]} if problem
-tracing-subscriber = {workspace = true}
-rand = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.8.5", "optional": true} if problem
+crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem
+anyhow = { workspace = true }
+lazy_static = { workspace = true } # BOM UPGRADE     Revert to "1.4" if problem
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+serde = { workspace = true, "features" = ["derive"] }
+tokio = { workspace = true, "features" = ["full"] }
+num = { workspace = true }
+tracing = { workspace = true, "features" = [
+    "max_level_debug",
+    "release_max_level_debug",
+] } # BOM UPGRADE     Revert to {"version": "0.1", "features": ["max_level_debug", "release_max_level_debug"]} if problem
+tracing-subscriber = { workspace = true }
+rand = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"version": "0.8.5", "optional": true} if problem
 clap = { workspace = true }
-dialoguer = {workspace = true}
-ctrlc = {workspace = true}
-massa_api_exports = {workspace = true}
-massa_api = {workspace = true}
-massa_async_pool = {workspace = true}
-massa_bootstrap = {workspace = true}
-massa_channel = {workspace = true}
-massa_consensus_exports = {workspace = true}
-massa_consensus_worker = {workspace = true}
-massa_executed_ops = {workspace = true}
-massa_execution_exports = {workspace = true}
-massa_execution_worker = {workspace = true}
-massa_logging = {workspace = true}
-massa_final_state = {workspace = true}
-massa_ledger_exports = {workspace = true}
-massa_ledger_worker = {workspace = true}
-massa_metrics = {workspace = true}
-massa_models = {workspace = true}
-massa_pool_exports = {workspace = true}
-massa_pool_worker = {workspace = true}
-massa_protocol_exports = {workspace = true}
-massa_protocol_worker = {workspace = true}
-massa_pos_worker = {workspace = true}
-massa_pos_exports = {workspace = true}
-massa_storage = {workspace = true}
-massa_time = {workspace = true}
-massa_wallet = {workspace = true}
-massa_factory_exports = {workspace = true}
-massa_factory_worker = {workspace = true}
-massa_grpc = {workspace = true}
-massa_versioning = {workspace = true}
-massa_signature = {workspace = true}
-massa_db_exports = {workspace = true}
-massa_db_worker = {workspace = true}
+dialoguer = { workspace = true }
+ctrlc = { workspace = true }
+massa_api_exports = { workspace = true }
+massa_api = { workspace = true }
+massa_async_pool = { workspace = true }
+massa_bootstrap = { workspace = true }
+massa_channel = { workspace = true }
+massa_consensus_exports = { workspace = true }
+massa_consensus_worker = { workspace = true }
+massa_executed_ops = { workspace = true }
+massa_execution_exports = { workspace = true }
+massa_execution_worker = { workspace = true }
+massa_logging = { workspace = true }
+massa_final_state = { workspace = true }
+massa_ledger_exports = { workspace = true }
+massa_ledger_worker = { workspace = true }
+massa_metrics = { workspace = true }
+massa_models = { workspace = true }
+massa_pool_exports = { workspace = true }
+massa_pool_worker = { workspace = true }
+massa_protocol_exports = { workspace = true }
+massa_protocol_worker = { workspace = true }
+massa_pos_worker = { workspace = true }
+massa_pos_exports = { workspace = true }
+massa_storage = { workspace = true }
+massa_time = { workspace = true }
+massa_wallet = { workspace = true }
+massa_factory_exports = { workspace = true }
+massa_factory_worker = { workspace = true }
+massa_grpc = { workspace = true }
+massa_versioning = { workspace = true }
+massa_signature = { workspace = true }
+massa_db_exports = { workspace = true }
+massa_db_worker = { workspace = true }

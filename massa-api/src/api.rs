@@ -64,7 +64,6 @@ impl MassaApiServer for API<ApiV2> {
         &self,
         api_request: Option<ApiRequest>,
     ) -> RpcResult<PagedVecV2<(Address, u64)>> {
-        let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
         let now = match MassaTime::now() {
@@ -88,7 +87,9 @@ impl MassaApiServer for API<ApiV2> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let mut staker_vec = execution_controller
+        let mut staker_vec = self
+            .0
+            .execution_controller
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();

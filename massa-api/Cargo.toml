@@ -3,31 +3,43 @@ name = "massa_api"
 version = "0.26.1"
 edition = "2021"
 
+[features]
+testing = ["massa_grpc/testing"]
+
 [dependencies]
-jsonrpsee = {workspace = true, "features" = ["server", "macros"]}
-futures = {workspace = true}
-async-trait = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-serde_json = {workspace = true}
-tower-http = {workspace = true, "features" = ["cors"]}
-tower = {workspace = true, "features" = ["full"]}
-hyper = {workspace = true}
-tokio = {workspace = true, "features" = ["full"]}
-tokio-stream = {workspace = true, "features" = ["sync"]}
-tracing = {workspace = true}
-itertools = {workspace = true}
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
-massa_consensus_exports = {workspace = true}
-massa_api_exports = {workspace = true}
-massa_models = {workspace = true}
-massa_pool_exports = {workspace = true}
-massa_protocol_exports = {workspace = true}
-massa_execution_exports = {workspace = true}
-massa_pos_exports = {workspace = true}
-massa_storage = {workspace = true}
-massa_serialization = {workspace = true}
-massa_signature = {workspace = true}
-massa_time = {workspace = true}
-massa_versioning = {workspace = true}
-massa_hash = {workspace = true}
-massa_wallet = {workspace = true}
+jsonrpsee = { workspace = true, "features" = ["server", "macros"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+serde_json = { workspace = true }
+tower-http = { workspace = true, "features" = ["cors"] }
+tower = { workspace = true, "features" = ["full"] }
+hyper = { workspace = true }
+tokio = { workspace = true, "features" = ["full"] }
+tokio-stream = { workspace = true, "features" = ["sync"] }
+tracing = { workspace = true }
+itertools = { workspace = true }
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+massa_consensus_exports = { workspace = true }
+massa_api_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_pool_exports = { workspace = true }
+massa_protocol_exports = { workspace = true }
+massa_execution_exports = { workspace = true }
+massa_pos_exports = { workspace = true }
+massa_storage = { workspace = true }
+massa_serialization = { workspace = true }
+massa_signature = { workspace = true }
+massa_time = { workspace = true }
+massa_versioning = { workspace = true }
+massa_hash = { workspace = true }
+massa_wallet = { workspace = true }
+
+
+[dev-dependencies]
+massa_consensus_exports = { workspace = true, "features" = ["testing"] }
+tempfile = { workspace = true }
+num = { workspace = true }
+massa_grpc = { workspace = true, features = ["testing"] }
+massa_final_state = { workspace = true }
+massa_channel = { workspace = true }

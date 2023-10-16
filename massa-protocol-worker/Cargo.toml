@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["massa_protocol_exports/testing", "tempfile", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_metrics/testing"]
+testing = ["massa_protocol_exports/testing", "tempfile", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_metrics/testing", "peernet/testing"]
 
 [dependencies]
 tracing = {workspace = true, "features" = ["log"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem

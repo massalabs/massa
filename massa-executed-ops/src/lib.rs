@@ -1,5 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#![warn(unused_crate_dependencies)]
+
 mod config;
 mod denunciations_changes;
 mod executed_denunciations;
