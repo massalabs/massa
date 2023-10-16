@@ -323,10 +323,6 @@
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -586,10 +582,6 @@
     </span><span class="kw">pub </span>call_stack: Vec&lt;ExecutionStackElement&gt;,
     <span class="doccomment">/// Target of the request
     </span><span class="kw">pub </span>target: ReadOnlyExecutionTarget,
-    <span class="doccomment">/// Coins transferred to the target address during the call
-    </span><span class="kw">pub </span>coins: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
-    <span class="doccomment">/// Fee
-    </span><span class="kw">pub </span>fee: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
     <span class="doccomment">/// execution start state
     ///
     /// Whether to start execution from final or active state
