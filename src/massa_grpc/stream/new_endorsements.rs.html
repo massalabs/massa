@@ -287,7 +287,7 @@
     <span class="comment">// Get the inner stream from the request
     </span><span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
     <span class="comment">// Subscribe to the new endorsements channel
-    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.pool_channels.endorsement_sender.subscribe();
+    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.pool_broadcasts.endorsement_sender.subscribe();
     <span class="comment">// Clone grpc to be able to use it in the spawned task
     </span><span class="kw">let </span>grpc_config = grpc.grpc_config.clone();
 

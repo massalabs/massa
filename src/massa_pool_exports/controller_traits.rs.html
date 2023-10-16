@@ -76,6 +76,7 @@
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -88,6 +89,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="doccomment">/// Trait defining a pool controller
+</span><span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 </span><span class="kw">pub trait </span>PoolController: Send + Sync {
     <span class="doccomment">/// Asynchronously add operations to pool. Simply print a warning on failure.
     </span><span class="kw">fn </span>add_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ops: Storage);
