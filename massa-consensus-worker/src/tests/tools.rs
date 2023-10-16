@@ -40,6 +40,12 @@ pub fn consensus_test<F>(
     protocol_controller_3
         .expect_integrated_block()
         .returning(|_, _| Ok(()));
+    protocol_controller_2
+        .expect_integrated_block()
+        .returning(|_, _| Ok(()));
+    protocol_controller_2
+        .expect_notify_block_attack()
+        .returning(|_| Ok(()));
     protocol_controller_3
         .expect_notify_block_attack()
         .returning(|_| Ok(()));
@@ -138,52 +144,6 @@ pub fn create_block_with_merkle_root(
     .unwrap()
 }
 
-// pub fn answer_ask_producer_pos(
-//     selector_receiver: &Receiver<MockSelectorControllerMessage>,
-//     staking_address: &Address,
-//     timeout_ms: u64,
-// ) {
-//     let res = selector_receiver
-//         .recv_timeout(Duration::from_millis(timeout_ms))
-//         .unwrap();
-//     match res {
-//         MockSelectorControllerMessage::GetProducer {
-//             slot: _,
-//             response_tx,
-//         } => {
-//             response_tx.send(Ok(staking_address.clone())).unwrap();
-//         }
-//         _ => panic!("unexpected message"),
-//     }
-// }
-
-// pub fn answer_ask_selection_pos(
-//     selector_receiver: &Receiver<MockSelectorControllerMessage>,
-//     staking_address: &Address,
-//     timeout_ms: u64,
-// ) {
-//     match selector_receiver
-//         .recv_timeout(Duration::from_millis(timeout_ms))
-//         .unwrap()
-//     {
-//         MockSelectorControllerMessage::GetSelection {
-//             slot: _,
-//             response_tx,
-//         } => {
-//             response_tx
-//                 .send(Ok(Selection {
-//                     endorsements: vec![staking_address.clone(); ENDORSEMENT_COUNT as usize],
-//                     producer: staking_address.clone(),
-//                 }))
-//                 .unwrap();
-//         }
-//         msg => {
-//             println!("msg: {:?}", msg);
-//             panic!("unexpected message")
-//         }
-//     }
-// }
-
 pub fn register_block(
     consensus_controller: &Box<dyn ConsensusController>,
     block: SecureShareBlock,
@@ -197,52 +157,3 @@ pub fn register_block(
         false,
     );
 }
-
-// // DRY.
-// pub struct TestController {
-//     pub creator: KeyPair,
-//     pub consensus_controller: Box<dyn ConsensusController>,
-//     pub selector_receiver: Receiver<MockSelectorControllerMessage>,
-//     pub storage: Storage,
-//     pub staking_address: Address,
-//     pub timeout_ms: u64,
-// }
-
-// pub fn register_block_and_process_with_tc(
-//     slot: Slot,
-//     best_parents: Vec<BlockId>,
-//     test_controller: &TestController,
-// ) -> SecureShareBlock {
-//     return register_block_and_process(
-//         slot,
-//         best_parents,
-//         &test_controller.creator,
-//         &test_controller.consensus_controller,
-//         &test_controller.selector_receiver,
-//         test_controller.storage.clone(),
-//         &test_controller.staking_address,
-//         test_controller.timeout_ms,
-//     );
-// }
-
-// pub fn register_block_and_process(
-//     slot: Slot,
-//     best_parents: Vec<BlockId>,
-//     creator: &KeyPair,
-//     consensus_controller: &Box<dyn ConsensusController>,
-//     selector_receiver: &Receiver<MockSelectorControllerMessage>,
-//     storage: Storage,
-//     staking_address: &Address,
-//     timeout_ms: u64,
-// ) -> SecureShareBlock {
-//     let block = create_block(slot, best_parents, creator);
-//     register_block(
-//         consensus_controller,
-//         selector_receiver,
-//         block.clone(),
-//         storage,
-//     );
-//     answer_ask_producer_pos(selector_receiver, staking_address, timeout_ms);
-//     answer_ask_selection_pos(selector_receiver, staking_address, timeout_ms);
-//     return block;
-// }

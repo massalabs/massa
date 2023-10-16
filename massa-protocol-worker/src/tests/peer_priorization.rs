@@ -115,7 +115,7 @@ fn test_last_test_failure_prio() {
 
 //    Test success more recent (nb milli > ) -> More prio
 //    If None, less prio than any success
-#[test] 
+#[test]
 fn test_last_test_success_prio() {
     let test_vec = (1..500)
         .map(|n| {

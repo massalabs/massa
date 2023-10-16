@@ -46,34 +46,32 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
             assert_eq!(block_id, block.id);
             assert_eq!(header.id, block.content.header.id);
         });
-    consensus_controller
-        .expect_register_block()
-        .returning(
-            move |block_id, slot, storage, created| {
-                assert_eq!(block_id, block.id);
-                assert_eq!(slot, block.content.header.content.slot);
-                let storage_block = storage.get_block_refs();
-                assert_eq!(storage_block.len(), 1);
-                assert!(storage_block.contains(&block.id));
-                let storage_ops = storage.get_op_refs();
+    consensus_controller.expect_register_block().returning(
+        move |block_id, slot, storage, created| {
+            assert_eq!(block_id, block.id);
+            assert_eq!(slot, block.content.header.content.slot);
+            let storage_block = storage.get_block_refs();
+            assert_eq!(storage_block.len(), 1);
+            assert!(storage_block.contains(&block.id));
+            let storage_ops = storage.get_op_refs();
+            assert_eq!(storage_ops.len(), 2);
+            assert!(storage_ops.contains(&op_1.id));
+            assert!(storage_ops.contains(&op_2.id));
+            assert!(!created);
+        },
+    );
+    let mut pool_controller = Box::new(MockPoolController::new());
+    pool_controller.expect_clone_box().returning(move || {
+        let mut pool_controller = Box::new(MockPoolController::new());
+        pool_controller
+            .expect_add_operations()
+            .returning(move |storage_ops| {
+                let storage_ops = storage_ops.get_op_refs();
                 assert_eq!(storage_ops.len(), 2);
                 assert!(storage_ops.contains(&op_1.id));
                 assert!(storage_ops.contains(&op_2.id));
-                assert!(!created);
-            }
-        );
-    let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller
-        .expect_clone_box()
-        .returning(move ||{
-           let mut pool_controller = Box::new(MockPoolController::new());
-              pool_controller.expect_add_operations().returning(move |storage_ops| {
-                let storage_ops = storage_ops.get_op_refs();
-                    assert_eq!(storage_ops.len(), 2);
-                    assert!(storage_ops.contains(&op_1.id));
-                    assert!(storage_ops.contains(&op_2.id));
-              });
-              pool_controller
+            });
+        pool_controller
     });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller
