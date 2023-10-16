@@ -12,6 +12,7 @@ use massa_execution_exports::{
     ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::address::Address;
+use massa_models::amount::Amount;
 use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
@@ -114,9 +115,20 @@ pub(crate) fn execute_read_only_call(
         call_stack,
         target,
         is_final: call.is_final,
-        // todo add fee and coins to proto file
-        coins: None,
-        fee: None,
+        coins: call
+            .coins
+            .map(|native_amount| {
+                Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
+                    .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
+            })
+            .transpose()?,
+        fee: call
+            .fee
+            .map(|native_amount| {
+                Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
+                    .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
+            })
+            .transpose()?,
     };
 
     let output = grpc
