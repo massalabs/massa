@@ -363,9 +363,9 @@
 <span class="kw">use </span>futures_util::FutureExt;
 <span class="kw">use </span>hyper::service::Service;
 <span class="kw">use </span>hyper::{Body, Method, Request, Response};
-<span class="kw">use </span>massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
+<span class="kw">use </span>massa_consensus_exports::{ConsensusChannels, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::{ExecutionChannels, ExecutionController};
-<span class="kw">use </span>massa_pool_exports::{PoolBroadcasts, PoolController};
+<span class="kw">use </span>massa_pool_exports::{PoolChannels, PoolController};
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
@@ -445,14 +445,14 @@
 </span><span class="kw">pub struct </span>MassaPublicGrpc {
     <span class="doccomment">/// link to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    <span class="doccomment">/// Broadcasts made by consensus component
-    </span><span class="kw">pub </span>consensus_broadcasts: ConsensusBroadcasts,
+    <span class="doccomment">/// link(channels) to the consensus component
+    </span><span class="kw">pub </span>consensus_channels: ConsensusChannels,
     <span class="doccomment">/// link to the execution component
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
     <span class="doccomment">/// link(channels) to the execution component
     </span><span class="kw">pub </span>execution_channels: ExecutionChannels,
-    <span class="doccomment">/// Broadcasts made by pool component
-    </span><span class="kw">pub </span>pool_broadcasts: PoolBroadcasts,
+    <span class="doccomment">/// link(channels) to the pool component
+    </span><span class="kw">pub </span>pool_channels: PoolChannels,
     <span class="doccomment">/// link to the pool component
     </span><span class="kw">pub </span>pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
     <span class="doccomment">/// link to the protocol component
