@@ -1,97 +1,95 @@
-// use std::time::Duration;
+use std::time::Duration;
 
-// use massa_hash::Hash;
-// use massa_models::{
-//     block_id::BlockId,
-//     endorsement::{Endorsement, EndorsementSerializer},
-//     secure_share::SecureShareContent,
-//     slot::Slot,
-// };
-// use massa_protocol_exports::PeerId;
-// use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
-// use massa_signature::KeyPair;
-// use serial_test::serial;
+use massa_consensus_exports::MockConsensusController;
+use massa_hash::Hash;
+use massa_models::{
+    block_id::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer},
+    secure_share::SecureShareContent,
+    slot::Slot,
+};
+use massa_pool_exports::MockPoolController;
+use massa_pos_exports::{MockSelectorController, Selection};
+use massa_protocol_exports::PeerId;
+use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
+use massa_signature::KeyPair;
+use serial_test::serial;
 
-// use crate::{
-//     handlers::{block_handler::BlockMessage, endorsement_handler::EndorsementMessage},
-//     messages::Message,
-// };
+use crate::{
+    handlers::{block_handler::BlockMessage, endorsement_handler::EndorsementMessage},
+    messages::Message,
+};
 
-// use super::context::{protocol_test, protocol_test_with_storage};
+use super::context::protocol_test;
 
-// #[test]
-// #[serial]
-// fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
-//     let default_panic = std::panic::take_hook();
-//     std::panic::set_hook(Box::new(move |info| {
-//         default_panic(info);
-//         std::process::exit(1);
-//     }));
+#[test]
+fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_panic(info);
+        std::process::exit(1);
+    }));
 
-//     let mut protocol_config = ProtocolConfig::default();
-//     protocol_config.thread_count = 2;
-//     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-//     protocol_test(
-//         &protocol_config,
-//         move |mut network_controller, protocol_controller, protocol_manager| {
-//             //1. Create 1 nodes
-//             let node_a_keypair = KeyPair::generate(0).unwrap();
-//             let (node_a_peer_id, _node_a) = network_controller
-//                 .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+    let mut protocol_config = ProtocolConfig::default();
+    protocol_config.thread_count = 2;
+    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let mut consensus_controller = Box::new(MockConsensusController::new());
+    consensus_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockConsensusController::new()));
+    let endorsement = tools::create_endorsement();
+    let mut pool_controller = Box::new(MockPoolController::new());
+    pool_controller.expect_clone_box().returning(move || {
+        let mut pool_controller = Box::new(MockPoolController::new());
+        pool_controller
+            .expect_add_endorsements()
+            .return_once(move |endorsements_storage| {
+                let stored_endorsements = endorsements_storage.get_endorsement_refs();
+                assert_eq!(stored_endorsements.len(), 1);
+                assert!(stored_endorsements.contains(&endorsement.id));
+            });
+        pool_controller
+    });
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller.expect_clone_box().returning(move || {
+        let mut selector_controller = Box::new(MockSelectorController::new());
+        selector_controller
+            .expect_get_selection()
+            .return_once(move |slot| {
+                assert_eq!(slot, endorsement.content.slot);
+                Ok(Selection {
+                    endorsements: vec![endorsement.content_creator_address; 1],
+                    producer: endorsement.content_creator_address,
+                })
+            });
+        selector_controller
+    });
+    protocol_test(
+        &protocol_config,
+        consensus_controller,
+        pool_controller,
+        selector_controller,
+        move |mut network_controller, _storage, _protocol_controller| {
+            //1. Create 1 nodes
+            let node_a_keypair = KeyPair::generate(0).unwrap();
+            let (node_a_peer_id, _node_a) = network_controller
+                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
 
-//             //2. Create an endorsement
-//             let endorsement = tools::create_endorsement();
+            network_controller
+                .send_from_peer(
+                    &node_a_peer_id,
+                    Message::Endorsement(EndorsementMessage::Endorsements(vec![
+                        endorsement.clone()
+                    ])),
+                )
+                .unwrap();
 
-//             network_controller
-//                 .send_from_peer(
-//                     &node_a_peer_id,
-//                     Message::Endorsement(EndorsementMessage::Endorsements(vec![
-//                         endorsement.clone()
-//                     ])),
-//                 )
-//                 .unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+        },
+    )
+}
 
-//             // if let Ok(MockSelectorControllerMessage::GetSelection {
-//             //     slot: _,
-//             //     response_tx,
-//             // }) = selector_event_receiver.recv_timeout(Duration::from_secs(2))
-//             // {
-//             //     response_tx
-//             //         .send(Ok(Selection {
-//             //             endorsements: vec![
-//             //                 endorsement.content_creator_address;
-//             //                 ENDORSEMENT_COUNT as usize
-//             //             ],
-//             //             producer: endorsement.content_creator_address,
-//             //         }))
-//             //         .unwrap();
-//             // } else {
-//             //     panic!("Unexpected or no selector selector event.");
-//             // }
-//             //3. Check protocol sends endorsements to pool.
-//             // let received_endorsements = match pool_event_receiver.wait_command(
-//             //     MassaTime::from_millis(1500),
-//             //     |evt| match evt {
-//             //         evt @ MockPoolControllerMessage::AddEndorsements { .. } => Some(evt),
-//             //         _ => None,
-//             //     },
-//             // ) {
-//             //     Some(MockPoolControllerMessage::AddEndorsements { endorsements, .. }) => {
-//             //         endorsements
-//             //     }
-//             //     _ => panic!("Unexpected or no protocol pool event."),
-//             // };
-//             // assert!(received_endorsements
-//             //     .get_endorsement_refs()
-//             //     .contains(&endorsement.id));
-//             std::thread::sleep(std::time::Duration::from_millis(1000));
-//             (network_controller, protocol_controller, protocol_manager)
-//         },
-//     )
-// }
-
-// #[test]
-// #[serial]
+// #[test]//
 // fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
 //     let default_panic = std::panic::take_hook();
 //     std::panic::set_hook(Box::new(move |info| {
@@ -135,8 +133,7 @@
 //     )
 // }
 
-// #[test]
-// #[serial]
+// #[test]//
 // fn test_protocol_propagates_endorsements_to_active_nodes() {
 //     let default_panic = std::panic::take_hook();
 //     std::panic::set_hook(Box::new(move |info| {
@@ -213,8 +210,7 @@
 //     )
 // }
 
-// #[test]
-// #[serial]
+// #[test]//
 // fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_block_integration() {
 //     let default_panic = std::panic::take_hook();
 //     std::panic::set_hook(Box::new(move |info| {

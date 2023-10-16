@@ -143,14 +143,11 @@ pub fn protocol_test<F>(
     protocol_config: &ProtocolConfig,
     consensus_controller: Box<MockConsensusController>,
     pool_controller: Box<MockPoolController>,
+    selector_controller: Box<MockSelectorController>,
     test: F,
 ) where
     F: FnOnce(Box<MockNetworkController>, Storage, Box<dyn ProtocolController>),
 {
-    let mut selector_controller = Box::new(MockSelectorController::new());
-    selector_controller
-        .expect_clone_box()
-        .returning(|| Box::new(MockSelectorController::new()));
     let storage = Storage::create_root();
     // start protocol controller
     let (network_controller, protocol_controller, mut protocol_manager) =

@@ -12,8 +12,7 @@
 
 // use super::{context::protocol_test, tools::send_and_propagate_block};
 
-// #[test]
-// #[serial]
+// #[test]//
 // fn test_protocol_does_propagate_operations_received_in_blocks() {
 //     let default_panic = std::panic::take_hook();
 //     std::panic::set_hook(Box::new(move |info| {
@@ -103,8 +102,7 @@
 // }
 
 // // Commented because fast release but the error seems to be that we try to send again block with node a but he is ban because of the first invalid hash of operations
-// // #[test]
-// // #[serial]
+// // #[test]// //
 // // fn test_protocol_sends_blocks_with_operations_to_consensus() {
 // //     let default_panic = std::panic::take_hook();
 // //     std::panic::set_hook(Box::new(move |info| {

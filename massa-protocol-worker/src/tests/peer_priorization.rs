@@ -52,8 +52,7 @@
 
 // //    Failure more ancient (nb milli < ) -> More prio
 // //    If None, more prio than any failure
-// #[test]
-// fn test_last_failure_prio() {
+// #[test]// fn test_last_failure_prio() {
 //     let test_vec = (1..500)
 //         .map(|n| {
 //             (n, {
@@ -73,8 +72,7 @@
 
 // //    Success more recent (nb milli > ) -> More prio
 // //    If None, less prio than any success
-// #[test]
-// fn test_last_success_prio() {
+// #[test]// fn test_last_success_prio() {
 //     let test_vec = (1..500)
 //         .map(|n| {
 //             (n, {
@@ -94,8 +92,7 @@
 
 // //    Test failure more recent (nb milli > ) -> Less prio
 // //    If None, more prio than any failure
-// #[test]
-// fn test_last_test_failure_prio() {
+// #[test]// fn test_last_test_failure_prio() {
 //     let test_vec = (1..500)
 //         .map(|n| {
 //             (n, {
@@ -115,8 +112,7 @@
 
 // //    Test success more recent (nb milli > ) -> More prio
 // //    If None, less prio than any success
-// #[test]
-// fn test_last_test_success_prio() {
+// #[test]// fn test_last_test_success_prio() {
 //     let test_vec = (1..500)
 //         .map(|n| {
 //             (n, {

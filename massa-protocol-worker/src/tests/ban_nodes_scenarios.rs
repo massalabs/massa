@@ -6,11 +6,11 @@ use std::time::Duration;
 use massa_consensus_exports::MockConsensusController;
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
 use massa_pool_exports::MockPoolController;
+use massa_pos_exports::MockSelectorController;
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use serial_test::serial;
 
 use crate::wrap_network::ActiveConnectionsTrait;
 use crate::{
@@ -24,7 +24,6 @@ use crate::{
 use super::{context::protocol_test, tools::assert_hash_asked_to_node};
 
 #[test]
-#[serial]
 fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -55,10 +54,15 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     pool_controller
         .expect_clone_box()
         .returning(|| Box::new(MockPoolController::new()));
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     protocol_test(
         &protocol_config,
         consensus_controller,
         pool_controller,
+        selector_controller,
         move |mut network_controller, _storage, _protocol_controller| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -126,7 +130,6 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
 }
 
 #[test]
-#[serial]
 fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -145,10 +148,15 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
     pool_controller
         .expect_clone_box()
         .returning(|| Box::new(MockPoolController::new()));
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     protocol_test(
         &protocol_config,
         consensus_controller,
         pool_controller,
+        selector_controller,
         move |mut network_controller, _storage, _protocol_controller| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -182,7 +190,6 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
 }
 
 #[test]
-#[serial]
 fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -219,10 +226,15 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     pool_controller
         .expect_clone_box()
         .returning(|| Box::new(MockPoolController::new()));
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     protocol_test(
         &protocol_config,
         consensus_controller,
         pool_controller,
+        selector_controller,
         move |mut network_controller, _storage, protocol_controller| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -282,7 +294,6 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
 }
 
 #[test]
-#[serial]
 fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -309,10 +320,15 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
     pool_controller
         .expect_clone_box()
         .returning(|| Box::new(MockPoolController::new()));
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     protocol_test(
         &protocol_config,
         consensus_controller,
         pool_controller,
+        selector_controller,
         move |mut network_controller, _storage, protocol_controller| {
             //1. Create 1 node
             let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -366,7 +382,6 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
 }
 
 #[test]
-#[serial]
 fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -393,10 +408,15 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     pool_controller
         .expect_clone_box()
         .returning(|| Box::new(MockPoolController::new()));
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     protocol_test(
         &protocol_config,
         consensus_controller,
         pool_controller,
+        selector_controller,
         move |mut network_controller, _storage, protocol_controller| {
             //1. Create 2 nodes
             let node_a_keypair = KeyPair::generate(0).unwrap();
