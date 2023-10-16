@@ -54,6 +54,9 @@ mod api_trait;
 mod private;
 mod public;
 
+#[cfg(test)]
+mod tests;
+
 /// Public API component
 pub struct Public {
     /// link to the consensus component
