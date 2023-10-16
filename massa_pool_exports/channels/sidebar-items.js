@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["PoolChannels"]};
+window.SIDEBAR_ITEMS = {"struct":["PoolBroadcasts","PoolChannels"]};

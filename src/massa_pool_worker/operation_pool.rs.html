@@ -938,7 +938,7 @@
 
                 <span class="comment">// Broadcast operations to active channel subscribers.
                 </span><span class="kw">if </span><span class="self">self</span>.config.broadcast_enabled {
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.operation_sender.send(op.clone()) {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.broadcasts.operation_sender.send(op.clone()) {
                         <span class="macro">trace!</span>(<span class="string">&quot;error, failed to broadcast operations {}: {}&quot;</span>, op.id, err);
                     }
                 }
