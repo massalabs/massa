@@ -2837,7 +2837,6 @@ dependencies = [
  "massa_versioning",
  "mockall",
  "num",
- "parking_lot",
  "rand",
  "tempfile",
  "thiserror",

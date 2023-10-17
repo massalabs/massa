@@ -1,12 +1,13 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::tests::mock::{grpc_public_service, MockExecutionCtrl, MockPoolCtrl};
+use crate::tests::mock::grpc_public_service;
 use massa_bootstrap::test_exports::{
     get_dummy_block_id, get_random_async_pool_changes, get_random_executed_de_changes,
     get_random_executed_ops_changes, get_random_execution_trail_hash_change,
     get_random_ledger_changes,
 };
-use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
+use massa_consensus_exports::MockConsensusController;
+use massa_execution_exports::MockExecutionController;
 use massa_execution_exports::{
     test_exports::get_random_eventstore, ExecutionOutput, SlotExecutionOutput,
 };

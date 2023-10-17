@@ -8,7 +8,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [features]
-testing = ["dep:mockall", "dep:num", "dep:massa_channel"]
+testing = []
 
 [dependencies]
 # Internal packages
@@ -55,7 +55,5 @@ tracing = { workspace = true }
 massa_bootstrap = { workspace = true, "features" = ["testing"] }
 massa_consensus_exports = { workspace = true, "features" = ["testing"] }
 massa_final_state = { workspace = true }
-mockall = { workspace = true }
 num = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }
-num = {workspace = true}
