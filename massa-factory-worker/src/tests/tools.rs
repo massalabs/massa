@@ -18,12 +18,10 @@ use massa_signature::KeyPair;
 use massa_storage::Storage;
 
 use crate::block_factory::BlockFactoryWorker;
+use crate::endorsement_factory::EndorsementFactoryWorker;
 use massa_wallet::test_exports::create_test_wallet;
 
 /// This structure store all information and links to creates tests for the factory.
-/// The factory will ask that to the the pool, consensus and factory and then will send the block to the consensus.
-/// You can use the method `new` to build all the mocks and make the connections
-/// Then you can use the method `get_next_created_block` that will manage the answers from the mock to the factory depending on the parameters you gave.
 #[allow(dead_code)]
 pub struct BlockTestFactory {
     factory_config: FactoryConfig,
@@ -95,6 +93,80 @@ impl BlockTestFactory {
         );
 
         BlockTestFactory {
+            factory_config,
+            thread: Some((tx, join_handle)),
+            genesis_blocks,
+            storage,
+            keypair: default_keypair.clone(),
+        }
+    }
+
+    pub fn stop(&mut self) {
+        if let Some((tx, join_handle)) = self.thread.take() {
+            tx.send(()).unwrap();
+            join_handle.join().unwrap();
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub struct EndorsementTestFactory {
+    factory_config: FactoryConfig,
+    thread: Option<(MassaSender<()>, JoinHandle<()>)>,
+    genesis_blocks: Vec<(BlockId, u64)>,
+    pub(crate) storage: Storage,
+    keypair: KeyPair,
+}
+
+impl EndorsementTestFactory {
+    /// Initialize a new factory and all mocks with default data
+    /// Arguments:
+    /// - `keypair`: this keypair will be the one added to the wallet that will be used to produce all blocks
+    ///
+    /// Returns
+    /// - `TestFactory`: the structure that will be used to manage the tests
+    pub fn new(
+        default_keypair: &KeyPair,
+        mut storage: Storage,
+        consensus_controller: Box<MockConsensusController>,
+        selector_controller: Box<MockSelectorController>,
+        pool_controller: Box<MockPoolController>,
+        protocol_controller: Box<MockProtocolController>,
+    ) -> EndorsementTestFactory {
+        let mut factory_config = FactoryConfig::default();
+        factory_config.genesis_timestamp = factory_config
+            .genesis_timestamp
+            .checked_sub(factory_config.t0.checked_div_u64(2).unwrap())
+            .unwrap();
+        let producer_keypair = default_keypair;
+        let producer_address = Address::from_public_key(&producer_keypair.get_public_key());
+        let mut accounts = PreHashMap::default();
+
+        let mut genesis_blocks = vec![];
+        for i in 0..factory_config.thread_count {
+            let block = create_empty_block(producer_keypair, &Slot::new(0, i));
+            genesis_blocks.push((block.id, 0));
+            storage.store_block(block);
+        }
+
+        accounts.insert(producer_address, producer_keypair.clone());
+
+        let wallet = create_test_wallet(Some(accounts));
+        let (tx, rx) = MassaChannel::new(String::from("test_block_factory"), None);
+        let join_handle = EndorsementFactoryWorker::spawn(
+            factory_config.clone(),
+            Arc::new(RwLock::new(wallet)),
+            FactoryChannels {
+                selector: selector_controller,
+                consensus: consensus_controller,
+                pool: pool_controller,
+                protocol: protocol_controller,
+                storage: storage.clone_without_refs(),
+            },
+            rx,
+        );
+
+        EndorsementTestFactory {
             factory_config,
             thread: Some((tx, join_handle)),
             genesis_blocks,
