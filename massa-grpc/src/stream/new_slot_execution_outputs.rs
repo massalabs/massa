@@ -126,7 +126,10 @@ pub(crate) async fn new_slot_execution_outputs(
                     error!("failed to get filter: {}", err);
                     // Send the error response back to the client
                     if let Err(e) = tx.send(Err(err.into())).await {
-                        error!("failed to send back NewBlocks error response: {}", e);
+                        error!(
+                            "failed to send back NewSlotExecutionOutputs error response: {}",
+                            e
+                        );
                     }
                     return;
                 }
@@ -447,11 +450,14 @@ fn filter_map_exec_output(
                     }
                 }
 
-                if let (Some(original_operation_ids), Some(origin_operation_id)) = (
-                    execution_event_filter.original_operation_ids.clone(),
-                    event.context.origin_operation_id,
-                ) {
-                    if !original_operation_ids.contains(&origin_operation_id) {
+                if let Some(original_operation_ids) =
+                    execution_event_filter.original_operation_ids.clone()
+                {
+                    if let Some(origin_operation_id) = event.context.origin_operation_id {
+                        if !original_operation_ids.contains(&origin_operation_id) {
+                            return false;
+                        }
+                    } else {
                         return false;
                     }
                 }
