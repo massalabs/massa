@@ -25,6 +25,7 @@ massa_versioning = {workspace = true}
 
 [dev-dependencies]
 num = {workspace = true}
+massa_hash = {workspace = true}
 massa_protocol_exports = {workspace = true, "features" = ["testing"]}
 massa_consensus_exports = {workspace = true, "features" = ["testing"]}
 massa_factory_exports = {workspace = true, "features" = ["testing"]}
