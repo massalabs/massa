@@ -1210,12 +1210,21 @@ async fn new_slot_execution_outputs() {
     };
     filters.push(filter);
     // async pool changes filter
+    let can_be_executed = match async_pool_changes.0.iter().next().unwrap().1 {
+        massa_ledger_exports::SetUpdateOrDelete::Set(value) => Some(value.can_be_executed),
+        massa_ledger_exports::SetUpdateOrDelete::Update(value) => match value.can_be_executed {
+            massa_ledger_exports::SetOrKeep::Set(value) => Some(value),
+            massa_ledger_exports::SetOrKeep::Keep => None,
+        },
+        massa_ledger_exports::SetUpdateOrDelete::Delete => None,
+    };
+
     filter = grpc_api::NewSlotExecutionOutputsFilter {
         filter: Some(
             grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(
                 grpc_api::AsyncPoolChangesFilter {
-                    filter: Some(grpc_api::async_pool_changes_filter::Filter::None(
-                        grpc_model::Empty {},
+                    filter: Some(grpc_api::async_pool_changes_filter::Filter::CanBeExecuted(
+                        can_be_executed.unwrap(),
                     )),
                 },
             ),
@@ -1291,7 +1300,7 @@ async fn new_slot_execution_outputs() {
         .unwrap()
         .state_changes
         .unwrap();
-    assert!(state_changes.async_pool_changes.is_empty());
+    assert!(state_changes.async_pool_changes.len() == 2);
     assert!(state_changes.executed_ops_changes.len() == 1);
     assert!(state_changes.executed_denunciations_changes.is_empty());
     assert!(state_changes.ledger_changes.is_empty());
