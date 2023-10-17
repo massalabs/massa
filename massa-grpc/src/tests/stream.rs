@@ -16,6 +16,7 @@ use massa_models::{
     address::Address, block::FilledBlock, secure_share::SecureShareSerializer, slot::Slot,
     stats::ExecutionStats,
 };
+use massa_pool_exports::MockPoolController;
 use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use massa_proto_rs::massa::model::v1::{self as grpc_model};
 use massa_proto_rs::massa::{
