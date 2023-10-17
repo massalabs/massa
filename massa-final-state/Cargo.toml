@@ -39,4 +39,3 @@ massa_pos_exports = {workspace = true, "features" = ["testing"]}
 massa_db_worker = {workspace = true}
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-crossbeam-channel = {workspace = true}

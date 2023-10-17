@@ -1619,7 +1619,7 @@ mod tests {
     // This test checks that the initial deferred credits are loaded correctly
     #[test]
     fn test_initial_deferred_credits_loading() {
-        use crate::test_exports::MockSelectorController;
+        use crate::MockSelectorController;
         use crate::PoSFinalState;
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
@@ -1680,7 +1680,7 @@ mod tests {
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
-        let (selector_controller, _) = MockSelectorController::new_with_receiver();
+        let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
@@ -1758,7 +1758,7 @@ mod tests {
     // If this is not handled properly, the node hangs as explained here: https://github.com/massalabs/massa/issues/4101
     #[test]
     fn test_pos_cache_recomputation() {
-        use crate::test_exports::MockSelectorController;
+        use crate::MockSelectorController;
         use crate::PoSFinalState;
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
@@ -1791,7 +1791,7 @@ mod tests {
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
-        let (selector_controller, _) = MockSelectorController::new_with_receiver();
+        let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 
@@ -1868,8 +1868,8 @@ mod tests {
     // This test aims to check that the basic workflow of apply changes to the PoS state works.
     #[test]
     fn test_pos_final_state_hash_computation() {
-        use crate::test_exports::MockSelectorController;
         use crate::DeferredCredits;
+        use crate::MockSelectorController;
         use crate::PoSFinalState;
         use bitvec::prelude::*;
         use massa_db_exports::{MassaDBConfig, MassaDBController};
@@ -1904,7 +1904,7 @@ mod tests {
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
-        let (selector_controller, _) = MockSelectorController::new_with_receiver();
+        let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
 

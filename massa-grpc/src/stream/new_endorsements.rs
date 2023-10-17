@@ -46,7 +46,7 @@ pub(crate) async fn new_endorsements(
     // Get the inner stream from the request
     let mut in_stream = request.into_inner();
     // Subscribe to the new endorsements channel
-    let mut subscriber = grpc.pool_channels.endorsement_sender.subscribe();
+    let mut subscriber = grpc.pool_broadcasts.endorsement_sender.subscribe();
     // Clone grpc to be able to use it in the spawned task
     let grpc_config = grpc.grpc_config.clone();
 

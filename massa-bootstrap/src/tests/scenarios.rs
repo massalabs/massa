@@ -17,9 +17,7 @@ use crate::{
     listener::MockBootstrapTcpListener, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
 };
 use massa_async_pool::AsyncPoolConfig;
-use massa_consensus_exports::{
-    bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
-};
+use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, MockConsensusController};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
@@ -168,9 +166,9 @@ fn mock_bootstrap_manager(
         final_state_local_config.clone(),
         db.clone(),
     )));
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
-    let stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock1 = Box::new(MockConsensusController::new());
+    let mut stream_mock2 = Box::new(MockConsensusController::new());
+    let stream_mock3 = Box::new(MockConsensusController::new());
     stream_mock2
         .expect_clone_box()
         .return_once(move || stream_mock3);
@@ -417,9 +415,9 @@ fn test_bootstrap_server() {
 
     mocked1.expect_clone_box().return_once(move || mocked2);
 
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock1 = Box::new(MockConsensusController::new());
+    let mut stream_mock2 = Box::new(MockConsensusController::new());
+    let mut stream_mock3 = Box::new(MockConsensusController::new());
     let mut seq = mockall::Sequence::new();
 
     let sent_graph = get_boot_state();
@@ -720,7 +718,7 @@ fn test_bootstrap_accept_err() {
         .expect_clone_box()
         .return_once(move || Box::new(MockProtocolController::new()));
 
-    let stream_mock1 = Box::new(MockConsensusControllerImpl::new());
+    let stream_mock1 = Box::new(MockConsensusController::new());
 
     // Start the bootstrap server thread. The expectation for an err then stop is the test.
     // By ensuring that there is a call to poll following an accept err, it shows that the server

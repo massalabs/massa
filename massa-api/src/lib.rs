@@ -24,7 +24,7 @@ use massa_api_exports::{
     page::{PageRequest, PagedVec},
     TimeInterval,
 };
-use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -36,7 +36,7 @@ use massa_models::{
     address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
     execution::EventFilter, slot::Slot, version::Version,
 };
-use massa_pool_exports::{PoolChannels, PoolController};
+use massa_pool_exports::{PoolBroadcasts, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_storage::Storage;
@@ -102,12 +102,12 @@ pub struct Private {
 pub struct ApiV2 {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
-    /// link(channels) to the consensus component
-    pub consensus_channels: ConsensusChannels,
+    /// channels with informations broadcasted by the consensus
+    pub consensus_broadcasts: ConsensusBroadcasts,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
-    /// link(channels) to the pool component
-    pub pool_channels: PoolChannels,
+    /// channels with informations broadcasted by the pool
+    pub pool_broadcasts: PoolBroadcasts,
     /// API settings
     pub api_settings: APIConfig,
     /// node version

@@ -32,5 +32,6 @@ tokio = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"ve
 crossbeam-channel = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.5.6", "optional": true} if problem
 
 [dev-dependencies]
+mockall = {workspace = true}
 rand = {workspace = true}
 itertools = {workspace = true}

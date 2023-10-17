@@ -23,12 +23,15 @@ use massa_api_exports::{
 };
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::ExportCompiledBlock,
-    test_exports::MockConsensusControllerImpl,
+    MockConsensusController,
 };
+use massa_pool_exports::MockPoolController;
+use massa_pos_exports::MockSelectorController;
 
 use crate::{tests::mock::start_public_api, RpcServer};
-use massa_execution_exports::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
-use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl, MockSelectorCtrl};
+use massa_execution_exports::{
+    ExecutionAddressInfo, MockExecutionController, ReadOnlyExecutionOutput,
+};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -57,7 +60,7 @@ async fn get_status() {
     let addr: SocketAddr = "[::]:5001".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
 
     exec_ctrl.expect_get_stats().returning(|| ExecutionStats {
         time_window_start: MassaTime::now().unwrap(),
@@ -68,7 +71,7 @@ async fn get_status() {
         final_cursor: Slot::new(0, 0),
     });
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl.expect_get_stats().returning(|| {
         Ok(ConsensusStats {
             start_timespan: MassaTime::now().unwrap(),
@@ -93,7 +96,7 @@ async fn get_status() {
         ))
     });
 
-    let mut pool_ctrl = MockPoolCtrl::new();
+    let mut pool_ctrl = MockPoolController::new();
     pool_ctrl.expect_get_operation_count().returning(|| 1024);
     pool_ctrl.expect_get_endorsement_count().returning(|| 2048);
 
@@ -129,7 +132,7 @@ async fn get_cliques() {
     let addr: SocketAddr = "[::]:5002".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl
         .expect_get_cliques()
         .returning(|| vec![Clique::default()]);
@@ -165,12 +168,12 @@ async fn get_operations() {
 
     api_public.0.storage.store_operations(vec![op.clone()]);
 
-    let mut pool_ctrl = MockPoolCtrl::new();
+    let mut pool_ctrl = MockPoolController::new();
     pool_ctrl
         .expect_contains_operations()
         .returning(|ids| ids.into_iter().map(|_id| true).collect());
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
         .expect_get_ops_exec_status()
         .returning(|op| op.iter().map(|_op| (Some(true), Some(true))).collect());
@@ -208,12 +211,12 @@ async fn get_endorsements() {
     let end = create_endorsement();
     api_public.0.storage.store_endorsements(vec![end.clone()]);
 
-    let mut pool_ctrl = MockPoolCtrl::new();
+    let mut pool_ctrl = MockPoolController::new();
     pool_ctrl
         .expect_contains_endorsements()
         .returning(|ids| ids.iter().map(|_| true).collect::<Vec<bool>>());
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl
         .expect_get_block_statuses()
         .returning(|param| param.iter().map(|_| BlockGraphStatus::Final).collect());
@@ -268,7 +271,7 @@ async fn get_blocks() {
 
     api_public.0.storage.store_block(block.clone());
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl
         .expect_get_block_statuses()
         .returning(|param| param.iter().map(|_| BlockGraphStatus::Final).collect());
@@ -312,7 +315,7 @@ async fn get_blockclique_block_by_slot() {
 
     api_public.0.storage.store_block(block.clone());
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl
         .expect_get_blockclique_block_at_slot()
         .returning(move |_s| Some(id));
@@ -357,7 +360,7 @@ async fn get_graph_interval() {
     let addr: SocketAddr = "[::]:5008".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut consensus_ctrl = MockConsensusControllerImpl::new();
+    let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl
         .expect_get_block_graph_status()
         .returning(|_start, _end| {
@@ -444,9 +447,9 @@ async fn send_operations() {
     let addr: SocketAddr = "[::]:5014".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut pool_ctrl = MockPoolCtrl::new();
+    let mut pool_ctrl = MockPoolController::new();
     pool_ctrl.expect_clone_box().returning(|| {
-        let mut pool_ctrl = MockPoolCtrl::new();
+        let mut pool_ctrl = MockPoolController::new();
         pool_ctrl.expect_add_operations().returning(|_a| ());
         Box::new(pool_ctrl)
     });
@@ -497,7 +500,7 @@ async fn get_filtered_sc_output_event() {
     let addr: SocketAddr = "[::]:5013".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
         .expect_get_filtered_sc_output_event()
         .returning(|_a| {
@@ -566,7 +569,7 @@ async fn execute_read_only_bytecode() {
     let addr: SocketAddr = "[::]:5012".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
         .expect_execute_readonly_request()
         .returning(|_req| {
@@ -646,7 +649,7 @@ async fn execute_read_only_call() {
     let addr: SocketAddr = "[::]:5011".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
         .expect_execute_readonly_request()
         .returning(|_req| {
@@ -708,7 +711,7 @@ async fn get_addresses() {
     let addr: SocketAddr = "[::]:5010".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl.expect_get_addresses_infos().returning(|a| {
         a.iter()
             .map(|_addr| ExecutionAddressInfo {
@@ -724,7 +727,7 @@ async fn get_addresses() {
             .collect()
     });
 
-    let mut selector_ctrl = MockSelectorCtrl::new();
+    let mut selector_ctrl = MockSelectorController::new();
     selector_ctrl
         .expect_get_available_selections_in_range()
         .returning(|_range, _addrs| Ok(BTreeMap::new()));
@@ -768,7 +771,7 @@ async fn get_datastore_entries() {
     let addr: SocketAddr = "[::]:5009".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
         .expect_get_final_and_active_data_entry()
         .returning(|_a| {
@@ -1116,7 +1119,7 @@ async fn get_stakers() {
     let addr: SocketAddr = "[::]:5015".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
 
-    let mut exec_ctrl = MockExecutionCtrl::new();
+    let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl.expect_get_cycle_active_rolls().returning(|_| {
         let mut map = std::collections::BTreeMap::new();
         map.insert(

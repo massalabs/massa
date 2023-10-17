@@ -248,7 +248,12 @@ impl ConsensusController for ConsensusControllerImpl {
                         })
                         .collect();
 
-                if let Err(err) = self.channels.block_sender.send(verifiable_block.clone()) {
+                if let Err(err) = self
+                    .channels
+                    .broadcasts
+                    .block_sender
+                    .send(verifiable_block.clone())
+                {
                     trace!(
                         "error, failed to broadcast block with id {} due to: {}",
                         block_id,
@@ -256,10 +261,15 @@ impl ConsensusController for ConsensusControllerImpl {
                     );
                 }
 
-                if let Err(err) = self.channels.filled_block_sender.send(FilledBlock {
-                    header: verifiable_block.content.header.clone(),
-                    operations,
-                }) {
+                if let Err(err) = self
+                    .channels
+                    .broadcasts
+                    .filled_block_sender
+                    .send(FilledBlock {
+                        header: verifiable_block.content.header.clone(),
+                        operations,
+                    })
+                {
                     trace!(
                         "error, failed to broadcast filled block with id {} due to: {}",
                         block_id,
@@ -296,7 +306,12 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if self.broadcast_enabled {
-            if let Err(err) = self.channels.block_header_sender.send(header.clone()) {
+            if let Err(err) = self
+                .channels
+                .broadcasts
+                .block_header_sender
+                .send(header.clone())
+            {
                 trace!(
                     "error, failed to broadcast block header with block id {}: {}",
                     block_id,
