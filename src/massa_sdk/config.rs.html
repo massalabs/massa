@@ -55,9 +55,9 @@
 </span><span class="kw">pub struct </span>ClientConfig {
     <span class="doccomment">/// maximum size in bytes of a request.
     </span><span class="kw">pub </span>max_request_body_size: u32,
-    <span class="doccomment">/// maximum size in bytes of a response.
+    <span class="doccomment">/// timeout of an request.
     </span><span class="kw">pub </span>request_timeout: MassaTime,
-    <span class="doccomment">/// maximum size in bytes of a response.
+    <span class="doccomment">/// maximum concurrent requests.
     </span><span class="kw">pub </span>max_concurrent_requests: usize,
     <span class="doccomment">/// certificate_store, `Native` or `WebPki`
     </span><span class="kw">pub </span>certificate_store: String,
