@@ -6,7 +6,9 @@ use massa_bootstrap::test_exports::{
     get_random_execution_trail_hash_change, get_random_ledger_changes,
 };
 use massa_consensus_exports::test_exports::MockConsensusControllerImpl;
-use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
+use massa_execution_exports::{
+    test_exports::get_random_eventstore, ExecutionOutput, SlotExecutionOutput,
+};
 use massa_final_state::StateChanges;
 use massa_models::{
     address::Address, block::FilledBlock, secure_share::SecureShareSerializer, slot::Slot,
@@ -1070,13 +1072,13 @@ async fn new_slot_execution_outputs() {
     // Given
     let mut state_changes = StateChanges::default();
     // Create async pool changes
-    state_changes.async_pool_changes = get_random_async_pool_changes(10, config.thread_count);
+    state_changes.async_pool_changes = get_random_async_pool_changes(3, config.thread_count);
     // Create executed denunciations changes
-    state_changes.executed_denunciations_changes = get_random_executed_de_changes(10);
+    state_changes.executed_denunciations_changes = get_random_executed_de_changes(3);
     // Create executed operations changes
-    state_changes.executed_ops_changes = get_random_executed_ops_changes(10);
+    state_changes.executed_ops_changes = get_random_executed_ops_changes(3);
     // Create ledger changes
-    state_changes.ledger_changes = get_random_ledger_changes(10);
+    state_changes.ledger_changes = get_random_ledger_changes(3);
     // Create execution trail hash change
     state_changes.execution_trail_hash_change = get_random_execution_trail_hash_change(true);
 
@@ -1084,7 +1086,7 @@ async fn new_slot_execution_outputs() {
         slot: Slot::new(1, 5),
         block_info: None,
         state_changes,
-        events: Default::default(),
+        events: get_random_eventstore(3),
     };
 
     let (tx_request, rx) = tokio::sync::mpsc::channel(10);

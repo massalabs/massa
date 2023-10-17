@@ -5,8 +5,8 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-gas_calibration = ["tempfile"]
-testing = ["massa_models/testing", "tempfile", "mockall"]
+gas_calibration = ["massa_ledger_exports/testing", "parking_lot", "tempfile"]
+testing = ["massa_models/testing", "massa_ledger_exports/testing", "parking_lot", "tempfile", "mockall", "rand"]
 
 [dependencies]
 displaydoc = {workspace = true}
@@ -22,9 +22,12 @@ massa_time = {workspace = true}
 massa_storage = {workspace = true}
 massa_final_state = {workspace = true}
 massa_pos_exports = {workspace = true}
+massa_ledger_exports = {workspace = true, optional = true}
 massa_module_cache = {workspace = true}
 massa_versioning = {workspace = true}
 massa-sc-runtime = {workspace = true}
+
+rand = {workspace = true, optional = true}
 
 [dev-dependencies]
 mockall = {workspace = true}
