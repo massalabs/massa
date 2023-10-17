@@ -8,7 +8,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [features]
-testing = ["num"]
+testing = []
 
 [dependencies]
 massa-proto-rs = { workspace = true, "features" = ["tonic"] }
@@ -29,7 +29,6 @@ parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
 h2 = { workspace = true }
 itertools = { workspace = true }
 # test
-num = { workspace = true, optional = true }
 
 massa_consensus_exports = { workspace = true }
 massa_hash = { workspace = true }
@@ -52,3 +51,4 @@ massa_consensus_exports = { workspace = true, "features" = ["testing"] }
 massa_protocol_exports = { workspace = true, "features" = ["testing"] }
 massa_final_state = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }
+num = {workspace = true}

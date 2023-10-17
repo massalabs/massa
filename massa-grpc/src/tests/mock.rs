@@ -31,7 +31,6 @@ use std::path::PathBuf;
 /// * `addr` - the address to bind to
 /// # Returns
 /// * `MassaPublicGrpc` - the grpc public service
-#[allow(dead_code)]
 pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
     let consensus_ctrl = Box::new(MockConsensusController::new());
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
