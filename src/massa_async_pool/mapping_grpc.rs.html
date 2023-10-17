@@ -179,8 +179,6 @@
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{AsyncMessage, AsyncMessageTrigger, AsyncMessageUpdate};
@@ -327,15 +325,13 @@
                     )),
                 }),
             },
-            trigger: <span class="kw">match </span>value.trigger {
-                SetOrKeep::Set(value) =&gt; <span class="kw">match </span>value {
-                    <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepAsyncMessageTrigger { change: <span class="prelude-val">None </span>}),
-                    <span class="prelude-val">Some</span>(trigger) =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepAsyncMessageTrigger {
-                        change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_async_message_trigger::Change::Set(
-                            trigger.into(),
-                        )),
-                    }),
-                },
+            <span class="comment">//TODO remove unwrap
+            </span>trigger: <span class="kw">match </span>value.trigger {
+                SetOrKeep::Set(value) =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepAsyncMessageTrigger {
+                    change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_async_message_trigger::Change::Set(
+                        value.map(|trigger| trigger.into()).unwrap(),
+                    )),
+                }),
                 SetOrKeep::Keep =&gt; <span class="prelude-val">Some</span>(grpc_model::SetOrKeepAsyncMessageTrigger {
                     change: <span class="prelude-val">Some</span>(grpc_model::set_or_keep_async_message_trigger::Change::Keep(
                         grpc_model::Empty {},
