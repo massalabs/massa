@@ -280,6 +280,7 @@ fn test_fts_multiple_max_cliques_1() {
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status")
                 .genesis_blocks;
+            std::thread::sleep(Duration::from_millis(500));
 
             // Period 1.
             let block_1_0 = create_block(
@@ -300,6 +301,7 @@ fn test_fts_multiple_max_cliques_1() {
                 &staking_key,
             );
             register_block(&consensus_controller, block_1_2.clone(), storage.clone());
+            std::thread::sleep(Duration::from_millis(500));
 
             // Period 2.
             // Thread incompatibilities with every blocks of period 1
@@ -327,7 +329,7 @@ fn test_fts_multiple_max_cliques_1() {
             // [block_1_1, block_1_2, block_2_0]
             // [block_1_2, block_2_0, block_2_1]
             // [block_2_0, block_2_1, block_2_2]
-            std::thread::sleep(Duration::from_millis(2000));
+            std::thread::sleep(Duration::from_millis(500));
             let mut status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");

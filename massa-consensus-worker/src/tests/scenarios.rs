@@ -259,7 +259,6 @@ fn test_parallel_incompatibility() {
             let status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
-            println!("AURELIEN: Test {:?}", status.best_parents);
             assert_eq!(status.max_cliques.len(), 1, "wrong cliques (len)");
             assert_eq!(
                 status.max_cliques[0]

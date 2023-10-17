@@ -620,8 +620,6 @@ fn test_protocol_sends_blocks_when_asked_for() {
 }
 
 #[test]
-//TODO: fix
-#[ignore]
 fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_header_to_others() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -678,7 +676,7 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
                 )
                 .unwrap();
 
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(1000));
             //4. Consensus inform us that a block has been integrated and so we propagate it
             storage.store_block(block.clone());
             protocol_controller
