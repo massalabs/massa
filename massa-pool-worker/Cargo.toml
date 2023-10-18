@@ -21,6 +21,7 @@ tokio = {workspace = true, "features" = ["sync"]}
 mockall = {workspace = true}
 massa_signature = {workspace = true}
 massa_hash = {workspace = true}
+massa_pool_exports = {workspace = true, "features" = ["testing"]}
 massa_pos_exports = {workspace = true, "features" = ["testing"]}
 massa_execution_exports = {workspace = true, "features" = ["testing"]}
 crossbeam-channel = {workspace = true}

@@ -216,12 +216,6 @@ impl PoolController for PoolControllerImpl {
         operations.iter().map(|id| lck.contains(id)).collect()
     }
 
-    /// Check if the pool contains a denunciation. Returns a boolean
-    #[cfg(test)]
-    fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
-        self.denunciation_pool.read().contains(denunciation)
-    }
-
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize {
         self.denunciation_pool.read().len()

@@ -206,14 +206,14 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --features testing --retries 10
+          args: run --retries 10
       - uses: actions-rs/cargo@v1
         with:
           command: clean
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --features testing --doc
+          args: --doc
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full

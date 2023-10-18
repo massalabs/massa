@@ -49,10 +49,6 @@ pub trait PoolController: Send + Sync {
     /// Check if the pool contains a list of operations. Returns one boolean per item.
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
 
-    /// Check if the pool contains a denunciation. Returns a boolean
-    #[cfg(test)]
-    fn contains_denunciation(&self, denunciation: &Denunciation) -> bool;
-
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize;
 
