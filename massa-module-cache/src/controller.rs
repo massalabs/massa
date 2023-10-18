@@ -127,7 +127,18 @@ impl ModuleCache {
         &mut self,
         bytecode: &[u8],
         execution_gas: u64,
-    ) -> Result<RuntimeModule, CacheError> {
+    ) -> Result<(RuntimeModule, u64), CacheError> {
+        // TODO: DOCUMENT HERE AND WHEN USED
+        let post_vm = execution_gas
+            .checked_sub(self.cfg.gas_costs.vm_creation_cost)
+            .ok_or(CacheError::LoadError(
+                "Not enough gas to pay vm creation".to_string(),
+            ))?;
+        let remaining = post_vm
+            .checked_sub(self.cfg.gas_costs.sp_compilation_cost)
+            .ok_or(CacheError::LoadError(
+                "Not enough gas to pay compilation".to_string(),
+            ))?;
         let module_info = self.load_module_info(bytecode);
         let module = match module_info {
             ModuleInfo::Invalid => {
@@ -135,7 +146,7 @@ impl ModuleCache {
             }
             ModuleInfo::Module(module) => module,
             ModuleInfo::ModuleAndDelta((module, delta)) => {
-                if delta > execution_gas {
+                if delta > remaining {
                     return Err(CacheError::LoadError(
                         "Provided max gas is below the instance creation cost".to_string(),
                     ));
@@ -144,7 +155,7 @@ impl ModuleCache {
                 }
             }
         };
-        Ok(module)
+        Ok((module, remaining))
     }
 
     /// Load a temporary module from arbitrary bytecode
@@ -152,13 +163,27 @@ impl ModuleCache {
         &self,
         bytecode: &[u8],
         limit: u64,
-    ) -> Result<RuntimeModule, CacheError> {
+    ) -> Result<(RuntimeModule, u64), CacheError> {
+        // TODO: DOCUMENT HERE AND WHEN USED
         debug!("load_tmp_module");
-        Ok(RuntimeModule::new(
-            bytecode,
-            limit,
-            self.cfg.gas_costs.clone(),
-            Compiler::SP,
-        )?)
+        let post_vm = limit
+            .checked_sub(self.cfg.gas_costs.vm_creation_cost)
+            .ok_or(CacheError::LoadError(
+                "Not enough gas to pay vm creation".to_string(),
+            ))?;
+        let remaining = post_vm
+            .checked_sub(self.cfg.gas_costs.sp_compilation_cost)
+            .ok_or(CacheError::LoadError(
+                "Not enough gas to pay compilation".to_string(),
+            ))?;
+        Ok((
+            RuntimeModule::new(
+                bytecode,
+                remaining,
+                self.cfg.gas_costs.clone(),
+                Compiler::SP,
+            )?,
+            remaining,
+        ))
     }
 }

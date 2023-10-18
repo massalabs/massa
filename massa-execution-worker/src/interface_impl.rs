@@ -275,10 +275,10 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A `massa-sc-runtime` compiled module
-    fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<RuntimeModule> {
+    fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<(RuntimeModule, u64)> {
         let context = context_guard!(self);
-        let module = context.module_cache.write().load_module(bytecode, limit)?;
-        Ok(module)
+        let (module, remaining_gas) = context.module_cache.write().load_module(bytecode, limit)?;
+        Ok((module, remaining_gas))
     }
 
     /// Gets the balance of the current address address (top of the stack).
@@ -339,7 +339,14 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the newly created address
     fn create_module(&self, bytecode: &[u8]) -> Result<String> {
-        match context_guard!(self).create_new_sc_address(Bytecode(bytecode.to_vec())) {
+        let mut context = context_guard!(self);
+        let cost = self.config.gas_costs.cl_compilation_cost;
+        if let Some(remaining) = context.max_gas.checked_sub(cost) {
+            context.max_gas = remaining
+        } else {
+            bail!("couldn't create new SC: not enough gas for compilation");
+        }
+        match context.create_new_sc_address(Bytecode(bytecode.to_vec())) {
             Ok(addr) => Ok(addr.to_string()),
             Err(err) => bail!("couldn't create new SC address: {}", err),
         }
