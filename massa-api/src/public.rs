@@ -26,6 +26,7 @@ use massa_execution_exports::{
 };
 use massa_models::{
     address::Address,
+    amount::Amount,
     block::{Block, BlockGraphStatus},
     block_id::BlockId,
     clique::Clique,
@@ -274,7 +275,7 @@ impl MassaRpcServer for API<Public> {
                     },
                     ExecutionStackElement {
                         address: target_address,
-                        coins: Default::default(),
+                        coins: coins.unwrap_or(Amount::default()),
                         owned_addresses: vec![target_address],
                         operation_datastore: None, // should always be None
                     },
