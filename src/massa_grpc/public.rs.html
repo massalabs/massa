@@ -1274,21 +1274,6 @@
 <a href="#1274" id="1274">1274</a>
 <a href="#1275" id="1275">1275</a>
 <a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
-<a href="#1283" id="1283">1283</a>
-<a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
-<a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
-<a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1303,7 +1288,6 @@
     ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 <span class="kw">use </span>massa_models::address::Address;
-<span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::block::{Block, BlockGraphStatus};
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::config::CompactConfig;
@@ -1406,20 +1390,6 @@
         call_stack,
         target,
         is_final: call.is_final,
-        coins: call
-            .coins
-            .map(|native_amount| {
-                Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
-                    .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="string">&quot;invalid amount&quot;</span>.to_string()))
-            })
-            .transpose()<span class="question-mark">?</span>,
-        fee: call
-            .fee
-            .map(|native_amount| {
-                Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
-                    .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="string">&quot;invalid amount&quot;</span>.to_string()))
-            })
-            .transpose()<span class="question-mark">?</span>,
     };
 
     <span class="kw">let </span>output = grpc
