@@ -43,7 +43,7 @@ Since double-staking is penalized and could happen on node reboot, a safety meas
 We ignore block creation slots for which `S.period == 0` (genesis blocks).
 
 At every block creation slot, the block creation thread will read selector draws at that slot to check whether one of the staking keys was selected to produce the block.
-If the addres linked to a stored staking key was selected, launch the block production process below.
+If the address linked to a stored staking key was selected, launch the block production process below.
 
 ### Block production
 
@@ -92,7 +92,7 @@ This is indeed a half-period lag in order to incentivize timely block and endors
 Since double-staking is penalized and could happen on node reboot, a safety measure is to wait 1 period (`2*t0`) after the program starts before beginning endorsement production.
 
 At every block creation slot, the block creation thread will read selector draws at that slot to check whether one of the staking keys was selected to produce the block.
-If the addres linked to a stored staking key was selected, launch the block production process below.
+If the address linked to a stored staking key was selected, launch the block production process below.
 
 
 ### Endorsement production

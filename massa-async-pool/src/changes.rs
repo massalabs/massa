@@ -86,38 +86,6 @@ impl Default for AsyncPoolChangesSerializer {
 }
 
 impl Serializer<AsyncPoolChanges> for AsyncPoolChangesSerializer {
-    /// ## Example
-    /// ```
-    /// use std::ops::Bound::Included;
-    /// use massa_serialization::Serializer;
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
-    /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolChangesSerializer};
-    /// use massa_ledger_exports::SetUpdateOrDelete;
-    ///
-    /// let message = AsyncMessage::new(
-    ///     Slot::new(1, 0),
-    ///     0,
-    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     String::from("test"),
-    ///     10000000,
-    ///     Amount::from_str("1").unwrap(),
-    ///     Amount::from_str("1").unwrap(),
-    ///     Slot::new(2, 0),
-    ///     Slot::new(3, 0),
-    ///     vec![1, 2, 3, 4],
-    ///     None,
-    ///     None
-    /// );
-    /// let mut changes = AsyncPoolChanges::default();
-    ///    changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
-    /// let mut serialized = Vec::new();
-    /// let serializer = AsyncPoolChangesSerializer::new();
-    /// serializer.serialize(&changes, &mut serialized).unwrap();
-    /// ```
     fn serialize(
         &self,
         value: &AsyncPoolChanges,
@@ -184,48 +152,6 @@ impl AsyncPoolChangesDeserializer {
 }
 
 impl Deserializer<AsyncPoolChanges> for AsyncPoolChangesDeserializer {
-    /// ## Example
-    /// ```
-    /// use std::ops::Bound::Included;
-    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
-    /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageTrigger, AsyncPoolChanges, AsyncPoolChangesSerializer, AsyncPoolChangesDeserializer};
-    /// use massa_ledger_exports::SetUpdateOrDelete;
-    ///
-    /// let message = AsyncMessage::new(
-    ///     Slot::new(1, 0),
-    ///     0,
-    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     String::from("test"),
-    ///     10000000,
-    ///     Amount::from_str("1").unwrap(),
-    ///     Amount::from_str("1").unwrap(),
-    ///     Slot::new(2, 0),
-    ///     Slot::new(3, 0),
-    ///     vec![1, 2, 3, 4],
-    ///     Some(AsyncMessageTrigger {
-    ///        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///        datastore_key: Some(vec![1, 2, 3, 4]),
-    ///     }),
-    ///     None
-    /// );
-    /// let mut changes = AsyncPoolChanges::default();
-    /// changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
-    /// changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Delete);
-    /// let mut serialized = Vec::new();
-    /// let serializer = AsyncPoolChangesSerializer::new();
-    /// let deserializer = AsyncPoolChangesDeserializer::new(32, 10000, 10000, 100000, 100000);
-    /// serializer.serialize(&changes, &mut serialized).unwrap();
-    /// let (rest, changes_deser) = deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
-    /// assert!(rest.is_empty());
-    /// assert_eq!(changes, changes_deser);
-    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -297,5 +223,123 @@ impl AsyncPoolChanges {
             .0
             .insert(msg_id, SetUpdateOrDelete::Update(msg_update));
         self.apply(change);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use massa_ledger_exports::SetUpdateOrDelete;
+    use massa_models::{address::Address, amount::Amount, slot::Slot};
+    use massa_serialization::{DeserializeError, Deserializer, Serializer};
+
+    use crate::message::AsyncMessageTrigger;
+
+    use assert_matches::assert_matches;
+
+    use super::*;
+
+    fn get_message() -> AsyncMessage {
+        let message = AsyncMessage::new(
+            Slot::new(1, 0),
+            0,
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            String::from("test"),
+            10000000,
+            Amount::from_str("1").unwrap(),
+            Amount::from_str("1").unwrap(),
+            Slot::new(2, 0),
+            Slot::new(3, 0),
+            vec![1, 2, 3, 4],
+            Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![1, 2, 3, 4]),
+            }),
+            None,
+        );
+        return message;
+    }
+
+    #[test]
+    fn test_changes_ser_deser() {
+        // Async pool changes serialization && deserialization
+
+        let message = get_message();
+        let mut changes = AsyncPoolChanges::default();
+        changes.0.insert(
+            message.compute_id(),
+            SetUpdateOrDelete::Set(message.clone()),
+        );
+
+        let mut message2 = message.clone();
+        message2.fee = Amount::from_str("2").unwrap();
+        assert_ne!(message.compute_id(), message2.compute_id());
+
+        let mut message3 = message.clone();
+        message3.fee = Amount::from_str("3").unwrap();
+        assert_ne!(message.compute_id(), message3.compute_id());
+
+        changes
+            .0
+            .insert(message2.compute_id(), SetUpdateOrDelete::Delete);
+
+        let mut update3 = AsyncMessageUpdate::default();
+        update3.coins = SetOrKeep::Set(Amount::from_str("3").unwrap());
+
+        changes
+            .0
+            .insert(message3.compute_id(), SetUpdateOrDelete::Update(update3));
+
+        assert_eq!(changes.0.len(), 3);
+
+        let mut serialized = Vec::new();
+        let serializer = AsyncPoolChangesSerializer::new();
+        let deserializer = AsyncPoolChangesDeserializer::new(32, 10000, 10000, 100000, 100000);
+        serializer.serialize(&changes, &mut serialized).unwrap();
+        let (rest, changes_deser) = deserializer
+            .deserialize::<DeserializeError>(&serialized)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(changes, changes_deser);
+    }
+
+    #[test]
+    fn test_pool_changes_push() {
+        // AsyncPoolChanges, push_add/push_delete/push_activate
+
+        let message = get_message();
+        assert_eq!(message.can_be_executed, false);
+
+        let mut changes = AsyncPoolChanges::default();
+
+        changes.push_add(message.compute_id(), message.clone());
+        assert_eq!(changes.0.len(), 1);
+        assert_matches!(
+            changes.0.get(&message.compute_id()),
+            Some(&SetUpdateOrDelete::Set(..))
+        );
+
+        changes.push_activate(message.compute_id());
+        assert_eq!(changes.0.len(), 1);
+        let value = changes.0.get(&message.compute_id()).unwrap();
+        match value {
+            SetUpdateOrDelete::Set(msg) => {
+                assert_eq!(msg.can_be_executed, true);
+            }
+            _ => {
+                panic!("Unexpect value");
+            }
+        }
+
+        changes.push_delete(message.compute_id());
+        // Len is still 1, but value has changed
+        assert_eq!(changes.0.len(), 1);
+        assert_eq!(
+            changes.0.get(&message.compute_id()),
+            Some(&SetUpdateOrDelete::Delete)
+        );
     }
 }

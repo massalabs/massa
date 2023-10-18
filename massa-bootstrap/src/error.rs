@@ -15,7 +15,7 @@ use thiserror::Error;
 
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-/// Encapsulates the verious failure contexts for the bootstrap process, both client and server side
+/// Encapsulates the various failure contexts for the bootstrap process, both client and server side
 pub enum BootstrapError {
     /// Bootstrap IO error: {0}
     IoError(std::io::Error),

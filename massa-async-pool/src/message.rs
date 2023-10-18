@@ -1027,6 +1027,9 @@ mod tests {
 
     #[test]
     fn no_apply_update_message() {
+        // Init an AsyncMessage, try to apply an update (with no modifications at all)
+        // Original async message and 'updated' async message should be ==
+
         let mut msg = AsyncMessage {
             emission_slot: Slot::new(0, 0),
             emission_index: 0,
@@ -1067,6 +1070,9 @@ mod tests {
 
     #[test]
     fn apply_update_message() {
+        // Init an AsyncMessage, try to apply an update (with modifications for all fields)
+        // Original async message and 'updated' async message should be !=
+
         let mut msg = AsyncMessage {
             emission_slot: Slot::new(0, 0),
             emission_index: 0,
@@ -1145,6 +1151,8 @@ mod tests {
 
     #[test]
     fn apply_update_on_update_message() {
+        // Apply AsyncMessageUpdate on a AsyncMessageUpdate then apply to an AsyncMessage
+
         let mut msg = AsyncMessage {
             emission_slot: Slot::new(0, 0),
             emission_index: 0,
@@ -1240,6 +1248,8 @@ mod tests {
 
     #[test]
     fn lower_limit_ser_deser_id() {
+        // Serialize then Deserialize an AsyncMessageId (with lowest values)
+
         let id: AsyncMessageId = (std::cmp::Reverse(Ratio::new(0, 1)), Slot::new(0, 0), 0);
 
         let mut buffer = Vec::new();
@@ -1255,6 +1265,8 @@ mod tests {
 
     #[test]
     fn higher_limit_ser_deser_id() {
+        // Serialize then Deserialize an AsyncMessageId (with highest values)
+
         let id: AsyncMessageId = (
             std::cmp::Reverse(Ratio::new(u64::MAX, u64::MAX)),
             Slot::new(u64::MAX, THREAD_COUNT - 1),
@@ -1275,6 +1287,7 @@ mod tests {
     #[test]
     fn wrong_denom_ser_deser_id() {
         let id: AsyncMessageId = (
+            // Ratio with 0 as a denominator -> will fail to deserialize
             std::cmp::Reverse(Ratio::new_raw(u64::MAX, 0)),
             Slot::new(u64::MAX, THREAD_COUNT - 1),
             u64::MAX,
@@ -1291,6 +1304,8 @@ mod tests {
 
     #[test]
     fn lower_limit_ser_deser_message() {
+        // Serialize then Deserialize an AsyncMessage (with lowest values)
+
         let msg = AsyncMessage {
             emission_slot: Slot::new(0, 0),
             emission_index: 0,
@@ -1328,6 +1343,8 @@ mod tests {
 
     #[test]
     fn higher_limit_ser_deser_message() {
+        // Serialize then Deserialize an AsyncMessage (with max values in most of its fields)
+
         let msg = AsyncMessage {
             emission_slot: Slot::new(u64::MAX, THREAD_COUNT - 1),
             emission_index: u64::MAX,
@@ -1452,7 +1469,9 @@ mod tests {
     }
 
     #[test]
-    fn bad_serialization_version_message() {
+    fn bad_serialization_message() {
+        // Serialize an AsyncMessage, write some crap in the result and try to deserialize it
+
         let message = AsyncMessage::new(
             Slot::new(1, 2),
             0,
@@ -1484,6 +1503,7 @@ mod tests {
             MAX_DATASTORE_KEY_LENGTH as u32,
             false,
         );
+        // Will break the deserialization
         serialized[1] = 50;
         message_deserializer
             .deserialize::<DeserializeError>(&serialized)
