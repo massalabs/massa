@@ -12,7 +12,7 @@ use jsonrpsee::server::middleware::HostFilterLayer;
 use jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
 use massa_api_exports::{
-    address::AddressInfo,
+    address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -368,6 +368,10 @@ pub trait MassaRpc {
     /// Get addresses.
     #[method(name = "get_addresses")]
     async fn get_addresses(&self, arg: Vec<Address>) -> RpcResult<Vec<AddressInfo>>;
+
+    /// Get addresses bytecode.
+    #[method(name = "get_addresses_bytecode")]
+    async fn get_addresses_bytecode(&self, args: Vec<AddressFilter>) -> RpcResult<Vec<Vec<u8>>>;
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[method(name = "send_operations")]

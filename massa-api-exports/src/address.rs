@@ -155,3 +155,25 @@ impl std::fmt::Display for CompactAddressInfo {
         Ok(())
     }
 }
+
+/// filter used when retrieving address informations
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct AddressFilter {
+    /// Address
+    pub address: Address,
+
+    /// true means final
+    /// false means candidate
+    pub is_final: bool,
+}
+
+impl std::fmt::Display for AddressFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Address: {:?}", self.address)?;
+        if self.is_final {
+            write!(f, " (Final)")
+        } else {
+            write!(f, " (Candidate)")
+        }
+    }
+}
