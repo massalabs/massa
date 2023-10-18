@@ -33,6 +33,7 @@ use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
+use std::str::FromStr;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumString};
 
@@ -280,20 +281,20 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "PathToBytecode MaxGas Address IsFinal",
+            args = "PathToBytecode MaxGas Address IsFinal Fee",
             pwd_not_needed = "true"
         ),
-        message = "execute byte code, address is optional, is_final is optional. Nothing is really executed on chain"
+        message = "execute byte code, address is optional, is_final is optional, fee is optional. Nothing is really executed on chain"
     )]
     read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal",
+            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal Coins Fee",
             pwd_not_needed = "true"
         ),
-        message = "call a smart contract function, sender address is optional, is_final is optional. Nothing is really executed on chain"
+        message = "call a smart contract function, sender address, is_final, coins and fee are optional. Nothing is really executed on chain"
     )]
     read_only_call,
 
@@ -1142,6 +1143,10 @@ impl Command {
                 } else {
                     false
                 };
+                let fee = parameters
+                    .get(7)
+                    .map(|fee| Amount::from_str(fee))
+                    .transpose()?;
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
                     .public
@@ -1151,6 +1156,7 @@ impl Command {
                         address,
                         operation_datastore: None, // TODO - #3072
                         is_final,
+                        fee,
                     })
                     .await
                 {
@@ -1177,6 +1183,11 @@ impl Command {
                 } else {
                     false
                 };
+                let coins = parameters.get(6).map(|c| Amount::from_str(c)).transpose()?;
+                let fee = parameters
+                    .get(7)
+                    .map(|fee| Amount::from_str(fee))
+                    .transpose()?;
                 match client
                     .public
                     .execute_read_only_call(ReadOnlyCall {
@@ -1186,6 +1197,8 @@ impl Command {
                         parameter,
                         max_gas,
                         is_final,
+                        coins,
+                        fee,
                     })
                     .await
                 {
