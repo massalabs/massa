@@ -1077,6 +1077,8 @@
 <a href="#1077" id="1077">1077</a>
 <a href="#1078" id="1078">1078</a>
 <a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1180,14 +1182,16 @@
     </span><span class="attr">#[cfg(all(
         not(feature = <span class="string">&quot;gas_calibration&quot;</span>),
         not(feature = <span class="string">&quot;benchmarking&quot;</span>),
-        not(feature = <span class="string">&quot;testing&quot;</span>)
+        not(feature = <span class="string">&quot;testing&quot;</span>),
+        not(test)
     ))]
     </span>speculative_ledger: SpeculativeLedger,
     <span class="attr">#[cfg(any(
         feature = <span class="string">&quot;gas_calibration&quot;</span>,
         feature = <span class="string">&quot;benchmarking&quot;</span>,
-        feature = <span class="string">&quot;testing&quot;
-    </span>))]
+        feature = <span class="string">&quot;testing&quot;</span>,
+        test
+    ))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) speculative_ledger: SpeculativeLedger,
 
     <span class="doccomment">/// speculative asynchronous pool state,

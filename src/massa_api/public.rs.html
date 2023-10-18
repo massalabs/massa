@@ -1128,14 +1128,6 @@
 <a href="#1128" id="1128">1128</a>
 <a href="#1129" id="1129">1129</a>
 <a href="#1130" id="1130">1130</a>
-<a href="#1131" id="1131">1131</a>
-<a href="#1132" id="1132">1132</a>
-<a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1164,7 +1156,6 @@
 };
 <span class="kw">use </span>massa_models::{
     address::Address,
-    amount::Amount,
     block::{Block, BlockGraphStatus},
     block_id::BlockId,
     clique::Clique,
@@ -1272,7 +1263,6 @@
             bytecode,
             operation_datastore,
             is_final,
-            fee,
         } <span class="kw">in </span>reqs
         {
             <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = address {
@@ -1326,8 +1316,6 @@
                     operation_datastore: op_datastore,
                 }],
                 is_final,
-                coins: <span class="prelude-val">None</span>,
-                fee,
             };
 
             <span class="comment">// run
@@ -1373,8 +1361,6 @@
             parameter,
             caller_address,
             is_final,
-            coins,
-            fee,
         } <span class="kw">in </span>reqs
         {
             <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = caller_address {
@@ -1413,14 +1399,12 @@
                     </span>},
                     ExecutionStackElement {
                         address: target_address,
-                        coins: coins.unwrap_or(Amount::default()),
+                        coins: Default::default(),
                         owned_addresses: <span class="macro">vec!</span>[target_address],
                         operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
                     </span>},
                 ],
                 is_final,
-                coins,
-                fee,
             };
 
             <span class="comment">// run
