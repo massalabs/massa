@@ -15,9 +15,11 @@ use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use parking_lot::{Condvar, Mutex};
+use serial_test::serial;
 
 /// Creates a basic empty block with the factory.
 #[test]
+#[serial]
 fn basic_creation() {
     let default_panic = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {

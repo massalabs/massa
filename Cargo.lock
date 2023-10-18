@@ -2924,6 +2924,7 @@ dependencies = [
  "massa_wallet",
  "num",
  "parking_lot",
+ "serial_test",
  "tracing",
 ]
 
