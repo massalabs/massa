@@ -48,15 +48,10 @@ fn test_unsorted_block() {
         .expect_update_blockclique_status()
         .return_once(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    let mut pool_controller_2 = Box::new(MockPoolController::new());
     //TODO: Improve checks here
-    pool_controller_2
+    pool_controller
         .expect_notify_final_cs_periods()
         .returning(|_| {});
-    //TODO: To be deleted when channels will be well used instead of clones
-    pool_controller
-        .expect_clone_box()
-        .return_once(move || pool_controller_2);
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -164,13 +159,9 @@ fn test_parallel_incompatibility() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});

@@ -5,7 +5,9 @@ use massa_consensus_exports::{
     error::ConsensusError,
 };
 use massa_logging::massa_trace;
-use massa_models::{block_header::SecuredHeader, block_id::BlockId, slot::Slot};
+use massa_models::{
+    block_header::SecuredHeader, block_id::BlockId, denunciation::DenunciationPrecursor, slot::Slot,
+};
 use massa_storage::Storage;
 use massa_time::MassaTime;
 use tracing::debug;
@@ -32,6 +34,11 @@ impl ConsensusState {
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
+
+        let de_p = DenunciationPrecursor::from(&header);
+        self.channels
+            .pool_controller
+            .add_denunciation_precursor(de_p);
 
         debug!(
             "received header {} for slot {}",
@@ -75,6 +82,13 @@ impl ConsensusState {
         // ignore genesis blocks
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
+        }
+
+        if let Some(verifiable_block) = storage.read_blocks().get(&block_id) {
+            let de_p = DenunciationPrecursor::from(&verifiable_block.content.header);
+            self.channels
+                .pool_controller
+                .add_denunciation_precursor(de_p);
         }
 
         // Block is coming from protocol mark it for desync calculation
