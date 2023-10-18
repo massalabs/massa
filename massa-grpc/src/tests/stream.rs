@@ -1191,7 +1191,6 @@ async fn new_slot_execution_outputs() {
         )),
     };
     filters.push(filter);
-    let mut filters = Vec::new();
     filter = grpc_api::NewSlotExecutionOutputsFilter {
         filter: Some(grpc_api::new_slot_execution_outputs_filter::Filter::Status(
             grpc_model::ExecutionOutputStatus::Candidate as i32,
@@ -1306,6 +1305,38 @@ async fn new_slot_execution_outputs() {
     assert!(state_changes.executed_ops_changes.len() == 1);
     assert!(state_changes.executed_denunciations_changes.is_empty());
     assert!(state_changes.ledger_changes.is_empty());
+
+    // Too many filters
+    let mut filters = Vec::new();
+    // executed operations changes filter
+    let filter = grpc_api::NewSlotExecutionOutputsFilter {
+        filter: Some(
+            grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(
+                grpc_api::ExecutedOpsChangesFilter {
+                    filter: Some(grpc_api::executed_ops_changes_filter::Filter::None(
+                        grpc_model::Empty {},
+                    )),
+                },
+            ),
+        ),
+    };
+    for _ in 0..config.max_filters_per_request + 1 {
+        filters.push(filter.clone());
+    }
+
+    tx_request
+        .send(NewSlotExecutionOutputsRequest { filters: filters })
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    slot_tx
+        .send(SlotExecutionOutput::ExecutedSlot(exec_output_1.clone()))
+        .unwrap();
+
+    let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
+    // Too many filters
+    assert!(result.unwrap().unwrap().is_err());
 
     stop_handle.stop();
 }
