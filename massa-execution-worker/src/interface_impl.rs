@@ -30,7 +30,8 @@ use massa_time::MassaTime;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "testing",
+    test
 ))]
 use num::rational::Ratio;
 use parking_lot::Mutex;
@@ -45,7 +46,8 @@ use tracing::debug;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "testing",
+    test
 ))]
 use massa_models::datastore::Datastore;
 
@@ -78,7 +80,8 @@ impl InterfaceImpl {
     #[cfg(any(
         feature = "gas_calibration",
         feature = "benchmarking",
-        feature = "testing"
+        feature = "testing",
+        test
     ))]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(

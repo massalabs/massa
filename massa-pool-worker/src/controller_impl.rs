@@ -217,7 +217,7 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// Check if the pool contains a denunciation. Returns a boolean
-    #[cfg(feature = "testing")]
+    #[cfg(test)]
     fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
         self.denunciation_pool.read().contains(denunciation)
     }

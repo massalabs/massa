@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["massa_pool_exports/testing", "massa_execution_exports/testing", "massa_pos_exports/testing", "massa_wallet/testing"]
+testing = ["massa_execution_exports/testing", "massa_pos_exports/testing", "massa_wallet/testing"]
 
 [dependencies]
 tracing = {workspace = true}
@@ -22,6 +22,5 @@ mockall = {workspace = true}
 massa_signature = {workspace = true}
 massa_hash = {workspace = true}
 massa_pos_exports = {workspace = true, "features" = ["testing"]}
-massa_pool_exports = {workspace = true, "features" = ["testing"]}
 massa_execution_exports = {workspace = true, "features" = ["testing"]}
 crossbeam-channel = {workspace = true}

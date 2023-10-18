@@ -101,13 +101,15 @@ pub struct ExecutionContext {
     #[cfg(all(
         not(feature = "gas_calibration"),
         not(feature = "benchmarking"),
-        not(feature = "testing")
+        not(feature = "testing"),
+        not(test)
     ))]
     speculative_ledger: SpeculativeLedger,
     #[cfg(any(
         feature = "gas_calibration",
         feature = "benchmarking",
-        feature = "testing"
+        feature = "testing",
+        test
     ))]
     pub(crate) speculative_ledger: SpeculativeLedger,
 
