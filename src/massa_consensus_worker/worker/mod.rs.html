@@ -121,6 +121,7 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::{receiver::MassaReceiver, MassaChannel};
 <span class="kw">use </span>massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, ConsensusChannels, ConsensusConfig,
@@ -186,10 +187,11 @@
     </span><span class="kw">let </span>bootstrap_part_size = config.bootstrap_part_size;
     <span class="kw">let </span>stats_desync_detection_timespan =
         config.t0.checked_mul(config.periods_per_cycle * <span class="number">2</span>).unwrap();
+    <span class="kw">let </span>broadcasts = channels.broadcasts.clone();
     <span class="kw">let </span>shared_state = Arc::new(RwLock::new(ConsensusState {
         storage: storage.clone(),
         config: config.clone(),
-        channels: channels.clone(),
+        channels,
         max_cliques: <span class="macro">vec!</span>[Clique {
             block_ids: PreHashSet::&lt;BlockId&gt;::default(),
             fitness: <span class="number">0</span>,
@@ -236,7 +238,7 @@
 
     <span class="kw">let </span>controller = ConsensusControllerImpl::new(
         tx,
-        channels,
+        broadcasts,
         shared_state,
         bootstrap_part_size,
         config.broadcast_enabled,
