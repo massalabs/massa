@@ -73,6 +73,10 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -123,6 +127,10 @@
 
     <span class="doccomment">/// Check if the pool contains a list of operations. Returns one boolean per item.
     </span><span class="kw">fn </span>contains_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, operations: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;bool&gt;;
+
+    <span class="doccomment">/// Check if the pool contains a denunciation. Returns a boolean
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span><span class="kw">fn </span>contains_denunciation(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation: <span class="kw-2">&amp;</span>Denunciation) -&gt; bool;
 
     <span class="doccomment">/// Get the number of denunciations in the pool
     </span><span class="kw">fn </span>get_denunciation_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
