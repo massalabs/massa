@@ -654,7 +654,8 @@ impl PoSFinalState {
             .unwrap_or_default()
     }
 
-    /// Retrieves the amount of rolls a given address has at a given cycle
+    /// Retrieves the amount of rolls a given address has at a given cycle - 3
+    /// if cycle - 3 does not exist, values from initial rolls are returned
     pub fn get_address_active_rolls(&self, addr: &Address, cycle: u64) -> Option<u64> {
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
@@ -680,7 +681,7 @@ impl PoSFinalState {
         }
     }
 
-    /// Gets all active rolls for a given cycle
+    /// Gets all active rolls for a given cycle - 3, use self.initial_rolls if cycle - 3 does not exist
     pub fn get_all_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
         match cycle.checked_sub(3) {
             Some(lookback_cycle) => {
@@ -1942,6 +1943,11 @@ mod tests {
             pos_state_2.get_address_active_rolls(&addr1, 4),
             Some(roll_a1_c1)
         );
+        assert_eq!(
+            pos_state_2.get_address_active_rolls(&addr1, 4 + 3 + 1),
+            None
+        );
+        assert_eq!(pos_state_2.get_address_active_rolls(&addr1, 19), None);
 
         let rolls_1 = pos_state_2.get_rolls_for(&addr1);
         assert_eq!(rolls_1, roll_a1_c4);
