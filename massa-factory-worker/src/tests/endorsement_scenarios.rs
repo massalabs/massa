@@ -73,7 +73,7 @@ fn basic_creation() {
                 .unwrap()
                 .clone();
             assert_eq!(first_endorsement.content.slot, Slot::new(1, 0));
-            let &(ref lock, ref cvar) = &*pair2;
+            let (lock, cvar) = &*pair2;
             let mut started = lock.lock();
             *started = true;
             cvar.notify_one();
@@ -87,7 +87,7 @@ fn basic_creation() {
         pool_controller,
         protocol_controller,
     );
-    let &(ref lock, ref cvar) = &*pair;
+    let (lock, cvar) = &*pair;
     let mut started = lock.lock();
     if !*started {
         cvar.wait(&mut started);

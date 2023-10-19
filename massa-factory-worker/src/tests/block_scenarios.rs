@@ -50,7 +50,7 @@ fn basic_creation() {
             assert!(created);
             let block = storage.get_block_refs();
             assert_eq!(block.len(), 1);
-            let &(ref lock, ref cvar) = &*pair2;
+            let (lock, cvar) = &*pair2;
             let mut started = lock.lock();
             *started = true;
             cvar.notify_one();
@@ -86,7 +86,7 @@ fn basic_creation() {
         selector_controller,
         pool_controller,
     );
-    let &(ref lock, ref cvar) = &*pair;
+    let (ref lock, ref cvar) = *pair;
     let mut started = lock.lock();
     if !*started {
         cvar.wait(&mut started);
@@ -163,7 +163,7 @@ fn basic_creation_with_operation() {
             assert_eq!(block.len(), 1);
             let ops = storage.get_op_refs();
             assert_eq!(ops.len(), 1);
-            let &(ref lock, ref cvar) = &*pair2;
+            let (lock, cvar) = &*pair2;
             let mut started = lock.lock();
             *started = true;
             cvar.notify_one();
@@ -175,7 +175,7 @@ fn basic_creation_with_operation() {
         selector_controller,
         pool_controller,
     );
-    let &(ref lock, ref cvar) = &*pair;
+    let (lock, cvar) = &*pair;
     let mut started = lock.lock();
     if !*started {
         cvar.wait(&mut started);
