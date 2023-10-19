@@ -1619,7 +1619,9 @@ mod tests {
     use std::collections::HashMap;
     use std::str::FromStr;
     use std::sync::Arc;
+    use std::thread;
 
+    use assert_matches::assert_matches;
     use bitvec::prelude::*;
     use parking_lot::RwLock;
     use tempfile::TempDir;
@@ -1758,6 +1760,16 @@ mod tests {
             deferred_credits, expected_credits,
             "deferred credits not loaded correctly"
         );
+
+        let credits_range_1 =
+            pos_state.get_deferred_credits_range(Slot::new(4, 0)..Slot::new(4, 1));
+        assert!(credits_range_1.is_empty());
+        let credits_range_2 =
+            pos_state.get_deferred_credits_range(Slot::new(2, 0)..Slot::new(3, 1));
+        assert_eq!(credits_range_2.credits.len(), 1);
+        let credits_range_3 =
+            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(9, 5));
+        assert!(credits_range_3.is_empty());
     }
 
     // This test checks that the initial rolls are loaded correctly
@@ -2245,5 +2257,260 @@ mod tests {
         );
 
         assert_eq!(cycle_info_a, cycle_info_b, "cycle_info mismatch");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_feed_selector() {
+        let initial_deferred_credits_file =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+
+        let initial_rolls_file_0 =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+
+        // write down some rolls info
+        let rolls_file_contents_0 = "{}";
+        std::fs::write(
+            initial_rolls_file_0.path(),
+            rolls_file_contents_0.as_bytes(),
+        )
+        .expect("failed writing initial rolls file 0");
+
+        // write down some deferred credits
+        let deferred_credits_file_contents = "{}";
+        std::fs::write(
+            initial_deferred_credits_file.path(),
+            deferred_credits_file_contents.as_bytes(),
+        )
+        .expect("failed writing initial deferred credits file");
+
+        // initialize the database
+        let tempdir = tempfile::TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_new_elements: 100,
+            thread_count: 2,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let selector_controller = Box::new(MockSelectorController::new());
+
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: Some(initial_deferred_credits_file.path().to_path_buf()),
+        };
+
+        let init_seed = "";
+        let mut pos_state_0 = PoSFinalState::new(
+            pos_config.clone(),
+            init_seed,
+            &initial_rolls_file_0.path().to_path_buf(),
+            selector_controller,
+            db.clone(),
+        )
+        .unwrap();
+
+        let cycle_info_0 = CycleInfo::new(
+            0,
+            true,
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+        let cycle_info_1 = CycleInfo {
+            cycle: 1,
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_2 = CycleInfo {
+            cycle: 2,
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_3 = CycleInfo {
+            cycle: 3,
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_4 = CycleInfo {
+            cycle: 4,
+            complete: false,
+            ..cycle_info_0.clone()
+        };
+
+        let mut batch = DBBatch::new();
+        pos_state_0.put_new_cycle_info(&cycle_info_0, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_1, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_2, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_3, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_4, &mut batch);
+        pos_state_0
+            .db
+            .write()
+            .write_batch(batch, DBBatch::new(), None);
+
+        /*
+        let _handle = thread::spawn(move || {
+            // let i = 0;
+            loop {
+                match selector_receiver.recv() {
+                    Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
+                        println!("Received FeedCycle msg, cycle: {}", cycle);
+                        break;
+                    }
+                    Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
+                        println!("Received WaitForDraws msg, cycle: {}", cycle);
+                        let to_send = Ok(1);
+                        response_tx
+                            .send(to_send)
+                            .expect("Cannot send response to WaitForDraws msg");
+                        break;
+                    }
+                    Ok(m) => {
+                        println!("Received unhandled msg: {:?}", m);
+                    }
+                    Err(e) => {
+                        println!("Received an error: {}", e);
+                    }
+                }
+            }
+            println!("Exiting thread...");
+        });
+        */
+
+        // Test feed selector with unfinished cycle
+        assert_matches!(
+            pos_state_0.feed_selector(4 + 3),
+            Err(PosError::CycleUnfinished(4))
+        );
+
+        // Will panic (no final state hash snapshot)
+        let _ = pos_state_0.feed_selector(4);
+    }
+
+    #[test]
+    fn test_feed_selector_2() {
+        let initial_deferred_credits_file =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+
+        let initial_rolls_file_0 =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+
+        // write down some rolls info
+        let rolls_file_contents_0 = "{}";
+        std::fs::write(
+            initial_rolls_file_0.path(),
+            rolls_file_contents_0.as_bytes(),
+        )
+        .expect("failed writing initial rolls file 0");
+
+        // write down some deferred credits
+        let deferred_credits_file_contents = "{}";
+        std::fs::write(
+            initial_deferred_credits_file.path(),
+            deferred_credits_file_contents.as_bytes(),
+        )
+        .expect("failed writing initial deferred credits file");
+
+        // initialize the database
+        let tempdir = tempfile::TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_new_elements: 100,
+            thread_count: 2,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let mut selector_controller = Box::new(MockSelectorController::new());
+        selector_controller
+            .expect_feed_cycle()
+            .times(1)
+            .returning(|_, _, _| Ok(()));
+
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: Some(initial_deferred_credits_file.path().to_path_buf()),
+        };
+
+        let init_seed = "";
+        let mut pos_state_0 = PoSFinalState::new(
+            pos_config.clone(),
+            init_seed,
+            &initial_rolls_file_0.path().to_path_buf(),
+            selector_controller,
+            db.clone(),
+        )
+        .unwrap();
+
+        let cycle_info_0 = CycleInfo::new(
+            0,
+            true,
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+        let cycle_info_1 = CycleInfo {
+            cycle: 1,
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_2 = CycleInfo {
+            cycle: 2,
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_3 = CycleInfo {
+            cycle: 3,
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_4 = CycleInfo {
+            cycle: 4,
+            complete: false,
+            ..cycle_info_0.clone()
+        };
+
+        let mut batch = DBBatch::new();
+        pos_state_0.put_new_cycle_info(&cycle_info_0, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_1, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_2, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_3, &mut batch);
+        pos_state_0.put_new_cycle_info(&cycle_info_4, &mut batch);
+        pos_state_0
+            .db
+            .write()
+            .write_batch(batch, DBBatch::new(), None);
+
+        /*
+        let _handle = thread::spawn(move || {
+            // let i = 0;
+            loop {
+                match selector_receiver.recv() {
+                    Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
+                        println!("Received FeedCycle msg, cycle: {}", cycle);
+                        break;
+                    }
+                    Ok(m) => {
+                        println!("Received unhandled msg: {:?}", m);
+                    }
+                    Err(e) => {
+                        println!("Received an error: {}", e);
+                    }
+                }
+            }
+            println!("Exiting thread...");
+        });
+        */
+
+        // Note: by using cycle 2, feed_selector will use initial_rolls & initial_seeds
+        let _ = pos_state_0.feed_selector(2);
     }
 }
