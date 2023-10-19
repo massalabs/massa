@@ -1,18 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::time::Duration;
 
 use massa_consensus_exports::MockConsensusController;
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
 use massa_pool_exports::MockPoolController;
 use massa_pos_exports::MockSelectorController;
-use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
+use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
+use massa_test_framework::{Breakpoint, TestUniverse};
 use massa_time::MassaTime;
+use parking_lot::RwLock;
 
+use crate::handlers::peer_handler::models::{PeerDB, PeerInfo, PeerState};
 use crate::wrap_network::ActiveConnectionsTrait;
+use crate::wrap_network::{MockActiveConnectionsTraitWrapper, MockNetworkController};
 use crate::{
     handlers::{
         block_handler::{BlockInfoReply, BlockMessage},
@@ -21,25 +26,39 @@ use crate::{
     messages::Message,
 };
 
+use super::universe::{ProtocolForeignControllers, ProtocolTestUniverse};
 use super::{context::protocol_test, tools::assert_hash_asked_to_node};
 
 #[test]
 fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
-
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
     protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_config.unban_everyone_timer = MassaTime::from_millis(5000);
+    protocol_config.unban_everyone_timer = MassaTime::from_millis(2500);
+
+    let peer_db = Arc::new(RwLock::new(PeerDB::default()));
+
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = tools::create_block(&block_creator);
+    let block = ProtocolTestUniverse::create_block(&block_creator);
     let mut block_bad_public_key = block.clone();
     block_bad_public_key.content.header.content_creator_pub_key =
         KeyPair::generate(0).unwrap().get_public_key();
+
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    {
+        peer_db.write().peers.insert(
+            node_a_peer_id,
+            PeerInfo {
+                last_announce: None,
+                state: PeerState::Trusted,
+            },
+        );
+    }
+
+    let breakpoint = Arc::new(Breakpoint::new());
+    let breakpoint2 = breakpoint.clone();
+
     let mut consensus_controller = Box::new(MockConsensusController::new());
     consensus_controller
         .expect_clone_box()
@@ -58,75 +77,70 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     selector_controller
         .expect_clone_box()
         .returning(|| Box::new(MockSelectorController::new()));
-    protocol_test(
-        &protocol_config,
-        consensus_controller,
-        pool_controller,
-        selector_controller,
-        move |mut network_controller, _storage, _protocol_controller| {
-            //1. Create 1 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
+    let mut network_controller = Box::new(MockNetworkController::new());
+    let mut ac = MockActiveConnectionsTraitWrapper::new();
+    ac.set_expectations(|active_connections| {
+        active_connections
+            .expect_get_peers_connected()
+            .returning(move || {
+                let mut peers = HashMap::new();
+                peers.insert(
+                    node_a_peer_id.clone(),
+                    (
+                        std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
+                        PeerConnectionType::OUT,
+                        None,
+                    ),
+                );
+                peers
+            });
 
-            //end setup
+        active_connections
+            .expect_get_peer_ids_connected()
+            .returning(move || {
+                let mut peers = HashSet::new();
+                peers.insert(node_a_peer_id.clone());
+                peers
+            });
 
-            //2. Send header of bad public key block to protocol.
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::Header(
-                        block_bad_public_key.content.header,
-                    ))),
-                )
-                .unwrap();
-
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            //4. Check that node connection is closed (node should be banned)
-            assert_eq!(
-                network_controller
-                    .get_connections()
-                    .get_peer_ids_connected()
-                    .len(),
-                0
-            );
-
-            //6. Check that the node is NOT unbanned after 1 seconds
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            let (_node_a_peer_id, _node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-
-            assert_eq!(
-                network_controller
-                    .get_connections()
-                    .get_peer_ids_connected()
-                    .len(),
-                0
-            );
-
-            //7. Check that the node is unbanned after 5 seconds
-            std::thread::sleep(std::time::Duration::from_millis(4000));
-            let (_node_a_peer_id, _node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::Header(block.content.header))),
-                )
-                .unwrap();
-
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            assert_eq!(
-                network_controller
-                    .get_connections()
-                    .get_peer_ids_connected()
-                    .len(),
-                1
-            );
+        active_connections
+            .expect_shutdown_connection()
+            .times(1)
+            .returning(move |peer_id| {
+                assert_eq!(*peer_id, node_a_peer_id);
+                breakpoint2.trigger();
+            });
+    });
+    network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(ac.clone()));
+    let universe = ProtocolTestUniverse::new(
+        ProtocolForeignControllers {
+            consensus_controller,
+            pool_controller,
+            selector_controller,
+            network_controller,
+            peer_db: peer_db.clone(),
         },
-    )
+        protocol_config,
+    );
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(
+            block_bad_public_key.content.header.clone(),
+        ))),
+    );
+    breakpoint.wait();
+    assert_eq!(
+        peer_db.read().peers.get(&node_a_peer_id).unwrap().state,
+        PeerState::Banned
+    );
+    std::thread::sleep(std::time::Duration::from_millis(2700));
+    assert_eq!(
+        peer_db.read().peers.get(&node_a_peer_id).unwrap().state,
+        PeerState::HandshakeFailed
+    );
 }
 
 #[test]

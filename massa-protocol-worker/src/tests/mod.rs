@@ -25,6 +25,7 @@ mod mock_network;
 mod operations_scenarios;
 mod peer_priorization;
 mod tools;
+mod universe;
 
 #[test]
 fn basic() {

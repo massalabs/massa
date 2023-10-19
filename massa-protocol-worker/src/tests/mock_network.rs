@@ -175,11 +175,7 @@ impl MockNetworkController {
     }
 
     /// Simulate a peer that send a message to us
-    pub fn send_from_peer(
-        &mut self,
-        peer_id: &PeerId,
-        message: Message,
-    ) -> Result<(), ProtocolError> {
+    pub fn send_from_peer(&self, peer_id: &PeerId, message: Message) -> Result<(), ProtocolError> {
         let peers_connected: HashSet<PeerId> = self
             .connections
             .read()

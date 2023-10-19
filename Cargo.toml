@@ -32,6 +32,7 @@ members = [
   "massa-module-cache",
   "massa-serialization",
   "massa-signature",
+  "massa-test-framework",
   "massa-time",
   "massa-wallet",
   "massa-ledger-worker",
@@ -93,6 +94,7 @@ massa_sdk = { path = "./massa-sdk" }
 massa_serialization = { path = "./massa-serialization" }
 massa_signature = { path = "./massa-signature" }
 massa_storage = { path = "./massa-storage" }
+massa_test_framework = { path = "./massa-test-framework" }
 massa_time = { path = "./massa-time" }
 massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
@@ -142,6 +144,7 @@ lazy_static = "1.4"
 libsecp256k1 = "=0.7"
 mio = "0.8"
 mockall = "0.11"
+mock_instant = { version = "0.2", features = ["sync"] }
 more-asserts = "0.3"
 nom = "=7.1"
 num = "=0.4"

@@ -3226,8 +3226,11 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_storage",
+ "massa_test_framework",
  "massa_time",
  "massa_versioning",
+ "mock_instant",
+ "mockall",
  "nom",
  "num",
  "num_enum 0.7.0",
@@ -3299,6 +3302,16 @@ dependencies = [
  "massa_models",
  "massa_signature",
  "parking_lot",
+]
+
+[[package]]
+name = "massa_test_framework"
+version = "0.26.1"
+dependencies = [
+ "massa_hash",
+ "massa_models",
+ "massa_signature",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3455,6 +3468,15 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "mock_instant"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "717e29a243b81f8130e31e24e04fb151b04a44b5a7d05370935f7d937e9de06d"
+dependencies = [
+ "once_cell",
 ]
 
 [[package]]

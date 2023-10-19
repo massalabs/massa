@@ -7,7 +7,7 @@ use peernet::peer_id::PeerId as PeernetPeerId;
 
 use crate::ProtocolError;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Copy)]
 pub struct PeerId {
     public_key: PublicKey,
 }
