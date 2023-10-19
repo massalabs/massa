@@ -1614,23 +1614,29 @@ impl PoSFinalState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use std::collections::HashMap;
+    use std::str::FromStr;
+    use std::sync::Arc;
+
+    use bitvec::prelude::*;
+    use parking_lot::RwLock;
+    use tempfile::TempDir;
+
+    use crate::MockSelectorController;
+    // use crate::PoSFinalState;
+
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_worker::MassaDB;
+    use massa_models::config::constants::{
+        MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+        POS_SAVED_CYCLES,
+    };
+    use massa_signature::KeyPair;
 
     // This test checks that the initial deferred credits are loaded correctly
     #[test]
     fn test_initial_deferred_credits_loading() {
-        use crate::MockSelectorController;
-        use crate::PoSFinalState;
-        use massa_db_exports::{MassaDBConfig, MassaDBController};
-        use massa_db_worker::MassaDB;
-        use massa_models::config::constants::{
-            MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-            POS_SAVED_CYCLES,
-        };
-        use parking_lot::RwLock;
-        use std::str::FromStr;
-        use std::sync::Arc;
-
         let initial_deferred_credits_file = tempfile::NamedTempFile::new()
             .expect("could not create temporary initial deferred credits file");
 
@@ -1753,22 +1759,216 @@ mod tests {
         );
     }
 
+    // This test checks that the initial rolls are loaded correctly
+    #[test]
+    fn test_initial_rolls_loading() {
+        let initial_deferred_credits_file =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+        let initial_rolls_file_0 =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+
+        // write down some rolls info
+        let rolls_file_contents_0 = "{}";
+        std::fs::write(
+            initial_rolls_file_0.path(),
+            rolls_file_contents_0.as_bytes(),
+        )
+        .expect("failed writing initial rolls file 0");
+        // write down some deferred credits
+        let deferred_credits_file_contents = "{}";
+        std::fs::write(
+            initial_deferred_credits_file.path(),
+            deferred_credits_file_contents.as_bytes(),
+        )
+        .expect("failed writing initial deferred credits file");
+
+        // initialize the database
+        let tempdir = tempfile::TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: tempdir.path().to_path_buf(),
+            max_history_length: 10,
+            max_new_elements: 100,
+            thread_count: 2,
+        };
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        // let (selector_controller, _) = MockSelectorController::new_with_receiver();
+        let selector_controller = Box::new(MockSelectorController::new());
+
+        let pos_config = PoSConfig {
+            periods_per_cycle: 2,
+            thread_count: 2,
+            cycle_history_length: POS_SAVED_CYCLES,
+            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
+            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
+            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
+            initial_deferred_credits_path: Some(initial_deferred_credits_file.path().to_path_buf()),
+        };
+
+        let init_seed = "";
+        let pos_state_0 = PoSFinalState::new(
+            pos_config.clone(),
+            init_seed,
+            &initial_rolls_file_0.path().to_path_buf(),
+            selector_controller,
+            db.clone(),
+        );
+
+        // Check ok with empty roll file
+        assert!(pos_state_0.is_ok());
+
+        // Init a invalid roll file (invalid content)
+        let initial_rolls_file_1 =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+        let data_1 = HashMap::from([("foo", "bar")]);
+        let rolls_file_contents_1 = serde_json::to_string(&data_1).unwrap();
+        // println!("rolls_file_contents_1: {}", rolls_file_contents_1);
+        std::fs::write(
+            initial_rolls_file_1.path(),
+            rolls_file_contents_1.as_bytes(),
+        )
+        .expect("failed writing initial rolls file 1");
+        let selector_controller = Box::new(MockSelectorController::new());
+
+        let pos_state_1 = PoSFinalState::new(
+            pos_config.clone(),
+            init_seed,
+            &initial_rolls_file_1.path().to_path_buf(),
+            selector_controller,
+            db.clone(),
+        );
+
+        // Check ko
+        assert!(pos_state_1.is_err());
+
+        // Now check with valid data
+
+        let addr1_ = "AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa";
+        let addr1 = Address::from_str(addr1_).unwrap();
+        let roll1: u64 = 5;
+        let addr2_ = "AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53";
+        let addr2 = Address::from_str(addr2_).unwrap();
+        let roll2: u64 = 65529;
+
+        let initial_rolls_file_2 =
+            tempfile::NamedTempFile::new().expect("could not create temporary initial rolls file");
+        let data_2 = HashMap::from([(addr1_, roll1), (addr2_, roll2)]);
+        let rolls_file_contents_2 = serde_json::to_string(&data_2).unwrap();
+        std::fs::write(
+            initial_rolls_file_2.path(),
+            rolls_file_contents_2.as_bytes(),
+        )
+        .expect("failed writing initial rolls file 2");
+        let selector_controller = Box::new(MockSelectorController::new());
+
+        let mut pos_state_2 = PoSFinalState::new(
+            pos_config.clone(),
+            init_seed,
+            &initial_rolls_file_2.path().to_path_buf(),
+            selector_controller,
+            db.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(pos_state_2.initial_rolls.get(&addr1), Some(&roll1));
+        assert_eq!(pos_state_2.initial_rolls.get(&addr2), Some(&roll2));
+        // Note: get_address_active_rolls (if not cycle -3) uses initial_rolls
+        assert_eq!(pos_state_2.get_address_active_rolls(&addr1, 0), Some(roll1));
+        // Note: get_all_active_rolls (if not cycle -3) uses initial_rolls
+        assert_eq!(
+            pos_state_2.get_all_active_rolls(0).get(&addr1),
+            Some(&roll1)
+        );
+        assert_eq!(
+            pos_state_2.get_all_active_rolls(0).get(&addr2),
+            Some(&roll2)
+        );
+
+        let roll_counts_c0 = BTreeMap::from([(addr1, roll1), (addr2, roll2)]);
+        let roll_a1_c1 = roll1.checked_sub(1).unwrap();
+        let roll_counts_c1 =
+            BTreeMap::from([(addr1, roll_a1_c1), (addr2, roll2.checked_add(1).unwrap())]);
+        let roll_counts_c2 = BTreeMap::from([
+            (addr1, roll1.checked_sub(2).unwrap()),
+            (addr2, roll2.checked_add(2).unwrap()),
+        ]);
+        let roll_a1_c3 = roll1.checked_sub(3).unwrap();
+        let roll_a2_c3 = roll2.checked_add(3).unwrap();
+        let roll_counts_c3 = BTreeMap::from([(addr1, roll_a1_c3), (addr2, roll_a2_c3)]);
+        let roll_a1_c4 = roll1.checked_sub(4).unwrap();
+        let roll_a2_c4 = roll2.checked_add(4).unwrap();
+        let roll_counts_c4 = BTreeMap::from([(addr1, roll_a1_c4), (addr2, roll_a2_c4)]);
+        let cycle_info_0 = CycleInfo::new(
+            0,
+            Default::default(),
+            roll_counts_c0.clone(),
+            Default::default(),
+            Default::default(),
+        );
+        let cycle_info_1 = CycleInfo {
+            cycle: 1,
+            roll_counts: roll_counts_c1.clone(),
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_2 = CycleInfo {
+            cycle: 2,
+            roll_counts: roll_counts_c2.clone(),
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_3 = CycleInfo {
+            cycle: 3,
+            roll_counts: roll_counts_c3.clone(),
+            ..cycle_info_0.clone()
+        };
+        let cycle_info_4 = CycleInfo {
+            cycle: 4,
+            roll_counts: roll_counts_c4.clone(),
+            ..cycle_info_0.clone()
+        };
+
+        let mut batch = DBBatch::new();
+        pos_state_2.put_new_cycle_info(&cycle_info_0, &mut batch);
+        pos_state_2.put_new_cycle_info(&cycle_info_1, &mut batch);
+        pos_state_2.put_new_cycle_info(&cycle_info_2, &mut batch);
+        pos_state_2.put_new_cycle_info(&cycle_info_3, &mut batch);
+        pos_state_2.put_new_cycle_info(&cycle_info_4, &mut batch);
+        pos_state_2
+            .db
+            .write()
+            .write_batch(batch, DBBatch::new(), None);
+
+        assert_eq!(
+            pos_state_2.get_address_active_rolls(&addr1, 4),
+            Some(roll_a1_c1)
+        );
+
+        let rolls_1 = pos_state_2.get_rolls_for(&addr1);
+        assert_eq!(rolls_1, roll_a1_c4);
+        let rolls_2 = pos_state_2.get_rolls_for(&addr2);
+        assert_eq!(rolls_2, roll_a2_c4);
+
+        // Will fetch at cycle - 3
+        let active_rolls = pos_state_2.get_all_active_rolls(4);
+        assert_eq!(active_rolls, roll_counts_c1);
+    }
+
     // This test checks that the recompute_pos_cache function recovers every cycle and does return correctly.
     // The test example is chosen so that the keys for the cycles are not in the same order than the cycles.
     // If this is not handled properly, the node hangs as explained here: https://github.com/massalabs/massa/issues/4101
     #[test]
     fn test_pos_cache_recomputation() {
-        use crate::MockSelectorController;
-        use crate::PoSFinalState;
-        use massa_db_exports::{MassaDBConfig, MassaDBController};
-        use massa_db_worker::MassaDB;
-        use massa_models::config::constants::{
-            MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-            POS_SAVED_CYCLES,
-        };
-        use parking_lot::RwLock;
-        use std::sync::Arc;
-        use tempfile::TempDir;
+        // use crate::test_exports::MockSelectorController;
+        // use crate::PoSFinalState;
+        // use massa_db_exports::{MassaDBConfig, MassaDBController};
+        // use massa_db_worker::MassaDB;
+        // use massa_models::config::constants::{
+        //     MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+        //     POS_SAVED_CYCLES,
+        // };
+        // use parking_lot::RwLock;
+        // use std::sync::Arc;
+        // use tempfile::TempDir;
 
         let pos_config = PoSConfig {
             periods_per_cycle: 2,
@@ -1868,20 +2068,20 @@ mod tests {
     // This test aims to check that the basic workflow of apply changes to the PoS state works.
     #[test]
     fn test_pos_final_state_hash_computation() {
-        use crate::DeferredCredits;
-        use crate::MockSelectorController;
-        use crate::PoSFinalState;
-        use bitvec::prelude::*;
-        use massa_db_exports::{MassaDBConfig, MassaDBController};
-        use massa_db_worker::MassaDB;
-        use massa_models::config::constants::{
-            MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-            POS_SAVED_CYCLES,
-        };
-        use massa_signature::KeyPair;
-        use parking_lot::RwLock;
-        use std::sync::Arc;
-        use tempfile::TempDir;
+        // use crate::test_exports::MockSelectorController;
+        // use crate::DeferredCredits;
+        // use crate::PoSFinalState;
+        // use bitvec::prelude::*;
+        // use massa_db_exports::{MassaDBConfig, MassaDBController};
+        // use massa_db_worker::MassaDB;
+        // use massa_models::config::constants::{
+        //     MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+        //     POS_SAVED_CYCLES,
+        // };
+        // use massa_signature::KeyPair;
+        // use parking_lot::RwLock;
+        // use std::sync::Arc;
+        // use tempfile::TempDir;
 
         let pos_config = PoSConfig {
             periods_per_cycle: 2,
