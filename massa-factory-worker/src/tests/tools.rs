@@ -22,13 +22,12 @@ use crate::endorsement_factory::EndorsementFactoryWorker;
 use massa_wallet::test_exports::create_test_wallet;
 
 /// This structure store all information and links to creates tests for the factory.
-#[allow(dead_code)]
 pub struct BlockTestFactory {
-    factory_config: FactoryConfig,
+    _factory_config: FactoryConfig,
     thread: Option<(MassaSender<()>, JoinHandle<()>)>,
-    genesis_blocks: Vec<(BlockId, u64)>,
-    pub(crate) storage: Storage,
-    keypair: KeyPair,
+    _genesis_blocks: Vec<(BlockId, u64)>,
+    pub(crate) _storage: Storage,
+    _keypair: KeyPair,
 }
 
 impl BlockTestFactory {
@@ -93,11 +92,11 @@ impl BlockTestFactory {
         );
 
         BlockTestFactory {
-            factory_config,
+            _factory_config: factory_config,
             thread: Some((tx, join_handle)),
-            genesis_blocks,
-            storage,
-            keypair: default_keypair.clone(),
+            _genesis_blocks: genesis_blocks,
+            _storage: storage,
+            _keypair: default_keypair.clone(),
         }
     }
 
