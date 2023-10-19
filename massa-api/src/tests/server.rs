@@ -152,3 +152,68 @@ async fn http_disabled() {
 
     api_handle.stop().await;
 }
+
+#[tokio::test]
+async fn host_allowed() {
+    let addr: SocketAddr = "[::]:5041".parse().unwrap();
+    let (mut api_server, mut api_config) = crate::tests::mock::start_public_api(addr.clone());
+
+    let hosts = vec![format!(
+        "http://localhost:{}",
+        addr.to_string().split(':').into_iter().last().unwrap()
+    )];
+
+    api_server.0.api_settings.allow_hosts = hosts.clone();
+    api_config.allow_hosts = hosts;
+
+    let api_handle = api_server
+        .serve(&addr, &api_config)
+        .await
+        .expect("failed to start MASSA API V2");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let response: Result<Vec<OperationInfo>, jsonrpsee::core::Error> =
+        client.request("get_operations", rpc_params![]).await;
+
+    // response OK but invalid params (no params provided)
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+
+    // now start new server with different host allowed
+    let addr2: SocketAddr = "[::]:5042".parse().unwrap();
+    let (mut api_server2, mut api_config2) = crate::tests::mock::start_public_api(addr2.clone());
+
+    let hosts2 = vec!["http://123.456.789.1".to_string()];
+
+    api_server2.0.api_settings.allow_hosts = hosts2.clone();
+    api_config2.allow_hosts = hosts2;
+
+    let api_handle2 = api_server2
+        .serve(&addr2, &api_config2)
+        .await
+        .expect("failed to start MASSA API V2");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr2.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let response: Result<Vec<OperationInfo>, jsonrpsee::core::Error> =
+        client.request("get_operations", rpc_params![]).await;
+
+    // host not allowed
+    assert!(response
+        .unwrap_err()
+        .to_string()
+        .contains("status code: 403"));
+
+    api_handle.stop().await;
+    api_handle2.stop().await;
+}
