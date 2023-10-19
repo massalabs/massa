@@ -108,13 +108,12 @@ impl BlockTestFactory {
     }
 }
 
-#[allow(dead_code)]
 pub struct EndorsementTestFactory {
-    factory_config: FactoryConfig,
+    _factory_config: FactoryConfig,
     thread: Option<(MassaSender<()>, JoinHandle<()>)>,
-    genesis_blocks: Vec<(BlockId, u64)>,
-    pub(crate) storage: Storage,
-    keypair: KeyPair,
+    _genesis_blocks: Vec<(BlockId, u64)>,
+    pub(crate) _storage: Storage,
+    _keypair: KeyPair,
 }
 
 impl EndorsementTestFactory {
@@ -166,11 +165,11 @@ impl EndorsementTestFactory {
         );
 
         EndorsementTestFactory {
-            factory_config,
+            _factory_config: factory_config,
             thread: Some((tx, join_handle)),
-            genesis_blocks,
-            storage,
-            keypair: default_keypair.clone(),
+            _genesis_blocks: genesis_blocks,
+            _storage: storage,
+            _keypair: default_keypair.clone(),
         }
     }
 
