@@ -12,7 +12,6 @@ use massa_signature::KeyPair;
 use tracing_subscriber::filter::LevelFilter;
 
 pub trait TestUniverse {
-    type ModuleController;
     type ForeignControllers;
     type Config;
 
@@ -28,9 +27,6 @@ pub trait TestUniverse {
         let tracing_layer = tracing_subscriber::fmt::layer().with_filter(LevelFilter::DEBUG);
         tracing_subscriber::registry().with(tracing_layer).init();
     }
-
-    fn get_module_controller(&self) -> &Self::ModuleController;
-    fn get_module_controller_mut(&mut self) -> &mut Self::ModuleController;
 
     fn create_block(keypair: &KeyPair) -> SecureShareBlock {
         let header = BlockHeader::new_verifiable(

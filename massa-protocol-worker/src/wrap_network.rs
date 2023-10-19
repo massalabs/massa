@@ -22,7 +22,7 @@ use crate::{
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(test, mockall::automock, mockall_wrap::wrap)]
 pub trait ActiveConnectionsTrait: Send + Sync {
     fn send_to_peer(
         &self,

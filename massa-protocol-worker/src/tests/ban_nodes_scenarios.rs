@@ -13,6 +13,7 @@ use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
 use massa_test_framework::{Breakpoint, TestUniverse};
 use massa_time::MassaTime;
+use mockall::predicate;
 use parking_lot::RwLock;
 
 use crate::handlers::peer_handler::models::{PeerDB, PeerInfo, PeerState};
@@ -33,7 +34,6 @@ use super::{context::protocol_test, tools::assert_hash_asked_to_node};
 fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
     protocol_config.unban_everyone_timer = MassaTime::from_millis(2500);
 
     let peer_db = Arc::new(RwLock::new(PeerDB::default()));
@@ -106,8 +106,8 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
         active_connections
             .expect_shutdown_connection()
             .times(1)
-            .returning(move |peer_id| {
-                assert_eq!(*peer_id, node_a_peer_id);
+            .with(predicate::eq(node_a_peer_id.clone()))
+            .returning(move |_| {
                 breakpoint2.trigger();
             });
     });

@@ -144,7 +144,7 @@ lazy_static = "1.4"
 libsecp256k1 = "=0.7"
 mio = "0.8"
 mockall = "0.11"
-mock_instant = { version = "0.2", features = ["sync"] }
+mockall_wrap = { path = "../mockall-wrap" }
 more-asserts = "0.3"
 nom = "=7.1"
 num = "=0.4"

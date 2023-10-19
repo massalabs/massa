@@ -33,7 +33,7 @@ use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
 
 pub struct ProtocolTestUniverse {
-    module_controller: Box<dyn ProtocolController>,
+    pub module_controller: Box<dyn ProtocolController>,
     messages_handler: MessagesHandler,
     message_serializer: MessagesSerializer,
     pub storage: Storage,
@@ -51,7 +51,6 @@ pub struct ProtocolForeignControllers {
 
 impl TestUniverse for ProtocolTestUniverse {
     type ForeignControllers = ProtocolForeignControllers;
-    type ModuleController = Box<dyn ProtocolController>;
     type Config = ProtocolConfig;
 
     fn new(controllers: Self::ForeignControllers, config: Self::Config) -> Self {
@@ -80,14 +79,6 @@ impl TestUniverse for ProtocolTestUniverse {
         };
         universe.initialize();
         universe
-    }
-
-    fn get_module_controller(&self) -> &Self::ModuleController {
-        &self.module_controller
-    }
-
-    fn get_module_controller_mut(&mut self) -> &mut Self::ModuleController {
-        &mut self.module_controller
     }
 }
 
