@@ -75,19 +75,13 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>displaydoc::Display;
 <span class="kw">use </span>jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
 
-<span class="kw">use </span>massa_consensus_exports::error::ConsensusError;
-<span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_hash::MassaHashError;
 <span class="kw">use </span>massa_models::error::ModelsError;
-<span class="kw">use </span>massa_protocol_exports::ProtocolError;
 <span class="kw">use </span>massa_time::TimeError;
 <span class="kw">use </span>massa_versioning::versioning_factory::FactoryError;
 <span class="kw">use </span>massa_wallet::WalletError;
@@ -103,11 +97,11 @@
     <span class="doccomment">/// `massa_hash` error: {0}
     </span>MassaHashError(<span class="attr">#[from] </span>MassaHashError),
     <span class="doccomment">/// consensus error: {0}
-    </span>ConsensusError(<span class="attr">#[from] </span>ConsensusError),
+    </span>ConsensusError(String),
     <span class="doccomment">/// execution error: {0}
-    </span>ExecutionError(<span class="attr">#[from] </span>ExecutionError),
+    </span>ExecutionError(String),
     <span class="doccomment">/// Protocol error: {0}
-    </span>ProtocolError(<span class="attr">#[from] </span>ProtocolError),
+    </span>ProtocolError(String),
     <span class="doccomment">/// Models error: {0}
     </span>ModelsError(<span class="attr">#[from] </span>ModelsError),
     <span class="doccomment">/// Time error: {0}
@@ -128,7 +122,7 @@
     </span>BadRequest(String),
     <span class="doccomment">/// Internal server error: {0}
     </span>InternalServerError(String),
-    <span class="doccomment">/// Factory error: {0}
+    <span class="doccomment">/// Versioning Factory error: {0}
     </span>FactoryError(<span class="attr">#[from] </span>FactoryError),
 }
 

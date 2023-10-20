@@ -653,7 +653,7 @@
             .collect();
         protocol_controller
             .ban_peers(peer_ids)
-            .map_err(|e| ApiError::ProtocolError(e).into())
+            .map_err(|e| ApiError::ProtocolError(e.to_string()).into())
     }
 
     <span class="kw">async fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, ids: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt; {
@@ -665,7 +665,7 @@
             .collect();
         protocol_controller
             .unban_peers(peer_ids)
-            .map_err(|e| ApiError::ProtocolError(e).into())
+            .map_err(|e| ApiError::ProtocolError(e.to_string()).into())
     }
 
     <span class="kw">async fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, _ips: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt; {
