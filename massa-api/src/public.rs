@@ -26,6 +26,7 @@ use massa_execution_exports::{
 };
 use massa_models::{
     address::Address,
+    amount::Amount,
     block::{Block, BlockGraphStatus},
     block_id::BlockId,
     clique::Clique,
@@ -133,6 +134,7 @@ impl MassaRpcServer for API<Public> {
             bytecode,
             operation_datastore,
             is_final,
+            fee,
         } in reqs
         {
             let address = if let Some(addr) = address {
@@ -186,6 +188,8 @@ impl MassaRpcServer for API<Public> {
                     operation_datastore: op_datastore,
                 }],
                 is_final,
+                coins: None,
+                fee,
             };
 
             // run
@@ -231,6 +235,8 @@ impl MassaRpcServer for API<Public> {
             parameter,
             caller_address,
             is_final,
+            coins,
+            fee,
         } in reqs
         {
             let caller_address = if let Some(addr) = caller_address {
@@ -269,12 +275,14 @@ impl MassaRpcServer for API<Public> {
                     },
                     ExecutionStackElement {
                         address: target_address,
-                        coins: Default::default(),
+                        coins: coins.unwrap_or(Amount::default()),
                         owned_addresses: vec![target_address],
                         operation_datastore: None, // should always be None
                     },
                 ],
                 is_final,
+                coins,
+                fee,
             };
 
             // run

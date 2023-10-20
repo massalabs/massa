@@ -180,6 +180,8 @@ mod tests {
                     include_bytes!("./wasm/event_test.wasm").to_vec(),
                 ),
                 is_final: true,
+                coins: None,
+                fee: None,
             })
             .expect("readonly execution failed");
 
@@ -195,6 +197,8 @@ mod tests {
                     include_bytes!("./wasm/event_test.wasm").to_vec(),
                 ),
                 is_final: false,
+                coins: None,
+                fee: None,
             })
             .expect("readonly execution failed");
 

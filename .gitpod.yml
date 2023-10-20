@@ -7,6 +7,8 @@ ports:
   - port: 33034
   - port: 33035
   - port: 33036
+  - port: 33037
+  - port: 33038
 
 tasks:
   - init: cargo build

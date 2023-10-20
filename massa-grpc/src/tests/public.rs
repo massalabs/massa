@@ -378,6 +378,8 @@ async fn execute_read_only_call() {
             target_function: "function".to_string(),
             parameter: vec![],
         })),
+        coins: None,
+        fee: None,
     };
 
     let call = public_client
