@@ -1619,7 +1619,6 @@ mod tests {
     use std::collections::HashMap;
     use std::str::FromStr;
     use std::sync::Arc;
-    use std::thread;
 
     use assert_matches::assert_matches;
     use bitvec::prelude::*;
@@ -1627,7 +1626,6 @@ mod tests {
     use tempfile::TempDir;
 
     use crate::MockSelectorController;
-    // use crate::PoSFinalState;
 
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
@@ -1825,7 +1823,6 @@ mod tests {
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
-        // let (selector_controller, _) = MockSelectorController::new_with_receiver();
         let selector_controller = Box::new(MockSelectorController::new());
 
         let pos_config = PoSConfig {
@@ -2346,35 +2343,6 @@ mod tests {
             .write()
             .write_batch(batch, DBBatch::new(), None);
 
-        /*
-        let _handle = thread::spawn(move || {
-            // let i = 0;
-            loop {
-                match selector_receiver.recv() {
-                    Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
-                        println!("Received FeedCycle msg, cycle: {}", cycle);
-                        break;
-                    }
-                    Ok(MockSelectorControllerMessage::WaitForDraws { cycle, response_tx }) => {
-                        println!("Received WaitForDraws msg, cycle: {}", cycle);
-                        let to_send = Ok(1);
-                        response_tx
-                            .send(to_send)
-                            .expect("Cannot send response to WaitForDraws msg");
-                        break;
-                    }
-                    Ok(m) => {
-                        println!("Received unhandled msg: {:?}", m);
-                    }
-                    Err(e) => {
-                        println!("Received an error: {}", e);
-                    }
-                }
-            }
-            println!("Exiting thread...");
-        });
-        */
-
         // Test feed selector with unfinished cycle
         assert_matches!(
             pos_state_0.feed_selector(4 + 3),
@@ -2481,27 +2449,6 @@ mod tests {
             .db
             .write()
             .write_batch(batch, DBBatch::new(), None);
-
-        /*
-        let _handle = thread::spawn(move || {
-            // let i = 0;
-            loop {
-                match selector_receiver.recv() {
-                    Ok(MockSelectorControllerMessage::FeedCycle { cycle, .. }) => {
-                        println!("Received FeedCycle msg, cycle: {}", cycle);
-                        break;
-                    }
-                    Ok(m) => {
-                        println!("Received unhandled msg: {:?}", m);
-                    }
-                    Err(e) => {
-                        println!("Received an error: {}", e);
-                    }
-                }
-            }
-            println!("Exiting thread...");
-        });
-        */
 
         // Note: by using cycle 2, feed_selector will use initial_rolls & initial_seeds
         let _ = pos_state_0.feed_selector(2);
