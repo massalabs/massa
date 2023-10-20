@@ -1722,33 +1722,24 @@ mod tests {
 
         let deferred_credits = pos_state.get_deferred_credits().credits;
 
+        let addr1 =
+            Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa").unwrap();
+        let a_a1_s3 = Amount::from_str("5.01").unwrap();
+        let addr2 =
+            Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53").unwrap();
+        let a_a2_s3 = Amount::from_str("2.01").unwrap();
         let expected_credits = vec![
             (
                 Slot::new(3, 0),
-                vec![
-                    (
-                        Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa")
-                            .unwrap(),
-                        Amount::from_str("5.01").unwrap(),
-                    ),
-                    (
-                        Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53")
-                            .unwrap(),
-                        Amount::from_str("2.01").unwrap(),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
+                vec![(addr1, a_a1_s3), (addr2, a_a2_s3)]
+                    .into_iter()
+                    .collect(),
             ),
             (
                 Slot::new(4, 1),
-                vec![(
-                    Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa")
-                        .unwrap(),
-                    Amount::from_str("6.0").unwrap(),
-                )]
-                .into_iter()
-                .collect(),
+                vec![(addr1, Amount::from_str("6.0").unwrap())]
+                    .into_iter()
+                    .collect(),
             ),
         ]
         .into_iter()
@@ -1766,20 +1757,9 @@ mod tests {
             pos_state.get_deferred_credits_range(Slot::new(2, 0)..Slot::new(3, 1));
         let expected_credits_range_2 = vec![(
             Slot::new(3, 0),
-            vec![
-                (
-                    Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa")
-                        .unwrap(),
-                    Amount::from_str("5.01").unwrap(),
-                ),
-                (
-                    Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53")
-                        .unwrap(),
-                    Amount::from_str("2.01").unwrap(),
-                ),
-            ]
-            .into_iter()
-            .collect(),
+            vec![(addr1, a_a1_s3), (addr2, a_a2_s3)]
+                .into_iter()
+                .collect(),
         )]
         .into_iter()
         .collect();
