@@ -50,7 +50,7 @@ pub(crate) fn execute_read_only_call(
     };
 
     let mut call_stack = Vec::new();
-
+    let mut coins = None;
     let target = if let Some(call_target) = call.target {
         match call_target {
             read_only_execution_call::Target::BytecodeCall(value) => {
@@ -82,8 +82,8 @@ pub(crate) fn execute_read_only_call(
 
                 ReadOnlyExecutionTarget::BytecodeExecution(value.bytecode)
             }
-            read_only_execution_call::Target::FunctionCall(value) => {
-                let target_address = Address::from_str(&value.target_address)?;
+            read_only_execution_call::Target::FunctionCall(call) => {
+                let target_address = Address::from_str(&call.target_address)?;
                 call_stack.push(ExecutionStackElement {
                     address: caller_address,
                     coins: Default::default(),
@@ -97,10 +97,18 @@ pub(crate) fn execute_read_only_call(
                     operation_datastore: None, // should always be None
                 });
 
+                coins = call
+                    .coins
+                    .map(|native_amount| {
+                        Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
+                            .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
+                    })
+                    .transpose()?;
+
                 ReadOnlyExecutionTarget::FunctionCall {
-                    target_addr: Address::from_str(&value.target_address)?,
-                    target_func: value.target_function,
-                    parameter: value.parameter,
+                    target_addr: Address::from_str(&call.target_address)?,
+                    target_func: call.target_function,
+                    parameter: call.parameter,
                 }
             }
         }
@@ -115,13 +123,7 @@ pub(crate) fn execute_read_only_call(
         call_stack,
         target,
         is_final: call.is_final,
-        coins: call
-            .coins
-            .map(|native_amount| {
-                Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
-                    .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
-            })
-            .transpose()?,
+        coins,
         fee: call
             .fee
             .map(|native_amount| {
