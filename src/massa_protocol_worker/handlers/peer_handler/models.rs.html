@@ -290,8 +290,43 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
-<span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
+<span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>peernet::transports::TransportType;
@@ -302,6 +337,8 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, sync::Arc};
 <span class="kw">use </span>tracing::log::info;
+
+<span class="kw">use </span><span class="kw">crate</span>::wrap_peer_db::PeerDBTrait;
 
 <span class="kw">use </span><span class="kw">super</span>::announcement::Announcement;
 
@@ -437,7 +474,7 @@
     }
 }
 
-<span class="attr">#[derive(Default)]
+<span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>PeerDB {
     <span class="kw">pub </span>peers: HashMap&lt;PeerId, PeerInfo&gt;,
     <span class="doccomment">/// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
@@ -482,8 +519,8 @@
     <span class="kw">pub </span>command_sender: MassaSender&lt;PeerManagementCmd&gt;,
 }
 
-<span class="kw">impl </span>PeerDB {
-    <span class="kw">pub fn </span>ban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
+<span class="kw">impl </span>PeerDBTrait <span class="kw">for </span>PeerDB {
+    <span class="kw">fn </span>ban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get_mut(peer_id) {
             peer.state = PeerState::Banned;
             <span class="macro">info!</span>(<span class="string">&quot;Banned peer: {:?}&quot;</span>, peer_id);
@@ -492,7 +529,7 @@
         };
     }
 
-    <span class="kw">pub fn </span>unban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
+    <span class="kw">fn </span>unban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = <span class="self">self</span>.peers.get_mut(peer_id) {
             <span class="comment">// We set the state to HandshakeFailed to force the peer to be tested again
             </span>peer.state = PeerState::HandshakeFailed;
@@ -503,7 +540,7 @@
     }
 
     <span class="doccomment">/// Retrieve the peer with the oldest test date.
-    </span><span class="kw">pub fn </span>get_oldest_peer(
+    </span><span class="kw">fn </span>get_oldest_peer(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cooldown: Duration,
         in_test: <span class="kw-2">&amp;</span>HashSet&lt;SocketAddr&gt;,
@@ -530,7 +567,7 @@
 
     <span class="doccomment">/// Select max 100 peers to send to another peer
     /// The selected peers should has been online within the last 3 days
-    </span><span class="kw">pub fn </span>get_rand_peers_to_send(
+    </span><span class="kw">fn </span>get_rand_peers_to_send(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         nb_peers: usize,
     ) -&gt; Vec&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt; {
@@ -570,16 +607,49 @@
         result
     }
 
-    <span class="kw">pub fn </span>get_banned_peer_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+    <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>PeerDBTrait&gt; {
+        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: clone_box&quot;</span>);
+        Box::new(<span class="self">self</span>.clone())
+    }
+
+    <span class="kw">fn </span>get_banned_peer_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="self">self</span>.peers
             .values()
             .filter(|peer| peer.state == PeerState::Banned)
             .count() <span class="kw">as </span>u64
     }
+}
 
-    <span class="comment">// Flush PeerDB to disk ?
-    </span><span class="kw">fn </span>_flush(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">unimplemented!</span>()
+<span class="kw">impl </span>PeerDBTrait <span class="kw">for </span>SharedPeerDB {
+    <span class="kw">fn </span>ban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
+        <span class="self">self</span>.write().ban_peer(peer_id);
+    }
+
+    <span class="kw">fn </span>unban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
+        <span class="self">self</span>.write().unban_peer(peer_id);
+    }
+
+    <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>PeerDBTrait&gt; {
+        Box::new(<span class="self">self</span>.clone())
+    }
+
+    <span class="kw">fn </span>get_oldest_peer(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cooldown: Duration,
+        in_test: <span class="kw-2">&amp;</span>HashSet&lt;SocketAddr&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+        <span class="self">self</span>.read().get_oldest_peer(cooldown, in_test)
+    }
+
+    <span class="kw">fn </span>get_rand_peers_to_send(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        nb_peers: usize,
+    ) -&gt; Vec&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt; {
+        <span class="self">self</span>.read().get_rand_peers_to_send(nb_peers)
+    }
+
+    <span class="kw">fn </span>get_banned_peer_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.read().get_banned_peer_count()
     }
 }
 </code></pre></div></section></main></body></html>

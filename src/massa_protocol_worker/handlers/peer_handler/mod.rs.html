@@ -783,8 +783,6 @@
 <a href="#783" id="783">783</a>
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -816,6 +814,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::handlers::peer_handler::models::PeerState;
 <span class="kw">use </span><span class="kw">crate</span>::messages::{Message, MessagesHandler, MessagesSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
+<span class="kw">use </span><span class="kw">crate</span>::wrap_peer_db::PeerDBTrait;
 
 <span class="kw">use </span><span class="self">self</span>::models::{ConnectionMetadata, PeerInfo};
 <span class="kw">use </span><span class="self">self</span>::{
@@ -940,7 +939,7 @@
                                     <span class="kw">let </span>listeners = config.listeners.iter().map(|(addr, ty)| {
                                         (SocketAddr::new(routable_ip, addr.port()), <span class="kw-2">*</span>ty)
                                     }).collect();
-                                    peers.push((peer_id.clone(), listeners));
+                                    peers.push((peer_id, listeners));
                                 }
                                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = responder.try_send(BootstrapPeers(peers)) {
                                     <span class="macro">warn!</span>(<span class="string">&quot;error sending bootstrap peers: {:?}&quot;</span>, err);
@@ -1010,11 +1009,11 @@
             <span class="kw">let </span><span class="kw-2">mut </span>message = Vec::new();
             message_serializer
                 .serialize(
-                    <span class="kw-2">&amp;</span>PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone())),
+                    <span class="kw-2">&amp;</span>PeerManagementMessage::NewPeerConnected((<span class="kw-2">*</span>peer_id, listeners.clone())),
                     <span class="kw-2">&amp;mut </span>message,
                 )
                 .unwrap();
-            sender_msg.try_send((peer_id.clone(), message)).unwrap();
+            sender_msg.try_send((<span class="kw-2">*</span>peer_id, message)).unwrap();
         }
 
         <span class="self">Self </span>{
@@ -1161,12 +1160,9 @@
         <span class="kw">let </span>res = {
             {
                 <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = <span class="self">self</span>.peer_db.write();
-                peer_db_write
-                    .peers
-                    .entry(peer_id.clone())
-                    .and_modify(|info| {
-                        info.state = PeerState::InHandshake;
-                    });
+                peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                    info.state = PeerState::InHandshake;
+                });
             }
 
             <span class="kw">let </span>(received, version) = <span class="self">self
@@ -1212,7 +1208,7 @@
                             .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid signature&quot;</span>.to_string())));
                     }
                     <span class="kw">let </span>message = PeerManagementMessage::NewPeerConnected((
-                        peer_id.clone(),
+                        peer_id,
                         announcement.clone().listeners,
                     ));
                     <span class="kw">let </span><span class="kw-2">mut </span>bytes = Vec::new();
@@ -1276,7 +1272,7 @@
                             PeerNetError::HandshakeError
                                 .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Signature error {}&quot;</span>, err)))
                         })<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">Some</span>(announcement)))
+                    <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">Some</span>(announcement)))
                 }
                 <span class="number">1 </span>=&gt; {
                     messages_handler.handle(
@@ -1286,7 +1282,7 @@
                         )<span class="question-mark">?</span>,
                         <span class="kw-2">&amp;</span>peer_id,
                     )<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>((peer_id.clone(), <span class="prelude-val">None</span>))
+                    <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">None</span>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
                     .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid message id&quot;</span>.to_string()))),
@@ -1305,7 +1301,7 @@
                         .success();
                     peer_db_write
                         .peers
-                        .entry(peer_id.clone())
+                        .entry(<span class="kw-2">*</span>peer_id)
                         .and_modify(|info| {
                             info.last_announce = <span class="prelude-val">Some</span>(announcement.clone());
                             info.state = PeerState::Trusted;

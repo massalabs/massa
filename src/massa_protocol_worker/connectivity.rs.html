@@ -426,6 +426,7 @@
 <a href="#426" id="426">426</a>
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>ip_rfc::global;
@@ -461,6 +462,7 @@
         peer_handler::models::PeerMessageTuple,
     },
     wrap_network::NetworkController,
+    wrap_peer_db::PeerDBTrait,
 };
 
 <span class="attr">#[derive(Clone)]
@@ -594,7 +596,7 @@
                 network_controller.get_active_connections(),
                 selector_controller,
                 consensus_controller,
-                pool_controller.clone(),
+                pool_controller,
                 channel_blocks.<span class="number">1</span>,
                 sender_blocks_retrieval_ext,
                 protocol_channels.block_handler_retrieval.<span class="number">1</span>.clone(),
