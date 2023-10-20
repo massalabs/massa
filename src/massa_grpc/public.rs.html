@@ -1289,6 +1289,8 @@
 <a href="#1289" id="1289">1289</a>
 <a href="#1290" id="1290">1290</a>
 <a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1341,7 +1343,7 @@
     };
 
     <span class="kw">let </span><span class="kw-2">mut </span>call_stack = Vec::new();
-
+    <span class="kw">let </span><span class="kw-2">mut </span>coins = <span class="prelude-val">None</span>;
     <span class="kw">let </span>target = <span class="kw">if let </span><span class="prelude-val">Some</span>(call_target) = call.target {
         <span class="kw">match </span>call_target {
             read_only_execution_call::Target::BytecodeCall(value) =&gt; {
@@ -1373,8 +1375,8 @@
 
                 ReadOnlyExecutionTarget::BytecodeExecution(value.bytecode)
             }
-            read_only_execution_call::Target::FunctionCall(value) =&gt; {
-                <span class="kw">let </span>target_address = Address::from_str(<span class="kw-2">&amp;</span>value.target_address)<span class="question-mark">?</span>;
+            read_only_execution_call::Target::FunctionCall(call) =&gt; {
+                <span class="kw">let </span>target_address = Address::from_str(<span class="kw-2">&amp;</span>call.target_address)<span class="question-mark">?</span>;
                 call_stack.push(ExecutionStackElement {
                     address: caller_address,
                     coins: Default::default(),
@@ -1388,10 +1390,18 @@
                     operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// should always be None
                 </span>});
 
+                coins = call
+                    .coins
+                    .map(|native_amount| {
+                        Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
+                            .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="string">&quot;invalid amount&quot;</span>.to_string()))
+                    })
+                    .transpose()<span class="question-mark">?</span>;
+
                 ReadOnlyExecutionTarget::FunctionCall {
-                    target_addr: Address::from_str(<span class="kw-2">&amp;</span>value.target_address)<span class="question-mark">?</span>,
-                    target_func: value.target_function,
-                    parameter: value.parameter,
+                    target_addr: Address::from_str(<span class="kw-2">&amp;</span>call.target_address)<span class="question-mark">?</span>,
+                    target_func: call.target_function,
+                    parameter: call.parameter,
                 }
             }
         }
@@ -1406,13 +1416,7 @@
         call_stack,
         target,
         is_final: call.is_final,
-        coins: call
-            .coins
-            .map(|native_amount| {
-                Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
-                    .map_err(|<span class="kw">_</span>| GrpcError::InvalidArgument(<span class="string">&quot;invalid amount&quot;</span>.to_string()))
-            })
-            .transpose()<span class="question-mark">?</span>,
+        coins,
         fee: call
             .fee
             .map(|native_amount| {
