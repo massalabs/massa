@@ -1238,6 +1238,8 @@
 <a href="#1238" id="1238">1238</a>
 <a href="#1239" id="1239">1239</a>
 <a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -2169,7 +2171,7 @@
             genesis_timestamp,
         };
 
-        (final_state_config, ledger_config)
+        <span class="kw">return </span>(final_state_config, ledger_config);
     }
 
     <span class="kw">fn </span>get_final_state() -&gt; FinalState {
@@ -2198,7 +2200,7 @@
         <span class="kw">let </span>selector_controller = Box::new(MockSelectorController::new());
         <span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
-        FinalState::new(
+        <span class="kw">let </span>fstate = FinalState::new(
             db,
             final_state_config,
             Box::new(ledger),
@@ -2206,7 +2208,9 @@
             mip_store,
             <span class="bool-val">false</span>,
         )
-        .expect(<span class="string">&quot;Cannot init final state&quot;</span>)
+        .expect(<span class="string">&quot;Cannot init final state&quot;</span>);
+
+        <span class="kw">return </span>fstate;
     }
 
     <span class="kw">fn </span>get_state_changes() -&gt; StateChanges {
@@ -2255,7 +2259,7 @@
         );
         state_changes.pos_changes = pos_changes;
 
-        state_changes
+        <span class="kw">return </span>state_changes;
     }
 
     <span class="attr">#[test]
@@ -2356,13 +2360,13 @@
             Slot::new(last_start_period_2, THREAD_COUNT - <span class="number">1</span>)
         );
 
-        <span class="macro">assert!</span>(!fstate2.is_db_valid()); <span class="comment">// no trail hash
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">false</span>); <span class="comment">// no trail hash
         </span>fstate2.init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span>batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
-        <span class="macro">assert!</span>(fstate2.is_db_valid());
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">true</span>);
     }
 
     <span class="attr">#[test]
@@ -2416,13 +2420,13 @@
             Slot::new(last_start_period_2, THREAD_COUNT - <span class="number">1</span>)
         );
 
-        <span class="macro">assert!</span>(!fstate2.is_db_valid()); <span class="comment">// no trail hash
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">false</span>); <span class="comment">// no trail hash
         </span>fstate2.init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span>batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
-        <span class="macro">assert!</span>(fstate2.is_db_valid());
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">true</span>);
     }
 
     <span class="attr">#[test]
