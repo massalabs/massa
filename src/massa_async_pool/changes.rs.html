@@ -342,7 +342,6 @@
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the asynchronous message pool
@@ -586,7 +585,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="kw">fn </span>get_message() -&gt; AsyncMessage {
-        <span class="kw">let </span>message = AsyncMessage::new(
+        AsyncMessage::new(
             Slot::new(<span class="number">1</span>, <span class="number">0</span>),
             <span class="number">0</span>,
             Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
@@ -604,8 +603,7 @@
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
             }),
             <span class="prelude-val">None</span>,
-        );
-        <span class="kw">return </span>message;
+        )
     }
 
     <span class="attr">#[test]
@@ -656,7 +654,7 @@
         <span class="comment">// AsyncPoolChanges, push_add/push_delete/push_activate
 
         </span><span class="kw">let </span>message = get_message();
-        <span class="macro">assert_eq!</span>(message.can_be_executed, <span class="bool-val">false</span>);
+        <span class="macro">assert!</span>(!message.can_be_executed);
 
         <span class="kw">let </span><span class="kw-2">mut </span>changes = AsyncPoolChanges::default();
 
@@ -672,7 +670,7 @@
         <span class="kw">let </span>value = changes.<span class="number">0</span>.get(<span class="kw-2">&amp;</span>message.compute_id()).unwrap();
         <span class="kw">match </span>value {
             SetUpdateOrDelete::Set(msg) =&gt; {
-                <span class="macro">assert_eq!</span>(msg.can_be_executed, <span class="bool-val">true</span>);
+                <span class="macro">assert!</span>(msg.can_be_executed);
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">panic!</span>(<span class="string">&quot;Unexpect value&quot;</span>);

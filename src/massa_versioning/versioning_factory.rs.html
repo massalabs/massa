@@ -578,7 +578,7 @@
                         <span class="string">&quot;Please provide &#39;slot&#39; in args&quot;</span>.to_string(),
                     ))<span class="question-mark">?</span>,
                     creator: args.creator.clone().unwrap(),
-                    index: args.index.clone().unwrap(),
+                    index: args.index.unwrap(),
                 })),
                 <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Err</span>(FactoryError::UnimplementedVersion(v)),
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
