@@ -237,7 +237,6 @@ mod test {
         let mut pos_changes = PoSChanges::default();
         pos_changes.roll_changes = roll_changes;
         pos_changes.seed_bits = BitVec::from_vec(vec![1, 0, 1, 1]);
-        // pos_changes.seed_bits = BitVec::default();
         pos_changes.production_stats = prod_stats;
         pos_changes.deferred_credits = DeferredCredits::default();
 

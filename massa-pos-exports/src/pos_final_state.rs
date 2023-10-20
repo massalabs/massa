@@ -1766,7 +1766,26 @@ mod tests {
         assert!(credits_range_1.is_empty());
         let credits_range_2 =
             pos_state.get_deferred_credits_range(Slot::new(2, 0)..Slot::new(3, 1));
-        assert_eq!(credits_range_2.credits.len(), 1);
+        let expected_credits_range_2 = vec![(
+            Slot::new(3, 0),
+            vec![
+                (
+                    Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa")
+                        .unwrap(),
+                    Amount::from_str("5.01").unwrap(),
+                ),
+                (
+                    Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53")
+                        .unwrap(),
+                    Amount::from_str("2.01").unwrap(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        )]
+        .into_iter()
+        .collect();
+        assert_eq!(credits_range_2.credits, expected_credits_range_2);
         let credits_range_3 =
             pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(9, 5));
         assert!(credits_range_3.is_empty());
@@ -1898,6 +1917,7 @@ mod tests {
             Some(&roll2)
         );
 
+        // Simulate some cycle with address 1 + decrease rolls and address 2 + increase rolls
         let roll_counts_c0 = BTreeMap::from([(addr1, roll1), (addr2, roll2)]);
         let roll_a1_c1 = roll1.checked_sub(1).unwrap();
         let roll_counts_c1 =
@@ -1976,18 +1996,6 @@ mod tests {
     // If this is not handled properly, the node hangs as explained here: https://github.com/massalabs/massa/issues/4101
     #[test]
     fn test_pos_cache_recomputation() {
-        // use crate::test_exports::MockSelectorController;
-        // use crate::PoSFinalState;
-        // use massa_db_exports::{MassaDBConfig, MassaDBController};
-        // use massa_db_worker::MassaDB;
-        // use massa_models::config::constants::{
-        //     MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-        //     POS_SAVED_CYCLES,
-        // };
-        // use parking_lot::RwLock;
-        // use std::sync::Arc;
-        // use tempfile::TempDir;
-
         let pos_config = PoSConfig {
             periods_per_cycle: 2,
             thread_count: 2,
@@ -2086,21 +2094,6 @@ mod tests {
     // This test aims to check that the basic workflow of apply changes to the PoS state works.
     #[test]
     fn test_pos_final_state_hash_computation() {
-        // use crate::test_exports::MockSelectorController;
-        // use crate::DeferredCredits;
-        // use crate::PoSFinalState;
-        // use bitvec::prelude::*;
-        // use massa_db_exports::{MassaDBConfig, MassaDBController};
-        // use massa_db_worker::MassaDB;
-        // use massa_models::config::constants::{
-        //     MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-        //     POS_SAVED_CYCLES,
-        // };
-        // use massa_signature::KeyPair;
-        // use parking_lot::RwLock;
-        // use std::sync::Arc;
-        // use tempfile::TempDir;
-
         let pos_config = PoSConfig {
             periods_per_cycle: 2,
             thread_count: 2,
