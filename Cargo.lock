@@ -3152,6 +3152,7 @@ dependencies = [
 name = "massa_pos_exports"
 version = "0.26.1"
 dependencies = [
+ "assert_matches",
  "bitvec",
  "crossbeam-channel",
  "displaydoc",
